@@ -238,6 +238,30 @@ void main() {
       }
     }
 
+    for (final size in [
+      const Size(960, 600),
+      const Size(1000, 625),
+      const Size(1200, 750),
+      const Size(1280, 800),
+    ]) {
+      for (final pick in [2, 3, 7, 8]) {
+        testWidgets(
+          '30 Tage, Balken $pick gewählt, Textgröße 1,3, ${size.width.toInt()} dp',
+          (t) async {
+            await pumpOverviewWithSales(
+              t,
+              size: size,
+              openRange: 'days30',
+              textScale: 1.3,
+            );
+            await t.tap(find.byKey(Key('bar-$pick')));
+            await t.pump();
+            expectNoOverlap(t, pick);
+          },
+        );
+      }
+    }
+
     testWidgets('24 Stunden-Balken: kein Überlappen bei ungeradem Balken', (
       t,
     ) async {
@@ -254,9 +278,13 @@ void main() {
       await t.tap(find.byKey(const Key('bar-5')));
       await t.pump();
       expectNoOverlap(t, 5);
+      // Die Beschriftung ist breiter als eine Spalte: die Nachbarn entfallen.
+      expect(find.byKey(const Key('axis-label-4')), findsNothing);
+      expect(find.byKey(const Key('axis-label-6')), findsNothing);
       await t.tap(find.byKey(const Key('bar-23')));
       await t.pump();
       expectNoOverlap(t, 23);
+      expect(find.byKey(const Key('axis-label-22')), findsNothing);
     });
   });
 

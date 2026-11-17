@@ -78,103 +78,109 @@ class RevenueChart extends StatelessWidget {
     final lines = gridLines(scaleTop);
     final axisStyle = text.labelMedium!.copyWith(fontSize: 12.5, color: c.ink2);
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: instant ? 1 : 0, end: 1),
-      duration: instant ? Duration.zero : KassaTokens.motionSlow,
-      curve: KassaTokens.motionCurve,
-      builder: (context, grow, _) => Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, box) {
-                final h = box.maxHeight;
-                double y(int cents) => h - h * cents / scaleTop;
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: _axisWidth,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          for (final v in [0, ...lines])
-                            Positioned(
-                              left: 0,
-                              right: 12,
-                              top: y(v) - 9,
-                              height: 18,
-                              child: Text(
-                                axisLabel(v),
-                                maxLines: 1,
-                                textAlign: TextAlign.right,
-                                style: axisStyle,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          for (final v in [0, ...lines])
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: y(v) - (v == 0 ? 1 : 0.5),
-                              height: v == 0 ? 1.5 : 1,
-                              child: ColoredBox(color: c.line),
-                            ),
-                          Row(
+    final scaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, outer) {
+        // Einmal je Aufbau gemessen (nicht je Bild der Animation): die breiteste
+        // Beschriftung, fett wie der gewählte Balken und mit der Textgröße des
+        // Geräts, gegen die echte Spaltenbreite. So viele Balken Abstand braucht
+        // eine Beschriftung zum gewählten Balken.
+        final column = (outer.maxWidth - _axisWidth) / buckets.length;
+        var widest = 0.0;
+        for (final b in buckets) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: b.label,
+              style: axisStyle.copyWith(fontWeight: FontWeight.w800),
+            ),
+            textDirection: TextDirection.ltr,
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          if (painter.width > widest) widest = painter.width;
+          painter.dispose();
+        }
+        final minGap = column <= 0 ? 1 : ((widest + 6) / column).ceil();
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: instant ? 1 : 0, end: 1),
+          duration: instant ? Duration.zero : KassaTokens.motionSlow,
+          curve: KassaTokens.motionCurve,
+          builder: (context, grow, _) => Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    final h = box.maxHeight;
+                    double y(int cents) => h - h * cents / scaleTop;
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: _axisWidth,
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              for (var i = 0; i < buckets.length; i++)
-                                Expanded(
-                                  child: _BarColumn(
-                                    key: Key('bar-$i'),
-                                    height: buckets[i].cents <= 0
-                                        ? 0
-                                        : h *
-                                              buckets[i].cents /
-                                              scaleTop *
-                                              grow,
-                                    color: i == selected
-                                        ? c.accentInk
-                                        : c.accent,
-                                    selected: i == selected,
-                                    semanticLabel: semanticLabelFor(buckets[i]),
-                                    onTap: () => onSelect(i),
+                              for (final v in [0, ...lines])
+                                Positioned(
+                                  left: 0,
+                                  right: 12,
+                                  top: y(v) - 9,
+                                  height: 18,
+                                  child: Text(
+                                    axisLabel(v),
+                                    maxLines: 1,
+                                    textAlign: TextAlign.right,
+                                    style: axisStyle,
                                   ),
                                 ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          SizedBox(
-            height: _labelRowHeight,
-            child: LayoutBuilder(
-              builder: (context, box) {
-                // Breiteste Beschriftung (fett, wie der gewählte Balken) gegen
-                // die echte Spaltenbreite: so viele Balken Abstand braucht sie.
-                final column = (box.maxWidth - _axisWidth) / buckets.length;
-                var widest = 0.0;
-                for (final b in buckets) {
-                  final painter = TextPainter(
-                    text: TextSpan(
-                      text: b.label,
-                      style: axisStyle.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    textDirection: TextDirection.ltr,
-                    maxLines: 1,
-                  )..layout();
-                  if (painter.width > widest) widest = painter.width;
-                  painter.dispose();
-                }
-                final minGap = column <= 0 ? 1 : ((widest + 6) / column).ceil();
-                return Row(
+                        ),
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              for (final v in [0, ...lines])
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  top: y(v) - (v == 0 ? 1 : 0.5),
+                                  height: v == 0 ? 1.5 : 1,
+                                  child: ColoredBox(color: c.line),
+                                ),
+                              Row(
+                                children: [
+                                  for (var i = 0; i < buckets.length; i++)
+                                    Expanded(
+                                      child: _BarColumn(
+                                        key: Key('bar-$i'),
+                                        height: buckets[i].cents <= 0
+                                            ? 0
+                                            : h *
+                                                  buckets[i].cents /
+                                                  scaleTop *
+                                                  grow,
+                                        color: i == selected
+                                            ? c.accentInk
+                                            : c.accent,
+                                        selected: i == selected,
+                                        semanticLabel: semanticLabelFor(
+                                          buckets[i],
+                                        ),
+                                        onTap: () => onSelect(i),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              SizedBox(
+                height: _labelRowHeight,
+                child: Row(
                   children: [
                     const SizedBox(width: _axisWidth),
                     for (var i = 0; i < buckets.length; i++)
@@ -208,12 +214,12 @@ class RevenueChart extends StatelessWidget {
                         ),
                       ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

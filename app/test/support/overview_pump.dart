@@ -44,10 +44,17 @@ Future<void> pumpOverviewWithSales(
   Brightness brightness = Brightness.light,
   List<Override> extraOverrides = const [],
   String? openRange,
+  double textScale = 1.0,
 }) async {
   final clock = FixedClock(today(11));
   final overrides = [...await memoryOverrides(clock: clock), ...extraOverrides];
-  await pumpKassa(t, size: size, brightness: brightness, overrides: overrides);
+  await pumpKassa(
+    t,
+    size: size,
+    brightness: brightness,
+    textScale: textScale,
+    overrides: overrides,
+  );
   await containerOf(t).read(sessionProvider.notifier).login('4711');
   await t.pump();
   for (final s
