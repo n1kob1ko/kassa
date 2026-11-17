@@ -143,7 +143,8 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
     final summary = async.value;
     final day = summary?.day;
     final open = day != null && day.isOpen;
-    final needsFloat = summary == null || (open && day.openingFloatCents == null);
+    final needsFloat =
+        summary == null || (open && day.openingFloatCents == null);
     final shown = day?.openedAt ?? now;
 
     final Widget column;
@@ -283,10 +284,8 @@ class _ClosedPill extends StatelessWidget {
       ),
       child: Text(
         'Abgeschlossen',
-        style: Theme.of(context).textTheme.labelLarge!.copyWith(
-          fontSize: 12.5,
-          color: c.veganFg,
-        ),
+        style: Theme.of(context).textTheme.labelLarge!
+            .copyWith(fontSize: 12.5, color: c.veganFg),
       ),
     );
   }
@@ -300,9 +299,8 @@ class _LoadError extends StatelessWidget {
     return Center(
       child: Text(
         'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.',
-        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: KassaColors.of(context).red,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium!
+            .copyWith(color: KassaColors.of(context).red),
       ),
     );
   }

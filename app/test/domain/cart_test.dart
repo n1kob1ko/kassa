@@ -7,8 +7,14 @@ import '../support/demo_fixtures.dart';
 void main() {
   test('gleiche Artikel ohne Auswahl werden eine Zeile', () {
     final cart = const Cart.empty().add(cola).add(cola).add(teigtaschen);
-    expect(cart.lines.map((l) => (l.item.id, l.quantity)), [('cola', 2), ('teigtaschen', 1)]);
-    expect((cart.goodsCents, cart.depositCents, cart.totalCents), (1230, 50, 1280));
+    expect(cart.lines.map((l) => (l.item.id, l.quantity)), [
+      ('cola', 2),
+      ('teigtaschen', 1),
+    ]);
+    expect(
+      (cart.goodsCents, cart.depositCents, cart.totalCents),
+      (1230, 50, 1280),
+    );
   });
 
   test('Artikel mit Auswahl bleiben eigene Zeilen, Aufpreise zählen', () {
@@ -19,7 +25,9 @@ void main() {
     expect(sel.chosen.map((o) => o.name), ['Normal', 'Nudeln']);
     sel = sel.toggle(groesse, xxl).toggle(sauce, teriyaki);
     expect(sel.surchargeCents, 250);
-    final cart = const Cart.empty().add(huhnBowl, options: sel.chosen).add(huhnBowl, options: sel.chosen);
+    final cart = const Cart.empty()
+        .add(huhnBowl, options: sel.chosen)
+        .add(huhnBowl, options: sel.chosen);
     expect(cart.lines, hasLength(2));
     expect(cart.lines.first.unitPriceCents, 1240);
   });
@@ -32,13 +40,18 @@ void main() {
     expect(sel.chosen.where((o) => topping.options.contains(o)), hasLength(4));
   });
 
-  test('Tippen auf die gewählte Option einer Pflichtgruppe lässt sie gewählt', () {
-    final sel = Selection.defaults(bowlTemplate).toggle(groesse, normal);
-    expect(sel.isChosen(normal), isTrue);
-  });
+  test(
+    'Tippen auf die gewählte Option einer Pflichtgruppe lässt sie gewählt',
+    () {
+      final sel = Selection.defaults(bowlTemplate).toggle(groesse, normal);
+      expect(sel.isChosen(normal), isTrue);
+    },
+  );
 
   test('Tippen entfernt eine gewählte Option in Gruppen mit mehreren', () {
-    final sel = Selection.defaults(bowlTemplate).toggle(sauce, teriyaki).toggle(sauce, teriyaki);
+    final sel = Selection.defaults(bowlTemplate)
+        .toggle(sauce, teriyaki)
+        .toggle(sauce, teriyaki);
     expect(sel.isChosen(teriyaki), isFalse);
   });
 
@@ -61,37 +74,56 @@ void main() {
     expect(cart.lines, hasLength(1));
   });
 
-  test('Summe 0 ist erlaubt', () => expect(const Cart.empty().add(leitungswasser).totalCents, 0));
+  test(
+    'Summe 0 ist erlaubt',
+    () => expect(const Cart.empty().add(leitungswasser).totalCents, 0),
+  );
 
   group('rebind (Bon folgt dem Katalog)', () {
     Catalog withItems(List<Item> items) => Catalog(
-          businessName: catalog.businessName,
-          categories: catalog.categories,
-          items: items,
-          templates: catalog.templates,
-        );
+      businessName: catalog.businessName,
+      categories: catalog.categories,
+      items: items,
+      templates: catalog.templates,
+    );
 
-    test('nimmt Preis aus dem neuen Katalog, behält Zeilenkennung und Menge', () {
-      final cart = const Cart.empty().add(cola, lineId: 'a').add(cola);
-      final next = withItems([
-        for (final i in catalog.items) i.id == 'cola' ? i.copyWith(priceCents: 320) : i,
-      ]);
-      final rebuilt = cart.rebind(next);
-      expect(rebuilt.lines.single.lineId, 'a');
-      expect(rebuilt.lines.single.quantity, 2);
-      expect(rebuilt.lines.single.unitPriceCents, 320);
-      expect(cart.lines.single.unitPriceCents, cola.priceCents);
-    });
+    test(
+      'nimmt Preis aus dem neuen Katalog, behält Zeilenkennung und Menge',
+      () {
+        final cart = const Cart.empty().add(cola, lineId: 'a').add(cola);
+        final next = withItems([
+          for (final i in catalog.items)
+            i.id == 'cola' ? i.copyWith(priceCents: 320) : i,
+        ]);
+        final rebuilt = cart.rebind(next);
+        expect(rebuilt.lines.single.lineId, 'a');
+        expect(rebuilt.lines.single.quantity, 2);
+        expect(rebuilt.lines.single.unitPriceCents, 320);
+        expect(cart.lines.single.unitPriceCents, cola.priceCents);
+      },
+    );
 
     test('Zeilen, die es nicht mehr gibt, fallen weg', () {
-      final cart = const Cart.empty().add(cola, lineId: 'a').add(teigtaschen, lineId: 'b');
-      final next = withItems([for (final i in catalog.items) if (i.id != 'cola') i]);
+      final cart = const Cart.empty()
+          .add(cola, lineId: 'a')
+          .add(teigtaschen, lineId: 'b');
+      final next = withItems([
+        for (final i in catalog.items)
+          if (i.id != 'cola') i,
+      ]);
       expect(cart.rebind(next).lines.map((l) => l.lineId), ['b']);
     });
 
     test('Optionen werden aus dem neuen Katalog genommen, unbekannte lassen die Zeile fallen', () {
-      final cart = const Cart.empty().add(huhnBowl, options: [normal, reis], lineId: 'x');
-      expect(cart.rebind(catalog).lines.single.options.map((o) => o.id), [normal.id, reis.id]);
+      final cart = const Cart.empty().add(
+        huhnBowl,
+        options: [normal, reis],
+        lineId: 'x',
+      );
+      expect(cart.rebind(catalog).lines.single.options.map((o) => o.id), [
+        normal.id,
+        reis.id,
+      ]);
       final noTemplates = Catalog(
         businessName: catalog.businessName,
         categories: catalog.categories,
@@ -103,41 +135,63 @@ void main() {
   });
 
   test('Bon übersteht Speichern und Laden', () {
-    final cart = const Cart.empty().add(cola).add(huhnBowl, options: [normal, reis]);
+    final cart = const Cart.empty()
+        .add(cola)
+        .add(huhnBowl, options: [normal, reis]);
     expect(Cart.fromJson(cart.toJson(), catalog).totalCents, cart.totalCents);
   });
 
   test('Zeile mit unbekanntem Artikel oder unbekannter Option fällt beim Laden weg', () {
-    final cart = const Cart.empty().add(cola).add(huhnBowl, options: [normal, reis]);
+    final cart = const Cart.empty()
+        .add(cola)
+        .add(huhnBowl, options: [normal, reis]);
     final json = cart.toJson();
     final lines = (json['lines'] as List).cast<Map<String, dynamic>>();
     final broken = {
       'lines': [
         lines[0],
-        {...lines[1], 'optionIds': ['gibt-es-nicht']},
+        {
+          ...lines[1],
+          'optionIds': ['gibt-es-nicht'],
+        },
         {...lines[0], 'lineId': 'x', 'itemId': 'weg'},
       ],
     };
-    expect(Cart.fromJson(broken, catalog).lines.map((l) => l.item.id), ['cola']);
+    expect(Cart.fromJson(broken, catalog).lines.map((l) => l.item.id), [
+      'cola',
+    ]);
   });
 
   test('Pfand einer Option kommt zum Pfand des Artikels dazu', () {
-    const bottle = ModifierOption(id: 'm/0/0', name: 'Flasche', depositCents: 100);
+    const bottle = ModifierOption(
+      id: 'm/0/0',
+      name: 'Flasche',
+      depositCents: 100,
+    );
     final cart = const Cart.empty().add(cola, options: [bottle]);
     expect(cart.depositCents, 25 + 100);
   });
 
   group('Bon aus einem gespeicherten Entwurf lesen', () {
-    Map<String, dynamic> line(Object? quantity, {Object? lineId = 'a', Object? itemId = 'cola', Object? optionIds}) => {
-          'lineId': lineId,
-          'itemId': itemId,
-          'quantity': quantity,
-          'optionIds': ?optionIds,
-        };
+    Map<String, dynamic> line(
+      Object? quantity, {
+      Object? lineId = 'a',
+      Object? itemId = 'cola',
+      Object? optionIds,
+    }) => {
+      'lineId': lineId,
+      'itemId': itemId,
+      'quantity': quantity,
+      'optionIds': ?optionIds,
+    };
 
     test('Zeilen mit Menge unter 1 fallen weg', () {
       final cart = Cart.fromJson({
-        'lines': [line(0, lineId: 'a'), line(-3, lineId: 'b'), line(2, lineId: 'c')],
+        'lines': [
+          line(0, lineId: 'a'),
+          line(-3, lineId: 'b'),
+          line(2, lineId: 'c'),
+        ],
       }, catalog);
       expect(cart.lines.map((l) => (l.lineId, l.quantity)), [('c', 2)]);
     });
@@ -172,7 +226,12 @@ void main() {
     });
 
     test('zu große Menge wird auf 99 begrenzt', () {
-      expect(Cart.fromJson({'lines': [line(500)]}, catalog).lines.single.quantity, 99);
+      expect(
+        Cart.fromJson({
+          'lines': [line(500)],
+        }, catalog).lines.single.quantity,
+        99,
+      );
     });
   });
 }

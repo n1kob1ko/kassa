@@ -35,33 +35,39 @@ class _BrokenStaff extends StaffRepository {
 }
 
 void main() {
-  testWidgets('wirft die Anmeldung: Hinweis, die PIN-Tasten leben, der nächste Versuch klappt', (t) async {
-    late _BrokenStaff repo;
-    await pumpApp(
-      t,
-      const KassaApp(),
-      overrides: [
-        ...await memoryOverrides(),
-        staffRepositoryProvider.overrideWith(
-          (ref) => repo = _BrokenStaff(ref.watch(databaseProvider)),
-        ),
-      ],
-    );
-    await t.pumpAndSettle();
-    await typePin(t, '1234');
-    await t.pump();
-    await t.pump();
-    expect(
-      find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
-      findsOneWidget,
-    );
-    expect(find.bySemanticsLabel('0 von 4 Ziffern eingegeben'), findsOneWidget);
-    expect(t.takeException(), isNull);
-    repo.broken = false;
-    await typePin(t, '1234');
-    await t.pumpAndSettle();
-    expect(find.text('Anna'), findsOneWidget);
-  });
+  testWidgets(
+    'wirft die Anmeldung: Hinweis, die PIN-Tasten leben, der nächste Versuch klappt',
+    (t) async {
+      late _BrokenStaff repo;
+      await pumpApp(
+        t,
+        const KassaApp(),
+        overrides: [
+          ...await memoryOverrides(),
+          staffRepositoryProvider.overrideWith(
+            (ref) => repo = _BrokenStaff(ref.watch(databaseProvider)),
+          ),
+        ],
+      );
+      await t.pumpAndSettle();
+      await typePin(t, '1234');
+      await t.pump();
+      await t.pump();
+      expect(
+        find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('0 von 4 Ziffern eingegeben'),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+      repo.broken = false;
+      await typePin(t, '1234');
+      await t.pumpAndSettle();
+      expect(find.text('Anna'), findsOneWidget);
+    },
+  );
 
   testWidgets('eingerichtet und niemand angemeldet: Anmeldebild', (t) async {
     await pumpLoggedOut(t);
@@ -72,18 +78,26 @@ void main() {
     expect(t.widget<Keypad>(find.byType(Keypad)).showComma, isFalse);
   });
 
-  testWidgets('falsche PIN: Hinweis, Punkte leeren sich, nächste Ziffer räumt auf',
-      (t) async {
-    await pumpLoggedOut(t);
-    await typePin(t, '0000');
-    await t.pump();
-    await t.pump();
-    expect(find.text('Diese PIN kennt die Kassa nicht.'), findsOneWidget);
-    expect(find.bySemanticsLabel('0 von 4 Ziffern eingegeben'), findsOneWidget);
-    await tapKeys(t, '1');
-    expect(find.text('Diese PIN kennt die Kassa nicht.'), findsNothing);
-    expect(find.bySemanticsLabel('1 von 4 Ziffern eingegeben'), findsOneWidget);
-  });
+  testWidgets(
+    'falsche PIN: Hinweis, Punkte leeren sich, nächste Ziffer räumt auf',
+    (t) async {
+      await pumpLoggedOut(t);
+      await typePin(t, '0000');
+      await t.pump();
+      await t.pump();
+      expect(find.text('Diese PIN kennt die Kassa nicht.'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('0 von 4 Ziffern eingegeben'),
+        findsOneWidget,
+      );
+      await tapKeys(t, '1');
+      expect(find.text('Diese PIN kennt die Kassa nicht.'), findsNothing);
+      expect(
+        find.bySemanticsLabel('1 von 4 Ziffern eingegeben'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('Chef meldet sich an und sieht alle fünf Reiter', (t) async {
     await pumpLoggedOut(t);
@@ -96,7 +110,9 @@ void main() {
     expect(find.byKey(const Key('area-kassa')), findsOneWidget);
   });
 
-  testWidgets('Mitarbeiter ohne Chef-Rolle sieht nur Kassa und Bons', (t) async {
+  testWidgets('Mitarbeiter ohne Chef-Rolle sieht nur Kassa und Bons', (
+    t,
+  ) async {
     await pumpLoggedOut(t);
     await typePin(t, '1234');
     await t.pumpAndSettle();
@@ -109,8 +125,9 @@ void main() {
     expect(find.byKey(const Key('settings')), findsNothing);
   });
 
-  testWidgets('Reiter wechseln den Bereich, nach der Anmeldung ist es Kassa',
-      (t) async {
+  testWidgets('Reiter wechseln den Bereich, nach der Anmeldung ist es Kassa', (
+    t,
+  ) async {
     await pumpLoggedOut(t);
     await typePin(t, '4711');
     await t.pumpAndSettle();

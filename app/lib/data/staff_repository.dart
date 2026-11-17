@@ -20,7 +20,8 @@ class InvalidPinException implements Exception {
   const InvalidPinException();
 
   @override
-  String toString() => 'InvalidPinException: Die PIN muss genau vier Ziffern haben.';
+  String toString() =>
+      'InvalidPinException: Die PIN muss genau vier Ziffern haben.';
 }
 
 class StaffRepository {
@@ -38,13 +39,17 @@ class StaffRepository {
       if (await _rowFor(pin) != null) throw const PinTakenException();
       final salt = _newSalt();
       final id = const Uuid().v4();
-      await _db.into(_db.staffRows).insert(StaffRowsCompanion.insert(
-            id: id,
-            name: name,
-            role: role.name,
-            pinSalt: salt,
-            pinHash: _hash(salt, pin),
-          ));
+      await _db
+          .into(_db.staffRows)
+          .insert(
+            StaffRowsCompanion.insert(
+              id: id,
+              name: name,
+              role: role.name,
+              pinSalt: salt,
+              pinHash: _hash(salt, pin),
+            ),
+          );
       return Staff(id: id, name: name, role: role);
     });
   }

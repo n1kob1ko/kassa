@@ -100,7 +100,9 @@ void main() {
       expect(textOf(t, const Key('expected-cash')), '50,00 €');
     });
 
-    testWidgets('speichern geht erst, wenn etwas getippt ist, 0 ist erlaubt', (t) async {
+    testWidgets('speichern geht erst, wenn etwas getippt ist, 0 ist erlaubt', (
+      t,
+    ) async {
       await pumpCloseWithSales(t, 1);
       expect(_enabled(t, 'set-float'), isFalse);
       await tapKeys(t, '0');
@@ -110,7 +112,9 @@ void main() {
       expect(textOf(t, const Key('left-float')), '0,00 €');
     });
 
-    testWidgets('ohne Geldlade heißt es "Wechselgeld war am Morgen da"', (t) async {
+    testWidgets('ohne Geldlade heißt es "Wechselgeld war am Morgen da"', (
+      t,
+    ) async {
       await pumpClose(t, drawer: false);
       expect(
         find.text('Wie viel Wechselgeld war am Morgen da?'),
@@ -126,7 +130,9 @@ void main() {
       await t.pumpAndSettle();
       await tapKeys(t, '2 0');
       expect(
-        t.widget<PrimaryButton>(find.byKey(const Key('save-movement'))).onPressed,
+        t
+            .widget<PrimaryButton>(find.byKey(const Key('save-movement')))
+            .onPressed,
         isNull,
       ); // Grund fehlt
       await t.tap(find.byKey(const Key('reason-purchase')));
@@ -139,20 +145,25 @@ void main() {
       expect(textOf(t, const Key('left-expected')), '148,20 €');
     });
 
-    testWidgets('Einlage hebt das Soll und steht als "Eingelegt: Wechselgeld"', (t) async {
-      await pumpCloseReady(t);
-      await _tap(t, 'cash-in');
-      expect(find.text('Bargeld einlegen'), findsWidgets);
-      await tapKeys(t, '5 0');
-      await t.tap(find.byKey(const Key('reason-change')));
-      await t.pump();
-      expect(find.text('Einlage speichern'), findsOneWidget);
-      await _tap(t, 'save-movement');
-      expect(textOf(t, const Key('expected-cash')), '218,20 €');
-      expect(find.text('Eingelegt: Wechselgeld'), findsOneWidget);
-    });
+    testWidgets(
+      'Einlage hebt das Soll und steht als "Eingelegt: Wechselgeld"',
+      (t) async {
+        await pumpCloseReady(t);
+        await _tap(t, 'cash-in');
+        expect(find.text('Bargeld einlegen'), findsWidgets);
+        await tapKeys(t, '5 0');
+        await t.tap(find.byKey(const Key('reason-change')));
+        await t.pump();
+        expect(find.text('Einlage speichern'), findsOneWidget);
+        await _tap(t, 'save-movement');
+        expect(textOf(t, const Key('expected-cash')), '218,20 €');
+        expect(find.text('Eingelegt: Wechselgeld'), findsOneWidget);
+      },
+    );
 
-    testWidgets('speichern geht erst bei Betrag über 0 und mit Grund', (t) async {
+    testWidgets('speichern geht erst bei Betrag über 0 und mit Grund', (
+      t,
+    ) async {
       await pumpCloseReady(t);
       await _tap(t, 'cash-out');
       await t.tap(find.byKey(const Key('reason-bank')));
@@ -164,7 +175,9 @@ void main() {
       expect(_enabled(t, 'save-movement'), isTrue);
     });
 
-    testWidgets('Schließen kehrt zum Zählen zurück, die getippte Zahl bleibt', (t) async {
+    testWidgets('Schließen kehrt zum Zählen zurück, die getippte Zahl bleibt', (
+      t,
+    ) async {
       await pumpCloseReady(t);
       await tapKeys(t, '1 6 8');
       await _tap(t, 'cash-out');
@@ -174,7 +187,9 @@ void main() {
       expect(find.byKey(const Key('count-next')), findsOneWidget);
     });
 
-    testWidgets('nach dem Speichern bleibt die getippte Zahl stehen', (t) async {
+    testWidgets('nach dem Speichern bleibt die getippte Zahl stehen', (
+      t,
+    ) async {
       await pumpCloseReady(t);
       await tapKeys(t, '1 6 8');
       await _tap(t, 'cash-in');
@@ -196,13 +211,18 @@ void main() {
   });
 
   group('Fehler im Bargeld-Formular', () {
-    testWidgets('Schließen des Formulars nimmt den Fehlerhinweis weg', (t) async {
+    testWidgets('Schließen des Formulars nimmt den Fehlerhinweis weg', (
+      t,
+    ) async {
       await pumpClose(
         t,
         floatCents: 15000,
         extra: [
           dayRepositoryProvider.overrideWith(
-            (ref) => _FailingMovements(ref.watch(databaseProvider), ref.watch(clockProvider)),
+            (ref) => _FailingMovements(
+              ref.watch(databaseProvider),
+              ref.watch(clockProvider),
+            ),
           ),
         ],
       );
@@ -211,9 +231,15 @@ void main() {
       await t.tap(find.byKey(const Key('reason-bank')));
       await t.pump();
       await _tap(t, 'save-movement');
-      expect(find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'), findsOneWidget);
+      expect(
+        find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
+        findsOneWidget,
+      );
       await _tap(t, 'close-movement');
-      expect(find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'), findsNothing);
+      expect(
+        find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
+        findsNothing,
+      );
     });
   });
 
@@ -241,7 +267,10 @@ void main() {
           find.text('Morgen liegen 150,00 € Wechselgeld in der Lade.'),
           findsOneWidget,
         );
-        expect(find.text('Abgeschlossen von Chef um 11:00 Uhr'), findsOneWidget);
+        expect(
+          find.text('Abgeschlossen von Chef um 11:00 Uhr'),
+          findsOneWidget,
+        );
         expect(find.text('Abgeschlossen'), findsOneWidget); // Pille links
         expect(textOf(t, const Key('left-counted')), '168,00 €');
         expect(textOf(t, const Key('left-difference')), '−0,20 €');
@@ -303,30 +332,43 @@ void main() {
       expect(find.byKey(const Key('take-out')), findsNothing);
       expect(_enabled(t, 'close-day'), isFalse);
       await tapKeys(t, 'back');
-      expect(find.text('Mehr als gezählt kann nicht in der Lade bleiben.'), findsNothing);
+      expect(
+        find.text('Mehr als gezählt kann nicht in der Lade bleiben.'),
+        findsNothing,
+      );
       expect(_enabled(t, 'close-day'), isTrue);
     });
 
-    testWidgets('der Abschluss speichert Gezählt, Gelassen, Unterschied und den Namen', (t) async {
-      await pumpCloseReady(t);
-      await _closeDay(t);
-      final day = (await containerOf(t).read(dayRepositoryProvider).lastClosedDay())!;
-      expect(day.countedCents, 16820);
-      expect(day.leftInDrawerCents, 15000);
-      expect(day.expectedCents, 16820);
-      expect(day.differenceCents, 0);
-      expect(day.closedByName, 'Chef');
-      expect(textOf(t, const Key('left-difference')), '0,00 €');
-    });
+    testWidgets(
+      'der Abschluss speichert Gezählt, Gelassen, Unterschied und den Namen',
+      (t) async {
+        await pumpCloseReady(t);
+        await _closeDay(t);
+        final day = (await containerOf(t)
+            .read(dayRepositoryProvider)
+            .lastClosedDay())!;
+        expect(day.countedCents, 16820);
+        expect(day.leftInDrawerCents, 15000);
+        expect(day.expectedCents, 16820);
+        expect(day.differenceCents, 0);
+        expect(day.closedByName, 'Chef');
+        expect(textOf(t, const Key('left-difference')), '0,00 €');
+      },
+    );
 
-    testWidgets('zweimal schnell auf "Tag abschließen" schließt einmal', (t) async {
+    testWidgets('zweimal schnell auf "Tag abschließen" schließt einmal', (
+      t,
+    ) async {
       late _CountingDays days;
       await pumpClose(
         t,
         floatCents: 15000,
         extra: [
           dayRepositoryProvider.overrideWith((ref) {
-            return days = _CountingDays(ref.watch(databaseProvider), ref.watch(clockProvider));
+            return days = _CountingDays(
+              ref.watch(databaseProvider),
+              ref.watch(clockProvider),
+            );
           }),
         ],
       );
@@ -340,21 +382,31 @@ void main() {
       expect(find.text('Der Tag ist abgeschlossen.'), findsOneWidget);
     });
 
-    testWidgets('ein Fehler beim Schließen zeigt den Hinweis und behält die Eingabe', (t) async {
-      await pumpCloseReady(t);
-      await tapKeys(t, '1 6 8');
-      await _tap(t, 'count-next');
-      await tapKeys(t, '1 5 0');
-      // Jemand anderer schließt den Tag, bevor die Taste gedrückt wird.
-      final c = containerOf(t);
-      await c
-          .read(dayRepositoryProvider)
-          .close(countedCents: 100, leftInDrawerCents: 0, staff: c.read(sessionProvider)!);
-      await t.tap(find.byKey(const Key('close-day')));
-      await t.pumpAndSettle();
-      expect(find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'), findsOneWidget);
-      expect(textOf(t, const Key('amount-field')), '150 €');
-    });
+    testWidgets(
+      'ein Fehler beim Schließen zeigt den Hinweis und behält die Eingabe',
+      (t) async {
+        await pumpCloseReady(t);
+        await tapKeys(t, '1 6 8');
+        await _tap(t, 'count-next');
+        await tapKeys(t, '1 5 0');
+        // Jemand anderer schließt den Tag, bevor die Taste gedrückt wird.
+        final c = containerOf(t);
+        await c
+            .read(dayRepositoryProvider)
+            .close(
+              countedCents: 100,
+              leftInDrawerCents: 0,
+              staff: c.read(sessionProvider)!,
+            );
+        await t.tap(find.byKey(const Key('close-day')));
+        await t.pumpAndSettle();
+        expect(
+          find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
+          findsOneWidget,
+        );
+        expect(textOf(t, const Key('amount-field')), '150 €');
+      },
+    );
   });
 
   group('ohne Geldlade', () {
@@ -371,22 +423,24 @@ void main() {
       expect(find.text('Wie viel bleibt als Wechselgeld?'), findsOneWidget);
       await tapKeys(t, '1 5 0');
       await _tap(t, 'close-day');
-      expect(
-        find.text('Morgen sind 150,00 € Wechselgeld da.'),
-        findsOneWidget,
-      );
+      expect(find.text('Morgen sind 150,00 € Wechselgeld da.'), findsOneWidget);
       expect(find.textContaining('Geldlade'), findsNothing);
     });
   });
 
   group('Tag abgeschlossen', () {
-    testWidgets('kein offener Tag: Hinweis und der letzte Abschluss', (t) async {
+    testWidgets('kein offener Tag: Hinweis und der letzte Abschluss', (
+      t,
+    ) async {
       await pumpCloseReady(t);
       await _closeDay(t);
       await _tap(t, 'tab-Bons');
       await _tap(t, 'tab-Abschluss');
       expect(find.text('Es gibt keinen offenen Tag.'), findsOneWidget);
-      expect(find.text('Der nächste Tag beginnt mit dem ersten Bon.'), findsOneWidget);
+      expect(
+        find.text('Der nächste Tag beginnt mit dem ersten Bon.'),
+        findsOneWidget,
+      );
       expect(find.text('Der Tag ist abgeschlossen.'), findsNothing);
       expect(find.text('Entnommen: 18,20 €'), findsOneWidget);
       expect(find.text('Abgeschlossen'), findsOneWidget);
@@ -401,15 +455,18 @@ void main() {
       expect(find.byKey(const Key('area-close')), findsNothing);
     });
 
-    testWidgets('der nächste Verkauf öffnet einen neuen Tag mit dem Wechselgeld', (t) async {
-      await pumpCloseReady(t);
-      await _closeDay(t);
-      await sellCash(t);
-      await _tap(t, 'tab-Bons');
-      await _tap(t, 'tab-Abschluss');
-      expect(find.byKey(const Key('expected-cash')), findsOneWidget);
-      expect(textOf(t, const Key('left-float')), '150,00 €');
-    });
+    testWidgets(
+      'der nächste Verkauf öffnet einen neuen Tag mit dem Wechselgeld',
+      (t) async {
+        await pumpCloseReady(t);
+        await _closeDay(t);
+        await sellCash(t);
+        await _tap(t, 'tab-Bons');
+        await _tap(t, 'tab-Abschluss');
+        expect(find.byKey(const Key('expected-cash')), findsOneWidget);
+        expect(textOf(t, const Key('left-float')), '150,00 €');
+      },
+    );
   });
 
   group('linke Seite', () {
@@ -427,12 +484,15 @@ void main() {
       expect(find.text('Pfand, ohne MwSt'), findsOneWidget);
     });
 
-    testWidgets('Storniert und Bons je Zahlungsart nach einem Storno', (t) async {
+    testWidgets('Storniert und Bons je Zahlungsart nach einem Storno', (
+      t,
+    ) async {
       await pumpClose(t, sales: 3, floatCents: 15000);
       final c = containerOf(t);
-      final receipts = await c.read(receiptRepositoryProvider).watchDay(
-        (await c.read(dayRepositoryProvider).openDay())!.id,
-      ).first;
+      final receipts = await c
+          .read(receiptRepositoryProvider)
+          .watchDay((await c.read(dayRepositoryProvider).openDay())!.id)
+          .first;
       await c
           .read(receiptRepositoryProvider)
           .voidReceipt(receipts.first.id, staff: c.read(sessionProvider)!);
@@ -454,10 +514,15 @@ void main() {
   });
 
   group('Hinweis auf vergessenen Abschluss', () {
-    testWidgets('Hinweis nach der Anmeldung, Bonieren bleibt möglich', (t) async {
+    testWidgets('Hinweis nach der Anmeldung, Bonieren bleibt möglich', (
+      t,
+    ) async {
       await pumpShellNextMorningWithOpenDay(t);
       expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
-      expect(find.text('Der letzte Tag ist noch nicht abgeschlossen.'), findsOneWidget);
+      expect(
+        find.text('Der letzte Tag ist noch nicht abgeschlossen.'),
+        findsOneWidget,
+      );
       await tapItem(t, 'cola');
       expect(textOf(t, const Key('cart-total')), '3,15 €');
     });
@@ -473,107 +538,142 @@ void main() {
       expect(find.byKey(const Key('forgotten-close')), findsNothing);
     });
 
-    testWidgets('der Chef kommt mit der Taste in den Abschluss, dort steht kein Hinweis, nach dem Abschluss ist er weg', (t) async {
-      await pumpShellNextMorningWithOpenDay(t);
-      expect(find.byKey(const Key('forgotten-close-go')), findsOneWidget);
-      await _tap(t, 'tab-Bons');
-      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
-      await _tap(t, 'forgotten-close-go');
-      expect(find.byKey(const Key('area-close')), findsOneWidget);
-      expect(find.byKey(const Key('forgotten-close')), findsNothing);
-      // Der gestrige Tag hat noch kein Wechselgeld.
-      await tapKeys(t, '1 5 0');
-      await _tap(t, 'set-float');
-      await _closeDay(t);
-      await _tap(t, 'to-kassa');
-      expect(find.byKey(const Key('forgotten-close')), findsNothing);
-    });
+    testWidgets(
+      'der Chef kommt mit der Taste in den Abschluss, dort steht kein Hinweis, nach dem Abschluss ist er weg',
+      (t) async {
+        await pumpShellNextMorningWithOpenDay(t);
+        expect(find.byKey(const Key('forgotten-close-go')), findsOneWidget);
+        await _tap(t, 'tab-Bons');
+        expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
+        await _tap(t, 'forgotten-close-go');
+        expect(find.byKey(const Key('area-close')), findsOneWidget);
+        expect(find.byKey(const Key('forgotten-close')), findsNothing);
+        // Der gestrige Tag hat noch kein Wechselgeld.
+        await tapKeys(t, '1 5 0');
+        await _tap(t, 'set-float');
+        await _closeDay(t);
+        await _tap(t, 'to-kassa');
+        expect(find.byKey(const Key('forgotten-close')), findsNothing);
+      },
+    );
   });
 
   group('Hinweis bei angemeldeter Kassa über Nacht', () {
-    testWidgets('kommt die App am Morgen zurück in den Vordergrund, erscheint der Hinweis', (t) async {
-      final clock = FixedClock(DateTime(2026, 11, 17, 20));
-      await pumpClose(t, openArea: false, clock: clock);
-      await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
-      expect(find.byKey(const Key('forgotten-close')), findsNothing);
-      clock.value = DateTime(2026, 11, 18, 8);
-      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await t.pump();
-      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
-    });
+    testWidgets(
+      'kommt die App am Morgen zurück in den Vordergrund, erscheint der Hinweis',
+      (t) async {
+        final clock = FixedClock(DateTime(2026, 11, 17, 20));
+        await pumpClose(t, openArea: false, clock: clock);
+        await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
+        expect(find.byKey(const Key('forgotten-close')), findsNothing);
+        clock.value = DateTime(2026, 11, 18, 8);
+        t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+        t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await t.pump();
+        expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
+      },
+    );
 
-    testWidgets('bleibt die App im Vordergrund, erscheint der Hinweis nach spätestens einer Minute', (t) async {
-      final clock = FixedClock(DateTime(2026, 11, 17, 23, 59));
-      await pumpClose(t, openArea: false, clock: clock);
-      await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
-      expect(find.byKey(const Key('forgotten-close')), findsNothing);
-      clock.value = DateTime(2026, 11, 18, 0, 1);
-      await t.pump(const Duration(minutes: 1));
-      // Nach Mitternacht wird noch bedient: kein Hinweis.
-      expect(find.byKey(const Key('forgotten-close')), findsNothing);
-      clock.value = DateTime(2026, 11, 18, 4);
-      await t.pump(const Duration(minutes: 1));
-      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
-    });
+    testWidgets(
+      'bleibt die App im Vordergrund, erscheint der Hinweis nach spätestens einer Minute',
+      (t) async {
+        final clock = FixedClock(DateTime(2026, 11, 17, 23, 59));
+        await pumpClose(t, openArea: false, clock: clock);
+        await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
+        expect(find.byKey(const Key('forgotten-close')), findsNothing);
+        clock.value = DateTime(2026, 11, 18, 0, 1);
+        await t.pump(const Duration(minutes: 1));
+        // Nach Mitternacht wird noch bedient: kein Hinweis.
+        expect(find.byKey(const Key('forgotten-close')), findsNothing);
+        clock.value = DateTime(2026, 11, 18, 4);
+        await t.pump(const Duration(minutes: 1));
+        expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
+      },
+    );
   });
 
   group('Größe und Tippflächen', () {
     for (final drawer in [true, false]) {
-      testWidgets('läuft bei 960 x 600 und Textskala 1,3 nicht über (Geldlade: $drawer)', (t) async {
-        await pumpClose(
-          t,
-          floatCents: 15000,
-          size: const Size(960, 600),
-          textScale: 1.3,
-          drawer: drawer,
-        );
-        expect(t.takeException(), isNull); // Zustand B
-        await _scrollKeys(t, '1 6 8 , 2 0');
-        await _tap(t, 'cash-out');
-        await _scrollKeys(t, '2 0');
-        await t.tap(find.byKey(const Key('reason-purchase')));
-        await t.pumpAndSettle();
-        expect(t.takeException(), isNull); // Zustand D
-        await _tap(t, 'close-movement');
-        await _tap(t, 'count-next');
-        await _scrollKeys(t, '1 5 0');
-        expect(t.takeException(), isNull); // Zustand C
-        await _scrollKeys(t, '0 0 0');
-        expect(t.takeException(), isNull); // zu viel
-        await _scrollKeys(t, 'back back back back');
-        await _tap(t, 'close-day');
-        expect(t.takeException(), isNull); // Zustand E
-      });
+      testWidgets(
+        'läuft bei 960 x 600 und Textskala 1,3 nicht über (Geldlade: $drawer)',
+        (t) async {
+          await pumpClose(
+            t,
+            floatCents: 15000,
+            size: const Size(960, 600),
+            textScale: 1.3,
+            drawer: drawer,
+          );
+          expect(t.takeException(), isNull); // Zustand B
+          await _scrollKeys(t, '1 6 8 , 2 0');
+          await _tap(t, 'cash-out');
+          await _scrollKeys(t, '2 0');
+          await t.tap(find.byKey(const Key('reason-purchase')));
+          await t.pumpAndSettle();
+          expect(t.takeException(), isNull); // Zustand D
+          await _tap(t, 'close-movement');
+          await _tap(t, 'count-next');
+          await _scrollKeys(t, '1 5 0');
+          expect(t.takeException(), isNull); // Zustand C
+          await _scrollKeys(t, '0 0 0');
+          expect(t.takeException(), isNull); // zu viel
+          await _scrollKeys(t, 'back back back back');
+          await _tap(t, 'close-day');
+          expect(t.takeException(), isNull); // Zustand E
+        },
+      );
     }
 
-    testWidgets('Zustand A läuft bei 960 x 600 und Textskala 1,3 nicht über', (t) async {
+    testWidgets('Zustand A läuft bei 960 x 600 und Textskala 1,3 nicht über', (
+      t,
+    ) async {
       await pumpClose(t, size: const Size(960, 600), textScale: 1.3);
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('alle Tasten sind mindestens 48 dp hoch, Hauptaktionen 64 bis 80', (t) async {
-      await pumpClose(t, sales: 1);
-      expect(t.getSize(find.byKey(const Key('set-float'))).height, 80);
-      await tapKeys(t, '1 5 0');
-      await _tap(t, 'set-float');
-      for (final k in ['cash-in', 'cash-out']) {
-        expect(t.getSize(find.byKey(Key(k))).height, greaterThanOrEqualTo(48));
-      }
-      await tapKeys(t, '1');
-      expect(t.getSize(find.byKey(const Key('count-next'))).height, 80);
-      await _tap(t, 'count-next');
-      expect(t.getSize(find.byKey(const Key('count-back'))).height, greaterThanOrEqualTo(64));
-      expect(t.getSize(find.byKey(const Key('close-day'))).height, 80);
-      await _tap(t, 'count-back');
-      await _tap(t, 'cash-in');
-      expect(t.getSize(find.byKey(const Key('close-movement'))).height, greaterThanOrEqualTo(48));
-      expect(t.getSize(find.byKey(const Key('close-movement'))).width, greaterThanOrEqualTo(48));
-      for (final r in ['bank', 'purchase', 'change', 'other']) {
-        expect(t.getSize(find.byKey(Key('reason-$r'))).height, greaterThanOrEqualTo(48));
-      }
-      expect(t.getSize(find.byKey(const Key('save-movement'))).height, greaterThanOrEqualTo(64));
-    });
+    testWidgets(
+      'alle Tasten sind mindestens 48 dp hoch, Hauptaktionen 64 bis 80',
+      (t) async {
+        await pumpClose(t, sales: 1);
+        expect(t.getSize(find.byKey(const Key('set-float'))).height, 80);
+        await tapKeys(t, '1 5 0');
+        await _tap(t, 'set-float');
+        for (final k in ['cash-in', 'cash-out']) {
+          expect(
+            t.getSize(find.byKey(Key(k))).height,
+            greaterThanOrEqualTo(48),
+          );
+        }
+        await tapKeys(t, '1');
+        expect(t.getSize(find.byKey(const Key('count-next'))).height, 80);
+        await _tap(t, 'count-next');
+        expect(
+          t.getSize(find.byKey(const Key('count-back'))).height,
+          greaterThanOrEqualTo(64),
+        );
+        expect(t.getSize(find.byKey(const Key('close-day'))).height, 80);
+        await _tap(t, 'count-back');
+        await _tap(t, 'cash-in');
+        expect(
+          t.getSize(find.byKey(const Key('close-movement'))).height,
+          greaterThanOrEqualTo(48),
+        );
+        expect(
+          t.getSize(find.byKey(const Key('close-movement'))).width,
+          greaterThanOrEqualTo(48),
+        );
+        for (final r in ['bank', 'purchase', 'change', 'other']) {
+          expect(
+            t.getSize(find.byKey(Key('reason-$r'))).height,
+            greaterThanOrEqualTo(48),
+          );
+        }
+        expect(
+          t.getSize(find.byKey(const Key('save-movement'))).height,
+          greaterThanOrEqualTo(64),
+        );
+      },
+    );
 
     testWidgets('"Jetzt abschließen" ist mindestens 48 dp hoch', (t) async {
       await pumpShellNextMorningWithOpenDay(t);

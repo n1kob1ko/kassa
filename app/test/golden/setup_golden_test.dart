@@ -70,8 +70,13 @@ void main() {
     ('dunkel, klein', const Size(960, 600), Brightness.dark, 1.3),
   ]) {
     testWidgets('kein Überlauf: $name', (t) async {
-      await _start(t, seeded: false,
-          size: size, brightness: brightness, textScale: scale);
+      await _start(
+        t,
+        seeded: false,
+        size: size,
+        brightness: brightness,
+        textScale: scale,
+      );
       expect(t.takeException(), isNull);
       await _toChefPin(t);
       expect(find.text('Chef-PIN festlegen'), findsOneWidget);
@@ -79,8 +84,13 @@ void main() {
     });
 
     testWidgets('kein Überlauf der Anmeldung: $name', (t) async {
-      await _start(t, seeded: true,
-          size: size, brightness: brightness, textScale: scale);
+      await _start(
+        t,
+        seeded: true,
+        size: size,
+        brightness: brightness,
+        textScale: scale,
+      );
       expect(find.text('PIN eingeben'), findsOneWidget);
       expect(t.takeException(), isNull);
     });

@@ -26,7 +26,11 @@ enum TaxRate {
 enum ItemTag { vegan, spicy }
 
 class Category {
-  const Category({required this.id, required this.name, required this.position});
+  const Category({
+    required this.id,
+    required this.name,
+    required this.position,
+  });
 
   final String id;
   final String name;
@@ -79,22 +83,21 @@ class Item {
     bool? inSale,
     String? photoPath,
     int? position,
-  }) =>
-      Item(
-        id: id,
-        name: name ?? this.name,
-        priceCents: priceCents ?? this.priceCents,
-        categoryId: categoryId ?? this.categoryId,
-        taxRate: taxRate ?? this.taxRate,
-        depositCents: depositCents ?? this.depositCents,
-        tags: tags ?? this.tags,
-        info: info ?? this.info,
-        templateId: templateId ?? this.templateId,
-        favorite: favorite ?? this.favorite,
-        inSale: inSale ?? this.inSale,
-        photoPath: photoPath ?? this.photoPath,
-        position: position ?? this.position,
-      );
+  }) => Item(
+    id: id,
+    name: name ?? this.name,
+    priceCents: priceCents ?? this.priceCents,
+    categoryId: categoryId ?? this.categoryId,
+    taxRate: taxRate ?? this.taxRate,
+    depositCents: depositCents ?? this.depositCents,
+    tags: tags ?? this.tags,
+    info: info ?? this.info,
+    templateId: templateId ?? this.templateId,
+    favorite: favorite ?? this.favorite,
+    inSale: inSale ?? this.inSale,
+    photoPath: photoPath ?? this.photoPath,
+    position: position ?? this.position,
+  );
 }
 
 class ModifierOption {
@@ -138,7 +141,11 @@ class ModifierGroup {
 }
 
 class ModifierTemplate {
-  const ModifierTemplate({required this.id, required this.name, required this.groups});
+  const ModifierTemplate({
+    required this.id,
+    required this.name,
+    required this.groups,
+  });
 
   final String id;
   final String name;
@@ -162,9 +169,9 @@ class Catalog {
 
   /// Wirft [StateError], wenn es den Artikel nicht gibt.
   Item item(String id) => items.firstWhere(
-        (i) => i.id == id,
-        orElse: () => throw StateError('Artikel "$id" gibt es nicht.'),
-      );
+    (i) => i.id == id,
+    orElse: () => throw StateError('Artikel "$id" gibt es nicht.'),
+  );
 
   ModifierTemplate? templateOf(Item item) {
     final id = item.templateId;

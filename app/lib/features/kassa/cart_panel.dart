@@ -134,9 +134,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                     icon: LucideIcons.banknote,
                     labelSize: 22,
                     height: KassaTokens.mainActionHeight,
-                    onPressed: cart.isEmpty || !widget.canPay
-                        ? null
-                        : _pay,
+                    onPressed: cart.isEmpty || !widget.canPay ? null : _pay,
                   ),
                 ),
                 const SizedBox(width: KassaTokens.spaceLg),

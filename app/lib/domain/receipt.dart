@@ -85,7 +85,9 @@ class Receipt {
     required this.depositCents,
     required this.totalCents,
   }) : lines = List.unmodifiable(lines),
-       grossByRate = Map.unmodifiable(sumByRate([for (final l in lines) l.grossByRate]));
+       grossByRate = Map.unmodifiable(
+         sumByRate([for (final l in lines) l.grossByRate]),
+       );
 
   final String id;
   final int number;

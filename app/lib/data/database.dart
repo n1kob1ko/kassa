@@ -130,10 +130,12 @@ class SettingsRows extends Table {
   String get tableName => 'settings';
 
   IntColumn get id => integer()();
-  BoolColumn get cashDrawerEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get cashDrawerEnabled =>
+      boolean().withDefault(const Constant(true))();
   BoolColumn get showImages => boolean().withDefault(const Constant(false))();
   TextColumn get themeMode => text().withDefault(const Constant('system'))();
-  BoolColumn get voidRequiresChef => boolean().withDefault(const Constant(false))();
+  BoolColumn get voidRequiresChef =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get receiptDraft => text().nullable()();
 
   /// `none`, `network`, `usb` oder `bluetooth`.
@@ -208,7 +210,8 @@ class ReceiptRows extends Table {
 
   /// Beim Storno-Bon der Bon, den er storniert. Ein eindeutiger Index sorgt
   /// dafür, dass es höchstens einen Storno je Bon gibt.
-  TextColumn get voidsReceiptId => text().nullable().references(ReceiptRows, #id)();
+  TextColumn get voidsReceiptId =>
+      text().nullable().references(ReceiptRows, #id)();
   IntColumn get goodsCents => integer()();
   IntColumn get depositCents => integer()();
   IntColumn get totalCents => integer()();
@@ -362,7 +365,12 @@ class KassaDatabase extends _$KassaDatabase {
         'BEFORE DELETE ON business_days BEGIN '
         "SELECT RAISE(ABORT, 'Tage können nicht gelöscht werden'); END",
       );
-      for (final table in const ['receipts', 'receipt_lines', 'receipt_line_options', 'payments']) {
+      for (final table in const [
+        'receipts',
+        'receipt_lines',
+        'receipt_line_options',
+        'payments',
+      ]) {
         for (final action in const ['UPDATE', 'DELETE']) {
           await customStatement(
             'CREATE TRIGGER ${table}_no_${action.toLowerCase()} '

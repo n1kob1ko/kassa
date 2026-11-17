@@ -45,10 +45,12 @@ class _CountingCatalog extends CatalogRepository {
 Brightness _brightness(WidgetTester t) =>
     Theme.of(t.element(find.byType(SettingsScreen))).brightness;
 
-bool _toggleValue(WidgetTester t, String key) =>
-    t
+bool _toggleValue(WidgetTester t, String key) => t
     .widget<AppToggle>(
-      find.descendant(of: find.byKey(Key(key)), matching: find.byType(AppToggle)),
+      find.descendant(
+        of: find.byKey(Key(key)),
+        matching: find.byType(AppToggle),
+      ),
     )
     .value;
 
@@ -60,7 +62,9 @@ void main() {
     expect((await settingsOf(t)).cashDrawerEnabled, isFalse);
   });
 
-  testWidgets('Bilder und "Storno nur durch den Chef" werden gespeichert', (t) async {
+  testWidgets('Bilder und "Storno nur durch den Chef" werden gespeichert', (
+    t,
+  ) async {
     await pumpSettings(t);
     await t.tap(find.byKey(const Key('toggle-images')));
     await t.pump();
@@ -83,7 +87,9 @@ void main() {
     expect((await settingsOf(t)).themeMode, AppThemeMode.dark);
   });
 
-  testWidgets('"Hell" bleibt hell, "Wie das Tablet" folgt dem Tablet', (t) async {
+  testWidgets('"Hell" bleibt hell, "Wie das Tablet" folgt dem Tablet', (
+    t,
+  ) async {
     await pumpSettings(t, brightness: Brightness.dark);
     expect(_brightness(t), Brightness.dark);
     await t.tap(find.byKey(const Key('theme-light')));
@@ -94,7 +100,9 @@ void main() {
     expect(_brightness(t), Brightness.dark);
   });
 
-  testWidgets('Speisekarte neu einspielen fragt nach und meldet das Ergebnis', (t) async {
+  testWidgets('Speisekarte neu einspielen fragt nach und meldet das Ergebnis', (
+    t,
+  ) async {
     await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
@@ -103,7 +111,9 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Speisekarte eingespielt: 13 Artikel.'), findsOneWidget);
     expect(find.text(_question), findsNothing);
-    final catalog = await containerOf(t).read(catalogRepositoryProvider).current();
+    final catalog = await containerOf(t)
+        .read(catalogRepositoryProvider)
+        .current();
     expect(catalog!.items.length, 13);
     expect(catalog.items.any((i) => i.id == 'teigtaschen'), isFalse);
   });
@@ -117,13 +127,17 @@ void main() {
     expect(find.byKey(const Key('reimport')), findsOneWidget);
   });
 
-  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (t) async {
+  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (
+    t,
+  ) async {
     final picker = BrokenPicker(demoOhneTeigtaschen());
     await pumpSettings(t, picker: picker);
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(
-      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      find.text(
+        'Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.',
+      ),
       findsOneWidget,
     );
     expect(t.takeException(), isNull);
@@ -133,12 +147,16 @@ void main() {
     expect(picker.calls, 2);
     expect(find.text(_question), findsOneWidget);
     expect(
-      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      find.text(
+        'Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.',
+      ),
       findsNothing,
     );
   });
 
-  testWidgets('Datei, die kein JSON ist: ruhiger Satz statt Fehlertext', (t) async {
+  testWidgets('Datei, die kein JSON ist: ruhiger Satz statt Fehlertext', (
+    t,
+  ) async {
     await pumpSettings(t, pickedFile: '\uFFFD\uFFFD\u0000JFIF');
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
@@ -194,7 +212,9 @@ void main() {
     expect(counting.last.imports, 0);
   });
 
-  testWidgets('doppelter Tipp auf "Ja, einspielen" spielt einmal ein', (t) async {
+  testWidgets('doppelter Tipp auf "Ja, einspielen" spielt einmal ein', (
+    t,
+  ) async {
     final counting = <_CountingCatalog>[];
     await pumpSettings(
       t,
@@ -242,14 +262,17 @@ void main() {
     expect(_toggleValue(t, 'toggle-drawer'), isTrue);
   });
 
-  testWidgets('Geräte, die es in dieser Version noch nicht gibt, sind als solche beschriftet', (t) async {
-    await pumpSettings(t);
-    expect(find.text('Bondrucker'), findsOneWidget);
-    expect(find.text('Kartenterminal'), findsOneWidget);
-    expect(find.text('Kommt mit einem späteren Update.'), findsNWidgets(2));
-    expect(find.text('Noch nicht dabei'), findsNWidgets(2));
-    expect(find.textContaining('Kundenanzeige'), findsNothing);
-  });
+  testWidgets(
+    'Geräte, die es in dieser Version noch nicht gibt, sind als solche beschriftet',
+    (t) async {
+      await pumpSettings(t);
+      expect(find.text('Bondrucker'), findsOneWidget);
+      expect(find.text('Kartenterminal'), findsOneWidget);
+      expect(find.text('Kommt mit einem späteren Update.'), findsNWidgets(2));
+      expect(find.text('Noch nicht dabei'), findsNWidgets(2));
+      expect(find.textContaining('Kundenanzeige'), findsNothing);
+    },
+  );
 
   testWidgets('Titel, Untertitel und Version', (t) async {
     await pumpSettings(t);
@@ -266,56 +289,66 @@ void main() {
     expect(appVersion, number);
   });
 
-  testWidgets('der Knopf ist aktiv, solange die Einstellungen offen sind; ein Reiter und der Knopf führen zurück', (t) async {
-    await pumpAppLoggedInAsChef(t);
-    Color? bg(String key) => (t
-            .widget<Container>(
-              find.descendant(
-                of: find.byKey(Key(key)),
-                matching: find.byType(Container),
-              ).first,
-            )
-            .decoration as BoxDecoration?)
-        ?.color;
-    expect(find.byType(SettingsScreen), findsNothing);
-    await openSettings(t);
-    expect(find.byType(SettingsScreen), findsOneWidget);
-    final soft = _colorsOf(t).accentSoft;
-    expect(bg('settings'), soft);
-    expect(bg('tab-Kassa'), isNot(soft));
+  testWidgets(
+    'der Knopf ist aktiv, solange die Einstellungen offen sind; ein Reiter und der Knopf führen zurück',
+    (t) async {
+      await pumpAppLoggedInAsChef(t);
+      Color? bg(String key) =>
+          (t
+                      .widget<Container>(
+                        find
+                            .descendant(
+                              of: find.byKey(Key(key)),
+                              matching: find.byType(Container),
+                            )
+                            .first,
+                      )
+                      .decoration
+                  as BoxDecoration?)
+              ?.color;
+      expect(find.byType(SettingsScreen), findsNothing);
+      await openSettings(t);
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      final soft = _colorsOf(t).accentSoft;
+      expect(bg('settings'), soft);
+      expect(bg('tab-Kassa'), isNot(soft));
 
-    await t.tap(find.byKey(const Key('tab-Bons')));
-    await t.pumpAndSettle();
-    expect(find.byType(SettingsScreen), findsNothing);
-    expect(find.byKey(const Key('area-bons')), findsOneWidget);
-    expect(bg('settings'), isNot(soft));
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+      expect(find.byType(SettingsScreen), findsNothing);
+      expect(find.byKey(const Key('area-bons')), findsOneWidget);
+      expect(bg('settings'), isNot(soft));
 
-    await openSettings(t);
-    await t.tap(find.byKey(const Key('settings')));
-    await t.pumpAndSettle();
-    expect(find.byType(SettingsScreen), findsNothing);
-    expect(find.byKey(const Key('area-bons')), findsOneWidget);
-  });
+      await openSettings(t);
+      await t.tap(find.byKey(const Key('settings')));
+      await t.pumpAndSettle();
+      expect(find.byType(SettingsScreen), findsNothing);
+      expect(find.byKey(const Key('area-bons')), findsOneWidget);
+    },
+  );
 
   testWidgets('Mitarbeiter haben keinen Einstellungen-Knopf', (t) async {
     await pumpKassa(t);
     expect(find.byKey(const Key('settings')), findsNothing);
   });
 
-  testWidgets('kein Überlauf bei 960 x 600 mit Textskala 1,3, auch mit offener Rückfrage', (t) async {
-    await pumpSettings(
-      t,
-      size: const Size(960, 600),
-      textScale: 1.3,
-      pickedFile: demoOhneTeigtaschen(),
-    );
-    expect(t.takeException(), isNull);
-    await t.ensureVisible(find.byKey(const Key('reimport')));
-    await t.tap(find.byKey(const Key('reimport')));
-    await t.pumpAndSettle();
-    expect(t.takeException(), isNull);
-    expect(find.byKey(const Key('confirm-reimport')), findsOneWidget);
-  });
+  testWidgets(
+    'kein Überlauf bei 960 x 600 mit Textskala 1,3, auch mit offener Rückfrage',
+    (t) async {
+      await pumpSettings(
+        t,
+        size: const Size(960, 600),
+        textScale: 1.3,
+        pickedFile: demoOhneTeigtaschen(),
+      );
+      expect(t.takeException(), isNull);
+      await t.ensureVisible(find.byKey(const Key('reimport')));
+      await t.tap(find.byKey(const Key('reimport')));
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(find.byKey(const Key('confirm-reimport')), findsOneWidget);
+    },
+  );
 
   testWidgets('alle Tippflächen sind mindestens 48 dp hoch', (t) async {
     await pumpSettings(t);
@@ -333,17 +366,20 @@ void main() {
     }
   });
 
-  testWidgets('der Hinweis auf einen vergessenen Abschluss steht auch über den Einstellungen', (t) async {
-    await pumpShellNextMorningWithOpenDay(t);
-    await openSettings(t);
-    expect(find.byType(SettingsScreen), findsOneWidget);
-    expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
-    // Aus den Einstellungen führt die Taste in den Abschluss.
-    await t.tap(find.byKey(const Key('forgotten-close-go')));
-    await t.pumpAndSettle();
-    expect(find.byKey(const Key('area-close')), findsOneWidget);
-    expect(find.byType(SettingsScreen), findsNothing);
-  });
+  testWidgets(
+    'der Hinweis auf einen vergessenen Abschluss steht auch über den Einstellungen',
+    (t) async {
+      await pumpShellNextMorningWithOpenDay(t);
+      await openSettings(t);
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
+      // Aus den Einstellungen führt die Taste in den Abschluss.
+      await t.tap(find.byKey(const Key('forgotten-close-go')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('area-close')), findsOneWidget);
+      expect(find.byType(SettingsScreen), findsNothing);
+    },
+  );
 }
 
 KassaColors _colorsOf(WidgetTester t) =>

@@ -29,19 +29,15 @@ class SettingsCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(context).textTheme.titleMedium!
+                  .copyWith(fontWeight: FontWeight.w800),
             ),
           ),
           for (final row in rows)
             DecoratedBox(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: c.line,
-                    width: KassaTokens.borderThin,
-                  ),
+                  top: BorderSide(color: c.line, width: KassaTokens.borderThin),
                 ),
               ),
               child: row,

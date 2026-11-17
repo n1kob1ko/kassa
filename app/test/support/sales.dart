@@ -19,7 +19,10 @@ import 'demo_fixtures.dart';
 
 /// Der Bon aus dem ersten Bon-Test: 2 x Cola, 1 x Huhn Bowl (XXL, Nudeln),
 /// 18,20 € mit 0,50 € Pfand.
-final Cart cart = const Cart.empty().add(cola).add(cola).add(huhnBowl, options: [xxl, nudeln]);
+final Cart cart = const Cart.empty()
+    .add(cola)
+    .add(cola)
+    .add(huhnBowl, options: [xxl, nudeln]);
 
 class TestShop {
   TestShop._(
@@ -51,12 +54,30 @@ class TestShop {
     final catalogRepo = CatalogRepository(db);
     await catalogRepo.importCatalog(catalog);
     final staffRepo = StaffRepository(db);
-    final anna = await staffRepo.create(name: 'Anna', pin: '1111', role: StaffRole.staff);
-    final chef = await staffRepo.create(name: 'Chef', pin: '2222', role: StaffRole.chef);
+    final anna = await staffRepo.create(
+      name: 'Anna',
+      pin: '1111',
+      role: StaffRole.staff,
+    );
+    final chef = await staffRepo.create(
+      name: 'Chef',
+      pin: '2222',
+      role: StaffRole.chef,
+    );
     final days = DayRepository(db, clock);
     final receipts = ReceiptRepository(db, clock, days);
     final stats = StatsRepository(db, clock);
-    return TestShop._(db, clock, catalogRepo, staffRepo, days, receipts, stats, anna, chef);
+    return TestShop._(
+      db,
+      clock,
+      catalogRepo,
+      staffRepo,
+      days,
+      receipts,
+      stats,
+      anna,
+      chef,
+    );
   }
 
   Future<void> close() => db.close();
@@ -65,34 +86,42 @@ class TestShop {
   /// noch keine Kartenzahlung). Der Tag muss offen sein.
   Future<void> insertCardReceipt(String id, int number, int totalCents) async {
     final day = await dayId();
-    await db.into(db.receiptRows).insert(
-      ReceiptRowsCompanion.insert(
-        id: id,
-        number: number,
-        createdAt: clock.now(),
-        staffId: anna.id,
-        staffName: anna.name,
-        businessDayId: day,
-        kind: ReceiptKind.sale.name,
-        goodsCents: totalCents,
-        depositCents: 0,
-        totalCents: totalCents,
-      ),
-    );
-    await db.into(db.paymentRows).insert(
-      PaymentRowsCompanion.insert(
-        receiptId: id,
-        kind: PaymentKind.card.name,
-        amountCents: totalCents,
-        givenCents: 0,
-        changeCents: 0,
-      ),
-    );
+    await db
+        .into(db.receiptRows)
+        .insert(
+          ReceiptRowsCompanion.insert(
+            id: id,
+            number: number,
+            createdAt: clock.now(),
+            staffId: anna.id,
+            staffName: anna.name,
+            businessDayId: day,
+            kind: ReceiptKind.sale.name,
+            goodsCents: totalCents,
+            depositCents: 0,
+            totalCents: totalCents,
+          ),
+        );
+    await db
+        .into(db.paymentRows)
+        .insert(
+          PaymentRowsCompanion.insert(
+            receiptId: id,
+            kind: PaymentKind.card.name,
+            amountCents: totalCents,
+            givenCents: 0,
+            changeCents: 0,
+          ),
+        );
   }
 
   /// Verkauft [cart] bar mit 20,00 € als Anna.
-  Future<Receipt> sell(String saleId) =>
-      receipts.finalizeCashSale(saleId: saleId, cart: cart, givenCents: 2000, staff: anna);
+  Future<Receipt> sell(String saleId) => receipts.finalizeCashSale(
+    saleId: saleId,
+    cart: cart,
+    givenCents: 2000,
+    staff: anna,
+  );
 
   /// Id des offenen Geschäftstags.
   Future<String> dayId() async {
@@ -103,5 +132,6 @@ class TestShop {
   }
 
   Future<int> count(String table) async =>
-      (await db.customSelect('SELECT COUNT(*) c FROM $table').getSingle()).read<int>('c');
+      (await db.customSelect('SELECT COUNT(*) c FROM $table').getSingle())
+          .read<int>('c');
 }

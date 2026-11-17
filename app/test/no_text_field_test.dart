@@ -8,8 +8,11 @@ void main() {
         .listSync(recursive: true)
         .whereType<File>()
         .where((f) => f.path.endsWith('.dart'))
-        .where((f) => RegExp(r'\b(TextField|TextFormField|EditableText)\b')
-            .hasMatch(f.readAsStringSync()));
+        .where(
+          (f) =>
+              RegExp(r'\b(TextField|TextFormField|EditableText)\b')
+                  .hasMatch(f.readAsStringSync()),
+        );
     expect(hits.map((f) => f.path), isEmpty);
   });
 }

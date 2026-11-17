@@ -7,22 +7,36 @@ import 'package:kassa/domain/staff.dart';
 
 void main() {
   late String demo;
-  setUpAll(() => demo = File('assets/demo/beispiel-imbiss.json').readAsStringSync());
+  setUpAll(
+    () => demo = File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
+  );
 
   String demoMit(String extra) => demo.replaceFirst('{', '{$extra,');
 
   test('Beispiel-Imbiss wird gelesen', () {
     final c = parseMenuFile(demo);
     expect(c.businessName, 'Beispiel-Imbiss');
-    expect(c.categories.map((k) => k.name), ['Bowls', 'Snacks', 'Süßes', 'Getränke']);
+    expect(c.categories.map((k) => k.name), [
+      'Bowls',
+      'Snacks',
+      'Süßes',
+      'Getränke',
+    ]);
     expect(c.items, hasLength(14));
     final cola = c.item('cola');
-    expect((cola.priceCents, cola.taxRate, cola.depositCents), (290, TaxRate.normal, 25));
+    expect(
+      (cola.priceCents, cola.taxRate, cola.depositCents),
+      (290, TaxRate.normal, 25),
+    );
     final bowl = c.item('huhn-bowl');
     expect(bowl.tags, {ItemTag.spicy});
     final groups = c.templateOf(bowl)!.groups;
-    expect(groups.map((g) => (g.name, g.min, g.max)),
-        [('Größe', 1, 1), ('Basis', 1, 1), ('Extra-Topping', 0, 4), ('Extra-Sauce', 0, null)]);
+    expect(groups.map((g) => (g.name, g.min, g.max)), [
+      ('Größe', 1, 1),
+      ('Basis', 1, 1),
+      ('Extra-Topping', 0, 4),
+      ('Extra-Sauce', 0, null),
+    ]);
     expect(groups.first.options.first.isDefault, isTrue);
     expect(groups.first.options.last.surchargeCents, 200);
     expect(c.items.every((i) => i.inSale && !i.favorite), isTrue);
@@ -48,49 +62,90 @@ void main() {
                {"id":"x","name":"Y","preis_cent":-1,"kategorie":"a","mwst":10,"auswahl":"fehlt"}],
     "auswahlgruppen":{}}''';
     expect(
-        () => parseMenuFile(bad),
-        throwsA(isA<MenuImportException>().having((e) => e.problems, 'problems', [
+      () => parseMenuFile(bad),
+      throwsA(
+        isA<MenuImportException>().having((e) => e.problems, 'problems', [
           'Artikel "x": Kategorie "b" gibt es nicht.',
           'Artikel "x": Steuersatz 7 ist nicht erlaubt. Erlaubt sind 20, 10, 13, 0 und 19.',
           'Artikel "x" kommt doppelt vor.',
           'Artikel "x": Preis darf nicht negativ sein.',
           'Artikel "x": Auswahl "fehlt" gibt es nicht.',
-        ])));
+        ]),
+      ),
+    );
   });
 
   test('kein JSON, fehlende Pflichtangabe, BOM', () {
     expect(
-        () => parseMenuFile('hallo'),
-        throwsA(isA<MenuImportException>().having(
-            (e) => e.problems.single, 'problem', 'Die Datei ist keine gültige Speisekarten-Datei.')));
+      () => parseMenuFile('hallo'),
+      throwsA(
+        isA<MenuImportException>().having(
+          (e) => e.problems.single,
+          'problem',
+          'Die Datei ist keine gültige Speisekarten-Datei.',
+        ),
+      ),
+    );
     expect(
-        () => parseMenuFile('{"betrieb":"X","kategorien":[],"artikel":[{"id":"x"}],"auswahlgruppen":{}}'),
-        throwsA(isA<MenuImportException>()
-            .having((e) => e.problems.first, 'problem', 'Artikel "x": Name fehlt.')));
+      () => parseMenuFile(
+        '{"betrieb":"X","kategorien":[],"artikel":[{"id":"x"}],"auswahlgruppen":{}}',
+      ),
+      throwsA(
+        isA<MenuImportException>().having(
+          (e) => e.problems.first,
+          'problem',
+          'Artikel "x": Name fehlt.',
+        ),
+      ),
+    );
     expect(parseMenuFile('﻿$demo').items, hasLength(14));
   });
 
   test('Mitarbeiter in der Datei', () {
     final c = parseMenuFile(
-        demoMit('"mitarbeiter":[{"name":"Anna","pin":"1234","rolle":"mitarbeiter"}]'));
-    expect(c.staffSeeds.single, (name: 'Anna', pin: '1234', role: StaffRole.staff));
+      demoMit(
+        '"mitarbeiter":[{"name":"Anna","pin":"1234","rolle":"mitarbeiter"}]',
+      ),
+    );
+    expect(c.staffSeeds.single, (
+      name: 'Anna',
+      pin: '1234',
+      role: StaffRole.staff,
+    ));
     expect(parseMenuFile(demo).staffSeeds, isEmpty);
-    final chef = parseMenuFile(demoMit('"mitarbeiter":[{"name":"Bea","pin":"0000","rolle":"chef"}]'));
+    final chef = parseMenuFile(
+      demoMit('"mitarbeiter":[{"name":"Bea","pin":"0000","rolle":"chef"}]'),
+    );
     expect(chef.staffSeeds.single.role, StaffRole.chef);
     expect(
-        () => parseMenuFile(
-            demoMit('"mitarbeiter":[{"name":"Anna","pin":"12a","rolle":"mitarbeiter"}]')),
-        throwsA(isA<MenuImportException>().having((e) => e.problems, 'problems',
-            ['Mitarbeiter "Anna": Die PIN muss aus genau vier Ziffern bestehen.'])));
+      () => parseMenuFile(
+        demoMit(
+          '"mitarbeiter":[{"name":"Anna","pin":"12a","rolle":"mitarbeiter"}]',
+        ),
+      ),
+      throwsA(
+        isA<MenuImportException>().having((e) => e.problems, 'problems', [
+          'Mitarbeiter "Anna": Die PIN muss aus genau vier Ziffern bestehen.',
+        ]),
+      ),
+    );
   });
 
   test('zwei Mitarbeiter mit gleicher PIN werden abgelehnt', () {
     expect(
-        () => parseMenuFile(demoMit('"mitarbeiter":['
-            '{"name":"Anna","pin":"1234","rolle":"mitarbeiter"},'
-            '{"name":"Ben","pin":"1234","rolle":"mitarbeiter"}]')),
-        throwsA(isA<MenuImportException>().having((e) => e.problems, 'problems',
-            ['Mitarbeiter "Ben": Die PIN ist in der Datei schon vergeben.'])));
+      () => parseMenuFile(
+        demoMit(
+          '"mitarbeiter":['
+          '{"name":"Anna","pin":"1234","rolle":"mitarbeiter"},'
+          '{"name":"Ben","pin":"1234","rolle":"mitarbeiter"}]',
+        ),
+      ),
+      throwsA(
+        isA<MenuImportException>().having((e) => e.problems, 'problems', [
+          'Mitarbeiter "Ben": Die PIN ist in der Datei schon vergeben.',
+        ]),
+      ),
+    );
   });
 
   test('Gruppe mit min größer als max und zu vielen Vorgaben', () {
@@ -100,11 +155,14 @@ void main() {
         {"name":"Normal","aufpreis_cent":0,"vorgabe":true},
         {"name":"XXL","aufpreis_cent":200,"vorgabe":true}]}]}}''';
     expect(
-        () => parseMenuFile(bad),
-        throwsA(isA<MenuImportException>().having((e) => e.problems, 'problems', [
+      () => parseMenuFile(bad),
+      throwsA(
+        isA<MenuImportException>().having((e) => e.problems, 'problems', [
           'Auswahl "bowl", Gruppe "Basis": mindestens 2 und höchstens 1 passt nicht zusammen.',
           'Auswahl "bowl", Gruppe "Größe": 2 Vorgaben, aber höchstens 1 wählbar.',
-        ])));
+        ]),
+      ),
+    );
   });
 
   test('Kennzeichen als Liste, Option mit eigenem Steuersatz und Pfand, Item.copyWith', () {

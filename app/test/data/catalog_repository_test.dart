@@ -20,7 +20,9 @@ void main() {
   final demo = File('assets/demo/beispiel-imbiss.json').readAsStringSync();
   final demoOhneTeigtaschen = () {
     final json = jsonDecode(demo) as Map<String, dynamic>;
-    (json['artikel'] as List).removeWhere((a) => (a as Map)['id'] == 'teigtaschen');
+    (json['artikel'] as List).removeWhere(
+      (a) => (a as Map)['id'] == 'teigtaschen',
+    );
     return jsonEncode(json);
   }();
 
@@ -45,29 +47,77 @@ void main() {
     final c = (await repo.current())!;
     expect(c.businessName, original.businessName);
     expect(c.staffSeeds, isEmpty);
-    expect(c.categories.map((k) => (k.id, k.name, k.position)),
-        original.categories.map((k) => (k.id, k.name, k.position)));
     expect(
-        c.items.map((i) => (
-              i.id, i.name, i.priceCents, i.categoryId, i.taxRate, i.depositCents,
-              _tags(i), i.info, i.templateId, i.favorite, i.inSale, i.photoPath, i.position,
-            )),
-        original.items.map((i) => (
-              i.id, i.name, i.priceCents, i.categoryId, i.taxRate, i.depositCents,
-              _tags(i), i.info, i.templateId, i.favorite, i.inSale, i.photoPath, i.position,
-            )));
+      c.categories.map((k) => (k.id, k.name, k.position)),
+      original.categories.map((k) => (k.id, k.name, k.position)),
+    );
+    expect(
+      c.items.map(
+        (i) => (
+          i.id,
+          i.name,
+          i.priceCents,
+          i.categoryId,
+          i.taxRate,
+          i.depositCents,
+          _tags(i),
+          i.info,
+          i.templateId,
+          i.favorite,
+          i.inSale,
+          i.photoPath,
+          i.position,
+        ),
+      ),
+      original.items.map(
+        (i) => (
+          i.id,
+          i.name,
+          i.priceCents,
+          i.categoryId,
+          i.taxRate,
+          i.depositCents,
+          _tags(i),
+          i.info,
+          i.templateId,
+          i.favorite,
+          i.inSale,
+          i.photoPath,
+          i.position,
+        ),
+      ),
+    );
     expect(c.templates.map((t) => t.id), original.templates.map((t) => t.id));
     for (var t = 0; t < original.templates.length; t++) {
       final a = c.templates[t], b = original.templates[t];
       expect(a.name, b.name);
-      expect(a.groups.map((g) => (g.id, g.name, g.min, g.max)),
-          b.groups.map((g) => (g.id, g.name, g.min, g.max)));
+      expect(
+        a.groups.map((g) => (g.id, g.name, g.min, g.max)),
+        b.groups.map((g) => (g.id, g.name, g.min, g.max)),
+      );
       for (var g = 0; g < b.groups.length; g++) {
         expect(
-            a.groups[g].options.map((o) =>
-                (o.id, o.name, o.surchargeCents, o.isDefault, o.taxRate, o.depositCents)),
-            b.groups[g].options.map((o) =>
-                (o.id, o.name, o.surchargeCents, o.isDefault, o.taxRate, o.depositCents)));
+          a.groups[g].options.map(
+            (o) => (
+              o.id,
+              o.name,
+              o.surchargeCents,
+              o.isDefault,
+              o.taxRate,
+              o.depositCents,
+            ),
+          ),
+          b.groups[g].options.map(
+            (o) => (
+              o.id,
+              o.name,
+              o.surchargeCents,
+              o.isDefault,
+              o.taxRate,
+              o.depositCents,
+            ),
+          ),
+        );
       }
     }
   });
@@ -78,40 +128,57 @@ void main() {
       categories: const [Category(id: 'k', name: 'K', position: 0)],
       items: const [
         Item(
-            id: 'a',
-            name: 'A',
-            priceCents: 100,
-            categoryId: 'k',
-            taxRate: TaxRate.special,
-            depositCents: 50,
-            tags: {ItemTag.vegan, ItemTag.spicy},
-            info: 'Info',
-            templateId: 't',
-            position: 0),
+          id: 'a',
+          name: 'A',
+          priceCents: 100,
+          categoryId: 'k',
+          taxRate: TaxRate.special,
+          depositCents: 50,
+          tags: {ItemTag.vegan, ItemTag.spicy},
+          info: 'Info',
+          templateId: 't',
+          position: 0,
+        ),
       ],
       templates: const [
-        ModifierTemplate(id: 't', name: 't', groups: [
-          ModifierGroup(id: 't/g', name: 'g', min: 0, max: null, options: [
-            ModifierOption(
-                id: 't/g/o',
-                name: 'o',
-                surchargeCents: 30,
-                isDefault: true,
-                taxRate: TaxRate.reduced2,
-                depositCents: 25),
-          ]),
-        ]),
+        ModifierTemplate(
+          id: 't',
+          name: 't',
+          groups: [
+            ModifierGroup(
+              id: 't/g',
+              name: 'g',
+              min: 0,
+              max: null,
+              options: [
+                ModifierOption(
+                  id: 't/g/o',
+                  name: 'o',
+                  surchargeCents: 30,
+                  isDefault: true,
+                  taxRate: TaxRate.reduced2,
+                  depositCents: 25,
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
     );
     await repo.importCatalog(catalog);
     final c = (await repo.current())!;
     final i = c.item('a');
-    expect((i.taxRate, i.depositCents, _tags(i), i.info), (TaxRate.special, 50, 'spicy,vegan', 'Info'));
+    expect(
+      (i.taxRate, i.depositCents, _tags(i), i.info),
+      (TaxRate.special, 50, 'spicy,vegan', 'Info'),
+    );
     final g = c.templateOf(i)!.groups.single;
     expect(g.max, isNull);
     final o = g.options.single;
-    expect((o.taxRate, o.depositCents, o.isDefault, o.surchargeCents),
-        (TaxRate.reduced2, 25, true, 30));
+    expect(
+      (o.taxRate, o.depositCents, o.isDefault, o.surchargeCents),
+      (TaxRate.reduced2, 25, true, 30),
+    );
   });
 
   test('nichts eingespielt: current und watch geben null', () async {
@@ -127,49 +194,78 @@ void main() {
     addTearDown(leer.close);
     final r = CatalogRepository(leer);
     final emitted = expectLater(
-        r.watch(), emitsInOrder([isNull, isA<Catalog>()]));
+      r.watch(),
+      emitsInOrder([isNull, isA<Catalog>()]),
+    );
     await Future<void>.delayed(const Duration(milliseconds: 50));
     await r.importCatalog(parseMenuFile(demo));
     await emitted;
   });
 
   test('erneutes Einspielen behält Favorit und Im-Verkauf, nimmt den Preis aus der Datei, legt fehlende Artikel still', () async {
-    await repo.updateItem('cola', favorite: true, inSale: false, priceCents: 310);
+    await repo.updateItem(
+      'cola',
+      favorite: true,
+      inSale: false,
+      priceCents: 310,
+    );
     await repo.importCatalog(parseMenuFile(demoOhneTeigtaschen));
     final c = (await repo.current())!;
-    expect((c.item('cola').favorite, c.item('cola').inSale, c.item('cola').priceCents),
-        (true, false, 290));
+    expect(
+      (
+        c.item('cola').favorite,
+        c.item('cola').inSale,
+        c.item('cola').priceCents,
+      ),
+      (true, false, 290),
+    );
     expect(c.items.any((i) => i.id == 'teigtaschen'), isFalse);
-    final rows = await db.customSelect(
-        "SELECT archived FROM items WHERE id = 'teigtaschen'").get();
+    final rows = await db
+        .customSelect("SELECT archived FROM items WHERE id = 'teigtaschen'")
+        .get();
     expect(rows.single.read<bool>('archived'), isTrue);
   });
 
-  test('ein stillgelegter Artikel ist nach erneutem Auftauchen wieder aktiv', () async {
-    await repo.importCatalog(parseMenuFile(demoOhneTeigtaschen));
-    await repo.importCatalog(parseMenuFile(demo));
-    final c = (await repo.current())!;
-    expect(c.items, hasLength(14));
-    expect(c.items.any((i) => i.id == 'teigtaschen'), isTrue);
-  });
+  test(
+    'ein stillgelegter Artikel ist nach erneutem Auftauchen wieder aktiv',
+    () async {
+      await repo.importCatalog(parseMenuFile(demoOhneTeigtaschen));
+      await repo.importCatalog(parseMenuFile(demo));
+      final c = (await repo.current())!;
+      expect(c.items, hasLength(14));
+      expect(c.items.any((i) => i.id == 'teigtaschen'), isTrue);
+    },
+  );
 
-  test('eine stillgelegte Kategorie ist nach erneutem Auftauchen wieder aktiv', () async {
-    final original = parseMenuFile(demo);
-    final weg = original.categories.last;
-    final json = jsonDecode(demo) as Map<String, dynamic>;
-    (json['kategorien'] as List).removeWhere((k) => (k as Map)['id'] == weg.id);
-    (json['artikel'] as List).removeWhere((a) => (a as Map)['kategorie'] == weg.id);
-    await repo.importCatalog(parseMenuFile(jsonEncode(json)));
-    expect((await repo.current())!.categories.any((k) => k.id == weg.id), isFalse);
+  test(
+    'eine stillgelegte Kategorie ist nach erneutem Auftauchen wieder aktiv',
+    () async {
+      final original = parseMenuFile(demo);
+      final weg = original.categories.last;
+      final json = jsonDecode(demo) as Map<String, dynamic>;
+      (json['kategorien'] as List).removeWhere(
+        (k) => (k as Map)['id'] == weg.id,
+      );
+      (json['artikel'] as List).removeWhere(
+        (a) => (a as Map)['kategorie'] == weg.id,
+      );
+      await repo.importCatalog(parseMenuFile(jsonEncode(json)));
+      expect(
+        (await repo.current())!.categories.any((k) => k.id == weg.id),
+        isFalse,
+      );
 
-    await repo.importCatalog(original);
-    final c = (await repo.current())!;
-    expect(c.categories.map((k) => (k.id, k.position)),
-        original.categories.map((k) => (k.id, k.position)));
-    expect(c.items, hasLength(original.items.length));
-    final ids = c.categories.map((k) => k.id).toSet();
-    expect(c.items.every((i) => ids.contains(i.categoryId)), isTrue);
-  });
+      await repo.importCatalog(original);
+      final c = (await repo.current())!;
+      expect(
+        c.categories.map((k) => (k.id, k.position)),
+        original.categories.map((k) => (k.id, k.position)),
+      );
+      expect(c.items, hasLength(original.items.length));
+      final ids = c.categories.map((k) => k.id).toSet();
+      expect(c.items.every((i) => ids.contains(i.categoryId)), isTrue);
+    },
+  );
 
   test('scheitert das Einspielen, bleibt der alte Stand', () async {
     final vorher = (await repo.current())!;
@@ -178,46 +274,62 @@ void main() {
       categories: const [Category(id: 'k', name: 'K', position: 0)],
       items: const [
         Item(
-            id: 'x',
-            name: 'X',
-            priceCents: 100,
-            categoryId: 'gibt-es-nicht',
-            taxRate: TaxRate.normal,
-            position: 0),
+          id: 'x',
+          name: 'X',
+          priceCents: 100,
+          categoryId: 'gibt-es-nicht',
+          taxRate: TaxRate.normal,
+          position: 0,
+        ),
       ],
       templates: const [],
     );
     await expectLater(repo.importCatalog(kaputt), throwsA(anything));
     final nachher = (await repo.current())!;
     expect(nachher.businessName, vorher.businessName);
-    expect(nachher.categories.map((k) => k.id), vorher.categories.map((k) => k.id));
-    expect(nachher.items.map((i) => (i.id, i.priceCents)),
-        vorher.items.map((i) => (i.id, i.priceCents)));
-    expect(nachher.templates.map((t) => t.id), vorher.templates.map((t) => t.id));
+    expect(
+      nachher.categories.map((k) => k.id),
+      vorher.categories.map((k) => k.id),
+    );
+    expect(
+      nachher.items.map((i) => (i.id, i.priceCents)),
+      vorher.items.map((i) => (i.id, i.priceCents)),
+    );
+    expect(
+      nachher.templates.map((t) => t.id),
+      vorher.templates.map((t) => t.id),
+    );
   });
 
-  test('scheitert der Import mitten in der Transaktion, wird zurückgerollt', () async {
-    // Die Prüfung vorab greift hier nicht: zwei Gruppen mit derselben
-    // Kennung scheitern erst beim Schreiben, nachdem der Betrieb schon
-    // geändert und alte Vorlagen gelöscht wurden.
-    final vorher = (await repo.current())!;
-    final kaputt = Catalog(
-      businessName: 'Anderer Betrieb',
-      categories: const [Category(id: 'k', name: 'K', position: 0)],
-      items: const [],
-      templates: const [
-        ModifierTemplate(id: 't', name: 't', groups: [
-          ModifierGroup(id: 'g', name: 'g', min: 0, max: 1, options: []),
-          ModifierGroup(id: 'g', name: 'g', min: 0, max: 1, options: []),
-        ]),
-      ],
-    );
-    await expectLater(repo.importCatalog(kaputt), throwsA(anything));
-    final nachher = (await repo.current())!;
-    expect(nachher.businessName, vorher.businessName);
-    expect(nachher.items, hasLength(14));
-    expect(nachher.templates, hasLength(vorher.templates.length));
-  });
+  test(
+    'scheitert der Import mitten in der Transaktion, wird zurückgerollt',
+    () async {
+      // Die Prüfung vorab greift hier nicht: zwei Gruppen mit derselben
+      // Kennung scheitern erst beim Schreiben, nachdem der Betrieb schon
+      // geändert und alte Vorlagen gelöscht wurden.
+      final vorher = (await repo.current())!;
+      final kaputt = Catalog(
+        businessName: 'Anderer Betrieb',
+        categories: const [Category(id: 'k', name: 'K', position: 0)],
+        items: const [],
+        templates: const [
+          ModifierTemplate(
+            id: 't',
+            name: 't',
+            groups: [
+              ModifierGroup(id: 'g', name: 'g', min: 0, max: 1, options: []),
+              ModifierGroup(id: 'g', name: 'g', min: 0, max: 1, options: []),
+            ],
+          ),
+        ],
+      );
+      await expectLater(repo.importCatalog(kaputt), throwsA(anything));
+      final nachher = (await repo.current())!;
+      expect(nachher.businessName, vorher.businessName);
+      expect(nachher.items, hasLength(14));
+      expect(nachher.templates, hasLength(vorher.templates.length));
+    },
+  );
 
   test('updateItem', () async {
     await repo.updateItem('cola', priceCents: 320, tags: {ItemTag.vegan});
@@ -231,12 +343,16 @@ void main() {
     await repo.updateItem('cola', depositCents: 25);
     final nachher = (await repo.current())!.item('cola');
     expect(nachher.depositCents, 25);
-    expect((nachher.priceCents, nachher.inSale, nachher.favorite, _tags(nachher)),
-        (vorher.priceCents, vorher.inSale, vorher.favorite, _tags(vorher)));
+    expect(
+      (nachher.priceCents, nachher.inSale, nachher.favorite, _tags(nachher)),
+      (vorher.priceCents, vorher.inSale, vorher.favorite, _tags(vorher)),
+    );
   });
 
   test('updateItem mit unbekannter Kennung wirft StateError', () async {
     await expectLater(
-        repo.updateItem('gibt-es-nicht', priceCents: 1), throwsA(isA<StateError>()));
+      repo.updateItem('gibt-es-nicht', priceCents: 1),
+      throwsA(isA<StateError>()),
+    );
   });
 }

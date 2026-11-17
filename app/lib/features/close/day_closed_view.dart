@@ -50,7 +50,9 @@ class DayClosedView extends StatelessWidget {
         ),
         const SizedBox(height: KassaTokens.spaceXxl),
         Text(
-          justClosed ? 'Der Tag ist abgeschlossen.' : 'Es gibt keinen offenen Tag.',
+          justClosed
+              ? 'Der Tag ist abgeschlossen.'
+              : 'Es gibt keinen offenen Tag.',
           style: text.headlineLarge!.copyWith(fontSize: 28),
         ),
         if (!justClosed) ...[

@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/day.dart';
 
-BusinessDay _day(DateTime openedAt) =>
-    BusinessDay(id: 'd', openedAt: openedAt);
+BusinessDay _day(DateTime openedAt) => BusinessDay(id: 'd', openedAt: openedAt);
 
 void main() {
   group('vergessener Abschluss', () {
@@ -28,11 +27,14 @@ void main() {
       expect(isForgottenClose(open, DateTime(2026, 11, 20, 1)), isTrue);
     });
 
-    test('nach Mitternacht geöffnet (Mittwoch 1:00): erst ab Donnerstag 4:00', () {
-      final open = _day(DateTime(2026, 11, 18, 1));
-      expect(isForgottenClose(open, DateTime(2026, 11, 18, 9)), isFalse);
-      expect(isForgottenClose(open, DateTime(2026, 11, 19, 3, 59)), isFalse);
-      expect(isForgottenClose(open, DateTime(2026, 11, 19, 4)), isTrue);
-    });
+    test(
+      'nach Mitternacht geöffnet (Mittwoch 1:00): erst ab Donnerstag 4:00',
+      () {
+        final open = _day(DateTime(2026, 11, 18, 1));
+        expect(isForgottenClose(open, DateTime(2026, 11, 18, 9)), isFalse);
+        expect(isForgottenClose(open, DateTime(2026, 11, 19, 3, 59)), isFalse);
+        expect(isForgottenClose(open, DateTime(2026, 11, 19, 4)), isTrue);
+      },
+    );
   });
 }

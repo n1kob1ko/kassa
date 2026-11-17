@@ -25,30 +25,38 @@ void main() {
     await db.close();
   });
 
-  test('echte Datei von Version 1: Daten, Trigger und Einstellungen bleiben', () async {
-    final file = await copyFixture('kassa_v1.sqlite');
-    final db = KassaDatabase(NativeDatabase(file));
-    final settings = await SettingsRepository(db).current();
-    expect(settings.cashDrawerEnabled, isFalse);
-    expect(settings.themeMode, AppThemeMode.dark);
-    expect(settings.printerKind, PrinterKind.none);
-    expect(settings.printerColumns, 48);
-    final receipts = await db.select(db.receiptRows).get();
-    expect(receipts, hasLength(1));
-    final payment = await db.select(db.paymentRows).getSingle();
-    expect(payment.provider, isNull);
-    await expectLater(
-        db.customStatement('UPDATE receipts SET total_cents = 1'), throwsA(isA<SqliteException>()));
-    await expectLater(
-        db.customStatement('DELETE FROM payments'), throwsA(isA<SqliteException>()));
-    expect(await db.select(db.pendingCardPaymentRows).get(), isEmpty);
-    await db.close();
-  });
+  test(
+    'echte Datei von Version 1: Daten, Trigger und Einstellungen bleiben',
+    () async {
+      final file = await copyFixture('kassa_v1.sqlite');
+      final db = KassaDatabase(NativeDatabase(file));
+      final settings = await SettingsRepository(db).current();
+      expect(settings.cashDrawerEnabled, isFalse);
+      expect(settings.themeMode, AppThemeMode.dark);
+      expect(settings.printerKind, PrinterKind.none);
+      expect(settings.printerColumns, 48);
+      final receipts = await db.select(db.receiptRows).get();
+      expect(receipts, hasLength(1));
+      final payment = await db.select(db.paymentRows).getSingle();
+      expect(payment.provider, isNull);
+      await expectLater(
+        db.customStatement('UPDATE receipts SET total_cents = 1'),
+        throwsA(isA<SqliteException>()),
+      );
+      await expectLater(
+        db.customStatement('DELETE FROM payments'),
+        throwsA(isA<SqliteException>()),
+      );
+      expect(await db.select(db.pendingCardPaymentRows).get(), isEmpty);
+      await db.close();
+    },
+  );
 
   test('unbekannter gespeicherter Wert fällt auf die Vorgabe zurück', () async {
     final db = KassaDatabase(NativeDatabase.memory());
     await db.customStatement(
-        "INSERT INTO settings (id, theme_mode, printer_kind) VALUES (1, 'neon', 'laser')");
+      "INSERT INTO settings (id, theme_mode, printer_kind) VALUES (1, 'neon', 'laser')",
+    );
     final s = await SettingsRepository(db).current();
     expect(s.themeMode, AppThemeMode.system);
     expect(s.printerKind, PrinterKind.none);

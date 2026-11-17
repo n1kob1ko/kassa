@@ -214,7 +214,9 @@ class _GroupCard extends StatelessWidget {
               final maxCols = ((box.maxWidth + 8) / 158).floor().clamp(1, 6);
               // Gleich lange Reihen: 5 Optionen bei höchstens 4 sind 3 + 2.
               final rowCount = (group.options.length / maxCols).ceil();
-              final cols = rowCount == 0 ? 1 : (group.options.length / rowCount).ceil();
+              final cols = rowCount == 0
+                  ? 1
+                  : (group.options.length / rowCount).ceil();
               final rows = <Widget>[];
               for (var i = 0; i < group.options.length; i += cols) {
                 final chunk = group.options.skip(i).take(cols).toList();

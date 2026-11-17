@@ -56,12 +56,7 @@ Future<void> pumpKassaWith(
   Brightness brightness = Brightness.light,
   double textScale = 1.0,
 }) async {
-  await pumpKassa(
-    t,
-    size: size,
-    brightness: brightness,
-    textScale: textScale,
-  );
+  await pumpKassa(t, size: size, brightness: brightness, textScale: textScale);
   for (final id in ids) {
     await tapItem(t, id);
   }
@@ -77,9 +72,9 @@ Future<void> tapItem(WidgetTester t, String id) async {
 }
 
 /// Der Bon, wie die Kassa ihn gerade hält.
-Cart cartOf(WidgetTester t) => ProviderScope.containerOf(
-  t.element(find.byType(KassaApp)),
-).read(cartProvider);
+Cart cartOf(WidgetTester t) =>
+    ProviderScope.containerOf(t.element(find.byType(KassaApp)))
+        .read(cartProvider);
 
 ProviderContainer containerOf(WidgetTester t) =>
     ProviderScope.containerOf(t.element(find.byType(KassaApp)));

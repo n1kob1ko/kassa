@@ -32,7 +32,9 @@ Future<void> _start(WidgetTester t, {String? file}) async {
 }
 
 void main() {
-  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (t) async {
+  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (
+    t,
+  ) async {
     final picker = BrokenPicker(_goodFile);
     await pumpApp(
       t,
@@ -43,7 +45,9 @@ void main() {
     await t.tap(find.text('Speisekarte einspielen'));
     await t.pumpAndSettle();
     expect(
-      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      find.text(
+        'Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.',
+      ),
       findsOneWidget,
     );
     expect(t.takeException(), isNull);
@@ -60,19 +64,22 @@ void main() {
     ('Text, der kein JSON ist', 'Das ist ein Foto vom Mittagstisch.'),
     ('Bytes, die kein Text sind', '\uFFFD\uFFFD\u0000\uFFFDJFIF\uFFFD'),
   ]) {
-    testWidgets('Datei, die keine Speisekarte ist ($name): ruhiger Satz, kein Fehlertext', (t) async {
-      await _start(t, file: text);
-      await t.tap(find.text('Speisekarte einspielen'));
-      await t.pumpAndSettle();
-      expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
-      expect(
-        find.text('Die Datei ist keine gültige Speisekarten-Datei.'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Exception'), findsNothing);
-      expect(find.textContaining('FormatException'), findsNothing);
-      expect(t.takeException(), isNull);
-    });
+    testWidgets(
+      'Datei, die keine Speisekarte ist ($name): ruhiger Satz, kein Fehlertext',
+      (t) async {
+        await _start(t, file: text);
+        await t.tap(find.text('Speisekarte einspielen'));
+        await t.pumpAndSettle();
+        expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
+        expect(
+          find.text('Die Datei ist keine gültige Speisekarten-Datei.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Exception'), findsNothing);
+        expect(find.textContaining('FormatException'), findsNothing);
+        expect(t.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('Einrichtung mit Beispieldaten: Chef-PIN zweimal, dann Kassa', (
@@ -99,8 +106,10 @@ void main() {
     await typePin(t, '4711');
     await typePin(t, '4712');
     await t.pumpAndSettle();
-    expect(find.text('Die PINs sind nicht gleich. Bitte noch einmal.'),
-        findsOneWidget);
+    expect(
+      find.text('Die PINs sind nicht gleich. Bitte noch einmal.'),
+      findsOneWidget,
+    );
     expect(find.text('Chef-PIN festlegen'), findsOneWidget);
     expect(find.byKey(const Key('tab-Kassa')), findsNothing);
   });
@@ -112,12 +121,19 @@ void main() {
     await t.tap(find.text('Speisekarte einspielen'));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
-    expect(find.text('Es wurde nichts eingespielt. Das muss in der Datei '
-        'geändert werden:'), findsOneWidget);
+    expect(
+      find.text(
+        'Es wurde nichts eingespielt. Das muss in der Datei '
+        'geändert werden:',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Artikel "x": Name fehlt.'), findsOneWidget);
     expect(find.text('Andere Datei wählen'), findsOneWidget);
-    expect(await _container(t).read(catalogRepositoryProvider).current(),
-        isNull);
+    expect(
+      await _container(t).read(catalogRepositoryProvider).current(),
+      isNull,
+    );
     await t.tap(find.text('Andere Datei wählen'));
     await t.pumpAndSettle();
     expect(find.text('Diese Kassa einrichten'), findsOneWidget);
@@ -134,10 +150,17 @@ void main() {
     await t.tap(find.text('Speisekarte einspielen'));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
-    expect(find.text('Mitarbeiter "Anna": Die PIN ist in der Datei schon '
-        'vergeben.'), findsOneWidget);
-    expect(await _container(t).read(catalogRepositoryProvider).current(),
-        isNull);
+    expect(
+      find.text(
+        'Mitarbeiter "Anna": Die PIN ist in der Datei schon '
+        'vergeben.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      await _container(t).read(catalogRepositoryProvider).current(),
+      isNull,
+    );
     expect(await _container(t).read(staffRepositoryProvider).all(), isEmpty);
   });
 
@@ -166,32 +189,36 @@ void main() {
     expect(find.text('Die Datei passt noch nicht'), findsNothing);
   });
 
-  testWidgets('geschrieben wird erst nach bestätigter PIN, dann genau ein Chef',
-      (t) async {
-    await _start(t, file: _goodFile);
-    final c = _container(t);
-    await t.tap(find.text('Speisekarte einspielen'));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Weiter zur Chef-PIN'));
-    await t.pumpAndSettle();
-    await typePin(t, '4711');
-    await typePin(t, '4712'); // nicht gleich: noch nichts geschrieben
-    await t.pumpAndSettle();
-    expect(await c.read(catalogRepositoryProvider).current(), isNull);
-    expect(await c.read(staffRepositoryProvider).all(), isEmpty);
-    await typePin(t, '4711');
-    await typePin(t, '4711');
-    await t.pumpAndSettle();
-    final catalog = await c.read(catalogRepositoryProvider).current();
-    expect(catalog!.businessName, 'Test-Bude');
-    final staff = await c.read(staffRepositoryProvider).all();
-    expect(staff.where((s) => s.role == StaffRole.chef), hasLength(1));
-    expect(staff.singleWhere((s) => s.isChef).name, 'Chef');
-    expect(staff.map((s) => s.name), containsAll(['Chef', 'Anna']));
-    expect(staff, hasLength(2));
-  });
+  testWidgets(
+    'geschrieben wird erst nach bestätigter PIN, dann genau ein Chef',
+    (t) async {
+      await _start(t, file: _goodFile);
+      final c = _container(t);
+      await t.tap(find.text('Speisekarte einspielen'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Weiter zur Chef-PIN'));
+      await t.pumpAndSettle();
+      await typePin(t, '4711');
+      await typePin(t, '4712'); // nicht gleich: noch nichts geschrieben
+      await t.pumpAndSettle();
+      expect(await c.read(catalogRepositoryProvider).current(), isNull);
+      expect(await c.read(staffRepositoryProvider).all(), isEmpty);
+      await typePin(t, '4711');
+      await typePin(t, '4711');
+      await t.pumpAndSettle();
+      final catalog = await c.read(catalogRepositoryProvider).current();
+      expect(catalog!.businessName, 'Test-Bude');
+      final staff = await c.read(staffRepositoryProvider).all();
+      expect(staff.where((s) => s.role == StaffRole.chef), hasLength(1));
+      expect(staff.singleWhere((s) => s.isChef).name, 'Chef');
+      expect(staff.map((s) => s.name), containsAll(['Chef', 'Anna']));
+      expect(staff, hasLength(2));
+    },
+  );
 
-  testWidgets('Chef-PIN gleich der PIN aus der Datei wird abgelehnt', (t) async {
+  testWidgets('Chef-PIN gleich der PIN aus der Datei wird abgelehnt', (
+    t,
+  ) async {
     await _start(t, file: _goodFile);
     await t.tap(find.text('Speisekarte einspielen'));
     await t.pumpAndSettle();
@@ -200,32 +227,38 @@ void main() {
     await typePin(t, '1234');
     await t.pumpAndSettle();
     expect(
-      find.text('Diese PIN hat schon jemand aus der Datei. '
-          'Bitte eine andere wählen.'),
+      find.text(
+        'Diese PIN hat schon jemand aus der Datei. '
+        'Bitte eine andere wählen.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Chef-PIN festlegen'), findsOneWidget);
-    expect(await _container(t).read(catalogRepositoryProvider).current(),
-        isNull);
+    expect(
+      await _container(t).read(catalogRepositoryProvider).current(),
+      isNull,
+    );
   });
 
-  testWidgets('Datei mit Mitarbeitern: deren PIN meldet sie an, ohne Abschluss',
-      (t) async {
-    await _start(t, file: _goodFile);
-    await t.tap(find.text('Speisekarte einspielen'));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Weiter zur Chef-PIN'));
-    await t.pumpAndSettle();
-    await typePin(t, '4711');
-    await typePin(t, '4711');
-    await t.pumpAndSettle();
-    expect(find.byKey(const Key('tab-Abschluss')), findsOneWidget);
-    await t.tap(find.byKey(const Key('staff')));
-    await t.pumpAndSettle();
-    await typePin(t, '1234');
-    await t.pumpAndSettle();
-    expect(find.text('Anna'), findsOneWidget);
-    expect(find.byKey(const Key('tab-Kassa')), findsOneWidget);
-    expect(find.byKey(const Key('tab-Abschluss')), findsNothing);
-  });
+  testWidgets(
+    'Datei mit Mitarbeitern: deren PIN meldet sie an, ohne Abschluss',
+    (t) async {
+      await _start(t, file: _goodFile);
+      await t.tap(find.text('Speisekarte einspielen'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Weiter zur Chef-PIN'));
+      await t.pumpAndSettle();
+      await typePin(t, '4711');
+      await typePin(t, '4711');
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('tab-Abschluss')), findsOneWidget);
+      await t.tap(find.byKey(const Key('staff')));
+      await t.pumpAndSettle();
+      await typePin(t, '1234');
+      await t.pumpAndSettle();
+      expect(find.text('Anna'), findsOneWidget);
+      expect(find.byKey(const Key('tab-Kassa')), findsOneWidget);
+      expect(find.byKey(const Key('tab-Abschluss')), findsNothing);
+    },
+  );
 }

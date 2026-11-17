@@ -90,7 +90,10 @@ class ItemArea extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 3),
                     child: Segmented<bool>(
-                      segments: const [(true, 'Mit Bildern'), (false, 'Kompakt')],
+                      segments: const [
+                        (true, 'Mit Bildern'),
+                        (false, 'Kompakt'),
+                      ],
                       selected: showImages,
                       onSelected: onShowImages,
                     ),

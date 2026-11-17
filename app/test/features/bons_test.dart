@@ -180,23 +180,26 @@ void main() {
     expect(find.textContaining('Boniert von'), findsNothing);
   });
 
-  testWidgets('Untertitel: "Heute" mit Datum, bei vergessenem Abschluss nur das Datum des offenen Tages', (t) async {
-    final clock = FixedClock(DateTime(2026, 11, 17, 11));
-    await pumpBonsWithSales(
-      t,
-      1,
-      overrides: await memoryOverrides(clock: clock),
-    );
-    expect(find.text('Heute, Dienstag 17. November'), findsOneWidget);
-    // Der Tag wurde nicht abgeschlossen, jetzt ist der nächste Morgen.
-    clock.value = DateTime(2026, 11, 18, 8);
-    await t.tap(find.byKey(const Key('tab-Kassa')));
-    await t.pumpAndSettle();
-    await t.tap(find.byKey(const Key('tab-Bons')));
-    await t.pumpAndSettle();
-    expect(find.text('Dienstag 17. November'), findsOneWidget);
-    expect(find.textContaining('Heute,'), findsNothing);
-  });
+  testWidgets(
+    'Untertitel: "Heute" mit Datum, bei vergessenem Abschluss nur das Datum des offenen Tages',
+    (t) async {
+      final clock = FixedClock(DateTime(2026, 11, 17, 11));
+      await pumpBonsWithSales(
+        t,
+        1,
+        overrides: await memoryOverrides(clock: clock),
+      );
+      expect(find.text('Heute, Dienstag 17. November'), findsOneWidget);
+      // Der Tag wurde nicht abgeschlossen, jetzt ist der nächste Morgen.
+      clock.value = DateTime(2026, 11, 18, 8);
+      await t.tap(find.byKey(const Key('tab-Kassa')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+      expect(find.text('Dienstag 17. November'), findsOneWidget);
+      expect(find.textContaining('Heute,'), findsNothing);
+    },
+  );
 
   testWidgets('Storno nur für den Chef: Mitarbeiterin sieht keine Taste', (
     t,

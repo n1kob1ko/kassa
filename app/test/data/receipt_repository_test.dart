@@ -18,7 +18,10 @@ void main() {
   tearDown(() => shop.close());
 
   test('Bon bekommt Nummer 1, Zeilen, Summen, Zahlung', () async {
-    final cart = const Cart.empty().add(cola).add(cola).add(huhnBowl, options: [xxl, nudeln]);
+    final cart = const Cart.empty()
+        .add(cola)
+        .add(cola)
+        .add(huhnBowl, options: [xxl, nudeln]);
     final r = await receipts.finalizeCashSale(
       saleId: 's1',
       cart: cart,
@@ -33,13 +36,23 @@ void main() {
       (r.payment.kind, r.payment.givenCents, r.payment.changeCents),
       (PaymentKind.cash, 2000, 180),
     );
-    expect(r.lines.last.options.map((o) => (o.groupName, o.optionName, o.surchargeCents)), [
-      ('Größe', 'XXL', 200),
-      ('Basis', 'Nudeln', 0),
-    ]);
+    expect(
+      r.lines.last.options.map(
+        (o) => (o.groupName, o.optionName, o.surchargeCents),
+      ),
+      [('Größe', 'XXL', 200), ('Basis', 'Nudeln', 0)],
+    );
     expect(r.createdAt, DateTime(2026, 11, 17, 11));
     expect(
-      r.lines.map((l) => (l.position, l.itemId, l.unitPriceCents, l.quantity, l.unitDepositCents)),
+      r.lines.map(
+        (l) => (
+          l.position,
+          l.itemId,
+          l.unitPriceCents,
+          l.quantity,
+          l.unitDepositCents,
+        ),
+      ),
       [(0, 'cola', 290, 2, 25), (1, 'huhn-bowl', 1190, 1, 0)],
     );
     expect(r.lines.last.grossByRate, {TaxRate.reduced1: 1190});
@@ -67,10 +80,13 @@ void main() {
     expect(await shop.count('payments'), 1);
   });
 
-  test('verschiedene saleIds gleichzeitig bekommen die Nummern 1 und 2', () async {
-    final both = await Future.wait([shop.sell('a'), shop.sell('b')]);
-    expect(both.map((r) => r.number).toList()..sort(), [1, 2]);
-  });
+  test(
+    'verschiedene saleIds gleichzeitig bekommen die Nummern 1 und 2',
+    () async {
+      final both = await Future.wait([shop.sell('a'), shop.sell('b')]);
+      expect(both.map((r) => r.number).toList()..sort(), [1, 2]);
+    },
+  );
 
   test('Nummern steigen lückenlos, auch wenn die Uhr zurückspringt', () async {
     await shop.sell('s1');
@@ -78,14 +94,20 @@ void main() {
     await shop.sell('s2');
     await shop.sell('s3');
     final day = await shop.dayId();
-    expect((await receipts.watchDay(day).first).map((r) => r.number).toList(), [1, 2, 3]);
+    expect((await receipts.watchDay(day).first).map((r) => r.number).toList(), [
+      1,
+      2,
+      3,
+    ]);
   });
 
   test('watchDay meldet jeden neuen Bon', () async {
     await shop.sell('s1');
     final day = await shop.dayId();
     final emitted = <List<int>>[];
-    final sub = receipts.watchDay(day).listen((l) => emitted.add([for (final r in l) r.number]));
+    final sub = receipts
+        .watchDay(day)
+        .listen((l) => emitted.add([for (final r in l) r.number]));
     await pumpEventQueue();
     await shop.sell('s2');
     await pumpEventQueue();
@@ -105,7 +127,12 @@ void main() {
       throwsA(isA<EmptyCartException>()),
     );
     await expectLater(
-      receipts.finalizeCashSale(saleId: 'y', cart: cart, givenCents: 100, staff: shop.anna),
+      receipts.finalizeCashSale(
+        saleId: 'y',
+        cart: cart,
+        givenCents: 100,
+        staff: shop.anna,
+      ),
       throwsA(isA<InsufficientCashException>()),
     );
     expect(await shop.count('receipts'), 0);
@@ -132,7 +159,10 @@ void main() {
     expect(v.lines.first.quantity, -r.lines.first.quantity);
     expect(v.lines.last.options.map((o) => o.optionName), ['XXL', 'Nudeln']);
     expect(v.payment.amountCents, -r.totalCents);
-    expect((v.payment.kind, v.payment.givenCents, v.payment.changeCents), (PaymentKind.cash, 0, 0));
+    expect(
+      (v.payment.kind, v.payment.givenCents, v.payment.changeCents),
+      (PaymentKind.cash, 0, 0),
+    );
     expect(v.businessDayId, r.businessDayId);
     expect((await receipts.byId(r.id)).isVoided, isTrue);
     expect((await receipts.byId(r.id)).voidedByReceiptId, v.id);
@@ -151,10 +181,14 @@ void main() {
     final r = await shop.sell('s1');
     final v = await receipts.voidReceipt(r.id, staff: shop.chef);
     expect(v.grossByRate, {TaxRate.normal: -580, TaxRate.reduced1: -1190});
-    expect(v.grossByRate, {for (final e in r.grossByRate.entries) e.key: -e.value});
+    expect(v.grossByRate, {
+      for (final e in r.grossByRate.entries) e.key: -e.value,
+    });
     expect((v.goodsCents, v.depositCents), (-1770, -50));
-    expect(v.taxLines.map((t) => (t.rate, t.grossCents, t.netCents, t.taxCents)),
-        r.taxLines.map((t) => (t.rate, -t.grossCents, -t.netCents, -t.taxCents)));
+    expect(
+      v.taxLines.map((t) => (t.rate, t.grossCents, t.netCents, t.taxCents)),
+      r.taxLines.map((t) => (t.rate, -t.grossCents, -t.netCents, -t.taxCents)),
+    );
   });
 
   test('Storno kopiert die Zeilen vom Bon, nicht aus dem Katalog', () async {
@@ -179,13 +213,16 @@ void main() {
     await expectLater(receipts.byId('gibt-es-nicht'), throwsStateError);
   });
 
-  test('ein Bon behält Namen und Preis, auch wenn der Artikel sich ändert', () async {
-    final r = await shop.sell('s1');
-    await shop.catalogRepo.updateItem('cola', priceCents: 999);
-    final stored = await receipts.byId(r.id);
-    expect(stored.lines.first.unitPriceCents, 290);
-    expect(stored.lines.first.name, 'Cola 0,33 l');
-  });
+  test(
+    'ein Bon behält Namen und Preis, auch wenn der Artikel sich ändert',
+    () async {
+      final r = await shop.sell('s1');
+      await shop.catalogRepo.updateItem('cola', priceCents: 999);
+      final stored = await receipts.byId(r.id);
+      expect(stored.lines.first.unitPriceCents, 290);
+      expect(stored.lines.first.name, 'Cola 0,33 l');
+    },
+  );
 
   test('die Datenbank weist Ändern und Löschen von Bons ab', () async {
     await shop.sell('s1');
@@ -201,7 +238,9 @@ void main() {
     ]) {
       await expectLater(
         shop.db.customStatement(sql),
-        throwsA(predicate((e) => e.toString().contains('Bons sind unveränderlich'))),
+        throwsA(
+          predicate((e) => e.toString().contains('Bons sind unveränderlich')),
+        ),
         reason: sql,
       );
     }

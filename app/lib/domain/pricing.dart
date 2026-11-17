@@ -66,7 +66,12 @@ List<TaxLine> taxBreakdown(Map<TaxRate, int> gross) {
         final a = g.abs();
         final absTax = (a * p * 2 + (100 + p)) ~/ (2 * (100 + p));
         final tax = g < 0 ? -absTax : absTax;
-        return TaxLine(rate: r, grossCents: g, netCents: g - tax, taxCents: tax);
+        return TaxLine(
+          rate: r,
+          grossCents: g,
+          netCents: g - tax,
+          taxCents: tax,
+        );
       }(),
   ];
 }

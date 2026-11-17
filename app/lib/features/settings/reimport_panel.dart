@@ -37,7 +37,9 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _problems = const ['Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'];
+        _problems = const [
+          'Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.',
+        ];
         _step = _Step.problems;
         _failed = false;
       });

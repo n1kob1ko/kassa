@@ -22,7 +22,8 @@ class LeftInDrawerTooHighException implements Exception {
   const LeftInDrawerTooHighException();
 
   @override
-  String toString() => 'LeftInDrawerTooHighException: In der Lade bleibt mehr, als gezählt wurde.';
+  String toString() =>
+      'LeftInDrawerTooHighException: In der Lade bleibt mehr, als gezählt wurde.';
 }
 
 class InvalidAmountException implements Exception {
@@ -94,12 +95,13 @@ class DayRepository {
     if (cents < 0) throw const InvalidAmountException();
     return _db.transaction(() async {
       if (await lastClosedDay() != null) {
-        throw StateError('Das Wechselgeld ergibt sich aus dem letzten Abschluss.');
+        throw StateError(
+          'Das Wechselgeld ergibt sich aus dem letzten Abschluss.',
+        );
       }
       final day = await openOrCreateDay();
-      await (_db.update(_db.businessDayRows)..where((t) => t.id.equals(day.id))).write(
-        BusinessDayRowsCompanion(openingFloatCents: Value(cents)),
-      );
+      await (_db.update(_db.businessDayRows)..where((t) => t.id.equals(day.id)))
+          .write(BusinessDayRowsCompanion(openingFloatCents: Value(cents)));
     });
   }
 
@@ -159,7 +161,9 @@ class DayRepository {
         throw const LeftInDrawerTooHighException();
       }
       final expected = (await _summarize(day)).expectedCashCents;
-      await (_db.update(_db.businessDayRows)..where((t) => t.id.equals(day.id))).write(
+      await (_db.update(
+        _db.businessDayRows,
+      )..where((t) => t.id.equals(day.id))).write(
         BusinessDayRowsCompanion(
           closedAt: Value(_clock.now()),
           countedCents: Value(countedCents),
@@ -186,12 +190,20 @@ class DayRepository {
     )..where((t) => t.businessDayId.equals(day.id))).get();
     final payments = {
       for (final p in await (_db.select(_db.paymentRows).join([
-        innerJoin(_db.receiptRows, _db.receiptRows.id.equalsExp(_db.paymentRows.receiptId)),
+        innerJoin(
+          _db.receiptRows,
+          _db.receiptRows.id.equalsExp(_db.paymentRows.receiptId),
+        ),
       ])..where(_db.receiptRows.businessDayId.equals(day.id))).get())
-        p.readTable(_db.paymentRows).receiptId: p.readTable(_db.paymentRows).kind,
+        p.readTable(_db.paymentRows).receiptId: p
+            .readTable(_db.paymentRows)
+            .kind,
     };
     final lines = await (_db.select(_db.receiptLineRows).join([
-      innerJoin(_db.receiptRows, _db.receiptRows.id.equalsExp(_db.receiptLineRows.receiptId)),
+      innerJoin(
+        _db.receiptRows,
+        _db.receiptRows.id.equalsExp(_db.receiptLineRows.receiptId),
+      ),
     ])..where(_db.receiptRows.businessDayId.equals(day.id))).get();
 
     var count = 0;
@@ -254,8 +266,9 @@ class DayRepository {
           staffName: m.staffName,
         ),
     ];
-    int sumOf(CashMovementKind k) =>
-        movements.where((m) => m.kind == k).fold(0, (s, m) => s + m.amountCents);
+    int sumOf(CashMovementKind k) => movements
+        .where((m) => m.kind == k)
+        .fold(0, (s, m) => s + m.amountCents);
     final cashIn = sumOf(CashMovementKind.deposit);
     final cashOut = sumOf(CashMovementKind.withdrawal);
     final float = day.openingFloatCents ?? 0;

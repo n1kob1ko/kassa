@@ -34,7 +34,11 @@ Future<void> _openBowl(WidgetTester t) async {
 }
 
 /// Wählt Größe und Basis und legt die Bowl auf den Bon.
-Future<void> _addBowl(WidgetTester t, {String size = 'bowl/0/1', String base = 'bowl/1/0'}) async {
+Future<void> _addBowl(
+  WidgetTester t, {
+  String size = 'bowl/0/1',
+  String base = 'bowl/1/0',
+}) async {
   await _openBowl(t);
   await t.tap(find.byKey(Key('opt-$base')));
   await t.tap(find.byKey(Key('opt-$size')));
@@ -44,7 +48,9 @@ Future<void> _addBowl(WidgetTester t, {String size = 'bowl/0/1', String base = '
 }
 
 void main() {
-  testWidgets('Tipp auf Artikel legt ihn auf den Bon, Pfand steht getrennt', (t) async {
+  testWidgets('Tipp auf Artikel legt ihn auf den Bon, Pfand steht getrennt', (
+    t,
+  ) async {
     await pumpKassa(t);
     await t.tap(find.byKey(const Key('cat-getraenke')));
     await t.pump();
@@ -53,7 +59,10 @@ void main() {
     await t.pump();
     final line = cartOf(t).lines.single;
     final row = find.byKey(Key('line-${line.lineId}'));
-    expect(find.descendant(of: row, matching: _text('Cola 0,33 l')), findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: _text('Cola 0,33 l')),
+      findsOneWidget,
+    );
     expect(textOf(t, Key('qty-${line.lineId}')), '2');
     expect(find.descendant(of: row, matching: _text('5,80 €')), findsOneWidget);
     expect(textOf(t, const Key('cart-deposit')), 'davon Pfand 0,50 €');
@@ -67,31 +76,36 @@ void main() {
     expect(textOf(t, const Key('cart-count')), '2 Artikel');
   });
 
-  testWidgets('Artikel mit Auswahl: "Auf den Bon" erst, wenn die Pflichtgruppen gewählt sind', (t) async {
-    await pumpKassa(t);
-    await _openBowl(t);
-    expect(_button(t, 'add-to-cart').onPressed, isNull);
-    expect(_button(t, 'add-to-cart').label, 'Noch wählen: Basis');
-    expect(_text('Noch wählen: Basis'), findsOneWidget);
-    expect(_text('Bitte wählen'), findsOneWidget);
-    // Der Bon bleibt, solange zusammengestellt wird, und Bar ist gesperrt.
-    expect(cartOf(t).isEmpty, isTrue);
-    await t.tap(find.byKey(const Key('opt-bowl/1/0')));
-    await t.tap(find.byKey(const Key('opt-bowl/0/1')));
-    await t.pump();
-    expect(_button(t, 'add-to-cart').label, 'Auf den Bon');
-    expect(_button(t, 'add-to-cart').onPressed, isNotNull);
-    expect(_text('Bitte wählen'), findsNothing);
-    await t.tap(find.byKey(const Key('add-to-cart')));
-    await t.pump();
-    expect(_total(t), '11,90 €');
-    expect(_text('XXL, Reis'), findsOneWidget);
-    // Das Zusammenstellen ist zu, das Raster wieder da.
-    expect(find.byKey(const Key('item-grid')), findsOneWidget);
-    expect(find.byKey(const Key('add-to-cart')), findsNothing);
-  });
+  testWidgets(
+    'Artikel mit Auswahl: "Auf den Bon" erst, wenn die Pflichtgruppen gewählt sind',
+    (t) async {
+      await pumpKassa(t);
+      await _openBowl(t);
+      expect(_button(t, 'add-to-cart').onPressed, isNull);
+      expect(_button(t, 'add-to-cart').label, 'Noch wählen: Basis');
+      expect(_text('Noch wählen: Basis'), findsOneWidget);
+      expect(_text('Bitte wählen'), findsOneWidget);
+      // Der Bon bleibt, solange zusammengestellt wird, und Bar ist gesperrt.
+      expect(cartOf(t).isEmpty, isTrue);
+      await t.tap(find.byKey(const Key('opt-bowl/1/0')));
+      await t.tap(find.byKey(const Key('opt-bowl/0/1')));
+      await t.pump();
+      expect(_button(t, 'add-to-cart').label, 'Auf den Bon');
+      expect(_button(t, 'add-to-cart').onPressed, isNotNull);
+      expect(_text('Bitte wählen'), findsNothing);
+      await t.tap(find.byKey(const Key('add-to-cart')));
+      await t.pump();
+      expect(_total(t), '11,90 €');
+      expect(_text('XXL, Reis'), findsOneWidget);
+      // Das Zusammenstellen ist zu, das Raster wieder da.
+      expect(find.byKey(const Key('item-grid')), findsOneWidget);
+      expect(find.byKey(const Key('add-to-cart')), findsNothing);
+    },
+  );
 
-  testWidgets('Abbrechen im Zusammenstellen legt nichts auf den Bon', (t) async {
+  testWidgets('Abbrechen im Zusammenstellen legt nichts auf den Bon', (
+    t,
+  ) async {
     await pumpKassa(t);
     await _openBowl(t);
     await t.tap(find.byKey(const Key('opt-bowl/1/0')));
@@ -105,45 +119,51 @@ void main() {
     expect(await draftOf(t), isNull);
   });
 
-  testWidgets('derselbe einfache Artikel gibt eine Zeile, zwei Bowls mit anderer Auswahl zwei', (t) async {
-    await pumpKassa(t);
-    await t.tap(find.byKey(const Key('cat-snacks')));
-    await t.pump();
-    await t.tap(find.byKey(const Key('item-pommes')));
-    await t.tap(find.byKey(const Key('item-pommes')));
-    await t.pump();
-    expect(cartOf(t).lines, hasLength(1));
-    expect(cartOf(t).lines.single.quantity, 2);
-    await t.tap(find.byKey(const Key('cat-bowls')));
-    await t.pump();
-    await _addBowl(t, size: 'bowl/0/1', base: 'bowl/1/0');
-    await _addBowl(t, size: 'bowl/0/0', base: 'bowl/1/1');
-    final lines = cartOf(t).lines;
-    expect(lines.map((l) => l.item.id), ['pommes', 'huhn-bowl', 'huhn-bowl']);
-    expect(lines[1].options.map((o) => o.id), contains('bowl/0/1'));
-    expect(lines[2].options.map((o) => o.id), contains('bowl/1/1'));
-    expect(find.byKey(Key('line-${lines[1].lineId}')), findsOneWidget);
-    expect(find.byKey(Key('line-${lines[2].lineId}')), findsOneWidget);
-  });
+  testWidgets(
+    'derselbe einfache Artikel gibt eine Zeile, zwei Bowls mit anderer Auswahl zwei',
+    (t) async {
+      await pumpKassa(t);
+      await t.tap(find.byKey(const Key('cat-snacks')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('item-pommes')));
+      await t.tap(find.byKey(const Key('item-pommes')));
+      await t.pump();
+      expect(cartOf(t).lines, hasLength(1));
+      expect(cartOf(t).lines.single.quantity, 2);
+      await t.tap(find.byKey(const Key('cat-bowls')));
+      await t.pump();
+      await _addBowl(t, size: 'bowl/0/1', base: 'bowl/1/0');
+      await _addBowl(t, size: 'bowl/0/0', base: 'bowl/1/1');
+      final lines = cartOf(t).lines;
+      expect(lines.map((l) => l.item.id), ['pommes', 'huhn-bowl', 'huhn-bowl']);
+      expect(lines[1].options.map((o) => o.id), contains('bowl/0/1'));
+      expect(lines[2].options.map((o) => o.id), contains('bowl/1/1'));
+      expect(find.byKey(Key('line-${lines[1].lineId}')), findsOneWidget);
+      expect(find.byKey(Key('line-${lines[2].lineId}')), findsOneWidget);
+    },
+  );
 
-  testWidgets('Minus bei Menge 1 entfernt die Zeile, Plus erhöht Menge und Summe', (t) async {
-    await pumpKassaWith(t, ['teigtaschen']);
-    final id = cartOf(t).lines.single.lineId;
-    expect(_total(t), '6,50 €');
-    await t.tap(find.byKey(Key('qty-plus-$id')));
-    await t.pump();
-    expect(textOf(t, Key('qty-$id')), '2');
-    expect(_total(t), '13,00 €');
-    await t.tap(find.byKey(Key('qty-minus-$id')));
-    await t.pump();
-    expect(textOf(t, Key('qty-$id')), '1');
-    await t.tap(find.byKey(Key('qty-minus-$id')));
-    await t.pump();
-    expect(find.byKey(Key('line-$id')), findsNothing);
-    expect(cartOf(t).isEmpty, isTrue);
-    expect(_text('Noch nichts boniert'), findsOneWidget);
-    expect(_total(t), '0,00 €');
-  });
+  testWidgets(
+    'Minus bei Menge 1 entfernt die Zeile, Plus erhöht Menge und Summe',
+    (t) async {
+      await pumpKassaWith(t, ['teigtaschen']);
+      final id = cartOf(t).lines.single.lineId;
+      expect(_total(t), '6,50 €');
+      await t.tap(find.byKey(Key('qty-plus-$id')));
+      await t.pump();
+      expect(textOf(t, Key('qty-$id')), '2');
+      expect(_total(t), '13,00 €');
+      await t.tap(find.byKey(Key('qty-minus-$id')));
+      await t.pump();
+      expect(textOf(t, Key('qty-$id')), '1');
+      await t.tap(find.byKey(Key('qty-minus-$id')));
+      await t.pump();
+      expect(find.byKey(Key('line-$id')), findsNothing);
+      expect(cartOf(t).isEmpty, isTrue);
+      expect(_text('Noch nichts boniert'), findsOneWidget);
+      expect(_total(t), '0,00 €');
+    },
+  );
 
   testWidgets('ohne Pfand gibt es keine Pfandzeile, nur die Steuer', (t) async {
     await pumpKassaWith(t, ['pommes']);
@@ -155,27 +175,33 @@ void main() {
     (const Size(1280, 800), 1.0),
     (const Size(960, 600), 1.3),
   ]) {
-    testWidgets('kompakte Tasten: jeder Preis hat dieselbe Größe ($size, Schrift $scale)', (t) async {
-      await pumpKassaWith(t, ['teigtaschen'], size: size, textScale: scale);
-      double sizeOf(String id, String price) {
-        final text = find.descendant(
-          of: find.byKey(Key('item-$id')),
-          matching: _text(price),
-        );
-        final box = t.renderObject<RenderBox>(text);
-        // Gezeichnete Höhe der Schrift: FittedBox würde sie verkleinern.
-        final fitted = find.ancestor(of: text, matching: find.byType(FittedBox));
-        expect(fitted, findsNothing, reason: 'Preis wird nicht skaliert');
-        return box.size.height;
-      }
+    testWidgets(
+      'kompakte Tasten: jeder Preis hat dieselbe Größe ($size, Schrift $scale)',
+      (t) async {
+        await pumpKassaWith(t, ['teigtaschen'], size: size, textScale: scale);
+        double sizeOf(String id, String price) {
+          final text = find.descendant(
+            of: find.byKey(Key('item-$id')),
+            matching: _text(price),
+          );
+          final box = t.renderObject<RenderBox>(text);
+          // Gezeichnete Höhe der Schrift: FittedBox würde sie verkleinern.
+          final fitted = find.ancestor(
+            of: text,
+            matching: find.byType(FittedBox),
+          );
+          expect(fitted, findsNothing, reason: 'Preis wird nicht skaliert');
+          return box.size.height;
+        }
 
-      final a = sizeOf('teigtaschen', '6,50 €');
-      final b = sizeOf('fruehlingsrollen', '4,90 €');
-      final c = sizeOf('pommes', '3,90 €');
-      expect(b, a);
-      expect(c, a);
-      expect(t.takeException(), isNull);
-    });
+        final a = sizeOf('teigtaschen', '6,50 €');
+        final b = sizeOf('fruehlingsrollen', '4,90 €');
+        final c = sizeOf('pommes', '3,90 €');
+        expect(b, a);
+        expect(c, a);
+        expect(t.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('Bon leeren lässt sich rückgängig machen', (t) async {
@@ -192,65 +218,81 @@ void main() {
     expect(_text('Bon geleert'), findsNothing);
   });
 
-  testWidgets('Preis geändert bei offenem Bon: Zeile, Summe, nächster Tipp und Bon gelten neu', (t) async {
-    await pumpKassaWith(t, ['cola']);
-    expect(_total(t), '3,15 €');
-    await containerOf(t)
-        .read(catalogRepositoryProvider)
-        .updateItem('cola', priceCents: 320);
-    await t.pump();
-    await t.pump();
-    final id = cartOf(t).lines.single.lineId;
-    expect(cartOf(t).lines.single.unitPriceCents, 320);
-    expect(_total(t), '3,45 €');
-    await t.tap(find.byKey(const Key('item-cola')));
-    await t.pump();
-    expect(textOf(t, Key('qty-$id')), '2');
-    expect(_total(t), '6,90 €');
-    expect(
-      (await containerOf(t).read(settingsRepositoryProvider).readDraft())!,
-      contains('"quantity":2'),
-    );
-    await t.tap(find.byKey(const Key('pay-cash')));
-    await t.pumpAndSettle();
-    await t.tap(find.byKey(const Key('finish-sale')));
-    await t.pumpAndSettle();
-    final rows = await containerOf(t)
-        .read(databaseProvider)
-        .customSelect('SELECT unit_price_cents AS p, quantity AS q FROM receipt_lines')
-        .get();
-    expect([for (final r in rows) (r.data['p'], r.data['q'])], [(320, 2)]);
-  });
+  testWidgets(
+    'Preis geändert bei offenem Bon: Zeile, Summe, nächster Tipp und Bon gelten neu',
+    (t) async {
+      await pumpKassaWith(t, ['cola']);
+      expect(_total(t), '3,15 €');
+      await containerOf(t)
+          .read(catalogRepositoryProvider)
+          .updateItem('cola', priceCents: 320);
+      await t.pump();
+      await t.pump();
+      final id = cartOf(t).lines.single.lineId;
+      expect(cartOf(t).lines.single.unitPriceCents, 320);
+      expect(_total(t), '3,45 €');
+      await t.tap(find.byKey(const Key('item-cola')));
+      await t.pump();
+      expect(textOf(t, Key('qty-$id')), '2');
+      expect(_total(t), '6,90 €');
+      expect(
+        (await containerOf(t).read(settingsRepositoryProvider).readDraft())!,
+        contains('"quantity":2'),
+      );
+      await t.tap(find.byKey(const Key('pay-cash')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      final rows = await containerOf(t)
+          .read(databaseProvider)
+          .customSelect(
+            'SELECT unit_price_cents AS p, quantity AS q FROM receipt_lines',
+          )
+          .get();
+      expect([for (final r in rows) (r.data['p'], r.data['q'])], [(320, 2)]);
+    },
+  );
 
-  testWidgets('Speisekarte neu eingespielt ohne Artikel: seine Zeile fällt vom offenen Bon', (t) async {
-    await pumpKassaWith(t, ['cola', 'teigtaschen']);
-    expect(cartOf(t).lines, hasLength(2));
-    final without = Catalog(
-      businessName: catalog.businessName,
-      categories: catalog.categories,
-      items: [for (final i in catalog.items) if (i.id != 'cola') i],
-      templates: catalog.templates,
-    );
-    await containerOf(t).read(catalogRepositoryProvider).importCatalog(without);
-    await t.pump();
-    await t.pump();
-    await t.pump();
-    expect(cartOf(t).lines.map((l) => l.item.id), ['teigtaschen']);
-    expect(_total(t), '6,50 €');
-    expect(await draftOf(t), isNot(contains('cola')));
-  });
+  testWidgets(
+    'Speisekarte neu eingespielt ohne Artikel: seine Zeile fällt vom offenen Bon',
+    (t) async {
+      await pumpKassaWith(t, ['cola', 'teigtaschen']);
+      expect(cartOf(t).lines, hasLength(2));
+      final without = Catalog(
+        businessName: catalog.businessName,
+        categories: catalog.categories,
+        items: [
+          for (final i in catalog.items)
+            if (i.id != 'cola') i,
+        ],
+        templates: catalog.templates,
+      );
+      await containerOf(t)
+          .read(catalogRepositoryProvider)
+          .importCatalog(without);
+      await t.pump();
+      await t.pump();
+      await t.pump();
+      expect(cartOf(t).lines.map((l) => l.item.id), ['teigtaschen']);
+      expect(_total(t), '6,50 €');
+      expect(await draftOf(t), isNot(contains('cola')));
+    },
+  );
 
-  testWidgets('Bon leeren, dann etwas boniert: Hinweis weg, nur der neue Artikel bleibt', (t) async {
-    await pumpKassaWith(t, ['cola', 'teigtaschen']);
-    await t.tap(find.byKey(const Key('clear-cart')));
-    await t.pump();
-    expect(_text('Bon geleert'), findsOneWidget);
-    await tapItem(t, 'pommes');
-    await t.pump();
-    expect(_text('Bon geleert'), findsNothing);
-    expect(_text('Rückgängig'), findsNothing);
-    expect(cartOf(t).lines.map((l) => l.item.id), ['pommes']);
-  });
+  testWidgets(
+    'Bon leeren, dann etwas boniert: Hinweis weg, nur der neue Artikel bleibt',
+    (t) async {
+      await pumpKassaWith(t, ['cola', 'teigtaschen']);
+      await t.tap(find.byKey(const Key('clear-cart')));
+      await t.pump();
+      expect(_text('Bon geleert'), findsOneWidget);
+      await tapItem(t, 'pommes');
+      await t.pump();
+      expect(_text('Bon geleert'), findsNothing);
+      expect(_text('Rückgängig'), findsNothing);
+      expect(cartOf(t).lines.map((l) => l.item.id), ['pommes']);
+    },
+  );
 
   testWidgets('restore ersetzt nie einen Bon, auf dem etwas liegt', (t) async {
     await pumpKassaWith(t, ['teigtaschen']);
@@ -261,29 +303,35 @@ void main() {
     expect(_total(t), '6,50 €');
   });
 
-  testWidgets('leerer Bon: Bar ist gesperrt. Karte ist in dieser Version immer gesperrt', (t) async {
-    await pumpKassa(t);
-    expect(_text('Noch nichts boniert'), findsOneWidget);
-    expect(_text('Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.'), findsOneWidget);
-    expect(_button(t, 'pay-cash').onPressed, isNull);
-    expect(_button(t, 'pay-card').onPressed, isNull);
-    expect(_text('kommt später'), findsOneWidget);
-    await t.tap(find.byKey(const Key('cat-snacks')));
-    await t.pump();
-    await t.tap(find.byKey(const Key('item-pommes')));
-    await t.pump();
-    expect(_button(t, 'pay-cash').onPressed, isNotNull);
-    expect(_button(t, 'pay-card').onPressed, isNull);
-    expect(t.getSize(find.byKey(const Key('pay-cash'))).height, 80);
-    expect(t.getSize(find.byKey(const Key('pay-card'))).height, 80);
-  });
+  testWidgets(
+    'leerer Bon: Bar ist gesperrt. Karte ist in dieser Version immer gesperrt',
+    (t) async {
+      await pumpKassa(t);
+      expect(_text('Noch nichts boniert'), findsOneWidget);
+      expect(
+        _text(
+          'Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.',
+        ),
+        findsOneWidget,
+      );
+      expect(_button(t, 'pay-cash').onPressed, isNull);
+      expect(_button(t, 'pay-card').onPressed, isNull);
+      expect(_text('kommt später'), findsOneWidget);
+      await t.tap(find.byKey(const Key('cat-snacks')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('item-pommes')));
+      await t.pump();
+      expect(_button(t, 'pay-cash').onPressed, isNotNull);
+      expect(_button(t, 'pay-card').onPressed, isNull);
+      expect(t.getSize(find.byKey(const Key('pay-cash'))).height, 80);
+      expect(t.getSize(find.byKey(const Key('pay-card'))).height, 80);
+    },
+  );
 
-  testWidgets('Bar öffnet das Bezahlen, aber nur mit Artikeln auf dem Bon', (t) async {
-    await pumpApp(
-      t,
-      const KassaScreen(),
-      overrides: await memoryOverrides(),
-    );
+  testWidgets('Bar öffnet das Bezahlen, aber nur mit Artikeln auf dem Bon', (
+    t,
+  ) async {
+    await pumpApp(t, const KassaScreen(), overrides: await memoryOverrides());
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('pay-cash')));
     await t.pump();
@@ -297,66 +345,87 @@ void main() {
     expect(find.byKey(const Key('finish-sale')), findsOneWidget);
   });
 
-  testWidgets('Artikel, die nicht im Verkauf sind, lassen sich nicht antippen', (t) async {
-    await pumpKassa(t);
-    await containerOf(t)
-        .read(catalogRepositoryProvider)
-        .updateItem('cola', inSale: false);
-    await t.pump();
-    await t.pump();
-    await t.tap(find.byKey(const Key('cat-getraenke')));
-    await t.pump();
-    expect(
-      find.descendant(of: find.byKey(const Key('item-cola')), matching: _text('Nicht im Verkauf')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: find.byKey(const Key('item-cola')), matching: _text('2,90 €')),
-      findsNothing,
-    );
-    await t.tap(find.byKey(const Key('item-cola')));
-    await t.pump();
-    expect(cartOf(t).isEmpty, isTrue);
-    // Ein anderer Artikel derselben Kategorie geht weiter.
-    await t.tap(find.byKey(const Key('item-eistee')));
-    await t.pump();
-    expect(cartOf(t).lines.single.item.id, 'eistee');
-  });
+  testWidgets(
+    'Artikel, die nicht im Verkauf sind, lassen sich nicht antippen',
+    (t) async {
+      await pumpKassa(t);
+      await containerOf(t)
+          .read(catalogRepositoryProvider)
+          .updateItem('cola', inSale: false);
+      await t.pump();
+      await t.pump();
+      await t.tap(find.byKey(const Key('cat-getraenke')));
+      await t.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('item-cola')),
+          matching: _text('Nicht im Verkauf'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('item-cola')),
+          matching: _text('2,90 €'),
+        ),
+        findsNothing,
+      );
+      await t.tap(find.byKey(const Key('item-cola')));
+      await t.pump();
+      expect(cartOf(t).isEmpty, isTrue);
+      // Ein anderer Artikel derselben Kategorie geht weiter.
+      await t.tap(find.byKey(const Key('item-eistee')));
+      await t.pump();
+      expect(cartOf(t).lines.single.item.id, 'eistee');
+    },
+  );
 
-  testWidgets('ohne Favoriten gibt es keine Kategorie "Favoriten", die erste ist gewählt', (t) async {
-    await pumpKassa(t);
-    expect(find.byKey(const Key('cat-favorites')), findsNothing);
-    expect(_text('Favoriten'), findsNothing);
-    expect(textOf(t, const Key('area-title')), 'Bowls');
-    expect(find.byKey(const Key('item-huhn-bowl')), findsOneWidget);
-    expect(find.byKey(const Key('item-cola')), findsNothing);
-  });
+  testWidgets(
+    'ohne Favoriten gibt es keine Kategorie "Favoriten", die erste ist gewählt',
+    (t) async {
+      await pumpKassa(t);
+      expect(find.byKey(const Key('cat-favorites')), findsNothing);
+      expect(_text('Favoriten'), findsNothing);
+      expect(textOf(t, const Key('area-title')), 'Bowls');
+      expect(find.byKey(const Key('item-huhn-bowl')), findsOneWidget);
+      expect(find.byKey(const Key('item-cola')), findsNothing);
+    },
+  );
 
-  testWidgets('mit Favorit: "Favoriten" steht zuerst und ist gewählt, mit Anzahl', (t) async {
-    await pumpKassa(t);
-    await containerOf(t)
-        .read(catalogRepositoryProvider)
-        .updateItem('cola', favorite: true);
-    await t.pump();
-    await t.pump();
-    expect(find.byKey(const Key('cat-favorites')), findsOneWidget);
-    expect(
-      t.getTopLeft(find.byKey(const Key('cat-favorites'))).dy,
-      lessThan(t.getTopLeft(find.byKey(const Key('cat-bowls'))).dy),
-    );
-    expect(textOf(t, const Key('area-title')), 'Favoriten');
-    expect(find.byKey(const Key('item-cola')), findsOneWidget);
-    expect(find.byKey(const Key('item-huhn-bowl')), findsNothing);
-    expect(
-      find.descendant(of: find.byKey(const Key('cat-favorites')), matching: _text('1')),
-      findsOneWidget,
-    );
-    // Die Anzahl der Kategorien steht in ihrer Taste.
-    expect(
-      find.descendant(of: find.byKey(const Key('cat-bowls')), matching: _text('4')),
-      findsOneWidget,
-    );
-  });
+  testWidgets(
+    'mit Favorit: "Favoriten" steht zuerst und ist gewählt, mit Anzahl',
+    (t) async {
+      await pumpKassa(t);
+      await containerOf(t)
+          .read(catalogRepositoryProvider)
+          .updateItem('cola', favorite: true);
+      await t.pump();
+      await t.pump();
+      expect(find.byKey(const Key('cat-favorites')), findsOneWidget);
+      expect(
+        t.getTopLeft(find.byKey(const Key('cat-favorites'))).dy,
+        lessThan(t.getTopLeft(find.byKey(const Key('cat-bowls'))).dy),
+      );
+      expect(textOf(t, const Key('area-title')), 'Favoriten');
+      expect(find.byKey(const Key('item-cola')), findsOneWidget);
+      expect(find.byKey(const Key('item-huhn-bowl')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('cat-favorites')),
+          matching: _text('1'),
+        ),
+        findsOneWidget,
+      );
+      // Die Anzahl der Kategorien steht in ihrer Taste.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('cat-bowls')),
+          matching: _text('4'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('der offene Bon ist nach einem Neustart wieder da', (t) async {
     await pumpKassaWith(t, ['cola']);
@@ -382,53 +451,73 @@ void main() {
   for (final (name, draft) in [
     ('kaputtes JSON', '{kaputt'),
     ('Liste statt Objekt', '[1, 2]'),
-    ('falsche Typen', '{"lines": [{"lineId": 1, "itemId": "cola", "quantity": "x"}]}'),
+    (
+      'falsche Typen',
+      '{"lines": [{"lineId": 1, "itemId": "cola", "quantity": "x"}]}',
+    ),
     ('lines ist keine Liste', '{"lines": 5}'),
-    ('Menge 0', '{"lines": [{"lineId": "a", "itemId": "cola", "quantity": 0, "optionIds": []}]}'),
+    (
+      'Menge 0',
+      '{"lines": [{"lineId": "a", "itemId": "cola", "quantity": 0, "optionIds": []}]}',
+    ),
   ]) {
-    testWidgets('unlesbarer Entwurf ($name): leerer Bon, kein Fehler, Entwurf gelöscht', (t) async {
-      final overrides = await memoryOverrides();
-      final c = ProviderContainer(overrides: overrides);
-      await c.read(settingsRepositoryProvider).writeDraft(draft);
-      c.dispose();
-      await pumpKassa(t, overrides: overrides);
-      await t.pump();
-      await t.pump();
-      expect(t.takeException(), isNull);
-      expect(_total(t), '0,00 €');
-      expect(_text('Noch nichts boniert'), findsOneWidget);
-      expect(await draftOf(t), isNull);
-      // Und die Kassa nimmt weiter Artikel an.
-      await tapItem(t, 'pommes');
-      expect(_total(t), '3,90 €');
-    });
+    testWidgets(
+      'unlesbarer Entwurf ($name): leerer Bon, kein Fehler, Entwurf gelöscht',
+      (t) async {
+        final overrides = await memoryOverrides();
+        final c = ProviderContainer(overrides: overrides);
+        await c.read(settingsRepositoryProvider).writeDraft(draft);
+        c.dispose();
+        await pumpKassa(t, overrides: overrides);
+        await t.pump();
+        await t.pump();
+        expect(t.takeException(), isNull);
+        expect(_total(t), '0,00 €');
+        expect(_text('Noch nichts boniert'), findsOneWidget);
+        expect(await draftOf(t), isNull);
+        // Und die Kassa nimmt weiter Artikel an.
+        await tapItem(t, 'pommes');
+        expect(_total(t), '3,90 €');
+      },
+    );
   }
 
-  testWidgets('der Schalter "Mit Bildern" wechselt die Tasten und bleibt nach dem Neustart', (t) async {
-    await pumpKassa(t);
-    // Vorgabe: kompakt, 90 dp hohe Tasten, kein Platzhalter-Bild.
-    expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 90);
-    expect(find.byIcon(LucideIcons.utensils), findsNothing);
-    await t.tap(find.byKey(const Key('segment-Mit Bildern')));
-    await t.pump();
-    expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 157);
-    expect(find.byIcon(LucideIcons.utensils), findsWidgets);
-    await t.pump();
-    await t.pump();
-    expect((await containerOf(t).read(settingsRepositoryProvider).current()).showImages, isTrue);
+  testWidgets(
+    'der Schalter "Mit Bildern" wechselt die Tasten und bleibt nach dem Neustart',
+    (t) async {
+      await pumpKassa(t);
+      // Vorgabe: kompakt, 90 dp hohe Tasten, kein Platzhalter-Bild.
+      expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 90);
+      expect(find.byIcon(LucideIcons.utensils), findsNothing);
+      await t.tap(find.byKey(const Key('segment-Mit Bildern')));
+      await t.pump();
+      expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 157);
+      expect(find.byIcon(LucideIcons.utensils), findsWidgets);
+      await t.pump();
+      await t.pump();
+      expect(
+        (await containerOf(
+          t,
+        ).read(settingsRepositoryProvider).current()).showImages,
+        isTrue,
+      );
 
-    await pumpKassa(t, sameDatabase: true);
-    expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 157);
-    await t.tap(find.byKey(const Key('segment-Kompakt')));
-    await t.pump();
-    expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 90);
-  });
+      await pumpKassa(t, sameDatabase: true);
+      expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 157);
+      await t.tap(find.byKey(const Key('segment-Kompakt')));
+      await t.pump();
+      expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 90);
+    },
+  );
 
   testWidgets('Spalten: 4 bei 1280 x 800, weniger bei 960 x 600', (t) async {
     await pumpKassa(t);
     expect(_columns(t), 4);
     // Mit 692 dp Mitte und 16 dp Rand wird die Taste etwa 157 breit.
-    expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).width, closeTo(157.5, 0.1));
+    expect(
+      t.getSize(find.byKey(const Key('item-huhn-bowl'))).width,
+      closeTo(157.5, 0.1),
+    );
     expect(t.getSize(find.byKey(const Key('cat-bowls'))).width, 184);
     await pumpKassa(t, size: const Size(960, 600));
     expect(_columns(t), lessThan(4));
@@ -489,29 +578,39 @@ void main() {
     expect(small, isEmpty);
   }
 
-  testWidgets('jede Tippfläche ist mindestens 48 dp (Raster, Bon, Zusammenstellen)', (t) async {
-    await pumpKassaWith(t, ['cola', 'teigtaschen']);
-    expect(find.byType(Pressable), findsWidgets);
-    await expectTapTargets(t);
-    await t.tap(find.byKey(const Key('segment-Mit Bildern')));
-    await t.pump();
-    await expectTapTargets(t);
-    await t.tap(find.byKey(const Key('clear-cart')));
-    await t.pump();
-    await expectTapTargets(t);
-    await t.tap(find.byKey(const Key('cat-bowls')));
-    await t.pump();
-    await _openBowl(t);
-    await expectTapTargets(t);
-    await t.tap(find.byKey(const Key('opt-bowl/1/0')));
-    await t.pump();
-    await expectTapTargets(t);
-    await t.tap(find.byKey(const Key('cancel-build')));
-    await t.pump(const Duration(seconds: 8));
-  });
+  testWidgets(
+    'jede Tippfläche ist mindestens 48 dp (Raster, Bon, Zusammenstellen)',
+    (t) async {
+      await pumpKassaWith(t, ['cola', 'teigtaschen']);
+      expect(find.byType(Pressable), findsWidgets);
+      await expectTapTargets(t);
+      await t.tap(find.byKey(const Key('segment-Mit Bildern')));
+      await t.pump();
+      await expectTapTargets(t);
+      await t.tap(find.byKey(const Key('clear-cart')));
+      await t.pump();
+      await expectTapTargets(t);
+      await t.tap(find.byKey(const Key('cat-bowls')));
+      await t.pump();
+      await _openBowl(t);
+      await expectTapTargets(t);
+      await t.tap(find.byKey(const Key('opt-bowl/1/0')));
+      await t.pump();
+      await expectTapTargets(t);
+      await t.tap(find.byKey(const Key('cancel-build')));
+      await t.pump(const Duration(seconds: 8));
+    },
+  );
 
-  testWidgets('kleiner Bildschirm mit großer Schrift: kein Überlauf', (t) async {
-    await pumpKassaWith(t, ['cola', 'pommes'], size: const Size(960, 600), textScale: 1.3);
+  testWidgets('kleiner Bildschirm mit großer Schrift: kein Überlauf', (
+    t,
+  ) async {
+    await pumpKassaWith(
+      t,
+      ['cola', 'pommes'],
+      size: const Size(960, 600),
+      textScale: 1.3,
+    );
     await t.tap(find.byKey(const Key('cat-bowls')));
     await t.pump();
     await _addBowl(t);

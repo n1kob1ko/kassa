@@ -5,26 +5,28 @@ import 'tokens.dart';
 /// Das Thema der App in heller oder dunkler Ansicht. Farben kommen aus
 /// [KassaColors], dieselben Namen in beiden Ansichten.
 ThemeData kassaTheme(Brightness brightness) {
-  final colors =
-      brightness == Brightness.dark ? KassaColors.dark : KassaColors.light;
+  final colors = brightness == Brightness.dark
+      ? KassaColors.dark
+      : KassaColors.light;
   final base = ThemeData(
     useMaterial3: true,
     brightness: brightness,
     fontFamily: KassaTokens.fontFamily,
     fontFamilyFallback: KassaTokens.fontFallback,
   );
-  final scheme = ColorScheme.fromSeed(
-    seedColor: KassaTokens.accent,
-    brightness: brightness,
-  ).copyWith(
-    primary: colors.accent,
-    onPrimary: colors.onAccent,
-    surface: colors.card,
-    onSurface: colors.ink,
-    onSurfaceVariant: colors.ink2,
-    outline: colors.line,
-    error: colors.red,
-  );
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: KassaTokens.accent,
+        brightness: brightness,
+      ).copyWith(
+        primary: colors.accent,
+        onPrimary: colors.onAccent,
+        surface: colors.card,
+        onSurface: colors.ink,
+        onSurfaceVariant: colors.ink2,
+        outline: colors.line,
+        error: colors.red,
+      );
   return base.copyWith(
     colorScheme: scheme,
     scaffoldBackgroundColor: colors.ground,
@@ -38,8 +40,12 @@ ThemeData kassaTheme(Brightness brightness) {
 TextTheme _textTheme(TextTheme base, KassaColors c) {
   // Tabellenziffern für die ganze App (DESIGN.md, Typography).
   const features = [FontFeature.tabularFigures()];
-  TextStyle style(double size, FontWeight weight,
-      {double height = 1.25, double spacing = 0}) {
+  TextStyle style(
+    double size,
+    FontWeight weight, {
+    double height = 1.25,
+    double spacing = 0,
+  }) {
     return TextStyle(
       fontFamily: KassaTokens.fontFamily,
       fontFamilyFallback: KassaTokens.fontFallback,

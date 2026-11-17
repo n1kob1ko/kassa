@@ -19,7 +19,10 @@ void main() {
     expect(type('1 2 , 5').cents, 1250);
     expect(type(',').text, '0,');
     expect(type('0 5').text, '5');
-    expect(type('1 , 2 3 4').text, '1,23'); // höchstens zwei Stellen nach dem Komma
+    expect(
+      type('1 , 2 3 4').text,
+      '1,23',
+    ); // höchstens zwei Stellen nach dem Komma
     expect(type('1 , , 2').text, '1,2'); // nur ein Komma
     expect(type('1 2 3 4 5').text, '1234'); // vier Stellen vor dem Komma
     expect(type('1 2 3 4 5 6 7', max: 6).cents, 12345600);

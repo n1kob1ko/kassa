@@ -5,16 +5,18 @@ import 'dart:io';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/menu_import.dart';
 
-final Catalog catalog =
-    parseMenuFile(File('assets/demo/beispiel-imbiss.json').readAsStringSync());
+final Catalog catalog = parseMenuFile(
+  File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
+);
 
 final Item cola = catalog.item('cola');
 final Item teigtaschen = catalog.item('teigtaschen');
 final Item huhnBowl = catalog.item('huhn-bowl');
 final Item leitungswasser = catalog.item('leitungswasser');
 
-final ModifierTemplate bowlTemplate =
-    catalog.templates.firstWhere((t) => t.id == 'bowl');
+final ModifierTemplate bowlTemplate = catalog.templates.firstWhere(
+  (t) => t.id == 'bowl',
+);
 
 ModifierGroup _group(String name) =>
     bowlTemplate.groups.firstWhere((g) => g.name == name);

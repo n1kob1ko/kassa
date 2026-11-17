@@ -14,15 +14,25 @@ import '../support/pump.dart';
 
 /// Wechselgeld 150,00 €, Verkauf 18,20 €, eine Einlage von 50,00 € (Soll
 /// 218,20 €).
-Future<void> _ready(WidgetTester t, {Brightness brightness = Brightness.light}) async {
-  await pumpClose(t, floatCents: 15000, brightness: brightness, openArea: false);
-  final c = containerOf(t);
-  await c.read(dayRepositoryProvider).addMovement(
-    kind: CashMovementKind.deposit,
-    amountCents: 5000,
-    reason: CashReason.change,
-    staff: c.read(sessionProvider)!,
+Future<void> _ready(
+  WidgetTester t, {
+  Brightness brightness = Brightness.light,
+}) async {
+  await pumpClose(
+    t,
+    floatCents: 15000,
+    brightness: brightness,
+    openArea: false,
   );
+  final c = containerOf(t);
+  await c
+      .read(dayRepositoryProvider)
+      .addMovement(
+        kind: CashMovementKind.deposit,
+        amountCents: 5000,
+        reason: CashReason.change,
+        staff: c.read(sessionProvider)!,
+      );
   await openClose(t);
 }
 

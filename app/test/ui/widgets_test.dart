@@ -111,21 +111,20 @@ void main() {
 
     for (final width in [1280.0, 960.0]) {
       for (final chef in [false, true]) {
-        testWidgets(
-          'Mit Betriebsname sitzt der rechte Knopf am rechten Rand '
-          '(${width.toInt()} breit, ${chef ? 'Chef' : 'Mitarbeiter'})',
-          (t) async {
-            await pumpApp(
-              t,
-              header(isChef: chef, businessName: 'Beispiel-Imbiss'),
-              size: Size(width, 800),
-            );
-            final right = t.getRect(find.byType(AppHeader)).right;
-            final last = find.byKey(Key(chef ? 'settings' : 'staff'));
-            expect(right - t.getRect(last).right, lessThanOrEqualTo(16));
-            expect(t.takeException(), isNull);
-          },
-        );
+        testWidgets('Mit Betriebsname sitzt der rechte Knopf am rechten Rand '
+            '(${width.toInt()} breit, ${chef ? 'Chef' : 'Mitarbeiter'})', (
+          t,
+        ) async {
+          await pumpApp(
+            t,
+            header(isChef: chef, businessName: 'Beispiel-Imbiss'),
+            size: Size(width, 800),
+          );
+          final right = t.getRect(find.byType(AppHeader)).right;
+          final last = find.byKey(Key(chef ? 'settings' : 'staff'));
+          expect(right - t.getRect(last).right, lessThanOrEqualTo(16));
+          expect(t.takeException(), isNull);
+        });
       }
     }
 

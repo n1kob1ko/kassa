@@ -55,7 +55,8 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
     final now = ref.watch(clockProvider).now();
     // Der Untertitel nennt den Tag, dessen Bons die Liste zeigt.
     final opened = ref.watch(openDayStreamProvider).value?.openedAt ?? now;
-    final isToday = opened.year == now.year &&
+    final isToday =
+        opened.year == now.year &&
         opened.month == now.month &&
         opened.day == now.day;
     final dayLabel =

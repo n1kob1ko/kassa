@@ -16,10 +16,12 @@ import 'pump.dart';
 
 /// Die Speisekarte des Beispiel-Imbiss ohne die Teigtaschen: 13 Artikel.
 String demoOhneTeigtaschen() {
-  final json =
-      jsonDecode(File('assets/demo/beispiel-imbiss.json').readAsStringSync())
-          as Map<String, dynamic>;
-  (json['artikel'] as List).removeWhere((a) => (a as Map)['id'] == 'teigtaschen');
+  final json = jsonDecode(
+    File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+  (json['artikel'] as List).removeWhere(
+    (a) => (a as Map)['id'] == 'teigtaschen',
+  );
   return jsonEncode(json);
 }
 
@@ -43,7 +45,10 @@ Future<void> pumpAppLoggedInAsChef(
     size: size,
     brightness: brightness,
     textScale: textScale,
-    overrides: [...await memoryOverrides(pickedFile: pickedFile, picker: picker), ...extra],
+    overrides: [
+      ...await memoryOverrides(pickedFile: pickedFile, picker: picker),
+      ...extra,
+    ],
   );
   await containerOf(t).read(sessionProvider.notifier).login('4711');
   await t.pumpAndSettle();

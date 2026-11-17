@@ -12,14 +12,12 @@ class Selection {
   const Selection._(this._template, this._chosenIds);
 
   /// Vorgabe-Optionen der Vorlage sind gewählt.
-  factory Selection.defaults(ModifierTemplate template) => Selection._(
-        template,
-        {
-          for (final g in template.groups)
-            for (final o in g.options)
-              if (o.isDefault) o.id,
-        },
-      );
+  factory Selection.defaults(ModifierTemplate template) =>
+      Selection._(template, {
+        for (final g in template.groups)
+          for (final o in g.options)
+            if (o.isDefault) o.id,
+      });
 
   final ModifierTemplate _template;
   final Set<String> _chosenIds;
@@ -49,15 +47,17 @@ class Selection {
   bool get isComplete => _template.groups.every((g) => _countIn(g) >= g.min);
 
   /// Gruppen, in denen noch Optionen fehlen.
-  List<ModifierGroup> get missing =>
-      [for (final g in _template.groups) if (_countIn(g) < g.min) g];
+  List<ModifierGroup> get missing => [
+    for (final g in _template.groups)
+      if (_countIn(g) < g.min) g,
+  ];
 
   /// Nach Gruppe, dann nach Stelle in der Gruppe geordnet.
   List<ModifierOption> get chosen => [
-        for (final g in _template.groups)
-          for (final o in g.options)
-            if (isChosen(o)) o,
-      ];
+    for (final g in _template.groups)
+      for (final o in g.options)
+        if (isChosen(o)) o,
+  ];
 
   int get surchargeCents => chosen.fold(0, (sum, o) => sum + o.surchargeCents);
 }
@@ -79,7 +79,8 @@ class CartLine {
       item.priceCents + options.fold(0, (sum, o) => sum + o.surchargeCents);
 
   int get unitDepositCents =>
-      item.depositCents + options.fold(0, (sum, o) => sum + (o.depositCents ?? 0));
+      item.depositCents +
+      options.fold(0, (sum, o) => sum + (o.depositCents ?? 0));
 
   int get goodsCents => unitPriceCents * quantity;
 
@@ -98,9 +99,15 @@ class Cart {
 
   final List<CartLine> lines;
 
-  Cart add(Item item, {List<ModifierOption> options = const [], String? lineId}) {
+  Cart add(
+    Item item, {
+    List<ModifierOption> options = const [],
+    String? lineId,
+  }) {
     if (item.templateId == null && options.isEmpty) {
-      final i = lines.indexWhere((l) => l.item.id == item.id && l.options.isEmpty);
+      final i = lines.indexWhere(
+        (l) => l.item.id == item.id && l.options.isEmpty,
+      );
       if (i >= 0) {
         final next = [...lines];
         next[i] = next[i].withQuantity(_cap(next[i].quantity + 1));
@@ -121,12 +128,15 @@ class Cart {
   Cart setQuantity(String lineId, int quantity) {
     if (quantity <= 0) return remove(lineId);
     return Cart._([
-      for (final l in lines) l.lineId == lineId ? l.withQuantity(_cap(quantity)) : l,
+      for (final l in lines)
+        l.lineId == lineId ? l.withQuantity(_cap(quantity)) : l,
     ]);
   }
 
-  Cart remove(String lineId) =>
-      Cart._([for (final l in lines) if (l.lineId != lineId) l]);
+  Cart remove(String lineId) => Cart._([
+    for (final l in lines)
+      if (l.lineId != lineId) l,
+  ]);
 
   int get goodsCents => lines.fold(0, (sum, l) => sum + l.goodsCents);
 
@@ -137,16 +147,16 @@ class Cart {
   bool get isEmpty => lines.isEmpty;
 
   Map<String, dynamic> toJson() => {
-        'lines': [
-          for (final l in lines)
-            {
-              'lineId': l.lineId,
-              'itemId': l.item.id,
-              'quantity': l.quantity,
-              'optionIds': [for (final o in l.options) o.id],
-            },
-        ],
-      };
+    'lines': [
+      for (final l in lines)
+        {
+          'lineId': l.lineId,
+          'itemId': l.item.id,
+          'quantity': l.quantity,
+          'optionIds': [for (final o in l.options) o.id],
+        },
+    ],
+  };
 
   /// Der Bon gegen einen (geänderten) Katalog neu aufgelöst: Zeilenkennung,
   /// Menge und Options-Ids bleiben, Artikel und Optionen kommen aus [catalog].
@@ -177,7 +187,8 @@ class Cart {
         continue;
       }
       final known = {
-        for (final g in catalog.templateOf(item)?.groups ?? const <ModifierGroup>[])
+        for (final g
+            in catalog.templateOf(item)?.groups ?? const <ModifierGroup>[])
           for (final o in g.options) o.id: o,
       };
       final options = <ModifierOption>[];
@@ -192,12 +203,14 @@ class Cart {
       }
       if (!ok) continue;
       seen.add(lineId);
-      lines.add(CartLine(
-        lineId: lineId,
-        item: item,
-        quantity: _cap(quantity),
-        options: options,
-      ));
+      lines.add(
+        CartLine(
+          lineId: lineId,
+          item: item,
+          quantity: _cap(quantity),
+          options: options,
+        ),
+      );
     }
     return Cart._(lines);
   }

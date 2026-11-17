@@ -69,7 +69,11 @@ class ItemTile extends StatelessWidget {
           ),
           if (showImage)
             for (final t in _tags(item).take(1))
-              Positioned(top: 11, left: 11, child: _TagPill(tag: t, small: false)),
+              Positioned(
+                top: 11,
+                left: 11,
+                child: _TagPill(tag: t, small: false),
+              ),
           if (selected)
             Positioned(
               top: showImage ? 11 : -7,
@@ -138,9 +142,7 @@ class _TagPill extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: vegan ? c.veganBg : c.spicyBg,
-        borderRadius: BorderRadius.circular(
-          small ? KassaTokens.radiusXs : 6,
-        ),
+        borderRadius: BorderRadius.circular(small ? KassaTokens.radiusXs : 6),
       ),
       child: Text(
         vegan ? 'VEGAN' : 'SCHARF',

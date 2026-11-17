@@ -23,7 +23,8 @@ class InsufficientCashException implements Exception {
   const InsufficientCashException();
 
   @override
-  String toString() => 'InsufficientCashException: Es wurde weniger gegeben als die Summe.';
+  String toString() =>
+      'InsufficientCashException: Es wurde weniger gegeben als die Summe.';
 }
 
 class AlreadyVoidedException implements Exception {
@@ -37,7 +38,8 @@ class CannotVoidAVoidException implements Exception {
   const CannotVoidAVoidException();
 
   @override
-  String toString() => 'CannotVoidAVoidException: Ein Storno-Bon kann nicht storniert werden.';
+  String toString() =>
+      'CannotVoidAVoidException: Ein Storno-Bon kann nicht storniert werden.';
 }
 
 class ReceiptRepository {
@@ -126,7 +128,9 @@ class ReceiptRepository {
               quantity: -l.quantity,
               unitDepositCents: l.unitDepositCents,
               options: l.options,
-              grossByRate: {for (final e in l.grossByRate.entries) e.key: -e.value},
+              grossByRate: {
+                for (final e in l.grossByRate.entries) e.key: -e.value,
+              },
             ),
         ],
         goodsCents: -original.goodsCents,
@@ -264,7 +268,9 @@ class ReceiptRepository {
     ])..where(_db.modifierOptionRows.id.isIn(ids));
     return {
       for (final r in await query.get())
-        r.readTable(_db.modifierOptionRows).id: r.readTable(_db.modifierGroupRows).name,
+        r.readTable(_db.modifierOptionRows).id: r
+            .readTable(_db.modifierGroupRows)
+            .name,
     };
   }
 
@@ -325,8 +331,9 @@ class ReceiptRepository {
                 quantity: l.quantity,
                 unitDepositCents: l.unitDepositCents,
                 options: [
-                  for (final o in optionsOf[(r.id, l.position)] ??
-                      const <ReceiptLineOptionRow>[])
+                  for (final o
+                      in optionsOf[(r.id, l.position)] ??
+                          const <ReceiptLineOptionRow>[])
                     ReceiptLineOption(
                       groupName: o.groupName,
                       optionName: o.optionName,

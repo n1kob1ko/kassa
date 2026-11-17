@@ -26,7 +26,9 @@ void main() {
     );
   });
 
-  testWidgets('Einstellungen, Speisekarte neu einspielen, Rückfrage (hell)', (t) async {
+  testWidgets('Einstellungen, Speisekarte neu einspielen, Rückfrage (hell)', (
+    t,
+  ) async {
     await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();

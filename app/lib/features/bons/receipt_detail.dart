@@ -11,7 +11,6 @@ import '../login/session.dart';
 import 'receipt_list.dart';
 import 'void_question.dart';
 
-
 /// Die Spalte rechts (392 dp): der gewählte Bon mit Zeilen, Steuer, Zahlung
 /// und, wenn erlaubt, "Stornieren". Die Rückfrage steht an Ort und Stelle.
 /// [all] sind die Bons des Tages (für Namen und Nummern der Storno-Paare).

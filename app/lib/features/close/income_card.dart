@@ -182,11 +182,19 @@ class _Section extends StatelessWidget {
               if (headers != null) ...[
                 ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 100),
-                  child: Text(headers![0], textAlign: TextAlign.end, style: head),
+                  child: Text(
+                    headers![0],
+                    textAlign: TextAlign.end,
+                    style: head,
+                  ),
                 ),
                 ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 96),
-                  child: Text(headers![1], textAlign: TextAlign.end, style: head),
+                  child: Text(
+                    headers![1],
+                    textAlign: TextAlign.end,
+                    style: head,
+                  ),
                 ),
               ],
             ],

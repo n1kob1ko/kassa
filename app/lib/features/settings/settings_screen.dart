@@ -64,8 +64,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             key: const Key('toggle-drawer'),
             label: 'Geldlade',
             value: s.cashDrawerEnabled,
-            onChanged: (v) =>
-                _change((s) => s.copyWith(cashDrawerEnabled: v)),
+            onChanged: (v) => _change((s) => s.copyWith(cashDrawerEnabled: v)),
           ),
         ),
       ],
@@ -112,8 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             key: const Key('toggle-void-chef'),
             label: 'Storno nur durch den Chef',
             value: s.voidRequiresChef,
-            onChanged: (v) =>
-                _change((s) => s.copyWith(voidRequiresChef: v)),
+            onChanged: (v) => _change((s) => s.copyWith(voidRequiresChef: v)),
           ),
         ),
         const ReimportPanel(),
@@ -135,9 +133,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
-                      business == null
-                          ? 'Kassa 1'
-                          : 'Kassa 1 bei $business',
+                      business == null ? 'Kassa 1' : 'Kassa 1 bei $business',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.labelLarge!.copyWith(

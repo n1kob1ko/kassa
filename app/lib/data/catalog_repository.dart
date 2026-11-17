@@ -19,21 +19,32 @@ class CatalogRepository {
     for (final item in c.items) {
       if (!categoryIds.contains(item.categoryId)) {
         throw StateError(
-            'Artikel "${item.id}": Kategorie "${item.categoryId}" gibt es nicht.');
+          'Artikel "${item.id}": Kategorie "${item.categoryId}" gibt es nicht.',
+        );
       }
     }
     await _db.transaction(() async {
-      await _db.into(_db.businessRows).insertOnConflictUpdate(
-          BusinessRowsCompanion.insert(id: const Value(1), name: c.businessName));
+      await _db
+          .into(_db.businessRows)
+          .insertOnConflictUpdate(
+            BusinessRowsCompanion.insert(
+              id: const Value(1),
+              name: c.businessName,
+            ),
+          );
 
       // Kategorien
       for (final k in c.categories) {
-        await _db.into(_db.categoryRows).insertOnConflictUpdate(
-            CategoryRowsCompanion.insert(
+        await _db
+            .into(_db.categoryRows)
+            .insertOnConflictUpdate(
+              CategoryRowsCompanion.insert(
                 id: k.id,
                 name: k.name,
                 position: k.position,
-                archived: const Value(false)));
+                archived: const Value(false),
+              ),
+            );
       }
       await (_db.update(_db.categoryRows)
             ..where((t) => t.id.isNotIn(categoryIds)))
@@ -45,23 +56,35 @@ class CatalogRepository {
       await _db.delete(_db.modifierTemplateRows).go();
       for (var t = 0; t < c.templates.length; t++) {
         final template = c.templates[t];
-        await _db.into(_db.modifierTemplateRows).insert(
-            ModifierTemplateRowsCompanion.insert(
-                id: template.id, name: template.name, position: t));
+        await _db
+            .into(_db.modifierTemplateRows)
+            .insert(
+              ModifierTemplateRowsCompanion.insert(
+                id: template.id,
+                name: template.name,
+                position: t,
+              ),
+            );
         for (var g = 0; g < template.groups.length; g++) {
           final group = template.groups[g];
-          await _db.into(_db.modifierGroupRows).insert(
-              ModifierGroupRowsCompanion.insert(
+          await _db
+              .into(_db.modifierGroupRows)
+              .insert(
+                ModifierGroupRowsCompanion.insert(
                   id: group.id,
                   templateId: template.id,
                   name: group.name,
                   minCount: group.min,
                   maxCount: Value(group.max),
-                  position: g));
+                  position: g,
+                ),
+              );
           for (var o = 0; o < group.options.length; o++) {
             final option = group.options[o];
-            await _db.into(_db.modifierOptionRows).insert(
-                ModifierOptionRowsCompanion.insert(
+            await _db
+                .into(_db.modifierOptionRows)
+                .insert(
+                  ModifierOptionRowsCompanion.insert(
                     id: option.id,
                     groupId: group.id,
                     name: option.name,
@@ -69,7 +92,9 @@ class CatalogRepository {
                     isDefault: Value(option.isDefault),
                     taxPercent: Value(option.taxRate?.percent),
                     depositCents: Value(option.depositCents),
-                    position: o));
+                    position: o,
+                  ),
+                );
           }
         }
       }
@@ -82,23 +107,26 @@ class CatalogRepository {
       for (final i in c.items) {
         itemIds.add(i.id);
         final old = existing[i.id];
-        await _db.into(_db.itemRows).insertOnConflictUpdate(
-            ItemRowsCompanion.insert(
-          id: i.id,
-          name: i.name,
-          priceCents: i.priceCents,
-          categoryId: i.categoryId,
-          taxPercent: i.taxRate.percent,
-          depositCents: Value(i.depositCents),
-          tags: Value(_encodeTags(i.tags)),
-          info: Value(i.info),
-          templateId: Value(i.templateId),
-          favorite: Value(old?.favorite ?? i.favorite),
-          inSale: Value(old?.inSale ?? i.inSale),
-          photoPath: Value(i.photoPath),
-          position: i.position,
-          archived: const Value(false),
-        ));
+        await _db
+            .into(_db.itemRows)
+            .insertOnConflictUpdate(
+              ItemRowsCompanion.insert(
+                id: i.id,
+                name: i.name,
+                priceCents: i.priceCents,
+                categoryId: i.categoryId,
+                taxPercent: i.taxRate.percent,
+                depositCents: Value(i.depositCents),
+                tags: Value(_encodeTags(i.tags)),
+                info: Value(i.info),
+                templateId: Value(i.templateId),
+                favorite: Value(old?.favorite ?? i.favorite),
+                inSale: Value(old?.inSale ?? i.inSale),
+                photoPath: Value(i.photoPath),
+                position: i.position,
+                archived: const Value(false),
+              ),
+            );
       }
       await (_db.update(_db.itemRows)..where((t) => t.id.isNotIn(itemIds)))
           .write(const ItemRowsCompanion(archived: Value(true)));
@@ -119,34 +147,38 @@ class CatalogRepository {
 
   Stream<Catalog?> _watch(Set<TableInfo> tables) async* {
     yield await current();
-    await for (final _ in _db.tableUpdates(TableUpdateQuery.onAllTables(tables))) {
+    await for (final _ in _db.tableUpdates(
+      TableUpdateQuery.onAllTables(tables),
+    )) {
       yield await current();
     }
   }
 
   Future<Catalog?> current() async {
-    final business = await (_db.select(_db.businessRows)
-          ..where((t) => t.id.equals(1)))
-        .getSingleOrNull();
+    final business = await (_db.select(
+      _db.businessRows,
+    )..where((t) => t.id.equals(1))).getSingleOrNull();
     if (business == null) return null;
 
-    final categories = await (_db.select(_db.categoryRows)
-          ..where((t) => t.archived.equals(false))
-          ..orderBy([(t) => OrderingTerm.asc(t.position)]))
-        .get();
-    final items = await (_db.select(_db.itemRows)
-          ..where((t) => t.archived.equals(false))
-          ..orderBy([(t) => OrderingTerm.asc(t.position)]))
-        .get();
-    final templates = await (_db.select(_db.modifierTemplateRows)
-          ..orderBy([(t) => OrderingTerm.asc(t.position)]))
-        .get();
-    final groups = await (_db.select(_db.modifierGroupRows)
-          ..orderBy([(t) => OrderingTerm.asc(t.position)]))
-        .get();
-    final options = await (_db.select(_db.modifierOptionRows)
-          ..orderBy([(t) => OrderingTerm.asc(t.position)]))
-        .get();
+    final categories =
+        await (_db.select(_db.categoryRows)
+              ..where((t) => t.archived.equals(false))
+              ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+            .get();
+    final items =
+        await (_db.select(_db.itemRows)
+              ..where((t) => t.archived.equals(false))
+              ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+            .get();
+    final templates = await (_db.select(
+      _db.modifierTemplateRows,
+    )..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
+    final groups = await (_db.select(
+      _db.modifierGroupRows,
+    )..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
+    final options = await (_db.select(
+      _db.modifierOptionRows,
+    )..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
 
     return Catalog(
       businessName: business.name,
@@ -214,15 +246,18 @@ class CatalogRepository {
     int? depositCents,
     Set<ItemTag>? tags,
   }) async {
-    final changed = await (_db.update(_db.itemRows)
-          ..where((t) => t.id.equals(itemId)))
-        .write(ItemRowsCompanion(
-      priceCents: Value.absentIfNull(priceCents),
-      inSale: Value.absentIfNull(inSale),
-      favorite: Value.absentIfNull(favorite),
-      depositCents: Value.absentIfNull(depositCents),
-      tags: Value.absentIfNull(tags == null ? null : _encodeTags(tags)),
-    ));
+    final changed =
+        await (_db.update(
+          _db.itemRows,
+        )..where((t) => t.id.equals(itemId))).write(
+          ItemRowsCompanion(
+            priceCents: Value.absentIfNull(priceCents),
+            inSale: Value.absentIfNull(inSale),
+            favorite: Value.absentIfNull(favorite),
+            depositCents: Value.absentIfNull(depositCents),
+            tags: Value.absentIfNull(tags == null ? null : _encodeTags(tags)),
+          ),
+        );
     if (changed == 0) throw StateError('Artikel "$itemId" gibt es nicht.');
   }
 }
@@ -231,6 +266,6 @@ String _encodeTags(Set<ItemTag> tags) =>
     (tags.map((t) => t.name).toList()..sort()).join(',');
 
 Set<ItemTag> _decodeTags(String s) => {
-      for (final n in s.split(','))
-        if (n.isNotEmpty) ItemTag.values.byName(n),
-    };
+  for (final n in s.split(','))
+    if (n.isNotEmpty) ItemTag.values.byName(n),
+};

@@ -26,9 +26,13 @@ final databaseProvider = Provider<KassaDatabase>((ref) {
 
 final clockProvider = Provider<Clock>((ref) => const SystemClock());
 
-final catalogRepositoryProvider = Provider((ref) => CatalogRepository(ref.watch(databaseProvider)));
+final catalogRepositoryProvider = Provider(
+  (ref) => CatalogRepository(ref.watch(databaseProvider)),
+);
 
-final staffRepositoryProvider = Provider((ref) => StaffRepository(ref.watch(databaseProvider)));
+final staffRepositoryProvider = Provider(
+  (ref) => StaffRepository(ref.watch(databaseProvider)),
+);
 
 final settingsRepositoryProvider = Provider(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
@@ -47,7 +51,8 @@ final receiptRepositoryProvider = Provider(
 );
 
 final statsRepositoryProvider = Provider(
-  (ref) => StatsRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+  (ref) =>
+      StatsRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
 );
 
 /// Die eingespielte Speisekarte, `null` solange keine da ist.
@@ -90,15 +95,18 @@ final todayReceiptsProvider = StreamProvider<List<Receipt>>((ref) {
 
 /// Die Zahlen der Übersicht für einen Zeitraum. Wird verworfen, sobald der
 /// Bereich nicht mehr angezeigt wird: beim nächsten Öffnen sind die Zahlen neu.
-final overviewProvider = FutureProvider.autoDispose.family<Overview, StatsRange>(
-  (ref, range) => ref.watch(statsRepositoryProvider).overview(range),
-);
+final overviewProvider = FutureProvider.autoDispose
+    .family<Overview, StatsRange>(
+      (ref, range) => ref.watch(statsRepositoryProvider).overview(range),
+    );
 
 /// Die Zahlen des Abschlusses: der offene Tag, sonst der zuletzt
 /// abgeschlossene, `null`, solange es noch gar keinen Tag gab. Wird verworfen,
 /// sobald der Bereich nicht mehr angezeigt wird, und nach jedem Schreiben dort
 /// neu geholt.
-final closeSummaryProvider = FutureProvider.autoDispose<DaySummary?>((ref) async {
+final closeSummaryProvider = FutureProvider.autoDispose<DaySummary?>((
+  ref,
+) async {
   final days = ref.watch(dayRepositoryProvider);
   return await days.summary() ?? await days.lastClosedSummary();
 });

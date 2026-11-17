@@ -167,16 +167,8 @@ class KassaColors extends ThemeExtension<KassaColors> {
     spicyBg: Color(0xFFFDE3DF),
     spicyFg: Color(0xFFA1201A),
     cardShadow: [
-      BoxShadow(
-        color: Color(0x0F101828),
-        offset: Offset(0, 1),
-        blurRadius: 2,
-      ),
-      BoxShadow(
-        color: Color(0x08101828),
-        offset: Offset(0, 1),
-        blurRadius: 1,
-      ),
+      BoxShadow(color: Color(0x0F101828), offset: Offset(0, 1), blurRadius: 2),
+      BoxShadow(color: Color(0x08101828), offset: Offset(0, 1), blurRadius: 1),
     ],
   );
 

@@ -86,6 +86,4 @@ class CartController extends Notifier<Cart> {
   }
 }
 
-final cartProvider = NotifierProvider<CartController, Cart>(
-  CartController.new,
-);
+final cartProvider = NotifierProvider<CartController, Cart>(CartController.new);

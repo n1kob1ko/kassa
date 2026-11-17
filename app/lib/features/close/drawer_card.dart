@@ -74,7 +74,9 @@ class DrawerCard extends StatelessWidget {
           ),
           SummaryLine(
             label: 'Wechselgeld am Morgen',
-            amount: floatKnown ? formatEuro(day.openingFloatCents!) : 'Noch offen',
+            amount: floatKnown
+                ? formatEuro(day.openingFloatCents!)
+                : 'Noch offen',
             amountMuted: !floatKnown,
             amountKey: const Key('left-float'),
           ),
@@ -161,10 +163,8 @@ class _MoveButton extends StatelessWidget {
               Text(
                 label,
                 maxLines: 1,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: fg,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium!
+                    .copyWith(fontWeight: FontWeight.w700, color: fg),
               ),
             ],
           ),
