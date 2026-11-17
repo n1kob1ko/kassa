@@ -60,3 +60,14 @@ final setupCompleteProvider = FutureProvider<bool>((ref) async {
   final staff = await ref.read(staffRepositoryProvider).all();
   return staff.any((s) => s.isChef);
 });
+
+/// Die Speisekarte als Strom: ändert sich ein Artikel (zum Beispiel "im
+/// Verkauf"), sieht es die Kassa sofort.
+final catalogStreamProvider = StreamProvider<Catalog?>(
+  (ref) => ref.watch(catalogRepositoryProvider).watch(),
+);
+
+/// Die Einstellungen der Kassa als Strom.
+final settingsStreamProvider = StreamProvider<RegisterSettings>(
+  (ref) => ref.watch(settingsRepositoryProvider).watch(),
+);

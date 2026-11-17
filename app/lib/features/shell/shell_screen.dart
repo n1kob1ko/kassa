@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/providers.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
+import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
 
 /// Kopfleiste und der gewählte Bereich darunter.
@@ -43,10 +44,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 }
 
 /// Hier wird das Bild eines Bereichs gewählt. Bis ihre Aufgaben fertig sind,
-/// zeigen alle fünf einen leeren Platzhalter.
+/// zeigen die anderen vier einen leeren Platzhalter.
 Widget _areaWidget(AppArea area) {
   switch (area) {
     case AppArea.kassa:
+      // "Bar" macht der nächste Schritt.
+      return KassaScreen(key: const Key('area-kassa'), onPayCash: () {});
     case AppArea.bons:
     case AppArea.overview:
     case AppArea.items:

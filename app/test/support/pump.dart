@@ -69,7 +69,11 @@ Future<void> pumpApp(
   t.view.devicePixelRatio = 1.0;
   t.platformDispatcher.textScaleFactorTestValue = textScale;
   t.platformDispatcher.platformBrightnessTestValue = brightness;
-  addTearDown(() {
+  addTearDown(() async {
+    // Die Oberfläche zuerst abbauen: Datenbank-Ströme (Kassa) müssen
+    // abbestellt sein, bevor `memoryOverrides` die Datenbank schließt.
+    await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(milliseconds: 10));
     t.view.resetPhysicalSize();
     t.view.resetDevicePixelRatio();
     t.platformDispatcher.clearTextScaleFactorTestValue();

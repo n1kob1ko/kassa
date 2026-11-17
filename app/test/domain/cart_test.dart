@@ -87,4 +87,53 @@ void main() {
     final cart = const Cart.empty().add(cola, options: [bottle]);
     expect(cart.depositCents, 25 + 100);
   });
+
+  group('Bon aus einem gespeicherten Entwurf lesen', () {
+    Map<String, dynamic> line(Object? quantity, {Object? lineId = 'a', Object? itemId = 'cola', Object? optionIds}) => {
+          'lineId': lineId,
+          'itemId': itemId,
+          'quantity': quantity,
+          'optionIds': ?optionIds,
+        };
+
+    test('Zeilen mit Menge unter 1 fallen weg', () {
+      final cart = Cart.fromJson({
+        'lines': [line(0, lineId: 'a'), line(-3, lineId: 'b'), line(2, lineId: 'c')],
+      }, catalog);
+      expect(cart.lines.map((l) => (l.lineId, l.quantity)), [('c', 2)]);
+    });
+
+    test('Zeilen mit falschen Typen fallen weg, der Rest bleibt', () {
+      final cart = Cart.fromJson({
+        'lines': [
+          line('2', lineId: 'a'),
+          line(1, lineId: 'b', itemId: 7),
+          line(1, lineId: 3),
+          line(1, lineId: 'd', optionIds: 'Reis'),
+          line(1, lineId: 'e', optionIds: [4]),
+          'keine Zeile',
+          null,
+          line(1, lineId: 'ok'),
+        ],
+      }, catalog);
+      expect(cart.lines.map((l) => l.lineId), ['ok']);
+    });
+
+    test('lines ist keine Liste: leerer Bon', () {
+      expect(Cart.fromJson({'lines': 'x'}, catalog).isEmpty, isTrue);
+      expect(Cart.fromJson({'lines': 5}, catalog).isEmpty, isTrue);
+      expect(Cart.fromJson(const {}, catalog).isEmpty, isTrue);
+    });
+
+    test('doppelte Zeilen-Kennung: nur die erste bleibt', () {
+      final cart = Cart.fromJson({
+        'lines': [line(1, lineId: 'a'), line(2, lineId: 'a')],
+      }, catalog);
+      expect(cart.lines.single.quantity, 1);
+    });
+
+    test('zu große Menge wird auf 99 begrenzt', () {
+      expect(Cart.fromJson({'lines': [line(500)]}, catalog).lines.single.quantity, 99);
+    });
+  });
 }

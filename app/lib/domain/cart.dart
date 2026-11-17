@@ -148,15 +148,25 @@ class Cart {
         ],
       };
 
-  /// Zeilen, deren Artikel oder Option es im Katalog nicht mehr gibt,
-  /// fallen weg.
+  /// Zeilen, deren Artikel oder Option es im Katalog nicht mehr gibt, mit
+  /// Menge unter 1, mit falschen Typen oder mit doppelter Kennung fallen weg.
+  /// Das Lesen wirft nie wegen des Inhalts.
   static Cart fromJson(Map<String, dynamic> json, Catalog catalog) {
+    final rawLines = json['lines'];
+    if (rawLines is! List) return const Cart.empty();
     final lines = <CartLine>[];
-    for (final raw in (json['lines'] as List? ?? const [])) {
-      final m = raw as Map<String, dynamic>;
+    final seen = <String>{};
+    for (final raw in rawLines) {
+      if (raw is! Map) continue;
+      final lineId = raw['lineId'];
+      final itemId = raw['itemId'];
+      final quantity = raw['quantity'];
+      final optionIds = raw['optionIds'] ?? const [];
+      if (lineId is! String || itemId is! String || quantity is! int) continue;
+      if (quantity < 1 || optionIds is! List || seen.contains(lineId)) continue;
       final Item item;
       try {
-        item = catalog.item(m['itemId'] as String);
+        item = catalog.item(itemId);
       } on StateError {
         continue;
       }
@@ -166,8 +176,8 @@ class Cart {
       };
       final options = <ModifierOption>[];
       var ok = true;
-      for (final id in (m['optionIds'] as List? ?? const [])) {
-        final o = known[id];
+      for (final id in optionIds) {
+        final o = id is String ? known[id] : null;
         if (o == null) {
           ok = false;
           break;
@@ -175,10 +185,11 @@ class Cart {
         options.add(o);
       }
       if (!ok) continue;
+      seen.add(lineId);
       lines.add(CartLine(
-        lineId: m['lineId'] as String,
+        lineId: lineId,
         item: item,
-        quantity: _cap(m['quantity'] as int),
+        quantity: _cap(quantity),
         options: options,
       ));
     }
