@@ -9,3 +9,8 @@ app/android/.gradle/
 app/android/local.properties
 app/android/**/GeneratedPluginRegistrant.*
 .DS_Store
+
+# Schlüssel zum Signieren gehören nie ins Repo
+*.jks
+*.keystore
+key.properties
