@@ -61,7 +61,9 @@ Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Niko h
 
 Stil, von Niko am 17.11.2026 über Beispielbilder vorgegeben (Tasty Station, Restroq, DineDash, ByteCaisse): hell, viel Weißraum, weiche weiße Karten mit runden Ecken, eine einzige Akzentfarbe, Produktfotos auf den Artikeltasten. Bunte Tasten pro Kategorie sind damit verworfen. Fotos sind pro Artikel freiwillig, jede Kassa kann zwischen "Mit Bildern" und "Kompakt" umschalten, Artikel ohne Foto bekommen einen ruhigen Platzhalter. Die Kundenanzeige folgt demselben Stil.
 
-Noch nicht festgelegt: Logo, endgültige Akzentfarbe (Vorschlag Petrol, zur Wahl stehen auch Paprika, Blau und Rot) und Schrift (Vorschlag Figtree).
+Akzentfarbe: Petrol (#0F766E). Niko hat die Wahl am 17.11.2026 abgegeben ("Farbe ist mir egal, es soll einfach angenehm zum Ansehen sein"). Schrift: Figtree. Das Aussehen des Kassenbildschirms hat Niko am selben Tag bestätigt. Noch nicht festgelegt: Logo.
+
+Bereiche der App, als Reiter in der Kopfleiste: Kassa, Bons, Übersicht (Umsatz, Verlauf, Zahlungsarten, meistverkaufte Artikel), Artikel (Schalter und Zahlenfeld, Namen und Fotos nur im Browser) und Abschluss (Tagesabschluss mit Geldlade zählen).
 
 ## Evidence on Hand
 
