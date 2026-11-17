@@ -53,6 +53,13 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
     final text = Theme.of(context).textTheme;
     final all = ref.watch(todayReceiptsProvider).value;
     final now = ref.watch(clockProvider).now();
+    // Der Untertitel nennt den Tag, dessen Bons die Liste zeigt.
+    final opened = ref.watch(openDayStreamProvider).value?.openedAt ?? now;
+    final isToday = opened.year == now.year &&
+        opened.month == now.month &&
+        opened.day == now.day;
+    final dayLabel =
+        '${germanWeekdays[opened.weekday - 1]} ${opened.day}. ${germanMonths[opened.month - 1]}';
     final newestFirst = [...?all?.reversed];
     final shown = [
       for (final r in newestFirst)
@@ -80,7 +87,7 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(
-                            'Heute, ${germanWeekdays[now.weekday - 1]} ${now.day}. ${germanMonths[now.month - 1]}',
+                            isToday ? 'Heute, $dayLabel' : dayLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.labelLarge!.copyWith(

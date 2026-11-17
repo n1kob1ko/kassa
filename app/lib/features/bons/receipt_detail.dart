@@ -263,7 +263,12 @@ class _Body extends StatelessWidget {
                 '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}',
                 style: small,
               ),
-              Text('Boniert von ${r.staffName}', style: small),
+              Text(
+                r.kind == ReceiptKind.voided
+                    ? 'Storniert von ${r.staffName}'
+                    : 'Boniert von ${r.staffName}',
+                style: small,
+              ),
               if (r.isVoided)
                 Padding(
                   padding: const EdgeInsets.only(top: KassaTokens.spaceSm),
