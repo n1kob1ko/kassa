@@ -1,0 +1,147 @@
+// Gemeinsame Helfer für Widget-Tests.
+//
+// Datenbank im Speicher: `memoryOverrides` ist asynchron. Drift auf
+// `NativeDatabase.memory()` läuft im selben Isolate und antwortet über
+// Microtasks. Das reicht, damit `await memoryOverrides()` direkt im Körper
+// von `testWidgets` funktioniert (der Testkörper wartet in der FakeAsync-Zone
+// auf Microtasks). Nach dem Aufbau der Oberfläche gilt: Datenbankaufrufe, die
+// ein Widget über Riverpod auslöst, werden von `t.pump()` vorangebracht;
+// Aufrufe der Repositories direkt im Testkörper (`await repo.x()`) laufen
+// ebenfalls ohne `t.runAsync`. Nur echte Zeit (Timer, Dateien, Isolate) braucht
+// `t.runAsync`.
+
+import 'dart:io';
+
+import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/app.dart';
+import 'package:kassa/core/clock.dart';
+import 'package:kassa/data/catalog_repository.dart';
+import 'package:kassa/data/database.dart';
+import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/ui/theme.dart';
+import 'package:material_ui/material_ui.dart';
+
+import 'demo_fixtures.dart';
+
+Future<void>? _fonts;
+
+/// Lädt Figtree aus `assets/fonts` und die Lucide-Symbole, damit Bildvergleiche
+/// echten Text und echte Symbole zeigen.
+Future<void> loadFigtree() => _fonts ??= () async {
+  final loader = FontLoader('Figtree');
+  for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
+    final bytes = File('assets/fonts/Figtree-$w.ttf').readAsBytesSync();
+    loader.addFont(
+      Future.value(ByteData.sublistView(Uint8List.fromList(bytes))),
+    );
+  }
+  await loader.load();
+  // Lucide-Symbole kommen aus dem Paket, nicht aus dem Testgerät.
+  final lucide = FontLoader('packages/lucide_icons_flutter/Lucide')
+    ..addFont(
+      rootBundle.load('packages/lucide_icons_flutter/assets/lucide.ttf'),
+    );
+  await lucide.load();
+}();
+
+/// Baut [child] in einer Umgebung wie in der App: Größe, Pixelverhältnis 1,0,
+/// Textskala, Thema, [ProviderScope]. Ist [child] die [KassaApp] selbst, kommen
+/// nur [ProviderScope] und die Einstellung der Fläche dazu.
+Future<void> pumpApp(
+  WidgetTester t,
+  Widget child, {
+  Size size = const Size(1280, 800),
+  Brightness brightness = Brightness.light,
+  double textScale = 1.0,
+  List<Override> overrides = const [],
+}) async {
+  // Schriften laden braucht echte Zeit, nicht die FakeAsync-Uhr des Tests.
+  await t.runAsync(loadFigtree);
+  t.view.physicalSize = size;
+  t.view.devicePixelRatio = 1.0;
+  t.platformDispatcher.textScaleFactorTestValue = textScale;
+  t.platformDispatcher.platformBrightnessTestValue = brightness;
+  addTearDown(() {
+    t.view.resetPhysicalSize();
+    t.view.resetDevicePixelRatio();
+    t.platformDispatcher.clearTextScaleFactorTestValue();
+    t.platformDispatcher.clearPlatformBrightnessTestValue();
+  });
+
+  final Widget root;
+  if (child is KassaApp) {
+    root = ProviderScope(overrides: overrides, child: child);
+  } else {
+    root = ProviderScope(
+      overrides: overrides,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: kassaTheme(brightness),
+        home: Scaffold(body: child),
+      ),
+    );
+  }
+  await t.pumpWidget(root);
+}
+
+/// Datenbank im Speicher und feste Uhr (Standard 17.11.2026, 11 Uhr). Mit
+/// [seeded] sind der Beispiel-Imbiss eingespielt, der Chef "Chef" (PIN 4711)
+/// und die Mitarbeiterin "Anna" (PIN 1234) angelegt, sonst ist alles leer.
+/// Die Datenbank wird am Ende des Tests geschlossen.
+Future<List<Override>> memoryOverrides({
+  bool seeded = true,
+  Clock? clock,
+}) async {
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  final db = KassaDatabase(NativeDatabase.memory());
+  addTearDown(db.close);
+  if (seeded) {
+    await CatalogRepository(db).importCatalog(catalog);
+    final staff = StaffRepository(db);
+    await staff.create(name: 'Chef', pin: '4711', role: StaffRole.chef);
+    await staff.create(name: 'Anna', pin: '1234', role: StaffRole.staff);
+  }
+  return [
+    databaseProvider.overrideWithValue(db),
+    clockProvider.overrideWithValue(
+      clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
+    ),
+  ];
+}
+
+/// Text des [Text]-Widgets mit diesem [key], oder des ersten [Text] darunter.
+String textOf(WidgetTester t, Key key) {
+  final finder = find.byKey(key);
+  final widget = t.widget(finder);
+  final Text text = widget is Text
+      ? widget
+      : t.widget<Text>(
+          find.descendant(of: finder, matching: find.byType(Text)).first,
+        );
+  return text.data ?? text.textSpan?.toPlainText() ?? '';
+}
+
+/// Tippt Tasten des Zahlenfelds, durch Leerzeichen getrennt, z. B.
+/// `'1 2 , 5 0 back'`. Pumpt nach jeder Taste.
+Future<void> tapKeys(WidgetTester t, String keys) async {
+  for (final k in keys.split(' ').where((k) => k.isNotEmpty)) {
+    final name = switch (k) {
+      ',' => 'comma',
+      'back' => 'back',
+      _ => k,
+    };
+    await t.tap(find.byKey(Key('key-$name')));
+    await t.pump();
+  }
+}
+
+/// Tippt die Ziffern einer PIN.
+Future<void> typePin(WidgetTester t, String pin) =>
+    tapKeys(t, pin.split('').join(' '));
