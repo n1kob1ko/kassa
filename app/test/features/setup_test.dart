@@ -80,6 +80,24 @@ void main() {
     expect(find.text('Diese Kassa einrichten'), findsOneWidget);
   });
 
+  testWidgets('Datei mit doppelter Mitarbeiter-PIN wird abgelehnt', (t) async {
+    await _start(
+      t,
+      file: _goodFile.replaceFirst(
+        '"mitarbeiter":[',
+        '"mitarbeiter":[{"name":"Ben","pin":"1234","rolle":"mitarbeiter"},',
+      ),
+    );
+    await t.tap(find.text('Speisekarte einspielen'));
+    await t.pumpAndSettle();
+    expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
+    expect(find.text('Mitarbeiter "Anna": Die PIN ist in der Datei schon '
+        'vergeben.'), findsOneWidget);
+    expect(await _container(t).read(catalogRepositoryProvider).current(),
+        isNull);
+    expect(await _container(t).read(staffRepositoryProvider).all(), isEmpty);
+  });
+
   testWidgets('gute Datei: Zusammenfassung, dann Chef-PIN', (t) async {
     await _start(t, file: _goodFile);
     await t.tap(find.text('Speisekarte einspielen'));

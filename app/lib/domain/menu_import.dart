@@ -185,6 +185,10 @@ Catalog parseMenuFile(String jsonText) {
       problems.add('Mitarbeiter "$name": Die Rolle muss "chef" oder "mitarbeiter" sein.');
       ok = false;
     }
+    if (ok && staffSeeds.any((s) => s.pin == pin)) {
+      problems.add('Mitarbeiter "$name": Die PIN ist in der Datei schon vergeben.');
+      ok = false;
+    }
     if (ok) staffSeeds.add((name: name, pin: pin as String, role: role!));
   }
 

@@ -84,6 +84,15 @@ void main() {
             ['Mitarbeiter "Anna": Die PIN muss aus genau vier Ziffern bestehen.'])));
   });
 
+  test('zwei Mitarbeiter mit gleicher PIN werden abgelehnt', () {
+    expect(
+        () => parseMenuFile(demoMit('"mitarbeiter":['
+            '{"name":"Anna","pin":"1234","rolle":"mitarbeiter"},'
+            '{"name":"Ben","pin":"1234","rolle":"mitarbeiter"}]')),
+        throwsA(isA<MenuImportException>().having((e) => e.problems, 'problems',
+            ['Mitarbeiter "Ben": Die PIN ist in der Datei schon vergeben.'])));
+  });
+
   test('Gruppe mit min größer als max und zu vielen Vorgaben', () {
     const bad = '''{"betrieb":"X","kategorien":[],"artikel":[],"auswahlgruppen":{"bowl":[
       {"name":"Basis","min":2,"max":1,"optionen":[{"name":"Reis","aufpreis_cent":0}]},
