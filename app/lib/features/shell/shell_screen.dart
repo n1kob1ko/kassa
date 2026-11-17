@@ -5,6 +5,7 @@ import '../../data/providers.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart';
+import '../items/items_screen.dart';
 import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
@@ -45,8 +46,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   }
 }
 
-/// Hier wird das Bild eines Bereichs gewählt. Bis ihre Aufgaben fertig sind,
-/// zeigen die anderen zwei einen leeren Platzhalter.
+/// Hier wird das Bild eines Bereichs gewählt. Bis seine Aufgabe fertig ist,
+/// zeigt der andere einen leeren Platzhalter.
 Widget _areaWidget(AppArea area) {
   switch (area) {
     case AppArea.kassa:
@@ -56,6 +57,7 @@ Widget _areaWidget(AppArea area) {
     case AppArea.overview:
       return const OverviewScreen(key: Key('area-overview'));
     case AppArea.items:
+      return const ItemsScreen(key: Key('area-items'));
     case AppArea.close:
       return _AreaPlaceholder(area);
   }
