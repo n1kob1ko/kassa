@@ -177,17 +177,8 @@ class DayRepository {
   }
 
   /// Wahr, wenn der offene Tag an einem früheren Kalendertag begann als heute.
-  Future<bool> hasForgottenClose() async {
-    final open = await openDay();
-    if (open == null) return false;
-    final now = _clock.now();
-    final opened = open.openedAt;
-    return DateTime(
-      opened.year,
-      opened.month,
-      opened.day,
-    ).isBefore(DateTime(now.year, now.month, now.day));
-  }
+  Future<bool> hasForgottenClose() async =>
+      isForgottenClose(await openDay(), _clock.now());
 
   Future<DaySummary> _summarize(BusinessDay day) async {
     final receipts = await (_db.select(

@@ -105,12 +105,10 @@ final closeSummaryProvider = FutureProvider.autoDispose<DaySummary?>((ref) async
 
 /// Wahr, wenn der offene Tag an einem früheren Kalendertag begann als heute:
 /// der Abschluss wurde vergessen. Folgt dem offenen Tag, fällt also mit dem
-/// Abschluss weg.
+/// Abschluss weg. Die Uhr allein löst keine Neuberechnung aus: wer das Ergebnis
+/// anzeigt, holt es mit `ref.invalidate` neu (die Kopfleiste tut das, wenn die
+/// App in den Vordergrund kommt und jede Minute).
 final forgottenCloseProvider = Provider.autoDispose<bool>((ref) {
   final open = ref.watch(openDayStreamProvider).value;
-  if (open == null) return false;
-  final now = ref.watch(clockProvider).now();
-  final opened = open.openedAt;
-  return DateTime(opened.year, opened.month, opened.day)
-      .isBefore(DateTime(now.year, now.month, now.day));
+  return isForgottenClose(open, ref.watch(clockProvider).now());
 });

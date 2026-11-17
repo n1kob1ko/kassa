@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/day.dart';
@@ -31,6 +32,19 @@ class _CountingDays extends DayRepository {
       staff: staff,
     );
   }
+}
+
+/// Bargeld-Bewegungen schlagen immer fehl.
+class _FailingMovements extends DayRepository {
+  _FailingMovements(super.db, super.clock);
+
+  @override
+  Future<void> addMovement({
+    required CashMovementKind kind,
+    required int amountCents,
+    required CashReason reason,
+    required Staff staff,
+  }) => throw StateError('kaputt');
 }
 
 Future<void> _tap(WidgetTester t, String key) async {
@@ -178,6 +192,28 @@ void main() {
       await _closeDay(t);
       expect(find.byKey(const Key('cash-in')), findsNothing);
       expect(find.byKey(const Key('cash-out')), findsNothing);
+    });
+  });
+
+  group('Fehler im Bargeld-Formular', () {
+    testWidgets('Schließen des Formulars nimmt den Fehlerhinweis weg', (t) async {
+      await pumpClose(
+        t,
+        floatCents: 15000,
+        extra: [
+          dayRepositoryProvider.overrideWith(
+            (ref) => _FailingMovements(ref.watch(databaseProvider), ref.watch(clockProvider)),
+          ),
+        ],
+      );
+      await _tap(t, 'cash-out');
+      await tapKeys(t, '5');
+      await t.tap(find.byKey(const Key('reason-bank')));
+      await t.pump();
+      await _tap(t, 'save-movement');
+      expect(find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'), findsOneWidget);
+      await _tap(t, 'close-movement');
+      expect(find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'), findsNothing);
     });
   });
 
@@ -451,6 +487,30 @@ void main() {
       await _closeDay(t);
       await _tap(t, 'to-kassa');
       expect(find.byKey(const Key('forgotten-close')), findsNothing);
+    });
+  });
+
+  group('Hinweis bei angemeldeter Kassa über Nacht', () {
+    testWidgets('kommt die App am Morgen zurück in den Vordergrund, erscheint der Hinweis', (t) async {
+      final clock = FixedClock(DateTime(2026, 11, 17, 20));
+      await pumpClose(t, openArea: false, clock: clock);
+      await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
+      expect(find.byKey(const Key('forgotten-close')), findsNothing);
+      clock.value = DateTime(2026, 11, 18, 9);
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await t.pump();
+      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
+    });
+
+    testWidgets('bleibt die App im Vordergrund, erscheint der Hinweis nach spätestens einer Minute', (t) async {
+      final clock = FixedClock(DateTime(2026, 11, 17, 23, 59));
+      await pumpClose(t, openArea: false, clock: clock);
+      await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
+      expect(find.byKey(const Key('forgotten-close')), findsNothing);
+      clock.value = DateTime(2026, 11, 18, 0, 1);
+      await t.pump(const Duration(minutes: 1));
+      expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
     });
   });
 

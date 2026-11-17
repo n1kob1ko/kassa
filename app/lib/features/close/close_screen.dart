@@ -169,7 +169,10 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         reason: _reason,
         onKey: (k) => setState(() => _moveInput = _moveInput.tap(k)),
         onReason: (r) => setState(() => _reason = r),
-        onClose: () => setState(() => _move = null),
+        onClose: () => setState(() {
+          _move = null;
+          _failed = false;
+        }),
         onSave: _moveInput.cents > 0 && _reason != null && !_busy
             ? _saveMovement
             : null,

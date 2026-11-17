@@ -101,3 +101,12 @@ class DaySummary {
   /// Nach Zeit aufsteigend.
   final List<CashMovement> movements;
 }
+
+/// Der Abschluss wurde vergessen: der offene Tag [open] begann an einem
+/// früheren Kalendertag als [now].
+bool isForgottenClose(BusinessDay? open, DateTime now) {
+  if (open == null) return false;
+  final opened = open.openedAt;
+  return DateTime(opened.year, opened.month, opened.day)
+      .isBefore(DateTime(now.year, now.month, now.day));
+}

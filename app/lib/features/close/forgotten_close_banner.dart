@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
@@ -9,7 +11,7 @@ import '../../ui/tokens.dart';
 /// Streifen unter der Kopfleiste, solange der letzte Tag nicht abgeschlossen
 /// ist. Der Chef hat dazu die Taste "Jetzt abschließen" ([onClose]),
 /// Mitarbeiter sehen nur den Text. Bonieren bleibt möglich.
-class ForgottenCloseBanner extends ConsumerWidget {
+class ForgottenCloseBanner extends ConsumerStatefulWidget {
   const ForgottenCloseBanner({
     super.key,
     required this.isChef,
@@ -20,7 +22,43 @@ class ForgottenCloseBanner extends ConsumerWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ForgottenCloseBanner> createState() =>
+      _ForgottenCloseBannerState();
+}
+
+/// Eine Kassa kann über Nacht angemeldet bleiben: der Hinweis wird neu
+/// berechnet, wenn die App in den Vordergrund kommt und danach jede Minute.
+class _ForgottenCloseBannerState extends ConsumerState<ForgottenCloseBanner>
+    with WidgetsBindingObserver {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => _recheck());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _recheck();
+  }
+
+  void _recheck() {
+    if (mounted) ref.invalidate(forgottenCloseProvider);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isChef = widget.isChef;
+    final onClose = widget.onClose;
     if (!ref.watch(forgottenCloseProvider)) return const SizedBox.shrink();
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
