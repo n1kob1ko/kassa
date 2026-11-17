@@ -1,0 +1,21 @@
+name: app
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: app/.flutter-version
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

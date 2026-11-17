@@ -1,0 +1,11 @@
+# Arbeitsdateien der Planung
+.superpowers/
+
+# Flutter-Build der App (app/.gitignore ergänzt den Rest)
+app/build/
+app/.dart_tool/
+app/.flutter-plugins-dependencies
+app/android/.gradle/
+app/android/local.properties
+app/android/**/GeneratedPluginRegistrant.*
+.DS_Store
