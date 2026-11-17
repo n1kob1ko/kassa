@@ -30,4 +30,16 @@ void main() {
     final lines = taxBreakdown({TaxRate.reduced1: 5, TaxRate.normal: 3, TaxRate.zero: 0});
     expect(lines.map((t) => (t.rate.percent, t.netCents, t.taxCents)), [(20, 2, 1), (10, 5, 0)]);
   });
+
+  test('Steuer ist für negative Beträge das Spiegelbild der positiven', () {
+    for (final gross in [
+      {TaxRate.normal: 580, TaxRate.reduced1: 1190},
+      {TaxRate.normal: 3, TaxRate.reduced1: 5},
+    ]) {
+      final plus = taxBreakdown(gross);
+      final minus = taxBreakdown({for (final e in gross.entries) e.key: -e.value});
+      expect(minus.map((t) => (t.rate, t.grossCents, t.netCents, t.taxCents)),
+          plus.map((t) => (t.rate, -t.grossCents, -t.netCents, -t.taxCents)));
+    }
+  });
 }

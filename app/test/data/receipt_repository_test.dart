@@ -153,6 +153,8 @@ void main() {
     expect(v.grossByRate, {TaxRate.normal: -580, TaxRate.reduced1: -1190});
     expect(v.grossByRate, {for (final e in r.grossByRate.entries) e.key: -e.value});
     expect((v.goodsCents, v.depositCents), (-1770, -50));
+    expect(v.taxLines.map((t) => (t.rate, t.grossCents, t.netCents, t.taxCents)),
+        r.taxLines.map((t) => (t.rate, -t.grossCents, -t.netCents, -t.taxCents)));
   });
 
   test('Storno kopiert die Zeilen vom Bon, nicht aus dem Katalog', () async {

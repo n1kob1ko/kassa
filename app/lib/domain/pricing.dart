@@ -61,7 +61,11 @@ List<TaxLine> taxBreakdown(Map<TaxRate, int> gross) {
       () {
         final g = gross[r]!;
         final p = r.percent;
-        final tax = (g * p * 2 + (100 + p)) ~/ (2 * (100 + p));
+        // Auf dem Betrag gerundet, dann das Vorzeichen zurück: Storno ist
+        // das exakte Spiegelbild des Bons.
+        final a = g.abs();
+        final absTax = (a * p * 2 + (100 + p)) ~/ (2 * (100 + p));
+        final tax = g < 0 ? -absTax : absTax;
         return TaxLine(rate: r, grossCents: g, netCents: g - tax, taxCents: tax);
       }(),
   ];
