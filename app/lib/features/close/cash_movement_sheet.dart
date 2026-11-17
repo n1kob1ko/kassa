@@ -1,0 +1,137 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../../core/money.dart';
+import '../../domain/day.dart';
+import '../../ui/pressable.dart';
+import '../../ui/primary_button.dart';
+import '../../ui/tokens.dart';
+import 'amount_entry.dart';
+import 'day_summary_cards.dart' show reasonLabel;
+
+/// Zustand D: Bargeld einlegen oder entnehmen, mit Betrag und Grund. Speichern
+/// geht, wenn der Betrag über 0 ist und ein Grund gewählt ist.
+class CashMovementSheet extends StatelessWidget {
+  const CashMovementSheet({
+    super.key,
+    required this.kind,
+    required this.input,
+    required this.reason,
+    required this.onKey,
+    required this.onReason,
+    required this.onClose,
+    required this.onSave,
+    required this.failed,
+  });
+
+  final CashMovementKind kind;
+  final KeypadInput input;
+  final CashReason? reason;
+  final ValueChanged<String> onKey;
+  final ValueChanged<CashReason> onReason;
+  final VoidCallback onClose;
+
+  /// `null`, solange Betrag oder Grund fehlen oder gerade geschrieben wird.
+  final VoidCallback? onSave;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final deposit = kind == CashMovementKind.deposit;
+    return CloseColumn(
+      title: deposit ? 'Bargeld einlegen' : 'Bargeld entnehmen',
+      trailing: Pressable(
+        key: const Key('close-movement'),
+        onTap: onClose,
+        semanticLabel: 'Schließen',
+        minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
+        child: SizedBox(
+          width: KassaTokens.minTap,
+          height: KassaTokens.minTap,
+          child: Icon(
+            LucideIcons.x,
+            size: 26,
+            color: KassaColors.of(context).ink,
+          ),
+        ),
+      ),
+      failed: failed,
+      content: [
+        const FieldLabel('Betrag'),
+        const SizedBox(height: KassaTokens.spaceMd),
+        AmountEntry(input: input, onKey: onKey),
+        const SizedBox(height: KassaTokens.spaceXxl),
+        const FieldLabel('Grund'),
+        const SizedBox(height: KassaTokens.spaceMd),
+        Row(
+          children: [
+            _ReasonKey(CashReason.bank, reason, onReason),
+            const SizedBox(width: KassaTokens.spaceMd),
+            _ReasonKey(CashReason.purchase, reason, onReason),
+          ],
+        ),
+        const SizedBox(height: KassaTokens.spaceMd),
+        Row(
+          children: [
+            _ReasonKey(CashReason.change, reason, onReason),
+            const SizedBox(width: KassaTokens.spaceMd),
+            _ReasonKey(CashReason.other, reason, onReason),
+          ],
+        ),
+      ],
+      bottom: PrimaryButton(
+        key: const Key('save-movement'),
+        label: deposit ? 'Einlage speichern' : 'Entnahme speichern',
+        height: KassaTokens.mainActionHeight,
+        onPressed: onSave,
+      ),
+    );
+  }
+}
+
+class _ReasonKey extends StatelessWidget {
+  const _ReasonKey(this.reason, this.chosen, this.onTap);
+
+  final CashReason reason;
+  final CashReason? chosen;
+  final ValueChanged<CashReason> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final selected = reason == chosen;
+    return Expanded(
+      child: Pressable(
+        key: Key('reason-${reason.name}'),
+        onTap: () => onTap(reason),
+        child: Semantics(
+          selected: selected,
+          child: Container(
+            height: 52,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: selected ? c.accentSoft : c.card,
+              borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+              border: Border.all(
+                color: selected ? c.accent : c.line,
+                width: KassaTokens.borderButton,
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                reasonLabel(reason),
+                maxLines: 1,
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  fontSize: 17,
+                  color: selected ? c.accentInk : c.ink,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

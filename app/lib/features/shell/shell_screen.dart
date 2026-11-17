@@ -5,6 +5,8 @@ import '../../data/providers.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart';
+import '../close/close_screen.dart';
+import '../close/forgotten_close_banner.dart';
 import '../items/items_screen.dart';
 import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
@@ -39,16 +41,25 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
             onSettings: () {}, // Einstellungen gibt es noch nicht.
             businessName: ref.watch(catalogProvider).value?.businessName,
           ),
-          Expanded(child: _areaWidget(_area)),
+          if (_area != AppArea.close)
+            ForgottenCloseBanner(
+              isChef: staff.isChef,
+              onClose: () => setState(() => _area = AppArea.close),
+            ),
+          Expanded(
+            child: _areaWidget(
+              _area,
+              () => setState(() => _area = AppArea.kassa),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Hier wird das Bild eines Bereichs gewählt. Bis seine Aufgabe fertig ist,
-/// zeigt der andere einen leeren Platzhalter.
-Widget _areaWidget(AppArea area) {
+/// Hier wird das Bild eines Bereichs gewählt. [toKassa] wechselt zur Kassa.
+Widget _areaWidget(AppArea area, VoidCallback toKassa) {
   switch (area) {
     case AppArea.kassa:
       return const KassaScreen(key: Key('area-kassa'));
@@ -59,21 +70,6 @@ Widget _areaWidget(AppArea area) {
     case AppArea.items:
       return const ItemsScreen(key: Key('area-items'));
     case AppArea.close:
-      return _AreaPlaceholder(area);
-  }
-}
-
-class _AreaPlaceholder extends StatelessWidget {
-  const _AreaPlaceholder(this.area) : super(key: null);
-
-  final AppArea area;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      key: Key('area-${area.name}'),
-      color: KassaColors.of(context).ground,
-      child: const SizedBox.expand(),
-    );
+      return CloseScreen(key: const Key('area-close'), onToKassa: toKassa);
   }
 }

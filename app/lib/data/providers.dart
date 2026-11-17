@@ -93,3 +93,24 @@ final todayReceiptsProvider = StreamProvider<List<Receipt>>((ref) {
 final overviewProvider = FutureProvider.autoDispose.family<Overview, StatsRange>(
   (ref, range) => ref.watch(statsRepositoryProvider).overview(range),
 );
+
+/// Die Zahlen des Abschlusses: der offene Tag, sonst der zuletzt
+/// abgeschlossene, `null`, solange es noch gar keinen Tag gab. Wird verworfen,
+/// sobald der Bereich nicht mehr angezeigt wird, und nach jedem Schreiben dort
+/// neu geholt.
+final closeSummaryProvider = FutureProvider.autoDispose<DaySummary?>((ref) async {
+  final days = ref.watch(dayRepositoryProvider);
+  return await days.summary() ?? await days.lastClosedSummary();
+});
+
+/// Wahr, wenn der offene Tag an einem früheren Kalendertag begann als heute:
+/// der Abschluss wurde vergessen. Folgt dem offenen Tag, fällt also mit dem
+/// Abschluss weg.
+final forgottenCloseProvider = Provider.autoDispose<bool>((ref) {
+  final open = ref.watch(openDayStreamProvider).value;
+  if (open == null) return false;
+  final now = ref.watch(clockProvider).now();
+  final opened = open.openedAt;
+  return DateTime(opened.year, opened.month, opened.day)
+      .isBefore(DateTime(now.year, now.month, now.day));
+});
