@@ -1,0 +1,214 @@
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/clock.dart';
+import 'package:kassa/devices/escpos.dart';
+import 'package:kassa/devices/printer.dart';
+import 'package:kassa/domain/business_info.dart';
+import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/receipt_layout.dart';
+
+const business = BusinessInfo(name: 'Beispiel-Imbiss');
+
+Receipt receipt({
+  String id = 'r1',
+  ReceiptKind kind = ReceiptKind.sale,
+  String? voids,
+}) => Receipt(
+  id: id,
+  number: 7,
+  createdAt: DateTime(2026, 11, 17, 11),
+  staffId: 's',
+  staffName: 'Anna',
+  businessDayId: 'd',
+  kind: kind,
+  voidsReceiptId: voids,
+  lines: const [],
+  payment: const Payment(
+    kind: PaymentKind.cash,
+    amountCents: 0,
+    givenCents: 0,
+    changeCents: 0,
+  ),
+  goodsCents: 0,
+  depositCents: 0,
+  totalCents: 0,
+);
+
+class RecordingTransport implements PrinterTransport {
+  final sent = <Uint8List>[];
+  final asked = <List<int>>[];
+  final answers = <int?>[];
+  Object? sendError;
+  bool hang = false;
+
+  @override
+  Future<void> send(Uint8List bytes) async {
+    if (hang) return Future<void>.delayed(const Duration(hours: 1));
+    if (sendError != null) throw sendError!;
+    sent.add(bytes);
+  }
+
+  @override
+  Future<int?> status(List<int> request) async {
+    asked.add(request);
+    return answers.isEmpty ? null : answers.removeAt(0);
+  }
+}
+
+EscPosPrinter printerOf(
+  PrinterTransport? t, {
+  Future<int?> Function(String)? number,
+  Duration limit = printCallLimit,
+}) => EscPosPrinter(
+  transport: t,
+  business: business,
+  columns: 48,
+  clock: FixedClock(DateTime(2026, 11, 17, 12)),
+  numberOfReceipt: number ?? (_) async => null,
+  limit: limit,
+);
+
+void main() {
+  test('printReceipt schickt den gesetzten Bon', () async {
+    final t = RecordingTransport();
+    final r = receipt();
+    final outcome = await printerOf(t).printReceipt(r);
+    expect(outcome.ok, isTrue);
+    expect(t.sent, [encodeEscPos(layoutReceipt(r, business))]);
+    expect(t.asked, [escposStatusPrinter]);
+  });
+
+  test('Storno-Bon trägt die Nummer des stornierten Bons', () async {
+    final t = RecordingTransport();
+    final r = receipt(id: 'v', kind: ReceiptKind.voided, voids: 'r1');
+    String? asked;
+    await printerOf(
+      t,
+      number: (id) async {
+        asked = id;
+        return 41;
+      },
+    ).printReceipt(r);
+    expect(asked, 'r1');
+    expect(
+      t.sent.single,
+      encodeEscPos(layoutReceipt(r, business, voidedNumber: 41)),
+    );
+  });
+
+  test('Storno-Bon ohne gefundene Nummer wird trotzdem gedruckt', () async {
+    final t = RecordingTransport();
+    final r = receipt(id: 'v', kind: ReceiptKind.voided, voids: 'r1');
+    final outcome = await printerOf(
+      t,
+      number: (_) async => null,
+    ).printReceipt(r);
+    expect(outcome.ok, isTrue);
+    expect(t.sent.single, encodeEscPos(layoutReceipt(r, business)));
+  });
+
+  test('ohne Drucker: notSetUp, nichts wird geschickt', () async {
+    final p = printerOf(null);
+    for (final o in [
+      await p.printReceipt(receipt()),
+      await p.openDrawer(),
+      await p.testPrint(),
+    ]) {
+      expect(o.problem, PrintProblem.notSetUp);
+      expect(o.message, 'Kein Bondrucker eingerichtet.');
+    }
+  });
+
+  test(
+    'Drucker offline mit leerem Papier: paperOut, nichts wird gedruckt',
+    () async {
+      final t = RecordingTransport()..answers.addAll([0x1A, 0x72]);
+      final outcome = await printerOf(t).printReceipt(receipt());
+      expect(outcome.problem, PrintProblem.paperOut);
+      expect(t.sent, isEmpty);
+      expect(t.asked, [escposStatusPrinter, escposStatusPaper]);
+    },
+  );
+
+  test('Drucker offline, Papier da: coverOpen', () async {
+    final t = RecordingTransport()..answers.addAll([0x1A, 0x12]);
+    final outcome = await printerOf(t).printReceipt(receipt());
+    expect(outcome.problem, PrintProblem.coverOpen);
+    expect(t.sent, isEmpty);
+  });
+
+  test('keine Statusantwort: es wird gedruckt', () async {
+    final t = RecordingTransport();
+    expect((await printerOf(t).printReceipt(receipt())).ok, isTrue);
+    expect(t.sent, hasLength(1));
+  });
+
+  test(
+    'Transport wirft: das Problem kommt als Ergebnis zurück, keine Ausnahme',
+    () async {
+      final t = RecordingTransport()
+        ..sendError = const PrinterException(PrintProblem.noPermission);
+      final outcome = await printerOf(t).printReceipt(receipt());
+      expect(outcome.problem, PrintProblem.noPermission);
+      t.sendError = StateError('kaputt');
+      expect(
+        (await printerOf(t).printReceipt(receipt())).problem,
+        PrintProblem.unreachable,
+      );
+    },
+  );
+
+  test('openDrawer schickt genau den Laden-Befehl', () async {
+    final t = RecordingTransport();
+    expect((await printerOf(t).openDrawer()).ok, isTrue);
+    expect(t.sent, [encodeDrawerKick()]);
+  });
+
+  test('testPrint schickt den Testdruck', () async {
+    final t = RecordingTransport();
+    await printerOf(t).testPrint();
+    expect(
+      t.sent.single,
+      encodeEscPos(layoutTestPrint(business, DateTime(2026, 11, 17, 12))),
+    );
+  });
+
+  test('Senden dauert zu lange: timeout (Grenze im Test verkürzt)', () async {
+    final t = RecordingTransport()..hang = true;
+    final watch = Stopwatch()..start();
+    final outcome = await printerOf(
+      t,
+      limit: const Duration(milliseconds: 100),
+    ).printReceipt(receipt());
+    expect(outcome.problem, PrintProblem.timeout);
+    expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+  });
+
+  test('Meldungen', () {
+    expect(
+      const PrintOutcome.failed(PrintProblem.unreachable).message,
+      'Drucker nicht bereit. Ist er eingeschaltet und verbunden?',
+    );
+    expect(
+      const PrintOutcome.failed(PrintProblem.noPermission).message,
+      'Kassa darf den Drucker nicht verwenden. Bitte die Erlaubnis geben.',
+    );
+    expect(
+      const PrintOutcome.failed(PrintProblem.paperOut).message,
+      'Drucker nicht bereit. Das Papier ist leer.',
+    );
+    expect(
+      const PrintOutcome.failed(PrintProblem.coverOpen).message,
+      'Drucker nicht bereit. Der Deckel ist offen.',
+    );
+    expect(
+      const PrintOutcome.failed(PrintProblem.timeout).message,
+      'Drucker nicht bereit. Er antwortet nicht.',
+    );
+  });
+
+  test('Standardgrenze eines Aufrufs sind 5 Sekunden', () {
+    expect(printCallLimit, const Duration(seconds: 5));
+  });
+}
