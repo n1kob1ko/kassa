@@ -27,8 +27,46 @@ class $BusinessRowsTable extends BusinessRows
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _addressLinesMeta = const VerificationMeta(
+    'addressLines',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name];
+  late final GeneratedColumn<String> addressLines = GeneratedColumn<String>(
+    'address_lines',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _vatIdMeta = const VerificationMeta('vatId');
+  @override
+  late final GeneratedColumn<String> vatId = GeneratedColumn<String>(
+    'vat_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receiptFooterMeta = const VerificationMeta(
+    'receiptFooter',
+  );
+  @override
+  late final GeneratedColumn<String> receiptFooter = GeneratedColumn<String>(
+    'receipt_footer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    addressLines,
+    vatId,
+    receiptFooter,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -52,6 +90,30 @@ class $BusinessRowsTable extends BusinessRows
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('address_lines')) {
+      context.handle(
+        _addressLinesMeta,
+        addressLines.isAcceptableOrUnknown(
+          data['address_lines']!,
+          _addressLinesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vat_id')) {
+      context.handle(
+        _vatIdMeta,
+        vatId.isAcceptableOrUnknown(data['vat_id']!, _vatIdMeta),
+      );
+    }
+    if (data.containsKey('receipt_footer')) {
+      context.handle(
+        _receiptFooterMeta,
+        receiptFooter.isAcceptableOrUnknown(
+          data['receipt_footer']!,
+          _receiptFooterMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -69,6 +131,18 @@ class $BusinessRowsTable extends BusinessRows
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      addressLines: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address_lines'],
+      )!,
+      vatId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vat_id'],
+      ),
+      receiptFooter: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_footer'],
+      ),
     );
   }
 
@@ -81,17 +155,45 @@ class $BusinessRowsTable extends BusinessRows
 class BusinessRow extends DataClass implements Insertable<BusinessRow> {
   final int id;
   final String name;
-  const BusinessRow({required this.id, required this.name});
+
+  /// Anschrift für den Bon, Zeilen durch `\n` getrennt.
+  final String addressLines;
+  final String? vatId;
+  final String? receiptFooter;
+  const BusinessRow({
+    required this.id,
+    required this.name,
+    required this.addressLines,
+    this.vatId,
+    this.receiptFooter,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
+    map['address_lines'] = Variable<String>(addressLines);
+    if (!nullToAbsent || vatId != null) {
+      map['vat_id'] = Variable<String>(vatId);
+    }
+    if (!nullToAbsent || receiptFooter != null) {
+      map['receipt_footer'] = Variable<String>(receiptFooter);
+    }
     return map;
   }
 
   BusinessRowsCompanion toCompanion(bool nullToAbsent) {
-    return BusinessRowsCompanion(id: Value(id), name: Value(name));
+    return BusinessRowsCompanion(
+      id: Value(id),
+      name: Value(name),
+      addressLines: Value(addressLines),
+      vatId: vatId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vatId),
+      receiptFooter: receiptFooter == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptFooter),
+    );
   }
 
   factory BusinessRow.fromJson(
@@ -102,6 +204,9 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
     return BusinessRow(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      addressLines: serializer.fromJson<String>(json['addressLines']),
+      vatId: serializer.fromJson<String?>(json['vatId']),
+      receiptFooter: serializer.fromJson<String?>(json['receiptFooter']),
     );
   }
   @override
@@ -110,15 +215,38 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
+      'addressLines': serializer.toJson<String>(addressLines),
+      'vatId': serializer.toJson<String?>(vatId),
+      'receiptFooter': serializer.toJson<String?>(receiptFooter),
     };
   }
 
-  BusinessRow copyWith({int? id, String? name}) =>
-      BusinessRow(id: id ?? this.id, name: name ?? this.name);
+  BusinessRow copyWith({
+    int? id,
+    String? name,
+    String? addressLines,
+    Value<String?> vatId = const Value.absent(),
+    Value<String?> receiptFooter = const Value.absent(),
+  }) => BusinessRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    addressLines: addressLines ?? this.addressLines,
+    vatId: vatId.present ? vatId.value : this.vatId,
+    receiptFooter: receiptFooter.present
+        ? receiptFooter.value
+        : this.receiptFooter,
+  );
   BusinessRow copyWithCompanion(BusinessRowsCompanion data) {
     return BusinessRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      addressLines: data.addressLines.present
+          ? data.addressLines.value
+          : this.addressLines,
+      vatId: data.vatId.present ? data.vatId.value : this.vatId,
+      receiptFooter: data.receiptFooter.present
+          ? data.receiptFooter.value
+          : this.receiptFooter,
     );
   }
 
@@ -126,42 +254,77 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
   String toString() {
     return (StringBuffer('BusinessRow(')
           ..write('id: $id, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('addressLines: $addressLines, ')
+          ..write('vatId: $vatId, ')
+          ..write('receiptFooter: $receiptFooter')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name);
+  int get hashCode => Object.hash(id, name, addressLines, vatId, receiptFooter);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is BusinessRow && other.id == this.id && other.name == this.name);
+      (other is BusinessRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.addressLines == this.addressLines &&
+          other.vatId == this.vatId &&
+          other.receiptFooter == this.receiptFooter);
 }
 
 class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
   final Value<int> id;
   final Value<String> name;
+  final Value<String> addressLines;
+  final Value<String?> vatId;
+  final Value<String?> receiptFooter;
   const BusinessRowsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.addressLines = const Value.absent(),
+    this.vatId = const Value.absent(),
+    this.receiptFooter = const Value.absent(),
   });
   BusinessRowsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
+    this.addressLines = const Value.absent(),
+    this.vatId = const Value.absent(),
+    this.receiptFooter = const Value.absent(),
   }) : name = Value(name);
   static Insertable<BusinessRow> custom({
     Expression<int>? id,
     Expression<String>? name,
+    Expression<String>? addressLines,
+    Expression<String>? vatId,
+    Expression<String>? receiptFooter,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (addressLines != null) 'address_lines': addressLines,
+      if (vatId != null) 'vat_id': vatId,
+      if (receiptFooter != null) 'receipt_footer': receiptFooter,
     });
   }
 
-  BusinessRowsCompanion copyWith({Value<int>? id, Value<String>? name}) {
-    return BusinessRowsCompanion(id: id ?? this.id, name: name ?? this.name);
+  BusinessRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? addressLines,
+    Value<String?>? vatId,
+    Value<String?>? receiptFooter,
+  }) {
+    return BusinessRowsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      addressLines: addressLines ?? this.addressLines,
+      vatId: vatId ?? this.vatId,
+      receiptFooter: receiptFooter ?? this.receiptFooter,
+    );
   }
 
   @override
@@ -173,6 +336,15 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (addressLines.present) {
+      map['address_lines'] = Variable<String>(addressLines.value);
+    }
+    if (vatId.present) {
+      map['vat_id'] = Variable<String>(vatId.value);
+    }
+    if (receiptFooter.present) {
+      map['receipt_footer'] = Variable<String>(receiptFooter.value);
+    }
     return map;
   }
 
@@ -180,7 +352,10 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
   String toString() {
     return (StringBuffer('BusinessRowsCompanion(')
           ..write('id: $id, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('addressLines: $addressLines, ')
+          ..write('vatId: $vatId, ')
+          ..write('receiptFooter: $receiptFooter')
           ..write(')'))
         .toString();
   }
@@ -2947,6 +3122,52 @@ class $SettingsRowsTable extends SettingsRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _printerKindMeta = const VerificationMeta(
+    'printerKind',
+  );
+  @override
+  late final GeneratedColumn<String> printerKind = GeneratedColumn<String>(
+    'printer_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('none'),
+  );
+  static const VerificationMeta _printerAddressMeta = const VerificationMeta(
+    'printerAddress',
+  );
+  @override
+  late final GeneratedColumn<String> printerAddress = GeneratedColumn<String>(
+    'printer_address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _printerNameMeta = const VerificationMeta(
+    'printerName',
+  );
+  @override
+  late final GeneratedColumn<String> printerName = GeneratedColumn<String>(
+    'printer_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _printerColumnsMeta = const VerificationMeta(
+    'printerColumns',
+  );
+  @override
+  late final GeneratedColumn<int> printerColumns = GeneratedColumn<int>(
+    'printer_columns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(48),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2955,6 +3176,10 @@ class $SettingsRowsTable extends SettingsRows
     themeMode,
     voidRequiresChef,
     receiptDraft,
+    printerKind,
+    printerAddress,
+    printerName,
+    printerColumns,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3010,6 +3235,42 @@ class $SettingsRowsTable extends SettingsRows
         ),
       );
     }
+    if (data.containsKey('printer_kind')) {
+      context.handle(
+        _printerKindMeta,
+        printerKind.isAcceptableOrUnknown(
+          data['printer_kind']!,
+          _printerKindMeta,
+        ),
+      );
+    }
+    if (data.containsKey('printer_address')) {
+      context.handle(
+        _printerAddressMeta,
+        printerAddress.isAcceptableOrUnknown(
+          data['printer_address']!,
+          _printerAddressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('printer_name')) {
+      context.handle(
+        _printerNameMeta,
+        printerName.isAcceptableOrUnknown(
+          data['printer_name']!,
+          _printerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('printer_columns')) {
+      context.handle(
+        _printerColumnsMeta,
+        printerColumns.isAcceptableOrUnknown(
+          data['printer_columns']!,
+          _printerColumnsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3043,6 +3304,22 @@ class $SettingsRowsTable extends SettingsRows
         DriftSqlType.string,
         data['${effectivePrefix}receipt_draft'],
       ),
+      printerKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}printer_kind'],
+      )!,
+      printerAddress: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}printer_address'],
+      ),
+      printerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}printer_name'],
+      ),
+      printerColumns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}printer_columns'],
+      )!,
     );
   }
 
@@ -3059,6 +3336,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final String themeMode;
   final bool voidRequiresChef;
   final String? receiptDraft;
+
+  /// `none`, `network`, `usb` oder `bluetooth`.
+  final String printerKind;
+  final String? printerAddress;
+  final String? printerName;
+  final int printerColumns;
   const SettingsRow({
     required this.id,
     required this.cashDrawerEnabled,
@@ -3066,6 +3349,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.themeMode,
     required this.voidRequiresChef,
     this.receiptDraft,
+    required this.printerKind,
+    this.printerAddress,
+    this.printerName,
+    required this.printerColumns,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3078,6 +3365,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     if (!nullToAbsent || receiptDraft != null) {
       map['receipt_draft'] = Variable<String>(receiptDraft);
     }
+    map['printer_kind'] = Variable<String>(printerKind);
+    if (!nullToAbsent || printerAddress != null) {
+      map['printer_address'] = Variable<String>(printerAddress);
+    }
+    if (!nullToAbsent || printerName != null) {
+      map['printer_name'] = Variable<String>(printerName);
+    }
+    map['printer_columns'] = Variable<int>(printerColumns);
     return map;
   }
 
@@ -3091,6 +3386,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       receiptDraft: receiptDraft == null && nullToAbsent
           ? const Value.absent()
           : Value(receiptDraft),
+      printerKind: Value(printerKind),
+      printerAddress: printerAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(printerAddress),
+      printerName: printerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(printerName),
+      printerColumns: Value(printerColumns),
     );
   }
 
@@ -3106,6 +3409,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       themeMode: serializer.fromJson<String>(json['themeMode']),
       voidRequiresChef: serializer.fromJson<bool>(json['voidRequiresChef']),
       receiptDraft: serializer.fromJson<String?>(json['receiptDraft']),
+      printerKind: serializer.fromJson<String>(json['printerKind']),
+      printerAddress: serializer.fromJson<String?>(json['printerAddress']),
+      printerName: serializer.fromJson<String?>(json['printerName']),
+      printerColumns: serializer.fromJson<int>(json['printerColumns']),
     );
   }
   @override
@@ -3118,6 +3425,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'themeMode': serializer.toJson<String>(themeMode),
       'voidRequiresChef': serializer.toJson<bool>(voidRequiresChef),
       'receiptDraft': serializer.toJson<String?>(receiptDraft),
+      'printerKind': serializer.toJson<String>(printerKind),
+      'printerAddress': serializer.toJson<String?>(printerAddress),
+      'printerName': serializer.toJson<String?>(printerName),
+      'printerColumns': serializer.toJson<int>(printerColumns),
     };
   }
 
@@ -3128,6 +3439,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     String? themeMode,
     bool? voidRequiresChef,
     Value<String?> receiptDraft = const Value.absent(),
+    String? printerKind,
+    Value<String?> printerAddress = const Value.absent(),
+    Value<String?> printerName = const Value.absent(),
+    int? printerColumns,
   }) => SettingsRow(
     id: id ?? this.id,
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
@@ -3135,6 +3450,12 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     themeMode: themeMode ?? this.themeMode,
     voidRequiresChef: voidRequiresChef ?? this.voidRequiresChef,
     receiptDraft: receiptDraft.present ? receiptDraft.value : this.receiptDraft,
+    printerKind: printerKind ?? this.printerKind,
+    printerAddress: printerAddress.present
+        ? printerAddress.value
+        : this.printerAddress,
+    printerName: printerName.present ? printerName.value : this.printerName,
+    printerColumns: printerColumns ?? this.printerColumns,
   );
   SettingsRow copyWithCompanion(SettingsRowsCompanion data) {
     return SettingsRow(
@@ -3152,6 +3473,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       receiptDraft: data.receiptDraft.present
           ? data.receiptDraft.value
           : this.receiptDraft,
+      printerKind: data.printerKind.present
+          ? data.printerKind.value
+          : this.printerKind,
+      printerAddress: data.printerAddress.present
+          ? data.printerAddress.value
+          : this.printerAddress,
+      printerName: data.printerName.present
+          ? data.printerName.value
+          : this.printerName,
+      printerColumns: data.printerColumns.present
+          ? data.printerColumns.value
+          : this.printerColumns,
     );
   }
 
@@ -3163,7 +3496,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('showImages: $showImages, ')
           ..write('themeMode: $themeMode, ')
           ..write('voidRequiresChef: $voidRequiresChef, ')
-          ..write('receiptDraft: $receiptDraft')
+          ..write('receiptDraft: $receiptDraft, ')
+          ..write('printerKind: $printerKind, ')
+          ..write('printerAddress: $printerAddress, ')
+          ..write('printerName: $printerName, ')
+          ..write('printerColumns: $printerColumns')
           ..write(')'))
         .toString();
   }
@@ -3176,6 +3513,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     themeMode,
     voidRequiresChef,
     receiptDraft,
+    printerKind,
+    printerAddress,
+    printerName,
+    printerColumns,
   );
   @override
   bool operator ==(Object other) =>
@@ -3186,7 +3527,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.showImages == this.showImages &&
           other.themeMode == this.themeMode &&
           other.voidRequiresChef == this.voidRequiresChef &&
-          other.receiptDraft == this.receiptDraft);
+          other.receiptDraft == this.receiptDraft &&
+          other.printerKind == this.printerKind &&
+          other.printerAddress == this.printerAddress &&
+          other.printerName == this.printerName &&
+          other.printerColumns == this.printerColumns);
 }
 
 class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
@@ -3196,6 +3541,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String> themeMode;
   final Value<bool> voidRequiresChef;
   final Value<String?> receiptDraft;
+  final Value<String> printerKind;
+  final Value<String?> printerAddress;
+  final Value<String?> printerName;
+  final Value<int> printerColumns;
   const SettingsRowsCompanion({
     this.id = const Value.absent(),
     this.cashDrawerEnabled = const Value.absent(),
@@ -3203,6 +3552,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.themeMode = const Value.absent(),
     this.voidRequiresChef = const Value.absent(),
     this.receiptDraft = const Value.absent(),
+    this.printerKind = const Value.absent(),
+    this.printerAddress = const Value.absent(),
+    this.printerName = const Value.absent(),
+    this.printerColumns = const Value.absent(),
   });
   SettingsRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -3211,6 +3564,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.themeMode = const Value.absent(),
     this.voidRequiresChef = const Value.absent(),
     this.receiptDraft = const Value.absent(),
+    this.printerKind = const Value.absent(),
+    this.printerAddress = const Value.absent(),
+    this.printerName = const Value.absent(),
+    this.printerColumns = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
     Expression<int>? id,
@@ -3219,6 +3576,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? themeMode,
     Expression<bool>? voidRequiresChef,
     Expression<String>? receiptDraft,
+    Expression<String>? printerKind,
+    Expression<String>? printerAddress,
+    Expression<String>? printerName,
+    Expression<int>? printerColumns,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3227,6 +3588,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       if (themeMode != null) 'theme_mode': themeMode,
       if (voidRequiresChef != null) 'void_requires_chef': voidRequiresChef,
       if (receiptDraft != null) 'receipt_draft': receiptDraft,
+      if (printerKind != null) 'printer_kind': printerKind,
+      if (printerAddress != null) 'printer_address': printerAddress,
+      if (printerName != null) 'printer_name': printerName,
+      if (printerColumns != null) 'printer_columns': printerColumns,
     });
   }
 
@@ -3237,6 +3602,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String>? themeMode,
     Value<bool>? voidRequiresChef,
     Value<String?>? receiptDraft,
+    Value<String>? printerKind,
+    Value<String?>? printerAddress,
+    Value<String?>? printerName,
+    Value<int>? printerColumns,
   }) {
     return SettingsRowsCompanion(
       id: id ?? this.id,
@@ -3245,6 +3614,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       themeMode: themeMode ?? this.themeMode,
       voidRequiresChef: voidRequiresChef ?? this.voidRequiresChef,
       receiptDraft: receiptDraft ?? this.receiptDraft,
+      printerKind: printerKind ?? this.printerKind,
+      printerAddress: printerAddress ?? this.printerAddress,
+      printerName: printerName ?? this.printerName,
+      printerColumns: printerColumns ?? this.printerColumns,
     );
   }
 
@@ -3269,6 +3642,18 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     if (receiptDraft.present) {
       map['receipt_draft'] = Variable<String>(receiptDraft.value);
     }
+    if (printerKind.present) {
+      map['printer_kind'] = Variable<String>(printerKind.value);
+    }
+    if (printerAddress.present) {
+      map['printer_address'] = Variable<String>(printerAddress.value);
+    }
+    if (printerName.present) {
+      map['printer_name'] = Variable<String>(printerName.value);
+    }
+    if (printerColumns.present) {
+      map['printer_columns'] = Variable<int>(printerColumns.value);
+    }
     return map;
   }
 
@@ -3280,7 +3665,11 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
           ..write('showImages: $showImages, ')
           ..write('themeMode: $themeMode, ')
           ..write('voidRequiresChef: $voidRequiresChef, ')
-          ..write('receiptDraft: $receiptDraft')
+          ..write('receiptDraft: $receiptDraft, ')
+          ..write('printerKind: $printerKind, ')
+          ..write('printerAddress: $printerAddress, ')
+          ..write('printerName: $printerName, ')
+          ..write('printerColumns: $printerColumns')
           ..write(')'))
         .toString();
   }
@@ -6383,6 +6772,50 @@ class $PaymentRowsTable extends PaymentRows
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _providerMeta = const VerificationMeta(
+    'provider',
+  );
+  @override
+  late final GeneratedColumn<String> provider = GeneratedColumn<String>(
+    'provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _providerTxCodeMeta = const VerificationMeta(
+    'providerTxCode',
+  );
+  @override
+  late final GeneratedColumn<String> providerTxCode = GeneratedColumn<String>(
+    'provider_tx_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cardSchemeMeta = const VerificationMeta(
+    'cardScheme',
+  );
+  @override
+  late final GeneratedColumn<String> cardScheme = GeneratedColumn<String>(
+    'card_scheme',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cardLast4Meta = const VerificationMeta(
+    'cardLast4',
+  );
+  @override
+  late final GeneratedColumn<String> cardLast4 = GeneratedColumn<String>(
+    'card_last4',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     receiptId,
@@ -6390,6 +6823,10 @@ class $PaymentRowsTable extends PaymentRows
     amountCents,
     givenCents,
     changeCents,
+    provider,
+    providerTxCode,
+    cardScheme,
+    cardLast4,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6449,6 +6886,33 @@ class $PaymentRowsTable extends PaymentRows
     } else if (isInserting) {
       context.missing(_changeCentsMeta);
     }
+    if (data.containsKey('provider')) {
+      context.handle(
+        _providerMeta,
+        provider.isAcceptableOrUnknown(data['provider']!, _providerMeta),
+      );
+    }
+    if (data.containsKey('provider_tx_code')) {
+      context.handle(
+        _providerTxCodeMeta,
+        providerTxCode.isAcceptableOrUnknown(
+          data['provider_tx_code']!,
+          _providerTxCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('card_scheme')) {
+      context.handle(
+        _cardSchemeMeta,
+        cardScheme.isAcceptableOrUnknown(data['card_scheme']!, _cardSchemeMeta),
+      );
+    }
+    if (data.containsKey('card_last4')) {
+      context.handle(
+        _cardLast4Meta,
+        cardLast4.isAcceptableOrUnknown(data['card_last4']!, _cardLast4Meta),
+      );
+    }
     return context;
   }
 
@@ -6478,6 +6942,22 @@ class $PaymentRowsTable extends PaymentRows
         DriftSqlType.int,
         data['${effectivePrefix}change_cents'],
       )!,
+      provider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider'],
+      ),
+      providerTxCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_tx_code'],
+      ),
+      cardScheme: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_scheme'],
+      ),
+      cardLast4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_last4'],
+      ),
     );
   }
 
@@ -6495,12 +6975,22 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   final int amountCents;
   final int givenCents;
   final int changeCents;
+
+  /// Nur bei Kartenzahlung gefüllt.
+  final String? provider;
+  final String? providerTxCode;
+  final String? cardScheme;
+  final String? cardLast4;
   const PaymentRow({
     required this.receiptId,
     required this.kind,
     required this.amountCents,
     required this.givenCents,
     required this.changeCents,
+    this.provider,
+    this.providerTxCode,
+    this.cardScheme,
+    this.cardLast4,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6510,6 +7000,18 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     map['amount_cents'] = Variable<int>(amountCents);
     map['given_cents'] = Variable<int>(givenCents);
     map['change_cents'] = Variable<int>(changeCents);
+    if (!nullToAbsent || provider != null) {
+      map['provider'] = Variable<String>(provider);
+    }
+    if (!nullToAbsent || providerTxCode != null) {
+      map['provider_tx_code'] = Variable<String>(providerTxCode);
+    }
+    if (!nullToAbsent || cardScheme != null) {
+      map['card_scheme'] = Variable<String>(cardScheme);
+    }
+    if (!nullToAbsent || cardLast4 != null) {
+      map['card_last4'] = Variable<String>(cardLast4);
+    }
     return map;
   }
 
@@ -6520,6 +7022,18 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       amountCents: Value(amountCents),
       givenCents: Value(givenCents),
       changeCents: Value(changeCents),
+      provider: provider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(provider),
+      providerTxCode: providerTxCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(providerTxCode),
+      cardScheme: cardScheme == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cardScheme),
+      cardLast4: cardLast4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cardLast4),
     );
   }
 
@@ -6534,6 +7048,10 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       amountCents: serializer.fromJson<int>(json['amountCents']),
       givenCents: serializer.fromJson<int>(json['givenCents']),
       changeCents: serializer.fromJson<int>(json['changeCents']),
+      provider: serializer.fromJson<String?>(json['provider']),
+      providerTxCode: serializer.fromJson<String?>(json['providerTxCode']),
+      cardScheme: serializer.fromJson<String?>(json['cardScheme']),
+      cardLast4: serializer.fromJson<String?>(json['cardLast4']),
     );
   }
   @override
@@ -6545,6 +7063,10 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       'amountCents': serializer.toJson<int>(amountCents),
       'givenCents': serializer.toJson<int>(givenCents),
       'changeCents': serializer.toJson<int>(changeCents),
+      'provider': serializer.toJson<String?>(provider),
+      'providerTxCode': serializer.toJson<String?>(providerTxCode),
+      'cardScheme': serializer.toJson<String?>(cardScheme),
+      'cardLast4': serializer.toJson<String?>(cardLast4),
     };
   }
 
@@ -6554,12 +7076,22 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     int? amountCents,
     int? givenCents,
     int? changeCents,
+    Value<String?> provider = const Value.absent(),
+    Value<String?> providerTxCode = const Value.absent(),
+    Value<String?> cardScheme = const Value.absent(),
+    Value<String?> cardLast4 = const Value.absent(),
   }) => PaymentRow(
     receiptId: receiptId ?? this.receiptId,
     kind: kind ?? this.kind,
     amountCents: amountCents ?? this.amountCents,
     givenCents: givenCents ?? this.givenCents,
     changeCents: changeCents ?? this.changeCents,
+    provider: provider.present ? provider.value : this.provider,
+    providerTxCode: providerTxCode.present
+        ? providerTxCode.value
+        : this.providerTxCode,
+    cardScheme: cardScheme.present ? cardScheme.value : this.cardScheme,
+    cardLast4: cardLast4.present ? cardLast4.value : this.cardLast4,
   );
   PaymentRow copyWithCompanion(PaymentRowsCompanion data) {
     return PaymentRow(
@@ -6574,6 +7106,14 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       changeCents: data.changeCents.present
           ? data.changeCents.value
           : this.changeCents,
+      provider: data.provider.present ? data.provider.value : this.provider,
+      providerTxCode: data.providerTxCode.present
+          ? data.providerTxCode.value
+          : this.providerTxCode,
+      cardScheme: data.cardScheme.present
+          ? data.cardScheme.value
+          : this.cardScheme,
+      cardLast4: data.cardLast4.present ? data.cardLast4.value : this.cardLast4,
     );
   }
 
@@ -6584,14 +7124,27 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
           ..write('kind: $kind, ')
           ..write('amountCents: $amountCents, ')
           ..write('givenCents: $givenCents, ')
-          ..write('changeCents: $changeCents')
+          ..write('changeCents: $changeCents, ')
+          ..write('provider: $provider, ')
+          ..write('providerTxCode: $providerTxCode, ')
+          ..write('cardScheme: $cardScheme, ')
+          ..write('cardLast4: $cardLast4')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(receiptId, kind, amountCents, givenCents, changeCents);
+  int get hashCode => Object.hash(
+    receiptId,
+    kind,
+    amountCents,
+    givenCents,
+    changeCents,
+    provider,
+    providerTxCode,
+    cardScheme,
+    cardLast4,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6600,7 +7153,11 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
           other.kind == this.kind &&
           other.amountCents == this.amountCents &&
           other.givenCents == this.givenCents &&
-          other.changeCents == this.changeCents);
+          other.changeCents == this.changeCents &&
+          other.provider == this.provider &&
+          other.providerTxCode == this.providerTxCode &&
+          other.cardScheme == this.cardScheme &&
+          other.cardLast4 == this.cardLast4);
 }
 
 class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
@@ -6609,6 +7166,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
   final Value<int> amountCents;
   final Value<int> givenCents;
   final Value<int> changeCents;
+  final Value<String?> provider;
+  final Value<String?> providerTxCode;
+  final Value<String?> cardScheme;
+  final Value<String?> cardLast4;
   final Value<int> rowid;
   const PaymentRowsCompanion({
     this.receiptId = const Value.absent(),
@@ -6616,6 +7177,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     this.amountCents = const Value.absent(),
     this.givenCents = const Value.absent(),
     this.changeCents = const Value.absent(),
+    this.provider = const Value.absent(),
+    this.providerTxCode = const Value.absent(),
+    this.cardScheme = const Value.absent(),
+    this.cardLast4 = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PaymentRowsCompanion.insert({
@@ -6624,6 +7189,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     required int amountCents,
     required int givenCents,
     required int changeCents,
+    this.provider = const Value.absent(),
+    this.providerTxCode = const Value.absent(),
+    this.cardScheme = const Value.absent(),
+    this.cardLast4 = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : receiptId = Value(receiptId),
        kind = Value(kind),
@@ -6636,6 +7205,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     Expression<int>? amountCents,
     Expression<int>? givenCents,
     Expression<int>? changeCents,
+    Expression<String>? provider,
+    Expression<String>? providerTxCode,
+    Expression<String>? cardScheme,
+    Expression<String>? cardLast4,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6644,6 +7217,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
       if (amountCents != null) 'amount_cents': amountCents,
       if (givenCents != null) 'given_cents': givenCents,
       if (changeCents != null) 'change_cents': changeCents,
+      if (provider != null) 'provider': provider,
+      if (providerTxCode != null) 'provider_tx_code': providerTxCode,
+      if (cardScheme != null) 'card_scheme': cardScheme,
+      if (cardLast4 != null) 'card_last4': cardLast4,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6654,6 +7231,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     Value<int>? amountCents,
     Value<int>? givenCents,
     Value<int>? changeCents,
+    Value<String?>? provider,
+    Value<String?>? providerTxCode,
+    Value<String?>? cardScheme,
+    Value<String?>? cardLast4,
     Value<int>? rowid,
   }) {
     return PaymentRowsCompanion(
@@ -6662,6 +7243,10 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
       amountCents: amountCents ?? this.amountCents,
       givenCents: givenCents ?? this.givenCents,
       changeCents: changeCents ?? this.changeCents,
+      provider: provider ?? this.provider,
+      providerTxCode: providerTxCode ?? this.providerTxCode,
+      cardScheme: cardScheme ?? this.cardScheme,
+      cardLast4: cardLast4 ?? this.cardLast4,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6684,6 +7269,18 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     if (changeCents.present) {
       map['change_cents'] = Variable<int>(changeCents.value);
     }
+    if (provider.present) {
+      map['provider'] = Variable<String>(provider.value);
+    }
+    if (providerTxCode.present) {
+      map['provider_tx_code'] = Variable<String>(providerTxCode.value);
+    }
+    if (cardScheme.present) {
+      map['card_scheme'] = Variable<String>(cardScheme.value);
+    }
+    if (cardLast4.present) {
+      map['card_last4'] = Variable<String>(cardLast4.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6698,6 +7295,483 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
           ..write('amountCents: $amountCents, ')
           ..write('givenCents: $givenCents, ')
           ..write('changeCents: $changeCents, ')
+          ..write('provider: $provider, ')
+          ..write('providerTxCode: $providerTxCode, ')
+          ..write('cardScheme: $cardScheme, ')
+          ..write('cardLast4: $cardLast4, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PendingCardPaymentRowsTable extends PendingCardPaymentRows
+    with TableInfo<$PendingCardPaymentRowsTable, PendingCardPaymentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingCardPaymentRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cartJsonMeta = const VerificationMeta(
+    'cartJson',
+  );
+  @override
+  late final GeneratedColumn<String> cartJson = GeneratedColumn<String>(
+    'cart_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _staffIdMeta = const VerificationMeta(
+    'staffId',
+  );
+  @override
+  late final GeneratedColumn<String> staffId = GeneratedColumn<String>(
+    'staff_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _staffNameMeta = const VerificationMeta(
+    'staffName',
+  );
+  @override
+  late final GeneratedColumn<String> staffName = GeneratedColumn<String>(
+    'staff_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    cartJson,
+    amountCents,
+    staffId,
+    staffName,
+    startedAt,
+    state,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_card_payments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingCardPaymentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('cart_json')) {
+      context.handle(
+        _cartJsonMeta,
+        cartJson.isAcceptableOrUnknown(data['cart_json']!, _cartJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cartJsonMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('staff_id')) {
+      context.handle(
+        _staffIdMeta,
+        staffId.isAcceptableOrUnknown(data['staff_id']!, _staffIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_staffIdMeta);
+    }
+    if (data.containsKey('staff_name')) {
+      context.handle(
+        _staffNameMeta,
+        staffName.isAcceptableOrUnknown(data['staff_name']!, _staffNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_staffNameMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingCardPaymentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingCardPaymentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      cartJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cart_json'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      staffId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}staff_id'],
+      )!,
+      staffName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}staff_name'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingCardPaymentRowsTable createAlias(String alias) {
+    return $PendingCardPaymentRowsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingCardPaymentRow extends DataClass
+    implements Insertable<PendingCardPaymentRow> {
+  final String id;
+  final String cartJson;
+  final int amountCents;
+  final String staffId;
+  final String staffName;
+  final DateTime startedAt;
+
+  /// `started` oder `unknown`.
+  final String state;
+  const PendingCardPaymentRow({
+    required this.id,
+    required this.cartJson,
+    required this.amountCents,
+    required this.staffId,
+    required this.staffName,
+    required this.startedAt,
+    required this.state,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['cart_json'] = Variable<String>(cartJson);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['staff_id'] = Variable<String>(staffId);
+    map['staff_name'] = Variable<String>(staffName);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    map['state'] = Variable<String>(state);
+    return map;
+  }
+
+  PendingCardPaymentRowsCompanion toCompanion(bool nullToAbsent) {
+    return PendingCardPaymentRowsCompanion(
+      id: Value(id),
+      cartJson: Value(cartJson),
+      amountCents: Value(amountCents),
+      staffId: Value(staffId),
+      staffName: Value(staffName),
+      startedAt: Value(startedAt),
+      state: Value(state),
+    );
+  }
+
+  factory PendingCardPaymentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingCardPaymentRow(
+      id: serializer.fromJson<String>(json['id']),
+      cartJson: serializer.fromJson<String>(json['cartJson']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      staffId: serializer.fromJson<String>(json['staffId']),
+      staffName: serializer.fromJson<String>(json['staffName']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      state: serializer.fromJson<String>(json['state']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'cartJson': serializer.toJson<String>(cartJson),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'staffId': serializer.toJson<String>(staffId),
+      'staffName': serializer.toJson<String>(staffName),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'state': serializer.toJson<String>(state),
+    };
+  }
+
+  PendingCardPaymentRow copyWith({
+    String? id,
+    String? cartJson,
+    int? amountCents,
+    String? staffId,
+    String? staffName,
+    DateTime? startedAt,
+    String? state,
+  }) => PendingCardPaymentRow(
+    id: id ?? this.id,
+    cartJson: cartJson ?? this.cartJson,
+    amountCents: amountCents ?? this.amountCents,
+    staffId: staffId ?? this.staffId,
+    staffName: staffName ?? this.staffName,
+    startedAt: startedAt ?? this.startedAt,
+    state: state ?? this.state,
+  );
+  PendingCardPaymentRow copyWithCompanion(
+    PendingCardPaymentRowsCompanion data,
+  ) {
+    return PendingCardPaymentRow(
+      id: data.id.present ? data.id.value : this.id,
+      cartJson: data.cartJson.present ? data.cartJson.value : this.cartJson,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      staffId: data.staffId.present ? data.staffId.value : this.staffId,
+      staffName: data.staffName.present ? data.staffName.value : this.staffName,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      state: data.state.present ? data.state.value : this.state,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingCardPaymentRow(')
+          ..write('id: $id, ')
+          ..write('cartJson: $cartJson, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('staffId: $staffId, ')
+          ..write('staffName: $staffName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('state: $state')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    cartJson,
+    amountCents,
+    staffId,
+    staffName,
+    startedAt,
+    state,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingCardPaymentRow &&
+          other.id == this.id &&
+          other.cartJson == this.cartJson &&
+          other.amountCents == this.amountCents &&
+          other.staffId == this.staffId &&
+          other.staffName == this.staffName &&
+          other.startedAt == this.startedAt &&
+          other.state == this.state);
+}
+
+class PendingCardPaymentRowsCompanion
+    extends UpdateCompanion<PendingCardPaymentRow> {
+  final Value<String> id;
+  final Value<String> cartJson;
+  final Value<int> amountCents;
+  final Value<String> staffId;
+  final Value<String> staffName;
+  final Value<DateTime> startedAt;
+  final Value<String> state;
+  final Value<int> rowid;
+  const PendingCardPaymentRowsCompanion({
+    this.id = const Value.absent(),
+    this.cartJson = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.staffId = const Value.absent(),
+    this.staffName = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingCardPaymentRowsCompanion.insert({
+    required String id,
+    required String cartJson,
+    required int amountCents,
+    required String staffId,
+    required String staffName,
+    required DateTime startedAt,
+    required String state,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       cartJson = Value(cartJson),
+       amountCents = Value(amountCents),
+       staffId = Value(staffId),
+       staffName = Value(staffName),
+       startedAt = Value(startedAt),
+       state = Value(state);
+  static Insertable<PendingCardPaymentRow> custom({
+    Expression<String>? id,
+    Expression<String>? cartJson,
+    Expression<int>? amountCents,
+    Expression<String>? staffId,
+    Expression<String>? staffName,
+    Expression<DateTime>? startedAt,
+    Expression<String>? state,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (cartJson != null) 'cart_json': cartJson,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (staffId != null) 'staff_id': staffId,
+      if (staffName != null) 'staff_name': staffName,
+      if (startedAt != null) 'started_at': startedAt,
+      if (state != null) 'state': state,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingCardPaymentRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? cartJson,
+    Value<int>? amountCents,
+    Value<String>? staffId,
+    Value<String>? staffName,
+    Value<DateTime>? startedAt,
+    Value<String>? state,
+    Value<int>? rowid,
+  }) {
+    return PendingCardPaymentRowsCompanion(
+      id: id ?? this.id,
+      cartJson: cartJson ?? this.cartJson,
+      amountCents: amountCents ?? this.amountCents,
+      staffId: staffId ?? this.staffId,
+      staffName: staffName ?? this.staffName,
+      startedAt: startedAt ?? this.startedAt,
+      state: state ?? this.state,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (cartJson.present) {
+      map['cart_json'] = Variable<String>(cartJson.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (staffId.present) {
+      map['staff_id'] = Variable<String>(staffId.value);
+    }
+    if (staffName.present) {
+      map['staff_name'] = Variable<String>(staffName.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingCardPaymentRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('cartJson: $cartJson, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('staffId: $staffId, ')
+          ..write('staffName: $staffName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('state: $state, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6731,6 +7805,8 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
   late final $ReceiptLineOptionRowsTable receiptLineOptionRows =
       $ReceiptLineOptionRowsTable(this);
   late final $PaymentRowsTable paymentRows = $PaymentRowsTable(this);
+  late final $PendingCardPaymentRowsTable pendingCardPaymentRows =
+      $PendingCardPaymentRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6750,13 +7826,26 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
     receiptLineRows,
     receiptLineOptionRows,
     paymentRows,
+    pendingCardPaymentRows,
   ];
 }
 
 typedef $$BusinessRowsTableCreateCompanionBuilder =
-    BusinessRowsCompanion Function({Value<int> id, required String name});
+    BusinessRowsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<String> addressLines,
+      Value<String?> vatId,
+      Value<String?> receiptFooter,
+    });
 typedef $$BusinessRowsTableUpdateCompanionBuilder =
-    BusinessRowsCompanion Function({Value<int> id, Value<String> name});
+    BusinessRowsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> addressLines,
+      Value<String?> vatId,
+      Value<String?> receiptFooter,
+    });
 
 class $$BusinessRowsTableFilterComposer
     extends Composer<_$KassaDatabase, $BusinessRowsTable> {
@@ -6774,6 +7863,21 @@ class $$BusinessRowsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get addressLines => $composableBuilder(
+    column: $table.addressLines,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vatId => $composableBuilder(
+    column: $table.vatId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6796,6 +7900,21 @@ class $$BusinessRowsTableOrderingComposer
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get addressLines => $composableBuilder(
+    column: $table.addressLines,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vatId => $composableBuilder(
+    column: $table.vatId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BusinessRowsTableAnnotationComposer
@@ -6812,6 +7931,19 @@ class $$BusinessRowsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get addressLines => $composableBuilder(
+    column: $table.addressLines,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vatId =>
+      $composableBuilder(column: $table.vatId, builder: (column) => column);
+
+  GeneratedColumn<String> get receiptFooter => $composableBuilder(
+    column: $table.receiptFooter,
+    builder: (column) => column,
+  );
 }
 
 class $$BusinessRowsTableTableManager
@@ -6843,14 +7975,34 @@ class $$BusinessRowsTableTableManager
               $$BusinessRowsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$BusinessRowsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-          }) => BusinessRowsCompanion(id: id, name: name),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String name,
-          }) => BusinessRowsCompanion.insert(id: id, name: name),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> addressLines = const Value.absent(),
+                Value<String?> vatId = const Value.absent(),
+                Value<String?> receiptFooter = const Value.absent(),
+              }) => BusinessRowsCompanion(
+                id: id,
+                name: name,
+                addressLines: addressLines,
+                vatId: vatId,
+                receiptFooter: receiptFooter,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String> addressLines = const Value.absent(),
+                Value<String?> vatId = const Value.absent(),
+                Value<String?> receiptFooter = const Value.absent(),
+              }) => BusinessRowsCompanion.insert(
+                id: id,
+                name: name,
+                addressLines: addressLines,
+                vatId: vatId,
+                receiptFooter: receiptFooter,
+              ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
@@ -9005,6 +10157,10 @@ typedef $$SettingsRowsTableCreateCompanionBuilder =
       Value<String> themeMode,
       Value<bool> voidRequiresChef,
       Value<String?> receiptDraft,
+      Value<String> printerKind,
+      Value<String?> printerAddress,
+      Value<String?> printerName,
+      Value<int> printerColumns,
     });
 typedef $$SettingsRowsTableUpdateCompanionBuilder =
     SettingsRowsCompanion Function({
@@ -9014,6 +10170,10 @@ typedef $$SettingsRowsTableUpdateCompanionBuilder =
       Value<String> themeMode,
       Value<bool> voidRequiresChef,
       Value<String?> receiptDraft,
+      Value<String> printerKind,
+      Value<String?> printerAddress,
+      Value<String?> printerName,
+      Value<int> printerColumns,
     });
 
 class $$SettingsRowsTableFilterComposer
@@ -9052,6 +10212,26 @@ class $$SettingsRowsTableFilterComposer
 
   ColumnFilters<String> get receiptDraft => $composableBuilder(
     column: $table.receiptDraft,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get printerKind => $composableBuilder(
+    column: $table.printerKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get printerAddress => $composableBuilder(
+    column: $table.printerAddress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get printerName => $composableBuilder(
+    column: $table.printerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get printerColumns => $composableBuilder(
+    column: $table.printerColumns,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9094,6 +10274,26 @@ class $$SettingsRowsTableOrderingComposer
     column: $table.receiptDraft,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get printerKind => $composableBuilder(
+    column: $table.printerKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get printerAddress => $composableBuilder(
+    column: $table.printerAddress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get printerName => $composableBuilder(
+    column: $table.printerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get printerColumns => $composableBuilder(
+    column: $table.printerColumns,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsRowsTableAnnotationComposer
@@ -9128,6 +10328,26 @@ class $$SettingsRowsTableAnnotationComposer
 
   GeneratedColumn<String> get receiptDraft => $composableBuilder(
     column: $table.receiptDraft,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get printerKind => $composableBuilder(
+    column: $table.printerKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get printerAddress => $composableBuilder(
+    column: $table.printerAddress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get printerName => $composableBuilder(
+    column: $table.printerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get printerColumns => $composableBuilder(
+    column: $table.printerColumns,
     builder: (column) => column,
   );
 }
@@ -9169,6 +10389,10 @@ class $$SettingsRowsTableTableManager
                 Value<String> themeMode = const Value.absent(),
                 Value<bool> voidRequiresChef = const Value.absent(),
                 Value<String?> receiptDraft = const Value.absent(),
+                Value<String> printerKind = const Value.absent(),
+                Value<String?> printerAddress = const Value.absent(),
+                Value<String?> printerName = const Value.absent(),
+                Value<int> printerColumns = const Value.absent(),
               }) => SettingsRowsCompanion(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -9176,6 +10400,10 @@ class $$SettingsRowsTableTableManager
                 themeMode: themeMode,
                 voidRequiresChef: voidRequiresChef,
                 receiptDraft: receiptDraft,
+                printerKind: printerKind,
+                printerAddress: printerAddress,
+                printerName: printerName,
+                printerColumns: printerColumns,
               ),
           createCompanionCallback:
               ({
@@ -9185,6 +10413,10 @@ class $$SettingsRowsTableTableManager
                 Value<String> themeMode = const Value.absent(),
                 Value<bool> voidRequiresChef = const Value.absent(),
                 Value<String?> receiptDraft = const Value.absent(),
+                Value<String> printerKind = const Value.absent(),
+                Value<String?> printerAddress = const Value.absent(),
+                Value<String?> printerName = const Value.absent(),
+                Value<int> printerColumns = const Value.absent(),
               }) => SettingsRowsCompanion.insert(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -9192,6 +10424,10 @@ class $$SettingsRowsTableTableManager
                 themeMode: themeMode,
                 voidRequiresChef: voidRequiresChef,
                 receiptDraft: receiptDraft,
+                printerKind: printerKind,
+                printerAddress: printerAddress,
+                printerName: printerName,
+                printerColumns: printerColumns,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -11578,6 +12814,10 @@ typedef $$PaymentRowsTableCreateCompanionBuilder =
       required int amountCents,
       required int givenCents,
       required int changeCents,
+      Value<String?> provider,
+      Value<String?> providerTxCode,
+      Value<String?> cardScheme,
+      Value<String?> cardLast4,
       Value<int> rowid,
     });
 typedef $$PaymentRowsTableUpdateCompanionBuilder =
@@ -11587,6 +12827,10 @@ typedef $$PaymentRowsTableUpdateCompanionBuilder =
       Value<int> amountCents,
       Value<int> givenCents,
       Value<int> changeCents,
+      Value<String?> provider,
+      Value<String?> providerTxCode,
+      Value<String?> cardScheme,
+      Value<String?> cardLast4,
       Value<int> rowid,
     });
 
@@ -11638,6 +12882,26 @@ class $$PaymentRowsTableFilterComposer
 
   ColumnFilters<int> get changeCents => $composableBuilder(
     column: $table.changeCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get provider => $composableBuilder(
+    column: $table.provider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providerTxCode => $composableBuilder(
+    column: $table.providerTxCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cardScheme => $composableBuilder(
+    column: $table.cardScheme,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cardLast4 => $composableBuilder(
+    column: $table.cardLast4,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11694,6 +12958,26 @@ class $$PaymentRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get provider => $composableBuilder(
+    column: $table.provider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providerTxCode => $composableBuilder(
+    column: $table.providerTxCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cardScheme => $composableBuilder(
+    column: $table.cardScheme,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cardLast4 => $composableBuilder(
+    column: $table.cardLast4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ReceiptRowsTableOrderingComposer get receiptId {
     final $$ReceiptRowsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11744,6 +13028,22 @@ class $$PaymentRowsTableAnnotationComposer
     column: $table.changeCents,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get provider =>
+      $composableBuilder(column: $table.provider, builder: (column) => column);
+
+  GeneratedColumn<String> get providerTxCode => $composableBuilder(
+    column: $table.providerTxCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cardScheme => $composableBuilder(
+    column: $table.cardScheme,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cardLast4 =>
+      $composableBuilder(column: $table.cardLast4, builder: (column) => column);
 
   $$ReceiptRowsTableAnnotationComposer get receiptId {
     final $$ReceiptRowsTableAnnotationComposer composer = $composerBuilder(
@@ -11802,6 +13102,10 @@ class $$PaymentRowsTableTableManager
                 Value<int> amountCents = const Value.absent(),
                 Value<int> givenCents = const Value.absent(),
                 Value<int> changeCents = const Value.absent(),
+                Value<String?> provider = const Value.absent(),
+                Value<String?> providerTxCode = const Value.absent(),
+                Value<String?> cardScheme = const Value.absent(),
+                Value<String?> cardLast4 = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentRowsCompanion(
                 receiptId: receiptId,
@@ -11809,6 +13113,10 @@ class $$PaymentRowsTableTableManager
                 amountCents: amountCents,
                 givenCents: givenCents,
                 changeCents: changeCents,
+                provider: provider,
+                providerTxCode: providerTxCode,
+                cardScheme: cardScheme,
+                cardLast4: cardLast4,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11818,6 +13126,10 @@ class $$PaymentRowsTableTableManager
                 required int amountCents,
                 required int givenCents,
                 required int changeCents,
+                Value<String?> provider = const Value.absent(),
+                Value<String?> providerTxCode = const Value.absent(),
+                Value<String?> cardScheme = const Value.absent(),
+                Value<String?> cardLast4 = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentRowsCompanion.insert(
                 receiptId: receiptId,
@@ -11825,6 +13137,10 @@ class $$PaymentRowsTableTableManager
                 amountCents: amountCents,
                 givenCents: givenCents,
                 changeCents: changeCents,
+                provider: provider,
+                providerTxCode: providerTxCode,
+                cardScheme: cardScheme,
+                cardLast4: cardLast4,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -11892,6 +13208,277 @@ typedef $$PaymentRowsTableProcessedTableManager =
       PaymentRow,
       PrefetchHooks Function({bool receiptId})
     >;
+typedef $$PendingCardPaymentRowsTableCreateCompanionBuilder =
+    PendingCardPaymentRowsCompanion Function({
+      required String id,
+      required String cartJson,
+      required int amountCents,
+      required String staffId,
+      required String staffName,
+      required DateTime startedAt,
+      required String state,
+      Value<int> rowid,
+    });
+typedef $$PendingCardPaymentRowsTableUpdateCompanionBuilder =
+    PendingCardPaymentRowsCompanion Function({
+      Value<String> id,
+      Value<String> cartJson,
+      Value<int> amountCents,
+      Value<String> staffId,
+      Value<String> staffName,
+      Value<DateTime> startedAt,
+      Value<String> state,
+      Value<int> rowid,
+    });
+
+class $$PendingCardPaymentRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $PendingCardPaymentRowsTable> {
+  $$PendingCardPaymentRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cartJson => $composableBuilder(
+    column: $table.cartJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get staffId => $composableBuilder(
+    column: $table.staffId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get staffName => $composableBuilder(
+    column: $table.staffName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingCardPaymentRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $PendingCardPaymentRowsTable> {
+  $$PendingCardPaymentRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cartJson => $composableBuilder(
+    column: $table.cartJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get staffId => $composableBuilder(
+    column: $table.staffId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get staffName => $composableBuilder(
+    column: $table.staffName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingCardPaymentRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $PendingCardPaymentRowsTable> {
+  $$PendingCardPaymentRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get cartJson =>
+      $composableBuilder(column: $table.cartJson, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get staffId =>
+      $composableBuilder(column: $table.staffId, builder: (column) => column);
+
+  GeneratedColumn<String> get staffName =>
+      $composableBuilder(column: $table.staffName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+}
+
+class $$PendingCardPaymentRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $PendingCardPaymentRowsTable,
+          PendingCardPaymentRow,
+          $$PendingCardPaymentRowsTableFilterComposer,
+          $$PendingCardPaymentRowsTableOrderingComposer,
+          $$PendingCardPaymentRowsTableAnnotationComposer,
+          $$PendingCardPaymentRowsTableCreateCompanionBuilder,
+          $$PendingCardPaymentRowsTableUpdateCompanionBuilder,
+          (
+            PendingCardPaymentRow,
+            BaseReferences<
+              _$KassaDatabase,
+              $PendingCardPaymentRowsTable,
+              PendingCardPaymentRow
+            >,
+          ),
+          PendingCardPaymentRow,
+          PrefetchHooks Function()
+        > {
+  $$PendingCardPaymentRowsTableTableManager(
+    _$KassaDatabase db,
+    $PendingCardPaymentRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingCardPaymentRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PendingCardPaymentRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingCardPaymentRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> cartJson = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<String> staffId = const Value.absent(),
+                Value<String> staffName = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingCardPaymentRowsCompanion(
+                id: id,
+                cartJson: cartJson,
+                amountCents: amountCents,
+                staffId: staffId,
+                staffName: staffName,
+                startedAt: startedAt,
+                state: state,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String cartJson,
+                required int amountCents,
+                required String staffId,
+                required String staffName,
+                required DateTime startedAt,
+                required String state,
+                Value<int> rowid = const Value.absent(),
+              }) => PendingCardPaymentRowsCompanion.insert(
+                id: id,
+                cartJson: cartJson,
+                amountCents: amountCents,
+                staffId: staffId,
+                staffName: staffName,
+                startedAt: startedAt,
+                state: state,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $PendingCardPaymentRowsTable,
+                    PendingCardPaymentRow
+                  >(table),
+                  BaseReferences<
+                    _$KassaDatabase,
+                    $PendingCardPaymentRowsTable,
+                    PendingCardPaymentRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingCardPaymentRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $PendingCardPaymentRowsTable,
+      PendingCardPaymentRow,
+      $$PendingCardPaymentRowsTableFilterComposer,
+      $$PendingCardPaymentRowsTableOrderingComposer,
+      $$PendingCardPaymentRowsTableAnnotationComposer,
+      $$PendingCardPaymentRowsTableCreateCompanionBuilder,
+      $$PendingCardPaymentRowsTableUpdateCompanionBuilder,
+      (
+        PendingCardPaymentRow,
+        BaseReferences<
+          _$KassaDatabase,
+          $PendingCardPaymentRowsTable,
+          PendingCardPaymentRow
+        >,
+      ),
+      PendingCardPaymentRow,
+      PrefetchHooks Function()
+    >;
 
 class $KassaDatabaseManager {
   final _$KassaDatabase _db;
@@ -11924,4 +13511,9 @@ class $KassaDatabaseManager {
       $$ReceiptLineOptionRowsTableTableManager(_db, _db.receiptLineOptionRows);
   $$PaymentRowsTableTableManager get paymentRows =>
       $$PaymentRowsTableTableManager(_db, _db.paymentRows);
+  $$PendingCardPaymentRowsTableTableManager get pendingCardPaymentRows =>
+      $$PendingCardPaymentRowsTableTableManager(
+        _db,
+        _db.pendingCardPaymentRows,
+      );
 }

@@ -14,6 +14,11 @@ class BusinessRows extends Table {
   IntColumn get id => integer()();
   TextColumn get name => text()();
 
+  /// Anschrift für den Bon, Zeilen durch `\n` getrennt.
+  TextColumn get addressLines => text().withDefault(const Constant(''))();
+  TextColumn get vatId => text().nullable()();
+  TextColumn get receiptFooter => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -130,6 +135,12 @@ class SettingsRows extends Table {
   TextColumn get themeMode => text().withDefault(const Constant('system'))();
   BoolColumn get voidRequiresChef => boolean().withDefault(const Constant(false))();
   TextColumn get receiptDraft => text().nullable()();
+
+  /// `none`, `network`, `usb` oder `bluetooth`.
+  TextColumn get printerKind => text().withDefault(const Constant('none'))();
+  TextColumn get printerAddress => text().nullable()();
+  TextColumn get printerName => text().nullable()();
+  IntColumn get printerColumns => integer().withDefault(const Constant(48))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -264,8 +275,35 @@ class PaymentRows extends Table {
   IntColumn get givenCents => integer()();
   IntColumn get changeCents => integer()();
 
+  /// Nur bei Kartenzahlung gefüllt.
+  TextColumn get provider => text().nullable()();
+  TextColumn get providerTxCode => text().nullable()();
+  TextColumn get cardScheme => text().nullable()();
+  TextColumn get cardLast4 => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {receiptId};
+}
+
+/// Eine Kartenzahlung, die gestartet, aber noch nicht als Bon abgeschlossen
+/// ist. Bleibt über einen Neustart erhalten, damit kein bezahlter Betrag
+/// verloren geht.
+class PendingCardPaymentRows extends Table {
+  @override
+  String get tableName => 'pending_card_payments';
+
+  TextColumn get id => text()();
+  TextColumn get cartJson => text()();
+  IntColumn get amountCents => integer()();
+  TextColumn get staffId => text()();
+  TextColumn get staffName => text()();
+  DateTimeColumn get startedAt => dateTime()();
+
+  /// `started` oder `unknown`.
+  TextColumn get state => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 @DriftDatabase(
@@ -284,13 +322,14 @@ class PaymentRows extends Table {
     ReceiptLineRows,
     ReceiptLineOptionRows,
     PaymentRows,
+    PendingCardPaymentRows,
   ],
 )
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -331,6 +370,22 @@ class KassaDatabase extends _$KassaDatabase {
             "SELECT RAISE(ABORT, 'Bons sind unveränderlich'); END",
           );
         }
+      }
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(settingsRows, settingsRows.printerKind);
+        await m.addColumn(settingsRows, settingsRows.printerAddress);
+        await m.addColumn(settingsRows, settingsRows.printerName);
+        await m.addColumn(settingsRows, settingsRows.printerColumns);
+        await m.addColumn(businessRows, businessRows.addressLines);
+        await m.addColumn(businessRows, businessRows.vatId);
+        await m.addColumn(businessRows, businessRows.receiptFooter);
+        await m.addColumn(paymentRows, paymentRows.provider);
+        await m.addColumn(paymentRows, paymentRows.providerTxCode);
+        await m.addColumn(paymentRows, paymentRows.cardScheme);
+        await m.addColumn(paymentRows, paymentRows.cardLast4);
+        await m.createTable(pendingCardPaymentRows);
       }
     },
     beforeOpen: (details) async {
