@@ -1,0 +1,229 @@
+{
+  "betrieb": "Beispiel-Imbiss",
+  "quelle": "Erfundene Beispieldaten",
+  "hinweise": [
+    "Alle Angaben sind erfunden."
+  ],
+  "kategorien": [
+    {
+      "id": "bowls",
+      "name": "Bowls"
+    },
+    {
+      "id": "snacks",
+      "name": "Snacks"
+    },
+    {
+      "id": "suesses",
+      "name": "Süßes"
+    },
+    {
+      "id": "getraenke",
+      "name": "Getränke"
+    }
+  ],
+  "artikel": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "preis_cent": 990,
+      "kategorie": "bowls",
+      "mwst": 10,
+      "auswahl": "bowl",
+      "kennzeichen": "SCHARF"
+    },
+    {
+      "id": "tofu-bowl",
+      "name": "Tofu Bowl",
+      "preis_cent": 950,
+      "kategorie": "bowls",
+      "mwst": 10,
+      "auswahl": "bowl",
+      "kennzeichen": "VEGAN"
+    },
+    {
+      "id": "gemuese-bowl",
+      "name": "Gemüse Bowl",
+      "preis_cent": 920,
+      "kategorie": "bowls",
+      "mwst": 10,
+      "auswahl": "bowl",
+      "kennzeichen": "VEGAN"
+    },
+    {
+      "id": "rind-bowl",
+      "name": "Rind Bowl",
+      "preis_cent": 1090,
+      "kategorie": "bowls",
+      "mwst": 10,
+      "auswahl": "bowl"
+    },
+    {
+      "id": "teigtaschen",
+      "name": "Teigtaschen",
+      "preis_cent": 650,
+      "kategorie": "snacks",
+      "mwst": 10,
+      "info": "5 Stück"
+    },
+    {
+      "id": "fruehlingsrollen",
+      "name": "Frühlingsrollen",
+      "preis_cent": 490,
+      "kategorie": "snacks",
+      "mwst": 10,
+      "info": "3 Stück",
+      "kennzeichen": "VEGAN"
+    },
+    {
+      "id": "pommes",
+      "name": "Pommes",
+      "preis_cent": 390,
+      "kategorie": "snacks",
+      "mwst": 10
+    },
+    {
+      "id": "edamame",
+      "name": "Edamame",
+      "preis_cent": 450,
+      "kategorie": "snacks",
+      "mwst": 10,
+      "kennzeichen": "VEGAN"
+    },
+    {
+      "id": "mochi",
+      "name": "Mochi",
+      "preis_cent": 420,
+      "kategorie": "suesses",
+      "mwst": 10,
+      "info": "2 Stück"
+    },
+    {
+      "id": "bananenkuchen",
+      "name": "Bananenkuchen",
+      "preis_cent": 380,
+      "kategorie": "suesses",
+      "mwst": 10
+    },
+    {
+      "id": "cola",
+      "name": "Cola 0,33 l",
+      "preis_cent": 290,
+      "kategorie": "getraenke",
+      "mwst": 20,
+      "pfand_cent": 25
+    },
+    {
+      "id": "limonade",
+      "name": "Zitronenlimonade 0,33 l",
+      "preis_cent": 290,
+      "kategorie": "getraenke",
+      "mwst": 20,
+      "pfand_cent": 25
+    },
+    {
+      "id": "eistee",
+      "name": "Eistee 0,33 l",
+      "preis_cent": 290,
+      "kategorie": "getraenke",
+      "mwst": 20,
+      "pfand_cent": 25
+    },
+    {
+      "id": "leitungswasser",
+      "name": "Leitungswasser",
+      "preis_cent": 0,
+      "kategorie": "getraenke",
+      "mwst": 20
+    }
+  ],
+  "auswahlgruppen": {
+    "bowl": [
+      {
+        "name": "Größe",
+        "min": 1,
+        "max": 1,
+        "optionen": [
+          {
+            "name": "Normal",
+            "aufpreis_cent": 0,
+            "vorgabe": true
+          },
+          {
+            "name": "XXL",
+            "aufpreis_cent": 200
+          }
+        ]
+      },
+      {
+        "name": "Basis",
+        "min": 1,
+        "max": 1,
+        "optionen": [
+          {
+            "name": "Reis",
+            "aufpreis_cent": 0
+          },
+          {
+            "name": "Nudeln",
+            "aufpreis_cent": 0
+          },
+          {
+            "name": "Salat",
+            "aufpreis_cent": 0
+          }
+        ]
+      },
+      {
+        "name": "Extra-Topping",
+        "min": 0,
+        "max": 4,
+        "optionen": [
+          {
+            "name": "Avocado",
+            "aufpreis_cent": 120
+          },
+          {
+            "name": "Mais",
+            "aufpreis_cent": 120
+          },
+          {
+            "name": "Gurke",
+            "aufpreis_cent": 120
+          },
+          {
+            "name": "Röstzwiebeln",
+            "aufpreis_cent": 120
+          },
+          {
+            "name": "Sesam",
+            "aufpreis_cent": 120
+          }
+        ]
+      },
+      {
+        "name": "Extra-Sauce",
+        "min": 0,
+        "max": null,
+        "optionen": [
+          {
+            "name": "Teriyaki",
+            "aufpreis_cent": 50
+          },
+          {
+            "name": "Sesam-Dressing",
+            "aufpreis_cent": 50
+          },
+          {
+            "name": "Erdnuss",
+            "aufpreis_cent": 50
+          },
+          {
+            "name": "Chili-Mayo",
+            "aufpreis_cent": 50
+          }
+        ]
+      }
+    ]
+  }
+}
