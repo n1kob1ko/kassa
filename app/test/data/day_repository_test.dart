@@ -88,7 +88,9 @@ void main() {
   test('vergessener Abschluss', () async {
     await sell('s1');
     expect(await days.hasForgottenClose(), isFalse);
-    clock.value = DateTime(2026, 11, 18, 9);
+    clock.value = DateTime(2026, 11, 18, 3, 59);
+    expect(await days.hasForgottenClose(), isFalse);
+    clock.value = DateTime(2026, 11, 18, 4);
     expect(await days.hasForgottenClose(), isTrue);
   });
 

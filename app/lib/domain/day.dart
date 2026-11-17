@@ -102,11 +102,22 @@ class DaySummary {
   final List<CashMovement> movements;
 }
 
+/// Ab dieser Uhrzeit (am Kalendertag nach dem Beginn des Tages) gilt der
+/// Abschluss als vergessen. Davor wird in Lokalen mit langen Öffnungszeiten
+/// noch bedient.
+const int forgottenCloseHour = 4;
+
 /// Der Abschluss wurde vergessen: der offene Tag [open] begann an einem
-/// früheren Kalendertag als [now].
+/// früheren Kalendertag, und die Uhr ist an einem späteren Kalendertag über
+/// [forgottenCloseHour] Uhr hinaus.
 bool isForgottenClose(BusinessDay? open, DateTime now) {
   if (open == null) return false;
   final opened = open.openedAt;
-  return DateTime(opened.year, opened.month, opened.day)
-      .isBefore(DateTime(now.year, now.month, now.day));
+  final cutoff = DateTime(
+    opened.year,
+    opened.month,
+    opened.day + 1,
+    forgottenCloseHour,
+  );
+  return !now.isBefore(cutoff);
 }

@@ -496,7 +496,7 @@ void main() {
       await pumpClose(t, openArea: false, clock: clock);
       await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
       expect(find.byKey(const Key('forgotten-close')), findsNothing);
-      clock.value = DateTime(2026, 11, 18, 9);
+      clock.value = DateTime(2026, 11, 18, 8);
       t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await t.pump();
@@ -509,6 +509,10 @@ void main() {
       await t.pumpAndSettle(); // der Strom hat den offenen Tag gemeldet
       expect(find.byKey(const Key('forgotten-close')), findsNothing);
       clock.value = DateTime(2026, 11, 18, 0, 1);
+      await t.pump(const Duration(minutes: 1));
+      // Nach Mitternacht wird noch bedient: kein Hinweis.
+      expect(find.byKey(const Key('forgotten-close')), findsNothing);
+      clock.value = DateTime(2026, 11, 18, 4);
       await t.pump(const Duration(minutes: 1));
       expect(find.byKey(const Key('forgotten-close')), findsOneWidget);
     });

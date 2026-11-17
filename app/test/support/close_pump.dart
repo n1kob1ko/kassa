@@ -97,7 +97,7 @@ Future<void> pumpShellNextMorningWithOpenDay(
   final clock = FixedClock(DateTime(2026, 11, 17, 20));
   await pumpKassa(t, overrides: await memoryOverrides(clock: clock));
   await sellCash(t, cart: bowlCart());
-  clock.value = DateTime(2026, 11, 18, 9);
+  clock.value = DateTime(2026, 11, 18, 8);
   containerOf(t).read(sessionProvider.notifier).logout();
   await t.pumpAndSettle();
   await typePin(t, pin);
