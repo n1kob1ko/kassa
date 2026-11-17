@@ -6,7 +6,7 @@ import '../../domain/day.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
-import 'day_summary_cards.dart' show clockTime;
+import 'close_format.dart' show clockTime;
 
 /// Zustand E: der Tag ist abgeschlossen. Direkt nach dem Abschluss
 /// ([justClosed]) mit der Bestätigung, sonst mit dem Hinweis, dass es keinen

@@ -5,7 +5,7 @@ import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
-import 'day_summary_cards.dart' show signedEuro;
+import 'close_format.dart' show signedEuro;
 
 /// Zustand B, Schritt 1: Soll, gezählter Betrag und was fehlt oder zu viel ist.
 class CountCashSheet extends StatelessWidget {
