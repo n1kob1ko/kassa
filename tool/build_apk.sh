@@ -6,6 +6,11 @@
 # spätere Version derselbe bleiben, sonst lässt sich ein Update nicht über die
 # alte Version installieren. Fehlt er, legt dieses Skript ihn einmal an.
 #
+# Aufruf:
+#   tool/build_apk.sh          eine Datei für alle Android-Geräte
+#   tool/build_apk.sh arm64    kleinere Datei nur für heutige Tablets und
+#                              Telefone (64 Bit ARM), kassa-<version>-arm64.apk
+#
 #   KASSA_BUILD_DIR   Ordner für Schlüssel und Installationsdatei
 #                     (Vorgabe: /mnt/project-files/kassa-build)
 set -euo pipefail
@@ -49,9 +54,23 @@ if [ -z "$version" ]; then
   exit 1
 fi
 
-cd "$root/app"
-"$flutter" build apk --release
+build_args=()
+suffix=""
+case "${1:-}" in
+  "") ;;
+  arm64)
+    build_args=(--target-platform android-arm64)
+    suffix="-arm64"
+    ;;
+  *)
+    echo "Unbekannte Angabe: $1 (erlaubt: arm64)" >&2
+    exit 1
+    ;;
+esac
 
-apk="$out/kassa-$version.apk"
+cd "$root/app"
+"$flutter" build apk --release "${build_args[@]}"
+
+apk="$out/kassa-$version$suffix.apk"
 cp build/app/outputs/flutter-apk/app-release.apk "$apk"
 echo "Installationsdatei: $apk"
