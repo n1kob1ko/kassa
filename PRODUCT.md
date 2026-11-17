@@ -55,7 +55,11 @@ Offen: genaues Framework, Fiskalisierungsdienst für die RKSV, welches Kassenger
 
 ## Brand Commitments
 
-Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Niko hat als Vorbilder Square POS, Clover POS und Toast genannt und ein Foto einer klassischen Kasse gezeigt, bei der Kategorien links, Artikel in der Mitte und der Bon rechts stehen. Dieser Aufbau ist der Ausgangspunkt. Kein Logo, keine Farben und keine Schrift sind bisher festgelegt.
+Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Niko hat als Vorbilder Square POS, Clover POS und Toast genannt und ein Foto einer klassischen Kasse gezeigt, bei der Kategorien links, Artikel in der Mitte und der Bon rechts stehen. Dieser Aufbau ist der Ausgangspunkt.
+
+Stil, von Niko am 17.11.2026 über Beispielbilder vorgegeben (Tasty Station, Restroq, DineDash, ByteCaisse): hell, viel Weißraum, weiche weiße Karten mit runden Ecken, eine einzige Akzentfarbe, Produktfotos auf den Artikeltasten. Bunte Tasten pro Kategorie sind damit verworfen. Fotos sind pro Artikel freiwillig, jede Kassa kann zwischen "Mit Bildern" und "Kompakt" umschalten, Artikel ohne Foto bekommen einen ruhigen Platzhalter. Die Kundenanzeige folgt demselben Stil.
+
+Noch nicht festgelegt: Logo, endgültige Akzentfarbe (Vorschlag Petrol, zur Wahl stehen auch Paprika, Blau und Rot) und Schrift (Vorschlag Figtree).
 
 ## Evidence on Hand
 
