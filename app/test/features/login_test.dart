@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:kassa/app.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/keypad.dart';
 
@@ -19,7 +21,48 @@ Future<void> pumpLoggedOut(WidgetTester t, {Size? size}) async {
   await t.pumpAndSettle();
 }
 
+/// Findet die PIN nicht, solange [broken] gesetzt ist: die Datenbank wirft.
+class _BrokenStaff extends StaffRepository {
+  _BrokenStaff(super.db);
+
+  bool broken = true;
+
+  @override
+  Future<Staff?> findByPin(String pin) async {
+    if (broken) throw StateError('Datenbank nicht lesbar');
+    return super.findByPin(pin);
+  }
+}
+
 void main() {
+  testWidgets('wirft die Anmeldung: Hinweis, die PIN-Tasten leben, der nächste Versuch klappt', (t) async {
+    late _BrokenStaff repo;
+    await pumpApp(
+      t,
+      const KassaApp(),
+      overrides: [
+        ...await memoryOverrides(),
+        staffRepositoryProvider.overrideWith(
+          (ref) => repo = _BrokenStaff(ref.watch(databaseProvider)),
+        ),
+      ],
+    );
+    await t.pumpAndSettle();
+    await typePin(t, '1234');
+    await t.pump();
+    await t.pump();
+    expect(
+      find.text('Das hat nicht geklappt. Bitte nochmal versuchen.'),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel('0 von 4 Ziffern eingegeben'), findsOneWidget);
+    expect(t.takeException(), isNull);
+    repo.broken = false;
+    await typePin(t, '1234');
+    await t.pumpAndSettle();
+    expect(find.text('Anna'), findsOneWidget);
+  });
+
   testWidgets('eingerichtet und niemand angemeldet: Anmeldebild', (t) async {
     await pumpLoggedOut(t);
     expect(find.text('PIN eingeben'), findsOneWidget);

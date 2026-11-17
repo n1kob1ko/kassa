@@ -32,6 +32,49 @@ Future<void> _start(WidgetTester t, {String? file}) async {
 }
 
 void main() {
+  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (t) async {
+    final picker = BrokenPicker(_goodFile);
+    await pumpApp(
+      t,
+      const KassaApp(),
+      overrides: await memoryOverrides(seeded: false, picker: picker),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.text('Speisekarte einspielen'));
+    await t.pumpAndSettle();
+    expect(
+      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
+    picker.broken = false;
+    await t.tap(find.text('Andere Datei wählen'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Speisekarte einspielen'));
+    await t.pumpAndSettle();
+    expect(picker.calls, 2);
+    expect(find.text('Speisekarte gelesen'), findsOneWidget);
+  });
+
+  for (final (name, text) in [
+    ('Text, der kein JSON ist', 'Das ist ein Foto vom Mittagstisch.'),
+    ('Bytes, die kein Text sind', '\uFFFD\uFFFD\u0000\uFFFDJFIF\uFFFD'),
+  ]) {
+    testWidgets('Datei, die keine Speisekarte ist ($name): ruhiger Satz, kein Fehlertext', (t) async {
+      await _start(t, file: text);
+      await t.tap(find.text('Speisekarte einspielen'));
+      await t.pumpAndSettle();
+      expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
+      expect(
+        find.text('Die Datei ist keine gültige Speisekarten-Datei.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining('FormatException'), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+  }
+
   testWidgets('Einrichtung mit Beispieldaten: Chef-PIN zweimal, dann Kassa', (
     t,
   ) async {

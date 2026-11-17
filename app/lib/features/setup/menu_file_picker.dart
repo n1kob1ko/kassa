@@ -17,10 +17,10 @@ class SystemMenuFilePicker implements MenuFilePicker {
 
   @override
   Future<String?> pickText() async {
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-    );
+    // Jede Datei ist wählbar: Dateien aus Nachrichten oder von Laufwerken
+    // haben oft keinen passenden Typ und wären sonst ausgegraut. Ob es eine
+    // Speisekarte ist, prüft der Leser.
+    final file = await FilePicker.pickFile(type: FileType.any);
     if (file == null) return null;
     return utf8.decode(await file.readAsBytes(), allowMalformed: true);
   }

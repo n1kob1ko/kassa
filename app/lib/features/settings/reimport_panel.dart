@@ -31,7 +31,18 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
   bool _failed = false;
 
   Future<void> _pick() async {
-    final text = await ref.read(menuFilePickerProvider).pickText();
+    final String? text;
+    try {
+      text = await ref.read(menuFilePickerProvider).pickText();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _problems = const ['Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'];
+        _step = _Step.problems;
+        _failed = false;
+      });
+      return;
+    }
     if (text == null || !mounted) return;
     try {
       final catalog = parseMenuFile(text);

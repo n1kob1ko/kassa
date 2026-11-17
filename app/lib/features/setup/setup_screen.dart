@@ -42,7 +42,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   });
 
   Future<void> _pickFile() async {
-    final text = await ref.read(menuFilePickerProvider).pickText();
+    final String? text;
+    try {
+      text = await ref.read(menuFilePickerProvider).pickText();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _problems = const ['Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'];
+        _step = _Step.problems;
+      });
+      return;
+    }
     if (text == null || !mounted) return;
     try {
       _show(parseMenuFile(text));

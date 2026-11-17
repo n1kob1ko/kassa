@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/features/login/session.dart';
+import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'kassa_pump.dart';
@@ -31,6 +32,7 @@ Future<void> openSettings(WidgetTester t) async {
 Future<void> pumpAppLoggedInAsChef(
   WidgetTester t, {
   String? pickedFile,
+  MenuFilePicker? picker,
   Size size = const Size(1280, 800),
   Brightness brightness = Brightness.light,
   double textScale = 1.0,
@@ -41,7 +43,7 @@ Future<void> pumpAppLoggedInAsChef(
     size: size,
     brightness: brightness,
     textScale: textScale,
-    overrides: [...await memoryOverrides(pickedFile: pickedFile), ...extra],
+    overrides: [...await memoryOverrides(pickedFile: pickedFile, picker: picker), ...extra],
   );
   await containerOf(t).read(sessionProvider.notifier).login('4711');
   await t.pumpAndSettle();
@@ -50,6 +52,7 @@ Future<void> pumpAppLoggedInAsChef(
 Future<void> pumpSettings(
   WidgetTester t, {
   String? pickedFile,
+  MenuFilePicker? picker,
   Size size = const Size(1280, 800),
   Brightness brightness = Brightness.light,
   double textScale = 1.0,
@@ -58,6 +61,7 @@ Future<void> pumpSettings(
   await pumpAppLoggedInAsChef(
     t,
     pickedFile: pickedFile,
+    picker: picker,
     size: size,
     brightness: brightness,
     textScale: textScale,

@@ -18,6 +18,7 @@ class PinScreen extends ConsumerStatefulWidget {
 class _PinScreenState extends ConsumerState<PinScreen> {
   String _pin = '';
   bool _wrong = false;
+  bool _failed = false;
   bool _busy = false;
 
   Future<void> _onKey(String key) async {
@@ -26,6 +27,7 @@ class _PinScreenState extends ConsumerState<PinScreen> {
       setState(() {
         _pin = _pin.isEmpty ? '' : _pin.substring(0, _pin.length - 1);
         _wrong = false;
+        _failed = false;
       });
       return;
     }
@@ -34,15 +36,24 @@ class _PinScreenState extends ConsumerState<PinScreen> {
     setState(() {
       _pin = pin;
       _wrong = false;
+      _failed = false;
     });
     if (pin.length < 4) return;
     _busy = true;
-    final ok = await ref.read(sessionProvider.notifier).login(pin);
-    _busy = false;
+    var ok = false;
+    var failed = false;
+    try {
+      ok = await ref.read(sessionProvider.notifier).login(pin);
+    } catch (_) {
+      failed = true;
+    } finally {
+      _busy = false;
+    }
     if (!ok && mounted) {
       setState(() {
         _pin = '';
-        _wrong = true;
+        _wrong = !failed;
+        _failed = failed;
       });
     }
   }
@@ -54,10 +65,12 @@ class _PinScreenState extends ConsumerState<PinScreen> {
       body: PinCard(
         businessName: ref.watch(catalogProvider).value?.businessName,
         title: 'PIN eingeben',
-        hint: _wrong
+        hint: _failed
+            ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
+            : _wrong
             ? 'Diese PIN kennt die Kassa nicht.'
             : 'Jede Person hat ihre eigene PIN',
-        hintIsError: _wrong,
+        hintIsError: _wrong || _failed,
         filled: _pin.length,
         onKey: _onKey,
       ),

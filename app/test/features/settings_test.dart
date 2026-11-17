@@ -12,6 +12,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../support/close_pump.dart';
 import '../support/kassa_pump.dart';
+import '../support/pump.dart';
 import '../support/settings_pump.dart';
 
 const _question =
@@ -114,6 +115,39 @@ void main() {
     expect(find.text(_question), findsNothing);
     expect(find.byKey(const Key('confirm-reimport')), findsNothing);
     expect(find.byKey(const Key('reimport')), findsOneWidget);
+  });
+
+  testWidgets('wirft der Dateiwähler: Hinweis, der zweite Versuch klappt', (t) async {
+    final picker = BrokenPicker(demoOhneTeigtaschen());
+    await pumpSettings(t, picker: picker);
+    await t.tap(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
+    expect(
+      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
+    picker.broken = false;
+    await t.tap(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
+    expect(picker.calls, 2);
+    expect(find.text(_question), findsOneWidget);
+    expect(
+      find.text('Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Datei, die kein JSON ist: ruhiger Satz statt Fehlertext', (t) async {
+    await pumpSettings(t, pickedFile: '\uFFFD\uFFFD\u0000JFIF');
+    await t.tap(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
+    expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
+    expect(
+      find.text('Die Datei ist keine gültige Speisekarten-Datei.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Exception'), findsNothing);
   });
 
   testWidgets('Datei mit Problemen zeigt sie und schreibt nichts', (t) async {

@@ -105,6 +105,7 @@ Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
   String? pickedFile,
+  MenuFilePicker? picker,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -120,11 +121,27 @@ Future<List<Override>> memoryOverrides({
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
-    menuFilePickerProvider.overrideWithValue(_FakePicker(pickedFile)),
+    menuFilePickerProvider.overrideWithValue(picker ?? _FakePicker(pickedFile)),
     demoMenuTextProvider.overrideWithValue(
       () async => File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
     ),
   ];
+}
+
+/// Dateiwähler, der wirft, solange [broken] gesetzt ist, danach [text] liefert.
+class BrokenPicker implements MenuFilePicker {
+  BrokenPicker(this.text);
+
+  final String? text;
+  bool broken = true;
+  int calls = 0;
+
+  @override
+  Future<String?> pickText() async {
+    calls++;
+    if (broken) throw StateError('Dateiwähler nicht erreichbar');
+    return text;
+  }
 }
 
 class _FakePicker implements MenuFilePicker {
