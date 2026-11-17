@@ -25,13 +25,20 @@ Future<void> _finish(WidgetTester t) async {
 PrimaryButton _finishButton(WidgetTester t) =>
     t.widget<PrimaryButton>(find.byKey(const Key('finish-sale')));
 
-/// Ein Speicher, der die Aufrufe zählt und auf Wunsch beim ersten scheitert.
+/// Wie der erste Versuch ausgeht.
+enum _Fail { none, before, afterStoring }
+
+/// Ein Speicher, der jede `saleId` aufschreibt und den ersten Versuch auf
+/// Wunsch scheitern lässt: vor dem Speichern oder erst danach (der Bon ist
+/// gespeichert, die Antwort geht verloren).
 class _FlakyReceipts extends ReceiptRepository {
-  _FlakyReceipts(super.db, super.clock, super.days, {this.failFirst = true});
+  _FlakyReceipts(super.db, super.clock, super.days, this.mode);
 
-  final bool failFirst;
+  final _Fail mode;
 
-  int calls = 0;
+  final List<String> ids = [];
+
+  int get calls => ids.length;
 
   @override
   Future<Receipt> finalizeCashSale({
@@ -39,21 +46,24 @@ class _FlakyReceipts extends ReceiptRepository {
     required Cart cart,
     required int givenCents,
     required Staff staff,
-  }) {
-    calls++;
-    if (failFirst && calls == 1) throw StateError('Platte voll');
-    return super.finalizeCashSale(
+  }) async {
+    ids.add(saleId);
+    final first = ids.length == 1;
+    if (first && mode == _Fail.before) throw StateError('Platte voll');
+    final receipt = await super.finalizeCashSale(
       saleId: saleId,
       cart: cart,
       givenCents: givenCents,
       staff: staff,
     );
+    if (first && mode == _Fail.afterStoring) throw StateError('Antwort weg');
+    return receipt;
   }
 }
 
 /// Überschreibt den Bon-Speicher; [made] erhält den erzeugten.
 Future<List<Override>> _overridesWith(
-  bool failFirst,
+  _Fail mode,
   void Function(_FlakyReceipts) made,
 ) async => [
   ...await memoryOverrides(),
@@ -62,7 +72,7 @@ Future<List<Override>> _overridesWith(
       ref.watch(databaseProvider),
       ref.watch(clockProvider),
       ref.watch(dayRepositoryProvider),
-      failFirst: failFirst,
+      mode,
     );
     made(r);
     return r;
@@ -138,7 +148,7 @@ void main() {
     late _FlakyReceipts counting;
     await pumpKassa(
       t,
-      overrides: await _overridesWith(false, (r) => counting = r),
+      overrides: await _overridesWith(_Fail.none, (r) => counting = r),
     );
     await tapItem(t, 'cola');
     await t.tap(find.byKey(const Key('pay-cash')));
@@ -307,7 +317,7 @@ void main() {
     'Speichern scheitert: Meldung, Bon bleibt, zweiter Tipp ergibt einen Bon',
     (t) async {
       late _FlakyReceipts flaky;
-      final overrides = await _overridesWith(true, (r) => flaky = r);
+      final overrides = await _overridesWith(_Fail.before, (r) => flaky = r);
       await pumpKassa(t, overrides: overrides);
       await tapItem(t, 'cola');
       await t.tap(find.byKey(const Key('pay-cash')));
@@ -324,9 +334,60 @@ void main() {
       expect(find.text(_failText), findsNothing);
       expect(find.text('Bon Nr. 1'), findsOneWidget);
       expect(flaky.calls, 2);
+      expect(flaky.ids[0], flaky.ids[1]);
       expect(await receiptCount(t), 1);
     },
   );
+
+  testWidgets(
+    'Antwort geht verloren, der Bon ist gespeichert: zweiter Tipp ergibt Bon Nr. 1 und eine Zeile',
+    (t) async {
+      late _FlakyReceipts flaky;
+      final overrides = await _overridesWith(
+        _Fail.afterStoring,
+        (r) => flaky = r,
+      );
+      await pumpKassa(t, overrides: overrides);
+      await tapItem(t, 'cola');
+      await t.tap(find.byKey(const Key('pay-cash')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      expect(find.text(_failText), findsOneWidget);
+      expect(await receiptCount(t), 1);
+      expect(cartOf(t).lines.length, 1);
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      expect(find.text('Bon Nr. 1'), findsOneWidget);
+      expect(find.text(_failText), findsNothing);
+      expect(flaky.ids[0], flaky.ids[1]);
+      expect(await receiptCount(t), 1);
+      expect(cartOf(t).isEmpty, isTrue);
+    },
+  );
+
+  testWidgets('nach "Zurück" bekommt das erneute Öffnen eine neue saleId', (
+    t,
+  ) async {
+    late _FlakyReceipts flaky;
+    final overrides = await _overridesWith(_Fail.before, (r) => flaky = r);
+    await pumpKassa(t, overrides: overrides);
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale'))); // scheitert
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('cash-back')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    expect(find.text('Bon Nr. 1'), findsOneWidget);
+    expect(flaky.calls, 2);
+    expect(flaky.ids[0], isNot(flaky.ids[1]));
+    expect(await receiptCount(t), 1);
+  });
 
   for (final (name, finish) in [
     ('Bezahlen', false),
