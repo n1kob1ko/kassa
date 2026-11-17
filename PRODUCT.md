@@ -37,7 +37,8 @@ Kartenzahlung in einem Schritt. Der Betrag geht von der Kassa direkt ans SumUp-T
 Version 1 (Imbiss-Modus), mit Niko abgestimmt:
 
 - Artikel als große Tasten, sortiert nach Kategorien
-- Extras und Sonderwünsche
+- Extras und Sonderwünsche per Schalter, nie per Tastatur (zum Beispiel "ohne Zwiebel", "extra Käse")
+- Auswahlgruppen pro Artikel für Menüs, Beilagenwahl und Baukasten-Artikel wie Bowls oder Sandwiches (zum Beispiel "Beilage, genau 1" oder "Toppings, bis zu 4")
 - Menge ändern, Position löschen, Storno
 - Bezahlen bar mit Rückgeldanzeige oder mit Karte über SumUp
 - Bon drucken, Geldlade öffnet bei Barzahlung
@@ -67,6 +68,7 @@ Keine echten Speisekarten, Kundenstimmen oder Zahlen. Speisekarten und Preise in
 3. Vorhandene Geräte weiterverwenden, wo es geht.
 4. Die Kassa darf nie stehen, auch nicht ohne Internet.
 5. Rechtssicher ohne Zutun des Betriebs.
+6. Alles ist für Touch gebaut. An der Theke wird nie auf einer Tastatur getippt, jede Eingabe geht über große Tasten und Schalter.
 
 ## Accessibility & Inclusion
 
