@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/clock.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
+import 'receipt_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
 
@@ -19,11 +20,14 @@ final databaseProvider = Provider<KassaDatabase>((ref) {
 
 final clockProvider = Provider<Clock>((ref) => const SystemClock());
 
-final catalogRepositoryProvider =
-    Provider((ref) => CatalogRepository(ref.watch(databaseProvider)));
+final catalogRepositoryProvider = Provider((ref) => CatalogRepository(ref.watch(databaseProvider)));
 
-final staffRepositoryProvider =
-    Provider((ref) => StaffRepository(ref.watch(databaseProvider)));
+final staffRepositoryProvider = Provider((ref) => StaffRepository(ref.watch(databaseProvider)));
 
-final settingsRepositoryProvider =
-    Provider((ref) => SettingsRepository(ref.watch(databaseProvider)));
+final settingsRepositoryProvider = Provider(
+  (ref) => SettingsRepository(ref.watch(databaseProvider)),
+);
+
+final receiptRepositoryProvider = Provider(
+  (ref) => ReceiptRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);

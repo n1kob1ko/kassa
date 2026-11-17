@@ -1,6 +1,6 @@
 // SQLite-Datenbank der Kassa (drift). Enthält Katalog, Mitarbeiter und
-// Einstellungen. Tabellen für Bons, Zahlungen und Tagesabschluss folgen mit
-// den Aufgaben, die sie brauchen.
+// Einstellungen, Bons und Geschäftstage. Tabellen für den Tagesabschluss
+// folgen mit den Aufgaben, die sie brauchen.
 
 import 'package:drift/drift.dart';
 
@@ -135,16 +135,132 @@ class SettingsRows extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [
-  BusinessRows,
-  CategoryRows,
-  ItemRows,
-  ModifierTemplateRows,
-  ModifierGroupRows,
-  ModifierOptionRows,
-  StaffRows,
-  SettingsRows,
-])
+/// Ein Geschäftstag: offen, solange `closedAt` leer ist. Die Felder zum
+/// Abschluss füllt der Tagesabschluss.
+class BusinessDayRows extends Table {
+  @override
+  String get tableName => 'business_days';
+
+  TextColumn get id => text()();
+  DateTimeColumn get openedAt => dateTime()();
+  DateTimeColumn get closedAt => dateTime().nullable()();
+  IntColumn get openingFloatCents => integer().withDefault(const Constant(0))();
+  IntColumn get countedCents => integer().nullable()();
+  IntColumn get leftInDrawerCents => integer().nullable()();
+  IntColumn get expectedCents => integer().nullable()();
+  IntColumn get differenceCents => integer().nullable()();
+  TextColumn get closedByName => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Bons sind unveränderlich: Trigger weisen UPDATE und DELETE auf diese und
+/// die drei folgenden Tabellen ab. Die Id eines Verkaufs ist seine `saleId`.
+class ReceiptRows extends Table {
+  @override
+  String get tableName => 'receipts';
+
+  TextColumn get id => text()();
+  IntColumn get number => integer().unique()();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get staffId => text()();
+  TextColumn get staffName => text()();
+  TextColumn get businessDayId => text().references(BusinessDayRows, #id)();
+
+  /// `sale` oder `voided`.
+  TextColumn get kind => text()();
+
+  /// Beim Storno-Bon der Bon, den er storniert. Ein eindeutiger Index sorgt
+  /// dafür, dass es höchstens einen Storno je Bon gibt.
+  TextColumn get voidsReceiptId => text().nullable().references(ReceiptRows, #id)();
+  IntColumn get goodsCents => integer()();
+  IntColumn get depositCents => integer()();
+  IntColumn get totalCents => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class ReceiptLineRows extends Table {
+  @override
+  String get tableName => 'receipt_lines';
+
+  TextColumn get receiptId => text().references(ReceiptRows, #id)();
+  IntColumn get position => integer()();
+  TextColumn get itemId => text()();
+  TextColumn get name => text()();
+  TextColumn get info => text().nullable()();
+
+  /// Einzelpreis inklusive Aufpreisen der Optionen.
+  IntColumn get unitPriceCents => integer()();
+  IntColumn get quantity => integer()();
+  IntColumn get unitDepositCents => integer()();
+
+  /// Brutto-Warenwert der Zeile je Steuersatz (ohne Pfand).
+  IntColumn get gross20Cents => integer().withDefault(const Constant(0))();
+  IntColumn get gross10Cents => integer().withDefault(const Constant(0))();
+  IntColumn get gross13Cents => integer().withDefault(const Constant(0))();
+  IntColumn get gross0Cents => integer().withDefault(const Constant(0))();
+  IntColumn get gross19Cents => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {receiptId, position};
+}
+
+class ReceiptLineOptionRows extends Table {
+  @override
+  String get tableName => 'receipt_line_options';
+
+  TextColumn get receiptId => text()();
+  IntColumn get linePosition => integer()();
+  IntColumn get position => integer()();
+  TextColumn get groupName => text()();
+  TextColumn get optionName => text()();
+  IntColumn get surchargeCents => integer()();
+
+  @override
+  Set<Column> get primaryKey => {receiptId, linePosition, position};
+
+  @override
+  List<String> get customConstraints => [
+    'FOREIGN KEY (receipt_id, line_position) REFERENCES receipt_lines (receipt_id, position)',
+  ];
+}
+
+class PaymentRows extends Table {
+  @override
+  String get tableName => 'payments';
+
+  TextColumn get receiptId => text().references(ReceiptRows, #id)();
+
+  /// `cash` oder `card`.
+  TextColumn get kind => text()();
+  IntColumn get amountCents => integer()();
+  IntColumn get givenCents => integer()();
+  IntColumn get changeCents => integer()();
+
+  @override
+  Set<Column> get primaryKey => {receiptId};
+}
+
+@DriftDatabase(
+  tables: [
+    BusinessRows,
+    CategoryRows,
+    ItemRows,
+    ModifierTemplateRows,
+    ModifierGroupRows,
+    ModifierOptionRows,
+    StaffRows,
+    SettingsRows,
+    BusinessDayRows,
+    ReceiptRows,
+    ReceiptLineRows,
+    ReceiptLineOptionRows,
+    PaymentRows,
+  ],
+)
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
@@ -153,8 +269,24 @@ class KassaDatabase extends _$KassaDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
+    onCreate: (m) async {
+      await m.createAll();
+      await customStatement(
+        'CREATE UNIQUE INDEX receipts_voids_receipt_id '
+        'ON receipts (voids_receipt_id)',
       );
+      for (final table in const ['receipts', 'receipt_lines', 'receipt_line_options', 'payments']) {
+        for (final action in const ['UPDATE', 'DELETE']) {
+          await customStatement(
+            'CREATE TRIGGER ${table}_no_${action.toLowerCase()} '
+            'BEFORE $action ON $table BEGIN '
+            "SELECT RAISE(ABORT, 'Bons sind unveränderlich'); END",
+          );
+        }
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 }

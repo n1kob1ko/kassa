@@ -17,20 +17,35 @@ class TaxLine {
   final int taxCents;
 }
 
-/// Brutto-Warenwert je Steuersatz, ohne Pfand.
-Map<TaxRate, int> grossByRate(Cart cart) {
+/// Brutto-Warenwert einer Zeile je Steuersatz, ohne Pfand. Eine Option mit
+/// eigenem Steuersatz zählt zu diesem Satz.
+Map<TaxRate, int> grossByRateOfLine(CartLine line) {
   final result = <TaxRate, int>{};
   void put(TaxRate rate, int cents) {
     if (cents == 0) return;
     result[rate] = (result[rate] ?? 0) + cents;
   }
 
-  for (final l in cart.lines) {
-    put(l.item.taxRate, l.item.priceCents * l.quantity);
-    for (final o in l.options) {
-      put(o.taxRate ?? l.item.taxRate, o.surchargeCents * l.quantity);
+  put(line.item.taxRate, line.item.priceCents * line.quantity);
+  for (final o in line.options) {
+    put(o.taxRate ?? line.item.taxRate, o.surchargeCents * line.quantity);
+  }
+  return result;
+}
+
+/// Brutto-Warenwert je Steuersatz, ohne Pfand.
+Map<TaxRate, int> grossByRate(Cart cart) =>
+    sumByRate([for (final l in cart.lines) grossByRateOfLine(l)]);
+
+/// Summe mehrerer Aufteilungen; Sätze mit Summe 0 fehlen.
+Map<TaxRate, int> sumByRate(Iterable<Map<TaxRate, int>> parts) {
+  final result = <TaxRate, int>{};
+  for (final part in parts) {
+    for (final e in part.entries) {
+      result[e.key] = (result[e.key] ?? 0) + e.value;
     }
   }
+  result.removeWhere((_, cents) => cents == 0);
   return result;
 }
 
