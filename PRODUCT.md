@@ -1,0 +1,73 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+android
+
+## Stack
+
+delegated: Niko hat die Technik ausdrücklich abgegeben ("ob Software oder App, weiß ich selbst nicht"). Entschieden wurde gemeinsam: App für Tablets und Kassengeräte plus Verwaltung im Browser. Die App startet auf Android, derselbe Code soll später auch auf iPad und Windows laufen können. Das konkrete Framework wird im Entwurfsdokument festgelegt.
+
+## Users
+
+- **Kassierende im Imbiss oder am Stand** (zum Beispiel Kebabstand). Sie stehen an der Theke, haben oft fettige oder nasse Hände, Kunden warten in der Schlange. Ihr Job: Bestellung antippen, bar oder Karte kassieren, Bon drucken, nächster Kunde.
+- **Kellnerinnen und Kellner in großen Restaurants** (spätere Ausbaustufe). Mehrere Geräte, Tische, Stationen wie Küche und Bar.
+- **Betreiber des Lokals.** Pflegt Artikel und Preise und sieht Umsätze, meist am PC im Browser.
+- **Kunde an der Theke.** Sieht auf der Kundenanzeige, was boniert wurde, und den Gesamtpreis.
+
+## Product Purpose
+
+Kassa ist ein Kassensystem für die Gastronomie in Österreich, das Niko als Produkt an viele unterschiedliche Betriebe verkauft, vom Imbiss bis zum großen Restaurant. Erfolg heißt: Ein Imbiss boniert schneller und mit weniger Geräten als mit seiner alten Windows-Kassa, und derselbe Kern trägt später auch ein Restaurant mit Kellnern und Stationen.
+
+## Positioning
+
+Kartenzahlung in einem Schritt. Der Betrag geht von der Kassa direkt ans SumUp-Terminal, die Bestätigung kommt zurück, der Bon druckt von selbst. Der erste Pilotbetrieb braucht dafür heute ein Extra-Handy, tippt den Betrag doppelt ein und drückt danach in der Windows-Kassa noch einmal auf Kartenzahlung.
+
+## Operating Context
+
+- Theke mit Tablet auf Ständer oder Kassengerät mit zwei Bildschirmen, Bondrucker, Geldlade am Bondrucker, SumUp-Terminal.
+- Ablauf Imbiss: Kunde bestellt, es wird boniert, dann bar oder Karte. Bei Barzahlung druckt der Bon und die Geldlade springt auf.
+- Internet kann ausfallen. Bar bonieren muss dann weiter funktionieren.
+- Österreich: Registrierkassenpflicht nach RKSV (Signatur, Datenerfassungsprotokoll, QR-Code am Beleg).
+
+## Capabilities and Constraints
+
+Version 1 (Imbiss-Modus), mit Niko abgestimmt:
+
+- Artikel als große Tasten, sortiert nach Kategorien
+- Extras und Sonderwünsche
+- Menge ändern, Position löschen, Storno
+- Bezahlen bar mit Rückgeldanzeige oder mit Karte über SumUp
+- Bon drucken, Geldlade öffnet bei Barzahlung
+- Tagesabschluss
+- Zuschaltbare Kundenanzeige (zweites Gerät oder eingebauter zweiter Bildschirm)
+- Verwaltung im Browser für Artikel, Preise und Umsätze
+- Eigenes Konto pro Betrieb, Mitarbeiter melden sich mit PIN an
+
+Nicht in Version 1: Tische, Kellner-Handgeräte, Küchenstationen, Lagerstand, Gutscheine, Online-Bestellungen.
+
+Begriffe: bonieren, Bon, Storno, Tagesabschluss, Geldlade, Kundenanzeige.
+
+Offen: genaues Framework, Fiskalisierungsdienst für die RKSV, welches Kassengerät Niko als Komplettpaket verkauft.
+
+## Brand Commitments
+
+Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Niko hat als Vorbilder Square POS, Clover POS und Toast genannt und ein Foto einer klassischen Kasse gezeigt, bei der Kategorien links, Artikel in der Mitte und der Bon rechts stehen. Dieser Aufbau ist der Ausgangspunkt. Kein Logo, keine Farben und keine Schrift sind bisher festgelegt.
+
+## Evidence on Hand
+
+Keine echten Speisekarten, Kundenstimmen oder Zahlen. Speisekarten und Preise in Entwürfen sind Beispiele und als solche zu kennzeichnen. Preise für Kassa selbst sind nicht festgelegt und dürfen nicht erfunden werden.
+
+## Product Principles
+
+1. Geschwindigkeit an der Theke schlägt alles. Jeder zusätzliche Tipp kostet in der Schlange.
+2. Eine Kassa für klein und groß. Der Imbiss sieht nur, was er braucht, das Restaurant schaltet mehr dazu.
+3. Vorhandene Geräte weiterverwenden, wo es geht.
+4. Die Kassa darf nie stehen, auch nicht ohne Internet.
+5. Rechtssicher ohne Zutun des Betriebs.
+
+## Accessibility & Inclusion
+
+Große Tippflächen für eilige und nicht perfekt saubere Finger. Gut lesbar bei grellem Tageslicht am Stand und bei wenig Licht am Abend. Personal mit unterschiedlichen Deutschkenntnissen: kurze, eindeutige Beschriftungen und Zahlen, die man auf einen Blick erfasst.
