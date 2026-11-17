@@ -124,7 +124,7 @@ void main() {
 
   test('Optionen mit eigenem Steuersatz und Pfand bleiben erhalten', () async {
     final catalog = Catalog(
-      businessName: 'X',
+      business: BusinessInfo(name: 'X'),
       categories: const [Category(id: 'k', name: 'K', position: 0)],
       items: const [
         Item(
@@ -270,7 +270,7 @@ void main() {
   test('scheitert das Einspielen, bleibt der alte Stand', () async {
     final vorher = (await repo.current())!;
     final kaputt = Catalog(
-      businessName: 'Anderer Betrieb',
+      business: BusinessInfo(name: 'Anderer Betrieb'),
       categories: const [Category(id: 'k', name: 'K', position: 0)],
       items: const [
         Item(
@@ -309,7 +309,7 @@ void main() {
       // geändert und alte Vorlagen gelöscht wurden.
       final vorher = (await repo.current())!;
       final kaputt = Catalog(
-        businessName: 'Anderer Betrieb',
+        business: BusinessInfo(name: 'Anderer Betrieb'),
         categories: const [Category(id: 'k', name: 'K', position: 0)],
         items: const [],
         templates: const [
@@ -355,4 +355,29 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test(
+    'Einspielen speichert die Betriebsdaten, neues Einspielen ersetzt sie',
+    () async {
+      final first = (await repo.current())!.business;
+      expect(first.addressLines, ['Musterstraße 1', '1010 Wien']);
+      expect(first.vatId, 'ATU12345678');
+      expect(first.receiptFooter, 'Danke und bis bald!');
+
+      final json = jsonDecode(demo) as Map<String, dynamic>
+        ..['adresse'] = ['Andere Gasse 2']
+        ..remove('uid')
+        ..remove('bon_ende');
+      await repo.importCatalog(parseMenuFile(jsonEncode(json)));
+      final second = (await repo.current())!.business;
+      expect(second.name, 'Beispiel-Imbiss');
+      expect(second.addressLines, ['Andere Gasse 2']);
+      expect(second.vatId, isNull);
+      expect(second.receiptFooter, isNull);
+
+      json.remove('adresse');
+      await repo.importCatalog(parseMenuFile(jsonEncode(json)));
+      expect((await repo.current())!.business.addressLines, isEmpty);
+    },
+  );
 }

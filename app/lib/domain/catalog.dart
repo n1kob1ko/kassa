@@ -1,7 +1,10 @@
 // Katalog der Kassa: Kategorien, Artikel, Auswahl-Vorlagen.
 // Reines Dart, ohne Flutter und ohne Datenbank.
 
+import 'business_info.dart';
 import 'staff.dart';
+
+export 'business_info.dart';
 
 enum TaxRate {
   normal(20),
@@ -154,18 +157,21 @@ class ModifierTemplate {
 
 class Catalog {
   const Catalog({
-    required this.businessName,
+    required this.business,
     required this.categories,
     required this.items,
     required this.templates,
     this.staffSeeds = const [],
   });
 
-  final String businessName;
+  final BusinessInfo business;
   final List<Category> categories;
   final List<Item> items;
   final List<ModifierTemplate> templates;
   final List<({String name, String pin, StaffRole role})> staffSeeds;
+
+  /// Abkürzung für `business.name`.
+  String get businessName => business.name;
 
   /// Wirft [StateError], wenn es den Artikel nicht gibt.
   Item item(String id) => items.firstWhere(

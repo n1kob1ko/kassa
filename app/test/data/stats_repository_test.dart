@@ -166,7 +166,7 @@ void main() {
     () async {
       await shop.sell('s1');
       final reduced = Catalog(
-        businessName: catalog.businessName,
+        business: catalog.business,
         categories: [
           for (final k in catalog.categories)
             if (k.id != 'getraenke') k,

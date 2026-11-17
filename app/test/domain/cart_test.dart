@@ -81,7 +81,7 @@ void main() {
 
   group('rebind (Bon folgt dem Katalog)', () {
     Catalog withItems(List<Item> items) => Catalog(
-      businessName: catalog.businessName,
+      business: catalog.business,
       categories: catalog.categories,
       items: items,
       templates: catalog.templates,
@@ -125,7 +125,7 @@ void main() {
         reis.id,
       ]);
       final noTemplates = Catalog(
-        businessName: catalog.businessName,
+        business: catalog.business,
         categories: catalog.categories,
         items: catalog.items,
         templates: const [],

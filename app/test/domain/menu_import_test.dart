@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,19 @@ void main() {
   setUpAll(
     () => demo = File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
   );
+
+  /// Beispiel-Datei mit geänderten Angaben; ein Wert `null` entfernt die Angabe.
+  String demoWith(Map<String, Object?> changes) {
+    final json = jsonDecode(demo) as Map<String, dynamic>;
+    changes.forEach((key, value) {
+      if (value == null) {
+        json.remove(key);
+      } else {
+        json[key] = value;
+      }
+    });
+    return jsonEncode(json);
+  }
 
   String demoMit(String extra) => demo.replaceFirst('{', '{$extra,');
 
@@ -177,5 +191,86 @@ void main() {
     expect((o.taxRate, o.depositCents), (TaxRate.normal, 25));
     final f = c.item('x').copyWith(favorite: true, inSale: false);
     expect((f.favorite, f.inSale, f.name), (true, false, 'X'));
+  });
+
+  test('Adresse, UID und Bon-Ende werden gelesen', () {
+    final c = parseMenuFile(
+      demoWith({
+        'adresse': ['Musterstraße 1', '1010 Wien'],
+        'uid': 'ATU12345678',
+        'bon_ende': 'Danke und bis bald!',
+      }),
+    );
+    expect(c.business.addressLines, ['Musterstraße 1', '1010 Wien']);
+    expect(c.business.vatId, 'ATU12345678');
+    expect(c.business.receiptFooter, 'Danke und bis bald!');
+    expect(c.businessName, c.business.name);
+  });
+
+  test('ohne die Angaben bleibt alles leer', () {
+    final c = parseMenuFile(
+      demoWith({'adresse': null, 'uid': null, 'bon_ende': null}),
+    );
+    expect(c.business.addressLines, isEmpty);
+    expect(c.business.vatId, isNull);
+    expect(c.business.receiptFooter, isNull);
+  });
+
+  test('Zeilen werden gekürzt, leere Zeilen und leere Angaben entfallen', () {
+    final c = parseMenuFile(
+      demoWith({
+        'adresse': ['  Musterstraße 1 ', '', '   ', '1010 Wien'],
+        'uid': '  ',
+        'bon_ende': ' Danke! ',
+      }),
+    );
+    expect(c.business.addressLines, ['Musterstraße 1', '1010 Wien']);
+    expect(c.business.vatId, isNull);
+    expect(c.business.receiptFooter, 'Danke!');
+  });
+
+  test('falsche Form wird in einfachen Worten gemeldet', () {
+    List<String> problemsOf(String json) {
+      try {
+        parseMenuFile(json);
+        return const [];
+      } on MenuImportException catch (e) {
+        return e.problems;
+      }
+    }
+
+    expect(
+      problemsOf(demoWith({'adresse': 'Musterstraße 1'})),
+      contains('"adresse" muss eine Liste von Zeilen sein.'),
+    );
+    expect(
+      problemsOf(
+        demoWith({
+          'adresse': ['a', 5],
+        }),
+      ),
+      contains('"adresse" muss eine Liste von Zeilen sein.'),
+    );
+    expect(
+      problemsOf(
+        demoWith({
+          'adresse': ['a', 'b', 'c', 'd', 'e'],
+        }),
+      ),
+      contains('"adresse" darf höchstens 4 Zeilen haben.'),
+    );
+    expect(
+      problemsOf(demoWith({'uid': 12})),
+      contains('"uid" muss ein Text sein.'),
+    );
+    expect(
+      problemsOf(demoWith({'bon_ende': 12})),
+      contains('"bon_ende" muss ein Text sein.'),
+    );
+    expect(
+      problemsOf(demoWith({'bon_ende': 'x' * 201})),
+      contains('"bon_ende" darf höchstens 200 Zeichen haben.'),
+    );
+    expect(problemsOf(demoWith({'bon_ende': 'x' * 200})), isEmpty);
   });
 }

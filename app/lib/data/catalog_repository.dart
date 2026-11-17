@@ -24,12 +24,16 @@ class CatalogRepository {
       }
     }
     await _db.transaction(() async {
+      // Die Betriebsdaten kommen alle aus der Datei und ersetzen den alten Stand.
       await _db
           .into(_db.businessRows)
           .insertOnConflictUpdate(
             BusinessRowsCompanion.insert(
               id: const Value(1),
-              name: c.businessName,
+              name: c.business.name,
+              addressLines: Value(c.business.addressLines.join('\n')),
+              vatId: Value(c.business.vatId),
+              receiptFooter: Value(c.business.receiptFooter),
             ),
           );
 
@@ -181,7 +185,15 @@ class CatalogRepository {
     )..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
 
     return Catalog(
-      businessName: business.name,
+      business: BusinessInfo(
+        name: business.name,
+        addressLines: [
+          for (final l in business.addressLines.split('\n'))
+            if (l.isNotEmpty) l,
+        ],
+        vatId: business.vatId,
+        receiptFooter: business.receiptFooter,
+      ),
       categories: [
         for (final k in categories)
           Category(id: k.id, name: k.name, position: k.position),

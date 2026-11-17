@@ -351,6 +351,9 @@ Eine JSON-Datei pro Betrieb. Beträge in Cent, Preise brutto. Das Beispiel ist e
 ```json
 {
   "betrieb": "Beispiel-Imbiss",
+  "adresse": ["Musterstraße 1", "1010 Wien"],
+  "uid": "ATU12345678",
+  "bon_ende": "Danke und bis bald!",
   "quelle": "Speisekarte.pdf, erhalten am 2026-11-17",
   "hinweise": ["Steuersätze sind eine Annahme und zu prüfen."],
   "kategorien": [
@@ -376,6 +379,7 @@ Eine JSON-Datei pro Betrieb. Beträge in Cent, Preise brutto. Das Beispiel ist e
 }
 ```
 
+- `betrieb`: Pflicht. Freiwillig sind `adresse` (Liste von höchstens 4 Zeilen), `uid` (Text) und `bon_ende` (Text, höchstens 200 Zeichen). Sie stehen auf dem Bon. Fehlt eine Angabe, bleibt sie leer. Ein neues Einspielen ersetzt alle drei.
 - `kategorien`: Reihenfolge in der Datei ist die Reihenfolge in der Kassa.
 - `artikel`: Pflicht sind `id`, `name`, `preis_cent`, `kategorie`, `mwst`. Freiwillig sind `info` (Zusatzangabe beim Preis), `pfand_cent`, `kennzeichen` (ein Wort wie VEGAN oder SCHARF) und `auswahl` (Name einer Auswahl-Vorlage).
 - `auswahlgruppen`: pro Vorlage eine Liste von Gruppen. `min` und `max` sagen, wie viele Optionen gewählt werden müssen und dürfen, `max: null` heißt ohne Grenze. `vorgabe: true` ist schon gewählt.

@@ -259,7 +259,7 @@ void main() {
       await pumpKassaWith(t, ['cola', 'teigtaschen']);
       expect(cartOf(t).lines, hasLength(2));
       final without = Catalog(
-        businessName: catalog.businessName,
+        business: catalog.business,
         categories: catalog.categories,
         items: [
           for (final i in catalog.items)
@@ -532,7 +532,7 @@ void main() {
     final long = 'Ein sehr langer Artikelname für den Test ${'x' * 20} Ende';
     expect(long.length, greaterThanOrEqualTo(60));
     final changed = Catalog(
-      businessName: catalog.businessName,
+      business: catalog.business,
       categories: catalog.categories,
       templates: catalog.templates,
       items: [

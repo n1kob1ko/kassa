@@ -1,5 +1,8 @@
 {
   "betrieb": "Beispiel-Imbiss",
+  "adresse": ["Musterstraße 1", "1010 Wien"],
+  "uid": "ATU12345678",
+  "bon_ende": "Danke und bis bald!",
   "quelle": "Erfundene Beispieldaten",
   "hinweise": [
     "Alle Angaben sind erfunden."

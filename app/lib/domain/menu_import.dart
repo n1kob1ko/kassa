@@ -27,8 +27,9 @@ Catalog parseMenuFile(String jsonText) {
   } on FormatException {
     throw const MenuImportException([_invalidFile]);
   }
-  if (root is! Map<String, dynamic>)
+  if (root is! Map<String, dynamic>) {
     throw const MenuImportException([_invalidFile]);
+  }
   final categoriesJson = root['kategorien'];
   final itemsJson = root['artikel'];
   final groupsJson = root['auswahlgruppen'] ?? <String, dynamic>{};
@@ -43,6 +44,13 @@ Catalog parseMenuFile(String jsonText) {
   final problems = <String>[];
   final businessName = _text(root['betrieb']);
   if (businessName == null) problems.add('Betrieb fehlt.');
+
+  final addressLines = _addressLines(root['adresse'], problems);
+  final vatId = _optionalText(root['uid'], '"uid"', problems);
+  final receiptFooter = _optionalText(root['bon_ende'], '"bon_ende"', problems);
+  if (receiptFooter != null && receiptFooter.length > 200) {
+    problems.add('"bon_ende" darf höchstens 200 Zeichen haben.');
+  }
 
   final categories = <Category>[];
   final categoryIds = <String>{};
@@ -207,7 +215,12 @@ Catalog parseMenuFile(String jsonText) {
 
   if (problems.isNotEmpty) throw MenuImportException(problems);
   return Catalog(
-    businessName: businessName!,
+    business: BusinessInfo(
+      name: businessName!,
+      addressLines: addressLines,
+      vatId: vatId,
+      receiptFooter: receiptFooter,
+    ),
     categories: categories,
     items: items,
     templates: templates,
@@ -219,6 +232,34 @@ String? _text(Object? value) {
   if (value is! String) return null;
   final t = value.trim();
   return t.isEmpty ? null : t;
+}
+
+/// Freiwillige Zeilenliste: höchstens vier Zeilen, jede gekürzt, leere entfallen.
+List<String> _addressLines(Object? raw, List<String> problems) {
+  if (raw == null) return const [];
+  if (raw is! List || raw.any((l) => l is! String)) {
+    problems.add('"adresse" muss eine Liste von Zeilen sein.');
+    return const [];
+  }
+  final lines = [
+    for (final l in raw.cast<String>())
+      if (l.trim().isNotEmpty) l.trim(),
+  ];
+  if (lines.length > 4) {
+    problems.add('"adresse" darf höchstens 4 Zeilen haben.');
+    return const [];
+  }
+  return lines;
+}
+
+/// Freiwilliger Text: fehlt er oder ist er leer, bleibt er leer.
+String? _optionalText(Object? raw, String name, List<String> problems) {
+  if (raw == null) return null;
+  if (raw is! String) {
+    problems.add('$name muss ein Text sein.');
+    return null;
+  }
+  return _text(raw);
 }
 
 TaxRate? _rate(Object? value) {
