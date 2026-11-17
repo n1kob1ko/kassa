@@ -68,6 +68,32 @@ void main() {
     );
   });
 
+  testWidgets('Übersicht 30 Tage, Balken neben einer Beschriftung (hell)', (
+    t,
+  ) async {
+    final sales = [
+      for (var d = 25; d >= 0; d--)
+        for (var i = 0; i < 1 + (d * 7) % 4; i++)
+          OverviewSale(
+            DateTime(2026, 11, 17).subtract(Duration(days: d, hours: -12 - i)),
+            cart: _cart(d + i),
+          ),
+    ];
+    await pumpOverviewWithSales(
+      t,
+      sales: sales,
+      now: today(19, 30),
+      openRange: 'days30',
+    );
+    await t.tap(find.byKey(const Key('bar-24'))); // neben dem Balken 25
+    await t.pump();
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/uebersicht_30_tage_hell.png'),
+    );
+  });
+
   testWidgets('Übersicht ohne Bons (hell)', (t) async {
     await pumpOverviewWithSales(t, sales: []);
     expect(t.takeException(), isNull);

@@ -12,8 +12,13 @@ const double _maxBarWidth = 24;
 
 /// Welche Beschriftungen unter den Balken stehen: alle bis 12 Balken, jeder
 /// zweite bis 24, jeder fünfte darüber. Der gewählte Balken immer.
-bool showsAxisLabel(int index, int count, int selected) {
+///
+/// Ein regelmäßiger Balken verliert seine Beschriftung, wenn sie die des
+/// gewählten Balkens berührt: [minGap] ist der kleinste Abstand in Balken
+/// (aus Beschriftungsbreite und Spaltenbreite berechnet).
+bool showsAxisLabel(int index, int count, int selected, {int minGap = 1}) {
   if (index == selected) return true;
+  if ((index - selected).abs() < minGap) return false;
   if (count <= 12) return true;
   if (count <= 24) return index % 2 == 0;
   return index % 5 == 0;
@@ -150,33 +155,61 @@ class RevenueChart extends StatelessWidget {
           ),
           SizedBox(
             height: _labelRowHeight,
-            child: Row(
-              children: [
-                const SizedBox(width: _axisWidth),
-                for (var i = 0; i < buckets.length; i++)
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: showsAxisLabel(i, buckets.length, selected)
-                          ? OverflowBox(
-                              maxWidth: 64,
-                              child: Text(
-                                buckets[i].label,
-                                maxLines: 1,
-                                softWrap: false,
-                                textAlign: TextAlign.center,
-                                style: axisStyle.copyWith(
-                                  color: i == selected ? c.ink : c.ink2,
-                                  fontWeight: i == selected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
+            child: LayoutBuilder(
+              builder: (context, box) {
+                // Breiteste Beschriftung (fett, wie der gewählte Balken) gegen
+                // die echte Spaltenbreite: so viele Balken Abstand braucht sie.
+                final column = (box.maxWidth - _axisWidth) / buckets.length;
+                var widest = 0.0;
+                for (final b in buckets) {
+                  final painter = TextPainter(
+                    text: TextSpan(
+                      text: b.label,
+                      style: axisStyle.copyWith(fontWeight: FontWeight.w800),
                     ),
-                  ),
-              ],
+                    textDirection: TextDirection.ltr,
+                    maxLines: 1,
+                  )..layout();
+                  if (painter.width > widest) widest = painter.width;
+                  painter.dispose();
+                }
+                final minGap = column <= 0 ? 1 : ((widest + 6) / column).ceil();
+                return Row(
+                  children: [
+                    const SizedBox(width: _axisWidth),
+                    for (var i = 0; i < buckets.length; i++)
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child:
+                              showsAxisLabel(
+                                i,
+                                buckets.length,
+                                selected,
+                                minGap: minGap,
+                              )
+                              ? OverflowBox(
+                                  maxWidth: 64,
+                                  child: Text(
+                                    buckets[i].label,
+                                    key: Key('axis-label-$i'),
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    textAlign: TextAlign.center,
+                                    style: axisStyle.copyWith(
+                                      color: i == selected ? c.ink : c.ink2,
+                                      fontWeight: i == selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],

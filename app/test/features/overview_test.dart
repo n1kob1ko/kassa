@@ -205,6 +205,61 @@ void main() {
     });
   });
 
+  group('Achsenbeschriftung', () {
+    /// Prüft, dass keine zwei sichtbaren Beschriftungen einander berühren und
+    /// dass der gewählte Balken seine zeigt.
+    void expectNoOverlap(WidgetTester t, int selected) {
+      final rects = <int, Rect>{};
+      for (var i = 0; i < 31; i++) {
+        final f = find.byKey(Key('axis-label-$i'));
+        if (f.evaluate().isNotEmpty) rects[i] = t.getRect(f);
+      }
+      expect(rects.containsKey(selected), isTrue, reason: 'gewählter fehlt');
+      final ids = rects.keys.toList()..sort();
+      for (var a = 0; a + 1 < ids.length; a++) {
+        expect(
+          rects[ids[a]]!.right,
+          lessThan(rects[ids[a + 1]]!.left),
+          reason: 'Beschriftung ${ids[a]} und ${ids[a + 1]} überlappen',
+        );
+      }
+    }
+
+    for (final size in [const Size(1280, 800), const Size(960, 600)]) {
+      for (final pick in [1, 4, 6, 9, 24]) {
+        testWidgets('30 Tage, Balken $pick gewählt, ${size.width.toInt()} dp', (
+          t,
+        ) async {
+          await pumpOverviewWithSales(t, size: size, openRange: 'days30');
+          await t.tap(find.byKey(Key('bar-$pick')));
+          await t.pump();
+          expectNoOverlap(t, pick);
+        });
+      }
+    }
+
+    testWidgets('24 Stunden-Balken: kein Überlappen bei ungeradem Balken', (
+      t,
+    ) async {
+      await pumpOverviewWithSales(
+        t,
+        sales: [
+          OverviewSale(today(0, 5)),
+          OverviewSale(today(5, 5)),
+          OverviewSale(today(23, 5)),
+        ],
+        now: today(23, 30),
+        size: const Size(960, 600),
+      );
+      await t.tap(find.byKey(const Key('bar-5')));
+      await t.pump();
+      expectNoOverlap(t, 5);
+      await t.tap(find.byKey(const Key('bar-23')));
+      await t.pump();
+      expectNoOverlap(t, 23);
+    });
+  });
+
   group('Leer und Fehler', () {
     testWidgets('ohne Bons: Hinweis statt leerer Balken (heute)', (t) async {
       await pumpOverviewWithSales(t, sales: []);
