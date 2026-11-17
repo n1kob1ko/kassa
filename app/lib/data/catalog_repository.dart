@@ -30,7 +30,10 @@ class CatalogRepository {
       for (final k in c.categories) {
         await _db.into(_db.categoryRows).insertOnConflictUpdate(
             CategoryRowsCompanion.insert(
-                id: k.id, name: k.name, position: k.position));
+                id: k.id,
+                name: k.name,
+                position: k.position,
+                archived: const Value(false)));
       }
       await (_db.update(_db.categoryRows)
             ..where((t) => t.id.isNotIn(categoryIds)))

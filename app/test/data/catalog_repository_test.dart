@@ -153,6 +153,24 @@ void main() {
     expect(c.items.any((i) => i.id == 'teigtaschen'), isTrue);
   });
 
+  test('eine stillgelegte Kategorie ist nach erneutem Auftauchen wieder aktiv', () async {
+    final original = parseMenuFile(demo);
+    final weg = original.categories.last;
+    final json = jsonDecode(demo) as Map<String, dynamic>;
+    (json['kategorien'] as List).removeWhere((k) => (k as Map)['id'] == weg.id);
+    (json['artikel'] as List).removeWhere((a) => (a as Map)['kategorie'] == weg.id);
+    await repo.importCatalog(parseMenuFile(jsonEncode(json)));
+    expect((await repo.current())!.categories.any((k) => k.id == weg.id), isFalse);
+
+    await repo.importCatalog(original);
+    final c = (await repo.current())!;
+    expect(c.categories.map((k) => (k.id, k.position)),
+        original.categories.map((k) => (k.id, k.position)));
+    expect(c.items, hasLength(original.items.length));
+    final ids = c.categories.map((k) => k.id).toSet();
+    expect(c.items.every((i) => ids.contains(i.categoryId)), isTrue);
+  });
+
   test('scheitert das Einspielen, bleibt der alte Stand', () async {
     final vorher = (await repo.current())!;
     final kaputt = Catalog(
