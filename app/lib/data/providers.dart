@@ -10,6 +10,7 @@ import 'day_repository.dart';
 import 'receipt_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
+import 'stats_repository.dart';
 
 /// Öffnet die echte Datenbank. Tests ersetzen ihn durch
 /// `KassaDatabase(NativeDatabase.memory())`.
@@ -39,4 +40,8 @@ final receiptRepositoryProvider = Provider(
     ref.watch(clockProvider),
     ref.watch(dayRepositoryProvider),
   ),
+);
+
+final statsRepositoryProvider = Provider(
+  (ref) => StatsRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
 );
