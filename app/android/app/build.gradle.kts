@@ -20,6 +20,21 @@ val keyProperties = Properties().apply {
     keyPropertiesFile?.inputStream()?.use { load(it) }
 }
 
+// `flutter build apk --target-platform android-arm64` still packs helper
+// libraries of plugins for other processors. Keep only the requested ones.
+val requestedAbis = (project.findProperty("target-platform") as String?)
+    ?.split(',')
+    ?.mapNotNull {
+        when (it.trim()) {
+            "android-arm64" -> "arm64-v8a"
+            "android-arm" -> "armeabi-v7a"
+            "android-x64" -> "x86_64"
+            else -> null
+        }
+    }
+    .orEmpty()
+val splitPerAbi = (project.findProperty("split-per-abi") as String?)?.toBoolean() ?: false
+
 android {
     namespace = "io.github.n1kob1ko.kassa"
     compileSdk = flutter.compileSdkVersion
@@ -51,6 +66,20 @@ android {
                 storePassword = keyProperties.getProperty("storePassword")
                 keyAlias = keyProperties.getProperty("keyAlias")
                 keyPassword = keyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
+    // Native libraries are stored compressed inside the APK. The file handed
+    // to a tester is then about half the size; Android unpacks the libraries
+    // at install time.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            if (requestedAbis.isNotEmpty() && !splitPerAbi) {
+                listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+                    .filterNot { it in requestedAbis }
+                    .forEach { excludes += "lib/$it/**" }
             }
         }
     }
