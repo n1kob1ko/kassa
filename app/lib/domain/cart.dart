@@ -148,6 +148,12 @@ class Cart {
         ],
       };
 
+  /// Der Bon gegen einen (geänderten) Katalog neu aufgelöst: Zeilenkennung,
+  /// Menge und Options-Ids bleiben, Artikel und Optionen kommen aus [catalog].
+  /// Es gelten dieselben Regeln wie in [fromJson], zum Beispiel fallen Zeilen
+  /// weg, die es nicht mehr gibt.
+  Cart rebind(Catalog catalog) => fromJson(toJson(), catalog);
+
   /// Zeilen, deren Artikel oder Option es im Katalog nicht mehr gibt, mit
   /// Menge unter 1, mit falschen Typen oder mit doppelter Kennung fallen weg.
   /// Das Lesen wirft nie wegen des Inhalts.

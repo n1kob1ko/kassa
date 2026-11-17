@@ -16,6 +16,13 @@ class CartController extends Notifier<Cart> {
   @override
   Cart build() {
     _restoreDraft();
+    // Der offene Bon folgt dem Katalog, wie nach einem Neustart: neuer Preis,
+    // neue Optionen, Zeilen ohne Artikel fallen weg.
+    ref.listen(catalogStreamProvider, (_, next) {
+      final catalog = next.value;
+      if (catalog == null || state.isEmpty) return;
+      _set(state.rebind(catalog));
+    });
     return const Cart.empty();
   }
 
@@ -29,8 +36,12 @@ class CartController extends Notifier<Cart> {
 
   void clear() => _set(const Cart.empty());
 
-  /// Setzt einen früheren Bon wieder ein ("Rückgängig").
-  void restore(Cart cart) => _set(cart);
+  /// Setzt einen früheren Bon wieder ein ("Rückgängig"), aber nur auf einen
+  /// leeren Bon: was inzwischen auf dem Bon liegt, wird nie ersetzt.
+  void restore(Cart cart) {
+    if (!state.isEmpty) return;
+    _set(cart);
+  }
 
   void _set(Cart cart) {
     _changed = true;

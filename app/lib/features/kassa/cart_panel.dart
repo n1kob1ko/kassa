@@ -29,15 +29,38 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   /// Je Zeile ein Zähler: steigt er, leuchtet die Zeile einmal auf.
   final Map<String, int> _flash = {};
 
+  /// Schließt den Hinweis "Bon geleert", solange er offen ist.
+  VoidCallback? _closeToast;
+
+  /// Der leere Bon, auf den sich der Hinweis bezieht. Jede andere Änderung
+  /// des Bons schließt ihn.
+  Cart? _clearedCart;
+
+  void _dismissToast() {
+    _closeToast?.call();
+    _closeToast = null;
+    _clearedCart = null;
+  }
+
+  void _pay() {
+    _dismissToast();
+    widget.onPayCash();
+  }
+
   void _clear() {
     final controller = ref.read(cartProvider.notifier);
     final before = ref.read(cartProvider);
     if (before.isEmpty) return;
     controller.clear();
-    showUndoToast(
+    _clearedCart = ref.read(cartProvider);
+    _closeToast = showUndoToast(
       context,
       message: 'Bon geleert',
-      onUndo: () => controller.restore(before),
+      onUndo: () {
+        _closeToast = null;
+        _clearedCart = null;
+        controller.restore(before);
+      },
     );
   }
 
@@ -46,6 +69,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     final c = KassaColors.of(context);
     final cart = ref.watch(cartProvider);
     ref.listen(cartProvider, (prev, next) {
+      if (_clearedCart != null && !identical(next, _clearedCart)) {
+        _dismissToast();
+      }
       final old = {
         for (final l in prev?.lines ?? const <CartLine>[]) l.lineId: l,
       };
@@ -110,7 +136,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                     height: KassaTokens.mainActionHeight,
                     onPressed: cart.isEmpty || !widget.canPay
                         ? null
-                        : widget.onPayCash,
+                        : _pay,
                   ),
                 ),
                 const SizedBox(width: KassaTokens.spaceLg),

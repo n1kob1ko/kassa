@@ -10,7 +10,8 @@ OverlayEntry? _current;
 /// Zeigt unten mittig einen Hinweis mit der Taste "Rückgängig". Bleibt
 /// [KassaTokens.snackStay] (7 Sekunden) stehen. Ein neuer Hinweis ersetzt den
 /// alten. Antippen von "Rückgängig" ruft [onUndo] einmal und schließt ihn.
-void showUndoToast(
+/// Die Rückgabe schließt den Hinweis von außen (mehrfach aufrufbar).
+VoidCallback showUndoToast(
   BuildContext context, {
   required String message,
   required VoidCallback onUndo,
@@ -37,6 +38,13 @@ void showUndoToast(
   );
   _current = entry;
   overlay.insert(entry);
+  var closed = false;
+  return () {
+    if (closed) return;
+    closed = true;
+    // Nur schließen, wenn es noch dieser Hinweis ist.
+    if (identical(_current, entry) || entry.mounted) close();
+  };
 }
 
 class _ToastHost extends StatefulWidget {

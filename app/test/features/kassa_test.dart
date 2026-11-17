@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/kassa_screen.dart';
@@ -189,6 +190,75 @@ void main() {
     await t.pump();
     expect(_total(t), '9,65 €');
     expect(_text('Bon geleert'), findsNothing);
+  });
+
+  testWidgets('Preis geändert bei offenem Bon: Zeile, Summe, nächster Tipp und Bon gelten neu', (t) async {
+    await pumpKassaWith(t, ['cola']);
+    expect(_total(t), '3,15 €');
+    await containerOf(t)
+        .read(catalogRepositoryProvider)
+        .updateItem('cola', priceCents: 320);
+    await t.pump();
+    await t.pump();
+    final id = cartOf(t).lines.single.lineId;
+    expect(cartOf(t).lines.single.unitPriceCents, 320);
+    expect(_total(t), '3,45 €');
+    await t.tap(find.byKey(const Key('item-cola')));
+    await t.pump();
+    expect(textOf(t, Key('qty-$id')), '2');
+    expect(_total(t), '6,90 €');
+    expect(
+      (await containerOf(t).read(settingsRepositoryProvider).readDraft())!,
+      contains('"quantity":2'),
+    );
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    final rows = await containerOf(t)
+        .read(databaseProvider)
+        .customSelect('SELECT unit_price_cents AS p, quantity AS q FROM receipt_lines')
+        .get();
+    expect([for (final r in rows) (r.data['p'], r.data['q'])], [(320, 2)]);
+  });
+
+  testWidgets('Speisekarte neu eingespielt ohne Artikel: seine Zeile fällt vom offenen Bon', (t) async {
+    await pumpKassaWith(t, ['cola', 'teigtaschen']);
+    expect(cartOf(t).lines, hasLength(2));
+    final without = Catalog(
+      businessName: catalog.businessName,
+      categories: catalog.categories,
+      items: [for (final i in catalog.items) if (i.id != 'cola') i],
+      templates: catalog.templates,
+    );
+    await containerOf(t).read(catalogRepositoryProvider).importCatalog(without);
+    await t.pump();
+    await t.pump();
+    await t.pump();
+    expect(cartOf(t).lines.map((l) => l.item.id), ['teigtaschen']);
+    expect(_total(t), '6,50 €');
+    expect(await draftOf(t), isNot(contains('cola')));
+  });
+
+  testWidgets('Bon leeren, dann etwas boniert: Hinweis weg, nur der neue Artikel bleibt', (t) async {
+    await pumpKassaWith(t, ['cola', 'teigtaschen']);
+    await t.tap(find.byKey(const Key('clear-cart')));
+    await t.pump();
+    expect(_text('Bon geleert'), findsOneWidget);
+    await tapItem(t, 'pommes');
+    await t.pump();
+    expect(_text('Bon geleert'), findsNothing);
+    expect(_text('Rückgängig'), findsNothing);
+    expect(cartOf(t).lines.map((l) => l.item.id), ['pommes']);
+  });
+
+  testWidgets('restore ersetzt nie einen Bon, auf dem etwas liegt', (t) async {
+    await pumpKassaWith(t, ['teigtaschen']);
+    final old = const Cart.empty().add(cola);
+    containerOf(t).read(cartProvider.notifier).restore(old);
+    await t.pump();
+    expect(cartOf(t).lines.map((l) => l.item.id), ['teigtaschen']);
+    expect(_total(t), '6,50 €');
   });
 
   testWidgets('leerer Bon: Bar ist gesperrt. Karte ist in dieser Version immer gesperrt', (t) async {

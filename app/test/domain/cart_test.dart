@@ -63,6 +63,45 @@ void main() {
 
   test('Summe 0 ist erlaubt', () => expect(const Cart.empty().add(leitungswasser).totalCents, 0));
 
+  group('rebind (Bon folgt dem Katalog)', () {
+    Catalog withItems(List<Item> items) => Catalog(
+          businessName: catalog.businessName,
+          categories: catalog.categories,
+          items: items,
+          templates: catalog.templates,
+        );
+
+    test('nimmt Preis aus dem neuen Katalog, behält Zeilenkennung und Menge', () {
+      final cart = const Cart.empty().add(cola, lineId: 'a').add(cola);
+      final next = withItems([
+        for (final i in catalog.items) i.id == 'cola' ? i.copyWith(priceCents: 320) : i,
+      ]);
+      final rebuilt = cart.rebind(next);
+      expect(rebuilt.lines.single.lineId, 'a');
+      expect(rebuilt.lines.single.quantity, 2);
+      expect(rebuilt.lines.single.unitPriceCents, 320);
+      expect(cart.lines.single.unitPriceCents, cola.priceCents);
+    });
+
+    test('Zeilen, die es nicht mehr gibt, fallen weg', () {
+      final cart = const Cart.empty().add(cola, lineId: 'a').add(teigtaschen, lineId: 'b');
+      final next = withItems([for (final i in catalog.items) if (i.id != 'cola') i]);
+      expect(cart.rebind(next).lines.map((l) => l.lineId), ['b']);
+    });
+
+    test('Optionen werden aus dem neuen Katalog genommen, unbekannte lassen die Zeile fallen', () {
+      final cart = const Cart.empty().add(huhnBowl, options: [normal, reis], lineId: 'x');
+      expect(cart.rebind(catalog).lines.single.options.map((o) => o.id), [normal.id, reis.id]);
+      final noTemplates = Catalog(
+        businessName: catalog.businessName,
+        categories: catalog.categories,
+        items: catalog.items,
+        templates: const [],
+      );
+      expect(cart.rebind(noTemplates).isEmpty, isTrue);
+    });
+  });
+
   test('Bon übersteht Speichern und Laden', () {
     final cart = const Cart.empty().add(cola).add(huhnBowl, options: [normal, reis]);
     expect(Cart.fromJson(cart.toJson(), catalog).totalCents, cart.totalCents);
