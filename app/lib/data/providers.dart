@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/clock.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
+import 'day_repository.dart';
 import 'receipt_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
@@ -28,6 +29,14 @@ final settingsRepositoryProvider = Provider(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
 );
 
+final dayRepositoryProvider = Provider(
+  (ref) => DayRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
 final receiptRepositoryProvider = Provider(
-  (ref) => ReceiptRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+  (ref) => ReceiptRepository(
+    ref.watch(databaseProvider),
+    ref.watch(clockProvider),
+    ref.watch(dayRepositoryProvider),
+  ),
 );

@@ -7,6 +7,7 @@ import 'package:drift/native.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/domain/cart.dart';
@@ -25,6 +26,7 @@ class TestShop {
     this.clock,
     this.catalogRepo,
     this.staffRepo,
+    this.days,
     this.receipts,
     this.anna,
     this.chef,
@@ -34,6 +36,7 @@ class TestShop {
   final FixedClock clock;
   final CatalogRepository catalogRepo;
   final StaffRepository staffRepo;
+  final DayRepository days;
   final ReceiptRepository receipts;
   final Staff anna;
   final Staff chef;
@@ -47,7 +50,9 @@ class TestShop {
     final staffRepo = StaffRepository(db);
     final anna = await staffRepo.create(name: 'Anna', pin: '1111', role: StaffRole.staff);
     final chef = await staffRepo.create(name: 'Chef', pin: '2222', role: StaffRole.chef);
-    return TestShop._(db, clock, catalogRepo, staffRepo, ReceiptRepository(db, clock), anna, chef);
+    final days = DayRepository(db, clock);
+    final receipts = ReceiptRepository(db, clock, days);
+    return TestShop._(db, clock, catalogRepo, staffRepo, days, receipts, anna, chef);
   }
 
   Future<void> close() => db.close();

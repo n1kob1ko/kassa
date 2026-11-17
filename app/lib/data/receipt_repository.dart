@@ -10,6 +10,7 @@ import '../domain/pricing.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
 import 'database.dart';
+import 'day_repository.dart';
 
 class EmptyCartException implements Exception {
   const EmptyCartException();
@@ -40,10 +41,11 @@ class CannotVoidAVoidException implements Exception {
 }
 
 class ReceiptRepository {
-  ReceiptRepository(this._db, this._clock);
+  ReceiptRepository(this._db, this._clock, this._days);
 
   final KassaDatabase _db;
   final Clock _clock;
+  final DayRepository _days;
 
   /// Schließt einen Barverkauf ab. Die Id des Bons ist [saleId]: gibt es ihn
   /// schon, kommt der gespeicherte Bon zurück und nichts wird geschrieben.
@@ -163,19 +165,6 @@ class ReceiptRepository {
     return (await _hydrate([row])).single;
   }
 
-  /// Der offene Tag, sonst ein neuer.
-  Future<String> _openDayId() async {
-    final open = await (_db.select(
-      _db.businessDayRows,
-    )..where((t) => t.closedAt.isNull())).getSingleOrNull();
-    if (open != null) return open.id;
-    final id = const Uuid().v4();
-    await _db
-        .into(_db.businessDayRows)
-        .insert(BusinessDayRowsCompanion.insert(id: id, openedAt: _clock.now()));
-    return id;
-  }
-
   Future<Receipt> _write({
     required String id,
     required ReceiptKind kind,
@@ -187,7 +176,7 @@ class ReceiptRepository {
     required int totalCents,
     required Payment payment,
   }) async {
-    final dayId = await _openDayId();
+    final dayId = (await _days.openOrCreateDay()).id;
     final maxNumber = _db.receiptRows.number.max();
     final highest = await (_db.selectOnly(
       _db.receiptRows,

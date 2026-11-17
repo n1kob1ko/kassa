@@ -136,7 +136,7 @@ class SettingsRows extends Table {
 }
 
 /// Ein Geschäftstag: offen, solange `closedAt` leer ist. Die Felder zum
-/// Abschluss füllt der Tagesabschluss.
+/// Abschluss füllt der Tagesabschluss. Abgeschlossene Tage sind unveränderlich.
 class BusinessDayRows extends Table {
   @override
   String get tableName => 'business_days';
@@ -144,12 +144,36 @@ class BusinessDayRows extends Table {
   TextColumn get id => text()();
   DateTimeColumn get openedAt => dateTime()();
   DateTimeColumn get closedAt => dateTime().nullable()();
-  IntColumn get openingFloatCents => integer().withDefault(const Constant(0))();
+
+  /// `null`, solange das Wechselgeld des Tages nicht bekannt ist.
+  IntColumn get openingFloatCents => integer().nullable()();
   IntColumn get countedCents => integer().nullable()();
   IntColumn get leftInDrawerCents => integer().nullable()();
   IntColumn get expectedCents => integer().nullable()();
   IntColumn get differenceCents => integer().nullable()();
   TextColumn get closedByName => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Eine Ein- oder Auszahlung an der Geldlade. Unveränderlich.
+class CashMovementRows extends Table {
+  @override
+  String get tableName => 'cash_movements';
+
+  TextColumn get id => text()();
+  TextColumn get businessDayId => text().references(BusinessDayRows, #id)();
+
+  /// `deposit` oder `withdrawal`.
+  TextColumn get kind => text()();
+  IntColumn get amountCents => integer()();
+
+  /// `bank`, `purchase`, `change` oder `other`.
+  TextColumn get reason => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get staffId => text()();
+  TextColumn get staffName => text()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -255,6 +279,7 @@ class PaymentRows extends Table {
     StaffRows,
     SettingsRows,
     BusinessDayRows,
+    CashMovementRows,
     ReceiptRows,
     ReceiptLineRows,
     ReceiptLineOptionRows,
@@ -274,6 +299,29 @@ class KassaDatabase extends _$KassaDatabase {
       await customStatement(
         'CREATE UNIQUE INDEX receipts_voids_receipt_id '
         'ON receipts (voids_receipt_id)',
+      );
+      // Höchstens ein offener Tag. NULL gilt in einem eindeutigen Index immer
+      // als verschieden, darum der Ausdruck, der für offene Tage gleich ist.
+      await customStatement(
+        'CREATE UNIQUE INDEX business_days_one_open '
+        'ON business_days ((closed_at IS NULL)) WHERE closed_at IS NULL',
+      );
+      for (final action in const ['UPDATE', 'DELETE']) {
+        await customStatement(
+          'CREATE TRIGGER cash_movements_no_${action.toLowerCase()} '
+          'BEFORE $action ON cash_movements BEGIN '
+          "SELECT RAISE(ABORT, 'Bargeld-Bewegungen sind unveränderlich'); END",
+        );
+      }
+      await customStatement(
+        'CREATE TRIGGER business_days_no_update_closed '
+        'BEFORE UPDATE ON business_days WHEN OLD.closed_at IS NOT NULL BEGIN '
+        "SELECT RAISE(ABORT, 'Abgeschlossene Tage sind unveränderlich'); END",
+      );
+      await customStatement(
+        'CREATE TRIGGER business_days_no_delete '
+        'BEFORE DELETE ON business_days BEGIN '
+        "SELECT RAISE(ABORT, 'Tage können nicht gelöscht werden'); END",
       );
       for (final table in const ['receipts', 'receipt_lines', 'receipt_line_options', 'payments']) {
         for (final action in const ['UPDATE', 'DELETE']) {
