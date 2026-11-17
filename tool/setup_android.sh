@@ -12,6 +12,9 @@ cmdline_tools_build="${ANDROID_CMDLINE_TOOLS_BUILD:-13114758}"
 platform="platforms;android-36"
 build_tools="build-tools;36.0.0"
 ndk="ndk;28.2.13676358"
+# Was der Bau sonst unterwegs selbst nachlädt (Plugins bauen gegen Plattform 35,
+# das NDK braucht CMake).
+extras=("platforms;android-35" "cmake;3.22.1")
 
 flutter="${FLUTTER_BIN:-$HOME/flutter/bin/flutter}"
 if [ ! -x "$flutter" ]; then
@@ -45,9 +48,9 @@ fi
 echo "Nehme die Lizenzen an"
 yes 2>/dev/null | "$sdkmanager" --sdk_root="$sdk" "${proxy_args[@]}" --licenses >/dev/null || true
 
-echo "Installiere $platform, $build_tools, platform-tools, $ndk"
+echo "Installiere $platform, $build_tools, platform-tools, $ndk, ${extras[*]}"
 "$sdkmanager" --sdk_root="$sdk" "${proxy_args[@]}" \
-  "platform-tools" "$platform" "$build_tools" "$ndk"
+  "platform-tools" "$platform" "$build_tools" "$ndk" "${extras[@]}"
 
 "$flutter" config --android-sdk "$sdk" >/dev/null
 "$flutter" doctor
