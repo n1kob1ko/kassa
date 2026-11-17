@@ -8,17 +8,26 @@ import 'tokens.dart';
 /// [onKey]: `'0'` bis `'9'`, `','` und `'back'`. Es gibt nie eine
 /// Systemtastatur.
 class Keypad extends StatelessWidget {
-  const Keypad({super.key, required this.onKey, this.showComma = true});
+  const Keypad({
+    super.key,
+    required this.onKey,
+    this.showComma = true,
+    this.keyHeight = KassaTokens.keypadKeyHeight,
+  });
 
   final ValueChanged<String> onKey;
 
   /// Ohne Komma bleibt die Zelle leer, damit das Raster gleich bleibt.
   final bool showComma;
 
+  /// Höhe einer Taste. Die Anmeldung nutzt 72.
+  final double keyHeight;
+
   @override
   Widget build(BuildContext context) {
     Widget digit(int d) => _KeypadKey(
       key: Key('key-$d'),
+      height: keyHeight,
       onTap: () => onKey('$d'),
       child: Text('$d', style: _keyStyle(context)),
     );
@@ -34,14 +43,16 @@ class Keypad extends StatelessWidget {
     final comma = showComma
         ? _KeypadKey(
             key: const Key('key-comma'),
+            height: keyHeight,
             quiet: true,
             semanticLabel: 'Komma',
             onTap: () => onKey(','),
             child: Text(',', style: _keyStyle(context)),
           )
-        : const SizedBox(height: KassaTokens.keypadKeyHeight);
+        : SizedBox(height: keyHeight);
     final back = _KeypadKey(
       key: const Key('key-back'),
+      height: keyHeight,
       quiet: true,
       semanticLabel: 'Letzte Ziffer löschen',
       onTap: () => onKey('back'),
@@ -76,10 +87,12 @@ class _KeypadKey extends StatelessWidget {
     super.key,
     required this.onTap,
     required this.child,
+    required this.height,
     this.quiet = false,
     this.semanticLabel,
   });
 
+  final double height;
   final VoidCallback onTap;
   final Widget child;
   final bool quiet;
@@ -92,7 +105,7 @@ class _KeypadKey extends StatelessWidget {
       onTap: onTap,
       semanticLabel: semanticLabel,
       child: Container(
-        height: KassaTokens.keypadKeyHeight,
+        height: height,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: quiet ? c.fill : c.card,

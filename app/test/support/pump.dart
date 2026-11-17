@@ -24,6 +24,7 @@ import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/theme.dart';
 import 'package:material_ui/material_ui.dart';
@@ -94,10 +95,12 @@ Future<void> pumpApp(
 /// Datenbank im Speicher und feste Uhr (Standard 17.11.2026, 11 Uhr). Mit
 /// [seeded] sind der Beispiel-Imbiss eingespielt, der Chef "Chef" (PIN 4711)
 /// und die Mitarbeiterin "Anna" (PIN 1234) angelegt, sonst ist alles leer.
-/// Die Datenbank wird am Ende des Tests geschlossen.
+/// Die Datenbank wird am Ende des Tests geschlossen. [pickedFile] ist der Text,
+/// den die Dateiauswahl liefert (`null`: die Person bricht ab).
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
+  String? pickedFile,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -113,7 +116,20 @@ Future<List<Override>> memoryOverrides({
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
+    menuFilePickerProvider.overrideWithValue(_FakePicker(pickedFile)),
+    demoMenuTextProvider.overrideWithValue(
+      () async => File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
+    ),
   ];
+}
+
+class _FakePicker implements MenuFilePicker {
+  const _FakePicker(this.text);
+
+  final String? text;
+
+  @override
+  Future<String?> pickText() async => text;
 }
 
 /// Text des [Text]-Widgets mit diesem [key], oder des ersten [Text] darunter.

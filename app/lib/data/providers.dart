@@ -4,6 +4,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/clock.dart';
+import '../domain/catalog.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
@@ -45,3 +46,17 @@ final receiptRepositoryProvider = Provider(
 final statsRepositoryProvider = Provider(
   (ref) => StatsRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
 );
+
+/// Die eingespielte Speisekarte, `null` solange keine da ist.
+final catalogProvider = FutureProvider<Catalog?>(
+  (ref) => ref.watch(catalogRepositoryProvider).current(),
+);
+
+/// Die Einrichtung ist fertig, wenn es eine Speisekarte und mindestens einen
+/// Chef gibt.
+final setupCompleteProvider = FutureProvider<bool>((ref) async {
+  final catalog = await ref.watch(catalogProvider.future);
+  if (catalog == null) return false;
+  final staff = await ref.read(staffRepositoryProvider).all();
+  return staff.any((s) => s.isChef);
+});

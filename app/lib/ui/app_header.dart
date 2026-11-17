@@ -1,6 +1,7 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'kassa_logo.dart';
 import 'pressable.dart';
 import 'tokens.dart';
 
@@ -29,6 +30,7 @@ class AppHeader extends StatelessWidget {
     required this.isChef,
     required this.onStaff,
     required this.onSettings,
+    this.businessName,
   });
 
   final AppArea area;
@@ -37,6 +39,9 @@ class AppHeader extends StatelessWidget {
   final bool isChef;
   final VoidCallback onStaff;
   final VoidCallback onSettings;
+
+  /// Name des Betriebs, neben der Wortmarke.
+  final String? businessName;
 
   @override
   Widget build(BuildContext context) {
@@ -54,17 +59,24 @@ class AppHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: c.accent,
-              borderRadius: BorderRadius.circular(KassaTokens.radiusMd),
-            ),
-            child: Icon(LucideIcons.receipt, size: 20, color: c.onAccent),
-          ),
+          const KassaLogo(size: 34),
           const SizedBox(width: KassaTokens.spaceXl),
           Text('Kassa', style: text.headlineMedium),
+          if (businessName != null) ...[
+            const SizedBox(width: KassaTokens.spaceXxl),
+            Flexible(
+              child: Text(
+                businessName!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodyMedium!.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: c.ink2,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(width: KassaTokens.spaceXl),
           Expanded(
             child: SingleChildScrollView(
