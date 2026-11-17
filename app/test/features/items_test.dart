@@ -3,6 +3,7 @@ import 'package:kassa/core/money.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/features/items/item_row.dart';
 import 'package:kassa/ui/app_toggle.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/primary_button.dart';
@@ -205,7 +206,7 @@ void main() {
     }
 
     // Bowls haben eine Vorlage.
-    expect(second('huhn-bowl'), 'bowl');
+    expect(second('huhn-bowl'), 'Mit Auswahl');
     await selectCategory(t, 'snacks');
     expect(second('teigtaschen'), '5 Stück');
     expect(second('pommes'), isNull);
@@ -229,6 +230,8 @@ void main() {
     expect(find.text('Huhn Bowl'), findsWidgets);
     expect(find.text('10 %'), findsOneWidget);
     expect(find.text('Auswahl beim Bonieren'), findsOneWidget);
+    // Der Schlüssel der Vorlage aus der Datei steht nirgends.
+    expect(find.text('bowl'), findsNothing);
     expect(
       find.text('Größe, Basis, Extra-Topping, Extra-Sauce.'),
       findsOneWidget,
@@ -375,4 +378,27 @@ void main() {
       await check();
     },
   );
+
+  testWidgets('Bild und Marken: breit sichtbar, schmal nicht', (t) async {
+    await pumpItems(t, category: 'bowls');
+    final row = find.byKey(const Key('row-huhn-bowl'));
+    expect(
+      find.descendant(of: row, matching: find.byType(ItemPhoto)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('SCHARF')),
+      findsOneWidget,
+    );
+    await pumpItems(t, category: 'bowls', size: const Size(960, 600));
+    final narrow = find.byKey(const Key('row-huhn-bowl'));
+    expect(
+      find.descendant(of: narrow, matching: find.byType(ItemPhoto)),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: narrow, matching: find.text('SCHARF')),
+      findsNothing,
+    );
+  });
 }

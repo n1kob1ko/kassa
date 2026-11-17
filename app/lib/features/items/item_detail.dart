@@ -212,28 +212,7 @@ class _Normal extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                'Auswahl beim Bonieren',
-                                style: labelStyle,
-                              ),
-                            ),
-                            const SizedBox(width: KassaTokens.spaceMd),
-                            Expanded(
-                              child: Text(
-                                template.name,
-                                maxLines: 1,
-                                textAlign: TextAlign.right,
-                                overflow: TextOverflow.ellipsis,
-                                style: text.bodyMedium!.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        Text('Auswahl beim Bonieren', style: labelStyle),
                         const SizedBox(height: KassaTokens.spaceSm),
                         Text(
                           '${template.groups.map((g) => g.name).join(', ')}.',

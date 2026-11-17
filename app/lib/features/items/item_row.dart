@@ -107,7 +107,7 @@ class ItemTagPills extends StatelessWidget {
 /// Zweite Zeile einer Zeile: nicht im Verkauf, sonst Vorlage, Pfand, Zusatz.
 String? itemSecondLine(Item item, ModifierTemplate? template) {
   if (!item.inSale) return 'Nicht im Verkauf';
-  if (template != null) return template.name;
+  if (template != null) return 'Mit Auswahl';
   if (item.depositCents > 0) {
     return 'plus ${formatEuro(item.depositCents)} Pfand';
   }
