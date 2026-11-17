@@ -296,7 +296,7 @@ test('keine Zeile ist breiter als das Papier, auch bei 42 und 32 Zeichen', () {
 }); // longNames: Artikel "Hausgemachte Teigtaschen mit Gemüsefüllung und Erdnuss-Sauce nach Art des Hauses", Menge 99, Preis 150,00
 test('langer Name: Betrag steht rechts in der ersten Zeile, Rest eingerückt', …);
 test('Zeichen, die der Drucker nicht kennt', () {
-  expect(printable('Phở Bò'), 'Pho Bo'); expect(printable('Crème brûlée'), 'Crème brûlée');
+  expect(printable('Phở Bò'), 'Pho Bò'); expect(printable('Crème brûlée'), 'Crème brûlée');
   expect(printable('Größe 0,5 l – 3 €'), 'Größe 0,5 l - 3 €'); expect(printable('麻婆豆腐 Mapo'), '???? Mapo');
   expect(printable('a\tb\nc'), 'a b c');
 });
