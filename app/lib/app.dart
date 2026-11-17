@@ -7,6 +7,7 @@ import 'features/login/pin_screen.dart';
 import 'features/login/session.dart';
 import 'features/setup/setup_screen.dart';
 import 'features/shell/shell_screen.dart';
+import 'ui/primary_button.dart';
 import 'ui/theme.dart';
 import 'ui/tokens.dart';
 
@@ -52,14 +53,85 @@ class _EmptyScreen extends StatelessWidget {
   }
 }
 
+/// Das erste Lesen der Datenbank ist gescheitert: ein Satz, der Fehler und eine
+/// Taste, damit die Person am Tablet etwas melden kann.
+class _StartError extends StatelessWidget {
+  const _StartError({
+    required this.error,
+    required this.onRetry,
+  });
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      backgroundColor: c.ground,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Die Kassa kann nicht starten.',
+                textAlign: TextAlign.center,
+                style: text.headlineMedium,
+              ),
+              const SizedBox(height: KassaTokens.spaceMd),
+              Text(
+                'Die Daten auf diesem Tablet lassen sich nicht lesen.',
+                textAlign: TextAlign.center,
+                style: text.bodyLarge,
+              ),
+              const SizedBox(height: KassaTokens.spaceMd),
+              Text(
+                '${error.runtimeType}: $error',
+                key: const Key('start-error-detail'),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodySmall!.copyWith(color: c.ink2),
+              ),
+              const SizedBox(height: KassaTokens.spaceXxl),
+              PrimaryButton(
+                key: const Key('start-retry'),
+                label: 'Nochmal versuchen',
+                onPressed: onRetry,
+                muted: true,
+                height: KassaTokens.minTap + 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Home extends ConsumerWidget {
   const _Home();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Solange die Datenbank das erste Mal gelesen wird: nur der Grund.
-    final complete = ref.watch(setupCompleteProvider).value;
-    if (complete == null) return const _EmptyScreen();
+    final setup = ref.watch(setupCompleteProvider);
+    final complete = setup.value;
+    if (complete == null) {
+      final error = setup.error;
+      if (error == null) return const _EmptyScreen();
+      return _StartError(
+        error: error,
+        onRetry: () {
+          ref.invalidate(catalogProvider);
+          ref.invalidate(setupCompleteProvider);
+        },
+      );
+    }
     if (!complete) return const SetupScreen();
     if (ref.watch(sessionProvider) == null) return const PinScreen();
     return const ShellScreen();
