@@ -1,0 +1,795 @@
+{
+ "betrieb": "YICHI",
+ "quelle": "YICHI-Speisekarte.pdf, von niko am 2026-11-17 geschickt",
+ "hinweise": [
+  "Preise in Cent, brutto.",
+  "MwSt-Sätze (Speisen 10 %, Getränke 20 %) sind Claudes Annahme, nicht aus der Karte.",
+  "Pfand 25 Cent laut Karte auf alle Getränke außer Cojo Cojo, Pago und Tsingtao.",
+  "Favoriten und Fotos im Entwurf sind erfunden und stehen hier nicht."
+ ],
+ "kategorien": [
+  {
+   "id": "bowls",
+   "name": "Bowls"
+  },
+  {
+   "id": "dumplings",
+   "name": "Dumplings"
+  },
+  {
+   "id": "ramen",
+   "name": "Ramen"
+  },
+  {
+   "id": "starters",
+   "name": "Starters"
+  },
+  {
+   "id": "sweet",
+   "name": "Sweet Yichi"
+  },
+  {
+   "id": "sushi",
+   "name": "Sushi & Maki"
+  },
+  {
+   "id": "rolls",
+   "name": "Rolls"
+  },
+  {
+   "id": "lemonade",
+   "name": "Homemade Lemonade"
+  },
+  {
+   "id": "drinks",
+   "name": "Getränke"
+  }
+ ],
+ "artikel": [
+  {
+   "id": "tokyo",
+   "name": "Tokyo Tori",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "chickencrunch",
+   "name": "Chicken Crunch",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "saketeriyaki",
+   "name": "Sake Teriyaki",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "duck",
+   "name": "Crispy Duck Dynasty",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "tomatoegg",
+   "name": "Grandmas Tomato Egg",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "koreancheese",
+   "name": "Korean Cheese Crunch",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "mangoshrimp",
+   "name": "Mango Shrimp Paradise",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "tofu",
+   "name": "Tofu Garden",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "kennzeichen": "VEGAN",
+   "auswahl": "bowl"
+  },
+  {
+   "id": "beef",
+   "name": "Black Pepper Beef",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "kennzeichen": "SCHARF",
+   "auswahl": "bowl"
+  },
+  {
+   "id": "buddha",
+   "name": "Happy Buddha",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "kennzeichen": "VEGAN",
+   "auswahl": "bowl"
+  },
+  {
+   "id": "goldenwok",
+   "name": "Golden Wok Chicken",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "bali",
+   "name": "Bali Coconut Chicken",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "bulgogi",
+   "name": "Seoul Bulgogi",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "chirashi",
+   "name": "Sake Chirashi",
+   "preis_cent": 990,
+   "kategorie": "bowls",
+   "mwst": 10,
+   "auswahl": "bowl"
+  },
+  {
+   "id": "dveggie",
+   "name": "Veggie Dumplings",
+   "preis_cent": 990,
+   "kategorie": "dumplings",
+   "mwst": 10,
+   "kennzeichen": "VEGAN"
+  },
+  {
+   "id": "dchicken",
+   "name": "Chicken Dumplings",
+   "preis_cent": 990,
+   "kategorie": "dumplings",
+   "mwst": 10
+  },
+  {
+   "id": "dshrimp",
+   "name": "Shrimps Dumplings",
+   "preis_cent": 1090,
+   "kategorie": "dumplings",
+   "mwst": 10
+  },
+  {
+   "id": "dfamily",
+   "name": "Family Mix",
+   "preis_cent": 1490,
+   "kategorie": "dumplings",
+   "mwst": 10,
+   "info": "12 Stück"
+  },
+  {
+   "id": "bao",
+   "name": "Bao Bun",
+   "preis_cent": 560,
+   "kategorie": "dumplings",
+   "mwst": 10,
+   "info": "2 Stück"
+  },
+  {
+   "id": "rveggie",
+   "name": "Veggie Ramen",
+   "preis_cent": 990,
+   "kategorie": "ramen",
+   "mwst": 10,
+   "kennzeichen": "VEGAN"
+  },
+  {
+   "id": "rchicken",
+   "name": "Chicken Ramen",
+   "preis_cent": 990,
+   "kategorie": "ramen",
+   "mwst": 10
+  },
+  {
+   "id": "rseafood",
+   "name": "Seafood Ramen",
+   "preis_cent": 1090,
+   "kategorie": "ramen",
+   "mwst": 10
+  },
+  {
+   "id": "vietnam",
+   "name": "Vietnam-Rollen",
+   "preis_cent": 490,
+   "kategorie": "starters",
+   "mwst": 10,
+   "info": "3 Stück"
+  },
+  {
+   "id": "fruehling",
+   "name": "Frühlingsrollen",
+   "preis_cent": 350,
+   "kategorie": "starters",
+   "mwst": 10,
+   "info": "5 Stück"
+  },
+  {
+   "id": "tempura",
+   "name": "Tempura-Garnelen",
+   "preis_cent": 450,
+   "kategorie": "starters",
+   "mwst": 10,
+   "info": "5 Stück"
+  },
+  {
+   "id": "wakame",
+   "name": "Wakame-Salat",
+   "preis_cent": 490,
+   "kategorie": "starters",
+   "mwst": 10
+  },
+  {
+   "id": "kimchi",
+   "name": "Kimchi-Salat",
+   "preis_cent": 490,
+   "kategorie": "starters",
+   "mwst": 10
+  },
+  {
+   "id": "suppe",
+   "name": "Pikante Suppe",
+   "preis_cent": 350,
+   "kategorie": "starters",
+   "mwst": 10
+  },
+  {
+   "id": "wontons",
+   "name": "Gebackene Wontons",
+   "preis_cent": 480,
+   "kategorie": "starters",
+   "mwst": 10,
+   "info": "5 Stück"
+  },
+  {
+   "id": "popcorn",
+   "name": "Popcorn Chicken",
+   "preis_cent": 650,
+   "kategorie": "starters",
+   "mwst": 10
+  },
+  {
+   "id": "sprossen",
+   "name": "Sojasprossen-Salat",
+   "preis_cent": 390,
+   "kategorie": "starters",
+   "mwst": 10
+  },
+  {
+   "id": "mochi",
+   "name": "Mochi",
+   "preis_cent": 590,
+   "kategorie": "sweet",
+   "mwst": 10,
+   "info": "3 Stück"
+  },
+  {
+   "id": "tiramisu",
+   "name": "Yichi Matcha Tiramisu",
+   "preis_cent": 450,
+   "kategorie": "sweet",
+   "mwst": 10
+  },
+  {
+   "id": "taromoon",
+   "name": "Matcha × Taro Moon",
+   "preis_cent": 450,
+   "kategorie": "sweet",
+   "mwst": 10,
+   "info": "3 Stück"
+  },
+  {
+   "id": "custard",
+   "name": "Golden Custard Bao",
+   "preis_cent": 590,
+   "kategorie": "sweet",
+   "mwst": 10,
+   "info": "3 Stück"
+  },
+  {
+   "id": "setklein",
+   "name": "Sake Set Klein",
+   "preis_cent": 890,
+   "kategorie": "sushi",
+   "mwst": 10
+  },
+  {
+   "id": "setgross",
+   "name": "Sake Set Groß",
+   "preis_cent": 1190,
+   "kategorie": "sushi",
+   "mwst": 10
+  },
+  {
+   "id": "avomaki",
+   "name": "Avocado Maki",
+   "preis_cent": 350,
+   "kategorie": "sushi",
+   "mwst": 10
+  },
+  {
+   "id": "sakemaki",
+   "name": "Sake Maki",
+   "preis_cent": 350,
+   "kategorie": "sushi",
+   "mwst": 10
+  },
+  {
+   "id": "gurkenmaki",
+   "name": "Gurken Maki",
+   "preis_cent": 290,
+   "kategorie": "sushi",
+   "mwst": 10
+  },
+  {
+   "id": "makimix",
+   "name": "Maki Mix",
+   "preis_cent": 790,
+   "kategorie": "sushi",
+   "mwst": 10,
+   "info": "18 Stück"
+  },
+  {
+   "id": "midori",
+   "name": "Midori Chicken Roll",
+   "preis_cent": 950,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "harumaki",
+   "name": "Harumaki Roll",
+   "preis_cent": 750,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "kennzeichen": "VEGAN",
+   "info": "8 Stück"
+  },
+  {
+   "id": "duckroll",
+   "name": "Duck Teriyaki Roll",
+   "preis_cent": 950,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "dragon",
+   "name": "Dragon Roll",
+   "preis_cent": 1090,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "california",
+   "name": "California Roll",
+   "preis_cent": 850,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "rainbow",
+   "name": "Rainbow Roll",
+   "preis_cent": 1090,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "garden",
+   "name": "Garden Roll",
+   "preis_cent": 950,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "kennzeichen": "VEGAN",
+   "info": "8 Stück"
+  },
+  {
+   "id": "goldensake",
+   "name": "Golden Sake Roll",
+   "preis_cent": 1090,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "philadelphia",
+   "name": "Sake Philadelphia Roll",
+   "preis_cent": 1190,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "veggieroll",
+   "name": "Veggie Roll",
+   "preis_cent": 950,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "kennzeichen": "VEGAN",
+   "info": "8 Stück"
+  },
+  {
+   "id": "tempuratrueffel",
+   "name": "Cheesy Tempura Trüffel Roll",
+   "preis_cent": 1190,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "chickentrueffel",
+   "name": "Cheesy Chicken Trüffel Roll",
+   "preis_cent": 1190,
+   "kategorie": "rolls",
+   "mwst": 10,
+   "info": "8 Stück"
+  },
+  {
+   "id": "lerdbeer",
+   "name": "Lemonade Erdbeer-Schwarztee",
+   "preis_cent": 380,
+   "kategorie": "lemonade",
+   "mwst": 20
+  },
+  {
+   "id": "lmaracuja",
+   "name": "Lemonade Maracuja-Zitrone",
+   "preis_cent": 380,
+   "kategorie": "lemonade",
+   "mwst": 20
+  },
+  {
+   "id": "lmango",
+   "name": "Lemonade Mango-Grüntee",
+   "preis_cent": 380,
+   "kategorie": "lemonade",
+   "mwst": 20
+  },
+  {
+   "id": "llitschi",
+   "name": "Lemonade Litschi-Grüntee",
+   "preis_cent": 380,
+   "kategorie": "lemonade",
+   "mwst": 20
+  },
+  {
+   "id": "coladose",
+   "name": "Cola Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "fantadose",
+   "name": "Fanta Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "spritedose",
+   "name": "Sprite Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "aloedose",
+   "name": "Aloe Vera Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "eisteezitrone",
+   "name": "Eistee Zitrone Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "eisteepfirsich",
+   "name": "Eistee Pfirsich Dose",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "wasserprickelnd",
+   "name": "Wasser prickelnd",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "wasserstill",
+   "name": "Wasser still",
+   "preis_cent": 255,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "cola05",
+   "name": "Cola 0,5 L",
+   "preis_cent": 295,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "colazero05",
+   "name": "Cola Zero 0,5 L",
+   "preis_cent": 295,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "fanta05",
+   "name": "Fanta 0,5 L",
+   "preis_cent": 295,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "sprite05",
+   "name": "Sprite 0,5 L",
+   "preis_cent": 295,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "cojo",
+   "name": "Cojo Cojo",
+   "preis_cent": 280,
+   "kategorie": "drinks",
+   "mwst": 20
+  },
+  {
+   "id": "pago",
+   "name": "Pago",
+   "preis_cent": 280,
+   "kategorie": "drinks",
+   "mwst": 20
+  },
+  {
+   "id": "monster",
+   "name": "Monster Energy 0,5 L",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "aloe05",
+   "name": "Aloe Vera 0,5 L",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "powerade",
+   "name": "Powerade",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "redbull",
+   "name": "Red Bull",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "redbullsf",
+   "name": "Red Bull Sugarfree",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "wieselburger",
+   "name": "Wieselburger (Bier)",
+   "preis_cent": 355,
+   "kategorie": "drinks",
+   "mwst": 20,
+   "pfand_cent": 25
+  },
+  {
+   "id": "tsingtao",
+   "name": "Tsingtao (Bier)",
+   "preis_cent": 380,
+   "kategorie": "drinks",
+   "mwst": 20
+  }
+ ],
+ "auswahlgruppen": {
+  "bowl": [
+   {
+    "name": "Größe",
+    "min": 1,
+    "max": 1,
+    "optionen": [
+     {
+      "name": "Normal",
+      "aufpreis_cent": 0,
+      "vorgabe": true
+     },
+     {
+      "name": "XXL",
+      "aufpreis_cent": 200
+     }
+    ]
+   },
+   {
+    "name": "Basis",
+    "min": 1,
+    "max": 1,
+    "optionen": [
+     {
+      "name": "Jasminreis",
+      "aufpreis_cent": 0
+     },
+     {
+      "name": "Sushi-Reis",
+      "aufpreis_cent": 0
+     },
+     {
+      "name": "Eierreis mit Gemüse",
+      "aufpreis_cent": 0
+     },
+     {
+      "name": "Gebratene Nudeln",
+      "aufpreis_cent": 0
+     }
+    ]
+   },
+   {
+    "name": "Extra-Topping",
+    "min": 0,
+    "max": null,
+    "optionen": [
+     {
+      "name": "Sojasprossensalat",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Wakame",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Kimchi",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Gurken",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Mais",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Edamame",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Jungkraut",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Röstzwiebeln",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Spiegelei",
+      "aufpreis_cent": 120
+     },
+     {
+      "name": "Nussmix",
+      "aufpreis_cent": 120
+     }
+    ]
+   },
+   {
+    "name": "Extra-Sauce",
+    "min": 0,
+    "max": null,
+    "optionen": [
+     {
+      "name": "Teriyaki",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Knoblauch",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Sweet Chili",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Süß-sauer",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Trüffelmayo",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Sriracha",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Spicy Mayo",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Chiliöl",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Yichi Special",
+      "aufpreis_cent": 50
+     },
+     {
+      "name": "Ponzu",
+      "aufpreis_cent": 50
+     }
+    ]
+   }
+  ]
+ }
+}

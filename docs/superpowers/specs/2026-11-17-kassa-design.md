@@ -49,7 +49,7 @@ Erfolg der ersten Version heißt: Der Pilotbetrieb boniert mit Kassa auf einem A
 - **Niko ist kein Entwickler.** Alles, was er freigibt oder entscheidet, wird in einfachen Worten vorgelegt. Die Technik hat er abgegeben.
 - **Testgeräte gibt es noch nicht.** Niko hat ein Xiaomi Redmi Pad Pro (rund 12 Zoll) und kauft Drucker, Verteiler und Kartenleser erst.
 - **Arbeitsweise** (Niko): alle Skills und Design-Regeln verwenden, vorerst ohne Pull Requests auf dem Arbeits-Branch committen.
-- **Das Repo ist öffentlich** (Niko, 17.11.2026). Daten von Betrieben (Name, Speisekarte, Fotos, Umsätze), Zugangsdaten und Schlüssel kommen nie ins Repo. Tests und Beispiele verwenden erfundene Daten. Der Pilotbetrieb wird im Repo nicht beim Namen genannt, sein Name steht in den Projektunterlagen.
+- **Das Repo ist öffentlich** (Niko, 17.11.2026). Daten von Betrieben (Name, Speisekarte, Fotos, Umsätze), Zugangsdaten und Schlüssel kommen nie ins Repo. Tests und Beispiele verwenden erfundene Daten. **Ausnahme (Niko, 18.11.2026):** Der Pilotbetrieb ist YICHI. Sein Name und seine Speisekarte dürfen im Repo stehen, die Karte liegt unter `pilot/yichi-speisekarte.json`. Umsätze, Zugangsdaten und Schlüssel bleiben draußen.
 
 ## 4. Wege, die zur Wahl standen
 
@@ -222,7 +222,7 @@ Ablauf im Anbieter-Werkzeug:
 4. **Fotos zuordnen**, falls der Betrieb welche schickt: mehrere auf einmal hochladen, das Werkzeug schlägt die Zuordnung nach Dateinamen vor, Niko bestätigt. Artikel ohne Foto zeigen den Platzhalter.
 5. **Kassa koppeln:** Kopplungscode erzeugen, am Tablet eingeben. Mitarbeiter und PINs anlegen.
 
-Das Einspiel-Format ist eine Datei mit Kategorien, Artikeln und Auswahl-Vorlagen. Es ist dasselbe Format, in dem die Karte des Pilotbetriebs schon vorliegt (78 Artikel, 9 Kategorien, die Bowl-Auswahl als Vorlage). Der Pilotbetrieb wird in Schritt 2 über genau dieses Format eingerichtet. Die Datei liegt nicht im Repo, weil das Repo öffentlich ist. Sie liegt in den Projektdateien im Ordner `pilot`, daneben die Karte als PDF. Das Format selbst steht im Anhang A.
+Das Einspiel-Format ist eine Datei mit Kategorien, Artikeln und Auswahl-Vorlagen. Es ist dasselbe Format, in dem die Karte des Pilotbetriebs schon vorliegt (78 Artikel, 9 Kategorien, die Bowl-Auswahl als Vorlage). Der Pilotbetrieb wird in Schritt 2 über genau dieses Format eingerichtet. Die Datei liegt seit 18.11.2026 auf Nikos Wunsch im Repo unter `pilot/yichi-speisekarte.json`. Die Karte als PDF liegt in den Projektdateien im Ordner `pilot`. Das Format selbst steht im Anhang A.
 
 Der KI-Vorschlag und die Oberfläche dazu kommen in Schritt 4. Bis dahin erstellt Claude die Datei für einen Betrieb von Hand, so wie für den Pilotbetrieb.
 
