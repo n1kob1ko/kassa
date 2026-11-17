@@ -25,6 +25,24 @@ AppHeader header({
   onSettings: onSettings ?? () {},
 );
 
+class _Probe extends StatefulWidget {
+  const _Probe(this.inits);
+  final List<int> inits;
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  void initState() {
+    super.initState();
+    widget.inits.add(1);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(width: 100, height: 60);
+}
+
 void main() {
   group('Kopfleiste', () {
     testWidgets('zeigt Mitarbeitern nur Kassa und Bons', (t) async {
@@ -359,6 +377,87 @@ void main() {
       await t.pump();
       expect(taps, 0);
       expect(t.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1.0);
+    });
+    testWidgets('das Kind behält beim Drücken und Loslassen seinen Zustand', (
+      t,
+    ) async {
+      final inits = <int>[];
+      await pumpApp(
+        t,
+        Center(
+          child: Pressable(onTap: () {}, child: _Probe(inits)),
+        ),
+      );
+      final g = await t.startGesture(t.getCenter(find.byType(Pressable)));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 60));
+      await g.up();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+      expect(inits, hasLength(1));
+    });
+
+    testWidgets('Schalterknopf ist 50 ms nach dem Tippen mitten im Übergang', (
+      t,
+    ) async {
+      var value = false;
+      await pumpApp(
+        t,
+        StatefulBuilder(
+          builder: (context, setState) => Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 300,
+              child: AppToggle(
+                value: value,
+                label: 'Pfand',
+                onChanged: (v) => setState(() => value = v),
+              ),
+            ),
+          ),
+        ),
+      );
+      final knob = find.descendant(
+        of: find.byType(AnimatedPositioned),
+        matching: find.byType(Container),
+      );
+      final start = t.getTopLeft(knob).dx;
+      await t.tap(find.byType(AppToggle));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 50));
+      final mid = t.getTopLeft(knob).dx;
+      expect(mid, greaterThan(start + 1));
+      await t.pump(const Duration(milliseconds: 300));
+      final end = t.getTopLeft(knob).dx;
+      expect(end, closeTo(start + 20, 0.5));
+      expect(mid, lessThan(end - 1));
+    });
+
+    testWidgets('Segment-Regler ist 50 dp hoch, Tipp knapp neben dem Knopf '
+        'wählt trotzdem', (t) async {
+      final picked = <String>[];
+      await pumpApp(
+        t,
+        Align(
+          alignment: Alignment.topLeft,
+          child: Segmented<String>(
+            segments: const [('a', 'Eins'), ('b', 'Zwei')],
+            selected: 'a',
+            onSelected: picked.add,
+          ),
+        ),
+      );
+      expect(t.getSize(find.byType(Segmented<String>)).height, 50);
+      final second = find.byKey(const Key('segment-Zwei'));
+      final drawn = find.descendant(
+        of: second,
+        matching: find.byType(DecoratedBox),
+      );
+      final rect = t.getRect(drawn.first);
+      expect(rect.height, 44);
+      await t.tapAt(Offset(rect.center.dx, rect.top - 1));
+      await t.tapAt(Offset(rect.center.dx, rect.bottom + 1));
+      expect(picked, ['b', 'b']);
     });
   });
 }

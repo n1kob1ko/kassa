@@ -23,7 +23,9 @@ class Segmented<T> extends StatelessWidget {
     final instant = MediaQuery.disableAnimationsOf(context);
     final duration = instant ? Duration.zero : KassaTokens.motionFast;
     return Container(
-      padding: const EdgeInsets.all(3),
+      // 44 dp Knopf + 2 x 3 dp = 50 dp. Die Tippfläche (48 dp) nutzt 2 dp
+      // davon, der Regler bleibt 50 dp hoch.
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
       decoration: BoxDecoration(
         color: c.fill2,
         borderRadius: BorderRadius.circular(13),

@@ -54,7 +54,8 @@ class _PressableState extends State<Pressable> {
         tween: Tween(end: pressed ? KassaTokens.pressBrightness : 1.0),
         duration: duration,
         builder: (context, b, child) {
-          if (b >= 1.0) return child!;
+          // Immer derselbe Baum: bei b = 1 filtert Weiß nichts, so behält
+          // das Kind seinen Zustand (laufende Übergänge reißen nicht ab).
           final v = (b * 255).round();
           return ColorFiltered(
             colorFilter: ColorFilter.mode(
