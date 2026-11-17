@@ -136,6 +136,13 @@ class DayRepository {
     return _summarize(day);
   }
 
+  /// Zusammenfassung des zuletzt abgeschlossenen Tages, `null` ohne einen.
+  Future<DaySummary?> lastClosedSummary() async {
+    final day = await lastClosedDay();
+    if (day == null) return null;
+    return _summarize(day);
+  }
+
   /// Schließt den offenen Tag. Das Soll ist das der Zusammenfassung.
   Future<BusinessDay> close({
     required int countedCents,
@@ -197,18 +204,30 @@ class DayRepository {
     ])..where(_db.receiptRows.businessDayId.equals(day.id))).get();
 
     var count = 0;
+    var cashCount = 0;
+    var cardCount = 0;
+    var voidCount = 0;
+    var voided = 0;
     var revenue = 0;
     var cash = 0;
     var card = 0;
     var deposit = 0;
     for (final r in receipts) {
-      count += r.kind == ReceiptKind.voided.name ? -1 : 1;
+      final isVoid = r.kind == ReceiptKind.voided.name;
+      final step = isVoid ? -1 : 1;
+      count += step;
+      if (isVoid) {
+        voidCount++;
+        voided -= r.totalCents;
+      }
       revenue += r.totalCents;
       deposit += r.depositCents;
       if (payments[r.id] == PaymentKind.cash.name) {
         cash += r.totalCents;
+        cashCount += step;
       } else {
         card += r.totalCents;
+        cardCount += step;
       }
     }
     final gross = sumByRate([
@@ -252,6 +271,10 @@ class DayRepository {
     return DaySummary(
       day: day,
       receiptCount: count,
+      cashReceiptCount: cashCount,
+      cardReceiptCount: cardCount,
+      voidCount: voidCount,
+      voidedCents: voided,
       revenueCents: revenue,
       cashRevenueCents: cash,
       cardRevenueCents: card,

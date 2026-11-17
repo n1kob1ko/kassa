@@ -61,6 +61,35 @@ class TestShop {
 
   Future<void> close() => db.close();
 
+  /// Legt einen Kartenbon über [totalCents] ohne Zeilen an (die Kassa kennt
+  /// noch keine Kartenzahlung). Der Tag muss offen sein.
+  Future<void> insertCardReceipt(String id, int number, int totalCents) async {
+    final day = await dayId();
+    await db.into(db.receiptRows).insert(
+      ReceiptRowsCompanion.insert(
+        id: id,
+        number: number,
+        createdAt: clock.now(),
+        staffId: anna.id,
+        staffName: anna.name,
+        businessDayId: day,
+        kind: ReceiptKind.sale.name,
+        goodsCents: totalCents,
+        depositCents: 0,
+        totalCents: totalCents,
+      ),
+    );
+    await db.into(db.paymentRows).insert(
+      PaymentRowsCompanion.insert(
+        receiptId: id,
+        kind: PaymentKind.card.name,
+        amountCents: totalCents,
+        givenCents: 0,
+        changeCents: 0,
+      ),
+    );
+  }
+
   /// Verkauft [cart] bar mit 20,00 € als Anna.
   Future<Receipt> sell(String saleId) =>
       receipts.finalizeCashSale(saleId: saleId, cart: cart, givenCents: 2000, staff: anna);

@@ -215,4 +215,40 @@ void main() {
     final s = (await days.summary())!;
     expect((s.revenueCents, s.receiptCount), (-1820, -1));
   });
+
+  test('die Zusammenfassung zählt Bons je Zahlungsart und die Stornos', () async {
+    await days.setOpeningFloat(15000);
+    final a = await sell('s1'); // 1820 bar
+    await sell('s2'); // 1820 bar
+    await shop.insertCardReceipt('c1', 900, 1000);
+    await receipts.voidReceipt(a.id, staff: chef);
+    final s = (await days.summary())!;
+    expect(s.cashReceiptCount, 1);
+    expect(s.cardReceiptCount, 1);
+    expect(s.receiptCount, 2);
+    expect(s.voidCount, 1);
+    expect(s.voidedCents, 1820);
+    expect(s.cardRevenueCents, 1000);
+  });
+
+  test('ohne Storno sind Stornozahl und Stornosumme 0', () async {
+    await sell('s1');
+    final s = (await days.summary())!;
+    expect(s.voidCount, 0);
+    expect(s.voidedCents, 0);
+    expect(s.cardReceiptCount, 0);
+  });
+
+  test('die Zusammenfassung des letzten abgeschlossenen Tages', () async {
+    expect(await days.lastClosedSummary(), isNull);
+    await days.setOpeningFloat(15000);
+    await sell('s1');
+    await days.close(countedCents: 16820, leftInDrawerCents: 15000, staff: chef);
+    expect(await days.summary(), isNull);
+    final s = (await days.lastClosedSummary())!;
+    expect(s.day.isOpen, isFalse);
+    expect(s.cashRevenueCents, 1820);
+    expect(s.expectedCashCents, 16820);
+    expect(s.cashReceiptCount, 1);
+  });
 }

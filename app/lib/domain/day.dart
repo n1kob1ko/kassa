@@ -56,6 +56,10 @@ class DaySummary {
   const DaySummary({
     required this.day,
     required this.receiptCount,
+    required this.cashReceiptCount,
+    required this.cardReceiptCount,
+    required this.voidCount,
+    required this.voidedCents,
     required this.revenueCents,
     required this.cashRevenueCents,
     required this.cardRevenueCents,
@@ -72,6 +76,14 @@ class DaySummary {
 
   /// Verkaufs-Bons minus Storno-Bons, die an diesem Tag gebucht wurden.
   final int receiptCount;
+
+  /// Wie [receiptCount], nur für Bons mit dieser Zahlungsart.
+  final int cashReceiptCount;
+  final int cardReceiptCount;
+
+  /// Anzahl der Storno-Bons und Summe der stornierten Bons (positiv).
+  final int voidCount;
+  final int voidedCents;
 
   /// Summe aller Bons des Tages, Storno negativ, mit Pfand.
   final int revenueCents;
