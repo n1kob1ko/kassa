@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/providers.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
+import '../bons/bons_screen.dart';
 import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
 
@@ -44,12 +45,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 }
 
 /// Hier wird das Bild eines Bereichs gewählt. Bis ihre Aufgaben fertig sind,
-/// zeigen die anderen vier einen leeren Platzhalter.
+/// zeigen die anderen drei einen leeren Platzhalter.
 Widget _areaWidget(AppArea area) {
   switch (area) {
     case AppArea.kassa:
       return const KassaScreen(key: Key('area-kassa'));
     case AppArea.bons:
+      return const BonsScreen(key: Key('area-bons'));
     case AppArea.overview:
     case AppArea.items:
     case AppArea.close:

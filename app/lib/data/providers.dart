@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/clock.dart';
 import '../domain/catalog.dart';
+import '../domain/day.dart';
+import '../domain/receipt.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
@@ -71,3 +73,16 @@ final catalogStreamProvider = StreamProvider<Catalog?>(
 final settingsStreamProvider = StreamProvider<RegisterSettings>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),
 );
+
+/// Der offene Geschäftstag als Strom, `null` ohne offenen Tag.
+final openDayStreamProvider = StreamProvider<BusinessDay?>(
+  (ref) => ref.watch(dayRepositoryProvider).watchOpenDay(),
+);
+
+/// Die Bons des offenen Tages, nach Nummer aufsteigend. Ohne offenen Tag leer.
+/// Folgt jedem Verkauf und jedem Storno.
+final todayReceiptsProvider = StreamProvider<List<Receipt>>((ref) {
+  final dayId = ref.watch(openDayStreamProvider.select((d) => d.value?.id));
+  if (dayId == null) return Stream.value(const <Receipt>[]);
+  return ref.watch(receiptRepositoryProvider).watchDay(dayId);
+});

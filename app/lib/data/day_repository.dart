@@ -45,6 +45,13 @@ class DayRepository {
     return row == null ? null : _toDay(row);
   }
 
+  /// Der offene Tag als Strom: er meldet auch, wenn ein Tag neu beginnt
+  /// (zum Beispiel mit dem ersten Verkauf) oder abgeschlossen wird.
+  Stream<BusinessDay?> watchOpenDay() =>
+      (_db.select(_db.businessDayRows)..where((t) => t.closedAt.isNull()))
+          .watchSingleOrNull()
+          .map((r) => r == null ? null : _toDay(r));
+
   Future<BusinessDay?> lastClosedDay() async {
     final row =
         await (_db.select(_db.businessDayRows)

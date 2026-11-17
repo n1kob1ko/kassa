@@ -11,11 +11,15 @@ class Segmented<T> extends StatelessWidget {
     required this.segments,
     required this.selected,
     required this.onSelected,
+    this.keyFor,
   });
 
   final List<(T, String)> segments;
   final T selected;
   final ValueChanged<T> onSelected;
+
+  /// Schlüssel eines Segments. Ohne Angabe `segment-<Beschriftung>`.
+  final Key Function(T value)? keyFor;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +44,7 @@ class Segmented<T> extends StatelessWidget {
                 final (value, label) = segments[i];
                 final active = value == selected;
                 return Pressable(
-                  key: Key('segment-$label'),
+                  key: keyFor?.call(value) ?? Key('segment-$label'),
                   onTap: () => onSelected(value),
                   minTapSize: const Size(0, KassaTokens.minTap),
                   child: AnimatedContainer(

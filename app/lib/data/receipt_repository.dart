@@ -281,6 +281,15 @@ class ReceiptRepository {
               ..where((t) => t.receiptId.isIn(ids))
               ..orderBy([(t) => OrderingTerm.asc(t.position)]))
             .get();
+    // Einmal nach Bon gruppieren, statt je Bon alle Zeilen zu filtern.
+    final linesOf = <String, List<ReceiptLineRow>>{};
+    for (final l in lineRows) {
+      (linesOf[l.receiptId] ??= []).add(l);
+    }
+    final optionsOf = <(String, int), List<ReceiptLineOptionRow>>{};
+    for (final o in optionRows) {
+      (optionsOf[(o.receiptId, o.linePosition)] ??= []).add(o);
+    }
     final payments = {
       for (final p in await (_db.select(
         _db.paymentRows,
@@ -306,7 +315,7 @@ class ReceiptRepository {
           voidsReceiptId: r.voidsReceiptId,
           voidedByReceiptId: voidedBy[r.id],
           lines: [
-            for (final l in lineRows.where((l) => l.receiptId == r.id))
+            for (final l in linesOf[r.id] ?? const <ReceiptLineRow>[])
               ReceiptLine(
                 position: l.position,
                 itemId: l.itemId,
@@ -316,9 +325,8 @@ class ReceiptRepository {
                 quantity: l.quantity,
                 unitDepositCents: l.unitDepositCents,
                 options: [
-                  for (final o in optionRows.where(
-                    (o) => o.receiptId == r.id && o.linePosition == l.position,
-                  ))
+                  for (final o in optionsOf[(r.id, l.position)] ??
+                      const <ReceiptLineOptionRow>[])
                     ReceiptLineOption(
                       groupName: o.groupName,
                       optionName: o.optionName,
