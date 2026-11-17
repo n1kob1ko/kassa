@@ -197,7 +197,7 @@ void main() {
     expect(_text('Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.'), findsOneWidget);
     expect(_button(t, 'pay-cash').onPressed, isNull);
     expect(_button(t, 'pay-card').onPressed, isNull);
-    expect(_text('kommt mit Schritt 3'), findsOneWidget);
+    expect(_text('kommt später'), findsOneWidget);
     await t.tap(find.byKey(const Key('cat-snacks')));
     await t.pump();
     await t.tap(find.byKey(const Key('item-pommes')));

@@ -11,6 +11,7 @@ import '../items/items_screen.dart';
 import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
+import '../settings/settings_screen.dart';
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,10 @@ class ShellScreen extends ConsumerStatefulWidget {
 class _ShellScreenState extends ConsumerState<ShellScreen> {
   AppArea _area = AppArea.kassa;
 
+  /// Die Einstellungen stehen an Stelle des Bereichs. [_area] bleibt, damit
+  /// der Knopf dorthin zurückführt.
+  bool _settingsOpen = false;
+
   @override
   Widget build(BuildContext context) {
     final staff = ref.watch(sessionProvider);
@@ -34,23 +39,32 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         children: [
           AppHeader(
             area: _area,
-            onArea: (a) => setState(() => _area = a),
+            settingsActive: _settingsOpen,
+            onArea: (a) => setState(() {
+              _area = a;
+              _settingsOpen = false;
+            }),
             staffName: staff.name,
             isChef: staff.isChef,
             onStaff: ref.read(sessionProvider.notifier).logout,
-            onSettings: () {}, // Einstellungen gibt es noch nicht.
+            onSettings: () => setState(() => _settingsOpen = !_settingsOpen),
             businessName: ref.watch(catalogProvider).value?.businessName,
           ),
-          if (_area != AppArea.close)
+          if (_settingsOpen || _area != AppArea.close)
             ForgottenCloseBanner(
               isChef: staff.isChef,
-              onClose: () => setState(() => _area = AppArea.close),
+              onClose: () => setState(() {
+                _area = AppArea.close;
+                _settingsOpen = false;
+              }),
             ),
           Expanded(
-            child: _areaWidget(
-              _area,
-              () => setState(() => _area = AppArea.kassa),
-            ),
+            child: _settingsOpen && staff.isChef
+                ? const SettingsScreen(key: Key('area-settings'))
+                : _areaWidget(
+                    _area,
+                    () => setState(() => _area = AppArea.kassa),
+                  ),
           ),
         ],
       ),

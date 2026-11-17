@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'data/providers.dart';
+import 'data/settings_repository.dart';
 import 'features/login/pin_screen.dart';
 import 'features/login/session.dart';
 import 'features/setup/setup_screen.dart';
@@ -16,12 +17,20 @@ class KassaApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Solange die Einstellungen nicht geladen sind: wie das Tablet.
+    final mode = ref.watch(
+      settingsStreamProvider.select((s) => s.value?.themeMode),
+    );
     return MaterialApp(
       title: 'Kassa',
       debugShowCheckedModeBanner: false,
       theme: kassaTheme(Brightness.light),
       darkTheme: kassaTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: switch (mode) {
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+        _ => ThemeMode.system,
+      },
       builder: (context, child) {
         // Systemweite Textvergrößerung höchstens bis 1,3.
         return MediaQuery.withClampedTextScaling(

@@ -30,6 +30,7 @@ class AppHeader extends StatelessWidget {
     required this.isChef,
     required this.onStaff,
     required this.onSettings,
+    this.settingsActive = false,
     this.businessName,
   });
 
@@ -39,6 +40,9 @@ class AppHeader extends StatelessWidget {
   final bool isChef;
   final VoidCallback onStaff;
   final VoidCallback onSettings;
+
+  /// Die Einstellungen sind offen: der Knopf ist aktiv, kein Reiter ist es.
+  final bool settingsActive;
 
   /// Name des Betriebs, neben der Wortmarke.
   final String? businessName;
@@ -89,7 +93,7 @@ class AppHeader extends StatelessWidget {
                   for (final a in areas) ...[
                     if (a != areas.first)
                       const SizedBox(width: KassaTokens.spaceXxs),
-                    _Tab(area: a, active: a == area, onTap: () => onArea(a)),
+                    _Tab(area: a, active: a == area && !settingsActive, onTap: () => onArea(a)),
                   ],
                 ],
               ),
@@ -99,7 +103,7 @@ class AppHeader extends StatelessWidget {
           _StaffButton(name: staffName, onTap: onStaff),
           if (isChef) ...[
             const SizedBox(width: KassaTokens.spaceXs),
-            _SettingsButton(onTap: onSettings),
+            _SettingsButton(active: settingsActive, onTap: onSettings),
           ],
         ],
       ),
@@ -194,8 +198,9 @@ class _StaffButton extends StatelessWidget {
 }
 
 class _SettingsButton extends StatelessWidget {
-  const _SettingsButton({required this.onTap});
+  const _SettingsButton({required this.active, required this.onTap});
 
+  final bool active;
   final VoidCallback onTap;
 
   @override
@@ -205,10 +210,18 @@ class _SettingsButton extends StatelessWidget {
       key: const Key('settings'),
       onTap: onTap,
       semanticLabel: 'Einstellungen',
-      child: SizedBox(
+      child: Container(
         width: KassaTokens.minTap,
         height: KassaTokens.minTap,
-        child: Icon(LucideIcons.slidersHorizontal, size: 24, color: c.ink),
+        decoration: BoxDecoration(
+          color: active ? c.accentSoft : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
+        ),
+        child: Icon(
+          LucideIcons.slidersHorizontal,
+          size: 24,
+          color: active ? c.accentInk : c.ink,
+        ),
       ),
     );
   }

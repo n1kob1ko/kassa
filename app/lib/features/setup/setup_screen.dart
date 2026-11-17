@@ -266,7 +266,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                 'Das muss in der Datei geändert werden:',
           ),
           gap,
-          _ProblemList(problems: _problems),
+          ProblemList(problems: _problems),
           gap,
           PrimaryButton(label: 'Andere Datei wählen', onPressed: _backToStart),
         ];
@@ -464,8 +464,9 @@ class _Summary extends StatelessWidget {
 }
 
 /// Alle Fehler der Datei, einer pro Zeile. Sind es viele, rollt die Liste.
-class _ProblemList extends StatelessWidget {
-  const _ProblemList({required this.problems});
+/// Auch die Einstellungen zeigen sie.
+class ProblemList extends StatelessWidget {
+  const ProblemList({super.key, required this.problems});
 
   final List<String> problems;
 

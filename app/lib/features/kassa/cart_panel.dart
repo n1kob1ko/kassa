@@ -118,7 +118,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                   child: PrimaryButton(
                     key: Key('pay-card'),
                     label: 'Karte',
-                    sublabel: 'kommt mit Schritt 3',
+                    sublabel: 'kommt später',
                     icon: LucideIcons.creditCard,
                     solid: true,
                     labelSize: 22,
