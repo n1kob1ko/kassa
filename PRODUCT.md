@@ -43,7 +43,7 @@ Version 1 (Imbiss-Modus), mit Niko abgestimmt:
 - Kennzeichen auf der Taste (zum Beispiel VEGAN, SCHARF) und Stückangaben beim Preis
 - Menge ändern, Position löschen, Storno
 - Bezahlen bar mit Rückgeldanzeige oder mit Karte über SumUp
-- Bon drucken, Geldlade öffnet bei Barzahlung
+- Bon drucken, Geldlade öffnet bei Barzahlung. Die Geldlade ist pro Kassa in den Einstellungen abschaltbar (Betriebe ohne Platz für eine Lade): dann kein Öffnen-Signal, das Bargeld wird beim Tagesabschluss trotzdem gezählt
 - Tagesabschluss
 - Zuschaltbare Kundenanzeige (zweites Gerät oder eingebauter zweiter Bildschirm)
 - Verwaltung im Browser für Artikel, Preise und Umsätze
@@ -63,7 +63,7 @@ Stil, von Niko am 17.11.2026 über Beispielbilder vorgegeben (Tasty Station, Res
 
 Akzentfarbe: Petrol (#0F766E). Niko hat die Wahl am 17.11.2026 abgegeben ("Farbe ist mir egal, es soll einfach angenehm zum Ansehen sein"). Schrift: Figtree. Das Aussehen des Kassenbildschirms hat Niko am selben Tag bestätigt. Noch nicht festgelegt: Logo.
 
-Bereiche der App, als Reiter in der Kopfleiste: Kassa, Bons, Übersicht (Umsatz, Verlauf, Zahlungsarten, meistverkaufte Artikel), Artikel (Schalter und Zahlenfeld, Namen und Fotos nur im Browser) und Abschluss (Tagesabschluss mit Geldlade zählen).
+Bereiche der App, als Reiter in der Kopfleiste: Kassa, Bons, Übersicht (Umsatz, Verlauf, Zahlungsarten, meistverkaufte Artikel), Artikel (Schalter und Zahlenfeld, Namen und Fotos nur im Browser) und Abschluss (Tagesabschluss mit Bargeld zählen). Dazu Einstellungen pro Kassa (Geräte, Geldlade, Kundenanzeige, Anzeige).
 
 ## Evidence on Hand
 
