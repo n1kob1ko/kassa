@@ -11,6 +11,7 @@ import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import 'cart_controller.dart';
+import 'cart_line_row.dart';
 
 /// Die Bon-Spalte, 392 dp breit: Kopf, Zeilen, Summenblock, Bar und Karte.
 /// [canPay] ist `false`, solange etwas zusammengestellt wird.
@@ -45,7 +46,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     final c = KassaColors.of(context);
     final cart = ref.watch(cartProvider);
     ref.listen(cartProvider, (prev, next) {
-      final old = {for (final l in prev?.lines ?? const <CartLine>[]) l.lineId: l};
+      final old = {
+        for (final l in prev?.lines ?? const <CartLine>[]) l.lineId: l,
+      };
       for (final l in next.lines) {
         final was = old[l.lineId];
         if (was == null || l.quantity > was.quantity) {
@@ -55,7 +58,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     });
     final controller = ref.read(cartProvider.notifier);
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
-    final tax = taxBreakdown(grossByRate(cart)).fold<int>(0, (s, t) => s + t.taxCents);
+    final tax = taxBreakdown(grossByRate(cart))
+        .fold<int>(0, (s, t) => s + t.taxCents);
     return Container(
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
@@ -81,7 +85,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                       itemCount: cart.lines.length,
                       itemBuilder: (context, i) {
                         final line = cart.lines[i];
-                        return _LineRow(
+                        return CartLineRow(
                           key: Key('line-${line.lineId}'),
                           line: line,
                           flash: _flash[line.lineId] ?? 0,
@@ -224,194 +228,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _LineRow extends StatefulWidget {
-  const _LineRow({
-    super.key,
-    required this.line,
-    required this.flash,
-    required this.onQuantity,
-  });
-
-  final CartLine line;
-  final int flash;
-  final ValueChanged<int> onQuantity;
-
-  @override
-  State<_LineRow> createState() => _LineRowState();
-}
-
-class _LineRowState extends State<_LineRow>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _glow = AnimationController(
-    vsync: this,
-    duration: KassaTokens.receiptLineFlash,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.flash > 0) _play();
-  }
-
-  @override
-  void didUpdateWidget(_LineRow old) {
-    super.didUpdateWidget(old);
-    if (widget.flash != old.flash) _play();
-  }
-
-  void _play() {
-    // Bei "Animationen entfernen" gibt es kein Aufleuchten.
-    final instant = WidgetsBinding
-        .instance
-        .platformDispatcher
-        .accessibilityFeatures
-        .disableAnimations;
-    if (instant) return;
-    _glow.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    _glow.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = KassaColors.of(context);
-    final text = Theme.of(context).textTheme;
-    final line = widget.line;
-    final id = line.lineId;
-    final instant = MediaQuery.disableAnimationsOf(context);
-    final sub = line.options.isNotEmpty
-        ? line.options.map((o) => o.name).join(', ')
-        : line.item.info;
-    return AnimatedBuilder(
-      animation: _glow,
-      builder: (context, child) {
-        final t = instant ? 1.0 : KassaTokens.motionCurve.transform(_glow.value);
-        // Läuft nichts, steht der Wert auf 0 oder 1: dann ohne Farbe.
-        final glowing = !instant && _glow.isAnimating;
-        return Container(
-          decoration: BoxDecoration(
-            color: glowing
-                ? Color.lerp(c.accentSoft, c.accentSoft.withValues(alpha: 0), t)
-                : null,
-            border: Border(
-              bottom: BorderSide(color: c.line, width: KassaTokens.borderThin),
-            ),
-          ),
-          child: child,
-        );
-      },
-      child: Container(
-        constraints: const BoxConstraints(
-          minHeight: KassaTokens.receiptLineMinHeight,
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 6, 14, 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    line.item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyLarge!.copyWith(height: 1.15),
-                  ),
-                  if (sub != null && sub.isNotEmpty) ...[
-                    const SizedBox(height: KassaTokens.spaceXxs),
-                    Text(
-                      sub,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall!.copyWith(
-                        fontWeight: FontWeight.w400,
-                        height: 1.2,
-                        color: c.ink2,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: KassaTokens.spaceSm),
-            _StepButton(
-              key: Key('qty-minus-$id'),
-              icon: LucideIcons.minus,
-              label: 'Eins weniger: ${line.item.name}',
-              onTap: () => widget.onQuantity(line.quantity - 1),
-            ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 24),
-              child: Text(
-                '${line.quantity}',
-                key: Key('qty-$id'),
-                textAlign: TextAlign.center,
-                style: text.bodyLarge!.copyWith(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            _StepButton(
-              key: Key('qty-plus-$id'),
-              icon: LucideIcons.plus,
-              label: 'Eins mehr: ${line.item.name}',
-              onTap: () => widget.onQuantity(line.quantity + 1),
-            ),
-            const SizedBox(width: KassaTokens.spaceSm),
-            ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 62),
-              child: Text(
-                formatEuro(line.goodsCents),
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Plus und Minus: 44 dp gezeichnet, 48 dp Antippfläche.
-class _StepButton extends StatelessWidget {
-  const _StepButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = KassaColors.of(context);
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: label,
-      minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
-      child: Container(
-        width: KassaTokens.drawnControlHeight,
-        height: KassaTokens.drawnControlHeight,
-        decoration: BoxDecoration(
-          color: c.fill,
-          borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
-        ),
-        child: Icon(icon, size: 18, color: c.ink),
-      ),
-    );
-  }
-}
-
 class _Totals extends StatelessWidget {
   const _Totals({required this.cart, required this.taxCents});
 
@@ -436,23 +252,6 @@ class _Totals extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (cart.depositCents != 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: KassaTokens.spaceSm),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Pfand', style: small.copyWith(fontSize: 14)),
-                  Text(
-                    formatEuro(cart.depositCents),
-                    style: small.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -473,9 +272,31 @@ class _Totals extends StatelessWidget {
             ],
           ),
           const SizedBox(height: KassaTokens.spaceXs),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text('inkl. ${formatEuro(taxCents)} MwSt', style: small),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (cart.depositCents != 0)
+                Flexible(
+                  child: Text(
+                    'davon Pfand ${formatEuro(cart.depositCents)}',
+                    key: const Key('cart-deposit'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: small,
+                  ),
+                )
+              else
+                const SizedBox.shrink(),
+              const SizedBox(width: KassaTokens.spaceXl),
+              Flexible(
+                child: Text(
+                  'inkl. ${formatEuro(taxCents)} MwSt',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: small,
+                ),
+              ),
+            ],
           ),
         ],
       ),

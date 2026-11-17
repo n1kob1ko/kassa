@@ -16,7 +16,9 @@ AppHeader header({
   ValueChanged<AppArea>? onArea,
   VoidCallback? onStaff,
   VoidCallback? onSettings,
+  String? businessName,
 }) => AppHeader(
+  businessName: businessName,
   area: area,
   onArea: onArea ?? (_) {},
   staffName: isChef ? 'Chef' : 'Anna',
@@ -106,6 +108,26 @@ void main() {
       await t.tapAt(Offset(rect.center.dx, rect.top + 1));
       expect(hits, 1);
     });
+
+    for (final width in [1280.0, 960.0]) {
+      for (final chef in [false, true]) {
+        testWidgets(
+          'Mit Betriebsname sitzt der rechte Knopf am rechten Rand '
+          '(${width.toInt()} breit, ${chef ? 'Chef' : 'Mitarbeiter'})',
+          (t) async {
+            await pumpApp(
+              t,
+              header(isChef: chef, businessName: 'Beispiel-Imbiss'),
+              size: Size(width, 800),
+            );
+            final right = t.getRect(find.byType(AppHeader)).right;
+            final last = find.byKey(Key(chef ? 'settings' : 'staff'));
+            expect(right - t.getRect(last).right, lessThanOrEqualTo(16));
+            expect(t.takeException(), isNull);
+          },
+        );
+      }
+    }
 
     testWidgets('Kopfleiste ist 60 dp hoch', (t) async {
       await pumpApp(t, header(isChef: true));

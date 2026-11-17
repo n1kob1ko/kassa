@@ -64,7 +64,10 @@ class AppHeader extends StatelessWidget {
           Text('Kassa', style: text.headlineMedium),
           if (businessName != null) ...[
             const SizedBox(width: KassaTokens.spaceXxl),
-            Flexible(
+            // Kein Anteil am freien Platz: die Reiter nehmen den Rest, die
+            // Knöpfe rechts bleiben am rechten Rand.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
               child: Text(
                 businessName!,
                 maxLines: 1,

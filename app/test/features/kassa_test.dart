@@ -55,8 +55,13 @@ void main() {
     expect(find.descendant(of: row, matching: _text('Cola 0,33 l')), findsOneWidget);
     expect(textOf(t, Key('qty-${line.lineId}')), '2');
     expect(find.descendant(of: row, matching: _text('5,80 €')), findsOneWidget);
-    expect(_text('Pfand'), findsOneWidget);
-    expect(_text('0,50 €'), findsOneWidget);
+    expect(textOf(t, const Key('cart-deposit')), 'davon Pfand 0,50 €');
+    expect(_text('Pfand'), findsNothing);
+    // Das Pfand steht unter der Summe.
+    expect(
+      t.getTopLeft(find.byKey(const Key('cart-deposit'))).dy,
+      greaterThan(t.getTopLeft(find.byKey(const Key('cart-total'))).dy),
+    );
     expect(_total(t), '6,30 €');
     expect(textOf(t, const Key('cart-count')), '2 Artikel');
   });
@@ -138,6 +143,39 @@ void main() {
     expect(_text('Noch nichts boniert'), findsOneWidget);
     expect(_total(t), '0,00 €');
   });
+
+  testWidgets('ohne Pfand gibt es keine Pfandzeile, nur die Steuer', (t) async {
+    await pumpKassaWith(t, ['pommes']);
+    expect(find.byKey(const Key('cart-deposit')), findsNothing);
+    expect(find.textContaining('MwSt'), findsOneWidget);
+  });
+
+  for (final (size, scale) in [
+    (const Size(1280, 800), 1.0),
+    (const Size(960, 600), 1.3),
+  ]) {
+    testWidgets('kompakte Tasten: jeder Preis hat dieselbe Größe ($size, Schrift $scale)', (t) async {
+      await pumpKassaWith(t, ['teigtaschen'], size: size, textScale: scale);
+      double sizeOf(String id, String price) {
+        final text = find.descendant(
+          of: find.byKey(Key('item-$id')),
+          matching: _text(price),
+        );
+        final box = t.renderObject<RenderBox>(text);
+        // Gezeichnete Höhe der Schrift: FittedBox würde sie verkleinern.
+        final fitted = find.ancestor(of: text, matching: find.byType(FittedBox));
+        expect(fitted, findsNothing, reason: 'Preis wird nicht skaliert');
+        return box.size.height;
+      }
+
+      final a = sizeOf('teigtaschen', '6,50 €');
+      final b = sizeOf('fruehlingsrollen', '4,90 €');
+      final c = sizeOf('pommes', '3,90 €');
+      expect(b, a);
+      expect(c, a);
+      expect(t.takeException(), isNull);
+    });
+  }
 
   testWidgets('Bon leeren lässt sich rückgängig machen', (t) async {
     await pumpKassaWith(t, ['cola', 'teigtaschen']);

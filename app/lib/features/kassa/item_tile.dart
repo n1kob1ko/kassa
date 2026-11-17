@@ -145,6 +145,8 @@ class _TagPill extends StatelessWidget {
       child: Text(
         vegan ? 'VEGAN' : 'SCHARF',
         maxLines: 1,
+        // Die Marke hat eine feste Höhe und wächst nicht mit der Schrift.
+        textScaler: TextScaler.noScaling,
         style: Theme.of(context).textTheme.labelSmall!.copyWith(
           fontSize: small ? 10 : 10.5,
           height: 1.0,
@@ -262,54 +264,50 @@ class _PriceRow extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final extra = item.inSale ? ItemTile.extraText(item) : 'Nicht im Verkauf';
-    return LayoutBuilder(
-      builder: (context, box) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Preis und Marke schrumpfen eher, als dass sie überlaufen.
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (item.inSale)
-                    Text(
-                      formatEuro(item.priceCents),
-                      maxLines: 1,
-                      style: text.titleMedium!.copyWith(
-                        fontSize: 15,
-                        height: 1.0,
-                        color: c.accentInk,
-                      ),
-                    ),
-                  if (tag != null && item.inSale) ...[
-                    const SizedBox(width: KassaTokens.spaceSm),
-                    _TagPill(tag: tag!, small: true),
-                  ],
-                ],
-              ),
+    // Preis und Marke behalten ihre Größe. Der Zusatz weicht zuerst: erst
+    // gekürzt, dann ganz abgeschnitten.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (item.inSale)
+          Text(
+            formatEuro(item.priceCents),
+            maxLines: 1,
+            style: text.titleMedium!.copyWith(
+              fontSize: 15,
+              height: 1.0,
+              color: c.accentInk,
             ),
           ),
-          if (extra != null) const SizedBox(width: KassaTokens.spaceSm),
-          if (extra != null)
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.5),
-              child: Text(
-                extra,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: text.bodySmall!.copyWith(
-                  fontSize: 12,
-                  height: 1.0,
-                  color: c.ink2,
-                ),
-              ),
-            ),
+        if (tag != null && item.inSale) ...[
+          const SizedBox(width: KassaTokens.spaceSm),
+          _TagPill(tag: tag!, small: true),
         ],
-      ),
+        Expanded(
+          child: extra == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.only(left: KassaTokens.spaceSm),
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        extra,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: text.bodySmall!.copyWith(
+                          fontSize: 12,
+                          height: 1.0,
+                          color: c.ink2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
