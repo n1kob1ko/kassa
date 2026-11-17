@@ -37,6 +37,7 @@ class Overview {
     required this.revenueCents,
     required this.previousRevenueCents,
     required this.receiptCount,
+    required this.voidCount,
     required this.buckets,
     required this.cashCents,
     required this.cardCents,
@@ -49,6 +50,9 @@ class Overview {
 
   /// Verkaufs-Bons minus Storno-Bons.
   final int receiptCount;
+
+  /// Storno-Bons im Zeitraum.
+  final int voidCount;
   final List<Bucket> buckets;
   final int cashCents;
   final int cardCents;

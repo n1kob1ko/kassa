@@ -8,7 +8,8 @@ import '../../ui/tokens.dart';
 import 'receipt_detail.dart';
 import 'receipt_list.dart';
 
-const _weekdays = [
+/// Wochentage und Monate für Datumszeilen (Bons, Übersicht).
+const germanWeekdays = [
   'Montag',
   'Dienstag',
   'Mittwoch',
@@ -17,7 +18,7 @@ const _weekdays = [
   'Samstag',
   'Sonntag',
 ];
-const _months = [
+const germanMonths = [
   'Jänner',
   'Februar',
   'März',
@@ -79,7 +80,7 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(
-                            'Heute, ${_weekdays[now.weekday - 1]} ${now.day}. ${_months[now.month - 1]}',
+                            'Heute, ${germanWeekdays[now.weekday - 1]} ${now.day}. ${germanMonths[now.month - 1]}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.labelLarge!.copyWith(

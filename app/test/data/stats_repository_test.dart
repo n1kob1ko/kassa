@@ -59,6 +59,17 @@ void main() {
     expect(o.byCategory, isEmpty);
   });
 
+  test('voidCount zählt die Storno-Bons im Zeitraum', () async {
+    expect((await shop.stats.overview(StatsRange.today)).voidCount, 0);
+    final r = await shop.sell('s1');
+    await shop.sell('s2');
+    expect((await shop.stats.overview(StatsRange.today)).voidCount, 0);
+    await shop.receipts.voidReceipt(r.id, staff: shop.chef);
+    final o = await shop.stats.overview(StatsRange.today);
+    expect((o.voidCount, o.receiptCount), (1, 1));
+    expect((await shop.stats.overview(StatsRange.days7)).voidCount, 1);
+  });
+
   test('7 Tage: sieben Balken nach Kalendertag, Vergleich mit den sieben Tagen davor', () async {
     shop.clock.value = DateTime(2026, 11, 9, 12);
     await shop.sell('alt');

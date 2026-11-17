@@ -82,13 +82,16 @@ class StatsRepository {
 
     var revenue = 0;
     var count = 0;
+    var voids = 0;
     var cash = 0;
     var card = 0;
     var deposit = 0;
     for (final r in current) {
       revenue += r.totalCents;
       deposit += r.depositCents;
-      count += r.kind == ReceiptKind.voided.name ? -1 : 1;
+      final isVoid = r.kind == ReceiptKind.voided.name;
+      count += isVoid ? -1 : 1;
+      if (isVoid) voids++;
       if (payments[r.id] == PaymentKind.cash.name) {
         cash += r.totalCents;
       } else {
@@ -100,6 +103,7 @@ class StatsRepository {
       revenueCents: revenue,
       previousRevenueCents: previousRevenue,
       receiptCount: count,
+      voidCount: voids,
       buckets: _buckets(range, today, now, current),
       cashCents: cash,
       cardCents: card,

@@ -7,6 +7,7 @@ import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart';
 import '../kassa/kassa_screen.dart';
 import '../login/session.dart';
+import '../overview/overview_screen.dart';
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -45,7 +46,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 }
 
 /// Hier wird das Bild eines Bereichs gewählt. Bis ihre Aufgaben fertig sind,
-/// zeigen die anderen drei einen leeren Platzhalter.
+/// zeigen die anderen zwei einen leeren Platzhalter.
 Widget _areaWidget(AppArea area) {
   switch (area) {
     case AppArea.kassa:
@@ -53,6 +54,7 @@ Widget _areaWidget(AppArea area) {
     case AppArea.bons:
       return const BonsScreen(key: Key('area-bons'));
     case AppArea.overview:
+      return const OverviewScreen(key: Key('area-overview'));
     case AppArea.items:
     case AppArea.close:
       return _AreaPlaceholder(area);

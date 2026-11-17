@@ -7,6 +7,7 @@ import '../core/clock.dart';
 import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
+import '../domain/stats.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
@@ -86,3 +87,9 @@ final todayReceiptsProvider = StreamProvider<List<Receipt>>((ref) {
   if (dayId == null) return Stream.value(const <Receipt>[]);
   return ref.watch(receiptRepositoryProvider).watchDay(dayId);
 });
+
+/// Die Zahlen der Übersicht für einen Zeitraum. Wird verworfen, sobald der
+/// Bereich nicht mehr angezeigt wird: beim nächsten Öffnen sind die Zahlen neu.
+final overviewProvider = FutureProvider.autoDispose.family<Overview, StatsRange>(
+  (ref, range) => ref.watch(statsRepositoryProvider).overview(range),
+);
