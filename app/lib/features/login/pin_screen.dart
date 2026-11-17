@@ -62,17 +62,19 @@ class _PinScreenState extends ConsumerState<PinScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: KassaColors.of(context).ground,
-      body: PinCard(
-        businessName: ref.watch(catalogProvider).value?.businessName,
-        title: 'PIN eingeben',
-        hint: _failed
-            ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
-            : _wrong
-            ? 'Diese PIN kennt die Kassa nicht.'
-            : 'Jede Person hat ihre eigene PIN',
-        hintIsError: _wrong || _failed,
-        filled: _pin.length,
-        onKey: _onKey,
+      body: SafeArea(
+        child: PinCard(
+          businessName: ref.watch(catalogProvider).value?.businessName,
+          title: 'PIN eingeben',
+          hint: _failed
+              ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
+              : _wrong
+              ? 'Diese PIN kennt die Kassa nicht.'
+              : 'Jede Person hat ihre eigene PIN',
+          hintIsError: _wrong || _failed,
+          filled: _pin.length,
+          onKey: _onKey,
+        ),
       ),
     );
   }

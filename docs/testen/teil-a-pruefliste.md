@@ -8,7 +8,7 @@ Wichtig: Diese Version ist zum Ausprobieren. Sie signiert noch keine Belege und 
 
 ## 1. Installieren
 
-- [ ] Die Datei `kassa-1.0.0.apk` aufs Tablet laden und antippen. Android fragt, ob Apps aus dieser Quelle erlaubt sind: erlauben und installieren.
+- [ ] Die Installationsdatei (sie heißt `kassa-` mit der Versionsnummer und endet auf `.apk`) aufs Tablet laden und antippen. Android fragt, ob Apps aus dieser Quelle erlaubt sind: erlauben und installieren.
   Du siehst danach das Symbol "Kassa" bei den Apps.
 - [ ] Die Speisekarten-Datei aufs Tablet laden (zum Beispiel in den Ordner "Downloads"). Sie endet auf `.json`.
 - [ ] Das Tablet quer halten und die App öffnen.

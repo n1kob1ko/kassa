@@ -48,7 +48,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _problems = const ['Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.'];
+        _problems = const [
+          'Die Datei konnte nicht geöffnet werden. Bitte nochmal versuchen.',
+        ];
         _step = _Step.problems;
       });
       return;
@@ -157,42 +159,49 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (_step == _Step.pin) {
       return Scaffold(
         backgroundColor: c.ground,
-        body: PinCard(
-          businessName: _catalog!.businessName,
-          title: _first == null ? 'Chef-PIN festlegen' : 'PIN wiederholen',
-          hint:
-              _error ??
-              (_first == null
-                  ? 'Vier Ziffern, die nur der Chef kennt'
-                  : 'Zur Sicherheit noch einmal'),
-          hintIsError: _error != null,
-          filled: _pin.length,
-          onKey: _onPinKey,
+        body: SafeArea(
+          child: PinCard(
+            businessName: _catalog!.businessName,
+            title: _first == null ? 'Chef-PIN festlegen' : 'PIN wiederholen',
+            hint:
+                _error ??
+                (_first == null
+                    ? 'Vier Ziffern, die nur der Chef kennt'
+                    : 'Zur Sicherheit noch einmal'),
+            hintIsError: _error != null,
+            filled: _pin.length,
+            onKey: _onPinKey,
+          ),
         ),
       );
     }
     return Scaffold(
       backgroundColor: c.ground,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(KassaTokens.spaceHuge),
-          child: Container(
-            width: 560,
-            padding: const EdgeInsets.fromLTRB(40, 40, 40, 32),
-            decoration: BoxDecoration(
-              color: c.card,
-              borderRadius: BorderRadius.circular(KassaTokens.radiusCard),
-              border: Border.all(color: c.line, width: KassaTokens.borderThin),
-              boxShadow: c.cardShadow,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _CardHeader(),
-                const SizedBox(height: KassaTokens.spaceHuge),
-                ..._content(context),
-              ],
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(KassaTokens.spaceHuge),
+            child: Container(
+              width: 560,
+              padding: const EdgeInsets.fromLTRB(40, 40, 40, 32),
+              decoration: BoxDecoration(
+                color: c.card,
+                borderRadius: BorderRadius.circular(KassaTokens.radiusCard),
+                border: Border.all(
+                  color: c.line,
+                  width: KassaTokens.borderThin,
+                ),
+                boxShadow: c.cardShadow,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _CardHeader(),
+                  const SizedBox(height: KassaTokens.spaceHuge),
+                  ..._content(context),
+                ],
+              ),
             ),
           ),
         ),
@@ -324,10 +333,7 @@ class _Heading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: text.headlineLarge!.copyWith(fontSize: 30),
-        ),
+        Text(title, style: text.headlineLarge!.copyWith(fontSize: 30)),
         const SizedBox(height: KassaTokens.spaceMd),
         Text(
           sub,
@@ -433,9 +439,7 @@ class _Summary extends StatelessWidget {
             Container(
               constraints: const BoxConstraints(minHeight: 48),
               decoration: BoxDecoration(
-                border: i == 0
-                    ? null
-                    : Border(top: BorderSide(color: c.line)),
+                border: i == 0 ? null : Border(top: BorderSide(color: c.line)),
               ),
               child: Row(
                 children: [

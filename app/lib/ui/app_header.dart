@@ -52,9 +52,12 @@ class AppHeader extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final areas = isChef ? AppArea.values : const [AppArea.kassa, AppArea.bons];
+    // Die Kopfleiste reicht mit ihrer Farbe bis unter die Statusleiste des
+    // Tablets, ihr Inhalt beginnt erst darunter.
+    final statusBar = MediaQuery.paddingOf(context).top;
     return Container(
-      height: KassaTokens.headerHeight,
-      padding: const EdgeInsets.only(left: 16, right: 12),
+      height: KassaTokens.headerHeight + statusBar,
+      padding: EdgeInsets.only(left: 16, right: 12, top: statusBar),
       decoration: BoxDecoration(
         color: c.card,
         border: Border(
@@ -93,7 +96,11 @@ class AppHeader extends StatelessWidget {
                   for (final a in areas) ...[
                     if (a != areas.first)
                       const SizedBox(width: KassaTokens.spaceXxs),
-                    _Tab(area: a, active: a == area && !settingsActive, onTap: () => onArea(a)),
+                    _Tab(
+                      area: a,
+                      active: a == area && !settingsActive,
+                      onTap: () => onArea(a),
+                    ),
                   ],
                 ],
               ),
