@@ -21,7 +21,6 @@ Erfolg der ersten Version heißt: Der Pilotbetrieb boniert mit Kassa auf einem A
 - Bonieren über große Artikel-Tasten nach Kategorien, mit Auswahl-Vorlagen (zum Beispiel die Bowl-Auswahl aus Größe, Basis, Extra-Topping, Extra-Sauce), Pfand pro Artikel, Kennzeichen wie VEGAN und SCHARF.
 - Menge ändern, Zeile löschen, Bon leeren mit Rückgängig, Storno eines fertigen Bons.
 - Bar zahlen mit Vorschlägen und eigenem Betrag über ein Zahlenfeld, Rückgeld. Karte zahlen über SumUp in einem Schritt.
-- Pfand zurückgeben: Leergut wird als Minus-Zeile boniert (Claudes Entscheidung, siehe 5.3).
 - Bondruck. Geldlade öffnet bei Barzahlung und ist pro Kassa abschaltbar (Niko, 17.11.2026: manche Betriebe haben keinen Platz für eine Lade).
 - Bereiche Bons, Übersicht (Dashboard), Artikel, Abschluss (Tagesabschluss), Einstellungen, so wie im Entwurf gezeigt. Dazu Bargeld einlegen und entnehmen während des Tages (Claudes Entscheidung, siehe 5.3).
 - Bar bonieren geht ohne Internet weiter.
@@ -31,7 +30,7 @@ Erfolg der ersten Version heißt: Der Pilotbetrieb boniert mit Kassa auf einem A
 - Werkzeug für Niko als Anbieter: Betrieb anlegen, Logo, Speisekarte und Fotos einspielen (Niko, 17.11.2026).
 - Zuschaltbare Kundenanzeige.
 
-**Nicht-Ziele der Version 1** (bewusst später): Tische, Kellner-Handgeräte, Küchen- und Bar-Stationen, Lagerstand, Gutscheine, Online-Bestellungen, Rabatte und frei eingetippte Beträge, Trinkgeld, Selbstanmeldung von Betrieben, Abo-Abrechnung, Hardware-Komplettpaket, iPad- und Windows-Version, Online-Signatur statt Chipkarte, andere Kartenterminals als SumUp, eigene Farben pro Betrieb, andere Sprachen als Deutsch, Menüs zum Fixpreis über mehrere Steuersätze, Kundenanzeige über ein Kabel.
+**Nicht-Ziele der Version 1** (bewusst später): Tische, Kellner-Handgeräte, Küchen- und Bar-Stationen, Lagerstand, Gutscheine, Online-Bestellungen, Rabatte und frei eingetippte Beträge, Trinkgeld, Selbstanmeldung von Betrieben, Abo-Abrechnung, Hardware-Komplettpaket, iPad- und Windows-Version, Online-Signatur statt Chipkarte, andere Kartenterminals als SumUp, eigene Farben pro Betrieb, andere Sprachen als Deutsch, Menüs zum Fixpreis über mehrere Steuersätze, Kundenanzeige über ein Kabel, Pfand zurückgeben, Küchenzettel und Anbindung an eine Bestellanzeige.
 
 **Anti-Ziele** (das soll Kassa nie tun)
 
@@ -50,6 +49,7 @@ Erfolg der ersten Version heißt: Der Pilotbetrieb boniert mit Kassa auf einem A
 - **Niko ist kein Entwickler.** Alles, was er freigibt oder entscheidet, wird in einfachen Worten vorgelegt. Die Technik hat er abgegeben.
 - **Testgeräte gibt es noch nicht.** Niko hat ein Xiaomi Redmi Pad Pro (rund 12 Zoll) und kauft Drucker, Verteiler und Kartenleser erst.
 - **Arbeitsweise** (Niko): alle Skills und Design-Regeln verwenden, vorerst ohne Pull Requests auf dem Arbeits-Branch committen.
+- **Das Repo ist öffentlich** (Niko, 17.11.2026). Daten von Betrieben (Name, Speisekarte, Fotos, Umsätze), Zugangsdaten und Schlüssel kommen nie ins Repo. Tests und Beispiele verwenden erfundene Daten. Der Pilotbetrieb wird im Repo nicht beim Namen genannt, sein Name steht in den Projektunterlagen.
 
 ## 4. Wege, die zur Wahl standen
 
@@ -106,7 +106,7 @@ Die Bildschirme sind im Entwurf festgelegt und von Niko für den Kassenbildschir
 - Ein Tipp legt den Artikel auf den Bon. Gleiche Artikel ohne Auswahl werden zu einer Zeile zusammengezählt.
 - Hat ein Artikel eine Auswahl-Vorlage, öffnet sich die Auswahl in der Mitte. Pflichtgruppen sind markiert, Vorgaben sind schon gewählt (Größe Normal), Aufpreise stehen bei der Option. "Auf den Bon" geht erst, wenn alle Pflichtgruppen gewählt sind.
 - Pfand kommt bei Artikeln mit Pfand von selbst dazu und steht am Bon getrennt.
-- **Pfand zurück** (Claudes Entscheidung, im Entwurf noch nicht gezeichnet): Eine Taste bei den Getränken legt pro Tipp eine Minus-Zeile "Pfand zurück" mit 0,25 € auf den Bon. Sie lässt sich mit einem Einkauf verrechnen. Ist die Summe negativ, zeigt Bar den Betrag zum Auszahlen, und Karte ist gesperrt. Grund: Wer Einweg-Pfandgetränke verkauft, muss nach Claudes Wissensstand Leergut zurücknehmen (zu prüfen, samt Ausnahmen für kleine Verkaufsstellen). Ob der Pilotbetrieb Getränke zum Trinken im Lokal ohne Pfand verkauft, ist bei Niko erfragt. Bis zur Antwort gibt es dafür keinen Schalter.
+- Pfand zurückgeben und Verkauf ohne Pfand gibt es in Version 1 nicht (Niko, 17.11.2026: Der Pilotbetrieb nimmt kein Leergut zurück und verkauft keine Getränke ohne Pfand). Die Daten lassen Minus-Zeilen zu, damit es später ohne Umbau dazukommen kann. Ob ein Betrieb Leergut zurücknehmen muss, ist für spätere Betriebe zu prüfen.
 - "Bon leeren" lässt sich einige Sekunden lang rückgängig machen.
 - **Bar:** Vorschläge (passend, nächste runde Beträge) oder "Anderer Betrag" mit Zahlenfeld. Rückgeld wird angezeigt. Ist der Betrag zu klein, steht "Fehlt noch" da und Abschließen ist gesperrt. Beim Abschließen druckt der Bon, die Geldlade öffnet sich, falls eingeschaltet.
 - **Karte:** Der Betrag geht ans SumUp Air. Nach der Bestätigung ist der Bon abgeschlossen und druckt von selbst. Bei Abbruch oder Fehler bleibt der Bon offen, mit einer Meldung, was passiert ist.
@@ -131,7 +131,7 @@ Claudes Entscheidungen zu Bargeld und Tag, im Entwurf noch nicht gezeichnet. Die
 
 **Kundenanzeige** (Claudes Entscheidung zur Bauform). In Schritt 4 wird die Variante mit zweitem Gerät gebaut: ein beliebiges Android-Gerät, auf dem Kassa im Modus "Kundenanzeige" läuft, einmal per Code mit der Kassa gekoppelt, verbunden über das WLAN im Lokal. Das geht ohne Internet, solange das WLAN läuft. Der eingebaute zweite Bildschirm eines Kassengeräts kommt mit dem Hardware-Komplettpaket. Ein Bildschirm am Kabel wird nicht unterstützt, weil der eine USB-Anschluss schon belegt ist.
 
-**Küche.** Küchenstationen sind kein Ziel der Version 1. Wie die Bestellung beim Pilotbetrieb heute in die Küche kommt, ist bei Niko erfragt (siehe 8). Druckt die alte Kassa dort einen Zettel für die Küche, bekommt Version 1 einen abschaltbaren zweiten Ausdruck ohne Preise am selben Drucker. Sonst nichts.
+**Küche.** Der Pilotbetrieb zeigt Bestellungen heute über eine Bestellanzeige, die Niko selbst gebaut hat (eigenes Programm, läuft bei Railway). Das bleibt vorerst so (Niko, 17.11.2026). Kassa druckt in Version 1 keinen Zettel für die Küche und ist nicht mit der Bestellanzeige verbunden. Vor dem Pilotbetrieb klärt Claude, wie die Bestellanzeige heute ihre Bestellungen bekommt, damit an der Theke nichts doppelt eingegeben werden muss. Eine Anbindung, bei der Kassa die Bestellung von selbst an die Anzeige schickt, wäre ein eigener kleiner Entwurf.
 
 **Anmeldung und Rollen.**
 - Das Tablet wird einmal mit einem Kopplungscode aus der Verwaltung an den Betrieb gebunden.
@@ -153,7 +153,7 @@ Geldbeträge sind immer ganze Cent, Preise sind brutto. Jeder Datensatz gehört 
 | Gruppe | Name, mindestens und höchstens wählbar, Vorgabe, Optionen |
 | Option | Name, Aufpreis, auf Wunsch eigener Steuersatz und eigenes Pfand (sonst gilt der Artikel) |
 | Bon | laufende Nummer pro Kassa, Zeitpunkt, Mitarbeiter, Zeilen, Zahlung, Summen pro Steuersatz, Pfand, RKSV-Angaben, Bezug zum stornierten Bon |
-| Bon-Zeile | Artikel, Name und Preis zum Zeitpunkt des Bons, Menge, gewählte Optionen, Pfand, Betrag pro Steuersatz. Auch Minus-Zeilen (Pfand zurück) |
+| Bon-Zeile | Artikel, Name und Preis zum Zeitpunkt des Bons, Menge, gewählte Optionen, Pfand, Betrag pro Steuersatz. Minus-Zeilen sind möglich (Storno, später Pfand zurück) |
 | Zahlung | Art (bar, Karte), Betrag, gegeben und Rückgeld, bei Karte die SumUp-Kennung |
 | Bargeld-Bewegung | Einlage oder Entnahme, Betrag, Grund, Zeitpunkt, Mitarbeiter |
 | Tagesabschluss | Beginn und Ende des Tages, Summen, Wechselgeld am Anfang, Einlagen und Entnahmen, gezählter Betrag, Unterschied, in der Lade gelassen, Mitarbeiter |
@@ -208,11 +208,11 @@ Dieser Teil ist rechtlich bindend. Alles hier wird vor dem Bau gegen den Verordn
 
 Der Pilotbetrieb geht erst in den echten Betrieb, wenn dieser Teil geprüft ist und der Startbeleg die Prüfung besteht.
 
-**Weitere Betriebe.** Der Machbarkeitstest und die erste Umsetzung gelten für den Kartentyp des Pilotbetriebs. Ein zweiter Betrieb hat eine andere Karte, vielleicht einen anderen Typ, oder keine. Claudes Entscheidung: Neue Betriebe sollen über die Online-Signatur laufen, nicht über weitere Kartentypen. Deshalb muss die Online-Signatur fertig sein, bevor der zweite Betrieb echt verkauft, und sie rückt in der Reihenfolge direkt hinter Schritt 4 (siehe 6). Weil die Anfrage bei fiskaly oder A-Trust Vorlaufzeit hat und Niko sie jetzt nicht führen will, ist bei ihm erfragt, ob Claude die Anfrage als fertigen Text vorbereiten soll, damit die Wartezeit neben dem Bau läuft. Dieselbe Online-Signatur ist auch der Ausweg, falls der Machbarkeitstest scheitert oder die Karte des Pilotbetriebs 2027 getauscht werden muss.
+**Weitere Betriebe.** Der Machbarkeitstest und die erste Umsetzung gelten für den Kartentyp des Pilotbetriebs. Ein zweiter Betrieb hat eine andere Karte, vielleicht einen anderen Typ, oder keine. Claudes Entscheidung: Neue Betriebe sollen über die Online-Signatur laufen, nicht über weitere Kartentypen. Deshalb muss die Online-Signatur fertig sein, bevor der zweite Betrieb echt verkauft, und sie rückt in der Reihenfolge direkt hinter Schritt 4 (siehe 6). Die Anfrage bei fiskaly oder A-Trust hat Vorlaufzeit. Niko hat am 17.11.2026 entschieden, sie jetzt nicht zu stellen, auch nicht als vorbereiteten Text. Die Wartezeit beginnt damit erst, wenn die Online-Signatur gebraucht wird. Dieselbe Online-Signatur ist auch der Ausweg, falls der Machbarkeitstest scheitert oder die Karte des Pilotbetriebs 2027 getauscht werden muss.
 
 ### 5.9 Betriebe einrichten
 
-Niko, 17.11.2026: Ein neuer Betrieb schickt Logo und Speisekarte, auf Wunsch auch Fotos, und Niko baut alles ein. für den Pilotbetrieb bleibt es, wie es ist, weil die Daten schon vorliegen.
+Niko, 17.11.2026: Ein neuer Betrieb schickt Logo und Speisekarte, auf Wunsch auch Fotos, und Niko baut alles ein. Für den Pilotbetrieb bleibt es, wie es ist, weil die Daten schon vorliegen.
 
 Ablauf im Anbieter-Werkzeug:
 
@@ -222,7 +222,7 @@ Ablauf im Anbieter-Werkzeug:
 4. **Fotos zuordnen**, falls der Betrieb welche schickt: mehrere auf einmal hochladen, das Werkzeug schlägt die Zuordnung nach Dateinamen vor, Niko bestätigt. Artikel ohne Foto zeigen den Platzhalter.
 5. **Kassa koppeln:** Kopplungscode erzeugen, am Tablet eingeben. Mitarbeiter und PINs anlegen.
 
-Das Einspiel-Format ist eine Datei mit Kategorien, Artikeln und Auswahl-Vorlagen. Es ist dasselbe Format, in dem die Karte des Pilotbetriebs schon vorliegt (78 Artikel, 9 Kategorien, die Bowl-Auswahl als Vorlage). Der Pilotbetrieb wird in Schritt 2 über genau dieses Format eingerichtet. Die Datei liegt nicht im Repo, solange nicht geklärt ist, ob das Repo öffentlich ist. Sie liegt in den Projektdateien unter `/mnt/project-files/pilot/speisekarte-pilotbetrieb.json`, daneben die Karte als PDF. Das Format selbst steht im Anhang A.
+Das Einspiel-Format ist eine Datei mit Kategorien, Artikeln und Auswahl-Vorlagen. Es ist dasselbe Format, in dem die Karte des Pilotbetriebs schon vorliegt (78 Artikel, 9 Kategorien, die Bowl-Auswahl als Vorlage). Der Pilotbetrieb wird in Schritt 2 über genau dieses Format eingerichtet. Die Datei liegt nicht im Repo, weil das Repo öffentlich ist. Sie liegt in den Projektdateien im Ordner `pilot`, daneben die Karte als PDF. Das Format selbst steht im Anhang A.
 
 Der KI-Vorschlag und die Oberfläche dazu kommen in Schritt 4. Bis dahin erstellt Claude die Datei für einen Betrieb von Hand, so wie für den Pilotbetrieb.
 
@@ -230,7 +230,7 @@ Der KI-Vorschlag und die Oberfläche dazu kommen in Schritt 4. Bis dahin erstell
 
 Für den Chef des Betriebs: Artikel, Kategorien, Auswahl-Vorlagen, Preise und Fotos pflegen, Mitarbeiter und PINs, Umsätze und Tagesabschlüsse ansehen, Protokoll der RKSV ausgeben, Kassen koppeln. Hier darf getippt werden. Gleicher Stil wie die App. Die Bildschirme dafür sind noch nicht entworfen und kommen vor dem Bau in Schritt 4 als eigener Entwurf zu Niko.
 
-Claudes Entscheidung für die Zeit davor: In Schritt 2 und 3 gibt es nur eine schlichte Anbieter-Seite ohne eigenen Entwurf, die nur Niko und Claude benutzen. Sie kann: anmelden, Betrieb anlegen, Speisekarten-Datei einspielen, Mitarbeiter und PINs anlegen, Kopplungscode erzeugen. Der Chef des Pilotbetriebs ändert im Pilotbetrieb Preise, Favoriten und "Im Verkauf" am Tablet. Neue Artikel, Namen und Fotos spielt bis Schritt 4 Niko oder Claude über die Datei ein.
+Claudes Entscheidung für die Zeit davor: In Schritt 2 und 3 gibt es nur eine schlichte Anbieter-Seite ohne eigenen Entwurf, die nur Niko und Claude benutzen. Sie kann: anmelden, Betrieb anlegen, Speisekarten-Datei einspielen, Mitarbeiter und PINs anlegen, Kopplungscode erzeugen. Der Chef ändert im Pilotbetrieb Preise, Favoriten und "Im Verkauf" am Tablet. Neue Artikel, Namen und Fotos spielt bis Schritt 4 Niko oder Claude über die Datei ein.
 
 ### 5.11 Gestaltung
 
@@ -279,8 +279,8 @@ Claudes Entscheidungen, weil Niko die Technik abgegeben hat:
 Jeder Schritt endet mit etwas, das Niko am Tablet ausprobieren kann.
 
 1. **Entwurf festlegen.** Dieses Dokument. Danach der Umsetzungsplan.
-2. **Imbiss-Modus.** App auf dem Android-Tablet mit Betriebskonto: Der Pilotbetrieb aus der vorhandenen Datei eingerichtet, Bonieren mit Auswahl und Pfand, Bar, Bondruck und Geldlade, Bons, Übersicht, Artikel, Abschluss, Einstellungen, ohne Internet. Dazu Server und die schlichte Anbieter-Seite (siehe 5.10). Am Anfang stehen `DESIGN.md` und die im Entwurf noch fehlenden Bildschirme (Anmeldung mit PIN, Kopplung, Bargeld einlegen und entnehmen, Pfand zurück, Geräte testen), die Niko vor dem Bau sieht. Noch ohne Karte und ohne Signatur, deshalb nur zum Testen.
-3. **Karte und RKSV.** Zuerst der Machbarkeitstest für die Chipkarte. Dann SumUp, Signatur, Protokoll, Sonderbelege, QR-Code. Am Ende: Betrieb beim Pilotkunden.
+2. **Imbiss-Modus.** App auf dem Android-Tablet mit Betriebskonto: der Pilotbetrieb aus der vorhandenen Datei eingerichtet, Bonieren mit Auswahl und Pfand, Bar, Bondruck und Geldlade, Bons, Übersicht, Artikel, Abschluss, Einstellungen, ohne Internet. Dazu Server und die schlichte Anbieter-Seite (siehe 5.10). Am Anfang stehen `DESIGN.md` und die im Entwurf noch fehlenden Bildschirme (Anmeldung mit PIN, Kopplung, Bargeld einlegen und entnehmen, Geräte testen), die Niko vor dem Bau sieht. Noch ohne Karte und ohne Signatur, deshalb nur zum Testen.
+3. **Karte und RKSV.** Zuerst der Machbarkeitstest für die Chipkarte. Dann SumUp, Signatur, Protokoll, Sonderbelege, QR-Code. Am Ende: Start im Pilotbetrieb.
 4. **Betriebe einrichten.** Anbieter-Werkzeug mit Logo, Speisekarte über KI-Vorschlag, Fotos. Vollständige Browser-Verwaltung. Kundenanzeige.
 5. **Restaurant-Modus.** Tische, Kellner, Stationen. Bekommt einen eigenen Entwurf.
 
@@ -304,25 +304,24 @@ Diese Dinge entscheidet, wer den Umsetzungsplan schreibt und baut, ohne Rückfra
 **Braucht Niko oder den Betrieb**
 
 1. Typ oder Kaufjahr der RKSV-Chipkarte des Pilotbetriebs und Modell des Kartenlesers (Foto). Entscheidet, ob die Karte bleiben darf und ob der Leser am Tablet geht.
-2. Modell des Bondruckers des Pilotbetriebs. Entscheidet, ob er bleiben kann.
+2. Modell des Bondruckers im Pilotbetrieb. Entscheidet, ob er bleiben kann.
 3. Eine eigene Karte und ein Kartenleser zum Testen. Mit der echten Karte des Pilotbetriebs darf nicht getestet werden, solange dort die alte Kassa läuft. Ob A-Trust Testkarten anbietet, ist zu prüfen.
 4. Zugang zu einem SumUp-Konto für Entwickler und ein SumUp-Gerät zum Testen.
 5. Betriebsdaten des Pilotbetriebs für den Bon: genauer Name, Adresse, UID-Nummer. Steuersätze der Artikel bestätigen.
 6. Wer meldet die Kassa bei FinanzOnline an, der Betrieb oder die Steuerberatung?
-7. Ist das Repo öffentlich oder privat? Davon hängt ab, ob Beispieldaten von Betrieben hinein dürfen.
-8. Soll Claude die Anfrage an fiskaly (und A-Trust) jetzt als fertigen Text vorbereiten, damit die Wartezeit neben dem Bau läuft?
-9. Wie kommt die Bestellung beim Pilotbetrieb heute in die Küche: Zettel aus dem Drucker, Zuruf, Nummer am Bon?
-10. Nimmt der Pilotbetrieb Pfand-Leergut zurück und zahlt Pfand aus? Werden Getränke zum Trinken im Lokal ohne Pfand verkauft?
-11. Ein Entwicklerkonto bei Google Play auf Nikos Namen. Erst vor dem Pilotbetrieb nötig.
+7. Ein Entwicklerkonto bei Google Play auf Nikos Namen. Erst vor dem Pilotbetrieb nötig.
+
+Beantwortet von Niko am 17.11.2026: Das Repo ist öffentlich. Die Anfrage an fiskaly wird jetzt nicht gestellt. Die Küche läuft über Nikos Bestellanzeige. Der Pilotbetrieb nimmt kein Leergut zurück.
 
 **Klärt Claude vor dem Bau des jeweiligen Schritts**
 
-12. RKSV im Wortlaut: Pflichtangaben am Bon, Form des Protokolls, Sonderbelege, Fristen, Bargeld-Bewegungen. Prüfwerkzeug und Beispieldaten.
-13. Ansteuerung der A-Trust-Karte und passende Kartenleser für Android (Machbarkeitstest).
-14. Steuerliche Behandlung des Einwegpfands am Bon und im Protokoll, Pflicht zur Rücknahme von Leergut und ihre Ausnahmen.
-15. SumUp Reader SDK: Anmeldung, Abfrage einer Zahlung nach Absturz, Rückbuchung, Anpassung des Zahlungsbildschirms, welche SumUp-Geräte außer dem Air das SDK ansteuert.
-16. Ob das Redmi Pad Pro am USB-Verteiler gleichzeitig lädt und Geräte erkennt.
-17. Kosten des Servers bei Railway.
+8. RKSV im Wortlaut: Pflichtangaben am Bon, Form des Protokolls, Sonderbelege, Fristen, Bargeld-Bewegungen. Prüfwerkzeug und Beispieldaten.
+9. Ansteuerung der A-Trust-Karte und passende Kartenleser für Android (Machbarkeitstest).
+10. Steuerliche Behandlung des Einwegpfands am Bon und im Protokoll.
+11. SumUp Reader SDK: Anmeldung, Abfrage einer Zahlung nach Absturz, Rückbuchung, Anpassung des Zahlungsbildschirms, welche SumUp-Geräte außer dem Air das SDK ansteuert.
+12. Ob das Redmi Pad Pro am USB-Verteiler gleichzeitig lädt und Geräte erkennt.
+13. Kosten des Servers bei Railway.
+14. Wie Nikos Bestellanzeige ihre Bestellungen bekommt (vor dem Pilotbetrieb).
 
 ## 9. Claudes Entscheidungen zum Gegenprüfen
 
@@ -339,7 +338,6 @@ Nach dem Gegenlesen durch einen zweiten Prüfer am 17.11.2026 dazugekommen:
 
 - Neue Betriebe laufen über die Online-Signatur, nicht über weitere Kartentypen. Sie rückt direkt hinter Schritt 4.
 - Bargeld: Wechselgeld ist, was beim Abschluss in der Lade bleibt. Einlegen und Entnehmen während des Tages. Ein Tag endet mit dem Abschluss, nicht um Mitternacht. Ein vergessener Abschluss sperrt nichts.
-- "Pfand zurück" als Minus-Zeile ist in Version 1.
 - Optionen können einen eigenen Steuersatz und eigenes Pfand tragen. Fixpreis-Menüs über zwei Steuersätze kommen später.
 - Kundenanzeige in Schritt 4 als zweites Android-Gerät über das WLAN im Lokal. Eingebauter zweiter Bildschirm erst mit dem Hardware-Paket.
 - An echter Hardware testet Niko, mit Installationsdatei per Link, der Seite "Geräte testen", Fehlerberichten an den Server und Prüflisten.
