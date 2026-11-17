@@ -48,8 +48,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 Widget _areaWidget(AppArea area) {
   switch (area) {
     case AppArea.kassa:
-      // "Bar" macht der nächste Schritt.
-      return KassaScreen(key: const Key('area-kassa'), onPayCash: () {});
+      return const KassaScreen(key: Key('area-kassa'));
     case AppArea.bons:
     case AppArea.overview:
     case AppArea.items:

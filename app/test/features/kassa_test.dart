@@ -208,24 +208,23 @@ void main() {
     expect(t.getSize(find.byKey(const Key('pay-card'))).height, 80);
   });
 
-  testWidgets('Bar ruft onPayCash, aber nur mit Artikeln auf dem Bon', (t) async {
-    var paid = 0;
+  testWidgets('Bar öffnet das Bezahlen, aber nur mit Artikeln auf dem Bon', (t) async {
     await pumpApp(
       t,
-      KassaScreen(onPayCash: () => paid++),
+      const KassaScreen(),
       overrides: await memoryOverrides(),
     );
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('pay-cash')));
     await t.pump();
-    expect(paid, 0);
+    expect(find.byKey(const Key('finish-sale')), findsNothing);
     await t.tap(find.byKey(const Key('cat-snacks')));
     await t.pump();
     await t.tap(find.byKey(const Key('item-teigtaschen')));
     await t.pump();
     await t.tap(find.byKey(const Key('pay-cash')));
     await t.pump();
-    expect(paid, 1);
+    expect(find.byKey(const Key('finish-sale')), findsOneWidget);
   });
 
   testWidgets('Artikel, die nicht im Verkauf sind, lassen sich nicht antippen', (t) async {
