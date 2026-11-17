@@ -38,7 +38,9 @@ Version 1 (Imbiss-Modus), mit Niko abgestimmt:
 
 - Artikel als große Tasten, sortiert nach Kategorien
 - Extras und Sonderwünsche per Schalter, nie per Tastatur (zum Beispiel "ohne Zwiebel", "extra Käse")
-- Auswahlgruppen pro Artikel für Menüs, Beilagenwahl und Baukasten-Artikel wie Bowls oder Sandwiches (zum Beispiel "Beilage, genau 1" oder "Toppings, bis zu 4")
+- Auswahlgruppen pro Artikel für Menüs, Beilagenwahl und Baukasten-Artikel wie Bowls oder Sandwiches (zum Beispiel "Beilage, genau 1" oder "Toppings, bis zu 4"). Eine Auswahl wird einmal als Vorlage angelegt und hängt an vielen Artikeln, mit Vorgabe (zum Beispiel Größe Normal) und Aufpreisen pro Option
+- Pfand pro Artikel, am Bon getrennt ausgewiesen
+- Kennzeichen auf der Taste (zum Beispiel VEGAN, SCHARF) und Stückangaben beim Preis
 - Menge ändern, Position löschen, Storno
 - Bezahlen bar mit Rückgeldanzeige oder mit Karte über SumUp
 - Bon drucken, Geldlade öffnet bei Barzahlung
@@ -51,7 +53,7 @@ Nicht in Version 1: Tische, Kellner-Handgeräte, Küchenstationen, Lagerstand, G
 
 Begriffe: bonieren, Bon, Storno, Tagesabschluss, Geldlade, Kundenanzeige.
 
-Offen: genaues Framework, Fiskalisierungsdienst für die RKSV, welches Kassengerät Niko als Komplettpaket verkauft.
+Offen: genaues Framework, Fiskalisierungsdienst für die RKSV, steuerliche Behandlung von Pfand am Beleg, welches Kassengerät Niko als Komplettpaket verkauft.
 
 ## Brand Commitments
 
@@ -63,7 +65,7 @@ Noch nicht festgelegt: Logo, endgültige Akzentfarbe (Vorschlag Petrol, zur Wahl
 
 ## Evidence on Hand
 
-Keine echten Speisekarten, Kundenstimmen oder Zahlen. Speisekarten und Preise in Entwürfen sind Beispiele und als solche zu kennzeichnen. Preise für Kassa selbst sind nicht festgelegt und dürfen nicht erfunden werden.
+Die Speisekarte des ersten Pilotbetriebs liegt seit 17.11.2026 vor (asiatische Küche: 14 Bowls mit gleicher Auswahl aus Größe, Basis, Extra-Topping und Extra-Sauce, dazu Dumplings, Ramen, Sushi, Rolls und 21 Getränke mit Pfand, insgesamt 78 Artikel in 9 Kategorien). Die Entwürfe verwenden diese Karte. Fotos, Favoriten und MwSt-Sätze in den Entwürfen sind Annahmen. Kundenstimmen und Zahlen gibt es noch keine. Preise für Kassa selbst sind nicht festgelegt und dürfen nicht erfunden werden.
 
 ## Product Principles
 
