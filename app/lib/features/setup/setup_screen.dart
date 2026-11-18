@@ -98,6 +98,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _error = null;
   });
 
+  /// Zurück zur Code-Eingabe, auch wenn die Einrichtung beim Start mitten im
+  /// Laden aufgenommen wurde.
+  void _newCode() {
+    ref.read(pairingControllerProvider.notifier).restart();
+    setState(() => _step = _Step.pair);
+  }
+
   void _backToStart() => setState(() => _step = _Step.start);
 
   Future<void> _onPinKey(String key) async {
@@ -178,7 +185,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     if (sync != null) _resume(sync);
     final pairing = ref.watch(pairingControllerProvider).step;
     if (_step == _Step.pair || pairing != PairingStep.idle) {
-      return PairingView(onBack: _backToStart);
+      return PairingView(onBack: _backToStart, onNewCode: _newCode);
     }
     if (_step == _Step.pin) {
       return Scaffold(

@@ -60,6 +60,10 @@ class FakeServer extends http.BaseClient {
   /// Gilt für jede folgende Anfrage, bis es jemand ändert.
   FakeMode mode = FakeMode.online;
 
+  /// Ist es gesetzt, antwortet `pair` mit diesem Fehlercode des Servers
+  /// (zum Beispiel `too_many_attempts`).
+  String? pairErrorCode;
+
   /// Nach so vielen beantworteten Seiten ist das Internet weg (offline).
   int? breakAfterPages;
 
@@ -203,6 +207,8 @@ class FakeServer extends http.BaseClient {
   }
 
   http.StreamedResponse _pair() {
+    final forced = pairErrorCode;
+    if (forced != null) return _error(422, forced);
     if (pairRequests.last['code'] != code) return _error(422, 'invalid_code');
     return _respond(
       200,

@@ -107,13 +107,14 @@ final catalogProvider = FutureProvider<Catalog?>(
 );
 
 /// Die Einrichtung ist fertig, wenn es eine Speisekarte und mindestens einen
-/// Mitarbeiter gibt. Ein Mitarbeiter vom Server kommt mit dem Abgleich, der
-/// `catalogProvider` neu laden lässt: der Bildschirm schaltet von selbst weiter.
+/// Chef gibt. Ohne Chef gäbe es keinen Abschluss und keine Einstellungen.
+/// Ein Chef vom Server kommt mit dem Abgleich, der `catalogProvider` neu
+/// laden lässt: der Bildschirm schaltet von selbst weiter.
 final setupCompleteProvider = FutureProvider<bool>((ref) async {
   final catalog = await ref.watch(catalogProvider.future);
   if (catalog == null) return false;
   final staff = await ref.read(staffRepositoryProvider).all();
-  return staff.isNotEmpty;
+  return staff.any((s) => s.isChef);
 });
 
 /// Die Speisekarte als Strom: ändert sich ein Artikel (zum Beispiel "im

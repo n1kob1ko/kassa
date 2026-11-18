@@ -263,7 +263,7 @@ void main() {
           id: _staffId,
           name: 'Anna',
           pin: '1234',
-          role: 'staff',
+          role: 'chef',
         ),
       );
       await t.tap(find.byKey(const Key('pair-recheck')));
@@ -292,6 +292,75 @@ void main() {
       await t.pumpAndSettle();
       expect(find.text('PIN eingeben'), findsOneWidget);
       expect(server.pairRequests, hasLength(1));
+    },
+  );
+
+  testWidgets(
+    'Betrieb mit nur einer Person der Rolle "staff": der Hinweis bleibt, keine PIN',
+    (t) async {
+      final server = _serverWithoutStaff();
+      await _start(t, server: server);
+      await _openCodeEntry(t);
+      await _enterAndSubmit(t, FakeServer.code);
+      server.upsert(
+        'staff',
+        FakeServer.staffRow(
+          id: _staffId,
+          name: 'Anna',
+          pin: '1234',
+          role: 'staff',
+        ),
+      );
+      await t.tap(find.byKey(const Key('pair-recheck')));
+      await t.pumpAndSettle();
+      expect(find.text('PIN eingeben'), findsNothing);
+      expect(
+        find.text(
+          'Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('pair-recheck')), findsOneWidget);
+    },
+  );
+
+  for (final (code, sentence) in [
+    ('too_many_attempts', 'Zu viele Versuche. Bitte in 15 Minuten nochmal.'),
+    ('other_business', 'Dieses Tablet gehört zu einem anderen Betrieb.'),
+    ('unauthorized', 'Das hat nicht geklappt. Bitte nochmal versuchen.'),
+    ('register_blocked', 'Das hat nicht geklappt. Bitte nochmal versuchen.'),
+  ]) {
+    testWidgets('Servercode $code zeigt "$sentence"', (t) async {
+      final server = await _start(t);
+      server.pairErrorCode = code;
+      await _openCodeEntry(t);
+      await _enterAndSubmit(t, FakeServer.code);
+      expect(find.text(sentence), findsOneWidget);
+      expect(_typed(t), '');
+    });
+  }
+
+  testWidgets(
+    '"Mit neuem Code koppeln" öffnet die Code-Eingabe, auch nach dem Neustart',
+    (t) async {
+      final server = FakeServer.beispiel()..breakAfterPages = 1;
+      final overrides = await _overrides(server);
+      await pumpApp(t, const KassaApp(), overrides: overrides);
+      await t.pumpAndSettle();
+      await _openCodeEntry(t);
+      await _enterAndSubmit(t, FakeServer.code);
+      // Neustart: die Kassa ist gekoppelt, das Laden scheitert wieder.
+      await t.pumpWidget(const SizedBox());
+      await pumpApp(t, const KassaApp(), overrides: overrides);
+      await t.pumpAndSettle();
+      expect(
+        find.text('Die Speisekarte konnte nicht geladen werden.'),
+        findsOneWidget,
+      );
+      await t.tap(find.byKey(const Key('pair-new')));
+      await t.pumpAndSettle();
+      expect(find.text('Kopplungscode eingeben'), findsOneWidget);
+      expect(find.text('Kassa einrichten'), findsNothing);
     },
   );
 

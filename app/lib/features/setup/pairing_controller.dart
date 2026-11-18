@@ -22,10 +22,11 @@ enum PairingStep {
   /// Gekoppelt, aber das Laden ist gescheitert. Es geht ohne neuen Code weiter.
   loadFailed,
 
-  /// Alles geladen, der Betrieb hat aber noch keinen Mitarbeiter.
+  /// Alles geladen, der Betrieb hat aber noch keinen Chef (Mitarbeiter mit
+  /// PIN und der Rolle Chef).
   noStaff,
 
-  /// Alles geladen und es gibt einen Mitarbeiter: die Anmeldung folgt.
+  /// Alles geladen und es gibt einen Chef: die Anmeldung folgt.
   done,
 }
 
@@ -165,7 +166,9 @@ class PairingController extends Notifier<PairingState> {
   Future<void> _afterLoad() async {
     final bool anyone;
     try {
-      anyone = (await ref.read(staffRepositoryProvider).all()).isNotEmpty;
+      anyone = (await ref.read(staffRepositoryProvider).all()).any(
+        (s) => s.isChef,
+      );
     } catch (_) {
       if (ref.mounted) state = state.copyWith(step: PairingStep.loadFailed);
       return;

@@ -30,10 +30,13 @@ String pairingFailureText(ServerFailure f) => switch (f) {
 };
 
 class PairingView extends ConsumerWidget {
-  const PairingView({super.key, required this.onBack});
+  const PairingView({super.key, required this.onBack, required this.onNewCode});
 
   /// "Zurück" auf der Code-Eingabe.
   final VoidCallback onBack;
+
+  /// "Mit neuem Code koppeln" nach einem gescheiterten Laden.
+  final VoidCallback onNewCode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,7 +46,11 @@ class PairingView extends ConsumerWidget {
     final Widget card =
         state.step == PairingStep.idle || state.step == PairingStep.checking
         ? _CodeCard(state: state, controller: controller, onBack: onBack)
-        : _ConnectedCard(state: state, controller: controller);
+        : _ConnectedCard(
+            state: state,
+            controller: controller,
+            onNewCode: onNewCode,
+          );
     return Scaffold(
       backgroundColor: c.ground,
       body: SafeArea(
@@ -159,10 +166,15 @@ class _CodeCard extends StatelessWidget {
 }
 
 class _ConnectedCard extends StatelessWidget {
-  const _ConnectedCard({required this.state, required this.controller});
+  const _ConnectedCard({
+    required this.state,
+    required this.controller,
+    required this.onNewCode,
+  });
 
   final PairingState state;
   final PairingController controller;
+  final VoidCallback onNewCode;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +217,7 @@ class _ConnectedCard extends StatelessWidget {
               key: const Key('pair-new'),
               label: 'Mit neuem Code koppeln',
               filled: false,
-              onPressed: controller.restart,
+              onPressed: onNewCode,
             ),
           ],
         );
