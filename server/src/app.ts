@@ -1,6 +1,7 @@
 import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { installBusinessRoutes } from './admin/businesses.js';
+import { installReleaseRoutes } from './admin/releases.js';
 import { installRegisterRoutes } from './admin/registers.js';
 import { installStaffRoutes } from './admin/staff.js';
 import { installAuth } from './auth/routes.js';
@@ -9,18 +10,28 @@ import { installPullRoutes } from './device/pull.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
 import { installErrorHandling } from './errors.js';
+import type { FileStore } from './storage/file_store.js';
 
 export type AppDeps = {
   config: Config;
   db: Db;
-  /** Wird in Task 9 zum FileStore. */
-  files: unknown;
+  files: FileStore;
   now: () => Date;
   /** Zufallszahl von 0 bis 99 999 999 für Kopplungscodes. Vorgabe ist crypto.randomInt; Tests ersetzen sie. */
   randomCode?: () => number;
+  /** Höchste Größe einer Installationsdatei. Vorgabe 200 MB; Tests setzen eine kleine Grenze. */
+  maxReleaseBytes?: number;
 };
 
 export const BODY_LIMIT = 1024 * 1024;
+
+/**
+ * Der Pfad ohne Abfrage. Der geheime Teil eines Installations-Links ist eine Fähigkeit und bleibt aus dem Protokoll:
+ * `/laden/<geheim>/kassa-1.2.0.apk` wird zu `/laden/…/kassa-1.2.0.apk`.
+ */
+function loggedPath(url: string): string {
+  return url.split('?')[0]!.replace(/^\/laden\/[^/]*/, '/laden/…');
+}
 
 /**
  * Einstellungen für das Protokoll. Die Adresse steht ohne Abfrage darin, weil dort
@@ -33,7 +44,7 @@ export function loggerOptions(stream?: { write(msg: string): void }): FastifySer
     serializers: {
       req: (req: FastifyRequest) => ({
         method: req.method,
-        url: req.url.split('?')[0],
+        url: loggedPath(req.url),
         host: req.host,
         remoteAddress: req.ip,
       }),
@@ -55,6 +66,7 @@ export async function buildApp(
 
   app.get('/healthz', async () => ({ ok: true }));
   installAuth(app);
+  await installReleaseRoutes(app);
   installBusinessRoutes(app);
   installStaffRoutes(app);
   installRegisterRoutes(app);

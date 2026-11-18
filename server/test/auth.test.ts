@@ -3,6 +3,8 @@ import { buildApp, loggerOptions } from '../src/app.js';
 import { requireBusinessAccess, requireProvider, requireUser, isUuid } from '../src/auth/guards.js';
 import { sha256 } from '../src/auth/secrets.js';
 import { withSystem } from '../src/db/tenant.js';
+import { tmpdir } from 'node:os';
+import { LocalFileStore } from '../src/storage/local_file_store.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createTestDb, TEST_APP_PASSWORD } from './support/db.js';
 import { authed, insertBusiness, createChef, createProvider, PROVIDER_EMAIL, TEST_PASSWORD } from './support/users.js';
@@ -411,7 +413,7 @@ test('im Protokoll steht kein Geheimnis', async () => {
         passwordCost: 1024,
       },
       db: testDb.db,
-      files: undefined,
+      files: new LocalFileStore(tmpdir()),
       now: () => new Date('2026-11-18T10:00:00Z'),
     },
     { logger: loggerOptions({ write: (s: string) => void lines.push(s) }) },

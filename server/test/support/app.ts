@@ -5,12 +5,14 @@ import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 import { buildApp, type AppDeps } from '../../src/app.js';
 import type { Config } from '../../src/config.js';
 import type { Db } from '../../src/db/db.js';
+import { LocalFileStore } from '../../src/storage/local_file_store.js';
 import { createTestDb, TEST_APP_PASSWORD } from './db.js';
 
 export type TestApp = {
   app: FastifyInstance;
   db: Db;
   now: { value: Date };
+  fileDir: string;
   close(): Promise<void>;
 };
 
@@ -33,14 +35,16 @@ export async function testApp(
   const app = await buildApp({
     config,
     db: overrides.db ?? testDb.db,
-    files: overrides.files,
+    files: overrides.files ?? new LocalFileStore(config.fileDir!),
     now: overrides.now ?? (() => now.value),
     ...(overrides.randomCode ? { randomCode: overrides.randomCode } : {}),
+    ...(overrides.maxReleaseBytes ? { maxReleaseBytes: overrides.maxReleaseBytes } : {}),
   }, opts);
   return {
     app,
     db: overrides.db ?? testDb.db,
     now,
+    fileDir: config.fileDir!,
     async close() {
       await app.close();
       await testDb.drop();
