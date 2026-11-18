@@ -4,7 +4,7 @@ Diese Liste ist zum Abhaken am echten Tablet und am Computer. Bei jedem Punkt st
 
 Was neu ist: Die Kassa kann sich mit einem Server verbinden. Im Browser legst du den Betrieb, die Mitarbeiter und die Kassen an, und das Tablet holt Speisekarte und Mitarbeiter von dort. Das Bonieren bleibt wie bisher, auch ohne Internet.
 
-Wichtig: Noch gehen nur Daten vom Server zum Tablet. Preise, die du am Tablet änderst, und die Bons am Tablet gehen erst mit der nächsten Stufe zum Server. Ändere Preise darum vorerst im Browser oder gar nicht. Und der Bon trägt weiter den Vermerk "TESTBON": bitte noch nicht für echte Verkäufe verwenden.
+Wichtig: Noch gehen nur Daten vom Server zum Tablet. Preise, die du am Tablet änderst, und die Bons am Tablet gehen erst mit der nächsten Stufe zum Server. Im Browser kannst du Preise in dieser Stufe auch nicht einzeln ändern, nur mit einer geänderten Speisekarten-Datei über "Speisekarte neu einspielen". Ändere Preise darum vorerst gar nicht. Beim Verbinden in Punkt 5 ersetzt das Tablet seine Speisekarte durch die vom Server: Preise, Favoriten und "Im Verkauf", die du am Tablet eingestellt hast, sind danach so, wie sie in der Datei stehen. Und der Bon trägt weiter den Vermerk "TESTBON": bitte noch nicht für echte Verkäufe verwenden.
 
 Du brauchst: das Tablet mit der Kassa (Version 1.1.0 ist installiert), einen Computer mit Browser, die Adresse, die du von mir bekommst (sie führt zur Verwaltung), den geheimen Link zum Laden der neuen Version und den Link zum Einrichten deines Kontos (beide bekommst du ebenfalls von mir), die Datei `pilot/yichi-speisekarte.json` auf dem Computer, WLAN. Ein zweites Android-Gerät ist für Punkt 8 gut, aber kein Muss. In dieser Liste heißt es "Beispiel", wo du etwas Eigenes eintippst.
 
@@ -31,13 +31,15 @@ Du brauchst: das Tablet mit der Kassa (Version 1.1.0 ist installiert), einen Com
 - [ ] Auf "Betrieb anlegen" klicken und die Datei `yichi-speisekarte.json` wählen.
   Die Datei wird geprüft und eingespielt. Wenn etwas in der Datei nicht stimmt, steht eine Liste mit den Stellen da: bitte ein Foto davon.
 - [ ] Nachsehen, wo du gelandet bist.
-  Du siehst die Seite "Kassen" von YICHI mit der Meldung "Noch keine Kassa gekoppelt.". Unten oder an der Seite stehen "Kassen", "Mitarbeiter" und "Speisekarte".
+  Du siehst die Seite "Mitarbeiter" von YICHI mit der Meldung "Noch kein Mitarbeiter. Lege zuerst einen Chef an." Unten oder an der Seite stehen "Kassen", "Mitarbeiter" und "Speisekarte". Zuerst kommt der Chef, dann die Kassa: ohne Chef könnte sich am Tablet niemand anmelden.
 - [ ] Auf "Speisekarte" klicken.
   Dort stehen die Zahlen: wie viele Artikel, Kategorien und Vorlagen. Sie passen zu deiner Datei.
+- [ ] Auf "Kassen" klicken.
+  Dort steht "Noch keine Kassa gekoppelt." und "Lege zuerst einen Chef mit PIN an." mit dem Knopf "Zu den Mitarbeitern". "Kassa koppeln" gibt es erst, wenn ein Chef da ist.
 
 ## 3. Chef mit PIN anlegen
 
-- [ ] Auf "Mitarbeiter" klicken.
+- [ ] Auf "Zu den Mitarbeitern" (oder auf "Mitarbeiter") klicken.
   Dort steht "Noch kein Mitarbeiter. Lege zuerst einen Chef an."
 - [ ] "Mitarbeiter anlegen" anklicken, einen Namen eintippen, bei "Rolle" den Chef wählen, eine PIN aus vier Ziffern eintippen (nimm eine, die du dir merkst, zum Beispiel 4711) und "Anlegen" anklicken.
   Der Chef steht in der Liste. Eine PIN, die schon jemand hat, nimmt die Verwaltung nicht an.
@@ -45,20 +47,20 @@ Du brauchst: das Tablet mit der Kassa (Version 1.1.0 ist installiert), einen Com
 ## 4. Code erzeugen
 
 - [ ] Auf "Kassen" klicken und "Kassa koppeln" anklicken.
-  Ein Fenster fragt nach einem Namen für die Kassa.
+  Jetzt, mit dem Chef, ist der Knopf da. Ein Fenster fragt nach einem Namen für die Kassa.
 - [ ] Einen Namen eintippen, zum Beispiel "Theke", und "Code erzeugen" anklicken.
-  Ein Code aus acht Ziffern steht da, dazu die Zeit, die er noch gilt (15 Minuten). Darunter: "Am Tablet: Mit Code koppeln". Das Fenster offen lassen.
+  Ein Code aus acht Ziffern steht da, dazu die Zeit, die er noch gilt (15 Minuten). Darunter zwei Zeilen: "Neues Tablet: Mit Code koppeln" und "Tablet mit Speisekarte: Einstellungen, Server, Mit Server verbinden". Dein Tablet hat schon eine Speisekarte, für dich gilt also die zweite Zeile. Das Fenster offen lassen.
 
 ## 5. Am Tablet koppeln
 
-- [ ] Vorher, wenn du das gleich mitprüfen willst: Am Tablet Einstellungen öffnen (Regler-Symbol oben rechts), in der Karte "Server" auf "Mit Server verbinden" tippen.
+- [ ] Am Tablet Einstellungen öffnen (Regler-Symbol oben rechts), in der Karte "Server" auf "Mit Server verbinden" tippen.
   Eine Frage erscheint: "Mit dem Server verbinden?". Darunter steht: "Die Speisekarte und die Mitarbeiter kommen danach vom Server. Die Bons auf diesem Tablet bleiben. Ein offener Bon wird geleert, und du meldest dich neu an."
 - [ ] Die Frage lesen und "Verbinden" antippen.
   Du siehst "Kopplungscode eingeben" mit acht Feldern und dem Hinweis "Den Code findest du in der Verwaltung unter Kassen."
 - [ ] Zuerst einen falschen Code eintippen, zum Beispiel 00000000, und "Koppeln" antippen.
   Es steht rot: "Der Code stimmt nicht oder ist abgelaufen." Das Tablet ist nicht verbunden, nichts hat sich geändert.
 - [ ] Jetzt den richtigen Code aus dem Browser eintippen und "Koppeln" antippen.
-  Kurz steht "Wird geprüft", dann "Speisekarte wird geladen", dann "Verbunden mit YICHI" und "Dieses Tablet ist jetzt Theke." (oder wie du die Kassa genannt hast).
+  Kurz dreht sich ein Kreis auf der Taste, dann steht "Speisekarte wird geladen", dann "Verbunden mit YICHI" und "Dieses Tablet ist jetzt Theke." (oder wie du die Kassa genannt hast). Steht stattdessen "Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an.", fehlt der Chef aus Punkt 3: Das Tablet hat dann nichts ersetzt. Tippe "Zurück zur Kassa" (die Kassa geht mit der alten Speisekarte und der alten PIN weiter), lege im Browser den Chef an und tippe in der Karte "Server" auf "Speisekarte laden" und dann auf "Laden".
 - [ ] Im Browser auf das Fenster mit dem Code sehen.
   Es hat sich geändert: "Kassa gekoppelt", der Name der Kassa und "Verbunden". Auf "Fertig" klicken. In der Liste steht die Kassa mit "Verbunden" und der Version 1.2.0.
 
@@ -96,11 +98,11 @@ Du brauchst: das Tablet mit der Kassa (Version 1.1.0 ist installiert), einen Com
 - [ ] "Sperren" bestätigen.
   In der Liste steht bei der Kassa "Gesperrt".
 - [ ] Am Tablet in den Einstellungen "Jetzt abgleichen" tippen.
-  Die Karte "Server" zeigt "Gesperrt" und den Satz "Diese Kassa wurde in der Verwaltung gesperrt." dazu "Bonieren geht weiter. Abgeglichen wird erst wieder, wenn die Sperre aufgehoben ist."
+  Die Karte "Server" zeigt "Gesperrt" und den Satz "Diese Kassa wurde in der Verwaltung gesperrt." dazu "Bonieren geht weiter. Abgeglichen wird erst wieder, wenn die Sperre aufgehoben ist." Darunter steht die Taste "Nochmal prüfen".
 - [ ] Am Tablet einen Artikel bonieren und bezahlen.
   Das geht ganz normal weiter.
-- [ ] Im Browser bei der Kassa "Sperre aufheben" anklicken. Am Tablet "Jetzt abgleichen" tippen.
-  Im Browser steht wieder "Verbunden". Am Tablet zeigt die Karte wieder "Verbunden mit YICHI als Theke" und "Zuletzt abgeglichen gerade eben".
+- [ ] Im Browser bei der Kassa "Sperre aufheben" anklicken. Am Tablet in der Karte "Server" auf "Nochmal prüfen" tippen.
+  Im Browser steht wieder "Verbunden". Am Tablet dreht die Taste kurz, dann zeigt die Karte wieder "Verbunden mit YICHI als Theke" und "Zuletzt abgeglichen gerade eben". Ohne Tippen merkt das Tablet es spätestens nach 5 Minuten von selbst.
 
 ## 10. Ohne Internet
 

@@ -31,7 +31,9 @@
 #   KASSA_ALLOW_NO_SERVER=1
 #                     ohne Adresse des Servers bauen (die Kassa arbeitet dann
 #                     wie bisher allein und zeigt "Diese Version hat keinen
-#                     Server")
+#                     Server"). Gilt nur, wenn keine Adresse da ist: eine
+#                     Adresse, die nicht mit https:// beginnt, bricht den Bau
+#                     auch mit KASSA_ALLOW_NO_SERVER=1 ab.
 #   KASSA_NEW_KEY=1   einen neuen Test-Schlüssel anlegen, wenn keiner da ist
 set -euo pipefail
 

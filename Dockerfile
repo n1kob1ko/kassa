@@ -9,6 +9,10 @@
 # Der Dienst liest alle Einstellungen aus der Umgebung (siehe server/README.md):
 # DATABASE_URL, APP_DB_PASSWORD, PUBLIC_URL, FILE_DIR oder S3_*, SETUP_TOKEN,
 # RELEASE_TOKEN und bei Bedarf CLIENT_IP_HEADER.
+#
+# FILE_DIR, falls verwendet, muss ein Volume sein, in das der Benutzer `node`
+# schreiben darf (der Dienst läuft unten als `node`, nicht als root). Beim
+# geplanten Hosting liegen die Dateien im Bucket (S3_*), nicht in FILE_DIR.
 
 FROM node:22-slim AS build
 WORKDIR /app

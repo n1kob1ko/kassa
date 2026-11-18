@@ -374,3 +374,10 @@ Beim Bau von C1 sind folgende Entscheidungen dazugekommen, wo dieser Entwurf sch
 - Ein Tablet gilt erst als eingerichtet, wenn es eine Speisekarte und mindestens einen Chef hat. Ein Betrieb nur mit Mitarbeitern genügt nicht.
 - Scheitert das Laden der Speisekarte nach dem Koppeln, bietet der Bildschirm neben "Nochmal versuchen" auch "Mit neuem Code koppeln" an.
 - Die Verwaltung bietet bei stillgelegten Mitarbeitern "Wieder einsetzen" an.
+- Einen Kopplungscode gibt es nur für einen Betrieb mit mindestens einem aktiven Chef. Ohne ihn antwortet der Server mit "Lege zuerst einen Chef mit PIN an." Die Verwaltung führt nach dem Anlegen eines Betriebs zuerst zu den Mitarbeitern und zeigt unter "Kassen" diesen Satz statt "Kassa koppeln", solange kein Chef da ist.
+- Ein Tablet, das schon verkauft (es hat einen Chef), wird nicht ersetzt, wenn der Betrieb am Server keinen aktiven Chef hat. Speisekarte, PINs, Anmeldung und offener Bon bleiben, das Tablet zeigt "Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an." mit "Nochmal prüfen" und "Zurück zur Kassa". Ein leeres Tablet lädt wie bisher und wartet danach auf einen Chef.
+- Die Karte einer gesperrten Kassa hat die ruhige Taste "Nochmal prüfen". Sie gleicht sofort ab, damit niemand nach dem Aufheben der Sperre bis zu 5 Minuten warten muss.
+- Fehlt der Geräte-Schlüssel beim Laden der Speisekarte oder lehnt der Server ihn ab, zeigt die Karte "Der Server kennt diese Kassa nicht mehr." mit "Neu koppeln". Neues Koppeln löscht diesen Vermerk.
+- Die Anmeldung im Browser hat neben der Wartezeit pro E-Mail eine Grenze pro Adresse: 30 Versuche in 15 Minuten, gezählt, bevor das Passwort gerechnet wird. Alte Fehlversuche (älter als 24 Stunden) und abgelaufene Sitzungen löscht der Server einmal pro Stunde.
+- Wie der Bucket angesprochen wird, ist eine Einstellung: `S3_URL_STYLE` mit `virtual` (Vorgabe, so arbeitet Railway) oder `path`.
+- `PUBLIC_URL` wird auf die Herkunft gekürzt, `DATABASE_URL` wird beim Start geprüft, `SETUP_TOKEN` und `RELEASE_TOKEN` brauchen mindestens 32 Zeichen. Keine Fehlermeldung nennt dabei den Wert.
