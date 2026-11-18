@@ -33,3 +33,19 @@ export function insertRegister(db: Db, businessId: string, f: RegisterFields = {
     return r.rows[0]!.id;
   });
 }
+
+/** Legt direkt per SQL einen Mitarbeiter an (ohne echten PIN-Prüfwert) und gibt seine Kennung zurück. */
+export function insertStaff(
+  db: Db,
+  businessId: string,
+  f: { name?: string; role?: 'chef' | 'staff'; archived?: boolean } = {},
+): Promise<string> {
+  return withBusiness(db, businessId, async (c) => {
+    const r = await c.query<{ id: string }>(
+      `insert into staff (business_id, name, role, pin_salt, pin_hash, archived, change_seq)
+       values ($1, $2, $3, 'aa', 'bb', $4, nextval('change_seq')) returning id`,
+      [businessId, f.name ?? 'Chefin', f.role ?? 'chef', f.archived ?? false],
+    );
+    return r.rows[0]!.id;
+  });
+}

@@ -266,3 +266,36 @@ test('Anlegen und Einspielen stehen im Verlauf, ohne Dateiinhalt', async () => {
   }
   expect(log[1].detail).toMatchObject({ summary: { items: { added: 0, changed: 0, archived: 0 } }, ignoredStaff: 0 });
 });
+
+test('großer Körper ohne Anmeldung oder als Chef: abgelehnt, bevor der Körper gelesen wird', async () => {
+  const { id } = await createBusiness(a.app, provider.cookie);
+  const chef = await createChef(a.db, id);
+  // Kein gültiges JSON: Würde der Körper gelesen, käme 400 bad_request statt 401 oder 404.
+  const big = `{"menuFile": "${'x'.repeat(7 * 1024 * 1024)}`;
+  for (const url of ['/api/admin/businesses', `/api/admin/businesses/${id}/menu`]) {
+    const anon = await a.app.inject({
+      method: 'POST',
+      url,
+      headers: { 'x-kassa-request': '1', 'content-type': 'application/json' },
+      payload: big,
+    });
+    expect(anon.statusCode, url).toBe(401);
+    expect(anon.json().error.code).toBe('unauthorized');
+    const asChef = await a.app.inject({
+      method: 'POST',
+      url,
+      headers: { ...authed(chef.cookie), 'content-type': 'application/json' },
+      payload: big,
+    });
+    expect(asChef.statusCode, url).toBe(404);
+    expect(asChef.json().error.code).toBe('not_found');
+  }
+  // Mit Anmeldung als Anbieter wird der Körper gelesen und als kaputt erkannt.
+  const provided = await a.app.inject({
+    method: 'POST',
+    url: `/api/admin/businesses/${id}/menu`,
+    headers: { ...authed(provider.cookie), 'content-type': 'application/json' },
+    payload: big,
+  });
+  expect(provided.statusCode).toBe(400);
+});

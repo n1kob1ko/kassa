@@ -499,3 +499,38 @@ test('isUuid erkennt nur die übliche Schreibweise', () => {
     expect(isUuid(s), s).toBe(false);
   }
 });
+
+test('Anmelden: 30 Versuche pro Adresse in 15 Minuten, dann 429 vor dem Passwort, andere Adressen nicht betroffen', async () => {
+  const a = await fresh();
+  await createProvider(a.app, a.db);
+  const from = (ip: string, email: string, password: string) =>
+    a.app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email, password },
+      headers: { 'x-kassa-request': '1' },
+      remoteAddress: ip,
+    });
+  const failures = async () =>
+    withSystem(a.db, async (c) => (await c.query('select count(*)::int as n from login_failures')).rows[0].n as number);
+
+  // Ein Erfolg gibt keinen Platz frei.
+  expect((await from('10.1.0.1', PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(200);
+  for (let i = 1; i < 30; i++) {
+    expect((await from('10.1.0.1', `niemand-${i}@example.com`, 'falsch-falsch')).statusCode).toBe(401);
+  }
+  const before = await failures();
+  const over = await from('10.1.0.1', 'noch-einer@example.com', 'falsch-falsch');
+  expect(over.statusCode).toBe(429);
+  expect(over.json().error).toEqual({ code: 'too_many_attempts', message: 'Zu viele Versuche. Bitte in 15 Minuten nochmal.' });
+  expect(over.json().retryAfterSeconds).toBe(900);
+  expect(over.headers['retry-after']).toBe('900');
+  // Auch das richtige Passwort wartet, und der abgelehnte Versuch schreibt keine Zeile.
+  expect((await from('10.1.0.1', PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(429);
+  expect(await failures()).toBe(before);
+
+  expect((await from('10.1.0.2', PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(200);
+
+  a.now.value = new Date(a.now.value.getTime() + 15 * 60 * 1000 + 1000);
+  expect((await from('10.1.0.1', PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(200);
+});

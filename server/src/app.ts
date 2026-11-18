@@ -7,6 +7,7 @@ import { installStaffRoutes } from './admin/staff.js';
 import { installAuth } from './auth/routes.js';
 import { installPairRoutes } from './device/pair.js';
 import { installPullRoutes } from './device/pull.js';
+import { clientAddress } from './client_address.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
 import { installErrorHandling } from './errors.js';
@@ -47,7 +48,8 @@ export function loggerOptions(stream?: { write(msg: string): void }): FastifySer
         method: req.method,
         url: loggedPath(req.url),
         host: req.host,
-        remoteAddress: req.ip,
+        // Die Adresse, mit der die Grenzen zählen (CLIENT_IP_HEADER), nicht req.ip: Hinter dem Proxy wäre das der Proxy.
+        remoteAddress: req.server?.deps ? clientAddress(req, req.server.deps.config) : req.socket?.remoteAddress,
       }),
     },
     ...(stream ? { stream } : {}),

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { audit } from '../audit.js';
 import { requireBusinessAccess, requireProvider } from '../auth/guards.js';
@@ -60,7 +60,12 @@ export function installBusinessRoutes(app: FastifyInstance): void {
     return { businesses };
   });
 
-  app.post('/api/admin/businesses', { bodyLimit: MENU_BODY_LIMIT }, async (req, reply) => {
+  // Mit 8 MB Grenze: Anmeldung und Rolle prüft onRequest, bevor ein Byte des Körpers gelesen wird.
+  const providerFirst = async (req: FastifyRequest) => {
+    requireProvider(req);
+  };
+
+  app.post('/api/admin/businesses', { bodyLimit: MENU_BODY_LIMIT, onRequest: providerFirst }, async (req, reply) => {
     const user = requireProvider(req);
     const menu = readMenu(req.body);
     const at = now();
@@ -118,7 +123,13 @@ export function installBusinessRoutes(app: FastifyInstance): void {
 
   app.post<{ Params: { b: string } }>(
     '/api/admin/businesses/:b/menu',
-    { bodyLimit: MENU_BODY_LIMIT },
+    {
+      bodyLimit: MENU_BODY_LIMIT,
+      onRequest: async (req: FastifyRequest<{ Params: { b: string } }>) => {
+        requireProvider(req);
+        await requireBusinessAccess(req, req.params.b);
+      },
+    },
     async (req) => {
       const user = requireProvider(req);
       await requireBusinessAccess(req, req.params.b);

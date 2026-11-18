@@ -3,8 +3,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { z } from 'zod';
 import { audit } from '../audit.js';
+import { clientAddress } from '../client_address.js';
 import { withSystem } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
+import { SlidingWindow } from '../rate_limit.js';
 import { requireUser } from './guards.js';
 import { clearLoginFailures, loginWait, recordLoginFailure } from './login_throttle.js';
 import { hashPassword, verifyPassword } from './passwords.js';
@@ -19,6 +21,8 @@ import {
 } from './sessions.js';
 
 const MIN_PASSWORD_LENGTH = 10;
+const LOGIN_ATTEMPTS_PER_ADDRESS = 30;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_EMAIL_LENGTH = 254;
 const EMAIL = /^[^\s@]+@[^\s@]+$/;
 const UNIQUE_VIOLATION = '23505';
@@ -75,6 +79,9 @@ export function installAuth(app: FastifyInstance): void {
   // Für unbekannte E-Mails wird gegen diesen Wert gerechnet, damit die Antwort gleich lange dauert.
   let dummyHash: Promise<string> | undefined;
   const dummy = () => (dummyHash ??= hashPassword('kein-echtes-passwort', config.passwordCost));
+
+  // Pro App eine eigene Zählung. Ein Erfolg gibt keinen Platz frei: Sonst hält ein Konto die Tür für fremde Versuche auf.
+  const attemptsPerAddress = new SlidingWindow(LOGIN_ATTEMPTS_PER_ADDRESS, LOGIN_WINDOW_MS);
 
   app.decorateRequest('user', null);
 
@@ -174,22 +181,31 @@ export function installAuth(app: FastifyInstance): void {
     return reply.code(reset ? 200 : 201).send({ user });
   });
 
+  /** 429 mit Retry-After und dem Satz, wie lange es noch dauert. */
+  function tooManyAttempts(reply: FastifyReply, seconds: number): ApiError {
+    const minutes = Math.ceil(seconds / 60);
+    reply.header('retry-after', String(seconds));
+    return new ApiError(
+      429,
+      'too_many_attempts',
+      `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
+      { retryAfterSeconds: seconds },
+    );
+  }
+
   app.post('/api/auth/login', async (req, reply) => {
     const body = parse(loginBody, req.body);
     const email = normalizeEmail(body.email);
     const at = now();
 
-    const wait = await withSystem(db, (c) => loginWait(c, email, at));
-    if (wait > 0) {
-      const minutes = Math.ceil(wait / 60);
-      reply.header('retry-after', String(wait));
-      throw new ApiError(
-        429,
-        'too_many_attempts',
-        `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
-        { retryAfterSeconds: wait },
-      );
+    // Vor dem Rechnen des Passworts: Jeder Versuch kostet Rechenzeit und Speicher, auch mit immer neuer E-Mail.
+    const address = clientAddress(req, config);
+    if (!attemptsPerAddress.hit(address, at)) {
+      throw tooManyAttempts(reply, Math.ceil(attemptsPerAddress.retryAfterMs(address, at) / 1000));
     }
+
+    const wait = await withSystem(db, (c) => loginWait(c, email, at));
+    if (wait > 0) throw tooManyAttempts(reply, wait);
 
     const row = (
       await withSystem(db, (c) =>

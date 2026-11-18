@@ -7,6 +7,7 @@ import { SlidingWindow } from '../src/rate_limit.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createBusiness } from './support/businesses.js';
 import { createPairingCode, normalize, PAIR_DEVICE, pull, syncFixture } from './support/device.js';
+import { insertStaff } from './support/registers.js';
 import { createProvider, type TestUser } from './support/users.js';
 
 const START = new Date('2026-11-18T10:00:00Z');
@@ -22,6 +23,9 @@ beforeAll(async () => {
   provider = await createProvider(a.app, a.db);
   businessA = (await createBusiness(a.app, provider.cookie)).id;
   businessB = (await createBusiness(a.app, provider.cookie)).id;
+  // Ohne Chef gibt es keinen Kopplungscode.
+  await insertStaff(a.db, businessA);
+  await insertStaff(a.db, businessB);
 });
 afterAll(async () => {
   await a.close();
@@ -124,6 +128,7 @@ test('previousBusinessId eines anderen Betriebs: 409 other_business, der Code gi
 
 test('previousBusinessId desselben Betriebs: 200, zweiter Eintrag Kassa', async () => {
   const b = (await createBusiness(app(), provider.cookie)).id;
+  await insertStaff(a.db, b);
   const ip = nextIp();
   const first = await pair(pairBody(await code(b)), ip);
   expect(first.statusCode).toBe(200);
@@ -215,8 +220,12 @@ test('ohne CLIENT_IP_HEADER ändern X-Forwarded-For und X-Real-IP die Adresse ni
 
 describe('mit CLIENT_IP_HEADER=x-real-ip', () => {
   let p: TestApp;
+  const lines: string[] = [];
   beforeAll(async () => {
-    p = await testApp({ config: { clientIpHeader: 'x-real-ip' } });
+    p = await testApp(
+      { config: { clientIpHeader: 'x-real-ip' } },
+      { logger: loggerOptions({ write: (s: string) => void lines.push(s) }) },
+    );
   });
   afterAll(async () => {
     await p.close();
@@ -238,6 +247,14 @@ describe('mit CLIENT_IP_HEADER=x-real-ip', () => {
     expect((await send({ 'x-real-ip': '' })).statusCode).toBe(429);
     expect((await send({ 'x-real-ip': ['203.0.113.50', '203.0.113.51'] })).statusCode).toBe(429);
     expect((await send({ 'x-real-ip': '203.0.113.52' })).statusCode).toBe(404);
+  });
+
+  test('das Protokoll nennt die Adresse, mit der die Grenze zählt', async () => {
+    lines.length = 0;
+    await send({ 'x-real-ip': '203.0.113.77', 'x-forwarded-for': '198.51.100.9' });
+    const incoming = lines.map((l) => JSON.parse(l)).filter((l) => l.req?.url === '/api/device/pair');
+    expect(incoming.length).toBeGreaterThan(0);
+    expect(incoming[0].req.remoteAddress).toBe('203.0.113.77');
   });
 });
 

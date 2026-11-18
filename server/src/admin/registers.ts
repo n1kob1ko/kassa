@@ -24,6 +24,7 @@ type RegisterRow = {
 const COLUMNS = 'id, name, paired_at, last_seen_at, app_version, device_model, blocked_at';
 
 const notFound = () => new ApiError(404, 'not_found', 'Das gibt es nicht.');
+const noChef = () => new ApiError(409, 'no_chef', 'Lege zuerst einen Chef mit PIN an.');
 const badRequest = () => new ApiError(400, 'bad_request', 'Die Anfrage ist nicht in Ordnung.');
 
 function toWire(r: RegisterRow) {
@@ -60,6 +61,9 @@ export function installRegisterRoutes(app: FastifyInstance): void {
     const at = now();
     const expiresAt = new Date(at.getTime() + CODE_LIFETIME_MS);
     const code = await withBusinessWrite(db, businessId, async (c) => {
+      // Ohne Chef hätte das Tablet nach dem Koppeln niemanden, der sich anmelden kann.
+      const chef = await c.query(`select 1 from staff where role = 'chef' and not archived limit 1`);
+      if (chef.rowCount === 0) throw noChef();
       // Benutzte und abgelaufene Codes werden sonst nie entfernt und blockieren ihren Prüfwert für immer.
       await c.query('delete from pairing_codes where used_at is not null or expires_at <= $1', [at]);
       for (let i = 0; i < MAX_DRAWS; i++) {

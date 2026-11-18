@@ -3,7 +3,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { sha256 } from '../src/auth/secrets.js';
 import { withBusiness, withSystem } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
-import { insertRegister } from './support/registers.js';
+import { insertRegister, insertStaff } from './support/registers.js';
 import { insertBusiness, authed, createChef, createProvider, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -25,13 +25,35 @@ const list = (b: string, cookie = provider.cookie) =>
 const block = (b: string, id: string, what: 'block' | 'unblock' = 'block', cookie = provider.cookie) =>
   app().inject({ method: 'POST', url: `/api/admin/businesses/${b}/registers/${id}/${what}`, headers: authed(cookie), payload: {} });
 
+/** Ein Betrieb mit einer Chefin: Nur dafür gibt es Kopplungscodes. */
+const chefBusiness = async () => {
+  const b = await insertBusiness(a.db);
+  await insertStaff(a.db, b);
+  return b;
+};
+
 const codes = (b: string) =>
   withBusiness(a.db, b, async (c) => (await c.query('select * from pairing_codes order by expires_at, register_name')).rows);
 const auditRows = (action: string) =>
   withSystem(a.db, async (c) => (await c.query('select * from audit_log where action = $1 order by id', [action])).rows);
 
-test('Code hat genau 8 Ziffern, expiresAt ist jetzt plus 15 Minuten', async () => {
+test('Betrieb ohne aktiven Chef: 409 no_chef, kein Code; mit Chef geht es', async () => {
   const b = await insertBusiness(a.db);
+  const none = await pair(b, { name: 'Kassa 1' });
+  expect(none.statusCode).toBe(409);
+  expect(none.json()).toEqual({ error: { code: 'no_chef', message: 'Lege zuerst einen Chef mit PIN an.' } });
+  await insertStaff(a.db, b, { name: 'Ali', role: 'staff' });
+  await insertStaff(a.db, b, { name: 'Alte Chefin', role: 'chef', archived: true });
+  expect((await pair(b, { name: 'Kassa 1' })).statusCode).toBe(409);
+  expect(await codes(b)).toHaveLength(0);
+  expect((await auditRows('pairing_code.create')).filter((r) => r.business_id === b)).toHaveLength(0);
+  await insertStaff(a.db, b, { name: 'Chefin', role: 'chef' });
+  expect((await pair(b, { name: 'Kassa 1' })).statusCode).toBe(201);
+  expect(await codes(b)).toHaveLength(1);
+});
+
+test('Code hat genau 8 Ziffern, expiresAt ist jetzt plus 15 Minuten', async () => {
+  const b = await chefBusiness();
   const res = await pair(b, { name: '  Kassa 1 ' });
   expect(res.statusCode).toBe(201);
   expect(res.json().code).toMatch(/^[0-9]{8}$/);
@@ -40,7 +62,7 @@ test('Code hat genau 8 Ziffern, expiresAt ist jetzt plus 15 Minuten', async () =
 });
 
 test('in der Datenbank steht nur der Prüfwert, nicht der Code', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const { code } = (await pair(b, { name: 'Kassa 1' })).json();
   const rows = await codes(b);
   expect(rows).toHaveLength(1);
@@ -50,7 +72,7 @@ test('in der Datenbank steht nur der Prüfwert, nicht der Code', async () => {
 });
 
 test('100 Codes: alle 8 Zeichen lang, auch die mit führender Null', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   nextCode = () => 42;
   try {
     const first = await pair(b, { name: 'Kassa 1' });
@@ -69,14 +91,14 @@ test('100 Codes: alle 8 Zeichen lang, auch die mit führender Null', async () =>
 });
 
 test('ältere Codes bleiben gültig', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   await pair(b, { name: 'Kassa 1' });
   await pair(b, { name: 'Kassa 2' });
   expect(await codes(b)).toHaveLength(2);
 });
 
 test('Name nach dem Kürzen leer, zu lang oder kein Text: 422 name_invalid', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   for (const name of ['   ', '', 'x'.repeat(31), 5, null]) {
     const res = await pair(b, { name });
     expect(res.statusCode).toBe(422);
@@ -87,8 +109,8 @@ test('Name nach dem Kürzen leer, zu lang oder kein Text: 422 name_invalid', asy
 });
 
 test('neuer Code räumt benutzte und abgelaufene Codes dieses Betriebs weg, andere nicht', async () => {
-  const b = await insertBusiness(a.db);
-  const other = await insertBusiness(a.db);
+  const b = await chefBusiness();
+  const other = await chefBusiness();
   const old = new Date('2026-11-18T09:00:00Z');
   const future = new Date('2026-11-18T11:00:00Z');
   const add = (biz: string, hash: string, name: string, expires: Date, used: Date | null) =>
@@ -108,8 +130,8 @@ test('neuer Code räumt benutzte und abgelaufene Codes dieses Betriebs weg, ande
 });
 
 test('gleicher Code schon vergeben: neuer Code wird gezogen', async () => {
-  const b = await insertBusiness(a.db);
-  const other = await insertBusiness(a.db);
+  const b = await chefBusiness();
+  const other = await chefBusiness();
   nextCode = () => 7;
   try {
     expect((await pair(other, { name: 'Kassa 1' })).json().code).toBe('00000007');
@@ -127,8 +149,8 @@ test('gleicher Code schon vergeben: neuer Code wird gezogen', async () => {
 });
 
 test('fünfmal derselbe Code: 500 internal, nichts angelegt, kein Verlauf', async () => {
-  const b = await insertBusiness(a.db);
-  const other = await insertBusiness(a.db);
+  const b = await chefBusiness();
+  const other = await chefBusiness();
   nextCode = () => 9;
   try {
     expect((await pair(other, { name: 'Kassa 1' })).statusCode).toBe(201);
@@ -147,7 +169,7 @@ test('fünfmal derselbe Code: 500 internal, nichts angelegt, kein Verlauf', asyn
 });
 
 test('Verlauf pairing_code.create enthält den Code nicht', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const { code } = (await pair(b, { name: 'Kassa 1' })).json();
   const rows = (await auditRows('pairing_code.create')).filter((r) => r.business_id === b);
   expect(rows).toHaveLength(1);
@@ -157,7 +179,7 @@ test('Verlauf pairing_code.create enthält den Code nicht', async () => {
 });
 
 test('Liste zeigt keine Geräte-Schlüssel, neueste zuerst', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const older = await insertRegister(a.db, b, { name: 'Alt', pairedAt: new Date('2026-11-01T10:00:00Z') });
   const newer = await insertRegister(a.db, b, {
     name: 'Neu',
@@ -187,7 +209,7 @@ test('Liste zeigt keine Geräte-Schlüssel, neueste zuerst', async () => {
 });
 
 test('sperren setzt blocked, aufheben nimmt es weg, beides im Verlauf', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const id = await insertRegister(a.db, b);
   const r1 = await block(b, id);
   expect(r1.statusCode).toBe(200);
@@ -204,7 +226,7 @@ test('sperren setzt blocked, aufheben nimmt es weg, beides im Verlauf', async ()
 });
 
 test('zweimal sperren ist kein Fehler und behält den ersten Zeitpunkt', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const id = await insertRegister(a.db, b);
   expect((await block(b, id)).statusCode).toBe(200);
   const first = await withBusiness(a.db, b, async (c) => (await c.query('select blocked_at from registers where id = $1', [id])).rows[0].blocked_at);
@@ -217,7 +239,7 @@ test('zweimal sperren ist kein Fehler und behält den ersten Zeitpunkt', async (
 });
 
 test('Chef des eigenen Betriebs darf alles', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const chef = await createChef(a.db, b);
   const id = await insertRegister(a.db, b);
   expect((await pair(b, { name: 'K' }, chef.cookie)).statusCode).toBe(201);
@@ -226,8 +248,8 @@ test('Chef des eigenen Betriebs darf alles', async () => {
 });
 
 test('Chef von B: Code für A 404, Liste von A 404, Sperren 404 und nichts ändert sich', async () => {
-  const bizA = await insertBusiness(a.db);
-  const bizB = await insertBusiness(a.db);
+  const bizA = await chefBusiness();
+  const bizB = await chefBusiness();
   const chefB = await createChef(a.db, bizB);
   const regA = await insertRegister(a.db, bizA);
   expect((await pair(bizA, { name: 'K' }, chefB.cookie)).statusCode).toBe(404);
@@ -239,8 +261,8 @@ test('Chef von B: Code für A 404, Liste von A 404, Sperren 404 und nichts ände
 });
 
 test('Kasse eines anderen Betriebs unter eigener Adresse: 404, nichts ändert sich; Liste von B sieht A nicht', async () => {
-  const bizA = await insertBusiness(a.db);
-  const bizB = await insertBusiness(a.db);
+  const bizA = await chefBusiness();
+  const bizB = await chefBusiness();
   const regA = await insertRegister(a.db, bizA);
   const res = await block(bizB, regA);
   expect(res.statusCode).toBe(404);
@@ -254,7 +276,7 @@ test('Kasse eines anderen Betriebs unter eigener Adresse: 404, nichts ändert si
 });
 
 test('ohne Anmeldung 401, unbekannter Betrieb, unbekannte Kasse oder keine uuid 404', async () => {
-  const b = await insertBusiness(a.db);
+  const b = await chefBusiness();
   const id = await insertRegister(a.db, b);
   const anon = (method: 'GET' | 'POST', url: string) =>
     app().inject({ method, url, headers: { 'x-kassa-request': '1' }, ...(method === 'POST' ? { payload: {} } : {}) });

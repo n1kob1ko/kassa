@@ -75,6 +75,8 @@ class ApkGate extends Transform {
 }
 
 const tooLarge = () => new ApiError(413, 'file_too_large', 'Die Datei ist zu groß.');
+const unsupportedType = () =>
+  new ApiError(415, 'unsupported_media_type', `Bitte schicke die Datei als ${APK_TYPE}.`);
 const notAnApk = () => new ApiError(422, 'not_an_apk', 'Das ist keine Installationsdatei für Android.');
 
 function toWire(r: ReleaseRow) {
@@ -116,6 +118,8 @@ export async function installReleaseRoutes(app: FastifyInstance): Promise<void> 
       if (typeof build !== 'string' || !/^[1-9]\d{0,9}$/.test(build) || Number(build) > MAX_BUILD) {
         throw versionInvalid();
       }
+      const type = (req.headers['content-type'] ?? '').split(';')[0]!.trim().toLowerCase();
+      if (type !== APK_TYPE) throw unsupportedType();
       const declared = Number(req.headers['content-length']);
       if (Number.isFinite(declared) && declared > maxBytes) throw tooLarge();
     };

@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import type { Readable } from 'node:stream';
 import type { S3Config } from '../config.js';
@@ -12,6 +12,16 @@ function isMissing(err: unknown): boolean {
   return e.name === 'NoSuchKey' || e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404;
 }
 
+/** Die Einstellungen des Clients. Railway-Buckets erwarten den Bucket im Hostnamen (S3_URL_STYLE=virtual). */
+export function s3ClientConfig(cfg: S3Config): S3ClientConfig & { forcePathStyle: boolean } {
+  return {
+    endpoint: cfg.endpoint,
+    region: cfg.region,
+    forcePathStyle: cfg.urlStyle === 'path',
+    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+  };
+}
+
 /** Ablage in einem S3-kompatiblen Bucket (zum Beispiel bei Railway). */
 export class S3FileStore implements FileStore {
   private readonly client: S3Like;
@@ -19,14 +29,7 @@ export class S3FileStore implements FileStore {
 
   constructor(cfg: S3Config, client?: S3Like) {
     this.bucket = cfg.bucket;
-    this.client =
-      client ??
-      new S3Client({
-        endpoint: cfg.endpoint,
-        region: cfg.region,
-        forcePathStyle: true,
-        credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
-      });
+    this.client = client ?? new S3Client(s3ClientConfig(cfg));
   }
 
   async put(key: string, body: Readable, contentType: string): Promise<void> {

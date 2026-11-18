@@ -1,7 +1,7 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 import { expect, test } from 'vitest';
-import { S3FileStore } from '../src/storage/s3_file_store.js';
+import { S3FileStore, s3ClientConfig } from '../src/storage/s3_file_store.js';
 
 // Gegen einen echten Bucket ist der Weg hier nicht geprüft (Task 17). Das Netz ersetzt ein Stellvertreter.
 type Sent = { name: string; input: Record<string, unknown> };
@@ -18,7 +18,14 @@ function stubClient(answer: (s: Sent) => unknown) {
     },
   };
 }
-const cfg = { endpoint: 'https://s3.example.com', bucket: 'beispiel', accessKeyId: 'a', secretAccessKey: 'b', region: 'eu' };
+const cfg = {
+  endpoint: 'https://s3.example.com',
+  bucket: 'beispiel',
+  accessKeyId: 'a',
+  secretAccessKey: 'b',
+  region: 'eu',
+  urlStyle: 'path' as const,
+};
 
 test('Schlüssel mit .. wird abgelehnt, ohne dass eine Anfrage hinausgeht', async () => {
   const { client, sent } = stubClient(() => ({}));
@@ -62,4 +69,14 @@ test('delete und put schicken Bucket, Schlüssel und Inhaltstyp', async () => {
   expect(s.sent.map((x) => x.name)).toEqual(['PutObjectCommand', 'DeleteObjectCommand']);
   expect(s.sent[0]!.input).toMatchObject({ Bucket: 'beispiel', Key: 'releases/a.apk', ContentType: 'application/x-test' });
   expect(s.sent[1]!.input).toMatchObject({ Bucket: 'beispiel', Key: 'releases/a.apk' });
+});
+
+test('S3_URL_STYLE: virtual schickt den Bucket im Hostnamen, path im Pfad', () => {
+  expect(s3ClientConfig({ ...cfg, urlStyle: 'virtual' }).forcePathStyle).toBe(false);
+  expect(s3ClientConfig({ ...cfg, urlStyle: 'path' }).forcePathStyle).toBe(true);
+  expect(s3ClientConfig(cfg)).toMatchObject({
+    endpoint: 'https://s3.example.com',
+    region: 'eu',
+    credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+  });
 });

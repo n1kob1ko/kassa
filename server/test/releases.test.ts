@@ -351,3 +351,32 @@ test('Dateien liegen unter einem eigenen Schlüssel in der Ablage, nicht unter d
   expect(files[0]).not.toContain(downloadPath.split('/')[2]);
   expect((await stat(files[0]!)).size).toBeGreaterThan(0);
 });
+
+test('ohne oder mit falschem Inhaltstyp: 415 in der üblichen Form, nichts in der Ablage', async () => {
+  const a = await fresh();
+  const noType = await a.app.inject({
+    method: 'PUT',
+    url: '/api/releases/1.2.0?build=7',
+    headers: { authorization: `Bearer ${TOKEN}` },
+    payload: apk(),
+  });
+  expect(noType.statusCode).toBe(415);
+  expect(noType.json()).toEqual({
+    error: { code: 'unsupported_media_type', message: 'Bitte schicke die Datei als application/vnd.android.package-archive.' },
+  });
+  const wrongType = await upload(a, apk(), { type: 'application/octet-stream' });
+  expect(wrongType.statusCode).toBe(415);
+  expect(wrongType.json().error.code).toBe('unsupported_media_type');
+  // Über eine echte Verbindung ohne Content-Type (inject setzt sonst selbst einen).
+  const address = await a.app.listen({ host: '127.0.0.1', port: 0 });
+  const real = await fetch(`${address}/api/releases/1.2.0?build=7`, {
+    method: 'PUT',
+    headers: { authorization: `Bearer ${TOKEN}` },
+    body: new Uint8Array(apk()),
+  });
+  expect(real.headers.get('content-type') ?? '').toMatch(/json/);
+  expect(real.status).toBe(415);
+  expect((await real.json()).error.code).toBe('unsupported_media_type');
+  expect(await filesLeft(a)).toEqual([]);
+  expect(await count(a)).toBe(0);
+});

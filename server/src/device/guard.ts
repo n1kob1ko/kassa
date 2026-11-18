@@ -11,7 +11,7 @@ const MAX_APP_VERSION = 40;
 const SEEN_INTERVAL_MS = 60 * 1000;
 
 const unauthorized = () =>
-  new ApiError(401, 'unauthorized', 'Diese Kassa ist nicht gekoppelt. Bitte koppel sie in den Einstellungen neu.');
+  new ApiError(401, 'unauthorized', 'Diese Kassa ist nicht gekoppelt. Bitte kopple sie in den Einstellungen neu.');
 
 /** Die App-Version aus der Kopfzeile, sonst null. Zu lange oder mehrfache Angaben zählen nicht. */
 function appVersion(req: FastifyRequest): string | null {
