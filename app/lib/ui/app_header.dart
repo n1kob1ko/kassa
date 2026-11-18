@@ -32,6 +32,7 @@ class AppHeader extends StatelessWidget {
     required this.onSettings,
     this.settingsActive = false,
     this.businessName,
+    this.offline = false,
   });
 
   final AppArea area;
@@ -46,6 +47,9 @@ class AppHeader extends StatelessWidget {
 
   /// Name des Betriebs, neben der Wortmarke.
   final String? businessName;
+
+  /// Das Tablet hat kein Internet: eine Pille sagt es und dass Bar weitergeht.
+  final bool offline;
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +110,10 @@ class AppHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (offline) ...[
+            const _OfflinePill(),
+            const SizedBox(width: KassaTokens.spaceXl),
+          ],
           const SizedBox(width: KassaTokens.spaceXl),
           _StaffButton(name: staffName, onTap: onStaff),
           if (isChef) ...[
@@ -113,6 +121,47 @@ class AppHeader extends StatelessWidget {
             _SettingsButton(active: settingsActive, onTap: onSettings),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "Kein Internet. Bar bonieren geht weiter." in `warnBg`.
+class _OfflinePill extends StatelessWidget {
+  const _OfflinePill();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: Container(
+        key: const Key('offline-pill'),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: c.warnBg,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.wifiOff, size: 18, color: c.warnInk),
+            const SizedBox(width: KassaTokens.spaceMd),
+            Flexible(
+              child: Text(
+                'Kein Internet. Bar bonieren geht weiter.',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: c.warnInk,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

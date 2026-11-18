@@ -262,18 +262,16 @@ void main() {
     expect(_toggleValue(t, 'toggle-drawer'), isTrue);
   });
 
-  testWidgets(
-    'Geräte, die es in dieser Version noch nicht gibt, sind als solche beschriftet',
-    (t) async {
-      await pumpSettings(t);
-      expect(find.text('Bondrucker'), findsOneWidget);
-      expect(find.text('Kartenterminal'), findsOneWidget);
-      expect(find.text('Kommt mit einem späteren Update.'), findsOneWidget);
-      expect(find.text('Noch nicht dabei'), findsOneWidget);
-      expect(find.text('Nicht eingerichtet'), findsOneWidget);
-      expect(find.textContaining('Kundenanzeige'), findsNothing);
-    },
-  );
+  testWidgets('Zeilen der Geräte: Bondrucker und Kartenterminal, nichts '
+      'Angekündigtes', (t) async {
+    await pumpSettings(t);
+    expect(find.text('Bondrucker'), findsOneWidget);
+    expect(find.text('Kartenterminal'), findsOneWidget);
+    expect(find.text('Kommt mit einem späteren Update.'), findsNothing);
+    expect(find.text('Noch nicht dabei'), findsNothing);
+    expect(find.text('Nicht eingerichtet'), findsOneWidget); // der Drucker
+    expect(find.textContaining('Kundenanzeige'), findsNothing);
+  });
 
   testWidgets('Titel, Untertitel und Version', (t) async {
     await pumpSettings(t);

@@ -10,6 +10,7 @@
 // ebenfalls ohne `t.runAsync`. Nur echte Zeit (Timer, Dateien, Isolate) braucht
 // `t.runAsync`.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -108,7 +109,8 @@ Future<void> pumpApp(
 /// den die Dateiauswahl liefert (`null`: die Person bricht ab). Der Drucker
 /// ist ein [FakePrinter] (oder [printer]); Tests erreichen ihn mit [printerOf].
 /// Das Kartenterminal ist ein [FakeCardTerminal] (oder [terminal]), erreichbar
-/// mit [terminalOf]. Das Internet ist da.
+/// mit [terminalOf]. Das Internet ist da, oder es folgt dem Strom [internet]
+/// (siehe [InternetSwitch]).
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
@@ -116,6 +118,7 @@ Future<List<Override>> memoryOverrides({
   MenuFilePicker? picker,
   ReceiptPrinter? printer,
   CardTerminal? terminal,
+  Stream<bool>? internet,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -130,7 +133,7 @@ Future<List<Override>> memoryOverrides({
     databaseProvider.overrideWithValue(db),
     receiptPrinterProvider.overrideWithValue(printer ?? FakePrinter()),
     cardTerminalProvider.overrideWithValue(terminal ?? FakeCardTerminal()),
-    internetProvider.overrideWith((ref) => Stream.value(true)),
+    internetProvider.overrideWith((ref) => internet ?? Stream.value(true)),
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
@@ -144,6 +147,25 @@ Future<List<Override>> memoryOverrides({
 /// Der falsche Drucker der laufenden Oberfläche.
 FakePrinter printerOf(WidgetTester t) =>
     containerOf(t).read(receiptPrinterProvider) as FakePrinter;
+
+/// Schaltet das Internet der Tests an und aus: `memoryOverrides(internet:
+/// switch_.stream)`.
+class InternetSwitch {
+  InternetSwitch({this.initial = true});
+
+  /// Der Stand, mit dem der Strom beginnt.
+  final bool initial;
+
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
+
+  /// Der Strom für `memoryOverrides`; liefert zuerst [initial].
+  Stream<bool> get stream async* {
+    yield initial;
+    yield* _controller.stream;
+  }
+
+  void set(bool value) => _controller.add(value);
+}
 
 /// Das falsche Kartenterminal der laufenden Oberfläche.
 FakeCardTerminal terminalOf(WidgetTester t) =>

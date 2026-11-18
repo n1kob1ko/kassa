@@ -1,5 +1,6 @@
 // Provider für die Geräte der Kassa.
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
@@ -15,6 +16,28 @@ export 'internet.dart' show internetProvider;
 
 /// Das Kartenterminal der Kassa.
 final cardTerminalProvider = Provider<CardTerminal>((ref) => SumUpTerminal());
+
+/// Der Stand des Kartenterminals (angemeldet oder nicht). Wer anmeldet oder
+/// abmeldet, holt ihn mit `ref.invalidate` neu. Er wird auch neu geholt, wenn
+/// die App wieder in den Vordergrund kommt: die Seiten von SumUp für Anmeldung
+/// und Kartenleser sind eigene Android-Bildschirme über der App.
+final cardStatusProvider = FutureProvider<CardTerminalStatus>((ref) {
+  final observer = _ResumeObserver(ref.invalidateSelf);
+  WidgetsBinding.instance.addObserver(observer);
+  ref.onDispose(() => WidgetsBinding.instance.removeObserver(observer));
+  return ref.watch(cardTerminalProvider).status();
+});
+
+class _ResumeObserver with WidgetsBindingObserver {
+  _ResumeObserver(this._onResumed);
+
+  final VoidCallback _onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _onResumed();
+  }
+}
 
 typedef TransportFactory = PrinterTransport? Function(
   RegisterSettings settings,

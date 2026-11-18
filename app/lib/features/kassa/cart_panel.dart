@@ -3,6 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../devices/card_terminal.dart';
+import '../../devices/device_providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/pricing.dart';
 import '../../ui/pressable.dart';
@@ -14,11 +16,20 @@ import 'cart_controller.dart';
 import 'cart_line_row.dart';
 
 /// Die Bon-Spalte, 392 dp breit: Kopf, Zeilen, Summenblock, Bar und Karte.
-/// [canPay] ist `false`, solange etwas zusammengestellt wird.
+/// [canPay] ist `false`, solange etwas zusammengestellt wird. "Karte" ist nur
+/// aktiv, wenn das Terminal angemeldet ist, Internet da ist und die Summe
+/// mindestens den Kleinstbetrag des Terminals erreicht; sonst nennt eine Zeile
+/// unter dem Wort den ersten Grund.
 class CartPanel extends ConsumerStatefulWidget {
-  const CartPanel({super.key, required this.onPayCash, this.canPay = true});
+  const CartPanel({
+    super.key,
+    required this.onPayCash,
+    required this.onPayCard,
+    this.canPay = true,
+  });
 
   final VoidCallback onPayCash;
+  final VoidCallback onPayCard;
   final bool canPay;
 
   @override
@@ -45,6 +56,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   void _pay() {
     _dismissToast();
     widget.onPayCash();
+  }
+
+  void _payCard() {
+    _dismissToast();
+    widget.onPayCard();
   }
 
   void _clear() {
@@ -83,6 +99,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       }
     });
     final controller = ref.read(cartProvider.notifier);
+    final card = _cardAvailability(cart);
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final tax = taxBreakdown(grossByRate(cart))
         .fold<int>(0, (s, t) => s + t.taxCents);
@@ -138,16 +155,19 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                   ),
                 ),
                 const SizedBox(width: KassaTokens.spaceLg),
-                const Expanded(
+                Expanded(
                   child: PrimaryButton(
-                    key: Key('pay-card'),
+                    key: const Key('pay-card'),
                     label: 'Karte',
-                    sublabel: 'kommt später',
+                    sublabel: card.reason,
                     icon: LucideIcons.creditCard,
                     solid: true,
+                    // Ausgeschaltet ohne Abdunkeln, damit die Zeile lesbar
+                    // bleibt.
+                    muted: !card.enabled || !widget.canPay,
                     labelSize: 22,
                     height: KassaTokens.mainActionHeight,
-                    onPressed: null,
+                    onPressed: card.enabled && widget.canPay ? _payCard : null,
                   ),
                 ),
               ],
@@ -156,6 +176,34 @@ class _CartPanelState extends ConsumerState<CartPanel> {
         ],
       ),
     );
+  }
+
+  ({bool enabled, String? reason}) _cardAvailability(Cart cart) {
+    if (cart.isEmpty) return (enabled: false, reason: null);
+    final status = ref.watch(cardStatusProvider).value;
+    // Solange der Stand noch nicht da ist, bleibt die Taste still aus.
+    if (status == null) return (enabled: false, reason: null);
+    final minimum = ref.read(cardTerminalProvider).minimumCents;
+    final online = ref.watch(internetProvider).value ?? true;
+    return switch (status.state) {
+      CardTerminalState.notConfigured => (
+        enabled: false,
+        reason: 'nicht eingerichtet',
+      ),
+      CardTerminalState.loggedOut => (
+        enabled: false,
+        reason: 'nicht angemeldet',
+      ),
+      CardTerminalState.ready when !online => (
+        enabled: false,
+        reason: 'kein Internet',
+      ),
+      CardTerminalState.ready when cart.totalCents < minimum => (
+        enabled: false,
+        reason: 'ab ${formatEuro(minimum)}',
+      ),
+      CardTerminalState.ready => (enabled: true, reason: null),
+    };
   }
 }
 

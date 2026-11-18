@@ -30,9 +30,7 @@ class VoidQuestion extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final amount = formatEuro(receipt.totalCents);
-    final hint = receipt.payment.kind == PaymentKind.cash
-        ? 'Du gibst $amount bar zurück.'
-        : '$amount gehen zurück auf die Karte.';
+    final byCard = receipt.payment.kind == PaymentKind.card;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),
@@ -48,14 +46,36 @@ class VoidQuestion extends StatelessWidget {
             style: text.titleLarge!.copyWith(fontSize: 17, color: c.spicyFg),
           ),
           const SizedBox(height: KassaTokens.spaceXxs),
-          Text(
-            hint,
-            style: text.bodyMedium!.copyWith(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: c.spicyFg,
+          if (!byCard)
+            Text(
+              'Du gibst $amount bar zurück.',
+              style: text.bodyMedium!.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: c.spicyFg,
+              ),
             ),
-          ),
+          if (byCard) ...[
+            const SizedBox(height: KassaTokens.spaceSm),
+            Container(
+              key: const Key('void-card-hint'),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: c.warnBg,
+                borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+              ),
+              child: Text(
+                'Das Geld geht nicht von selbst zurück. Bitte die Zahlung in '
+                'der SumUp-App rückbuchen.',
+                style: text.bodyMedium!.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                  color: c.warnInk,
+                ),
+              ),
+            ),
+          ],
           if (failed) ...[
             const SizedBox(height: KassaTokens.spaceSm),
             Text(
@@ -68,34 +88,57 @@ class VoidQuestion extends StatelessWidget {
             ),
           ],
           const SizedBox(height: KassaTokens.spaceXl),
-          Row(
-            children: [
-              Expanded(
-                child: BonsActionButton(
-                  key: const Key('cancel-void'),
-                  label: 'Abbrechen',
-                  height: 60,
-                  radius: KassaTokens.radiusXl,
-                  bg: c.card,
-                  fg: c.ink,
-                  onTap: busy ? null : onCancel,
+          if (byCard) ...[
+            BonsActionButton(
+              key: const Key('confirm-void'),
+              label: 'Stornieren, Rückbuchung mache ich in SumUp',
+              height: 76,
+              maxLines: 2,
+              radius: KassaTokens.radiusXl,
+              bg: c.red,
+              fg: c.card,
+              bold: true,
+              onTap: busy ? null : onConfirm,
+            ),
+            const SizedBox(height: KassaTokens.spaceLg),
+            BonsActionButton(
+              key: const Key('cancel-void'),
+              label: 'Abbrechen',
+              height: 60,
+              radius: KassaTokens.radiusXl,
+              bg: c.card,
+              fg: c.ink,
+              onTap: busy ? null : onCancel,
+            ),
+          ] else
+            Row(
+              children: [
+                Expanded(
+                  child: BonsActionButton(
+                    key: const Key('cancel-void'),
+                    label: 'Abbrechen',
+                    height: 60,
+                    radius: KassaTokens.radiusXl,
+                    bg: c.card,
+                    fg: c.ink,
+                    onTap: busy ? null : onCancel,
+                  ),
                 ),
-              ),
-              const SizedBox(width: KassaTokens.spaceLg),
-              Expanded(
-                child: BonsActionButton(
-                  key: const Key('confirm-void'),
-                  label: 'Ja, stornieren',
-                  height: 60,
-                  radius: KassaTokens.radiusXl,
-                  bg: c.red,
-                  fg: c.card,
-                  bold: true,
-                  onTap: busy ? null : onConfirm,
+                const SizedBox(width: KassaTokens.spaceLg),
+                Expanded(
+                  child: BonsActionButton(
+                    key: const Key('confirm-void'),
+                    label: 'Ja, stornieren',
+                    height: 60,
+                    radius: KassaTokens.radiusXl,
+                    bg: c.red,
+                    fg: c.card,
+                    bold: true,
+                    onTap: busy ? null : onConfirm,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -114,6 +157,7 @@ class BonsActionButton extends StatelessWidget {
     this.bg,
     this.border,
     this.bold = false,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -123,6 +167,7 @@ class BonsActionButton extends StatelessWidget {
   final Color? bg;
   final Color? border;
   final bool bold;
+  final int maxLines;
   final VoidCallback? onTap;
 
   @override
@@ -142,7 +187,8 @@ class BonsActionButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          maxLines: 1,
+          maxLines: maxLines,
+          textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.titleMedium!.copyWith(
             fontWeight: bold ? FontWeight.w800 : FontWeight.w700,

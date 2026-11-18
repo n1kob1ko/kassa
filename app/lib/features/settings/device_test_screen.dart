@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer.dart';
 import '../../ui/pressable.dart';
@@ -13,12 +14,17 @@ import 'settings_rows.dart';
 /// Ergebnis eines Geräte-Tests: [message] sagt in einem Satz, was geschehen
 /// ist. [ok] heißt, der Befehl ging hinaus; ob Papier kommt oder die Lade
 /// aufgeht, sieht die Person selbst.
+///
+/// [calm] ist ein Stand ohne Alarm ("Nicht eingerichtet."): ruhige Fläche, kein
+/// grüner Punkt.
 class DeviceTestResult {
-  const DeviceTestResult.ok(this.message) : ok = true;
-  const DeviceTestResult.problem(this.message) : ok = false;
+  const DeviceTestResult.ok(this.message) : ok = true, calm = false;
+  const DeviceTestResult.problem(this.message) : ok = false, calm = false;
+  const DeviceTestResult.calm(this.message) : ok = false, calm = true;
 
   final String message;
   final bool ok;
+  final bool calm;
 }
 
 /// Die eigene Seite "Geräte testen" im Bereich Einstellungen: je Gerät eine
@@ -41,6 +47,28 @@ class DeviceTestScreen extends ConsumerWidget {
     return outcome.ok
         ? DeviceTestResult.ok(okMessage)
         : DeviceTestResult.problem(outcome.message);
+  }
+
+  Future<DeviceTestResult> _checkCard(WidgetRef ref) async {
+    final status = await ref.read(cardTerminalProvider).status();
+    switch (status.state) {
+      case CardTerminalState.notConfigured:
+        return const DeviceTestResult.calm('Nicht eingerichtet.');
+      case CardTerminalState.loggedOut:
+        return const DeviceTestResult.problem('Nicht bei SumUp angemeldet.');
+      case CardTerminalState.ready:
+        if (!(ref.read(internetProvider).value ?? true)) {
+          return const DeviceTestResult.problem('Kein Internet.');
+        }
+        final name = status.merchantName;
+        final who = name == null || name.isEmpty
+            ? 'Angemeldet'
+            : 'Angemeldet als $name';
+        return DeviceTestResult.ok(
+          '$who. Für einen echten Test 1,00 € mit Karte bonieren und danach '
+          'stornieren.',
+        );
+    }
   }
 
   @override
@@ -118,13 +146,12 @@ class DeviceTestScreen extends ConsumerWidget {
                       : null,
                   offLabel: 'Ausgeschaltet',
                 ),
-                const DeviceTestRow(
+                DeviceTestRow(
                   id: 'card',
                   title: 'Kartenterminal',
-                  help: 'Prüft die Verbindung zum Kartenleser.',
-                  fixedResult: DeviceTestResult.problem(
-                    'Noch nicht eingerichtet.',
-                  ),
+                  help: 'Prüft die Anmeldung bei SumUp und das Internet.',
+                  action: 'Prüfen',
+                  run: () => _checkCard(ref),
                 ),
               ],
             ),
@@ -140,8 +167,7 @@ class DeviceTestScreen extends ConsumerWidget {
 /// `result-<id>`.
 ///
 /// Ohne [run] gibt es keine Taste: mit [offLabel] steht dort eine neutrale
-/// Pille ("Ausgeschaltet"), sonst nichts. Mit [fixedResult] steht das Ergebnis
-/// von Anfang an da. Während ein Test läuft, zeigt die Taste einen
+/// Pille ("Ausgeschaltet"), sonst nichts. Während ein Test läuft, zeigt die Taste einen
 /// Fortschrittsring und nimmt keinen zweiten Tipp an.
 class DeviceTestRow extends StatefulWidget {
   const DeviceTestRow({
@@ -152,7 +178,6 @@ class DeviceTestRow extends StatefulWidget {
     this.action,
     this.run,
     this.offLabel,
-    this.fixedResult,
   });
 
   final String id;
@@ -161,7 +186,6 @@ class DeviceTestRow extends StatefulWidget {
   final String? action;
   final Future<DeviceTestResult> Function()? run;
   final String? offLabel;
-  final DeviceTestResult? fixedResult;
 
   @override
   State<DeviceTestRow> createState() => _DeviceTestRowState();
@@ -197,7 +221,7 @@ class _DeviceTestRowState extends State<DeviceTestRow> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
-    final result = widget.fixedResult ?? _result;
+    final result = _result;
     final hasButton = widget.run != null && widget.action != null;
 
     Widget? control;
@@ -317,7 +341,7 @@ class _TestButton extends StatelessWidget {
 }
 
 /// Ergebnis unter der Zeile: in Ordnung mit grünem Punkt auf `fill`, ein
-/// Problem in der Warnfläche. Die Fläche trägt den Schlüssel [resultKey].
+/// ruhiger Stand ohne Punkt auf `fill`, ein Problem in der Warnfläche. Die Fläche trägt den Schlüssel [resultKey].
 class _ResultNote extends StatelessWidget {
   const _ResultNote(this.result, {required this.resultKey});
 
@@ -326,7 +350,9 @@ class _ResultNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!result.ok) return WarnBox(result.message, key: resultKey);
+    if (!result.ok && !result.calm) {
+      return WarnBox(result.message, key: resultKey);
+    }
     final c = KassaColors.of(context);
     return Container(
       key: resultKey,
@@ -337,12 +363,14 @@ class _ResultNote extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: c.green, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: KassaTokens.spaceMd),
+          if (!result.calm) ...[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: c.green, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: KassaTokens.spaceMd),
+          ],
           Expanded(
             child: Text(
               result.message,

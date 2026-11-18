@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../devices/device_providers.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart';
@@ -49,6 +50,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
             onStaff: ref.read(sessionProvider.notifier).logout,
             onSettings: () => setState(() => _settingsOpen = !_settingsOpen),
             businessName: ref.watch(catalogProvider).value?.businessName,
+            offline: !(ref.watch(internetProvider).value ?? true),
           ),
           if (_settingsOpen || _area != AppArea.close)
             ForgottenCloseBanner(

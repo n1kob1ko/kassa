@@ -97,13 +97,6 @@ void main() {
     },
   );
 
-  testWidgets('Kartenterminal: festes Ergebnis ohne Taste', (t) async {
-    await pumpSettings(t);
-    await _open(t);
-    expect(find.byKey(const Key('test-card')), findsNothing);
-    expect(_text(t, 'result-card'), 'Noch nicht eingerichtet.');
-  });
-
   testWidgets(
     'zwei schnelle Tipps lösen einen Test aus, Ring während des Tests',
     (t) async {

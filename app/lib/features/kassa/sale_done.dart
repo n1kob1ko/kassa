@@ -6,13 +6,16 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
+import '../../domain/receipt.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
 import 'sale_service.dart';
 
 /// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
-/// das Rückgeld, das die Person jetzt herausgibt. "Nächster Kunde" führt zur
+/// das Rückgeld, das die Person jetzt herausgibt. Bei einer Kartenzahlung steht
+/// statt des Rückgelds "Mit Karte bezahlt" und, was bekannt ist, Kartenart und
+/// die letzten vier Ziffern. "Nächster Kunde" führt zur
 /// leeren Kassa zurück und ist immer sofort aktiv, auch während des Druckens.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
@@ -53,7 +56,9 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final drawer = settings.cashDrawerEnabled;
     final number = widget.result.receipt.number;
-    final changeCents = widget.result.receipt.payment.changeCents;
+    final payment = widget.result.receipt.payment;
+    final changeCents = payment.changeCents;
+    final byCard = payment.kind == PaymentKind.card;
     final outcome = _outcome;
     final showPrint =
         settings.printerKind != PrinterKind.none &&
@@ -112,7 +117,12 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                           KassaTokens.radiusXxl,
                         ),
                       ),
-                      child: changeCents == 0
+                      child: byCard
+                          ? _CardPaid(
+                              scheme: payment.cardScheme,
+                              last4: payment.cardLast4,
+                            )
+                          : changeCents == 0
                           ? Text(
                               'Passend bezahlt',
                               style: text.titleLarge!.copyWith(
@@ -167,6 +177,43 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Mit Karte bezahlt", darunter z. B. "VISA **** 4242" (was fehlt, entfällt).
+class _CardPaid extends StatelessWidget {
+  const _CardPaid({required this.scheme, required this.last4});
+
+  final String? scheme;
+  final String? last4;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final digits = last4 == null || last4!.isEmpty ? null : '**** $last4';
+    final detail = [
+      if (scheme != null && scheme!.isNotEmpty) scheme!,
+      ?digits,
+    ].join(' ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mit Karte bezahlt',
+          key: const Key('paid-by-card'),
+          style: text.titleLarge!.copyWith(color: c.accentInk),
+        ),
+        if (detail.isNotEmpty) ...[
+          const SizedBox(height: KassaTokens.spaceXs),
+          Text(
+            detail,
+            key: const Key('card-detail'),
+            style: text.bodyLarge!.copyWith(color: c.ink),
+          ),
+        ],
+      ],
     );
   }
 }

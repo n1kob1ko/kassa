@@ -179,6 +179,36 @@ class NeutralPill extends StatelessWidget {
   }
 }
 
+/// Pille eines Geräts, das etwas braucht: `warnBg` mit `warnInk`
+/// ("Nicht angemeldet").
+class WarnPill extends StatelessWidget {
+  const WarnPill(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge!.copyWith(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: c.warnInk,
+        ),
+      ),
+    );
+  }
+}
+
 /// Pille eines eingerichteten Geräts: `fill`, `ink`, grüner Punkt und der Name
 /// (bei langen Namen mit Auslassung).
 class DevicePill extends StatelessWidget {

@@ -304,7 +304,7 @@ void main() {
   });
 
   testWidgets(
-    'leerer Bon: Bar ist gesperrt. Karte ist in dieser Version immer gesperrt',
+    'leerer Bon: Bar und Karte sind gesperrt, mit Artikel gehen beide',
     (t) async {
       await pumpKassa(t);
       expect(_text('Noch nichts boniert'), findsOneWidget);
@@ -316,13 +316,13 @@ void main() {
       );
       expect(_button(t, 'pay-cash').onPressed, isNull);
       expect(_button(t, 'pay-card').onPressed, isNull);
-      expect(_text('kommt später'), findsOneWidget);
+      expect(_text('kommt später'), findsNothing);
       await t.tap(find.byKey(const Key('cat-snacks')));
       await t.pump();
       await t.tap(find.byKey(const Key('item-pommes')));
       await t.pump();
       expect(_button(t, 'pay-cash').onPressed, isNotNull);
-      expect(_button(t, 'pay-card').onPressed, isNull);
+      expect(_button(t, 'pay-card').onPressed, isNotNull);
       expect(t.getSize(find.byKey(const Key('pay-cash'))).height, 80);
       expect(t.getSize(find.byKey(const Key('pay-card'))).height, 80);
     },

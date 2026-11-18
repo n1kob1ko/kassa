@@ -8,7 +8,9 @@ import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/bons_pump.dart';
@@ -59,7 +61,66 @@ class _CountingVoids extends ReceiptRepository {
   }
 }
 
+/// Verkauft [cart] mit Karte (Standard: eine Cola) als die angemeldete Person.
+Future<Receipt> _sellCard(WidgetTester t) async {
+  final staff = containerOf(t).read(sessionProvider)!;
+  return containerOf(t)
+      .read(receiptRepositoryProvider)
+      .finalizeCardSale(
+        saleId: 'card-sale-1',
+        cart: const Cart.empty().add(cola),
+        staff: staff,
+        provider: 'sumup',
+        txCode: 'TX1',
+        cardScheme: 'VISA',
+        cardLast4: '4242',
+      );
+}
+
 void main() {
+  testWidgets('Storno eines Karten-Bons zeigt den Hinweis zur Rückbuchung, '
+      'bei Bar nicht', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await _sellCard(t);
+    await t.tap(find.byKey(const Key('tab-Kassa')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('tab-Bons')));
+    await t.pumpAndSettle();
+
+    // Bar: wie bisher.
+    await _startVoid(t, 1);
+    expect(find.byKey(const Key('void-card-hint')), findsNothing);
+    expect(find.text('Ja, stornieren'), findsOneWidget);
+    expect(find.text('Du gibst 3,15 € bar zurück.'), findsOneWidget);
+    await t.tap(find.byKey(const Key('cancel-void')));
+    await t.pumpAndSettle();
+
+    // Karte: der Hinweis in warnBg und die lange Beschriftung.
+    await _startVoid(t, 2);
+    expect(
+      find.text(
+        'Das Geld geht nicht von selbst zurück. Bitte die Zahlung in der '
+        'SumUp-App rückbuchen.',
+      ),
+      findsOneWidget,
+    );
+    final hint = t.widget<Container>(find.byKey(const Key('void-card-hint')));
+    expect((hint.decoration! as BoxDecoration).color, KassaColors.light.warnBg);
+    expect(
+      find.text('Stornieren, Rückbuchung mache ich in SumUp'),
+      findsOneWidget,
+    );
+    expect(find.text('Ja, stornieren'), findsNothing);
+    expect(find.textContaining('zurück auf die Karte'), findsNothing);
+    final confirm = t.getRect(find.byKey(const Key('confirm-void')));
+    expect(confirm.height, greaterThanOrEqualTo(48));
+    expect(t.takeException(), isNull);
+
+    await t.tap(find.byKey(const Key('confirm-void')));
+    await t.pumpAndSettle();
+    expect(find.text('Storniert'), findsWidgets);
+  });
+
   testWidgets('Drucken im Bon-Detail druckt genau diesen Bon', (t) async {
     await pumpBonsWithSales(t, 3);
     await setUpPrinter(t);

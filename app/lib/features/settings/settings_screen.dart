@@ -9,6 +9,7 @@ import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
+import 'card_panel.dart';
 import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
@@ -61,11 +62,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       title: 'Geräte an dieser Kassa',
       rows: [
         const PrinterPanel(),
-        const SettingsRow(
-          title: 'Kartenterminal',
-          help: 'Kommt mit einem späteren Update.',
-          control: NeutralPill('Noch nicht dabei'),
-        ),
+        const CardPanel(),
         SettingsRow(
           title: 'Geldlade',
           help: 'Ausschalten, wenn es keine Geldlade gibt.',

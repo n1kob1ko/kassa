@@ -119,6 +119,10 @@ class FakeCardTerminal implements CardTerminal {
 
   CardTerminalStatus statusValue;
 
+  /// Der Stand nach `login`; ohne Wert ändert sich nichts (Anmeldung
+  /// abgebrochen).
+  CardTerminalStatus? statusAfterLogin;
+
   /// Ein [CardPaymentResult] oder eine Funktion `() => ...` dazu.
   Object next = const CardPaid(txCode: 'TX1');
 
@@ -143,11 +147,14 @@ class FakeCardTerminal implements CardTerminal {
   @override
   Future<CardTerminalStatus> login() async {
     calls.add('login');
-    return statusValue;
+    return statusValue = statusAfterLogin ?? statusValue;
   }
 
   @override
-  Future<void> logout() async => calls.add('logout');
+  Future<void> logout() async {
+    calls.add('logout');
+    statusValue = const CardTerminalStatus(CardTerminalState.loggedOut);
+  }
 
   @override
   Future<void> openReaderSettings() async => calls.add('readerSettings');

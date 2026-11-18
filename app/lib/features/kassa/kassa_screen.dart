@@ -1,10 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../devices/card_terminal.dart';
+import '../../devices/device_providers.dart';
 import '../../domain/catalog.dart';
 import '../../ui/tokens.dart';
+import '../../ui/undo_toast.dart';
+import '../login/session.dart';
+import 'card_wait.dart';
 import 'cart_controller.dart';
 import 'cart_panel.dart';
 import 'cash_sheet.dart';
@@ -16,10 +24,13 @@ import 'sale_service.dart';
 
 const _favoritesId = 'favorites';
 
+const _cardMessageStay = Duration(seconds: 6);
+
 /// Der Kassenbildschirm: Kategorien links, Artikel (oder das Zusammenstellen)
 /// in der Mitte, der offene Bon rechts. Mit "Bar" wird die Bon-Spalte zum
-/// Bezahlen, danach zur Fertig-Ansicht; die Artikelfläche ist dabei halb
-/// ausgeblendet und reagiert nicht.
+/// Bezahlen, mit "Karte" zum Warten auf das Terminal, danach zur
+/// Fertig-Ansicht; die Artikelfläche ist dabei halb ausgeblendet und reagiert
+/// nicht.
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -28,13 +39,20 @@ class KassaScreen extends ConsumerStatefulWidget {
 }
 
 /// Was die rechte Spalte zeigt.
-enum _Side { cart, paying, done }
+enum _Side { cart, paying, waitingForCard, done }
 
 class _KassaScreenState extends ConsumerState<KassaScreen> {
   String? _categoryId;
   Item? _building;
   _Side _side = _Side.cart;
   SaleResult? _paid;
+
+  /// Der Betrag, auf den das Terminal wartet.
+  int _cardCents = 0;
+
+  /// Steht ab dem ersten Tipp auf "Karte" bis zum Ergebnis; ein zweiter Tipp im
+  /// selben Bild startet nichts.
+  bool _cardRunning = false;
 
   /// Was die Person eben getippt hat, bis die Datenbank es bestätigt: so
   /// wechselt die Ansicht im selben Bild.
@@ -54,10 +72,64 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
         .catchError((Object _) {});
   }
 
-  void _onPaid(SaleResult result) => setState(() {
-    _paid = result;
-    _side = _Side.done;
-  });
+  @override
+  void initState() {
+    super.initState();
+    _prepareTerminal();
+  }
+
+  /// Weckt den Kartenleser, wenn das Terminal angemeldet ist. Fehler gehen
+  /// still unter: ein Gerät hält nie einen Verkauf auf.
+  Future<void> _prepareTerminal() async {
+    try {
+      final status = await ref.read(cardStatusProvider.future);
+      if (!mounted || status.state != CardTerminalState.ready) return;
+      await ref.read(cardTerminalProvider).prepare();
+    } catch (_) {}
+  }
+
+  void _onPaid(SaleResult result) {
+    setState(() {
+      _paid = result;
+      _side = _Side.done;
+    });
+    unawaited(_prepareTerminal());
+  }
+
+  Future<void> _payByCard() async {
+    final staff = ref.read(sessionProvider);
+    final cart = ref.read(cartProvider);
+    if (_cardRunning || staff == null || cart.isEmpty) return;
+    _cardRunning = true;
+    setState(() {
+      _cardCents = cart.totalCents;
+      _side = _Side.waitingForCard;
+    });
+    final CardSaleOutcome outcome;
+    try {
+      outcome = await ref
+          .read(saleServiceProvider)
+          .payByCard(paymentId: const Uuid().v4(), cart: cart, staff: staff);
+    } finally {
+      _cardRunning = false;
+    }
+    if (!mounted) return;
+    switch (outcome) {
+      case CardSaleDone(:final sale):
+        _onPaid(sale);
+      case CardSaleFailed(:final message):
+        setState(() => _side = _Side.cart);
+        showUndoToast(
+          context,
+          message: message,
+          stay: _cardMessageStay,
+          viewKey: const Key('card-message'),
+        );
+      case CardSaleUnclear():
+        // Der Bon ist leer; die Frage dazu liegt über der ganzen App.
+        setState(() => _side = _Side.cart);
+    }
+  }
 
   void _tapItem(Catalog catalog, Item item) {
     if (catalog.templateOf(item) != null) {
@@ -160,6 +232,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
         switch (_side) {
           _Side.cart => CartPanel(
             onPayCash: () => setState(() => _side = _Side.paying),
+            onPayCard: _payByCard,
             canPay: building == null,
           ),
           _Side.paying => CashSheet(
@@ -167,6 +240,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
             onBack: () => setState(() => _side = _Side.cart),
             onPaid: _onPaid,
           ),
+          _Side.waitingForCard => CardWait(amountCents: _cardCents),
           _Side.done => SaleDone(
             result: _paid!,
             onNext: () => setState(() {

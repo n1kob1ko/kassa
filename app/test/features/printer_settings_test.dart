@@ -75,7 +75,7 @@ void main() {
     await pumpSettings(t);
     expect(find.byKey(const Key('printer-row')), findsOneWidget);
     expect(find.text('Nicht eingerichtet'), findsOneWidget);
-    expect(find.text('Noch nicht dabei'), findsOneWidget);
+    expect(find.text('Noch nicht dabei'), findsNothing);
     expect(find.byKey(const Key('printer-test')), findsNothing);
   });
 

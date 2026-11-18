@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/features/login/session.dart';
@@ -44,6 +45,8 @@ Future<void> pumpAppLoggedInAsChef(
   List<Override> extra = const [],
   PrinterDiscovery? discovery,
   ReceiptPrinter? printer,
+  CardTerminal? terminal,
+  Stream<bool>? internet,
 }) async {
   await pumpKassa(
     t,
@@ -55,6 +58,8 @@ Future<void> pumpAppLoggedInAsChef(
         pickedFile: pickedFile,
         picker: picker,
         printer: printer,
+        terminal: terminal,
+        internet: internet,
       ),
       // Die Netzsuche öffnet Sockets: Tests ersetzen sie immer.
       printerDiscoveryProvider.overrideWithValue(discovery ?? FakeDiscovery()),
@@ -75,6 +80,8 @@ Future<void> pumpSettings(
   List<Override> extra = const [],
   PrinterDiscovery? discovery,
   ReceiptPrinter? printer,
+  CardTerminal? terminal,
+  Stream<bool>? internet,
 }) async {
   await pumpAppLoggedInAsChef(
     t,
@@ -86,6 +93,8 @@ Future<void> pumpSettings(
     extra: extra,
     discovery: discovery,
     printer: printer,
+    terminal: terminal,
+    internet: internet,
   );
   await openSettings(t);
 }

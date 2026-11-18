@@ -11,12 +11,15 @@ OverlayEntry? _current;
 /// [KassaTokens.snackStay] (7 Sekunden) stehen. Ein neuer Hinweis ersetzt den
 /// alten. Antippen von "Rückgängig" ruft [onUndo] einmal und schließt ihn.
 /// Ohne [onUndo] zeigt der Hinweis nur den Text (z. B. das Ergebnis des
-/// Druckens). Die Rückgabe schließt den Hinweis von außen (mehrfach
+/// Druckens). [stay] ersetzt die Standzeit, [viewKey] den Schlüssel des
+/// Hinweises (Standard `undo-toast`). Die Rückgabe schließt den Hinweis von außen (mehrfach
 /// aufrufbar).
 VoidCallback showUndoToast(
   BuildContext context, {
   required String message,
   VoidCallback? onUndo,
+  Duration stay = KassaTokens.snackStay,
+  Key viewKey = const Key('undo-toast'),
 }) {
   final overlay = Overlay.of(context, rootOverlay: true);
   _current?.remove();
@@ -31,6 +34,8 @@ VoidCallback showUndoToast(
   entry = OverlayEntry(
     builder: (context) => _ToastHost(
       message: message,
+      stay: stay,
+      viewKey: viewKey,
       onUndo: onUndo == null
           ? null
           : () {
@@ -54,11 +59,15 @@ VoidCallback showUndoToast(
 class _ToastHost extends StatefulWidget {
   const _ToastHost({
     required this.message,
+    required this.stay,
+    required this.viewKey,
     required this.onUndo,
     required this.onTimeout,
   });
 
   final String message;
+  final Duration stay;
+  final Key viewKey;
   final VoidCallback? onUndo;
   final VoidCallback onTimeout;
 
@@ -72,7 +81,7 @@ class _ToastHostState extends State<_ToastHost> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(KassaTokens.snackStay, widget.onTimeout);
+    _timer = Timer(widget.stay, widget.onTimeout);
   }
 
   @override
@@ -103,6 +112,7 @@ class _ToastHostState extends State<_ToastHost> {
             child: Material(
               type: MaterialType.transparency,
               child: UndoToastView(
+                key: widget.viewKey,
                 message: widget.message,
                 onUndo: widget.onUndo,
               ),
@@ -117,7 +127,11 @@ class _ToastHostState extends State<_ToastHost> {
 /// Aussehen des Hinweises: Höhe 60, Rundung 16, `solid` mit `solidInk`.
 /// Eigenes Widget, damit Bildvergleiche es ohne Overlay zeigen können.
 class UndoToastView extends StatelessWidget {
-  const UndoToastView({super.key, required this.message, this.onUndo});
+  const UndoToastView({
+    super.key = const Key('undo-toast'),
+    required this.message,
+    this.onUndo,
+  });
 
   final String message;
   final VoidCallback? onUndo;
@@ -127,7 +141,6 @@ class UndoToastView extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme.bodyLarge!;
     return Container(
-      key: const Key('undo-toast'),
       constraints: const BoxConstraints(minHeight: 60),
       padding: EdgeInsets.only(left: 20, right: onUndo == null ? 20 : 6),
       decoration: BoxDecoration(
