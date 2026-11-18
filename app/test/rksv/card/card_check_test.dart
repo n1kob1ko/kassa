@@ -163,10 +163,13 @@ const printer = UsbDeviceInfo(
 /// Austausch kommt keine Antwort mehr. [openDelay]: so lange wartet `open`
 /// (Android fragt nach der Erlaubnis).
 class SlowReader implements ReaderTransport {
-  SlowReader(this.inner, {this.hangAt, this.openDelay});
+  SlowReader(this.inner, {this.hangAt, this.openDelay, this.hangWhen});
 
   final FakeCardReader inner;
   int? hangAt;
+
+  /// Keine Antwort auf eine Nachricht, für die das `true` ergibt.
+  bool Function(Uint8List? out)? hangWhen;
   Duration? openDelay;
   int count = 0;
 
@@ -185,6 +188,7 @@ class SlowReader implements ReaderTransport {
     count++;
     final hang = hangAt;
     if (hang != null && count >= hang) return Completer<Uint8List>().future;
+    if (hangWhen?.call(out) ?? false) return Completer<Uint8List>().future;
     return inner.exchange(out, limit: limit);
   }
 
@@ -194,6 +198,36 @@ class SlowReader implements ReaderTransport {
   @override
   Future<TabletInfo> info() => inner.info();
 }
+
+/// Ein Wächter, dessen Speicher nicht schreiben kann.
+class BrokenGuard extends MemoryPinGuard {
+  @override
+  Future<void> recordFailure(String cardNumber, int retriesLeft) async =>
+      throw StateError('Speicher voll');
+}
+
+/// Verfälscht das Prüfbyte der nächsten Antwort auf VERIFY.
+void corruptVerifyAnswer(Rig rig) {
+  rig.reader.onExchange = (_) {
+    final received = rig.card.received;
+    if (received.isNotEmpty && received.last == '00A4000C02DF01') {
+      rig.reader.corruptBlockNumber = rig.reader.cardBlocks + 1;
+      rig.reader.onExchange = null;
+    }
+  };
+}
+
+const unclearHint =
+    'Ob die Karte den Versuch gezählt hat, ist unklar. Die Kassa rechnet '
+    'vorsichtig mit einem Versuch weniger.';
+const unclearLastHint =
+    'Die Karte hat vermutlich nur noch einen Versuch. Die Kassa schickt die '
+    'PIN jetzt nicht mehr. Wird die Karte in der alten Kassa mit der '
+    'richtigen PIN verwendet, ist der Zähler wieder voll.';
+const probablyLast = 'Die Karte hat vermutlich nur noch einen Versuch.';
+const probablyLastHint =
+    'Die Kassa schickt die PIN jetzt nicht mehr. Wird die Karte in der alten '
+    'Kassa mit der richtigen PIN verwendet, ist der Zähler wieder voll.';
 
 /// Merkt sich, was der Bildschirm sah, als der Wächter schrieb.
 class SpyGuard extends MemoryPinGuard {
@@ -731,22 +765,34 @@ void main() {
       expect(rig.reader.closed, 1);
     });
 
-    test('ACOS-ID 2.1: bricht der erste Befehl ab, nennt der Bericht die feste Geschwindigkeit', () async {
+    test('ACOS-ID 2.1: der Bericht nennt die feste Geschwindigkeit, ob der Lauf gelingt oder schon beim Start abbricht', () async {
+      const line =
+          'Hinweis: Die Karte gibt ihre Geschwindigkeit fest vor (TA1 96). '
+          'Kann der Leser das nicht, bricht die Verbindung ab.';
       for (final (atr, hinted) in [(acosId2Atr, true), (acosId41Atr, false)]) {
-        final rig = Rig(card: cardOf(atr));
-        rig.reader.onExchange = (n) {
-          // 1 Einschalten, 2 Parameter, 3 Blockgröße, 4 erster Befehl.
-          if (n == 4) rig.card.removed = true;
-        };
-        await rig.check.run();
-        expect(
-          rig.row(CheckRow.card),
-          isRow(RowState.problem, lostMessage, lostHint),
-        );
-        const line =
-            'Hinweis: Die Karte gibt ihre Geschwindigkeit fest vor (TA1 96). '
-            'Kann der Leser das nicht, bricht die Verbindung ab.';
-        expect(rig.state.report.contains(line), hinted, reason: atr);
+        // 1 Einschalten, 2 Parameter, 3 Blockgröße, 4 erster Befehl.
+        for (final failAt in [null, 3, 4]) {
+          final rig = Rig(card: cardOf(atr));
+          rig.reader.onExchange = (n) {
+            if (n == failAt) rig.card.removed = true;
+          };
+          await rig.check.run();
+          if (failAt == null) {
+            expect(rig.row(CheckRow.certificate).state, RowState.ok);
+          } else {
+            expect(
+              rig.row(CheckRow.card),
+              isRow(RowState.problem, lostMessage, lostHint),
+              reason: '$atr $failAt',
+            );
+          }
+          expect(
+            rig.state.report.contains(line),
+            hinted,
+            reason: '$atr $failAt',
+          );
+          expect(line.allMatches(rig.state.report).length, hinted ? 1 : 0);
+        }
       }
     });
 
@@ -921,8 +967,8 @@ void main() {
       expect(second.state.guardBlocks, isTrue);
       expect(second.state.canSign, isFalse);
       expect(
-        second.row(CheckRow.signature).message,
-        'Die PIN war falsch. Die Karte hat nur noch einen Versuch.',
+        second.row(CheckRow.signature),
+        isRow(RowState.problem, probablyLast, probablyLastHint),
       );
       await second.check.sign('123456');
       expect(card.verifyCount, 2);
@@ -1121,16 +1167,177 @@ void main() {
       await rig.check.sign('123456');
       expect(
         rig.row(CheckRow.signature),
-        isRow(RowState.problem, lostMessage, lostHint),
+        isRow(RowState.problem, lostMessage, unclearHint),
       );
       expect(rig.card.verifyCount, 1);
       expect(verifiesSent(rig.reader), 1);
       expect(rig.card.signCount, 0);
       expect(eventsAfterLastVerify(rig.reader), ['powerOff']);
       expect(rig.reader.transfers.last, contains('**'));
-      // Der Zähler ist unbekannt: der Wächter merkt sich nichts.
-      expect(await rig.guard.retriesLeft(cardNumber), isNull);
+      // Ob die Karte gezählt hat, ist unklar: der Wächter rechnet mit einem
+      // Versuch weniger (nichts bekannt: 2).
+      expect(await rig.guard.retriesLeft(cardNumber), 2);
+      expect(rig.state.canSign, isTrue);
       expect(rig.reader.closed, 2);
+    });
+
+    test('unklarer Ausgang bei bekannten 2 Versuchen: Wächter 1, gesperrt, das nächste sign schickt nichts', () async {
+      final store = <String, int>{cardNumber: 2};
+      final rig = Rig(
+        card: cardOf(acosId41Atr, retriesLeft: 2),
+        guard: MemoryPinGuard(store),
+      );
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      corruptVerifyAnswer(rig);
+      await rig.check.sign('123456');
+      expect(
+        rig.row(CheckRow.signature),
+        isRow(RowState.problem, lostMessage, unclearLastHint),
+      );
+      expect(store[cardNumber], 1);
+      expect(rig.state.guardBlocks, isTrue);
+      expect(rig.state.canSign, isFalse);
+      final verifies = rig.card.verifyCount;
+      final masked = verifiesSent(rig.reader);
+      await rig.check.sign('654321');
+      expect(rig.card.verifyCount, verifies);
+      expect(verifiesSent(rig.reader), masked);
+
+      // Neustart: neuer Prüflauf auf demselben Speicher ist gesperrt.
+      final second = Rig(card: rig.card, guard: MemoryPinGuard(store));
+      await second.check.run();
+      expect(second.state.guardBlocks, isTrue);
+      expect(second.state.canSign, isFalse);
+      expect(second.state.cardLocked, isFalse);
+      expect(
+        second.row(CheckRow.signature),
+        isRow(RowState.problem, probablyLast, probablyLastHint),
+      );
+      await second.check.sign('123456');
+      expect(verifiesSent(second.reader), 0);
+    });
+
+    test('nichts bekannt: erster unklarer Ausgang ergibt 2, der zweite 1 und sperrt', () async {
+      final store = <String, int>{};
+      final rig = Rig(guard: MemoryPinGuard(store));
+      await rig.check.run();
+      corruptVerifyAnswer(rig);
+      await rig.check.sign('123456');
+      expect(store[cardNumber], 2);
+      expect(rig.state.canSign, isTrue);
+      expect(rig.state.guardBlocks, isFalse);
+      corruptVerifyAnswer(rig);
+      await rig.check.sign('123456');
+      expect(store[cardNumber], 1);
+      expect(rig.row(CheckRow.signature).hint, unclearLastHint);
+      expect(rig.state.guardBlocks, isTrue);
+      expect(rig.state.canSign, isFalse);
+      expect(rig.card.verifyCount, 2);
+      expect(verifiesSent(rig.reader), 2);
+    });
+
+    test('Zeitgrenze, während VERIFY unterwegs ist: Wächter rechnet wie bei verlorener Antwort, Leser frei', () {
+      fakeAsync((async) {
+        late SlowReader slow;
+        final guard = SpyGuard();
+        final rig = Rig(
+          guard: guard,
+          wrap: (reader) => slow = SlowReader(reader),
+        );
+        guard.check = rig.check;
+        guard.recordFailure(cardNumber, 2);
+        guard.rowAtWrite.clear();
+        rig.check.run();
+        async.elapse(const Duration(seconds: 1));
+        expect(rig.state.canSign, isTrue);
+        slow.hangWhen = (out) =>
+            out != null && compactHex(out).contains('0020008A08');
+        rig.check.sign('123456');
+        async.elapse(const Duration(seconds: 19));
+        expect(rig.state.busy, isTrue);
+        async.elapse(const Duration(seconds: 2));
+        expect(rig.state.busy, isFalse);
+        expect(
+          rig.row(CheckRow.signature),
+          isRow(
+            RowState.problem,
+            'Das hat zu lange gedauert.',
+            unclearLastHint,
+          ),
+        );
+        // Geschrieben, bevor der Bildschirm die Zeitgrenze sah.
+        expect(guard.rowAtWrite, [RowState.running]);
+        int? stored;
+        guard.retriesLeft(cardNumber).then((v) => stored = v);
+        async.flushMicrotasks();
+        expect(stored, 1);
+        expect(rig.state.guardBlocks, isTrue);
+        expect(rig.state.canSign, isFalse);
+        expect(rig.reader.closed, 2);
+      });
+    });
+
+    test('unklarer Ausgang, dann richtige PIN: 9000 löscht den Wächter', () async {
+      final rig = Rig();
+      await rig.check.run();
+      corruptVerifyAnswer(rig);
+      await rig.check.sign('123456');
+      expect(await rig.guard.retriesLeft(cardNumber), 2);
+      await rig.check.sign('123456');
+      expect(rig.row(CheckRow.signature).state, RowState.ok);
+      expect(await rig.guard.retriesLeft(cardNumber), isNull);
+      // Auch der Wert im Speicher der Instanz ist weg: ein neuer Lauf ist frei.
+      await rig.check.run();
+      expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      expect(rig.state.canSign, isTrue);
+    });
+
+    test('Wächter kann nicht schreiben: nach zwei falschen PINs sperrt auch ein neuer Lauf', () async {
+      final rig = Rig(guard: BrokenGuard());
+      await rig.check.run();
+      await rig.check.sign('654321');
+      await rig.check.sign('654321');
+      expect(rig.state.guardBlocks, isTrue);
+      await rig.check.run();
+      expect(rig.state.guardBlocks, isTrue);
+      expect(rig.state.canSign, isFalse);
+      final verifies = rig.card.verifyCount;
+      final opened = rig.reader.opened.length;
+      await rig.check.sign('654321');
+      expect(rig.card.verifyCount, verifies);
+      expect(rig.reader.opened.length, opened);
+      expect(rig.card.retriesLeft, 1);
+    });
+
+    test('cardLocked: nach 6983 und bei gespeicherter 0, nicht bei 63C2; resetGuard hebt es auf', () async {
+      final store = <String, int>{};
+      final rig = Rig(
+        card: cardOf(acosId41Atr, retriesLeft: 0),
+        guard: MemoryPinGuard(store),
+      );
+      await rig.check.run();
+      expect(rig.state.cardLocked, isFalse);
+      await rig.check.sign('123456');
+      expect(rig.state.cardLocked, isTrue);
+      final second = Rig(card: rig.card, guard: MemoryPinGuard(store));
+      await second.check.run();
+      expect(second.state.cardLocked, isTrue);
+      expect(
+        second.row(CheckRow.signature),
+        isRow(
+          RowState.problem,
+          'Die Karte ist gesperrt.',
+          'Wende dich an A-Trust.',
+        ),
+      );
+      await second.check.resetGuard();
+      expect(second.state.cardLocked, isFalse);
+
+      final wrong = Rig();
+      await wrong.check.run();
+      await wrong.check.sign('654321');
+      expect(wrong.state.cardLocked, isFalse);
     });
 
     test('andere Karte zwischen run und sign: kein VERIFY, Zeile 3 "Das ist eine andere Karte. Prüf nochmal."', () async {

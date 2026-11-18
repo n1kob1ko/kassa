@@ -10,10 +10,12 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as crypto;
 
+import 'atr.dart';
 import 'atrust_card.dart';
 import 'card_session.dart';
 import 'ccid.dart';
@@ -44,6 +46,7 @@ class CardCheckState {
     required this.canSign,
     required this.guardBlocks,
     required this.report,
+    this.cardLocked = false,
   });
 
   final Map<CheckRow, RowResult> rows;
@@ -54,6 +57,10 @@ class CardCheckState {
 
   /// Der Wächter kennt nur noch einen Versuch (oder keinen).
   final bool guardBlocks;
+
+  /// Die Karte hat keinen Versuch mehr (nach `6983`, `63C0` oder einer
+  /// gespeicherten 0).
+  final bool cardLocked;
 
   /// Der Bericht als Text, höchstens [CardCheck.maxReportLength] Zeichen.
   final String report;
@@ -87,6 +94,12 @@ class CardCheck {
   Map<CheckRow, RowResult> _rows = _initialRows;
   bool _busy = false;
   bool _guardBlocks = false;
+  bool _cardLocked = false;
+
+  /// Je Kartennummer der kleinste Zähler, den diese Instanz gesehen oder
+  /// vorsichtig angenommen hat. Gilt zusammen mit dem Speicher des Wächters,
+  /// auch wenn dieser nicht schreiben konnte, bis zu [resetGuard] oder 9000.
+  final Map<String, int> _lowest = {};
 
   /// Die Karte aus dem letzten Lauf, wenn Zeile 4 grün ist; sonst `null`.
   _ReadyCard? _ready;
@@ -104,6 +117,7 @@ class CardCheck {
     _busy = true;
     _ready = null;
     _guardBlocks = false;
+    _cardLocked = false;
     final facts = _facts = _Facts(_now());
     facts.log.line('Prüflauf ${_dateTime(facts.startedAt!)}');
     _rows = _initialRows;
@@ -130,7 +144,7 @@ class CardCheck {
     _publish();
     final int? left;
     try {
-      left = await _guard.retriesLeft(ready.key);
+      left = await _countOf(ready.key);
     } catch (_) {
       // Ohne Antwort des Wächters geht keine PIN hinaus.
       _busy = false;
@@ -140,6 +154,7 @@ class CardCheck {
     if (left != null && left <= 1) {
       _busy = false;
       _guardBlocks = true;
+      _cardLocked = left == 0;
       _put({CheckRow.signature: _guardRow(left)});
       return;
     }
@@ -172,7 +187,9 @@ class CardCheck {
     } catch (_) {
       return;
     }
+    _lowest.remove(ready.key);
     _guardBlocks = false;
+    _cardLocked = false;
     _put({CheckRow.signature: const RowResult(RowState.waiting, _T.ready)});
   }
 
@@ -238,26 +255,7 @@ class CardCheck {
       }
       a.facts.profile = profile;
 
-      // Bricht schon der erste Befehl ab und gibt die Karte die
-      // Geschwindigkeit fest vor, kann der Leser sie vielleicht nicht.
-      var first = true;
-      Future<CardResponse> send(CardCommand command) async {
-        try {
-          return await session.send(command);
-        } on SessionException {
-          final ta2 = atr.ta2, ta1 = atr.ta1;
-          if (first && ta2 != null) {
-            a.facts.notes.add(
-              'Hinweis: Die Karte gibt ihre Geschwindigkeit fest vor '
-              '(TA1 ${ta1 == null ? '-' : _byteHex(ta1)}). Kann der Leser das '
-              'nicht, bricht die Verbindung ab.',
-            );
-          }
-          rethrow;
-        } finally {
-          first = false;
-        }
-      }
+      final send = session.send;
 
       for (final aid in profile.applications) {
         if (!(await send(CardCommand.selectApplication(aid))).ok) {
@@ -303,10 +301,10 @@ class CardCheck {
       final key = _compactHex(number);
       int? left;
       try {
-        left = await _guard.retriesLeft(key);
+        left = await _countOf(key);
       } catch (_) {
         // sign fragt den Wächter noch einmal und schickt ohne Antwort nichts.
-        left = null;
+        left = _lowest[key];
       }
       if (!a.live) return;
       _ready = _ReadyCard(
@@ -318,6 +316,7 @@ class CardCheck {
         certificate: certificate,
       );
       _guardBlocks = left != null && left <= 1;
+      _cardLocked = left == 0;
       a.put({CheckRow.signature: _guardRow(left)});
     } on SessionException catch (e) {
       a.facts.log.line('Abbruch: ${e.detail}');
@@ -414,8 +413,30 @@ class CardCheck {
           final (message, hint) = _lost(a);
           a.fail(CheckRow.card, message, hint);
       }
+    } finally {
+      _noteSpeed(a.facts, reader.atr);
     }
     return null;
+  }
+
+  /// Gibt die Karte die Geschwindigkeit fest vor (TA2), kann ein Leser, der
+  /// sie nicht schafft, schon beim Start abbrechen. Das steht im Bericht,
+  /// sobald eine solche ATR gelesen wurde.
+  static void _noteSpeed(_Facts facts, Uint8List? raw) {
+    if (raw == null) return;
+    final Atr atr;
+    try {
+      atr = Atr.parse(raw);
+    } on FormatException {
+      return;
+    }
+    if (atr.ta2 == null) return;
+    final ta1 = atr.ta1;
+    final line =
+        'Hinweis: Die Karte gibt ihre Geschwindigkeit fest vor '
+        '(TA1 ${ta1 == null ? '-' : _byteHex(ta1)}). Kann der Leser das '
+        'nicht, bricht die Verbindung ab.';
+    if (!facts.notes.contains(line)) facts.notes.add(line);
   }
 
   Future<Uint8List?> _readNumber(
@@ -569,18 +590,24 @@ class CardCheck {
     final hash = _hashOfNow();
     final started = _now();
     final CardResponse verified;
+    a.verifyInFlight = ready;
     try {
       verified = await session.send(CardCommand.verifyPin(profile, pin));
     } on SessionException catch (e) {
-      // Der Zähler ist unbekannt: der Wächter merkt sich nichts.
+      // Nach Ablauf der Zeit hat _limited schon gerechnet.
+      if (!a.live) return false;
+      a.verifyInFlight = null;
       facts.log.line('VERIFY abgebrochen: ${e.detail}');
-      a.fail(CheckRow.signature, _T.lost, _T.lostHint);
+      final left = await _recordUnclear(a, ready);
+      a.fail(CheckRow.signature, _T.lost, _unclearHint(left));
       return false;
     }
+    a.verifyInFlight = null;
     if (!verified.ok) {
       await _wrongVerify(a, ready, verified.status);
       return false;
     }
+    _lowest.remove(ready.key);
     try {
       await _guard.clear(ready.key);
     } catch (_) {
@@ -612,14 +639,10 @@ class CardCheck {
   /// Eine Antwort ungleich 9000 auf VERIFY. Der Wächter schreibt, bevor der
   /// Bildschirm davon erfährt.
   Future<void> _wrongVerify(_Attempt a, _ReadyCard ready, int status) async {
-    final facts = a.facts;
     Future<void> record(int left) async {
-      try {
-        await _guard.recordFailure(ready.key, left);
-      } catch (_) {
-        facts.log.line('Wächter konnte nicht schreiben');
-      }
+      await _remember(ready.key, left, a.facts.log);
       if (a.live && left <= 1) _guardBlocks = true;
+      if (a.live && left == 0) _cardLocked = true;
     }
 
     if (status & 0xFFF0 == 0x63C0) {
@@ -631,9 +654,10 @@ class CardCheck {
           'Die PIN war falsch. Noch $left Versuche.',
           _T.wrongPinHint,
         );
+      } else if (left == 1) {
+        a.fail(CheckRow.signature, _T.lastTry, _T.lastTryHint);
       } else {
-        final row = _guardRow(left);
-        a.fail(CheckRow.signature, row.message, row.hint);
+        a.fail(CheckRow.signature, _T.cardLocked, _T.cardLockedHint);
       }
     } else if (status == 0x6983) {
       await record(0);
@@ -655,10 +679,59 @@ class CardCheck {
     } on TimeoutException {
       a.link.cut();
       a.facts.log.line('Nach ${timeLimit.inSeconds} Sekunden abgebrochen');
-      _put(_failure(a.running ?? CheckRow.reader, _T.tooSlow, _T.tooSlowHint));
+      // Lief gerade ein VERIFY, ist unklar, ob die Karte gezählt hat.
+      final inFlight = a.verifyInFlight;
+      a.verifyInFlight = null;
+      var hint = _T.tooSlowHint;
+      if (inFlight != null) {
+        hint = _unclearHint(await _recordUnclear(a, inFlight));
+      }
+      _put(_failure(a.running ?? CheckRow.reader, _T.tooSlow, hint));
       return false;
     }
   }
+
+  /// Der Stand des Wächters für [key]: das Kleinere aus seinem Speicher und
+  /// dem, was diese Instanz gesehen hat. Wirft, wenn der Speicher nicht
+  /// lesbar ist.
+  Future<int?> _countOf(String key) async {
+    final stored = await _guard.retriesLeft(key);
+    final seen = _lowest[key];
+    if (stored == null) return seen;
+    if (seen == null) return stored;
+    return min(stored, seen);
+  }
+
+  /// Merkt sich [left] im Speicher dieser Instanz und im Wächter.
+  Future<void> _remember(String key, int left, ProbeLog log) async {
+    final seen = _lowest[key];
+    _lowest[key] = seen == null ? left : min(seen, left);
+    try {
+      await _guard.recordFailure(key, left);
+    } catch (_) {
+      log.line('Wächter konnte nicht schreiben');
+    }
+  }
+
+  /// Ein VERIFY ging hinaus, aber kein Status kam zurück: der Wächter rechnet
+  /// mit einem Versuch weniger (nichts bekannt: 2). Gibt den neuen Stand.
+  Future<int> _recordUnclear(_Attempt a, _ReadyCard ready) async {
+    int? known;
+    try {
+      known = await _countOf(ready.key);
+    } catch (_) {
+      known = _lowest[ready.key];
+    }
+    final left = known == null ? 2 : max(0, known - 1);
+    a.facts.log.line('VERIFY ohne Antwort, der Wächter rechnet mit $left');
+    await _remember(ready.key, left, a.facts.log);
+    if (left <= 1) _guardBlocks = true;
+    if (left == 0) _cardLocked = true;
+    return left;
+  }
+
+  static String _unclearHint(int left) =>
+      left >= 2 ? _T.unclearHint : _T.unclearLastHint;
 
   void _unexpected(_Attempt a, Object error) {
     a.facts.log.line('Unerwarteter Fehler (${error.runtimeType})');
@@ -673,7 +746,11 @@ class CardCheck {
   static RowResult _guardRow(int? left) => switch (left) {
     null => const RowResult(RowState.waiting, _T.ready),
     0 => const RowResult(RowState.problem, _T.cardLocked, _T.cardLockedHint),
-    1 => const RowResult(RowState.problem, _T.lastTry, _T.lastTryHint),
+    1 => const RowResult(
+      RowState.problem,
+      _T.probablyLast,
+      _T.probablyLastHint,
+    ),
     _ => const RowResult(RowState.waiting, _T.ready),
   };
 
@@ -708,6 +785,7 @@ class CardCheck {
     busy: _busy,
     canSign: _ready != null && !_busy && !_guardBlocks,
     guardBlocks: _guardBlocks,
+    cardLocked: _cardLocked,
     report: _report(),
   );
 
@@ -873,6 +951,18 @@ abstract final class _T {
   static const lastTryHint =
       'Die Kassa schickt die PIN jetzt nicht mehr. Wird die Karte in der alten '
       'Kassa mit der richtigen PIN verwendet, ist der Zähler wieder voll.';
+  static const probablyLast =
+      'Die Karte hat vermutlich nur noch einen Versuch.';
+  static const probablyLastHint =
+      'Die Kassa schickt die PIN jetzt nicht mehr. Wird die Karte in der alten '
+      'Kassa mit der richtigen PIN verwendet, ist der Zähler wieder voll.';
+  static const unclearHint =
+      'Ob die Karte den Versuch gezählt hat, ist unklar. Die Kassa rechnet '
+      'vorsichtig mit einem Versuch weniger.';
+  static const unclearLastHint =
+      'Die Karte hat vermutlich nur noch einen Versuch. Die Kassa schickt die '
+      'PIN jetzt nicht mehr. Wird die Karte in der alten Kassa mit der '
+      'richtigen PIN verwendet, ist der Zähler wieder voll.';
   static const cardLocked = 'Die Karte ist gesperrt.';
   static const cardLockedHint = 'Wende dich an A-Trust.';
   static const rejected = 'Die Karte hat die Unterschrift abgelehnt.';
@@ -909,6 +999,9 @@ class _Attempt {
 
   /// Die Zeile, die gerade läuft.
   CheckRow? running;
+
+  /// Ein VERIFY für diese Karte ist unterwegs, der Status noch nicht da.
+  _ReadyCard? verifyInFlight;
 
   bool get live => !link.isCut;
 
