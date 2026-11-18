@@ -20,6 +20,7 @@ class PrimaryButton extends StatelessWidget {
     this.solid = false,
     this.muted = false,
     this.icon,
+    this.leading,
     this.labelSize,
     this.height = KassaTokens.primaryActionHeight,
   });
@@ -31,6 +32,9 @@ class PrimaryButton extends StatelessWidget {
   final bool solid;
   final bool muted;
   final IconData? icon;
+
+  /// Eigenes Zeichen links statt [icon], z. B. ein Fortschrittsring.
+  final Widget? leading;
   final double? labelSize;
   final double height;
 
@@ -87,13 +91,13 @@ class PrimaryButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon == null)
+            if (icon == null && leading == null)
               text
             else
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 26, color: fg),
+                  leading ?? Icon(icon, size: 26, color: fg),
                   const SizedBox(width: KassaTokens.spaceLg),
                   Flexible(child: text),
                 ],

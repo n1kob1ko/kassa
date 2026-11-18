@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app_sync_providers.dart';
 import '../../data/providers.dart';
+import '../../data/sync_state_repository.dart';
 import '../../domain/catalog.dart';
 import '../../domain/menu_import.dart';
 import '../../domain/staff.dart';
@@ -13,11 +15,14 @@ import '../../ui/kassa_logo.dart';
 import '../login/pin_screen.dart';
 import '../login/session.dart';
 import 'menu_file_picker.dart';
+import 'pairing_controller.dart';
+import 'pairing_view.dart';
 
-enum _Step { start, read, problems, pin }
+enum _Step { start, pair, read, problems, pin }
 
-/// Ersteinrichtung: Speisekarte einspielen, dann die Chef-PIN festlegen.
-/// Geschrieben wird erst, wenn die PIN bestätigt ist.
+/// Ersteinrichtung: mit Code koppeln (Speisekarte und Mitarbeiter kommen vom
+/// Server) oder Speisekarte aus einer Datei einspielen, dann die Chef-PIN
+/// festlegen. Aus der Datei wird erst geschrieben, wenn die PIN bestätigt ist.
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
 
@@ -35,6 +40,19 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   String? _first;
   String? _error;
   bool _busy = false;
+
+  // Eine Kassa ohne Speisekarte macht beim Start von selbst weiter.
+  bool _resumed = false;
+
+  void _resume(SyncState sync) {
+    if (_resumed || !sync.hasRegister) return;
+    if (ref.read(pairingControllerProvider).step != PairingStep.idle) return;
+    _resumed = true;
+    // Nicht im Aufbau: der Zustand des Ablaufs ändert sich.
+    Future.microtask(() {
+      if (mounted) ref.read(pairingControllerProvider.notifier).resume(sync);
+    });
+  }
 
   void _show(Catalog catalog) => setState(() {
     _catalog = catalog;
@@ -156,6 +174,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final sync = ref.watch(syncStateProvider).value;
+    if (sync != null) _resume(sync);
+    final pairing = ref.watch(pairingControllerProvider).step;
+    if (_step == _Step.pair || pairing != PairingStep.idle) {
+      return PairingView(onBack: _backToStart);
+    }
     if (_step == _Step.pin) {
       return Scaffold(
         backgroundColor: c.ground,
@@ -197,7 +221,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _CardHeader(),
+                  _CardHeader(showStep: _step != _Step.start),
                   const SizedBox(height: KassaTokens.spaceHuge),
                   ..._content(context),
                 ],
@@ -213,29 +237,63 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     const gap = SizedBox(height: KassaTokens.spaceHuge);
     switch (_step) {
       case _Step.start:
+        final server = ref.watch(hasServerProvider);
         return [
           const _Heading(
-            'Diese Kassa einrichten',
-            'Spiel zuerst die Speisekarte des Betriebs ein. '
-                'Danach legst du die PIN für den Chef fest.',
+            'Kassa einrichten',
+            'Verbinde dieses Tablet mit deinem Betrieb. '
+                'Speisekarte und Mitarbeiter kommen dann von selbst.',
           ),
           gap,
           _ActionTile(
+            key: const Key('setup-pair'),
+            icon: LucideIcons.link,
+            label: 'Mit Code koppeln',
+            sublabel: 'Acht Ziffern aus der Verwaltung',
+            filled: true,
+            onTap: server ? () => setState(() => _step = _Step.pair) : null,
+          ),
+          if (!server) ...[
+            const SizedBox(height: KassaTokens.spaceXl),
+            Text(
+              'Diese Version hat keinen Server.',
+              key: const Key('setup-no-server'),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: KassaColors.of(context).ink2,
+              ),
+            ),
+          ],
+          const SizedBox(height: KassaTokens.spaceXl),
+          _ActionTile(
             key: const Key('setup-file'),
             icon: LucideIcons.fileUp,
-            label: 'Speisekarte einspielen',
-            sublabel: 'Datei vom Tablet auswählen',
-            filled: true,
+            label: 'Speisekarte aus Datei einspielen',
+            sublabel: 'Ohne Server, wie bisher',
+            filled: false,
             onTap: _pickFile,
           ),
           const SizedBox(height: KassaTokens.spaceXl),
-          _ActionTile(
-            key: const Key('setup-demo'),
-            icon: LucideIcons.play,
-            label: 'Mit Beispieldaten starten',
-            sublabel: 'Zum Ausprobieren, mit einem erfundenen Imbiss',
-            filled: false,
-            onTap: _useDemo,
+          Align(
+            child: Pressable(
+              key: const Key('setup-demo'),
+              onTap: _useDemo,
+              minTapSize: const Size(0, KassaTokens.minTap),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Text(
+                  'Mit Beispieldaten starten',
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    fontSize: 16,
+                    color: KassaColors.of(context).accentInk,
+                  ),
+                ),
+              ),
+            ),
           ),
         ];
       case _Step.read:
@@ -289,14 +347,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           gap,
           PrimaryButton(label: 'Andere Datei wählen', onPressed: _backToStart),
         ];
-      case _Step.pin:
+      case _Step.pair || _Step.pin:
         return const [];
     }
   }
 }
 
 class _CardHeader extends StatelessWidget {
-  const _CardHeader();
+  const _CardHeader({required this.showStep});
+
+  /// "Schritt 1 von 2": nur dort, wo die Chef-PIN folgt.
+  final bool showStep;
 
   @override
   Widget build(BuildContext context) {
@@ -308,14 +369,15 @@ class _CardHeader extends StatelessWidget {
         const SizedBox(width: KassaTokens.spaceXl),
         Text('Kassa', style: text.headlineMedium!.copyWith(fontSize: 26)),
         const Spacer(),
-        Text(
-          'Schritt 1 von 2',
-          style: text.bodyMedium!.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: c.ink2,
+        if (showStep)
+          Text(
+            'Schritt 1 von 2',
+            style: text.bodyMedium!.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: c.ink2,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -364,7 +426,7 @@ class _ActionTile extends StatelessWidget {
   final String label;
   final String sublabel;
   final bool filled;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

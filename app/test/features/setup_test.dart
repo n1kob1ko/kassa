@@ -42,7 +42,7 @@ void main() {
       overrides: await memoryOverrides(seeded: false, picker: picker),
     );
     await t.pumpAndSettle();
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     expect(
       find.text(
@@ -54,7 +54,7 @@ void main() {
     picker.broken = false;
     await t.tap(find.text('Andere Datei wählen'));
     await t.pumpAndSettle();
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     expect(picker.calls, 2);
     expect(find.text('Speisekarte gelesen'), findsOneWidget);
@@ -68,7 +68,7 @@ void main() {
       'Datei, die keine Speisekarte ist ($name): ruhiger Satz, kein Fehlertext',
       (t) async {
         await _start(t, file: text);
-        await t.tap(find.text('Speisekarte einspielen'));
+        await t.tap(find.text('Speisekarte aus Datei einspielen'));
         await t.pumpAndSettle();
         expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
         expect(
@@ -86,7 +86,7 @@ void main() {
     t,
   ) async {
     await _start(t);
-    expect(find.text('Diese Kassa einrichten'), findsOneWidget);
+    expect(find.text('Kassa einrichten'), findsOneWidget);
     await t.tap(find.text('Mit Beispieldaten starten'));
     await t.pumpAndSettle();
     expect(find.text('Chef-PIN festlegen'), findsOneWidget);
@@ -118,7 +118,7 @@ void main() {
     t,
   ) async {
     await _start(t, file: _badFile);
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
     expect(
@@ -136,7 +136,7 @@ void main() {
     );
     await t.tap(find.text('Andere Datei wählen'));
     await t.pumpAndSettle();
-    expect(find.text('Diese Kassa einrichten'), findsOneWidget);
+    expect(find.text('Kassa einrichten'), findsOneWidget);
   });
 
   testWidgets('Datei mit doppelter Mitarbeiter-PIN wird abgelehnt', (t) async {
@@ -147,7 +147,7 @@ void main() {
         '"mitarbeiter":[{"name":"Ben","pin":"1234","rolle":"mitarbeiter"},',
       ),
     );
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
     expect(
@@ -166,7 +166,7 @@ void main() {
 
   testWidgets('gute Datei: Zusammenfassung, dann Chef-PIN', (t) async {
     await _start(t, file: _goodFile);
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     expect(find.text('Speisekarte gelesen'), findsOneWidget);
     expect(find.text('Bitte kurz prüfen, ob das stimmt.'), findsOneWidget);
@@ -182,9 +182,9 @@ void main() {
 
   testWidgets('Abbruch der Dateiauswahl bleibt auf dem Startbild', (t) async {
     await _start(t, file: null);
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
-    expect(find.text('Diese Kassa einrichten'), findsOneWidget);
+    expect(find.text('Kassa einrichten'), findsOneWidget);
     expect(find.text('Speisekarte gelesen'), findsNothing);
     expect(find.text('Die Datei passt noch nicht'), findsNothing);
   });
@@ -194,7 +194,7 @@ void main() {
     (t) async {
       await _start(t, file: _goodFile);
       final c = _container(t);
-      await t.tap(find.text('Speisekarte einspielen'));
+      await t.tap(find.text('Speisekarte aus Datei einspielen'));
       await t.pumpAndSettle();
       await t.tap(find.text('Weiter zur Chef-PIN'));
       await t.pumpAndSettle();
@@ -220,7 +220,7 @@ void main() {
     t,
   ) async {
     await _start(t, file: _goodFile);
-    await t.tap(find.text('Speisekarte einspielen'));
+    await t.tap(find.text('Speisekarte aus Datei einspielen'));
     await t.pumpAndSettle();
     await t.tap(find.text('Weiter zur Chef-PIN'));
     await t.pumpAndSettle();
@@ -244,7 +244,7 @@ void main() {
     'Datei mit Mitarbeitern: deren PIN meldet sie an, ohne Abschluss',
     (t) async {
       await _start(t, file: _goodFile);
-      await t.tap(find.text('Speisekarte einspielen'));
+      await t.tap(find.text('Speisekarte aus Datei einspielen'));
       await t.pumpAndSettle();
       await t.tap(find.text('Weiter zur Chef-PIN'));
       await t.pumpAndSettle();
