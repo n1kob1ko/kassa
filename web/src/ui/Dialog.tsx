@@ -30,6 +30,8 @@ export function Dialog({ title, open, onClose, children, actions }: DialogProps)
     if (open && !dialog.open) {
       opener.current = document.activeElement;
       dialog.showModal();
+      // Ein Eingabefeld bekommt den Fokus gleich (React setzt `autoFocus` schon vor dem Öffnen, da geht es ins Leere).
+      dialog.querySelector<HTMLElement>('input:not([type="file"]):not([type="radio"]), textarea, select')?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
       if (opener.current instanceof HTMLElement) opener.current.focus();

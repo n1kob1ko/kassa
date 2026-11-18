@@ -50,14 +50,24 @@ export function Toaster() {
   const paused = hovered || focused;
 
   // Jeder neue Hinweis bekommt die volle Zeit und kommt (wieder) ganz nach oben, auch über einen später geöffneten Dialog.
+  // Ruht die Maus beim Ersetzen schon auf dem Hinweis, meldet der Browser kein neues "Maus darauf": `hovered` bleibt,
+  // bis die Maus geht. Ist kein Hinweis mehr da, ist auch die Maus nicht mehr darauf.
   useEffect(() => {
     remaining.current = VISIBLE_MS;
-    setHovered(false);
     setFocused(false);
     const el = popover.current;
     if (!el) return;
     if (el.matches(':popover-open')) el.hidePopover();
-    if (state) el.showPopover();
+    if (!state) {
+      setHovered(false);
+      return;
+    }
+    el.showPopover();
+    // Ein erster Hinweis unter einer ruhenden Maus: der Browser prüft das erst nach dem nächsten Bild.
+    const frame = requestAnimationFrame(() => {
+      if (el.matches(':hover')) setHovered(true);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [state]);
 
   useEffect(() => {

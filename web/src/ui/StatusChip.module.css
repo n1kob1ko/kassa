@@ -1,0 +1,27 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ok {
+  background: var(--vegan-bg);
+  color: var(--vegan-fg);
+}
+
+.off {
+  background: var(--spicy-bg);
+  color: var(--spicy-fg);
+}
+
+.neutral {
+  background: var(--fill);
+  color: var(--ink2);
+}

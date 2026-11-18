@@ -1,15 +1,34 @@
-import { createBrowserRouter, Link, Navigate, Outlet } from 'react-router';
+import type { ReactNode } from 'react';
+import { createBrowserRouter, Link, Navigate, Outlet, useMatch } from 'react-router';
 import { HOME, RequireUser, useMe } from './api/auth';
 import { AuthLayout } from './pages/AuthLayout';
+import { BusinessesPage } from './pages/BusinessesPage';
+import { BusinessIndex, BusinessLayout } from './pages/BusinessLayout';
 import { LoginPage } from './pages/LoginPage';
+import { MenuPage } from './pages/MenuPage';
+import { RegistersPage } from './pages/RegistersPage';
+import { ReleasesPage } from './pages/ReleasesPage';
 import { SetupPage } from './pages/SetupPage';
+import { StaffPage } from './pages/StaffPage';
 import { AppShell, type NavItem } from './ui/AppShell';
-import { StoreIcon } from './ui/icons';
-import { PageHeader } from './ui/PageHeader';
+import { BookIcon, DownloadIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
 import { Skeleton } from './ui/Skeleton';
 
-/** Bereiche des Anbieters in der Seitenleiste und der Leiste unten. */
-export const providerNav: NavItem[] = [{ to: '/betriebe', label: 'Betriebe', icon: <StoreIcon size={22} /> }];
+/** Bereiche des Anbieters außerhalb eines Betriebs. */
+export const providerNav: NavItem[] = [
+  { to: '/betriebe', label: 'Betriebe', icon: <StoreIcon size={22} /> },
+  { to: '/installationsdateien', label: 'Installationsdateien', icon: <DownloadIcon size={22} /> },
+];
+
+/** Bereiche eines Betriebs. Der Anbieter hat davor den Weg zurück zu allen Betrieben. */
+export function businessNav(businessId: string, provider: boolean): NavItem[] {
+  const own: NavItem[] = [
+    { to: `/b/${businessId}/kassen`, label: 'Kassen', icon: <TabletIcon size={22} /> },
+    { to: `/b/${businessId}/mitarbeiter`, label: 'Mitarbeiter', icon: <UsersIcon size={22} /> },
+    { to: `/b/${businessId}/speisekarte`, label: 'Speisekarte', icon: <BookIcon size={22} /> },
+  ];
+  return provider ? [{ to: '/betriebe', label: 'Alle Betriebe', icon: <StoreIcon size={22} /> }, ...own] : own;
+}
 
 /** `/` führt angemeldet zu den Betrieben, sonst zur Anmeldung. */
 function StartRedirect() {
@@ -20,18 +39,39 @@ function StartRedirect() {
   return <Skeleton lines={3} label="Wird geladen" />;
 }
 
+/** Die Leiste hängt davon ab, wo man ist und wer man ist: ein Chef sieht nur die Bereiche seines Betriebs. */
+function ShellWithNav() {
+  const me = useMe();
+  const inBusiness = useMatch({ path: '/b/:b', end: false });
+  const user = me.data;
+  let nav: NavItem[] = providerNav;
+  if (user?.role === 'chef') {
+    nav = user.businessId ? businessNav(user.businessId, false) : [];
+  } else if (inBusiness?.params.b) {
+    nav = businessNav(inBusiness.params.b, true);
+  }
+  return (
+    <AppShell nav={nav}>
+      <Outlet />
+    </AppShell>
+  );
+}
+
 function AdminLayout() {
   return (
     <RequireUser>
-      <AppShell nav={providerNav}>
-        <Outlet />
-      </AppShell>
+      <ShellWithNav />
     </RequireUser>
   );
 }
 
-function BusinessesPage() {
-  return <PageHeader title="Betriebe" />;
+/** Seiten nur für den Anbieter: ein Chef geht zu den Kassen seines Betriebs. Der Server sperrt sie ohnehin. */
+function ProviderOnly({ children }: { children: ReactNode }) {
+  const me = useMe();
+  if (me.data?.role === 'chef') {
+    return me.data.businessId ? <Navigate to={`/b/${me.data.businessId}/kassen`} replace /> : <Navigate to="/anmelden" replace />;
+  }
+  return children;
 }
 
 function NotFoundPage() {
@@ -48,7 +88,34 @@ export const router = createBrowserRouter([
   { path: '/anmelden', element: <LoginPage /> },
   {
     element: <AdminLayout />,
-    children: [{ path: '/betriebe', element: <BusinessesPage /> }],
+    children: [
+      {
+        path: '/betriebe',
+        element: (
+          <ProviderOnly>
+            <BusinessesPage />
+          </ProviderOnly>
+        ),
+      },
+      {
+        path: '/installationsdateien',
+        element: (
+          <ProviderOnly>
+            <ReleasesPage />
+          </ProviderOnly>
+        ),
+      },
+      {
+        path: '/b/:b',
+        element: <BusinessLayout />,
+        children: [
+          { index: true, element: <BusinessIndex /> },
+          { path: 'kassen', element: <RegistersPage /> },
+          { path: 'mitarbeiter', element: <StaffPage /> },
+          { path: 'speisekarte', element: <MenuPage /> },
+        ],
+      },
+    ],
   },
   { path: '*', element: <NotFoundPage /> },
 ]);

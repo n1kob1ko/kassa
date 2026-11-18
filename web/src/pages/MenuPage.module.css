@@ -1,0 +1,20 @@
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-huge);
+  margin-bottom: var(--space-huge);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.heading {
+  margin-bottom: var(--space-xl);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+}

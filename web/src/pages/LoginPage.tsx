@@ -56,7 +56,7 @@ export function LoginPage() {
     <AuthLayout
       title="Anmelden"
       lead="Mit deiner E-Mail-Adresse und deinem Passwort."
-      footer="Passwort vergessen? Lass dir einen neuen Link zum Einrichten schicken."
+      footer="Passwort vergessen? Der Anbieter schickt dir einen neuen Link."
     >
       <form className={formClass} onSubmit={onSubmit} noValidate>
         <TextField

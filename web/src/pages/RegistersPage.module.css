@@ -1,0 +1,31 @@
+.form,
+.code,
+.connected {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+}
+
+.code,
+.connected {
+  align-items: stretch;
+  text-align: center;
+}
+
+.connected {
+  align-items: center;
+  padding: var(--space-huge) 0 var(--space-md);
+}
+
+.connectedName {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.help {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}

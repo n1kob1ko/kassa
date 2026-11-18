@@ -3,7 +3,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { ME_KEY } from './api/auth';
-import { setUnauthorizedHandler } from './api/client';
+import { ApiError, setUnauthorizedHandler } from './api/client';
 import { router } from './routes';
 import './styles/tokens.css';
 import './styles/base.css';
@@ -12,7 +12,12 @@ import { Toaster } from './ui/Toast';
 // Daten bleiben sichtbar, während sie im Hintergrund neu geladen werden (stale-while-revalidate).
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, refetchOnWindowFocus: true },
+    // Eine Antwort des Servers mit Fehler wird nicht wiederholt (der Text sagt, was zu tun ist); ein fehlendes Netz zweimal.
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: true,
+      retry: (count, err) => err instanceof ApiError && err.code === 'network' && count < 2,
+    },
   },
 });
 
