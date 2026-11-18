@@ -524,6 +524,9 @@ class KassaDatabase extends _$KassaDatabase {
         // Verweisen von Zeilen und Zahlungen scheitern. Trigger und Index
         // entstehen danach wie in onCreate neu.
         await customStatement('PRAGMA foreign_keys = OFF');
+        // Alte kaputte Verweise, die die Migration nicht verursacht hat,
+        // dürfen sie nicht aufhalten; nur neue zählen (siehe unten).
+        final brokenBefore = await _brokenReferences();
         await transaction(() async {
           for (final action in const ['update', 'delete']) {
             await customStatement('DROP TRIGGER IF EXISTS receipts_no_$action');
@@ -543,11 +546,14 @@ class KassaDatabase extends _$KassaDatabase {
           await _createRksvGuards();
           await _insertRksvState();
 
-          final broken = await customSelect('PRAGMA foreign_key_check').get();
-          if (broken.isNotEmpty) {
+          final brokenAfter = await _brokenReferences();
+          final added = [
+            for (final MapEntry(:key, :value) in brokenAfter.entries)
+              if (value > (brokenBefore[key] ?? 0)) key,
+          ];
+          if (added.isNotEmpty) {
             throw StateError(
-              'Verweise nach der Migration auf Version 4 kaputt: '
-              '${broken.map((r) => r.data).toList()}',
+              'Verweise nach der Migration auf Version 4 kaputt: $added',
             );
           }
         });
@@ -558,6 +564,21 @@ class KassaDatabase extends _$KassaDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Zahl der kaputten Verweise je Tabelle, Zieltabelle und Fremdschlüssel.
+  /// Gezählt statt nach rowid verglichen, weil der Neuaufbau einer Tabelle
+  /// die rowids neu vergeben darf.
+  Future<Map<String, int>> _brokenReferences() async {
+    final rows = await customSelect('PRAGMA foreign_key_check').get();
+    final counts = <String, int>{};
+    for (final row in rows) {
+      final key =
+          '${row.data['table']} -> ${row.data['parent']} '
+          '(${row.data['fkid']})';
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }
 
   /// Höchstens ein Storno je Bon.
   Future<void> _createReceiptsVoidsIndex() => customStatement(

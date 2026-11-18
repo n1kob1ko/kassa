@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:drift/backends.dart';
+import 'package:drift/drift.dart' show OpeningDetails, OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -208,6 +209,54 @@ void main() {
     await db.close();
   });
 
+  test('echte Datei von Version 3 mit einem alten kaputten Verweis: die App '
+      'öffnet in Version 4, Bons bleiben, die alte Zeile auch', () async {
+    final file = await copyFixture('kassa_v3.sqlite');
+    // Ein Artikel zeigt auf eine Kategorie, die es nicht gibt. Ohne
+    // PRAGMA foreign_keys prüft SQLite das beim Einfügen nicht.
+    final broken = NativeDatabase(
+      file,
+      setup: (raw) => raw.execute(
+        'INSERT INTO items (id, name, price_cents, category_id, tax_percent, '
+        "position) VALUES ('verwaist', 'Verwaist', 100, 'gibt-es-nicht', 10, "
+        '99)',
+      ),
+    );
+    await broken.ensureOpen(_NoUser());
+    await broken.close();
+
+    final db = KassaDatabase(NativeDatabase(file));
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      4,
+    );
+    final receipts = await (db.select(
+      db.receiptRows,
+    )..orderBy([(t) => OrderingTerm.asc(t.number)])).get();
+    expect(
+      receipts.map(
+        (r) => (r.number, r.kind, r.totalCents, r.businessDayId != null),
+      ),
+      [
+        (1, 'sale', 1820, true),
+        (2, 'sale', 965, true),
+        (3, 'voided', -965, true),
+      ],
+    );
+    expect(receipts[2].voidsReceiptId, 'v3-karte');
+    expect(await count(db, 'receipt_lines'), 6);
+    expect(await count(db, 'payments'), 3);
+    final orphan = await db
+        .customSelect("SELECT category_id FROM items WHERE id = 'verwaist'")
+        .getSingle();
+    expect(orphan.read<String>('category_id'), 'gibt-es-nicht');
+    final violations = await db.customSelect('PRAGMA foreign_key_check').get();
+    expect(violations.map((r) => r.data['table']), ['items']);
+    await db.close();
+  });
+
   for (final (name, open) in [
     ('neue Datenbank', () async => KassaDatabase(NativeDatabase.memory())),
     (
@@ -353,4 +402,16 @@ void main() {
     expect(s.printerKind, PrinterKind.none);
     await db.close();
   });
+}
+
+/// Öffnet eine Datei von Version 3 ohne Migration, nur zum Vorbereiten.
+class _NoUser extends QueryExecutorUser {
+  @override
+  int get schemaVersion => 3;
+
+  @override
+  Future<void> beforeOpen(
+    QueryExecutor executor,
+    OpeningDetails details,
+  ) async {}
 }
