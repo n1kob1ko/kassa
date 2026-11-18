@@ -10,6 +10,7 @@ import '../close/close_screen.dart';
 import '../close/forgotten_close_banner.dart';
 import '../items/items_screen.dart';
 import '../kassa/kassa_screen.dart';
+import '../kassa/sale_service.dart';
 import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
@@ -54,6 +55,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final c = KassaColors.of(context);
     if (staff == null) return Scaffold(backgroundColor: c.ground);
     final blocked = ref.watch(unclearCardPaymentsProvider).isNotEmpty;
+    // Während eine Kartenzahlung läuft, bleibt die Kassa stehen: kein anderer
+    // Bereich, keine Einstellungen, kein Abmelden. Sonst ginge das Ergebnis
+    // der Zahlung an einer Kassa verloren, die es nicht mehr gibt.
+    final paying = ref.watch(activeCardPaymentProvider) != null;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: _onBack,
@@ -72,18 +77,27 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                     AppHeader(
                       area: _area,
                       settingsActive: _settingsOpen,
-                      onArea: (a) => setState(() {
-                        _area = a;
-                        _settingsOpen = false;
-                        _testingDevices = false;
-                      }),
+                      onArea: (a) {
+                        if (paying) return;
+                        setState(() {
+                          _area = a;
+                          _settingsOpen = false;
+                          _testingDevices = false;
+                        });
+                      },
                       staffName: staff.name,
                       isChef: staff.isChef,
-                      onStaff: ref.read(sessionProvider.notifier).logout,
-                      onSettings: () => setState(() {
-                        _settingsOpen = !_settingsOpen;
-                        _testingDevices = false;
-                      }),
+                      onStaff: () {
+                        if (paying) return;
+                        ref.read(sessionProvider.notifier).logout();
+                      },
+                      onSettings: () {
+                        if (paying) return;
+                        setState(() {
+                          _settingsOpen = !_settingsOpen;
+                          _testingDevices = false;
+                        });
+                      },
                       businessName: ref
                           .watch(catalogProvider)
                           .value
@@ -93,11 +107,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                     if (_settingsOpen || _area != AppArea.close)
                       ForgottenCloseBanner(
                         isChef: staff.isChef,
-                        onClose: () => setState(() {
-                          _area = AppArea.close;
-                          _settingsOpen = false;
-                          _testingDevices = false;
-                        }),
+                        onClose: () {
+                          if (paying) return;
+                          setState(() {
+                            _area = AppArea.close;
+                            _settingsOpen = false;
+                            _testingDevices = false;
+                          });
+                        },
                       ),
                     Expanded(
                       child: _settingsOpen && staff.isChef

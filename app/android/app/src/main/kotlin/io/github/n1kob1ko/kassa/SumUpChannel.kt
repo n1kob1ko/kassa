@@ -16,8 +16,9 @@ import java.math.BigDecimal
 // Kartenzahlung mit dem SumUp-SDK für den Kanal `kassa/sumup`.
 // Methoden: status, login, logout, openReaderPage, prepare, pay.
 // Fehlercodes: busy (zu dieser Anfrage wartet schon eine Antwort),
-// not_configured (kein Schlüssel im Build), invalid, failed (nichts wurde
-// begonnen), unknown (die Antwort von SumUp war nicht lesbar).
+// not_configured (kein Schlüssel im Build oder SDK beim Start nicht
+// bereit), invalid, failed (nichts wurde begonnen), unknown (die Antwort von
+// SumUp war nicht lesbar).
 // login, openReaderPage und pay öffnen Bildschirme von SumUp; ihre Antwort
 // kommt erst mit MainActivity.onActivityResult. Alles läuft auf dem
 // Haupt-Thread. Der Schlüssel wird nie ausgegeben oder protokolliert.
@@ -33,7 +34,10 @@ class SumUpChannel(
 
     private val affiliateKey get() = BuildConfig.SUMUP_AFFILIATE_KEY
 
-    private val configured get() = affiliateKey.isNotEmpty()
+    // Ohne Schlüssel im Build oder wenn SumUpState.init beim Start scheiterte
+    // (KassaApplication), gilt die Kartenzahlung als nicht eingerichtet, und
+    // kein Aufruf erreicht das SDK.
+    private val configured get() = KassaApplication.sumUpReady && affiliateKey.isNotEmpty()
 
     init {
         channel.setMethodCallHandler(this)
@@ -58,7 +62,7 @@ class SumUpChannel(
                         )
                     }
                 }
-                "logout" -> {
+                "logout" -> whenConfigured(result) {
                     SumUpAPI.logout()
                     result.success(null)
                 }
@@ -75,7 +79,8 @@ class SumUpChannel(
                 "pay" -> whenConfigured(result) { pay(call, result) }
                 else -> result.notImplemented()
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Auch ein Error aus dem SDK: hier wurde nichts begonnen.
             result.error(FAILED, e.message, null)
         }
     }
@@ -92,18 +97,18 @@ class SumUpChannel(
                     ?.getInt(SumUpAPI.Response.RESULT_CODE)
                 else -> null
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             // Die Antwort von SumUp ist nicht lesbar: Ob bezahlt wurde, ist offen.
             try {
                 result.error(UNKNOWN, null, null)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 // Engine schon weg.
             }
             return
         }
         try {
             result.success(answer)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             // Engine schon weg.
         }
     }
@@ -186,7 +191,8 @@ class SumUpChannel(
         waiting[requestCode] = result
         try {
             start()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Der Bildschirm von SumUp ging nicht auf: nichts wurde begonnen.
             waiting.remove(requestCode)
             result.error(FAILED, e.message, null)
         }

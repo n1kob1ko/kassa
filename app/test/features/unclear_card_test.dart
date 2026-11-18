@@ -11,6 +11,7 @@ import 'package:kassa/core/money.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/card_terminal.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/primary_button.dart';
@@ -111,14 +112,6 @@ void main() {
     expect(find.text('War diese Kartenzahlung erfolgreich?'), findsOneWidget);
     expect(find.text('18,20 €'), findsOneWidget);
     expect(find.text('Gestartet um 12:04 von Anna'), findsOneWidget);
-    debugPrint(
-      find
-          .byType(Text)
-          .evaluate()
-          .map((e) => (e.widget as Text).data)
-          .toList()
-          .toString(),
-    );
     expect(find.text('2 × Cola 0,33 l'), findsOneWidget);
     expect(_inSheet('Huhn Bowl'), findsOneWidget);
     expect(
@@ -200,6 +193,100 @@ void main() {
     expect(await _pending(t), 0);
     expect(_json(cartOf(t)), _json(cart));
     expect(textOf(t, const Key('cart-total')), '18,20 €');
+  });
+
+  group('Texte und Ergebnis des Druckens', () {
+    testWidgets('Ja ohne Drucker: kein Versprechen zu drucken, kein Hinweis', (
+      t,
+    ) async {
+      await _start(t, await _setup(open: [('p1', cart, _first)]));
+      await _tap(t, 'unclear-paid');
+      expect(
+        textOf(t, const Key('unclear-effect')),
+        'Die Kassa schreibt den Bon als Kartenzahlung.',
+      );
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(await _receipts(t), hasLength(1));
+      expect(find.byKey(const Key('undo-toast')), findsNothing);
+    });
+
+    testWidgets('Ja mit Drucker: unten steht "Bon gedruckt"', (t) async {
+      await _start(t, await _setup(open: [('p1', cart, _first)]));
+      await setUpPrinter(t);
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('undo-toast')),
+          matching: find.text('Bon gedruckt'),
+        ),
+        findsOneWidget,
+      );
+      // Der Hinweis verschwindet von selbst.
+      await t.pump(const Duration(seconds: 8));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('undo-toast')), findsNothing);
+    });
+
+    testWidgets('Ja, der Drucker ist nicht bereit: unten steht die Meldung', (
+      t,
+    ) async {
+      final printer = FakePrinter()
+        ..next = const PrintOutcome.failed(PrintProblem.paperOut);
+      await _start(
+        t,
+        await _setup(open: [('p1', cart, _first)], printer: printer),
+      );
+      await setUpPrinter(t);
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('undo-toast')),
+          matching: find.text('Drucker nicht bereit. Das Papier ist leer.'),
+        ),
+        findsOneWidget,
+      );
+      await t.pump(const Duration(seconds: 8));
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('Nein mit anderem Bon auf der Kassa: der Bon bleibt, wie er '
+        'ist', (t) async {
+      await _start(
+        t,
+        await _setup(open: [('p1', cart, _first)], draft: cartCard),
+      );
+      expect(_json(cartOf(t)), _json(cartCard));
+      await _tap(t, 'unclear-not-paid');
+      expect(
+        textOf(t, const Key('unclear-effect')),
+        'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er '
+        'ist.',
+      );
+      await _tap(t, 'unclear-confirm');
+      expect(_json(cartOf(t)), _json(cartCard));
+    });
+
+    testWidgets('Nein, der Bon der Zahlung ist nicht lesbar: der Bon auf der '
+        'Kassa bleibt, wie er ist', (t) async {
+      await _start(t, await _setup(open: [('p1', cart, _first)]));
+      final db = containerOf(t).read(databaseProvider);
+      await db
+          .update(db.pendingCardPaymentRows)
+          .write(const PendingCardPaymentRowsCompanion(cartJson: Value('{}')));
+      await t.pumpAndSettle();
+      await _tap(t, 'unclear-not-paid');
+      expect(
+        textOf(t, const Key('unclear-effect')),
+        'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er '
+        'ist.',
+      );
+      await _tap(t, 'unclear-confirm');
+      expect(cartOf(t).isEmpty, isTrue);
+    });
   });
 
   testWidgets('Zurück führt zur Wahl, nichts ist geschrieben', (t) async {

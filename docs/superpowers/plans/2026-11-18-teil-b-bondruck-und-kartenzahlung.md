@@ -652,7 +652,7 @@ Future<void> discardUnclear(PendingCardPayment p);
 
 `confirmUnclear` baut den Bon aus `cartJson` (`Cart.fromJson` mit dem heutigen Katalog) und schließt ihn als Kartenzahlung ohne `txCode` ab. Lässt sich der Bon nicht mehr lesen, bleibt die offene Zahlung stehen und es kommt eine Ausnahme mit Text für die Oberfläche. `discardUnclear` verwirft die offene Zahlung und setzt den Bon wieder ein (`cartProvider.restore`).
 
-**Meldungen** (`CardFailed.message`): `declined` "Die Karte wurde abgelehnt.", `cancelled` "Kartenzahlung abgebrochen.", `noInternet` "Kein Internet. Kartenzahlung geht gerade nicht.", `notLoggedIn` "SumUp ist nicht angemeldet. Bitte in den Einstellungen anmelden.", `noReader` "Kein Kartenleser verbunden. Bitte in den Einstellungen verbinden.", `permission` "Kassa braucht die Erlaubnis für Bluetooth und Standort.", `other` "Die Kartenzahlung hat nicht geklappt." mit `detail` in Klammern, wenn vorhanden.
+**Meldungen** (`CardFailed.message`): `declined` "Die Kartenzahlung wurde nicht abgeschlossen." (SumUp meldet Code 2 auch, wenn auf seinem Bildschirm abgebrochen wurde), `cancelled` "Kartenzahlung abgebrochen.", `noInternet` "Kein Internet. Kartenzahlung geht gerade nicht.", `notLoggedIn` "SumUp ist nicht angemeldet. Bitte in den Einstellungen anmelden.", `noReader` "Kein Kartenleser verbunden. Bitte in den Einstellungen verbinden.", `permission` "Kassa braucht die Erlaubnis für Bluetooth und Standort.", `other` "Die Kartenzahlung hat nicht geklappt." mit `detail` in Klammern, wenn vorhanden.
 
 **Bon:** Bei Karte druckt `layoutReceipt` nach der Zeile `Karte`: `<cardScheme> **** <cardLast4>` (wenn bekannt) und `Beleg <txCode>` (wenn bekannt).
 
@@ -785,7 +785,7 @@ testWidgets('Gründe unter der Taste: nicht eingerichtet, nicht angemeldet, kein
   /* je Zustand: onPressed == null und der Text steht da; Bar bleibt aktiv */
 });
 testWidgets('bezahlt: Fertig-Ansicht "Mit Karte bezahlt", VISA **** 4242, Bon Nr. 1, Bon ist leer', …);
-testWidgets('abgelehnt: Meldung "Die Karte wurde abgelehnt.", der Bon steht noch da, kein Bon gespeichert', …);
+testWidgets('abgelehnt: Meldung "Die Kartenzahlung wurde nicht abgeschlossen.", der Bon steht noch da, kein Bon gespeichert', …);
 testWidgets('zwei schnelle Tipps auf Karte: ein Aufruf am Terminal', …);
 testWidgets('während der Zahlung steht "Warte auf Karte" mit dem Betrag', (t) async { /* Terminal hängt am Completer */ });
 testWidgets('jeder Tipp auf Karte nimmt eine neue Kennung', …);

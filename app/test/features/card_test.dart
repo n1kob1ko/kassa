@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/devices/card_terminal.dart';
+import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/kassa/sale_service.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -185,7 +189,8 @@ void main() {
     expect(find.byKey(const Key('card-detail')), findsNothing);
   });
 
-  testWidgets('abgelehnt: Meldung "Die Karte wurde abgelehnt.", der Bon '
+  testWidgets('abgelehnt: Meldung "Die Kartenzahlung wurde nicht '
+      'abgeschlossen.", der Bon '
       'steht noch da, kein Bon gespeichert', (t) async {
     final terminal = FakeCardTerminal()
       ..next = const CardFailed(CardFailure.declined);
@@ -196,7 +201,10 @@ void main() {
     await _tapCard(t);
     await t.pumpAndSettle();
     expect(find.byKey(const Key('card-wait')), findsNothing);
-    expect(textOf(t, const Key('card-message')), 'Die Karte wurde abgelehnt.');
+    expect(
+      textOf(t, const Key('card-message')),
+      'Die Kartenzahlung wurde nicht abgeschlossen.',
+    );
     expect(cartOf(t).lines.map((l) => l.item.id), ['cola', 'pommes']);
     expect(textOf(t, const Key('cart-total')), '7,05 €');
     expect(await receiptCount(t), 0);
@@ -357,4 +365,72 @@ void main() {
     expect(card.contains(reason.topLeft), isTrue);
     expect(card.contains(reason.bottomRight), isTrue);
   });
+
+  group('während einer Kartenzahlung', () {
+    testWidgets('Reiter, Einstellungen und Abmelden tun nichts, danach '
+        'wieder', (t) async {
+      final terminal = FakeCardTerminal(
+        statusValue: const CardTerminalStatus(
+          CardTerminalState.ready,
+          merchantName: 'MH12345',
+        ),
+      )..hang = Completer<CardPaymentResult>();
+      await _open(t, ['cola'], overrides: await _setup(terminal: terminal));
+      // Als Chef, damit es die Einstellungen gibt.
+      await containerOf(t).read(sessionProvider.notifier).login('4711');
+      await t.pumpAndSettle();
+      await tapItem(t, 'cola');
+      await _tapCard(t);
+      await t.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('card-wait')), findsOneWidget);
+      for (final key in ['tab-Bons', 'tab-Abschluss', 'settings', 'staff']) {
+        await t.tap(find.byKey(Key(key)), warnIfMissed: false);
+        await t.pump(const Duration(milliseconds: 100));
+        expect(
+          find.byKey(const Key('area-kassa')),
+          findsOneWidget,
+          reason: key,
+        );
+        expect(find.byKey(const Key('card-wait')), findsOneWidget, reason: key);
+        expect(containerOf(t).read(sessionProvider), isNotNull, reason: key);
+      }
+      terminal.hang!.complete(const CardPaid(txCode: 'TX1'));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('next-customer')), findsOneWidget);
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('area-bons')), findsOneWidget);
+    });
+
+    testWidgets('payByCard wirft trotzdem: zurück zum Bon, nichts hängt', (
+      t,
+    ) async {
+      await _open(
+        t,
+        ['cola'],
+        overrides: [
+          ...await _setup(),
+          saleServiceProvider.overrideWith(_ThrowingSaleService.new),
+        ],
+      );
+      await _tapCard(t);
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(find.byKey(const Key('card-wait')), findsNothing);
+      expect(find.byKey(const Key('pay-card')), findsOneWidget);
+      expect(_cardOn(t), isTrue);
+    });
+  });
+}
+
+/// Ein Verkaufsdienst, dessen Kartenzahlung wirft.
+class _ThrowingSaleService extends SaleService {
+  _ThrowingSaleService(super.ref);
+
+  @override
+  Future<CardSaleOutcome> payByCard({
+    required String paymentId,
+    required Cart cart,
+    required Staff staff,
+  }) async => throw StateError('kaputt');
 }

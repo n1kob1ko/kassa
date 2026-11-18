@@ -162,15 +162,23 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       _cardCents = cart.totalCents;
       _side = _Side.waitingForCard;
     });
-    final CardSaleOutcome outcome;
+    CardSaleOutcome? outcome;
     try {
       outcome = await ref
           .read(saleServiceProvider)
           .payByCard(paymentId: const Uuid().v4(), cart: cart, staff: staff);
+    } catch (_) {
+      // payByCard wirft nicht; falls doch, zurück zum Bon. Gibt es eine offene
+      // Zahlung, fragt das Blatt danach.
+      outcome = null;
     } finally {
       _cardRunning = false;
     }
     if (!mounted) return;
+    if (outcome == null) {
+      setState(() => _side = _Side.cart);
+      return;
+    }
     switch (outcome) {
       case CardSaleDone(:final sale):
         _onPaid(sale);

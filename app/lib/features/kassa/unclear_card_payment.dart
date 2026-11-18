@@ -8,12 +8,16 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../data/card_payment_repository.dart';
 import '../../data/providers.dart';
+import '../../data/settings_repository.dart';
+import '../../devices/printer.dart';
 import '../../domain/catalog.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
+import '../../ui/undo_toast.dart';
 import '../bons/receipt_list.dart' show receiptTime;
 import '../login/session.dart';
+import 'cart_controller.dart';
 import 'sale_service.dart';
 
 /// Die Zahlungen, nach denen gefragt wird, die älteste zuerst: alle mit
@@ -40,7 +44,6 @@ class UnclearCardOverlay extends ConsumerWidget {
     final staff = ref.watch(sessionProvider);
     final open = ref.watch(unclearCardPaymentsProvider);
     if (staff == null || open.isEmpty) return const SizedBox.shrink();
-    final c = KassaColors.of(context);
     final fade = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : KassaTokens.motionFade;
@@ -53,14 +56,14 @@ class UnclearCardOverlay extends ConsumerWidget {
         builder: (context, t, child) => Opacity(opacity: t, child: child),
         child: Stack(
           children: [
-            ModalBarrier(
-              dismissible: false,
-              color: c.ink.withValues(alpha: 0.5),
-            ),
+            ModalBarrier(dismissible: false, color: KassaTokens.scrim),
             Center(
               child: _UnclearSheet(
                 key: ValueKey(open.first.id),
                 payment: open.first,
+                // Das Blatt ist weg, sobald der Bon geschrieben ist; den
+                // Ausgang des Druckens meldet darum diese Fläche, die bleibt.
+                onPrint: (print) => _announcePrint(context, print),
               ),
             ),
           ],
@@ -70,12 +73,33 @@ class UnclearCardOverlay extends ConsumerWidget {
   }
 }
 
+/// Zeigt das Ergebnis des Druckens als Hinweis unten, wie das Bon-Detail.
+/// Ohne Drucker gibt es nichts zu melden.
+Future<void> _announcePrint(
+  BuildContext context,
+  Future<PrintOutcome> print,
+) async {
+  final outcome = await print;
+  if (!context.mounted || outcome.problem == PrintProblem.notSetUp) return;
+  showUndoToast(
+    context,
+    message: outcome.ok ? 'Bon gedruckt' : outcome.message,
+  );
+}
+
 enum _Stage { choose, confirmPaid, confirmNotPaid }
 
 class _UnclearSheet extends ConsumerStatefulWidget {
-  const _UnclearSheet({super.key, required this.payment});
+  const _UnclearSheet({
+    super.key,
+    required this.payment,
+    required this.onPrint,
+  });
 
   final PendingCardPayment payment;
+
+  /// Bekommt das Drucken des Bons nach "Ja".
+  final void Function(Future<PrintOutcome> print) onPrint;
 
   @override
   ConsumerState<_UnclearSheet> createState() => _UnclearSheetState();
@@ -105,7 +129,8 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
       if (paid) {
         final catalog = ref.read(catalogStreamProvider).value;
         if (catalog == null) throw const UnreadableCardPaymentException();
-        await service.confirmUnclear(p, catalog: catalog);
+        final sale = await service.confirmUnclear(p, catalog: catalog);
+        widget.onPrint(sale.print);
       } else {
         await service.discardUnclear(p);
       }
@@ -292,6 +317,16 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
   Widget _confirm() {
     final c = KassaColors.of(context);
     final paid = _stage == _Stage.confirmPaid;
+    final settings =
+        ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
+    final printing = settings.printerKind != PrinterKind.none;
+    final catalog = ref.watch(catalogStreamProvider).value;
+    // "Nein" legt die Artikel nur auf eine leere Kassa zurück, und nur, wenn
+    // sich der Bon der Zahlung lesen lässt.
+    final comesBack =
+        catalog != null &&
+        ref.watch(cartProvider).isEmpty &&
+        SaleService.cartToRestore(widget.payment, catalog) != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -300,9 +335,15 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
           background: c.accentSoft,
           foreground: c.accentInk,
           message: paid
-              ? 'Die Kassa schreibt den Bon als Kartenzahlung und druckt ihn.'
-              : 'Die Kassa verwirft die Zahlung und legt die Artikel wieder '
-                    'auf den Bon.',
+              ? (printing
+                    ? 'Die Kassa schreibt den Bon als Kartenzahlung und druckt '
+                          'ihn.'
+                    : 'Die Kassa schreibt den Bon als Kartenzahlung.')
+              : (comesBack
+                    ? 'Die Kassa verwirft die Zahlung und legt die Artikel '
+                          'wieder auf den Bon.'
+                    : 'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa '
+                          'bleibt, wie er ist.'),
         ),
         const SizedBox(height: KassaTokens.spaceXxl),
         PrimaryButton(

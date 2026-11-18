@@ -154,6 +154,9 @@ class SaleService {
     }
     final active = _ref.read(activeCardPaymentProvider.notifier)
       ..set(paymentId);
+    // Ab dem Aufruf des Terminals kann Geld geflossen sein: was dann noch
+    // schiefgeht, endet als unklar, nie als gescheitert.
+    var terminalAsked = false;
     try {
       final pending = _ref.read(cardPaymentRepositoryProvider);
       // Dieselbe Id nie ein zweites Mal am Terminal abbuchen: gibt es schon
@@ -184,6 +187,7 @@ class SaleService {
         );
       }
       final CardPaymentResult result;
+      terminalAsked = true;
       try {
         result = await terminal.pay(
           paymentId: paymentId,
@@ -212,25 +216,47 @@ class SaleService {
             // Bezahlt, aber nicht gespeichert: die offene Zahlung bleibt.
             return await _unclear(paymentId);
           }
-          _ref.read(cartProvider.notifier).clear();
+          _clearRegister();
           return CardSaleDone(await _printCard(receipt));
         case CardFailed():
-          await pending.discard(paymentId);
+          try {
+            await pending.discard(paymentId);
+          } catch (_) {
+            // Die Zeile bleibt stehen; das Blatt fragt danach, sobald diese
+            // Zahlung nicht mehr läuft. Bezahlt wurde sicher nicht.
+          }
           return CardSaleFailed(result.message);
         case CardUnknown():
           return await _unclear(paymentId);
       }
+    } catch (_) {
+      if (!terminalAsked) {
+        return const CardSaleFailed(
+          'Die Kartenzahlung konnte nicht gestartet werden.',
+        );
+      }
+      return await _unclear(paymentId);
     } finally {
       active.set(null);
     }
   }
 
-  /// Der Ausgang ist unklar: die Zahlung wird so markiert und der offene Bon
-  /// geleert (er steckt in der offenen Zahlung).
+  /// Der Ausgang ist unklar: der offene Bon wird geleert (er steckt in der
+  /// offenen Zahlung), dann wird die Zahlung als unklar markiert. Scheitert
+  /// das Markieren, bleibt sie "gestartet"; auch so fragt das Blatt danach.
+  /// Wirft nie.
   Future<CardSaleOutcome> _unclear(String paymentId) async {
-    await _ref.read(cardPaymentRepositoryProvider).markUnknown(paymentId);
-    _ref.read(cartProvider.notifier).clear();
+    _clearRegister();
+    try {
+      await _ref.read(cardPaymentRepositoryProvider).markUnknown(paymentId);
+    } catch (_) {}
     return CardSaleUnclear(paymentId);
+  }
+
+  void _clearRegister() {
+    try {
+      _ref.read(cartProvider.notifier).clear();
+    } catch (_) {}
   }
 
   /// Der Bon einer offenen Zahlung, oder `null`, wenn er sich nicht mehr
@@ -282,7 +308,9 @@ class SaleService {
         );
     final onRegister = _ref.read(cartProvider);
     if (!onRegister.isEmpty) {
-      if (jsonEncode(onRegister.toJson()) == p.cartJson) {
+      // Beide Seiten so verglichen, wie die Kassa sie liest: Zeilen, die es
+      // nicht mehr gibt, fehlen auf beiden.
+      if (jsonEncode(onRegister.toJson()) == jsonEncode(cart.toJson())) {
         _ref.read(cartProvider.notifier).clear();
       } else {
         // Das Abschließen hat den Entwurf gelöscht; der andere Bon auf der
@@ -306,13 +334,24 @@ class SaleService {
     try {
       final catalog = await _ref.read(catalogRepositoryProvider).current();
       if (catalog == null) return;
+      final cart = cartToRestore(p, catalog);
+      if (cart != null) _ref.read(cartProvider.notifier).restore(cart);
+    } catch (_) {
+      // Lässt sich der Bon nicht lesen, bleibt die Kassa leer.
+    }
+  }
+
+  /// Der Bon, den [discardUnclear] auf eine leere Kassa zurücklegt, oder
+  /// `null`, wenn sich nichts davon lesen lässt.
+  static Cart? cartToRestore(PendingCardPayment p, Catalog catalog) {
+    try {
       final cart = Cart.fromJson(
         jsonDecode(p.cartJson) as Map<String, dynamic>,
         catalog,
       );
-      _ref.read(cartProvider.notifier).restore(cart);
+      return cart.isEmpty ? null : cart;
     } catch (_) {
-      // Lässt sich der Bon nicht lesen, bleibt die Kassa leer.
+      return null;
     }
   }
 

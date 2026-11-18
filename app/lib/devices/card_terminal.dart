@@ -53,7 +53,7 @@ class CardFailed extends CardPaymentResult {
 
   /// Text für die Bedienung.
   String get message => switch (failure) {
-    CardFailure.declined => 'Die Karte wurde abgelehnt.',
+    CardFailure.declined => 'Die Kartenzahlung wurde nicht abgeschlossen.',
     CardFailure.cancelled => 'Kartenzahlung abgebrochen.',
     CardFailure.noInternet => 'Kein Internet. Kartenzahlung geht gerade nicht.',
     CardFailure.notLoggedIn =>

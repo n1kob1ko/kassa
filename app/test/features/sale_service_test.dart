@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Variable;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/device_providers.dart';
@@ -11,6 +15,7 @@ import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
 
@@ -275,7 +280,7 @@ void main() {
       putOnRegister();
       terminal.next = const CardFailed(CardFailure.declined);
       final o = await pay() as CardSaleFailed;
-      expect(o.message, 'Die Karte wurde abgelehnt.');
+      expect(o.message, 'Die Kartenzahlung wurde nicht abgeschlossen.');
       expect(await shop.count('receipts'), 0);
       expect(await cardPayments.pending(), isEmpty);
       expect(printer.log, isEmpty);
@@ -434,6 +439,45 @@ void main() {
           await container.read(settingsRepositoryProvider).readDraft(),
           isNull,
         );
+      });
+
+      test('bestätigen nach einer Änderung der Speisekarte, die die Summe '
+          'lässt: derselbe Bon auf der Kassa wird trotzdem geleert', () async {
+        await configure();
+        putOnRegister();
+        await cardPayments.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
+        // Eine Zeile, deren Artikel es nicht mehr gibt (z. B. ein Artikel um
+        // 0,00 €): sie zählt nicht zur Summe und fällt beim Lesen weg.
+        final stored = cart.toJson();
+        final withGone = {
+          ...stored,
+          'lines': [
+            ...(stored['lines'] as List),
+            {
+              'lineId': 'weg',
+              'itemId': 'gibt-es-nicht-mehr',
+              'quantity': 1,
+              'optionIds': <String>[],
+            },
+          ],
+        };
+        await shop.db.customUpdate(
+          'UPDATE pending_card_payments SET cart_json = ? WHERE id = ?',
+          variables: [
+            Variable.withString(jsonEncode(withGone)),
+            Variable.withString('p1'),
+          ],
+        );
+        final p = (await cardPayments.pending()).single;
+        expect(p.cartJson, isNot(jsonEncode(cart.toJson())));
+        // Der Entwurf hat den Bon so zurückgebracht, wie die Kassa ihn liest.
+        final catalog = await catalogOf();
+        container
+            .read(cartProvider.notifier)
+            .restore(Cart.fromJson(withGone, catalog));
+        await service.confirmUnclear(p, catalog: catalog);
+        expect(await shop.count('receipts'), 1);
+        expect(container.read(cartProvider).isEmpty, isTrue);
       });
 
       test('bestätigen mit anderem Inhalt auf der Kassa: der bleibt '
@@ -612,8 +656,94 @@ void main() {
       },
     );
 
+    group('payByCard wirft nie', () {
+      late _FailingCardPayments failing;
+      late ProviderContainer c;
+      late SaleService s;
+
+      setUp(() {
+        failing = _FailingCardPayments(shop.db, shop.clock);
+        c = ProviderContainer(
+          overrides: [
+            databaseProvider.overrideWithValue(shop.db),
+            clockProvider.overrideWithValue(shop.clock),
+            receiptPrinterProvider.overrideWithValue(printer),
+            cardTerminalProvider.overrideWithValue(terminal),
+            cardPaymentRepositoryProvider.overrideWithValue(failing),
+          ],
+        );
+        s = c.read(saleServiceProvider);
+        c.read(cartProvider.notifier).restore(cart);
+      });
+      tearDown(() => c.dispose());
+
+      Future<CardSaleOutcome> payNow() =>
+          s.payByCard(paymentId: 'p1', cart: cart, staff: shop.anna);
+
+      test('unklar und markUnknown scheitert: unklar, Kassa leer, die offene '
+          'Zahlung bleibt', () async {
+        failing.failMarkUnknown = true;
+        terminal.next = const CardUnknown();
+        final o = await payNow();
+        expect(o, isA<CardSaleUnclear>());
+        expect(c.read(cartProvider).isEmpty, isTrue);
+        expect((await failing.pending()).single.id, 'p1');
+        expect(c.read(activeCardPaymentProvider), isNull);
+      });
+
+      test('pay wirft und markUnknown scheitert: unklar', () async {
+        failing.failMarkUnknown = true;
+        terminal.next = () async => throw StateError('weg');
+        expect(await payNow(), isA<CardSaleUnclear>());
+        expect(c.read(cartProvider).isEmpty, isTrue);
+        expect(await failing.pending(), hasLength(1));
+      });
+
+      test('bezahlt, Bon nicht gespeichert und markUnknown scheitert: '
+          'unklar', () async {
+        failing.failMarkUnknown = true;
+        terminal.next = const CardPaid(txCode: 'TX1');
+        final receipts = _FailingReceipts(shop.db, shop.clock, shop.days);
+        c.dispose();
+        c = ProviderContainer(
+          overrides: [
+            databaseProvider.overrideWithValue(shop.db),
+            clockProvider.overrideWithValue(shop.clock),
+            receiptPrinterProvider.overrideWithValue(printer),
+            cardTerminalProvider.overrideWithValue(terminal),
+            cardPaymentRepositoryProvider.overrideWithValue(failing),
+            receiptRepositoryProvider.overrideWithValue(receipts),
+          ],
+        );
+        s = c.read(saleServiceProvider);
+        c.read(cartProvider.notifier).restore(cart);
+        final o = await payNow();
+        expect(o, isA<CardSaleUnclear>());
+        expect(c.read(cartProvider).isEmpty, isTrue);
+        expect(await failing.pending(), hasLength(1));
+      });
+
+      test('abgelehnt und discard scheitert: gescheitert mit der Meldung, '
+          'der Bon bleibt auf der Kassa', () async {
+        failing.failDiscard = true;
+        terminal.next = const CardFailed(CardFailure.declined);
+        final o = await payNow();
+        expect(o, isA<CardSaleFailed>());
+        expect(
+          (o as CardSaleFailed).message,
+          'Die Kartenzahlung wurde nicht abgeschlossen.',
+        );
+        expect(c.read(cartProvider).isEmpty, isFalse);
+        expect(c.read(activeCardPaymentProvider), isNull);
+      });
+    });
+
     test('CardFailed.message: alle Texte', () {
       String m(CardFailure f, [String? d]) => CardFailed(f, detail: d).message;
+      expect(
+        m(CardFailure.declined),
+        'Die Kartenzahlung wurde nicht abgeschlossen.',
+      );
       expect(m(CardFailure.cancelled), 'Kartenzahlung abgebrochen.');
       expect(
         m(CardFailure.noInternet),
@@ -638,4 +768,40 @@ void main() {
       );
     });
   });
+}
+
+/// Offene Zahlungen, deren Schreiben scheitern kann.
+class _FailingCardPayments extends CardPaymentRepository {
+  _FailingCardPayments(super.db, super.clock);
+
+  bool failMarkUnknown = false;
+  bool failDiscard = false;
+
+  @override
+  Future<void> markUnknown(String paymentId) async {
+    if (failMarkUnknown) throw StateError('Datenbank voll');
+    return super.markUnknown(paymentId);
+  }
+
+  @override
+  Future<void> discard(String paymentId) async {
+    if (failDiscard) throw StateError('Datenbank voll');
+    return super.discard(paymentId);
+  }
+}
+
+/// Bons, deren Abschluss als Kartenzahlung scheitert.
+class _FailingReceipts extends ReceiptRepository {
+  _FailingReceipts(super.db, super.clock, super.days);
+
+  @override
+  Future<Receipt> finalizeCardSale({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+    required String provider,
+    String? txCode,
+    String? cardScheme,
+    String? cardLast4,
+  }) async => throw StateError('Datenbank voll');
 }

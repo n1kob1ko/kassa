@@ -11,6 +11,10 @@ class KassaTokens {
   /// Schrift und Symbole auf [accent] (immer Weiß).
   static const Color onAccent = Color(0xFFFFFFFF);
 
+  /// Abdunkelung hinter einem Blatt, das alles darunter sperrt: Tinte der
+  /// hellen Ansicht (#14171A) zu 50 %, in beiden Ansichten gleich dunkel.
+  static const Color scrim = Color(0x8014171A);
+
   // Tippflächen
   static const double minTap = 48.0;
   static const double primaryActionHeight = 72.0;
