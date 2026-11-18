@@ -36,12 +36,15 @@ val requestedAbis = (project.findProperty("target-platform") as String?)
 
 // SumUp affiliate key for card payments. KASSA_SUMUP_PROPERTIES names a
 // properties file outside the repository with the line `affiliateKey=…`;
-// tool/build_apk.sh sets it. Without the variable or the file the key is
-// empty and the app reports card payment as not set up.
+// tool/build_apk.sh sets it. Without the variable the key is empty and the
+// app reports card payment as not set up. A variable that names a missing
+// file stops the build: it must never silently build without card payment.
 val sumUpPropertiesFile = System.getenv("KASSA_SUMUP_PROPERTIES")
     ?.takeIf { it.isNotBlank() }
     ?.let { file(it) }
-    ?.takeIf { it.isFile }
+if (sumUpPropertiesFile != null && !sumUpPropertiesFile.isFile) {
+    throw GradleException("KASSA_SUMUP_PROPERTIES points to a missing file: $sumUpPropertiesFile")
+}
 val sumUpAffiliateKey = Properties().apply {
     sumUpPropertiesFile?.inputStream()?.use { load(it) }
 }.getProperty("affiliateKey").orEmpty().trim()
