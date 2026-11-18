@@ -3,6 +3,8 @@
 
 import 'dart:typed_data';
 
+import 'package:qr/qr.dart';
+
 import '../domain/print_document.dart';
 import '../domain/receipt_layout.dart' show printable;
 
@@ -51,7 +53,14 @@ int? pc858(int rune) {
 Uint8List encodeDrawerKick() => Uint8List.fromList(_drawerKick);
 
 /// Setzt [document] zu den Bytes um, die der Drucker versteht.
-Uint8List encodeEscPos(List<PrintOp> document) {
+///
+/// Mit [qrAsImage] geht ein QR-Code als Rasterbild hinaus statt mit dem
+/// QR-Befehl des Druckers. [columns] ist die Breite des Papiers in Zeichen.
+Uint8List encodeEscPos(
+  List<PrintOp> document, {
+  bool qrAsImage = false,
+  int columns = 48,
+}) {
   final out = BytesBuilder()
     ..add(_init)
     ..add(_selectPc858);
@@ -82,6 +91,13 @@ Uint8List encodeEscPos(List<PrintOp> document) {
         out.addByte(_lineEnd);
       case PrintFeed():
         out.add([0x1B, 0x64, op.lines.clamp(0, 255)]);
+      case PrintQr():
+        if (align != PrintAlign.center) out.add([0x1B, 0x61, 1]);
+        out.add(
+          qrAsImage ? _qrImage(op.data, columns) : _qrCommand(op.data, columns),
+        );
+        out.add([0x1B, 0x61, 0]);
+        align = PrintAlign.left;
       case PrintCut():
         out.add(_cut);
       case PrintDrawerKick():
@@ -96,3 +112,67 @@ int _sizeByte(PrintSize size) => switch (size) {
   PrintSize.doubleHeight => 0x01,
   PrintSize.doubleBoth => 0x11,
 };
+
+/// Größe der Punkte (Module) eines QR-Codes: 5 ab 42 Spalten, sonst 4.
+int _qrDot(int columns) => columns >= 42 ? 5 : 4;
+
+/// Der Text des QR-Codes als Bytes: ASCII bleibt, alles andere wird `?`.
+List<int> _qrBytes(String data) => [
+  for (final unit in data.codeUnits) unit <= 0x7E ? unit : _unknown,
+];
+
+/// QR-Code mit den Befehlen des Druckers (GS ( k): Modell 2, Punktgröße,
+/// Fehlerkorrektur M, Daten speichern, drucken. Das Papier ist schon mittig
+/// ausgerichtet.
+List<int> _qrCommand(String data, int columns) {
+  final bytes = _qrBytes(data);
+  final length = bytes.length + 3;
+  return [
+    0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00, //
+    0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, _qrDot(columns),
+    0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31,
+    0x1D, 0x28, 0x6B, length & 0xFF, length >> 8, 0x31, 0x50, 0x30,
+    ...bytes,
+    0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30,
+  ];
+}
+
+/// QR-Code als Rasterbild (GS v 0). Das Bild ist so breit wie das Papier
+/// (12 Punkte je Spalte), der Code steht mittig, ringsum 4 Module Rand. Wird
+/// der Code zu breit für die gewünschte Punktgröße, werden die Punkte kleiner.
+List<int> _qrImage(String data, int columns) {
+  final qr = QrImage(
+    QrCode(
+      payload: QrPayload.fromString(String.fromCharCodes(_qrBytes(data))),
+      errorCorrectLevel: QrErrorCorrectLevel.medium,
+    ),
+  );
+  const quiet = 4;
+  final modules = qr.moduleCount + 2 * quiet;
+  final widthBytes = (columns * 12 + 7) ~/ 8;
+  final widthDots = widthBytes * 8;
+  var dot = _qrDot(columns);
+  while (dot > 1 && modules * dot > widthDots) {
+    dot--;
+  }
+  final height = modules * dot;
+  final left = (widthDots - modules * dot) ~/ 2;
+  final image = Uint8List(widthBytes * height);
+  for (var row = 0; row < qr.moduleCount; row++) {
+    for (var col = 0; col < qr.moduleCount; col++) {
+      if (!qr.isDark(row, col)) continue;
+      for (var dy = 0; dy < dot; dy++) {
+        final y = (row + quiet) * dot + dy;
+        for (var dx = 0; dx < dot; dx++) {
+          final x = left + (col + quiet) * dot + dx;
+          image[y * widthBytes + (x >> 3)] |= 0x80 >> (x & 7);
+        }
+      }
+    }
+  }
+  return [
+    0x1D, 0x76, 0x30, 0x00, //
+    widthBytes & 0xFF, widthBytes >> 8, height & 0xFF, height >> 8,
+    ...image,
+  ];
+}

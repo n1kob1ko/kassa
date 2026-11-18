@@ -16,6 +16,7 @@ Receipt receipt({
   String id = 'r1',
   ReceiptKind kind = ReceiptKind.sale,
   String? voids,
+  RksvStamp? rksv,
 }) => Receipt(
   id: id,
   number: 7,
@@ -25,6 +26,7 @@ Receipt receipt({
   businessDayId: 'd',
   kind: kind,
   voidsReceiptId: voids,
+  rksv: rksv,
   lines: const [],
   payment: const Payment(
     kind: PaymentKind.cash,
@@ -80,10 +82,12 @@ EscPosPrinter printerOf(
   PrinterTransport? t, {
   Future<int?> Function(String)? number,
   Duration limit = printCallLimit,
+  bool qrAsImage = false,
 }) => EscPosPrinter(
   transport: t,
   business: business,
   columns: 48,
+  qrAsImage: qrAsImage,
   clock: FixedClock(DateTime(2026, 11, 17, 12)),
   numberOfReceipt: number ?? (_) async => null,
   limit: limit,
@@ -98,6 +102,28 @@ void main() {
     expect(t.sent, [encodeEscPos(layoutReceipt(r, business))]);
     expect(t.asked, [escposStatusPrinter]);
   });
+
+  test(
+    'QR-Code geht als Befehl oder, eingeschaltet, als Bild hinaus',
+    () async {
+      const stamp = RksvStamp(
+        cashBoxId: 'K7QM2XB4HN',
+        qrText: '_R1-AT0_K7QM2XB4HN_7',
+        damaged: false,
+        probe: true,
+      );
+      final r = receipt(rksv: stamp);
+      final command = RecordingTransport();
+      await printerOf(command).printReceipt(r);
+      expect(command.sent, [encodeEscPos(layoutReceipt(r, business))]);
+      final image = RecordingTransport();
+      await printerOf(image, qrAsImage: true).printReceipt(r);
+      expect(image.sent, [
+        encodeEscPos(layoutReceipt(r, business), qrAsImage: true),
+      ]);
+      expect(image.sent.single, isNot(command.sent.single));
+    },
+  );
 
   test('Storno-Bon trägt die Nummer des stornierten Bons', () async {
     final t = RecordingTransport();

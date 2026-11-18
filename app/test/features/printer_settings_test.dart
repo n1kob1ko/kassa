@@ -97,6 +97,37 @@ void main() {
     expect(find.text('Nicht eingerichtet'), findsOneWidget);
   });
 
+  testWidgets(
+    'Schalter "QR-Code als Bild drucken": nur mit Drucker, speichert',
+    (t) async {
+      await pumpSettings(t);
+      expect(find.byKey(const Key('printer-qr-image')), findsNothing);
+      final repo = containerOf(t).read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          printerKind: PrinterKind.network,
+          printerAddress: '192.168.1.50:9100',
+          printerName: 'Drucker 192.168.1.50',
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('QR-Code als Bild drucken'), findsOneWidget);
+      expect(
+        find.text(
+          'Einschalten, wenn am Bon statt des QR-Codes nur Zeichen stehen.',
+        ),
+        findsOneWidget,
+      );
+      expect((await settingsOf(t)).printerQrAsImage, isFalse);
+      await t.tap(find.byKey(const Key('printer-qr-image')));
+      await t.pumpAndSettle();
+      expect((await settingsOf(t)).printerQrAsImage, isTrue);
+      await t.tap(find.byKey(const Key('printer-qr-image')));
+      await t.pumpAndSettle();
+      expect((await settingsOf(t)).printerQrAsImage, isFalse);
+    },
+  );
+
   testWidgets('Tipp öffnet das Feld in der Karte, noch ein Tipp schließt es', (
     t,
   ) async {

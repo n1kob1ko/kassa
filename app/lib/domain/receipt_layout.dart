@@ -239,7 +239,6 @@ List<PrintOp> layoutReceipt(
   BusinessInfo business, {
   int columns = 48,
   int? voidedNumber,
-  bool testMarker = true,
 }) {
   final b = _Builder(columns);
 
@@ -278,6 +277,8 @@ List<PrintOp> layoutReceipt(
   // 4. Bon-Kopf
   b.row('Bon Nr. ${r.number}', _dateTime(r.createdAt));
   b.row('Bedienung: ${r.staffName}', '');
+  final rksv = r.rksv;
+  if (rksv != null) b.row('Kassen-ID: ${rksv.cashBoxId}', '');
   b.rule();
 
   // 5. Zeilen
@@ -337,6 +338,15 @@ List<PrintOp> layoutReceipt(
     }
   }
 
+  // QR-Code der Signatur, bei Sonderbelegen nach der Summe
+  if (rksv != null) {
+    b.blank();
+    b.ops.add(PrintQr(rksv.qrText));
+    if (rksv.damaged) {
+      b.text('Sicherheitseinrichtung ausgefallen', align: PrintAlign.center);
+    }
+  }
+
   // 9. Schlusstext
   final footer = business.receiptFooter;
   if (footer != null && footer.trim().isNotEmpty) {
@@ -344,8 +354,8 @@ List<PrintOp> layoutReceipt(
     b.centered(footer);
   }
 
-  // 10. Testbon
-  if (testMarker) {
+  // 10. Testbon: ohne Eintrag im Protokoll und bei der Probe-Signatur
+  if (rksv == null || rksv.probe) {
     b.blank();
     b.text('TESTBON', align: PrintAlign.center, bold: true);
     b.text('Keine gültige Rechnung', align: PrintAlign.center);

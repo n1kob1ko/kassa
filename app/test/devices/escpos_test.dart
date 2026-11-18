@@ -118,4 +118,83 @@ void main() {
       expect(isParam, isTrue, reason: 'Byte 0x00 an Stelle $i');
     }
   });
+
+  group('PrintQr', () {
+    List<int> body(List<int> b) => b.sublist(5);
+
+    List<int> command(int size) => [
+      0x1B, 0x61, 1, //
+      0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00,
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, size,
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31,
+      0x1D, 0x28, 0x6B, 0x06, 0x00, 0x31, 0x50, 0x30, 0x41, 0x42, 0x43,
+      0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30,
+      0x1B, 0x61, 0,
+    ];
+
+    test('Befehl bei 48 Spalten: Punktgröße 5', () {
+      expect(body(encodeEscPos([const PrintQr('ABC')])), command(5));
+    });
+
+    test('Befehl bei 42 Spalten: Punktgröße 5, bei 32 Spalten 4', () {
+      expect(
+        body(encodeEscPos([const PrintQr('ABC')], columns: 42)),
+        command(5),
+      );
+      expect(
+        body(encodeEscPos([const PrintQr('ABC')], columns: 32)),
+        command(4),
+      );
+    });
+
+    test('Ausrichtung davor bleibt nicht stehen: danach wieder links', () {
+      final b = body(
+        encodeEscPos([
+          const PrintText('a', align: PrintAlign.right),
+          const PrintQr('ABC'),
+          const PrintText('b'),
+        ]),
+      );
+      expect(b.sublist(b.length - 5), [0x1B, 0x61, 0, 0x62, 0x0A]);
+    });
+
+    test('Text mit 300 Zeichen: Länge in pL und pH', () {
+      final b = body(encodeEscPos([PrintQr('A' * 300)]));
+      // 300 + 3 = 303 = 0x012F
+      final store = [0x1D, 0x28, 0x6B, 0x2F, 0x01, 0x31, 0x50, 0x30];
+      var found = false;
+      for (var i = 0; i + store.length <= b.length; i++) {
+        if (List.generate(store.length, (k) => b[i + k]).join(',') ==
+            store.join(',')) {
+          found = true;
+        }
+      }
+      expect(found, isTrue);
+    });
+
+    test('als Bild: Kopf, 72 Bytes Breite, Rand oben und unten leer', () {
+      final b = body(encodeEscPos([PrintQr('A' * 300)], qrAsImage: true));
+      expect(b.sublist(0, 3), [0x1B, 0x61, 1]);
+      expect(b.sublist(3, 7), [0x1D, 0x76, 0x30, 0x00]);
+      final xl = b[7], xh = b[8], yl = b[9], yh = b[10];
+      final width = xl + 256 * xh;
+      final height = yl + 256 * yh;
+      expect(width, 72);
+      final image = b.sublist(11, 11 + width * height);
+      expect(image.length, width * height);
+      expect(image.sublist(0, width).every((x) => x == 0), isTrue);
+      expect(image.sublist((height - 1) * width).every((x) => x == 0), isTrue);
+      // Es gibt dunkle Punkte, und die Ränder links und rechts sind leer.
+      expect(image.any((x) => x != 0), isTrue);
+      // Nach dem Bild wieder links.
+      expect(b.sublist(11 + width * height), [0x1B, 0x61, 0]);
+    });
+
+    test('als Bild bei 32 Spalten: 48 Bytes Breite', () {
+      final b = body(
+        encodeEscPos([const PrintQr('ABC')], qrAsImage: true, columns: 32),
+      );
+      expect(b[7] + 256 * b[8], 48);
+    });
+  });
 }

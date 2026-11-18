@@ -69,6 +69,7 @@ final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
     transport: ref.watch(transportFactoryProvider)(settings),
     business: catalog.business,
     columns: settings.printerColumns,
+    qrAsImage: settings.printerQrAsImage,
     clock: ref.watch(clockProvider),
     numberOfReceipt: (id) async => (await receipts.byId(id)).number,
   );

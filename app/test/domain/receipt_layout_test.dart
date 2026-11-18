@@ -35,6 +35,37 @@ Future<Receipt> saleOf(Cart c, {required int given}) async {
   );
 }
 
+/// [r] mit Eintrag im Protokoll.
+Receipt _withStamp(
+  Receipt r, {
+  bool probe = true,
+  bool damaged = false,
+  String qrText = _qrText,
+}) => Receipt(
+  id: r.id,
+  number: r.number,
+  createdAt: r.createdAt,
+  staffId: r.staffId,
+  staffName: r.staffName,
+  businessDayId: r.businessDayId,
+  kind: r.kind,
+  voidsReceiptId: r.voidsReceiptId,
+  lines: r.lines,
+  payment: r.payment,
+  rksv: RksvStamp(
+    cashBoxId: 'K7QM2XB4HN',
+    qrText: qrText,
+    damaged: damaged,
+    probe: probe,
+  ),
+  goodsCents: r.goodsCents,
+  depositCents: r.depositCents,
+  totalCents: r.totalCents,
+);
+
+const _qrText =
+    '_R1-AT0_K7QM2XB4HN_12_2026-11-17T11:00:00_0,00_0,00_0,00_0,00_0,00_x_y_z';
+
 /// Ein Bon mit sehr langem Artikelnamen, Menge 99 zu 150,00 €.
 Receipt longNames() {
   const gross = 99 * 15000;
@@ -354,12 +385,8 @@ void main() {
 
   test('ohne Adresse, UID und Bon-Ende fehlen die Zeilen, nichts ist leer '
       'gedruckt', () async {
-    final r = await saleOf(cart, given: 2000);
-    final d = layoutReceipt(
-      r,
-      const BusinessInfo(name: 'Beispiel-Imbiss'),
-      testMarker: false,
-    );
+    final r = _withStamp(await saleOf(cart, given: 2000), probe: false);
+    final d = layoutReceipt(r, const BusinessInfo(name: 'Beispiel-Imbiss'));
     final t = texts(d);
     expect(t.where((x) => x.startsWith('UID')), isEmpty);
     expect(t.where((x) => x.trim().isEmpty), isEmpty);
@@ -391,5 +418,62 @@ void main() {
         'ä ö ü ß € sind lesbar',
       ]),
     );
+  });
+
+  group('Kassen-Kennung und QR-Code', () {
+    test('Probe-Verkauf: Kennung, Code nach der Zahlung, TESTBON', () async {
+      final r = _withStamp(await saleOf(cart, given: 2000));
+      final d = layoutReceipt(r, business);
+      final t = texts(d);
+      final staff = t.indexWhere((x) => x.startsWith('Bedienung:'));
+      expect(t[staff + 1], 'Kassen-ID: K7QM2XB4HN');
+      final qr = d.indexWhere((o) => o is PrintQr);
+      expect((d[qr] as PrintQr).data, _qrText);
+      expect(d[qr - 1], isA<PrintFeed>());
+      final pay = d.indexWhere(
+        (o) => o is PrintText && o.text.startsWith('Bar'),
+      );
+      final change = d.indexWhere(
+        (o) => o is PrintText && o.text.startsWith('Rückgeld'),
+      );
+      expect(change, greaterThan(pay));
+      expect(qr, greaterThan(change));
+      expect(t, contains('TESTBON'));
+      expect(t, isNot(contains('Sicherheitseinrichtung ausgefallen')));
+    });
+
+    test('Ausfall-Bon: der Satz steht mittig unter dem Code', () async {
+      final r = _withStamp(
+        await saleOf(cart, given: 2000),
+        probe: false,
+        damaged: true,
+      );
+      final d = layoutReceipt(r, business);
+      final qr = d.indexWhere((o) => o is PrintQr);
+      final next = d[qr + 1] as PrintText;
+      expect(next.text, 'Sicherheitseinrichtung ausgefallen');
+      expect(next.align, PrintAlign.center);
+      expect(texts(d), isNot(contains('TESTBON')));
+    });
+
+    test('Bon ohne Eintrag: wie bisher, kein Code, TESTBON', () async {
+      final d = layoutReceipt(await saleOf(cart, given: 2000), business);
+      expect(d.whereType<PrintQr>(), isEmpty);
+      expect(texts(d).where((x) => x.startsWith('Kassen-ID')), isEmpty);
+      expect(texts(d), contains('TESTBON'));
+    });
+
+    test('Sonderbeleg: der Code folgt der Summe', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      await shop.insertSpecialReceipt('z', 5, ReceiptKind.zero);
+      final r = _withStamp(await shop.receipts.byId('z'), probe: false);
+      final d = layoutReceipt(r, business);
+      final sum = d.indexWhere(
+        (o) => o is PrintText && o.text.startsWith('SUMME'),
+      );
+      final qr = d.indexWhere((o) => o is PrintQr);
+      expect(qr, greaterThan(sum));
+    });
   });
 }

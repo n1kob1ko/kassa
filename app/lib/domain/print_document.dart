@@ -33,6 +33,13 @@ class PrintFeed extends PrintOp {
   final int lines;
 }
 
+/// Ein QR-Code, mittig. [data] ist reines ASCII.
+class PrintQr extends PrintOp {
+  const PrintQr(this.data);
+
+  final String data;
+}
+
 class PrintCut extends PrintOp {
   const PrintCut();
 }

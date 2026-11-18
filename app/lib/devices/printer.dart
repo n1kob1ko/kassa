@@ -98,6 +98,7 @@ class EscPosPrinter implements ReceiptPrinter {
     required this.transport,
     required this.business,
     required this.columns,
+    this.qrAsImage = false,
     required this.clock,
     required this.numberOfReceipt,
     this.limit = printCallLimit,
@@ -106,6 +107,9 @@ class EscPosPrinter implements ReceiptPrinter {
   final PrinterTransport? transport;
   final BusinessInfo business;
   final int columns;
+
+  /// QR-Code als Bild drucken (für Drucker ohne QR-Befehl).
+  final bool qrAsImage;
   final Clock clock;
 
   /// Nummer des Bons mit dieser Id; `null`, wenn er nicht zu finden ist.
@@ -131,15 +135,19 @@ class EscPosPrinter implements ReceiptPrinter {
           voidedNumber = null; // ohne Nummer trotzdem drucken
         }
       }
-      return encodeEscPos([
-        if (openDrawer) const PrintDrawerKick(),
-        ...layoutReceipt(
-          receipt,
-          business,
-          columns: columns,
-          voidedNumber: voidedNumber,
-        ),
-      ]);
+      return encodeEscPos(
+        [
+          if (openDrawer) const PrintDrawerKick(),
+          ...layoutReceipt(
+            receipt,
+            business,
+            columns: columns,
+            voidedNumber: voidedNumber,
+          ),
+        ],
+        qrAsImage: qrAsImage,
+        columns: columns,
+      );
     },
   );
 

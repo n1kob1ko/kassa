@@ -230,6 +230,19 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
             padding: const EdgeInsets.only(bottom: 14),
             child: _panel(context, s),
           ),
+        if (set)
+          SettingsRow(
+            title: 'QR-Code als Bild drucken',
+            help:
+                'Einschalten, wenn am Bon statt des QR-Codes nur Zeichen '
+                'stehen.',
+            control: RowToggle(
+              key: const Key('printer-qr-image'),
+              label: 'QR-Code als Bild drucken',
+              value: s.printerQrAsImage,
+              onChanged: (v) => _save((s) => s.copyWith(printerQrAsImage: v)),
+            ),
+          ),
       ],
     );
   }
