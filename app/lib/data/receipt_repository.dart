@@ -470,7 +470,8 @@ class ReceiptRepository {
 
   /// Schreibt, was vor einem Verkauf oder Storno fällig ist. Höchstens zwei
   /// Runden: Auf einen Sammelbeleg kann ein Monats- oder Jahresbeleg folgen.
-  /// Ein gescheiterter Sammelbeleg beendet die Runden. true, wenn die
+  /// Ein gescheiterter Sammelbeleg und ein Monats- oder Jahresbeleg mit
+  /// Ausfall-Vermerk beenden die Runden. true, wenn die
   /// Signatur eben nicht ging: Der Bon danach fragt sie dann nicht noch
   /// einmal.
   Future<bool> _writeDue(RksvJournal journal, Staff staff) async {
@@ -479,6 +480,13 @@ class ReceiptRepository {
       if (due == null) return false;
       if (due != ReceiptKind.collective) {
         await _writeSpecial(journal, due, staff: staff);
+        // Kam der Monats- oder Jahresbeleg mit Ausfall-Vermerk, hat die
+        // Signatur eben nicht geantwortet: kein Sammelbeleg mehr, und der
+        // Bon danach fragt sie nicht noch einmal. Der nächste Bon schreibt
+        // Sammelbeleg und signierten Monatsbeleg (R10).
+        if (await journal.dueBefore(_clock.now()) == ReceiptKind.collective) {
+          return true;
+        }
       } else if (!await _tryCollective(journal, staff)) {
         return true;
       }

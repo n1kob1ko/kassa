@@ -147,6 +147,83 @@ void main() {
       });
     });
 
+    test('Monatsbeleg, der nicht antwortet: der Verkauf wartet höchstens 5 '
+        'Sekunden und fragt die Signatur nur einmal; danach Sammelbeleg, '
+        'signierter Monatsbeleg, Verkauf', () {
+      _inFakeTime((async, rig) {
+        rig.clock.value = DateTime(2026, 12, 1, 9);
+        rig.fake.mode = FakeMode.silent;
+        final before = rig.fake.signCalls;
+        Receipt? sold;
+        rig.sell('s1', cart).then((r) => sold = r);
+        async.elapse(RksvJournal.signLimit - _ms);
+        expect(sold, isNull);
+        async.elapse(_ms);
+        expect(sold, isNotNull);
+        expect(sold!.rksv!.damaged, isTrue);
+        expect(rig.fake.signCalls - before, 1);
+        expect(_await(async, rig.entryKinds()), ['start', 'month', 'sale']);
+        expect(_await(async, rig.entries(1))[1].damaged, isTrue);
+
+        // Die Signatur ist vor dem nächsten Verkauf wieder da.
+        rig.fake.release();
+        rig.fake.mode = FakeMode.ok;
+        async.flushMicrotasks();
+        rig.clock.value = DateTime(2026, 12, 2, 9);
+        _await(async, rig.sell('s2', cart));
+        expect(_await(async, rig.entryKinds()), [
+          'start',
+          'month',
+          'sale',
+          'collective',
+          'month',
+          'sale',
+        ]);
+        final entries = _await(async, rig.entries(1));
+        expect(entries.sublist(3).map((e) => e.damaged), [false, false, false]);
+        final kinds = _await(async, rig.entryKinds());
+        expect([
+          for (var i = 0; i < entries.length; i++)
+            if (kinds[i] == 'month' && !entries[i].damaged) i,
+        ], hasLength(1));
+        _await(async, rig.verifyChain(1));
+      });
+    });
+
+    test('Jahresbeleg, der nicht antwortet, vor einem Storno und vor einem '
+        'Nullbeleg: jeweils nur ein Signaturversuch', () {
+      _inFakeTime((async, rig) {
+        _await(async, rig.sell('s1', cart));
+        rig.clock.value = DateTime(2027, 1, 2, 9);
+        rig.fake.mode = FakeMode.silent;
+        var before = rig.fake.signCalls;
+        Receipt? voided;
+        rig.receipts.voidReceipt('s1', staff: rig.chef).then((r) => voided = r);
+        async.elapse(RksvJournal.signLimit);
+        expect(voided, isNotNull);
+        expect(rig.fake.signCalls - before, 1);
+        expect(_await(async, rig.entryKinds()), [
+          'start',
+          'sale',
+          'year',
+          'voided',
+        ]);
+        _await(async, rig.verifyChain(1));
+      });
+      _inFakeTime((async, rig) {
+        rig.clock.value = DateTime(2026, 12, 1, 9);
+        rig.fake.mode = FakeMode.silent;
+        final before = rig.fake.signCalls;
+        Receipt? zero;
+        rig.service.zeroReceipt(staff: rig.chef).then((r) => zero = r);
+        async.elapse(RksvJournal.signLimit);
+        expect(zero, isNotNull);
+        expect(zero!.rksv!.damaged, isTrue);
+        expect(rig.fake.signCalls - before, 1);
+        expect(_await(async, rig.entryKinds()), ['start', 'month', 'zero']);
+      });
+    });
+
     test('retrySignature, wenn die Signatur nicht antwortet: false nach 1 '
         'Sekunde, nichts geschrieben', () {
       _inFakeTime((async, rig) {
@@ -359,7 +436,10 @@ void main() {
         await rig.sell('s1', cart);
         rig.clock.value = DateTime(2026, 12, 1, 9);
         rig.fake.mode = FakeMode.error;
-        await rig.sell('s2', cart);
+        final before = rig.fake.signCalls;
+        final s2 = await rig.sell('s2', cart);
+        expect(rig.fake.signCalls - before, 1);
+        expect(s2.rksv!.damaged, isTrue);
         expect(await rig.entryKinds(), ['start', 'sale', 'month', 'sale']);
         final damagedMonth = (await rig.entries(1))[2];
         expect(damagedMonth.damaged, isTrue);
