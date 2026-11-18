@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -45,27 +46,29 @@ class SecureRksvSecrets implements RksvSecrets {
       _write('rksv_probe_key_$chain', key);
 }
 
-/// Für Tests. Mit [failReads] schlagen alle Lesezugriffe fehl.
+/// Für Tests. Mit [failReads] schlagen alle Lesezugriffe fehl, mit
+/// [hangReads] kehren sie nie zurück.
 class MemoryRksvSecrets implements RksvSecrets {
   final Map<String, Uint8List> _values = {};
   bool failReads = false;
+  bool hangReads = false;
 
-  Uint8List? _read(String name) {
+  Future<Uint8List?> _read(String name) async {
+    if (hangReads) await Completer<void>().future;
     if (failReads) throw StateError('Der sichere Speicher ist nicht lesbar.');
     final v = _values[name];
     return v == null ? null : Uint8List.fromList(v);
   }
 
   @override
-  Future<Uint8List?> aesKey(int chain) async => _read('rksv_aes_$chain');
+  Future<Uint8List?> aesKey(int chain) => _read('rksv_aes_$chain');
 
   @override
   Future<void> writeAesKey(int chain, Uint8List key) async =>
       _values['rksv_aes_$chain'] = Uint8List.fromList(key);
 
   @override
-  Future<Uint8List?> probeKey(int chain) async =>
-      _read('rksv_probe_key_$chain');
+  Future<Uint8List?> probeKey(int chain) => _read('rksv_probe_key_$chain');
 
   @override
   Future<void> writeProbeKey(int chain, Uint8List key) async =>

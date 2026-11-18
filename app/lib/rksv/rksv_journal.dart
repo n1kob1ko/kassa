@@ -92,43 +92,21 @@ class RksvJournal {
         state.chain ?? (throw StateError('Die Signatur hat keine Kette.'));
     final chainRow = await _chainRow(chain);
     final last = await _lastEntry(chain);
-    final aesKey =
-        await _secrets.aesKey(chain) ??
-        (throw StateError('Der AES-Schlüssel der Kette $chain fehlt.'));
-
-    // 2. Zähler.
+    // 2. bis 5. unter einer Frist: Schlüssel lesen, Einheit bauen,
+    // signieren. Ein Speicher, der nicht antwortet, hält den Bon nicht auf.
     final counter =
         state.counterCents + sumsCents.fold<int>(0, (a, b) => a + b);
-    final counterField = kind == ReceiptKind.voided
-        ? stornoCounterField
-        : encryptCounter(
-            aesKey: aesKey,
-            cashBoxId: chainRow.cashBoxId,
-            receiptId: '$number',
-            counterCents: counter,
-          );
-
-    // 3. Kettenwert.
-    final previous = chainValue(last?.jws ?? chainRow.cashBoxId);
-
-    // 4. und 5. Signieren, bei Ausfall der Vermerk.
-    String text(SignerInfo? info) => codeText(
-      CodeFields(
-        zdaId: info?.zdaId ?? chainRow.zdaId,
-        cashBoxId: chainRow.cashBoxId,
-        receiptId: '$number',
-        time: createdAt,
-        sumsCents: sumsCents,
-        counterField: counterField,
-        certSerial: info?.serialHex ?? chainRow.certSerial,
-        chain: previous,
-      ),
-    );
     final signed = await _sign(
-      await _unitOf(chain),
-      text,
+      chain: chain,
+      chainRow: chainRow,
+      number: number,
+      createdAt: createdAt,
+      kind: kind,
+      sumsCents: sumsCents,
+      counter: counter,
+      // 3. Kettenwert.
+      previous: chainValue(last?.jws ?? chainRow.cashBoxId),
       limit: state.outageSince == null ? signLimit : signLimitDuringOutage,
-      fallbackSerial: chainRow.certSerial,
       mustSign: mustSign,
     );
 
@@ -166,42 +144,95 @@ class RksvJournal {
     // 7. Aufgaben: kommen mit den Sonderbelegen von selbst (Task 6).
   }
 
-  /// Signiert den Text aus [text] innerhalb von [limit]. Bei
-  /// [SignatureFailure] oder Fristablauf: mit [mustSign] eine
-  /// [SignatureFailure], sonst der Ausfall-Vermerk. Eine Antwort nach der
-  /// Frist wird verworfen. Andere Fehler gehen weiter.
-  Future<_Signed> _sign(
-    SignatureUnit unit,
-    String Function(SignerInfo? info) text, {
+  /// Liest den AES-Schlüssel, rechnet den Zähler (2.), baut die Einheit und
+  /// signiert den Code (4.), alles zusammen innerhalb von [limit]. Bei
+  /// [SignatureFailure] oder Fristablauf beim Signieren (5.): mit [mustSign]
+  /// eine [SignatureFailure], sonst der Ausfall-Vermerk. Eine Antwort nach
+  /// der Frist wird verworfen. Läuft die Frist ab, bevor Schlüssel und
+  /// Einheit da sind, ist das ein unerwarteter Fehler ([StateError]), wie
+  /// jeder andere Fehler dabei.
+  Future<_Signed> _sign({
+    required int chain,
+    required RksvChainRow chainRow,
+    required int number,
+    required DateTime createdAt,
+    required ReceiptKind kind,
+    required List<int> sumsCents,
+    required int counter,
+    required String previous,
     required Duration limit,
-    required String fallbackSerial,
     required bool mustSign,
   }) async {
+    String? counterField;
+    SignatureUnit? unit;
     SignerInfo? info;
+    var tooLate = false;
+
+    String text() => codeText(
+      CodeFields(
+        zdaId: info?.zdaId ?? chainRow.zdaId,
+        cashBoxId: chainRow.cashBoxId,
+        receiptId: '$number',
+        time: createdAt,
+        sumsCents: sumsCents,
+        counterField: counterField!,
+        certSerial: info?.serialHex ?? chainRow.certSerial,
+        chain: previous,
+      ),
+    );
+
+    /// Nach der Frist nichts mehr tun, vor allem nicht mehr in die
+    /// Datenbank: Die Transaktion des Bons kann dann schon zu sein.
+    void stopIfLate() {
+      if (tooLate) throw StateError('Zu spät.');
+    }
+
+    Future<_Signed> attempt() async {
+      final aesKey =
+          await _secrets.aesKey(chain) ??
+          (throw StateError('Der AES-Schlüssel der Kette $chain fehlt.'));
+      stopIfLate();
+      counterField = kind == ReceiptKind.voided
+          ? stornoCounterField
+          : encryptCounter(
+              aesKey: aesKey,
+              cashBoxId: chainRow.cashBoxId,
+              receiptId: '$number',
+              counterCents: counter,
+            );
+      final u = await _unitOf(chain);
+      stopIfLate();
+      unit = u;
+      final i = await u.info();
+      stopIfLate();
+      info = i;
+      final t = text();
+      final signature = await u.sign(jwsSigningInput(t));
+      return (
+        jws: jwsCompact(t, signature),
+        certSerial: i.serialHex,
+        failure: null,
+      );
+    }
+
     String failure;
     try {
-      return await () async {
-        final i = await unit.info();
-        info = i;
-        final t = text(i);
-        final signature = await unit.sign(jwsSigningInput(t));
-        return (
-          jws: jwsCompact(t, signature),
-          certSerial: i.serialHex,
-          failure: null,
-        );
-      }().timeout(limit);
+      return await attempt().timeout(limit);
     } on SignatureFailure {
       if (mustSign) rethrow;
       failure = _reasonError;
     } on TimeoutException {
+      tooLate = true;
+      if (unit == null) {
+        throw StateError('Der geschützte Speicher hat nicht geantwortet.');
+      }
       if (mustSign) throw const SignatureFailure(_reasonSilent);
       failure = _reasonSilent;
     }
     final known = info;
     return (
-      jws: jwsDamaged(text(known)),
-      certSerial: known?.serialHex ?? fallbackSerial,
+      jws: jwsDamaged(text()),
+      certSerial: known?.serialHex ?? chainRow.certSerial,
       failure: failure,
     );
   }

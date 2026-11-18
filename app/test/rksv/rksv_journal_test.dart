@@ -185,6 +185,48 @@ void main() {
       await rig.verifyChain(1);
     });
 
+    test('Review Focus 5: der Speicher antwortet nicht: der Verkauf ist '
+        'nach der Frist fertig, mode off, notice gesetzt, kein Eintrag '
+        '(echte Frist, 5 Sekunden)', () async {
+      await rig.sell('s1', cart);
+      rig.secrets.hangReads = true;
+      final watch = Stopwatch()..start();
+      final r = await rig.sell('s2', cart);
+      watch.stop();
+      expect(watch.elapsed, greaterThanOrEqualTo(RksvJournal.signLimit));
+      expect(watch.elapsed, lessThan(const Duration(seconds: 7)));
+      expect(r.number, 3);
+      expect(r.rksv, isNull);
+      expect(await rig.entryOf('s2'), isNull);
+      final state = await rig.stateRow();
+      expect((state.mode, state.chain, state.notice), ('off', null, _notice));
+      expect(rig.fake.signCalls, 2);
+      // Die Kassa verkauft danach ohne Wartezeit weiter.
+      final next = await rig.sell('s3', cart);
+      expect(next.number, 4);
+      rig.secrets.hangReads = false;
+      await rig.verifyChain(1);
+    });
+
+    test('Review Focus 5: im Ausfall gilt auch für den Speicher die Frist von '
+        '1 Sekunde', () async {
+      rig.fake.mode = FakeMode.error;
+      await rig.sell('s1', cart);
+      expect((await rig.stateRow()).outageSince, isNotNull);
+      rig.secrets.hangReads = true;
+      final watch = Stopwatch()..start();
+      final v = await rig.receipts.voidReceipt('s1', staff: rig.chef);
+      watch.stop();
+      expect(
+        watch.elapsed,
+        greaterThanOrEqualTo(RksvJournal.signLimitDuringOutage),
+      );
+      expect(watch.elapsed, lessThan(const Duration(seconds: 3)));
+      expect(await rig.entryOf(v.id), isNull);
+      expect((await rig.stateRow()).mode, 'off');
+      expect((await rig.stateRow()).notice, _notice);
+    });
+
     test('Review Focus 5: bei einem Storno ebenso', () async {
       await rig.sell('s1', cart);
       rig.secrets.failReads = true;
