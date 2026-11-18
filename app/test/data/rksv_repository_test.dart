@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -24,9 +25,17 @@ void main() {
   late KassaDatabase db;
   late RksvRepository repo;
 
-  setUp(() {
+  setUp(() async {
     db = KassaDatabase(NativeDatabase.memory());
     repo = RksvRepository(db);
+    await db
+        .into(db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: '0a1b',
+            certificate: Uint8List.fromList([0x30, 0x82]),
+          ),
+        );
   });
   tearDown(() => db.close());
 
@@ -63,6 +72,7 @@ void main() {
               mode: 'probe',
               cashBoxId: 'ABCDEFGHJK',
               zdaId: 'AT100',
+              certSerial: '0a1b',
               startedAt: _created,
             ),
           );
@@ -74,6 +84,7 @@ void main() {
               mode: 'probe',
               cashBoxId: 'MNPQRSTUVW',
               zdaId: 'AT100',
+              certSerial: '0a1b',
               startedAt: _created,
             ),
           );
@@ -170,6 +181,7 @@ void main() {
               mode: 'probe',
               cashBoxId: 'ABCDEFGHJK',
               zdaId: 'AT100',
+              certSerial: '0a1b',
               startedAt: _created,
             ),
           );

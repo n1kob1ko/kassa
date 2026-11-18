@@ -1672,91 +1672,6 @@ class SyncState extends Table with TableInfo {
   bool get dontWriteConstraints => true;
 }
 
-class RksvChains extends Table with TableInfo {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  RksvChains(this.attachedDatabase, [this._alias]);
-  late final GeneratedColumn<int> chain = GeneratedColumn<int>(
-    'chain',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
-    'mode',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> cashBoxId = GeneratedColumn<String>(
-    'cash_box_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> zdaId = GeneratedColumn<String>(
-    'zda_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
-    'started_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> endedAt = GeneratedColumn<int>(
-    'ended_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    chain,
-    mode,
-    cashBoxId,
-    zdaId,
-    startedAt,
-    endedAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'rksv_chains';
-  @override
-  Set<GeneratedColumn> get $primaryKey => {chain};
-  @override
-  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
-    throw UnsupportedError('TableInfo.map in schema verification code');
-  }
-
-  @override
-  RksvChains createAlias(String alias) {
-    return RksvChains(attachedDatabase, alias);
-  }
-
-  @override
-  List<String> get customConstraints => const ['PRIMARY KEY(chain)'];
-  @override
-  bool get dontWriteConstraints => true;
-}
-
 class RksvCertificates extends Table with TableInfo {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1809,6 +1724,100 @@ class RksvCertificates extends Table with TableInfo {
 
   @override
   List<String> get customConstraints => const ['PRIMARY KEY(serial_hex)'];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class RksvChains extends Table with TableInfo {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  RksvChains(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<int> chain = GeneratedColumn<int>(
+    'chain',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> cashBoxId = GeneratedColumn<String>(
+    'cash_box_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> zdaId = GeneratedColumn<String>(
+    'zda_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> certSerial = GeneratedColumn<String>(
+    'cert_serial',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES rksv_certificates(serial_hex)',
+  );
+  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> endedAt = GeneratedColumn<int>(
+    'ended_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    chain,
+    mode,
+    cashBoxId,
+    zdaId,
+    certSerial,
+    startedAt,
+    endedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rksv_chains';
+  @override
+  Set<GeneratedColumn> get $primaryKey => {chain};
+  @override
+  Never map(Map<String, dynamic> data, {String? tablePrefix}) {
+    throw UnsupportedError('TableInfo.map in schema verification code');
+  }
+
+  @override
+  RksvChains createAlias(String alias) {
+    return RksvChains(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const ['PRIMARY KEY(chain)'];
   @override
   bool get dontWriteConstraints => true;
 }
@@ -2024,8 +2033,8 @@ class DatabaseAtV4 extends GeneratedDatabase {
     this,
   );
   late final SyncState syncState = SyncState(this);
-  late final RksvChains rksvChains = RksvChains(this);
   late final RksvCertificates rksvCertificates = RksvCertificates(this);
+  late final RksvChains rksvChains = RksvChains(this);
   late final RksvEntries rksvEntries = RksvEntries(this);
   late final RksvState rksvState = RksvState(this);
   @override
@@ -2049,8 +2058,8 @@ class DatabaseAtV4 extends GeneratedDatabase {
     payments,
     pendingCardPayments,
     syncState,
-    rksvChains,
     rksvCertificates,
+    rksvChains,
     rksvEntries,
     rksvState,
   ];

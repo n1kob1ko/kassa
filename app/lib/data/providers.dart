@@ -10,6 +10,7 @@ import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
+import '../rksv/rksv_providers.dart';
 import '../rksv/rksv_state.dart';
 import '../sync/server_api.dart';
 import '../sync/server_changes.dart';
@@ -56,6 +57,7 @@ final receiptRepositoryProvider = Provider(
     ref.watch(databaseProvider),
     ref.watch(clockProvider),
     ref.watch(dayRepositoryProvider),
+    journal: ref.watch(rksvJournalProvider),
   ),
 );
 

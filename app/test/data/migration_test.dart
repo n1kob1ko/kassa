@@ -221,12 +221,13 @@ void main() {
       setUp(() async {
         db = await open();
         await db.customStatement(
-          'INSERT INTO rksv_chains (chain, mode, cash_box_id, zda_id, '
-          "started_at) VALUES (1, 'probe', 'ABCDEFGHJK', 'AT100', 1794913200)",
-        );
-        await db.customStatement(
           'INSERT INTO rksv_certificates (serial_hex, certificate) '
           "VALUES ('0a1b', x'3082')",
+        );
+        await db.customStatement(
+          'INSERT INTO rksv_chains (chain, mode, cash_box_id, zda_id, '
+          'cert_serial, started_at) '
+          "VALUES (1, 'probe', 'ABCDEFGHJK', 'AT100', '0a1b', 1794913200)",
         );
         await db.customStatement(
           'INSERT INTO receipts (id, number, created_at, staff_id, '
@@ -300,6 +301,18 @@ void main() {
           expect(chain.endedAt, isNotNull);
         },
       );
+
+      test('rksv_chains: cert_serial verweist auf rksv_certificates', () async {
+        await expectLater(
+          db.customStatement(
+            'INSERT INTO rksv_chains (chain, mode, cash_box_id, zda_id, '
+            'cert_serial, started_at) '
+            "VALUES (2, 'probe', 'MNPQRSTUVW', 'AT100', 'ffff', 1794913200)",
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+        expect(await count(db, 'rksv_chains'), 1);
+      });
 
       test('rksv_chains: DELETE scheitert auch bei laufender Kette', () async {
         await expectLater(

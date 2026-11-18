@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 import 'package:kassa/data/database.dart';
@@ -368,18 +369,29 @@ void main() {
         'eyJhbGciOiJFUzI1NiJ9.'
         '${base64Url.encode(utf8.encode(payload)).replaceAll('=', '')}.AQID';
 
-    Future<void> insertChain(int chain, String mode, String cashBoxId) => shop
-        .db
-        .into(shop.db.rksvChainRows)
-        .insert(
-          RksvChainRowsCompanion.insert(
-            chain: Value(chain),
-            mode: mode,
-            cashBoxId: cashBoxId,
-            zdaId: 'R1-AT100',
-            startedAt: DateTime(2026, 11, 1),
-          ),
-        );
+    Future<void> insertChain(int chain, String mode, String cashBoxId) async {
+      await shop.db
+          .into(shop.db.rksvCertificateRows)
+          .insert(
+            RksvCertificateRowsCompanion.insert(
+              serialHex: '0a1b',
+              certificate: Uint8List.fromList([0x30, 0x82]),
+            ),
+            mode: InsertMode.insertOrIgnore,
+          );
+      await shop.db
+          .into(shop.db.rksvChainRows)
+          .insert(
+            RksvChainRowsCompanion.insert(
+              chain: Value(chain),
+              mode: mode,
+              cashBoxId: cashBoxId,
+              zdaId: 'R1-AT100',
+              certSerial: '0a1b',
+              startedAt: DateTime(2026, 11, 1),
+            ),
+          );
+    }
 
     Future<void> insertEntry(
       int chain,
@@ -466,12 +478,30 @@ void main() {
       expect(day.singleWhere((r) => r.number == 3).rksv, isNull);
     });
 
+    test('ein kaputter JWS im Protokoll: dieser Bon kommt ohne rksv, die '
+        'anderen mit', () async {
+      await insertChain(1, 'probe', 'BSPIMB01');
+      await shop.sell('s1');
+      await shop.sell('s2');
+      await shop.sell('s3');
+      await insertEntry(1, 1, 's1', jws('_R1-AT100_BSPIMB01_1'));
+      await insertEntry(1, 2, 's2', 'kein-jws');
+      await insertEntry(1, 3, 's3', 'eyJhbGciOiJFUzI1NiJ9.%%%.AQID');
+      expect((await receipts.byId('s2')).rksv, isNull);
+      expect((await receipts.byId('s3')).rksv, isNull);
+      final day = await receipts.watchDay(await shop.dayId()).first;
+      expect(
+        [for (final r in day) r.rksv?.qrText],
+        ['_R1-AT100_BSPIMB01_1_AQID', null, null],
+      );
+    });
+
     test('ein Sonderbeleg lässt sich nicht stornieren, nichts wird '
         'geschrieben', () async {
       await shop.insertSpecialReceipt('st', 1, ReceiptKind.start);
       await expectLater(
         receipts.voidReceipt('st', staff: shop.chef),
-        throwsA(isA<StateError>()),
+        throwsA(isA<CannotVoidSpecialException>()),
       );
       expect(await shop.count('receipts'), 1);
     });

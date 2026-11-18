@@ -10,6 +10,8 @@ import '../domain/pricing.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
 import '../rksv/core/rksv_code.dart';
+import '../rksv/rksv_journal.dart';
+import '../rksv/signature_unit.dart';
 import 'database.dart';
 import 'day_repository.dart';
 
@@ -43,12 +45,43 @@ class CannotVoidAVoidException implements Exception {
       'CannotVoidAVoidException: Ein Storno-Bon kann nicht storniert werden.';
 }
 
+class CannotVoidSpecialException implements Exception {
+  const CannotVoidSpecialException();
+
+  @override
+  String toString() =>
+      'CannotVoidSpecialException: Ein Sonderbeleg kann nicht storniert '
+      'werden.';
+}
+
+/// Der Bon gehört nicht zur laufenden Kette der Signatur: Sein Storno würde
+/// den Umsatzzähler senken, ohne dass sein Verkauf darin steht.
+class NotInCurrentChainException implements Exception {
+  const NotInCurrentChainException();
+
+  @override
+  String toString() =>
+      'NotInCurrentChainException: Der Bon gehört nicht zur laufenden Kette.';
+}
+
 class ReceiptRepository {
-  ReceiptRepository(this._db, this._clock, this._days);
+  ReceiptRepository(this._db, this._clock, this._days, {this._journal});
 
   final KassaDatabase _db;
   final Clock _clock;
   final DayRepository _days;
+
+  /// Ohne Journal (in Tests) bekommt kein Bon einen Eintrag.
+  final RksvJournal? _journal;
+
+  /// Reihenfolge der fünf Beträge im Code.
+  static const _codeRates = [
+    TaxRate.normal,
+    TaxRate.reduced1,
+    TaxRate.reduced2,
+    TaxRate.zero,
+    TaxRate.special,
+  ];
 
   /// Schließt einen Barverkauf ab. Die Id des Bons ist [saleId]: gibt es ihn
   /// schon, kommt der gespeicherte Bon zurück und nichts wird geschrieben.
@@ -162,17 +195,23 @@ class ReceiptRepository {
   }
 
   /// Storniert einen Bon durch einen neuen Storno-Bon mit negativen Beträgen.
-  /// Die Rolle der Person prüft der Aufrufer, nicht das Repository.
+  /// Die Rolle der Person prüft der Aufrufer, nicht das Repository. Läuft die
+  /// Signatur, geht das nur für Bons ihrer laufenden Kette
+  /// ([NotInCurrentChainException]).
   Future<Receipt> voidReceipt(String receiptId, {required Staff staff}) {
     return _db.transaction(() async {
       final original = await byId(receiptId);
       if (original.kind == ReceiptKind.voided) {
         throw const CannotVoidAVoidException();
       }
+      if (original.kind.isSpecial) throw const CannotVoidSpecialException();
       if (original.isVoided) throw const AlreadyVoidedException();
-      final payment = original.payment;
-      if (payment == null) {
-        throw StateError('Ein Sonderbeleg kann nicht storniert werden.');
+      final payment =
+          original.payment ??
+          (throw StateError('Bon "${original.id}" hat keine Zahlung.'));
+      final journal = _journal;
+      if (journal != null && !await journal.mayVoid(original.id)) {
+        throw const NotInCurrentChainException();
       }
       return _write(
         id: const Uuid().v4(),
@@ -209,6 +248,29 @@ class ReceiptRepository {
           cardLast4: payment.cardLast4,
         ),
       );
+    });
+  }
+
+  /// Schreibt einen Sonderbeleg der Art [kind] (Betrag 0, ohne Zeilen, ohne
+  /// Zahlung, ohne Tag) mit seinem Eintrag im Protokoll. Start-, Null- und
+  /// Schlussbeleg löst der Chef aus; Monats-, Jahres- und Sammelbeleg
+  /// entstehen von selbst vor einem Verkauf. Mit [mustSign] wirft jeder
+  /// Fehler der Signatur ([SignatureFailure]) und jeder andere, und nichts
+  /// bleibt stehen. Ohne laufende Signatur: [StateError].
+  Future<Receipt> createSpecial(
+    ReceiptKind kind, {
+    required Staff staff,
+    bool mustSign = false,
+  }) {
+    return _db.transaction(() async {
+      if (!kind.isSpecial) {
+        throw ArgumentError.value(kind, 'kind', 'Kein Sonderbeleg');
+      }
+      final journal = _journal;
+      if (journal == null || !await journal.isActive()) {
+        throw StateError('Sonderbelege gibt es nur mit Signatur.');
+      }
+      return _writeSpecial(journal, kind, staff: staff, mustSign: mustSign);
     });
   }
 
@@ -265,18 +327,28 @@ class ReceiptRepository {
     required int totalCents,
     required Payment payment,
   }) async {
+    final journal = _journal;
+    final signing = journal != null && await journal.isActive();
+    List<int>? sums;
+    if (signing) {
+      sums = _codeSumsOf(lines, depositCents);
+      if (sums.fold<int>(0, (a, b) => a + b) != totalCents) {
+        throw StateError(
+          'Die Beträge je Satz ergeben nicht die Summe des Bons $id.',
+        );
+      }
+      await _writeDue(journal, staff);
+    }
     final dayId = (await _days.openOrCreateDay()).id;
-    final maxNumber = _db.receiptRows.number.max();
-    final highest = await (_db.selectOnly(
-      _db.receiptRows,
-    )..addColumns([maxNumber])).map((r) => r.read(maxNumber)).getSingle();
+    final number = await _nextNumber();
+    final createdAt = _clock.now();
     await _db
         .into(_db.receiptRows)
         .insert(
           ReceiptRowsCompanion.insert(
             id: id,
-            number: (highest ?? 0) + 1,
-            createdAt: _clock.now(),
+            number: number,
+            createdAt: createdAt,
             staffId: staff.id,
             staffName: staff.name,
             businessDayId: Value(dayId),
@@ -339,7 +411,135 @@ class ReceiptRepository {
             cardLast4: Value(payment.cardLast4),
           ),
         );
+    if (signing) {
+      await _record(
+        journal,
+        receiptId: id,
+        number: number,
+        createdAt: createdAt,
+        kind: kind,
+        sumsCents: sums!,
+      );
+    }
     return byId(id);
+  }
+
+  Future<int> _nextNumber() async {
+    final maxNumber = _db.receiptRows.number.max();
+    final highest = await (_db.selectOnly(
+      _db.receiptRows,
+    )..addColumns([maxNumber])).map((r) => r.read(maxNumber)).getSingle();
+    return (highest ?? 0) + 1;
+  }
+
+  /// Die fünf Beträge des Codes: Summen der Zeilen je Satz, das Pfand zählt
+  /// zu Null.
+  static List<int> _codeSumsOf(List<ReceiptLine> lines, int depositCents) => [
+    for (final rate in _codeRates)
+      lines.fold<int>(0, (sum, l) => sum + (l.grossByRate[rate] ?? 0)) +
+          (rate == TaxRate.zero ? depositCents : 0),
+  ];
+
+  /// Schreibt, was vor einem Verkauf oder Storno fällig ist. Höchstens zwei
+  /// Runden: Auf einen Sammelbeleg kann ein Monats- oder Jahresbeleg folgen.
+  /// Der Sammelbeleg steht in einer eigenen Transaktion; scheitert seine
+  /// Signatur, wird nur er zurückgerollt und der Ausfall dauert an.
+  Future<void> _writeDue(RksvJournal journal, Staff staff) async {
+    for (var round = 0; round < 2; round++) {
+      final due = await journal.dueBefore(_clock.now());
+      if (due == null) return;
+      if (due != ReceiptKind.collective) {
+        await _writeSpecial(journal, due, staff: staff);
+        continue;
+      }
+      try {
+        await _db.transaction(
+          () => _writeSpecial(journal, due, staff: staff, mustSign: true),
+        );
+      } on SignatureFailure {
+        return;
+      } on Object {
+        // Unerwartet (K9): Der Sammelbeleg ist zurückgerollt, die Probe
+        // endet, der Verkauf läuft weiter. Außerhalb der Probe weiterwerfen.
+        if (!await journal.endProbeAfterError()) rethrow;
+        return;
+      }
+    }
+  }
+
+  Future<Receipt> _writeSpecial(
+    RksvJournal journal,
+    ReceiptKind kind, {
+    required Staff staff,
+    bool mustSign = false,
+  }) async {
+    final id = const Uuid().v4();
+    final number = await _nextNumber();
+    final createdAt = _clock.now();
+    await _db
+        .into(_db.receiptRows)
+        .insert(
+          ReceiptRowsCompanion.insert(
+            id: id,
+            number: number,
+            createdAt: createdAt,
+            staffId: staff.id,
+            staffName: staff.name,
+            businessDayId: const Value(null),
+            kind: kind.name,
+            goodsCents: 0,
+            depositCents: 0,
+            totalCents: 0,
+          ),
+        );
+    const zero = [0, 0, 0, 0, 0];
+    if (mustSign) {
+      await journal.record(
+        receiptId: id,
+        number: number,
+        createdAt: createdAt,
+        kind: kind,
+        sumsCents: zero,
+        mustSign: true,
+      );
+    } else {
+      await _record(
+        journal,
+        receiptId: id,
+        number: number,
+        createdAt: createdAt,
+        kind: kind,
+        sumsCents: zero,
+      );
+    }
+    return byId(id);
+  }
+
+  /// Der Eintrag im Protokoll, in einer inneren Transaktion. Scheitert dabei
+  /// etwas Unerwartetes und läuft die Probe, wird nur der Eintrag
+  /// zurückgerollt und die Probe endet (K9): Der Bon bleibt gespeichert.
+  /// Sonst rollt der Fehler den ganzen Bon zurück.
+  Future<void> _record(
+    RksvJournal journal, {
+    required String receiptId,
+    required int number,
+    required DateTime createdAt,
+    required ReceiptKind kind,
+    required List<int> sumsCents,
+  }) async {
+    try {
+      await _db.transaction(
+        () => journal.record(
+          receiptId: receiptId,
+          number: number,
+          createdAt: createdAt,
+          kind: kind,
+          sumsCents: sumsCents,
+        ),
+      );
+    } on Object {
+      if (!await journal.endProbeAfterError()) rethrow;
+    }
   }
 
   /// Gruppenname je Options-Id, aus dem Katalog der Datenbank.
@@ -391,20 +591,30 @@ class ReceiptRepository {
       )..where((t) => t.receiptId.isIn(ids))).get())
         p.receiptId: p,
     };
-    final stamps = {
-      for (final j in await (_db.select(_db.rksvEntryRows).join([
-        innerJoin(
-          _db.rksvChainRows,
-          _db.rksvChainRows.chain.equalsExp(_db.rksvEntryRows.chain),
-        ),
-      ])..where(_db.rksvEntryRows.receiptId.isIn(ids))).get())
-        j.readTable(_db.rksvEntryRows).receiptId: RksvStamp(
-          cashBoxId: j.readTable(_db.rksvChainRows).cashBoxId,
-          qrText: qrText(j.readTable(_db.rksvEntryRows).jws),
-          damaged: j.readTable(_db.rksvEntryRows).damaged,
-          probe: j.readTable(_db.rksvChainRows).mode == 'probe',
-        ),
-    };
+    final stamps = <String, RksvStamp>{};
+    for (final j in await (_db.select(_db.rksvEntryRows).join([
+      innerJoin(
+        _db.rksvChainRows,
+        _db.rksvChainRows.chain.equalsExp(_db.rksvEntryRows.chain),
+      ),
+    ])..where(_db.rksvEntryRows.receiptId.isIn(ids))).get()) {
+      final entry = j.readTable(_db.rksvEntryRows);
+      final chain = j.readTable(_db.rksvChainRows);
+      final String text;
+      try {
+        text = qrText(entry.jws);
+      } on FormatException {
+        // Ein kaputter Eintrag soll die Liste der Bons nicht sperren: Der Bon
+        // kommt ohne Angaben der Signatur.
+        continue;
+      }
+      stamps[entry.receiptId] = RksvStamp(
+        cashBoxId: chain.cashBoxId,
+        qrText: text,
+        damaged: entry.damaged,
+        probe: chain.mode == 'probe',
+      );
+    }
     final voidedBy = {
       for (final v in await (_db.select(
         _db.receiptRows,

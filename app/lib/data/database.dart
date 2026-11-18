@@ -355,6 +355,10 @@ class RksvChainRows extends Table {
   TextColumn get mode => text()();
   TextColumn get cashBoxId => text()();
   TextColumn get zdaId => text()();
+
+  /// Das Zertifikat, mit dem die Kette gerade signiert.
+  TextColumn get certSerial =>
+      text().references(RksvCertificateRows, #serialHex)();
   DateTimeColumn get startedAt => dateTime()();
   DateTimeColumn get endedAt => dateTime().nullable()();
 

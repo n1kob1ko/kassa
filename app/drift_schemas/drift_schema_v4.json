@@ -1763,6 +1763,55 @@
       "references": [],
       "type": "table",
       "data": {
+        "name": "rksv_certificates",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "serial_hex",
+            "getter_name": "serialHex",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "certificate",
+            "getter_name": "certificate",
+            "moor_type": "blob",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "issuers",
+            "getter_name": "issuers",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'[]\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "serial_hex"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "references": [
+        16
+      ],
+      "type": "table",
+      "data": {
         "name": "rksv_chains",
         "was_declared_in_moor": false,
         "columns": [
@@ -1807,6 +1856,32 @@
             "dsl_features": []
           },
           {
+            "name": "cert_serial",
+            "getter_name": "certSerial",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES rksv_certificates (serial_hex)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES rksv_certificates (serial_hex)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "rksv_certificates",
+                    "column": "serial_hex"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
             "name": "started_at",
             "getter_name": "startedAt",
             "moor_type": "dateTime",
@@ -1836,56 +1911,9 @@
       }
     },
     {
-      "id": 17,
-      "references": [],
-      "type": "table",
-      "data": {
-        "name": "rksv_certificates",
-        "was_declared_in_moor": false,
-        "columns": [
-          {
-            "name": "serial_hex",
-            "getter_name": "serialHex",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "certificate",
-            "getter_name": "certificate",
-            "moor_type": "blob",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "issuers",
-            "getter_name": "issuers",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('\\'[]\\'')",
-            "default_client_dart": null,
-            "dsl_features": []
-          }
-        ],
-        "is_virtual": false,
-        "without_rowid": false,
-        "constraints": [],
-        "explicit_pk": [
-          "serial_hex"
-        ]
-      }
-    },
-    {
       "id": 18,
       "references": [
-        16,
+        17,
         10
       ],
       "type": "table",
@@ -2244,20 +2272,20 @@
       ]
     },
     {
-      "name": "rksv_chains",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"rksv_chains\" (\"chain\" INTEGER NOT NULL, \"mode\" TEXT NOT NULL, \"cash_box_id\" TEXT NOT NULL, \"zda_id\" TEXT NOT NULL, \"started_at\" INTEGER NOT NULL, \"ended_at\" INTEGER NULL, PRIMARY KEY (\"chain\"));"
-        }
-      ]
-    },
-    {
       "name": "rksv_certificates",
       "sql": [
         {
           "dialect": "sqlite",
           "sql": "CREATE TABLE IF NOT EXISTS \"rksv_certificates\" (\"serial_hex\" TEXT NOT NULL, \"certificate\" BLOB NOT NULL, \"issuers\" TEXT NOT NULL DEFAULT '[]', PRIMARY KEY (\"serial_hex\"));"
+        }
+      ]
+    },
+    {
+      "name": "rksv_chains",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"rksv_chains\" (\"chain\" INTEGER NOT NULL, \"mode\" TEXT NOT NULL, \"cash_box_id\" TEXT NOT NULL, \"zda_id\" TEXT NOT NULL, \"cert_serial\" TEXT NOT NULL REFERENCES rksv_certificates (serial_hex), \"started_at\" INTEGER NOT NULL, \"ended_at\" INTEGER NULL, PRIMARY KEY (\"chain\"));"
         }
       ]
     },
