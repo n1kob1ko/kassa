@@ -80,6 +80,8 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
   Future<void> _confirm() async {
     final intent = _asking;
     setState(() => _asking = null);
+    // Hat inzwischen eine Kartenzahlung begonnen, bleibt alles, wie es ist.
+    if (ref.read(activeCardPaymentProvider) != null) return;
     switch (intent) {
       case _Intent.pair:
         await Navigator.of(
@@ -122,7 +124,11 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
     final cardPayment = ref.watch(activeCardPaymentProvider) != null;
     final question = _asking == null
         ? null
-        : PairQuestion(onConfirm: _confirm, onCancel: _cancel);
+        : PairQuestion(
+            onConfirm: _confirm,
+            onCancel: _cancel,
+            loadOnly: _asking == _Intent.load,
+          );
 
     // `blocked` zuerst: es geht mit `lastError == 'blocked'` zusammen und
     // zeigt nie die Zeile "letzter Abgleich hat nicht geklappt".

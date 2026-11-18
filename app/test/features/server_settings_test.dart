@@ -247,6 +247,10 @@ void main() {
       );
       // Scheitert wieder: Satz, Taste bleibt.
       await _tapAndSettle(t, 'server-load');
+      expect(find.text('Speisekarte vom Server laden?'), findsOneWidget);
+      expect(find.text(_questionTitle), findsNothing);
+      expect(find.text('Laden'), findsOneWidget);
+      expect(find.text('Verbinden'), findsNothing);
       await _tapAndSettle(t, 'confirm-pair-question');
       expect(
         find.text('Die Speisekarte konnte nicht geladen werden.'),
@@ -295,6 +299,21 @@ void main() {
       await t.pumpAndSettle();
       await _tapAndSettle(t, 'server-pair');
       expect(find.text(_questionTitle), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'beginnt eine Kartenzahlung bei offener Rückfrage, öffnet "Verbinden" nichts',
+    (t) async {
+      await pumpUnpaired(t);
+      await _tapAndSettle(t, 'server-pair');
+      containerOf(t).read(activeCardPaymentProvider.notifier).set('zahlung-1');
+      await t.pumpAndSettle();
+      await _tapAndSettle(t, 'confirm-pair-question');
+      expect(find.byType(PairingView), findsNothing);
+      expect(find.text('Kopplungscode eingeben'), findsNothing);
+      expect(find.text(_questionTitle), findsNothing);
+      expect(find.text('Nicht mit dem Server verbunden.'), findsOneWidget);
     },
   );
 }

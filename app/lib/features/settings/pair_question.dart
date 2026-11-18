@@ -13,7 +13,12 @@ class PairQuestion extends StatelessWidget {
     super.key,
     required this.onConfirm,
     required this.onCancel,
+    this.loadOnly = false,
   });
+
+  /// Die Kassa ist schon verbunden und holt nur die Speisekarte: andere
+  /// Überschrift und "Laden" statt "Verbinden".
+  final bool loadOnly;
 
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
@@ -34,7 +39,9 @@ class PairQuestion extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Mit dem Server verbinden?',
+            loadOnly
+                ? 'Speisekarte vom Server laden?'
+                : 'Mit dem Server verbinden?',
             style: text.titleMedium!.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: KassaTokens.spaceSm),
@@ -64,7 +71,7 @@ class PairQuestion extends StatelessWidget {
               Expanded(
                 child: PrimaryButton(
                   key: const Key('confirm-pair-question'),
-                  label: 'Verbinden',
+                  label: loadOnly ? 'Laden' : 'Verbinden',
                   height: 60,
                   onPressed: onConfirm,
                 ),
