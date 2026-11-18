@@ -34,6 +34,7 @@ export async function testApp(
     db: overrides.db ?? testDb.db,
     files: overrides.files,
     now: overrides.now ?? (() => now.value),
+    ...(overrides.randomCode ? { randomCode: overrides.randomCode } : {}),
   });
   return {
     app,

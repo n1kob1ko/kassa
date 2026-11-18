@@ -1,6 +1,7 @@
 import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { installBusinessRoutes } from './admin/businesses.js';
+import { installRegisterRoutes } from './admin/registers.js';
 import { installStaffRoutes } from './admin/staff.js';
 import { installAuth } from './auth/routes.js';
 import type { Config } from './config.js';
@@ -13,6 +14,8 @@ export type AppDeps = {
   /** Wird in Task 9 zum FileStore. */
   files: unknown;
   now: () => Date;
+  /** Zufallszahl von 0 bis 99 999 999 für Kopplungscodes. Vorgabe ist crypto.randomInt; Tests ersetzen sie. */
+  randomCode?: () => number;
 };
 
 export const BODY_LIMIT = 1024 * 1024;
@@ -51,6 +54,7 @@ export async function buildApp(
   installAuth(app);
   installBusinessRoutes(app);
   installStaffRoutes(app);
+  installRegisterRoutes(app);
 
   return app;
 }
