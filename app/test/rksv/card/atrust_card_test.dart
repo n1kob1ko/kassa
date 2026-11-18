@@ -182,6 +182,33 @@ void main() {
     expect(compact(CardCommand.readBinary(0xFFFF).bytes), '00B07FFF00');
   });
 
+  test(
+    'readBinaryExact(256, 0x7B) == 00B001007B; nur 1 bis 255 Bytes, nur lesen',
+    () {
+      final exact = CardCommand.readBinaryExact(256, 0x7B);
+      expect(compact(exact.bytes), '00B001007B');
+      expect(exact.secret, isFalse);
+      expect(exact.label, 'READ BINARY');
+      expect(
+        compact(CardCommand.readBinaryExact(0x8100, 1).bytes),
+        '00B0010001',
+      );
+      expect(compact(CardCommand.readBinaryExact(0, 255).bytes), '00B00000FF');
+      for (final length in [0, 256, -1]) {
+        expect(
+          () => CardCommand.readBinaryExact(0, length),
+          throwsArgumentError,
+          reason: '$length',
+        );
+      }
+      expect(() => CardCommand.readBinaryExact(-1, 1), throwsArgumentError);
+      expect(
+        () => CardCommand.readBinaryExact(0x10000, 1),
+        throwsArgumentError,
+      );
+    },
+  );
+
   test('verifyPin acosId41 mit 123456: 0020008A0826123456FFFFFFFF, secret', () {
     final command = CardCommand.verifyPin(profileOf(acosId41Atr), '123456');
     expect(compact(command.bytes), '0020008A0826123456FFFFFFFF');

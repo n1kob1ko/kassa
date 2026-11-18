@@ -49,8 +49,10 @@ class FakeCard {
     this.pin = '123456',
     this.retriesLeft = 3,
     Uint8List? certificate,
+    Uint8List? number,
     Uint8List Function(Uint8List hash)? signer,
   }) : certificate = certificate ?? fillerCertificate(),
+       number = number ?? fakeCardNumber,
        signer = signer ?? _defaultSigner;
 
   final Uint8List atr;
@@ -62,6 +64,9 @@ class FakeCard {
   /// Bei 0 ist die Karte gesperrt.
   int retriesLeft;
   final Uint8List certificate;
+
+  /// Die Kartennummer; ohne Angabe [fakeCardNumber].
+  final Uint8List number;
   final Uint8List Function(Uint8List hash) signer;
 
   /// Jedes VERIFY, das die Karte sah, richtig oder falsch.
@@ -78,6 +83,16 @@ class FakeCard {
 
   /// `true`: Die Karte antwortet nicht auf das Einschalten.
   bool mute = false;
+
+  /// Status der Antwort auf ein Lesen des Zertifikats, das das Ende der
+  /// Datei vor Le Bytes erreicht (`6282` laut A-Trust); die Daten kommen
+  /// trotzdem mit. `null`: `9000`.
+  int? certificateEndStatus;
+
+  /// So oft antwortet die Karte auf ein Lesen des Zertifikats, das bis zum
+  /// Ende der Datei reicht, zuerst nur mit `6Cxx` (xx: die Zahl der Bytes
+  /// bis zum Ende), auch wenn Le schon stimmt.
+  int certificateWrongLength = 0;
 
   // Zustand seit dem letzten Einschalten.
   bool _powered = false;
@@ -169,7 +184,7 @@ class FakeCard {
     }
     if (_same(folder, profile.numberFolder) &&
         _same(file, profile.numberFile)) {
-      return fakeCardNumber;
+      return number;
     }
     return null;
   }
@@ -192,6 +207,21 @@ class FakeCard {
     final offset = p1 << 8 | p2;
     if (offset >= content.length) return _status(0x6B00);
     final wanted = le == 0 ? 256 : le;
+    final rest = content.length - offset;
+    if (_same(file, profile.certificateFile) && wanted >= rest) {
+      if (certificateWrongLength > 0) {
+        certificateWrongLength--;
+        return _status(0x6C00 | (rest & 0xFF));
+      }
+      final status = certificateEndStatus;
+      if (status != null && wanted > rest) {
+        return Uint8List.fromList([
+          ...content.sublist(offset),
+          status >> 8,
+          status & 0xFF,
+        ]);
+      }
+    }
     final end = offset + wanted < content.length
         ? offset + wanted
         : content.length;
@@ -307,6 +337,9 @@ class FakeCardReader implements ReaderTransport {
   /// `ReaderException(io)` (abgezogen); `null`: nie.
   int? failAfterExchanges;
 
+  /// Was Android zu diesem Fehler meldet (`ReaderException.detail`).
+  String? failureDetail;
+
   /// Die Karte verfälscht das Prüfbyte ihres T=1-Blocks mit dieser laufenden
   /// Nummer (ab 1, über alle Sitzungen, siehe [cardBlocks]) einmal.
   int? corruptBlockNumber;
@@ -400,7 +433,7 @@ class FakeCardReader implements ReaderTransport {
     onExchange?.call(exchanges);
     final failAfter = failAfterExchanges;
     if (failAfter != null && exchanges > failAfter) {
-      throw const ReaderException(ReaderProblem.io);
+      throw ReaderException(ReaderProblem.io, failureDetail);
     }
     if (out == null) {
       if (_pending.isEmpty) throw const ReaderException(ReaderProblem.timeout);

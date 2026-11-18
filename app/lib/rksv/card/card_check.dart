@@ -103,7 +103,7 @@ class CardCheck {
 
   /// Die Karte aus dem letzten Lauf, wenn Zeile 4 grün ist; sonst `null`.
   _ReadyCard? _ready;
-  _Facts _facts = _Facts(null);
+  late _Facts _facts = _Facts(null, _now);
   late CardCheckState _state;
 
   CardCheckState get state => _state;
@@ -118,7 +118,7 @@ class CardCheck {
     _ready = null;
     _guardBlocks = false;
     _cardLocked = false;
-    final facts = _facts = _Facts(_now());
+    final facts = _facts = _Facts(_now(), _now);
     facts.log.line('Prüflauf ${_dateTime(facts.startedAt!)}');
     _rows = _initialRows;
     final attempt = _Attempt(this, _Link(_transport), facts);
@@ -147,8 +147,9 @@ class CardCheck {
       left = await _countOf(ready.key);
     } catch (_) {
       // Ohne Antwort des Wächters geht keine PIN hinaus.
+      _facts.log.line('Wächter nicht lesbar, keine PIN geschickt');
       _busy = false;
-      _publish();
+      _put({CheckRow.signature: _cannotRememberRow});
       return;
     }
     if (left != null && left <= 1) {
@@ -186,6 +187,9 @@ class CardCheck {
     try {
       await _guard.clear(ready.key);
     } catch (_) {
+      // Der Stand bleibt, wie er war; der Chef sieht, dass es nicht ging.
+      _facts.log.line('Wächter konnte nicht zurückgesetzt werden');
+      _put({CheckRow.signature: _cannotRememberRow});
       return;
     }
     _lowest.remove(ready.key);
@@ -284,19 +288,26 @@ class CardCheck {
         return;
       }
       final until = _date(certificate.notAfter);
-      if (_now().toUtc().isAfter(certificate.notAfter)) {
-        a.fail(
-          CheckRow.certificate,
-          'Das Zertifikat ist am $until abgelaufen.',
-          'Die Karte muss getauscht werden.',
+      // Ein abgelaufenes Zertifikat ist ein Hinweis, kein Halt: Die Probe
+      // misst die Dauer der Unterschrift, und eine falsche Uhr am Tablet soll
+      // den Test nicht beenden.
+      final today = _now();
+      final expired = today.toUtc().isAfter(certificate.notAfter);
+      if (expired) {
+        a.facts.notes.add(
+          'Hinweis: Das Zertifikat ist abgelaufen (gültig bis '
+          '${_dateTime(certificate.notAfter)}, Datum am Tablet '
+          '${_dateTime(today)}).',
         );
-        return;
       }
       a.set(
         CheckRow.certificate,
         RowState.ok,
         'Seriennummer ${certificate.serial}, gültig bis $until.',
-        'Ausgestellt von ${certificate.issuer}.',
+        expired
+            ? 'Das Zertifikat ist seit $until abgelaufen. Die '
+                  'Probe-Unterschrift geht trotzdem. Teil bitte den Bericht.'
+            : 'Ausgestellt von ${certificate.issuer}.',
       );
 
       final key = _compactHex(number);
@@ -311,7 +322,6 @@ class CardCheck {
       _ready = _ReadyCard(
         address: address,
         profile: profile,
-        atr: atr.bytes,
         number: number,
         key: key,
         certificate: certificate,
@@ -459,7 +469,9 @@ class CardCheck {
 
   /// Liest das Zertifikat in Blöcken zu 256 Bytes, bis seine Länge erreicht
   /// ist, eine Antwort kürzer ist, der Status nicht 9000 ist oder 16 Blöcke
-  /// gelesen sind.
+  /// gelesen sind. `62xx` (etwa `6282`, Ende der Datei vor Le Bytes) bringt
+  /// noch Daten und beendet das Lesen; auf `6Cxx` (falsche Länge, xx die
+  /// richtige) wird derselbe Block einmal mit Le = xx gelesen.
   Future<CardCertificate?> _readCertificate(
     Future<CardResponse> Function(CardCommand) send,
     CardProfile profile,
@@ -475,14 +487,30 @@ class CardCheck {
     final read = BytesBuilder(copy: true);
     int? total;
     for (var block = 0; block < _maxCertificateBlocks; block++) {
-      final answer = await send(CardCommand.readBinary(block * _blockSize));
-      if (!answer.ok) break;
+      final offset = block * _blockSize;
+      var answer = await send(CardCommand.readBinary(offset));
+      if (_wrongLength(answer.status)) {
+        final exact = answer.status & 0xFF;
+        if (exact == 0) {
+          facts.log.line('Zertifikat: falsche Länge ohne Angabe (6C00)');
+          return null;
+        }
+        facts.log.line('Zertifikat: Karte nennt $exact Bytes, neu gelesen');
+        answer = await send(CardCommand.readBinaryExact(offset, exact));
+        if (_wrongLength(answer.status)) {
+          facts.log.line('Zertifikat: wieder falsche Länge');
+          return null;
+        }
+      }
+      final endOfFile = answer.status & 0xFF00 == 0x6200;
+      if (!answer.ok && !endOfFile) break;
       read.add(answer.data);
       total ??= derTotalLength(read.toBytes());
       if (total != null && total > _maxCertificateBlocks * _blockSize) {
         facts.log.line('Zertifikat zu lang ($total Bytes)');
         return null;
       }
+      if (endOfFile) break;
       if (total != null && read.length >= total) break;
       if (answer.data.length < _blockSize) break;
     }
@@ -498,6 +526,8 @@ class CardCheck {
       return null;
     }
   }
+
+  static bool _wrongLength(int status) => status & 0xFF00 == 0x6C00;
 
   void _foreign(_Attempt a, Uint8List? atr) {
     a.put({
@@ -536,8 +566,10 @@ class CardCheck {
     try {
       final profile = ready.profile;
       // Dieselbe Karte wie beim letzten Lauf? Sonst kein VERIFY: der Wächter
-      // gilt je Kartennummer.
-      final number = _same(session.atr.bytes, ready.atr)
+      // gilt je Kartennummer. Verglichen werden Art und Nummer, nicht die
+      // rohe ATR: manche Karten antworten kalt und warm verschieden.
+      final kind = profileForAtr(session.atr.bytes)?.kind;
+      final number = kind == profile.kind
           ? await _readNumber(session.send, profile)
           : null;
       if (number == null || !_same(number, ready.number)) {
@@ -589,7 +621,6 @@ class CardCheck {
     final profile = ready.profile;
     final facts = a.facts;
     final hash = _hashOfNow();
-    final started = _now();
     // Vorher merken (write-ahead): Ob die Antwort kommt oder nicht, ob die
     // App mittendrin stirbt, der Wächter rechnet mit einem Versuch weniger.
     final key = ready.key;
@@ -614,6 +645,9 @@ class CardCheck {
     if (assumed <= 1) _guardBlocks = true;
     facts.log.line('Wächter vor VERIFY: $assumed');
 
+    // Die Dauer zählt nur den Verkehr mit der Karte: ab hier bis zur
+    // Unterschrift, ohne das Löschen des Wächters dazwischen.
+    final started = _now();
     final CardResponse verified;
     a.verifyInFlight = assumed;
     try {
@@ -635,6 +669,7 @@ class CardCheck {
       await _wrongVerify(a, ready, verified.status);
       return false;
     }
+    final verifyMs = _now().difference(started).inMilliseconds;
     _lowest.remove(key);
     _guardBlocks = false;
     a.known = null;
@@ -643,6 +678,7 @@ class CardCheck {
     } catch (_) {
       facts.log.line('Wächter nicht gelöscht');
     }
+    final resumed = _now();
 
     if (profile.separateHash &&
         !(await session.send(CardCommand.putHash(hash))).ok) {
@@ -654,7 +690,7 @@ class CardCheck {
       a.fail(CheckRow.signature, _T.rejected, _T.shareReport);
       return false;
     }
-    final elapsed = _now().difference(started).inMilliseconds;
+    final elapsed = verifyMs + _now().difference(resumed).inMilliseconds;
     final valid = ready.certificate.verify(hash, signed.data);
     facts.signatureLength ??= signed.data.length;
     facts.signatureValid = (facts.signatureValid ?? true) && valid;
@@ -750,6 +786,12 @@ class CardCheck {
   (String, String) _lost(_Attempt a) => a.link.readerGone
       ? (_T.readerGone, _T.readerGoneHint)
       : (_T.lost, _T.lostHint);
+
+  static const _cannotRememberRow = RowResult(
+    RowState.problem,
+    _T.cannotRemember,
+    _T.cannotRememberHint,
+  );
 
   /// Zeile 5 nach einem Lauf, je nach dem, was der Wächter weiß.
   static RowResult _guardRow(int? left) => switch (left) {
@@ -869,7 +911,7 @@ class CardCheck {
       )
       ..writeln()
       ..writeln('Protokoll');
-    return _fitted(out.toString(), f.log.lines);
+    return _fitted(out.toString(), f.log.timedLines);
   }
 
   /// Hängt [lines] an [head]; wird es zu lang, fällt die Mitte des
@@ -1115,10 +1157,13 @@ class _AtrKeepingReader extends CcidReader {
 
 /// Was der Bericht braucht. Nie die PIN.
 class _Facts {
-  _Facts(this.startedAt);
+  _Facts(this.startedAt, DateTime Function() clock)
+    : log = ProbeLog(clock: clock);
 
   final DateTime? startedAt;
-  final ProbeLog log = ProbeLog();
+
+  /// Jede Zeile mit den Millisekunden seit dem Anlegen.
+  final ProbeLog log;
   final List<String> notes = [];
   List<UsbDeviceInfo>? devices;
   TabletInfo tablet = const TabletInfo('', '');
@@ -1143,7 +1188,6 @@ class _ReadyCard {
   const _ReadyCard({
     required this.address,
     required this.profile,
-    required this.atr,
     required this.number,
     required this.key,
     required this.certificate,
@@ -1151,7 +1195,6 @@ class _ReadyCard {
 
   final String address;
   final CardProfile profile;
-  final Uint8List atr;
   final Uint8List number;
 
   /// Die Kartennummer für den Wächter.

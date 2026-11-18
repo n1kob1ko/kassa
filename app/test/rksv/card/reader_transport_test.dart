@@ -258,6 +258,36 @@ void main() {
     },
   );
 
+  test('die Angabe von Android zum Fehler steht an der ReaderException und in ihrem Text', () async {
+    const detail = 'read, 3012 ms, 0 Bytes, Rückgabe -1';
+    answer(
+      (call) async => throw PlatformException(code: 'io', message: detail),
+    );
+    final transport = ChannelReaderTransport();
+    ReaderException? error;
+    try {
+      await transport.exchange(
+        Uint8List.fromList([0x62, 0, 0, 0, 0, 0, 1, 0, 0, 0]),
+        limit: const Duration(seconds: 1),
+      );
+    } on ReaderException catch (e) {
+      error = e;
+    }
+    expect(error?.problem, ReaderProblem.io);
+    expect(error?.detail, detail);
+    expect(error.toString(), 'ReaderException(io: $detail)');
+
+    // Ohne Angabe bleibt der Text wie bisher.
+    answer((call) async => throw PlatformException(code: 'timeout'));
+    try {
+      await transport.exchange(null, limit: const Duration(seconds: 1));
+    } on ReaderException catch (e) {
+      error = e;
+    }
+    expect(error?.detail, isNull);
+    expect(error.toString(), 'ReaderException(timeout)');
+  });
+
   test('close wirft nie, auch wenn der Kanal einen Fehler meldet', () async {
     final calls = <MethodCall>[];
     answer((call) async {

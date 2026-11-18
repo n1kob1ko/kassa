@@ -58,6 +58,7 @@ FakeCard cardOf(
   int retriesLeft = 3,
   Uint8List? certificate,
   CardProfile? profile,
+  Uint8List? number,
   Uint8List Function(Uint8List hash)? signer,
 }) {
   final atr = bytesOf(atrHex);
@@ -67,6 +68,7 @@ FakeCard cardOf(
     pin: pin,
     retriesLeft: retriesLeft,
     certificate: certificate ?? testCertificate,
+    number: number,
     signer: signer ?? testSigner,
   );
 }
@@ -239,9 +241,17 @@ class ScriptedGuard extends MemoryPinGuard {
     await super.recordFailure(cardNumber, retriesLeft);
   }
 
+  /// `true`: [clear] wirft.
+  bool failClear = false;
+
+  /// Läuft bei jedem Löschen, bevor es gelingt oder wirft.
+  void Function()? onClear;
+
   @override
   Future<void> clear(String cardNumber) async {
     clears++;
+    onClear?.call();
+    if (failClear) throw StateError('Speicher nicht schreibbar');
     await super.clear(cardNumber);
   }
 }
@@ -751,22 +761,112 @@ void main() {
       expect(noFile.row(CheckRow.certificate), unreadable);
     });
 
-    test('Zertifikat abgelaufen (Uhr nach dem 30.06.2031): Zeile 4 Fehler, canSign false', () async {
+    test('letzter Block des Zertifikats mit 6282 und Daten: Zeile 4 grün, Zeile 5 offen', () async {
+      final rig = Rig()..card.certificateEndStatus = 0x6282;
+      await rig.check.run();
+      expect(
+        rig.row(CheckRow.certificate),
+        isRow(
+          RowState.ok,
+          'Seriennummer 889977665544, gültig bis 30.06.2031.',
+          'Ausgestellt von Beispiel CA.',
+        ),
+      );
+      expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      expect(rig.state.canSign, isTrue);
+      expect(
+        rig.card.received.where(
+          (c) => c.startsWith('00B0') && c != '00B0000008',
+        ),
+        ['00B0000000', '00B0010000'],
+      );
+      expect(
+        rig.state.report,
+        contains('Zertifikat: ${hex(testCertificate)}\n'),
+      );
+    });
+
+    test('6Cxx auf den letzten Block: einmal mit Le = xx neu gelesen, Zeile 4 grün, Zeile 5 offen', () async {
+      final rig = Rig()..card.certificateWrongLength = 1;
+      await rig.check.run();
+      expect(
+        rig.row(CheckRow.certificate),
+        isRow(
+          RowState.ok,
+          'Seriennummer 889977665544, gültig bis 30.06.2031.',
+          'Ausgestellt von Beispiel CA.',
+        ),
+      );
+      expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      expect(rig.state.canSign, isTrue);
+      // 379 Bytes: ab 256 bleiben 123 (7B).
+      expect(
+        rig.card.received.where(
+          (c) => c.startsWith('00B0') && c != '00B0000008',
+        ),
+        ['00B0000000', '00B0010000', '00B001007B'],
+      );
+      expect(
+        rig.state.report,
+        contains('Zertifikat: ${hex(testCertificate)}\n'),
+      );
+    });
+
+    test(
+      'zweimal 6Cxx auf denselben Block: "nicht lesbar", kein drittes Lesen',
+      () async {
+        final rig = Rig()..card.certificateWrongLength = 2;
+        await rig.check.run();
+        expect(
+          rig.row(CheckRow.certificate),
+          isRow(
+            RowState.problem,
+            'Das Zertifikat ließ sich nicht lesen.',
+            reportHint,
+          ),
+        );
+        expect(
+          rig.card.received.where(
+            (c) => c.startsWith('00B0') && c != '00B0000008',
+          ),
+          ['00B0000000', '00B0010000', '00B001007B'],
+        );
+        expect(
+          rig.row(CheckRow.signature),
+          isRow(RowState.locked, prerequisite),
+        );
+        expect(rig.state.canSign, isFalse);
+      },
+    );
+
+    test('Zertifikat abgelaufen (Uhr nach dem 30.06.2031): Zeile 4 grün mit Hinweis, die Probe-Unterschrift geht', () async {
       final rig = Rig(now: DateTime.utc(2031, 7, 1));
       await rig.check.run();
       expect(
         rig.row(CheckRow.certificate),
         isRow(
-          RowState.problem,
-          'Das Zertifikat ist am 30.06.2031 abgelaufen.',
-          'Die Karte muss getauscht werden.',
+          RowState.ok,
+          'Seriennummer 889977665544, gültig bis 30.06.2031.',
+          'Das Zertifikat ist seit 30.06.2031 abgelaufen. Die '
+              'Probe-Unterschrift geht trotzdem. Teil bitte den Bericht.',
         ),
       );
-      expect(rig.row(CheckRow.signature), isRow(RowState.locked, prerequisite));
-      expect(rig.state.canSign, isFalse);
+      expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      expect(rig.state.canSign, isTrue);
+      expect(
+        rig.state.report,
+        contains(
+          'Hinweis: Das Zertifikat ist abgelaufen (gültig bis 30.06.2031 '
+          '23:59:59 UTC, Datum am Tablet 01.07.2031 00:00:00 UTC).\n',
+        ),
+      );
       await rig.check.sign('123456');
-      expect(rig.reader.opened.length, 1);
-      expect(rig.card.verifyCount, 0);
+      expect(
+        rig.row(CheckRow.signature).message,
+        startsWith('Unterschrift erstellt und geprüft.'),
+      );
+      expect(rig.row(CheckRow.signature).state, RowState.ok);
+      expect(rig.card.verifyCount, 3);
     });
 
     test('Leser nach dem 5. Austausch abgezogen: Zeile zeigt den Fehler, close wurde gerufen, ein zweiter run gelingt', () async {
@@ -951,6 +1051,28 @@ void main() {
         '0020008A08****************',
       ]);
       expect(afterRun[6], startsWith('002A9E9A20'));
+    });
+
+    test('die Dauer zählt nur den Verkehr mit der Karte, nicht das Schreiben und Löschen des Wächters', () async {
+      final guard = ScriptedGuard();
+      final rig = Rig(guard: guard);
+      await rig.check.run();
+      rig.tickPerExchange();
+      // Jedes Schreiben und Löschen des Wächters dauert 5 Sekunden.
+      void slow() => rig.time = rig.time.add(const Duration(seconds: 5));
+      guard.onWrite = (_) => slow();
+      guard.onClear = slow;
+      await rig.check.sign('123456');
+      expect(guard.writes, hasLength(3));
+      expect(guard.clears, 3);
+      expect(
+        rig.row(CheckRow.signature).message,
+        'Unterschrift erstellt und geprüft. Dauer: 0,2 Sekunden.',
+      );
+      expect(
+        rig.state.report,
+        contains('Unterschrift: 64 Bytes, gültig, 200 ms, 200 ms, 200 ms\n'),
+      );
     });
 
     test('sign mit falscher PIN: genau ein VERIFY, "Noch 2 Versuche.", kein Befehl danach außer Ausschalten', () async {
@@ -1468,6 +1590,56 @@ void main() {
       }
     });
 
+    test('Wächter beim Antippen nicht lesbar: Zeile 5 "kann sich den Versuch nicht merken", keine PIN, Zeile im Bericht', () async {
+      // Der Lauf liest einmal, das Lesen in sign scheitert.
+      final guard = ScriptedGuard()..readsAllowed = 1;
+      final rig = Rig(guard: guard);
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      await rig.check.sign('123456');
+      expect(
+        rig.row(CheckRow.signature),
+        isRow(RowState.problem, cannotRemember, cannotRememberHint),
+      );
+      expect(verifiesSent(rig.reader), 0);
+      expect(rig.card.verifyCount, 0);
+      expect(rig.reader.opened.length, 1);
+      expect(guard.writes, isEmpty);
+      expect(rig.state.busy, isFalse);
+      expect(
+        rig.state.report,
+        contains('Wächter nicht lesbar, keine PIN geschickt'),
+      );
+    });
+
+    test('resetGuard scheitert: Zeile 5 "kann sich den Versuch nicht merken", Stand unverändert, Zeile im Bericht', () async {
+      final guard = ScriptedGuard({cardNumber: 1});
+      final rig = Rig(guard: guard);
+      await rig.check.run();
+      expect(rig.state.guardBlocks, isTrue);
+      guard.failClear = true;
+      final exchanges = rig.reader.exchanges;
+      await rig.check.resetGuard();
+      expect(
+        rig.row(CheckRow.signature),
+        isRow(RowState.problem, cannotRemember, cannotRememberHint),
+      );
+      expect(guard.clears, 1);
+      expect(await guard.retriesLeft(cardNumber), 1);
+      expect(rig.state.guardBlocks, isTrue);
+      expect(rig.state.cardLocked, isFalse);
+      expect(rig.state.canSign, isFalse);
+      expect(rig.state.busy, isFalse);
+      expect(rig.reader.exchanges, exchanges);
+      expect(
+        rig.state.report,
+        contains('Wächter konnte nicht zurückgesetzt werden'),
+      );
+      // Ein späteres sign schickt weiterhin nichts.
+      await rig.check.sign('123456');
+      expect(verifiesSent(rig.reader), 0);
+    });
+
     test('ein Fehler anderer Art beim VERIFY gilt als unklar: Leser frei, vorsichtiger Wert bleibt', () async {
       late SlowReader slow;
       final guard = ScriptedGuard();
@@ -1537,9 +1709,130 @@ void main() {
       expectLockedFrom(rig, CheckRow.certificate);
       expect(first.verifyCount, 0);
       expect(other.verifyCount, 0);
+      // Andere Art: nicht einmal die Nummer wird gelesen.
+      expect(other.received, isNot(contains('00B0000008')));
       expect(verifiesSent(rig.reader), 0);
       expect(rig.state.canSign, isFalse);
       expect(rig.reader.closed, 2);
+    });
+
+    test('gleiche Art und Kartennummer mit anderer ATR dieser Art (kalt/warm): VERIFY geht hinaus', () async {
+      final rig = Rig(card: cardOf(acosId2Atr));
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      // Die zweite ATR der Art ACOS-ID 2.1 aus der Tabelle.
+      final warm = cardOf('3BDF18FF910131FE4680319052410264050200AC73D622C099');
+      expect(warm.profile.kind, rig.card.profile.kind);
+      rig.reader.card = warm;
+      await rig.check.sign('123456');
+      expect(rig.row(CheckRow.signature).state, RowState.ok);
+      expect(warm.verifyCount, 3);
+      expect(
+        rig.state.report,
+        isNot(contains('Andere Karte als beim Prüflauf')),
+      );
+    });
+
+    test('gleiche ATR, andere Kartennummer: kein VERIFY, "Das ist eine andere Karte. Prüf nochmal."', () async {
+      final rig = Rig();
+      await rig.check.run();
+      final other = cardOf(
+        acosId41Atr,
+        number: Uint8List.fromList([8, 7, 6, 5, 4, 3, 2, 1]),
+      );
+      rig.reader.card = other;
+      await rig.check.sign('123456');
+      expect(
+        rig.row(CheckRow.card),
+        isRow(
+          RowState.problem,
+          'Das ist eine andere Karte. Prüf nochmal.',
+          isNull,
+        ),
+      );
+      expectLockedFrom(rig, CheckRow.certificate);
+      expect(other.verifyCount, 0);
+      expect(verifiesSent(rig.reader), 0);
+      expect(other.received, contains('00B0000008'));
+      expect(rig.state.canSign, isFalse);
+    });
+
+    test(
+      'ein zweites sign, während das erste läuft, schickt kein zweites VERIFY',
+      () async {
+        final rig = Rig();
+        await rig.check.run();
+        Future<void>? second;
+        rig.reader.onExchange = (_) {
+          final received = rig.card.received;
+          if (second == null &&
+              received.isNotEmpty &&
+              received.last == '00A4000C02DF01') {
+            // Gleich geht VERIFY hinaus: noch einmal antippen.
+            second = rig.check.sign('654321');
+          }
+        };
+        await rig.check.sign('654321');
+        expect(second, isNotNull);
+        await second;
+        expect(rig.card.verifyCount, 1);
+        expect(verifiesSent(rig.reader), 1);
+        expect(rig.card.retriesLeft, 2);
+        expect(rig.reader.opened.length, 2);
+        expect(
+          rig.row(CheckRow.signature).message,
+          'Die PIN war falsch. Noch 2 Versuche.',
+        );
+      },
+    );
+
+    test('run, während sign läuft, startet nicht', () async {
+      final rig = Rig();
+      await rig.check.run();
+      Future<void>? during;
+      rig.reader.onExchange = (_) {
+        final received = rig.card.received;
+        if (during == null &&
+            received.isNotEmpty &&
+            received.last == '00A4000C02DF01') {
+          during = rig.check.run();
+        }
+      };
+      await rig.check.sign('654321');
+      expect(during, isNotNull);
+      await during;
+      // Kein drittes Öffnen, keine Liste neu, die Zeilen blieben stehen.
+      expect(rig.reader.opened.length, 2);
+      expect(rig.reader.closed, 2);
+      expect(rig.row(CheckRow.certificate).state, RowState.ok);
+      expect(
+        rig.row(CheckRow.signature).message,
+        'Die PIN war falsch. Noch 2 Versuche.',
+      );
+      expect(verifiesSent(rig.reader), 1);
+    });
+
+    test('sign, während run läuft, schickt nichts', () async {
+      final rig = Rig();
+      // Ein erster Lauf macht die Karte bereit; im zweiten wird angetippt.
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      var tapped = 0;
+      rig.reader.onExchange = (_) {
+        final received = rig.card.received;
+        if (received.isNotEmpty && received.last == '00A4000C02C000') {
+          tapped++;
+          rig.check.sign('123456');
+        }
+      };
+      await rig.check.run();
+      expect(tapped, greaterThan(0));
+      await settle();
+      expect(rig.card.verifyCount, 0);
+      expect(verifiesSent(rig.reader), 0);
+      expect(rig.reader.opened.length, 2);
+      expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      expect(rig.state.canSign, isTrue);
     });
 
     test(
@@ -1673,6 +1966,76 @@ void main() {
       expect(report, contains('Art: unbekannt'));
     });
 
+    test('jede Zeile des Protokolls beginnt mit den Millisekunden seit dem Anlegen, rechtsbündig in fester Breite', () async {
+      final rig = Rig();
+      rig.tickPerExchange();
+      await rig.check.run();
+      await rig.check.sign('123456');
+      final protocol = rig.state.report.split('\nProtokoll\n').last.split('\n');
+      expect(protocol.length, greaterThan(20));
+      final timed = RegExp(r'^ *(\d+) ms  \S');
+      var last = -1;
+      for (final line in protocol) {
+        final match = timed.firstMatch(line);
+        expect(match, isNotNull, reason: line);
+        // Sieben Stellen für die Zahl, dann " ms  ".
+        expect(line.indexOf(' ms  '), 7, reason: line);
+        final ms = int.parse(match!.group(1)!);
+        expect(ms, greaterThanOrEqualTo(last), reason: line);
+        last = ms;
+      }
+      expect(protocol.first, '      0 ms  Prüflauf 18.11.2026 12:00:00 UTC');
+      // Die Uhr ging je Austausch 100 ms weiter.
+      expect(protocol, contains(startsWith('    100 ms  ')));
+      expect(last, rig.reader.exchanges * 100);
+      // Die PIN bleibt verdeckt.
+      expect(
+        protocol.where((l) => l.contains('[geheim, ')),
+        everyElement(matches(RegExp(r'^ *\d+ ms  .*\[geheim, \d+ Bytes\]'))),
+      );
+    });
+
+    test('Übertragungsfehler mit Angabe von Android: die Angabe steht im Bericht, die Zeile bleibt wie sie ist', () async {
+      const detail = 'read, 3012 ms, 0 Bytes, Rückgabe -1';
+      final rig = Rig();
+      rig.reader
+        ..failAfterExchanges = 5
+        ..failureDetail = detail;
+      await rig.check.run();
+      expect(
+        rig.row(CheckRow.card),
+        isRow(
+          RowState.problem,
+          'Der Kartenleser antwortet nicht mehr.',
+          'Steck ihn wieder an und prüf nochmal.',
+        ),
+      );
+      expect(rig.state.report, contains(detail));
+      // Am Bildschirm keine Angabe von Android.
+      for (final row in rig.state.rows.values) {
+        expect(row.message, isNot(contains('ms')));
+        expect(row.hint ?? '', isNot(contains('Rückgabe')));
+      }
+
+      // Auch bei der Probe-Unterschrift.
+      final sign = Rig();
+      await sign.check.run();
+      sign.reader
+        ..failAfterExchanges = sign.reader.exchanges + 2
+        ..failureDetail = detail;
+      await sign.check.sign('123456');
+      expect(
+        sign.row(CheckRow.card),
+        isRow(
+          RowState.problem,
+          'Der Kartenleser antwortet nicht mehr.',
+          'Steck ihn wieder an und prüf nochmal.',
+        ),
+      );
+      expect(sign.state.report, contains(detail));
+      expect(verifiesSent(sign.reader), 0);
+    });
+
     test('Bericht über 60 000 Zeichen wird in der Mitte gekürzt', () async {
       final rig = Rig();
       await rig.check.run();
@@ -1689,8 +2052,8 @@ void main() {
       expect(report, contains('5 Probe-Unterschrift: gut '));
       // Anfang und Ende des Protokolls bleiben.
       final protocol = report.split('\nProtokoll\n').last.split('\n');
-      expect(protocol.first, 'Prüflauf 18.11.2026 12:00:00 UTC');
-      expect(protocol.last, 'Probe-Unterschrift: gut');
+      expect(protocol.first, '      0 ms  Prüflauf 18.11.2026 12:00:00 UTC');
+      expect(protocol.last, endsWith(' ms  Probe-Unterschrift: gut'));
       expect(protocol.where((l) => l == '… gekürzt …').length, 1);
     });
   });

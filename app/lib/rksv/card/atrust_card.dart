@@ -207,6 +207,24 @@ final class CardCommand {
     ], 'READ BINARY');
   }
 
+  /// Liest genau [length] Bytes (1 bis 255) ab [offset]; nur nach einer
+  /// Antwort `6Cxx` der Karte auf [readBinary], mit xx als [length].
+  static CardCommand readBinaryExact(int offset, int length) {
+    if (offset < 0 || offset > 0xFFFF) {
+      throw ArgumentError.value(offset, 'offset', 'nicht 0 bis FFFF');
+    }
+    if (length < 1 || length > 0xFF) {
+      throw ArgumentError.value(length, 'length', 'nicht 1 bis FF');
+    }
+    return CardCommand._([
+      0x00,
+      0xB0,
+      (offset >> 8) & 0x7F,
+      offset & 0xFF,
+      length,
+    ], 'READ BINARY');
+  }
+
   /// Die 8 Bytes der Kartennummer aus der eben gewählten Datei.
   static CardCommand readCardNumber() => CardCommand._(const [
     0x00,

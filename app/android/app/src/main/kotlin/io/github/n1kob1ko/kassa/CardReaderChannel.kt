@@ -140,8 +140,8 @@ class CardReaderChannel(
         val deadline = started + timeoutMs.coerceAtLeast(0L)
         runOnWorker(result, IO) {
             val open = reader ?: throw ChannelError(NOT_OPEN)
-            if (out != null) write(open, out, deadline)
-            readMessage(open, deadline)
+            if (out != null) write(open, out, started, deadline)
+            readMessage(open, started, deadline)
         }
     }
 
@@ -177,7 +177,7 @@ class CardReaderChannel(
                 try {
                     result.success(job())
                 } catch (e: ChannelError) {
-                    result.error(e.code)
+                    result.error(e.code, e.detail)
                 } catch (e: Exception) {
                     result.error(fallback)
                 }
@@ -317,11 +317,19 @@ class CardReaderChannel(
     // Zeitgrenze für einen einzelnen bulkTransfer: die verbleibende Zeit,
     // mindestens 1 ms (0 hieße bei Android "ohne Ende"). Ist nichts mehr
     // übrig, ist der Aufruf vorbei.
-    private fun transferLimit(deadline: Long): Int {
+    private fun transferLimit(step: String, started: Long, done: Int, deadline: Long): Int {
         val left = remainingMs(deadline)
-        if (left <= 0) throw ChannelError(TIMEOUT)
+        if (left <= 0) throw ChannelError(TIMEOUT, detail(step, started, done, null))
         return left.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
+
+    // Für den Bericht: welcher Schritt, nach wie vielen ms seit Ankunft des
+    // Aufrufs, wie viele Bytes bis dahin übertragen waren, und was
+    // bulkTransfer zurückgab. Nie die Bytes selbst.
+    private fun detail(step: String, started: Long, done: Int, raw: Int?): String =
+        "$step, ${SystemClock.elapsedRealtime() - started} ms, $done Bytes, " +
+            "Rückgabe ${raw?.toString() ?: "-"}"
+
 
     // Vor Android 9 bewegt ein bulkTransfer höchstens 16 384 Bytes; mehr
     // scheitert dort. Die Zahl ist ein Vielfaches jeder Paketgröße, ein Teil
@@ -332,33 +340,38 @@ class CardReaderChannel(
     // bulkTransfer meldet Zeitgrenze und Fehler gleich (-1). Ist die Zeit des
     // Aufrufs (fast) um, war es die Zeitgrenze; kommt -1 früher, etwa weil der
     // Leser abgezogen wurde, ist es ein Fehler.
-    private fun failure(deadline: Long): ChannelError =
-        ChannelError(if (remainingMs(deadline) <= TIMEOUT_SLACK_MS) TIMEOUT else IO)
+    private fun failure(step: String, started: Long, done: Int, raw: Int, deadline: Long): ChannelError =
+        ChannelError(
+            if (remainingMs(deadline) <= TIMEOUT_SLACK_MS) TIMEOUT else IO,
+            detail(step, started, done, raw),
+        )
 
-    private fun write(open: OpenReader, bytes: ByteArray, deadline: Long) {
+    private fun write(open: OpenReader, bytes: ByteArray, started: Long, deadline: Long) {
         val endpoint = open.found.output
         var offset = 0
         while (offset < bytes.size) {
             val length = minOf(bytes.size - offset, maxTransfer())
             val written = open.connection.bulkTransfer(
-                endpoint, bytes, offset, length, transferLimit(deadline),
+                endpoint, bytes, offset, length, transferLimit(WRITE, started, offset, deadline),
             )
-            if (written <= 0) throw failure(deadline)
+            if (written <= 0) throw failure(WRITE, started, offset, written, deadline)
             offset += written
         }
         // Endet die Nachricht genau an einer Paketgrenze, weiß der Leser erst
         // durch ein leeres Paket, dass sie vollständig ist.
         val packet = endpoint.maxPacketSize
         if (bytes.isNotEmpty() && packet > 0 && bytes.size % packet == 0) {
-            val zero = open.connection.bulkTransfer(endpoint, ByteArray(0), 0, transferLimit(deadline))
-            if (zero < 0) throw failure(deadline)
+            val zero = open.connection.bulkTransfer(
+                endpoint, ByteArray(0), 0, transferLimit(WRITE, started, offset, deadline),
+            )
+            if (zero < 0) throw failure(WRITE, started, offset, zero, deadline)
         }
     }
 
     // Liest, bis eine vollständige Nachricht da ist: 10 Bytes Kopf, die Bytes
     // 1 bis 4 nennen die Länge der Daten (little endian). Ein einzelner
     // bulkTransfer kann die ganze Nachricht bringen oder nur einen Teil.
-    private fun readMessage(open: OpenReader, deadline: Long): ByteArray {
+    private fun readMessage(open: OpenReader, started: Long, deadline: Long): ByteArray {
         val endpoint = open.found.input
         val buffer = ByteArray(READ_BUFFER)
         var total = 0
@@ -367,9 +380,9 @@ class CardReaderChannel(
             if (total >= buffer.size) throw ChannelError(IO)
             val length = minOf(buffer.size - total, maxTransfer())
             val read = open.connection.bulkTransfer(
-                endpoint, buffer, total, length, transferLimit(deadline),
+                endpoint, buffer, total, length, transferLimit(READ, started, total, deadline),
             )
-            if (read < 0) throw failure(deadline)
+            if (read < 0) throw failure(READ, started, total, read, deadline)
             total += read
             if (expected < 0 && total >= HEADER) {
                 val length = (buffer[1].toLong() and 0xFF) or
@@ -492,7 +505,8 @@ class CardReaderChannel(
         val found: ReaderInterface,
     )
 
-    private class ChannelError(val code: String) : Exception(code)
+    // [detail] geht als message des Fehlers an Dart; nie Bytes der Nachricht.
+    private class ChannelError(val code: String, val detail: String? = null) : Exception(code)
 
     // Gibt die Antwort genau einmal und immer auf dem Haupt-Thread zurück.
     private class OnceResult(
@@ -503,7 +517,7 @@ class CardReaderChannel(
 
         fun success(value: Any?) = deliver { result.success(value) }
 
-        fun error(code: String) = deliver { result.error(code, null, null) }
+        fun error(code: String, detail: String? = null) = deliver { result.error(code, detail, null) }
 
         fun notImplemented() = deliver { result.notImplemented() }
 
@@ -530,6 +544,10 @@ class CardReaderChannel(
         private const val NOT_OPEN = "not_open"
         private const val TIMEOUT = "timeout"
         private const val IO = "io"
+
+        // Die Schritte eines exchange in der Angabe zum Fehler.
+        private const val WRITE = "write"
+        private const val READ = "read"
 
         // Kopf einer Nachricht des Lesers und die größte Nachricht, die in
         // den Lesepuffer passt.

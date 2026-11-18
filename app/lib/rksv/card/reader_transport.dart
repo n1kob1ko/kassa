@@ -21,12 +21,19 @@ enum ReaderProblem {
 }
 
 class ReaderException implements Exception {
-  const ReaderException(this.problem);
+  const ReaderException(this.problem, [this.detail]);
 
   final ReaderProblem problem;
 
+  /// Was Android zum Fehler meldet: Schritt (`write` oder `read`), Zeit,
+  /// übertragene Bytes, Rückgabe des Aufrufs. Nie Daten. Steht über
+  /// [toString] im Bericht, nie am Bildschirm.
+  final String? detail;
+
   @override
-  String toString() => 'ReaderException(${problem.name})';
+  String toString() => detail == null
+      ? 'ReaderException(${problem.name})'
+      : 'ReaderException(${problem.name}: $detail)';
 }
 
 /// Übersetzt einen Fehlercode des Kanals; ein unbekannter Code heißt [io].
@@ -200,7 +207,11 @@ class ChannelReaderTransport implements ReaderTransport {
     try {
       return await channel.invokeMethod<T>(method, arguments);
     } on PlatformException catch (e) {
-      throw ReaderException(problemOfReaderError(e.code));
+      final detail = e.message;
+      throw ReaderException(
+        problemOfReaderError(e.code),
+        detail == null || detail.isEmpty ? null : detail,
+      );
     } on MissingPluginException {
       throw const ReaderException(ReaderProblem.noChannel);
     }
