@@ -3,12 +3,19 @@ import 'package:material_ui/material_ui.dart';
 import '../../ui/app_toggle.dart';
 import '../../ui/tokens.dart';
 
-/// Karte der Einstellungen: Titel, 1 dp Linie, darunter die Zeilen.
+/// Karte der Einstellungen: Titel (mit [trailing] rechts, zum Beispiel einer
+/// Pille), 1 dp Linie, darunter die Zeilen.
 class SettingsCard extends StatelessWidget {
-  const SettingsCard({super.key, required this.title, required this.rows});
+  const SettingsCard({
+    super.key,
+    required this.title,
+    required this.rows,
+    this.trailing,
+  });
 
   final String title;
   final List<Widget> rows;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +34,17 @@ class SettingsCard extends StatelessWidget {
           Container(
             height: 56,
             alignment: Alignment.centerLeft,
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium!
-                  .copyWith(fontWeight: FontWeight.w800),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium!
+                        .copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                ?trailing,
+              ],
             ),
           ),
           for (final row in rows)
@@ -246,6 +260,53 @@ class DevicePill extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: c.ink,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pille mit Punkt und Wort für den Zustand einer Verbindung. [ok] ist grün
+/// ("Verbunden"), sonst die Warnfläche ("Gesperrt", "Unbekannt", "Nicht
+/// geladen"). Der Zustand steht immer im Wort, die Farbe ergänzt ihn nur.
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.label, {super.key, required this.ok});
+
+  final String label;
+  final bool ok;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final bg = ok ? c.veganBg : c.warnBg;
+    final fg = ok ? c.veganFg : c.warnInk;
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: ok ? c.green : fg,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: KassaTokens.spaceSm),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge!.copyWith(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: fg,
             ),
           ),
         ],

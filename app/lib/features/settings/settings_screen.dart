@@ -13,6 +13,7 @@ import 'card_panel.dart';
 import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
+import 'server_panel.dart';
 import 'settings_rows.dart';
 
 /// Der Bereich Einstellungen (nur Chef): Geräte, Anzeige und Kassa in Karten.
@@ -178,7 +179,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [display, gap, register],
+                  children: [display, gap, register, gap, const ServerPanel()],
                 ),
               ),
             ],

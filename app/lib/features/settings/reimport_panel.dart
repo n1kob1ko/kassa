@@ -93,6 +93,13 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     const title = 'Speisekarte neu einspielen';
+    // Bei einem gekoppelten Tablet kommt die Speisekarte vom Server.
+    if (ref.watch(syncStateProvider).value?.paired ?? false) {
+      return SettingsRow(
+        title: title,
+        help: 'Die Speisekarte kommt vom Server.',
+      );
+    }
     final pick = SizedBox(
       width: 180,
       child: PrimaryButton(
