@@ -2,12 +2,16 @@
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
+import '../core/app_info.dart';
 import '../core/clock.dart';
 import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
+import '../sync/server_api.dart';
+import '../sync/token_store.dart';
 import 'card_payment_repository.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
@@ -16,6 +20,7 @@ import 'receipt_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
 import 'stats_repository.dart';
+import 'sync_state_repository.dart';
 
 /// Öffnet die echte Datenbank. Tests ersetzen ihn durch
 /// `KassaDatabase(NativeDatabase.memory())`.
@@ -61,6 +66,34 @@ final cardPaymentRepositoryProvider = Provider(
 final statsRepositoryProvider = Provider(
   (ref) =>
       StatsRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
+final syncStateRepositoryProvider = Provider(
+  (ref) => SyncStateRepository(ref.watch(databaseProvider)),
+);
+
+/// Stand des Abgleichs mit dem Server als Strom.
+final syncStateProvider = StreamProvider<SyncState>(
+  (ref) => ref.watch(syncStateRepositoryProvider).watch(),
+);
+
+/// Der Geräte-Schlüssel im geschützten Speicher. Tests setzen
+/// `MemoryTokenStore` ein.
+final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
+
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+
+/// Zugang zum Server unter [serverUrl]. Nur sinnvoll, wenn [hasServer] gilt.
+final serverApiProvider = Provider(
+  (ref) => ServerApi(
+    baseUrl: serverUrl,
+    client: ref.watch(httpClientProvider),
+    appVersion: appVersion,
+  ),
 );
 
 /// Die eingespielte Speisekarte, `null` solange keine da ist.

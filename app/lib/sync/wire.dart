@@ -4,6 +4,276 @@
 import '../domain/catalog.dart';
 import '../domain/staff.dart';
 
+// Lesen der Antworten des Servers. Jede Form, die nicht passt (Pflichtfeld
+// fehlt, falscher Typ, unbekanntes Kennzeichen, nicht erlaubter Steuersatz),
+// ist eine FormatException. Unbekannte Felder werden überlesen.
+
+T _field<T>(Map<String, dynamic> json, String key) {
+  final v = json[key];
+  if (v is T) return v;
+  throw FormatException(
+    v == null ? 'Feld fehlt: $key' : 'Feld hat die falsche Art: $key',
+  );
+}
+
+T? _optional<T>(Map<String, dynamic> json, String key) {
+  final v = json[key];
+  if (v == null) return null;
+  if (v is T) return v;
+  throw FormatException('Feld hat die falsche Art: $key');
+}
+
+Map<String, dynamic> _object(Object? v, String what) {
+  if (v is Map<String, dynamic>) return v;
+  throw FormatException('Kein Objekt: $what');
+}
+
+List<T> _list<T>(
+  Map<String, dynamic> json,
+  String key,
+  T Function(Map<String, dynamic>) read,
+) => [for (final e in _field<List<dynamic>>(json, key)) read(_object(e, key))];
+
+TaxRate _taxRate(int percent) {
+  try {
+    return TaxRate.fromPercent(percent);
+  } on ArgumentError {
+    throw FormatException('Steuersatz nicht erlaubt: $percent');
+  }
+}
+
+class WireCategory {
+  const WireCategory({
+    required this.id,
+    required this.name,
+    required this.position,
+    required this.archived,
+  });
+
+  factory WireCategory.fromJson(Map<String, dynamic> json) => WireCategory(
+    id: _field(json, 'id'),
+    name: _field(json, 'name'),
+    position: _field(json, 'position'),
+    archived: _field(json, 'archived'),
+  );
+
+  final String id;
+  final String name;
+  final int position;
+  final bool archived;
+}
+
+class WireItem {
+  const WireItem({
+    required this.id,
+    required this.name,
+    required this.priceCents,
+    required this.categoryId,
+    required this.taxRate,
+    required this.depositCents,
+    required this.tags,
+    required this.info,
+    required this.templateId,
+    required this.favorite,
+    required this.inSale,
+    required this.position,
+    required this.archived,
+  });
+
+  factory WireItem.fromJson(Map<String, dynamic> json) => WireItem(
+    id: _field(json, 'id'),
+    name: _field(json, 'name'),
+    priceCents: _field(json, 'priceCents'),
+    categoryId: _field(json, 'categoryId'),
+    taxRate: _taxRate(_field(json, 'taxPercent')),
+    depositCents: _field(json, 'depositCents'),
+    tags: {
+      for (final t in _field<List<dynamic>>(json, 'tags'))
+        ItemTag.values.firstWhere(
+          (k) => k.name == t,
+          orElse: () => throw FormatException('Unbekanntes Kennzeichen: $t'),
+        ),
+    },
+    info: _optional(json, 'info'),
+    templateId: _optional(json, 'templateId'),
+    favorite: _field(json, 'favorite'),
+    inSale: _field(json, 'inSale'),
+    position: _field(json, 'position'),
+    archived: _field(json, 'archived'),
+  );
+
+  final String id;
+  final String name;
+  final int priceCents;
+  final String categoryId;
+  final TaxRate taxRate;
+  final int depositCents;
+  final Set<ItemTag> tags;
+  final String? info;
+  final String? templateId;
+  final bool favorite;
+  final bool inSale;
+  final int position;
+  final bool archived;
+}
+
+class WireTemplate {
+  const WireTemplate({
+    required this.id,
+    required this.name,
+    required this.archived,
+    required this.groups,
+  });
+
+  factory WireTemplate.fromJson(Map<String, dynamic> json) => WireTemplate(
+    id: _field(json, 'id'),
+    name: _field(json, 'name'),
+    archived: _field(json, 'archived'),
+    groups: _list(json, 'groups', _group),
+  );
+
+  static ModifierGroup _group(Map<String, dynamic> json) => ModifierGroup(
+    id: _field(json, 'id'),
+    name: _field(json, 'name'),
+    min: _field(json, 'min'),
+    max: _optional(json, 'max'),
+    options: _list(json, 'options', _option),
+  );
+
+  static ModifierOption _option(Map<String, dynamic> json) {
+    final tax = _optional<int>(json, 'taxPercent');
+    return ModifierOption(
+      id: _field(json, 'id'),
+      name: _field(json, 'name'),
+      surchargeCents: _field(json, 'surchargeCents'),
+      isDefault: _field(json, 'isDefault'),
+      taxRate: tax == null ? null : _taxRate(tax),
+      depositCents: _optional(json, 'depositCents'),
+    );
+  }
+
+  final String id;
+  final String name;
+  final bool archived;
+  final List<ModifierGroup> groups;
+}
+
+class WireStaff {
+  const WireStaff({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.pinSalt,
+    required this.pinHash,
+    required this.archived,
+  });
+
+  factory WireStaff.fromJson(Map<String, dynamic> json) {
+    final role = _field<String>(json, 'role');
+    return WireStaff(
+      id: _field(json, 'id'),
+      name: _field(json, 'name'),
+      role: switch (role) {
+        'chef' => StaffRole.chef,
+        'staff' => StaffRole.staff,
+        _ => throw FormatException('Unbekannte Rolle: $role'),
+      },
+      pinSalt: _field(json, 'pinSalt'),
+      pinHash: _field(json, 'pinHash'),
+      archived: _field(json, 'archived'),
+    );
+  }
+
+  final String id;
+  final String name;
+  final StaffRole role;
+  final String pinSalt;
+  final String pinHash;
+  final bool archived;
+}
+
+/// Eine Seite der Änderungen vom Server.
+class PullResponse {
+  const PullResponse({
+    required this.next,
+    required this.more,
+    required this.business,
+    required this.categories,
+    required this.items,
+    required this.templates,
+    required this.staff,
+  });
+
+  factory PullResponse.fromJson(Map<String, dynamic> json) {
+    final business = _optional<Map<String, dynamic>>(json, 'business');
+    return PullResponse(
+      next: _field(json, 'next'),
+      more: _field(json, 'more'),
+      business: business == null
+          ? null
+          : BusinessInfo(
+              name: _field(business, 'name'),
+              addressLines: [
+                for (final l in _field<List<dynamic>>(business, 'addressLines'))
+                  if (l is String)
+                    l
+                  else
+                    throw const FormatException('Anschrift: keine Zeile'),
+              ],
+              vatId: _optional(business, 'vatId'),
+              receiptFooter: _optional(business, 'receiptFooter'),
+            ),
+      categories: _list(json, 'categories', WireCategory.fromJson),
+      items: _list(json, 'items', WireItem.fromJson),
+      templates: _list(json, 'templates', WireTemplate.fromJson),
+      staff: _list(json, 'staff', WireStaff.fromJson),
+    );
+  }
+
+  /// Die höchste Änderungs-Nummer dieser Seite.
+  final int next;
+
+  /// Es gibt nach dieser Seite noch mehr.
+  final bool more;
+
+  /// Fehlt, wenn sich die Betriebsdaten seit der Anfrage nicht geändert haben.
+  final BusinessInfo? business;
+  final List<WireCategory> categories;
+  final List<WireItem> items;
+  final List<WireTemplate> templates;
+  final List<WireStaff> staff;
+}
+
+/// Antwort auf das Koppeln. Der Schlüssel [token] geht nie in Texte oder
+/// Protokolle ein.
+class PairResponse {
+  const PairResponse({
+    required this.registerId,
+    required this.registerName,
+    required this.businessId,
+    required this.businessName,
+    required this.token,
+  });
+
+  factory PairResponse.fromJson(Map<String, dynamic> json) => PairResponse(
+    registerId: _field(json, 'registerId'),
+    registerName: _field(json, 'registerName'),
+    businessId: _field(json, 'businessId'),
+    businessName: _field(json, 'businessName'),
+    token: _field(json, 'token'),
+  );
+
+  final String registerId;
+  final String registerName;
+  final String businessId;
+  final String businessName;
+  final String token;
+
+  @override
+  String toString() =>
+      'PairResponse(registerId: $registerId, businessId: $businessId)';
+}
+
 /// Die Speisekarte in der Form der Nachrichten ohne `archived`, `favorite`
 /// und `inSale`. Das ist auch die Form, die der Server beim Lesen der
 /// Speisekarten-Datei erzeugt.

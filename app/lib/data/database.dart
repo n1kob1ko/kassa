@@ -309,6 +309,33 @@ class PendingCardPaymentRows extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Genau eine Zeile (id = 1): wie weit der Abgleich mit dem Server ist. Der
+/// Geräte-Schlüssel steht hier nicht, er liegt im geschützten Speicher.
+class SyncStateRows extends Table {
+  @override
+  String get tableName => 'sync_state';
+
+  IntColumn get id => integer()();
+
+  /// `null`, solange die Kassa nicht gekoppelt ist.
+  TextColumn get registerId => text().nullable()();
+  TextColumn get registerName => text().nullable()();
+  TextColumn get businessId => text().nullable()();
+
+  /// Die höchste Änderungs-Nummer, die schon eingespielt ist.
+  IntColumn get pullCursor => integer().withDefault(const Constant(0))();
+
+  /// Erst wahr, wenn der erste vollständige Abgleich eingespielt ist.
+  BoolColumn get initialPullDone =>
+      boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastPullAt => dateTime().nullable()();
+  TextColumn get lastError => text().nullable()();
+  BoolColumn get blocked => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     BusinessRows,
@@ -326,13 +353,14 @@ class PendingCardPaymentRows extends Table {
     ReceiptLineOptionRows,
     PaymentRows,
     PendingCardPaymentRows,
+    SyncStateRows,
   ],
 )
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -394,6 +422,9 @@ class KassaDatabase extends _$KassaDatabase {
         await m.addColumn(paymentRows, paymentRows.cardScheme);
         await m.addColumn(paymentRows, paymentRows.cardLast4);
         await m.createTable(pendingCardPaymentRows);
+      }
+      if (from < 3) {
+        await m.createTable(syncStateRows);
       }
     },
     beforeOpen: (details) async {

@@ -1,0 +1,148 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/sync/wire.dart';
+
+Map<String, dynamic> fixture(String name) =>
+    jsonDecode(File('../shared/fixtures/sync/$name.json').readAsStringSync())
+        as Map<String, dynamic>;
+
+void main() {
+  test('pull_full.json und pull_delta.json werden gelesen', () {
+    final full = PullResponse.fromJson(fixture('pull_full'));
+    expect(full.next, 8);
+    expect(full.more, isFalse);
+    expect(full.business!.name, 'Beispiel-Imbiss');
+    expect(full.business!.addressLines, ['Musterstraße 1', '1010 Wien']);
+    expect(full.business!.vatId, 'ATU12345678');
+    expect(full.business!.receiptFooter, 'Danke und bis bald!');
+    expect(full.categories, hasLength(2));
+    expect(full.categories.first.id, 'bowls');
+    expect(full.categories.first.archived, isFalse);
+    expect(full.items, hasLength(3));
+    final bowl = full.items.first;
+    expect(bowl.id, 'huhn-bowl');
+    expect(bowl.priceCents, 990);
+    expect(bowl.taxRate, TaxRate.reduced1);
+    expect(bowl.tags, {ItemTag.spicy});
+    expect(bowl.templateId, 'bowl');
+    final cola = full.items.firstWhere((i) => i.id == 'cola');
+    expect(cola.taxRate, TaxRate.normal);
+    expect(cola.depositCents, 25);
+    expect(full.templates, hasLength(1));
+    final template = full.templates.single;
+    expect(template.id, 'bowl');
+    expect(template.groups.first.name, 'Größe');
+    expect(template.groups.first.max, 1);
+    expect(template.groups.first.options.first.isDefault, isTrue);
+    expect(template.groups[1].max, isNull);
+    expect(template.groups[1].options.first.surchargeCents, 50);
+    expect(full.staff, hasLength(1));
+    expect(full.staff.single.name, 'Chefin');
+    expect(full.staff.single.role, StaffRole.chef);
+    expect(full.staff.single.pinHash, hasLength(64));
+    expect(full.staff.single.archived, isFalse);
+
+    final delta = PullResponse.fromJson(fixture('pull_delta'));
+    expect(delta.next, 11);
+    expect(delta.more, isFalse);
+    expect(delta.business, isNull);
+    expect(delta.categories, isEmpty);
+    expect(delta.items, hasLength(3));
+    expect(delta.items.first.priceCents, 1090);
+    expect(delta.items.last.archived, isTrue);
+    expect(delta.templates, isEmpty);
+    expect(delta.staff, isEmpty);
+  });
+
+  test('pair_response.json wird gelesen', () {
+    final r = PairResponse.fromJson(fixture('pair_response'));
+    expect(r.registerId, '<uuid>');
+    expect(r.registerName, 'Kassa 1');
+    expect(r.businessId, '<uuid>');
+    expect(r.businessName, 'Beispiel-Imbiss');
+    expect(r.token, '<token>');
+  });
+
+  test('toString von PairResponse verrät den Schlüssel nicht', () {
+    final r = PairResponse.fromJson({
+      ...fixture('pair_response'),
+      'token': 'geheim-123',
+    });
+    expect(r.toString(), isNot(contains('geheim-123')));
+  });
+
+  test(
+    'unbekannte Felder stören nicht, fehlendes Pflichtfeld ist FormatException',
+    () {
+      final json = fixture('pull_full');
+      json['zukunft'] = 1;
+      (json['items'] as List).first['neuesFeld'] = 'x';
+      (json['staff'] as List).first['extra'] = true;
+      expect(PullResponse.fromJson(json).items.first.id, 'huhn-bowl');
+
+      for (final key in [
+        'next',
+        'more',
+        'categories',
+        'items',
+        'templates',
+        'staff',
+      ]) {
+        final j = fixture('pull_full')..remove(key);
+        expect(
+          () => PullResponse.fromJson(j),
+          throwsFormatException,
+          reason: key,
+        );
+      }
+      final noName = fixture('pull_full');
+      (noName['items'] as List).first.remove('name');
+      expect(() => PullResponse.fromJson(noName), throwsFormatException);
+      final wrongType = fixture('pull_full');
+      (wrongType['items'] as List).first['priceCents'] = '990';
+      expect(() => PullResponse.fromJson(wrongType), throwsFormatException);
+
+      for (final key in [
+        'registerId',
+        'registerName',
+        'businessId',
+        'businessName',
+        'token',
+      ]) {
+        final j = fixture('pair_response')..remove(key);
+        expect(
+          () => PairResponse.fromJson(j),
+          throwsFormatException,
+          reason: key,
+        );
+      }
+    },
+  );
+
+  test('Kennzeichen "neu" und Steuersatz 7 sind FormatException', () {
+    final tag = fixture('pull_full');
+    (tag['items'] as List).first['tags'] = ['neu'];
+    expect(() => PullResponse.fromJson(tag), throwsFormatException);
+
+    final tax = fixture('pull_full');
+    (tax['items'] as List).first['taxPercent'] = 7;
+    expect(() => PullResponse.fromJson(tax), throwsFormatException);
+
+    final optionTax = fixture('pull_full');
+    final option =
+        ((optionTax['templates'] as List).first['groups'] as List)
+                .first['options']
+                .first
+            as Map;
+    option['taxPercent'] = 7;
+    expect(() => PullResponse.fromJson(optionTax), throwsFormatException);
+
+    final role = fixture('pull_full');
+    (role['staff'] as List).first['role'] = 'boss';
+    expect(() => PullResponse.fromJson(role), throwsFormatException);
+  });
+}

@@ -7778,6 +7778,585 @@ class PendingCardPaymentRowsCompanion
   }
 }
 
+class $SyncStateRowsTable extends SyncStateRows
+    with TableInfo<$SyncStateRowsTable, SyncStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncStateRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _registerIdMeta = const VerificationMeta(
+    'registerId',
+  );
+  @override
+  late final GeneratedColumn<String> registerId = GeneratedColumn<String>(
+    'register_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _registerNameMeta = const VerificationMeta(
+    'registerName',
+  );
+  @override
+  late final GeneratedColumn<String> registerName = GeneratedColumn<String>(
+    'register_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _businessIdMeta = const VerificationMeta(
+    'businessId',
+  );
+  @override
+  late final GeneratedColumn<String> businessId = GeneratedColumn<String>(
+    'business_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pullCursorMeta = const VerificationMeta(
+    'pullCursor',
+  );
+  @override
+  late final GeneratedColumn<int> pullCursor = GeneratedColumn<int>(
+    'pull_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _initialPullDoneMeta = const VerificationMeta(
+    'initialPullDone',
+  );
+  @override
+  late final GeneratedColumn<bool> initialPullDone = GeneratedColumn<bool>(
+    'initial_pull_done',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("initial_pull_done" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lastPullAtMeta = const VerificationMeta(
+    'lastPullAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastPullAt = GeneratedColumn<DateTime>(
+    'last_pull_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _blockedMeta = const VerificationMeta(
+    'blocked',
+  );
+  @override
+  late final GeneratedColumn<bool> blocked = GeneratedColumn<bool>(
+    'blocked',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("blocked" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    registerId,
+    registerName,
+    businessId,
+    pullCursor,
+    initialPullDone,
+    lastPullAt,
+    lastError,
+    blocked,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('register_id')) {
+      context.handle(
+        _registerIdMeta,
+        registerId.isAcceptableOrUnknown(data['register_id']!, _registerIdMeta),
+      );
+    }
+    if (data.containsKey('register_name')) {
+      context.handle(
+        _registerNameMeta,
+        registerName.isAcceptableOrUnknown(
+          data['register_name']!,
+          _registerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('business_id')) {
+      context.handle(
+        _businessIdMeta,
+        businessId.isAcceptableOrUnknown(data['business_id']!, _businessIdMeta),
+      );
+    }
+    if (data.containsKey('pull_cursor')) {
+      context.handle(
+        _pullCursorMeta,
+        pullCursor.isAcceptableOrUnknown(data['pull_cursor']!, _pullCursorMeta),
+      );
+    }
+    if (data.containsKey('initial_pull_done')) {
+      context.handle(
+        _initialPullDoneMeta,
+        initialPullDone.isAcceptableOrUnknown(
+          data['initial_pull_done']!,
+          _initialPullDoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_pull_at')) {
+      context.handle(
+        _lastPullAtMeta,
+        lastPullAt.isAcceptableOrUnknown(
+          data['last_pull_at']!,
+          _lastPullAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('blocked')) {
+      context.handle(
+        _blockedMeta,
+        blocked.isAcceptableOrUnknown(data['blocked']!, _blockedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncStateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      registerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}register_id'],
+      ),
+      registerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}register_name'],
+      ),
+      businessId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}business_id'],
+      ),
+      pullCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pull_cursor'],
+      )!,
+      initialPullDone: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}initial_pull_done'],
+      )!,
+      lastPullAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_pull_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      blocked: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}blocked'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncStateRowsTable createAlias(String alias) {
+    return $SyncStateRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
+  final int id;
+
+  /// `null`, solange die Kassa nicht gekoppelt ist.
+  final String? registerId;
+  final String? registerName;
+  final String? businessId;
+
+  /// Die höchste Änderungs-Nummer, die schon eingespielt ist.
+  final int pullCursor;
+
+  /// Erst wahr, wenn der erste vollständige Abgleich eingespielt ist.
+  final bool initialPullDone;
+  final DateTime? lastPullAt;
+  final String? lastError;
+  final bool blocked;
+  const SyncStateRow({
+    required this.id,
+    this.registerId,
+    this.registerName,
+    this.businessId,
+    required this.pullCursor,
+    required this.initialPullDone,
+    this.lastPullAt,
+    this.lastError,
+    required this.blocked,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || registerId != null) {
+      map['register_id'] = Variable<String>(registerId);
+    }
+    if (!nullToAbsent || registerName != null) {
+      map['register_name'] = Variable<String>(registerName);
+    }
+    if (!nullToAbsent || businessId != null) {
+      map['business_id'] = Variable<String>(businessId);
+    }
+    map['pull_cursor'] = Variable<int>(pullCursor);
+    map['initial_pull_done'] = Variable<bool>(initialPullDone);
+    if (!nullToAbsent || lastPullAt != null) {
+      map['last_pull_at'] = Variable<DateTime>(lastPullAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['blocked'] = Variable<bool>(blocked);
+    return map;
+  }
+
+  SyncStateRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncStateRowsCompanion(
+      id: Value(id),
+      registerId: registerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(registerId),
+      registerName: registerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(registerName),
+      businessId: businessId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessId),
+      pullCursor: Value(pullCursor),
+      initialPullDone: Value(initialPullDone),
+      lastPullAt: lastPullAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPullAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      blocked: Value(blocked),
+    );
+  }
+
+  factory SyncStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncStateRow(
+      id: serializer.fromJson<int>(json['id']),
+      registerId: serializer.fromJson<String?>(json['registerId']),
+      registerName: serializer.fromJson<String?>(json['registerName']),
+      businessId: serializer.fromJson<String?>(json['businessId']),
+      pullCursor: serializer.fromJson<int>(json['pullCursor']),
+      initialPullDone: serializer.fromJson<bool>(json['initialPullDone']),
+      lastPullAt: serializer.fromJson<DateTime?>(json['lastPullAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      blocked: serializer.fromJson<bool>(json['blocked']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'registerId': serializer.toJson<String?>(registerId),
+      'registerName': serializer.toJson<String?>(registerName),
+      'businessId': serializer.toJson<String?>(businessId),
+      'pullCursor': serializer.toJson<int>(pullCursor),
+      'initialPullDone': serializer.toJson<bool>(initialPullDone),
+      'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
+      'lastError': serializer.toJson<String?>(lastError),
+      'blocked': serializer.toJson<bool>(blocked),
+    };
+  }
+
+  SyncStateRow copyWith({
+    int? id,
+    Value<String?> registerId = const Value.absent(),
+    Value<String?> registerName = const Value.absent(),
+    Value<String?> businessId = const Value.absent(),
+    int? pullCursor,
+    bool? initialPullDone,
+    Value<DateTime?> lastPullAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+    bool? blocked,
+  }) => SyncStateRow(
+    id: id ?? this.id,
+    registerId: registerId.present ? registerId.value : this.registerId,
+    registerName: registerName.present ? registerName.value : this.registerName,
+    businessId: businessId.present ? businessId.value : this.businessId,
+    pullCursor: pullCursor ?? this.pullCursor,
+    initialPullDone: initialPullDone ?? this.initialPullDone,
+    lastPullAt: lastPullAt.present ? lastPullAt.value : this.lastPullAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    blocked: blocked ?? this.blocked,
+  );
+  SyncStateRow copyWithCompanion(SyncStateRowsCompanion data) {
+    return SyncStateRow(
+      id: data.id.present ? data.id.value : this.id,
+      registerId: data.registerId.present
+          ? data.registerId.value
+          : this.registerId,
+      registerName: data.registerName.present
+          ? data.registerName.value
+          : this.registerName,
+      businessId: data.businessId.present
+          ? data.businessId.value
+          : this.businessId,
+      pullCursor: data.pullCursor.present
+          ? data.pullCursor.value
+          : this.pullCursor,
+      initialPullDone: data.initialPullDone.present
+          ? data.initialPullDone.value
+          : this.initialPullDone,
+      lastPullAt: data.lastPullAt.present
+          ? data.lastPullAt.value
+          : this.lastPullAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      blocked: data.blocked.present ? data.blocked.value : this.blocked,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStateRow(')
+          ..write('id: $id, ')
+          ..write('registerId: $registerId, ')
+          ..write('registerName: $registerName, ')
+          ..write('businessId: $businessId, ')
+          ..write('pullCursor: $pullCursor, ')
+          ..write('initialPullDone: $initialPullDone, ')
+          ..write('lastPullAt: $lastPullAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('blocked: $blocked')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    registerId,
+    registerName,
+    businessId,
+    pullCursor,
+    initialPullDone,
+    lastPullAt,
+    lastError,
+    blocked,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncStateRow &&
+          other.id == this.id &&
+          other.registerId == this.registerId &&
+          other.registerName == this.registerName &&
+          other.businessId == this.businessId &&
+          other.pullCursor == this.pullCursor &&
+          other.initialPullDone == this.initialPullDone &&
+          other.lastPullAt == this.lastPullAt &&
+          other.lastError == this.lastError &&
+          other.blocked == this.blocked);
+}
+
+class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
+  final Value<int> id;
+  final Value<String?> registerId;
+  final Value<String?> registerName;
+  final Value<String?> businessId;
+  final Value<int> pullCursor;
+  final Value<bool> initialPullDone;
+  final Value<DateTime?> lastPullAt;
+  final Value<String?> lastError;
+  final Value<bool> blocked;
+  const SyncStateRowsCompanion({
+    this.id = const Value.absent(),
+    this.registerId = const Value.absent(),
+    this.registerName = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.pullCursor = const Value.absent(),
+    this.initialPullDone = const Value.absent(),
+    this.lastPullAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.blocked = const Value.absent(),
+  });
+  SyncStateRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.registerId = const Value.absent(),
+    this.registerName = const Value.absent(),
+    this.businessId = const Value.absent(),
+    this.pullCursor = const Value.absent(),
+    this.initialPullDone = const Value.absent(),
+    this.lastPullAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.blocked = const Value.absent(),
+  });
+  static Insertable<SyncStateRow> custom({
+    Expression<int>? id,
+    Expression<String>? registerId,
+    Expression<String>? registerName,
+    Expression<String>? businessId,
+    Expression<int>? pullCursor,
+    Expression<bool>? initialPullDone,
+    Expression<DateTime>? lastPullAt,
+    Expression<String>? lastError,
+    Expression<bool>? blocked,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (registerId != null) 'register_id': registerId,
+      if (registerName != null) 'register_name': registerName,
+      if (businessId != null) 'business_id': businessId,
+      if (pullCursor != null) 'pull_cursor': pullCursor,
+      if (initialPullDone != null) 'initial_pull_done': initialPullDone,
+      if (lastPullAt != null) 'last_pull_at': lastPullAt,
+      if (lastError != null) 'last_error': lastError,
+      if (blocked != null) 'blocked': blocked,
+    });
+  }
+
+  SyncStateRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? registerId,
+    Value<String?>? registerName,
+    Value<String?>? businessId,
+    Value<int>? pullCursor,
+    Value<bool>? initialPullDone,
+    Value<DateTime?>? lastPullAt,
+    Value<String?>? lastError,
+    Value<bool>? blocked,
+  }) {
+    return SyncStateRowsCompanion(
+      id: id ?? this.id,
+      registerId: registerId ?? this.registerId,
+      registerName: registerName ?? this.registerName,
+      businessId: businessId ?? this.businessId,
+      pullCursor: pullCursor ?? this.pullCursor,
+      initialPullDone: initialPullDone ?? this.initialPullDone,
+      lastPullAt: lastPullAt ?? this.lastPullAt,
+      lastError: lastError ?? this.lastError,
+      blocked: blocked ?? this.blocked,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (registerId.present) {
+      map['register_id'] = Variable<String>(registerId.value);
+    }
+    if (registerName.present) {
+      map['register_name'] = Variable<String>(registerName.value);
+    }
+    if (businessId.present) {
+      map['business_id'] = Variable<String>(businessId.value);
+    }
+    if (pullCursor.present) {
+      map['pull_cursor'] = Variable<int>(pullCursor.value);
+    }
+    if (initialPullDone.present) {
+      map['initial_pull_done'] = Variable<bool>(initialPullDone.value);
+    }
+    if (lastPullAt.present) {
+      map['last_pull_at'] = Variable<DateTime>(lastPullAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (blocked.present) {
+      map['blocked'] = Variable<bool>(blocked.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncStateRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('registerId: $registerId, ')
+          ..write('registerName: $registerName, ')
+          ..write('businessId: $businessId, ')
+          ..write('pullCursor: $pullCursor, ')
+          ..write('initialPullDone: $initialPullDone, ')
+          ..write('lastPullAt: $lastPullAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('blocked: $blocked')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KassaDatabase extends GeneratedDatabase {
   _$KassaDatabase(QueryExecutor e) : super(e);
   $KassaDatabaseManager get managers => $KassaDatabaseManager(this);
@@ -7807,6 +8386,7 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
   late final $PaymentRowsTable paymentRows = $PaymentRowsTable(this);
   late final $PendingCardPaymentRowsTable pendingCardPaymentRows =
       $PendingCardPaymentRowsTable(this);
+  late final $SyncStateRowsTable syncStateRows = $SyncStateRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7827,6 +8407,7 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
     receiptLineOptionRows,
     paymentRows,
     pendingCardPaymentRows,
+    syncStateRows,
   ];
 }
 
@@ -13479,6 +14060,299 @@ typedef $$PendingCardPaymentRowsTableProcessedTableManager =
       PendingCardPaymentRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncStateRowsTableCreateCompanionBuilder =
+    SyncStateRowsCompanion Function({
+      Value<int> id,
+      Value<String?> registerId,
+      Value<String?> registerName,
+      Value<String?> businessId,
+      Value<int> pullCursor,
+      Value<bool> initialPullDone,
+      Value<DateTime?> lastPullAt,
+      Value<String?> lastError,
+      Value<bool> blocked,
+    });
+typedef $$SyncStateRowsTableUpdateCompanionBuilder =
+    SyncStateRowsCompanion Function({
+      Value<int> id,
+      Value<String?> registerId,
+      Value<String?> registerName,
+      Value<String?> businessId,
+      Value<int> pullCursor,
+      Value<bool> initialPullDone,
+      Value<DateTime?> lastPullAt,
+      Value<String?> lastError,
+      Value<bool> blocked,
+    });
+
+class $$SyncStateRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $SyncStateRowsTable> {
+  $$SyncStateRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get registerId => $composableBuilder(
+    column: $table.registerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get registerName => $composableBuilder(
+    column: $table.registerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get initialPullDone => $composableBuilder(
+    column: $table.initialPullDone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastPullAt => $composableBuilder(
+    column: $table.lastPullAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get blocked => $composableBuilder(
+    column: $table.blocked,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncStateRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $SyncStateRowsTable> {
+  $$SyncStateRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get registerId => $composableBuilder(
+    column: $table.registerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get registerName => $composableBuilder(
+    column: $table.registerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get initialPullDone => $composableBuilder(
+    column: $table.initialPullDone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastPullAt => $composableBuilder(
+    column: $table.lastPullAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get blocked => $composableBuilder(
+    column: $table.blocked,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncStateRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $SyncStateRowsTable> {
+  $$SyncStateRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get registerId => $composableBuilder(
+    column: $table.registerId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get registerName => $composableBuilder(
+    column: $table.registerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get businessId => $composableBuilder(
+    column: $table.businessId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pullCursor => $composableBuilder(
+    column: $table.pullCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get initialPullDone => $composableBuilder(
+    column: $table.initialPullDone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastPullAt => $composableBuilder(
+    column: $table.lastPullAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<bool> get blocked =>
+      $composableBuilder(column: $table.blocked, builder: (column) => column);
+}
+
+class $$SyncStateRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $SyncStateRowsTable,
+          SyncStateRow,
+          $$SyncStateRowsTableFilterComposer,
+          $$SyncStateRowsTableOrderingComposer,
+          $$SyncStateRowsTableAnnotationComposer,
+          $$SyncStateRowsTableCreateCompanionBuilder,
+          $$SyncStateRowsTableUpdateCompanionBuilder,
+          (
+            SyncStateRow,
+            BaseReferences<_$KassaDatabase, $SyncStateRowsTable, SyncStateRow>,
+          ),
+          SyncStateRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncStateRowsTableTableManager(
+    _$KassaDatabase db,
+    $SyncStateRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncStateRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncStateRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncStateRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> registerId = const Value.absent(),
+                Value<String?> registerName = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
+                Value<int> pullCursor = const Value.absent(),
+                Value<bool> initialPullDone = const Value.absent(),
+                Value<DateTime?> lastPullAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<bool> blocked = const Value.absent(),
+              }) => SyncStateRowsCompanion(
+                id: id,
+                registerId: registerId,
+                registerName: registerName,
+                businessId: businessId,
+                pullCursor: pullCursor,
+                initialPullDone: initialPullDone,
+                lastPullAt: lastPullAt,
+                lastError: lastError,
+                blocked: blocked,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> registerId = const Value.absent(),
+                Value<String?> registerName = const Value.absent(),
+                Value<String?> businessId = const Value.absent(),
+                Value<int> pullCursor = const Value.absent(),
+                Value<bool> initialPullDone = const Value.absent(),
+                Value<DateTime?> lastPullAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<bool> blocked = const Value.absent(),
+              }) => SyncStateRowsCompanion.insert(
+                id: id,
+                registerId: registerId,
+                registerName: registerName,
+                businessId: businessId,
+                pullCursor: pullCursor,
+                initialPullDone: initialPullDone,
+                lastPullAt: lastPullAt,
+                lastError: lastError,
+                blocked: blocked,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncStateRowsTable, SyncStateRow>(table),
+                  BaseReferences<
+                    _$KassaDatabase,
+                    $SyncStateRowsTable,
+                    SyncStateRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncStateRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $SyncStateRowsTable,
+      SyncStateRow,
+      $$SyncStateRowsTableFilterComposer,
+      $$SyncStateRowsTableOrderingComposer,
+      $$SyncStateRowsTableAnnotationComposer,
+      $$SyncStateRowsTableCreateCompanionBuilder,
+      $$SyncStateRowsTableUpdateCompanionBuilder,
+      (
+        SyncStateRow,
+        BaseReferences<_$KassaDatabase, $SyncStateRowsTable, SyncStateRow>,
+      ),
+      SyncStateRow,
+      PrefetchHooks Function()
+    >;
 
 class $KassaDatabaseManager {
   final _$KassaDatabase _db;
@@ -13516,4 +14390,6 @@ class $KassaDatabaseManager {
         _db,
         _db.pendingCardPaymentRows,
       );
+  $$SyncStateRowsTableTableManager get syncStateRows =>
+      $$SyncStateRowsTableTableManager(_db, _db.syncStateRows);
 }
