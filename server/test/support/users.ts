@@ -63,7 +63,7 @@ export function authed(cookie: string): Record<string, string> {
 }
 
 /** Ein Betrieb für Tests, ohne Speisekarte. */
-export function createBusiness(db: Db, name = 'Beispiel-Imbiss'): Promise<string> {
+export function insertBusiness(db: Db, name = 'Beispiel-Imbiss'): Promise<string> {
   return withSystem(db, async (c) => {
     const r = await c.query<{ id: string }>(
       `insert into businesses (name, change_seq) values ($1, nextval('change_seq')) returning id`,

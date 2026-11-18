@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
+import { installBusinessRoutes } from './admin/businesses.js';
 import { installAuth } from './auth/routes.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
@@ -47,6 +48,7 @@ export async function buildApp(
 
   app.get('/healthz', async () => ({ ok: true }));
   installAuth(app);
+  installBusinessRoutes(app);
 
   return app;
 }

@@ -5,7 +5,7 @@ import { sha256 } from '../src/auth/secrets.js';
 import { withSystem } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createTestDb, TEST_APP_PASSWORD } from './support/db.js';
-import { authed, createBusiness, createChef, createProvider, PROVIDER_EMAIL, TEST_PASSWORD } from './support/users.js';
+import { authed, insertBusiness, createChef, createProvider, PROVIDER_EMAIL, TEST_PASSWORD } from './support/users.js';
 
 const SETUP = 'einmal-schluessel-fuer-tests-0123456789';
 const DAY = 24 * 3600 * 1000;
@@ -90,7 +90,7 @@ test('ein abgelehntes Einrichten verbraucht den Schlüssel nicht', async () => {
   expect(long.statusCode).toBe(422);
   expect(long.json().error.code).toBe('email_invalid');
 
-  const chef = await createChef(a.db, await createBusiness(a.db));
+  const chef = await createChef(a.db, await insertBusiness(a.db));
   const taken = await setup(a, { token: SETUP, email: chef.user.email.toUpperCase(), password: TEST_PASSWORD });
   expect(taken.statusCode).toBe(409);
   expect(taken.json().error.code).toBe('email_taken');
@@ -140,7 +140,7 @@ test('Zurücksetzen prüft Passwort und E-Mail, bevor der Schlüssel verbraucht 
 
 test('Schlüssel mit der E-Mail eines Chefs oder Gesperrten: 409, der Schlüssel bleibt gültig', async () => {
   const a = await fresh({ config: { setupToken: SETUP } });
-  const chef = await createChef(a.db, await createBusiness(a.db));
+  const chef = await createChef(a.db, await insertBusiness(a.db));
   const provider = await createProvider(a.app, a.db);
   await withSystem(a.db, (c) => c.query('update users set disabled_at = now() where id = $1', [provider.user.id]));
 
@@ -208,8 +208,8 @@ let otherBusiness: string;
 beforeAll(async () => {
   shared = await fresh();
   await createProvider(shared.app, shared.db);
-  business = await createBusiness(shared.db);
-  otherBusiness = await createBusiness(shared.db, 'Zweiter Imbiss');
+  business = await insertBusiness(shared.db);
+  otherBusiness = await insertBusiness(shared.db, 'Zweiter Imbiss');
   shared.app.get('/api/admin/test/user', async (req) => ({ user: requireUser(req) }));
   shared.app.get('/api/admin/test/provider', async (req) => ({ user: requireProvider(req) }));
   shared.app.get<{ Params: { b: string } }>('/api/admin/test/b/:b', async (req) => ({
@@ -390,7 +390,7 @@ test('Anmeldung und Einrichten stehen im Verlauf, das Passwort nicht', async () 
   expect(text).not.toMatch(/scrypt/);
 
   // Ein Chef steht mit seinem Betrieb im Verlauf.
-  const b = await createBusiness(a.db);
+  const b = await insertBusiness(a.db);
   const chef = await createChef(a.db, b);
   await login(a, chef.user.email, TEST_PASSWORD);
   const last = (await withSystem(a.db, (c) => c.query('select * from audit_log order by id desc limit 1'))).rows[0];
