@@ -263,8 +263,10 @@ class _Body extends StatelessWidget {
         ? state._find(r.voidsReceiptId)
         : null;
     final voider = r.isVoided ? state._find(r.voidedByReceiptId) : null;
+    final payment = r.payment;
     final cash =
-        r.kind == ReceiptKind.sale && r.payment.kind == PaymentKind.cash;
+        r.kind == ReceiptKind.sale && payment?.kind == PaymentKind.cash;
+    final special = r.kind.specialTitle;
     final d = r.createdAt;
     return ListView(
       key: const Key('detail-scroll'),
@@ -284,15 +286,18 @@ class _Body extends StatelessWidget {
                   formatEuro(t.taxCents),
                   small,
                 ),
-              const SizedBox(height: KassaTokens.spaceMd),
-              _SmallRow(
-                'Zahlung',
-                r.payment.kind == PaymentKind.cash ? 'Bar' : 'Karte',
-                small,
-              ),
-              if (cash) ...[
-                _SmallRow('Gegeben', formatEuro(r.payment.givenCents), small),
-                _SmallRow('Rückgeld', formatEuro(r.payment.changeCents), small),
+              // Sonderbelege haben keine Zahlung.
+              if (payment != null) ...[
+                const SizedBox(height: KassaTokens.spaceMd),
+                _SmallRow(
+                  'Zahlung',
+                  payment.kind == PaymentKind.cash ? 'Bar' : 'Karte',
+                  small,
+                ),
+                if (cash) ...[
+                  _SmallRow('Gegeben', formatEuro(payment.givenCents), small),
+                  _SmallRow('Rückgeld', formatEuro(payment.changeCents), small),
+                ],
               ],
             ],
           ),
@@ -305,6 +310,14 @@ class _Body extends StatelessWidget {
               if (r.kind == ReceiptKind.voided)
                 Text(
                   'Storno zu Bon Nr. ${pair?.number ?? '?'}',
+                  style: small.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: c.ink,
+                  ),
+                )
+              else if (special != null)
+                Text(
+                  special.toUpperCase(),
                   style: small.copyWith(
                     fontWeight: FontWeight.w700,
                     color: c.ink,

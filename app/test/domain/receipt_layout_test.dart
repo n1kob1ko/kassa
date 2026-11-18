@@ -79,7 +79,75 @@ Receipt longNames() {
   );
 }
 
+/// Ein Startbeleg, wie Task 5 ihn schreiben wird: ohne Zeilen, Zahlung, Tag.
+Receipt startReceipt() => Receipt(
+  id: 'start',
+  number: 7,
+  createdAt: DateTime(2026, 11, 17, 11),
+  staffId: 's',
+  staffName: 'Anna',
+  businessDayId: null,
+  kind: ReceiptKind.start,
+  lines: const [],
+  payment: null,
+  goodsCents: 0,
+  depositCents: 0,
+  totalCents: 0,
+);
+
 void main() {
+  test('Startbeleg: Kopf, STARTBELEG, Bon-Kopf, Linie, Summe 0,00, keine '
+      'Zahlung', () {
+    final d = layoutReceipt(startReceipt(), business);
+    expect(texts(d), [
+      'Beispiel-Imbiss',
+      'Musterstraße 1',
+      '1010 Wien',
+      'UID ATU12345678',
+      '-' * 48,
+      'STARTBELEG',
+      row('Bon Nr. 7', '17.11.2026 11:00'),
+      'Bedienung: Anna',
+      '-' * 48,
+      row('SUMME EUR', '0,00'),
+      '-' * 48,
+      'Danke und bis bald!',
+      'TESTBON',
+      'Keine gültige Rechnung',
+    ]);
+    final title = d.whereType<PrintText>().singleWhere(
+      (x) => x.text == 'STARTBELEG',
+    );
+    expect((title.align, title.bold), (PrintAlign.center, true));
+    expect(d.last, isA<PrintCut>());
+  });
+
+  test('jede Art von Sonderbeleg steht in Großbuchstaben da', () {
+    for (final k in ReceiptKind.values.where((k) => k.isSpecial)) {
+      final r = Receipt(
+        id: k.name,
+        number: 1,
+        createdAt: DateTime(2026, 11, 17, 11),
+        staffId: 's',
+        staffName: 'Anna',
+        businessDayId: null,
+        kind: k,
+        lines: const [],
+        payment: null,
+        goodsCents: 0,
+        depositCents: 0,
+        totalCents: 0,
+      );
+      final t = texts(layoutReceipt(r, business));
+      expect(t, contains(k.specialTitle!.toUpperCase()));
+      expect(t, isNot(contains('STORNO')));
+      expect(
+        t.where((x) => x.startsWith('Bar') || x.startsWith('Karte')),
+        isEmpty,
+      );
+    }
+  });
+
   test('Barbon: Kopf, Zeilen, Pfand, Summe, Steuer, Zahlung, Ende', () async {
     final r = await saleOf(cart, given: 2000);
     final d = layoutReceipt(r, business);

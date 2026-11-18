@@ -86,16 +86,23 @@ class TestShop {
   Future<void> close() => db.close();
 
   /// Legt einen Kartenbon über [totalCents] ohne Zeilen an (die Kassa kennt
-  /// noch keine Kartenzahlung). Der Tag muss offen sein.
-  Future<void> insertCardReceipt(String id, int number, int totalCents) async {
-    final day = await dayId();
+  /// noch keine Kartenzahlung). Ohne [day] gehört er zum offenen Tag, ohne
+  /// [at] trägt er die Zeit der Uhr.
+  Future<void> insertCardReceipt(
+    String id,
+    int number,
+    int totalCents, {
+    String? day,
+    DateTime? at,
+  }) async {
+    day ??= await dayId();
     await db
         .into(db.receiptRows)
         .insert(
           ReceiptRowsCompanion.insert(
             id: id,
             number: number,
-            createdAt: clock.now(),
+            createdAt: at ?? clock.now(),
             staffId: anna.id,
             staffName: anna.name,
             businessDayId: Value(day),
@@ -117,6 +124,44 @@ class TestShop {
           ),
         );
   }
+
+  /// Legt einen Sonderbeleg der Art [kind] an, wie Task 5 ihn schreiben
+  /// wird: Betrag 0, keine Zeilen, keine Zahlung, ohne [day] auch ohne Tag.
+  Future<void> insertSpecialReceipt(
+    String id,
+    int number,
+    ReceiptKind kind, {
+    DateTime? at,
+    String? day,
+  }) => db
+      .into(db.receiptRows)
+      .insert(
+        ReceiptRowsCompanion.insert(
+          id: id,
+          number: number,
+          createdAt: at ?? clock.now(),
+          staffId: anna.id,
+          staffName: anna.name,
+          businessDayId: Value(day),
+          kind: kind.name,
+          goodsCents: 0,
+          depositCents: 0,
+          totalCents: 0,
+        ),
+      );
+
+  /// Legt einen Geschäftstag an, der um [openedAt] beginnt und, wenn
+  /// [closedAt] gesetzt ist, schon abgeschlossen ist.
+  Future<void> insertDay(String id, DateTime openedAt, {DateTime? closedAt}) =>
+      db
+          .into(db.businessDayRows)
+          .insert(
+            BusinessDayRowsCompanion.insert(
+              id: id,
+              openedAt: openedAt,
+              closedAt: Value(closedAt),
+            ),
+          );
 
   /// Verkauft [cart] bar mit 20,00 € als Anna.
   Future<Receipt> sell(String saleId) => receipts.finalizeCashSale(

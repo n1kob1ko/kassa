@@ -30,7 +30,7 @@ class VoidQuestion extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final amount = formatEuro(receipt.totalCents);
-    final byCard = receipt.payment.kind == PaymentKind.card;
+    final byCard = receipt.payment?.kind == PaymentKind.card;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),

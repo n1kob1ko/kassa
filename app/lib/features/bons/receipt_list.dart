@@ -19,15 +19,16 @@ enum BonFilter {
   final String label;
 
   /// "Bar" und "Karte" zeigen Verkäufe dieser Zahlung, die nicht storniert
-  /// sind. "Storniert" zeigt stornierte Bons und Storno-Bons.
+  /// sind. "Storniert" zeigt stornierte Bons und Storno-Bons. Sonderbelege
+  /// stehen nur unter "Alle".
   bool matches(Receipt r) {
     switch (this) {
       case BonFilter.all:
         return true;
       case BonFilter.cash:
-        return _isLiveSale(r) && r.payment.kind == PaymentKind.cash;
+        return _isLiveSale(r) && r.payment?.kind == PaymentKind.cash;
       case BonFilter.card:
-        return _isLiveSale(r) && r.payment.kind == PaymentKind.card;
+        return _isLiveSale(r) && r.payment?.kind == PaymentKind.card;
       case BonFilter.voided:
         return r.isVoided || r.kind == ReceiptKind.voided;
     }
@@ -50,11 +51,14 @@ String receiptSummary(Receipt r) => [
     l.quantity.abs() > 1 ? '${l.quantity.abs()} × ${l.name}' : l.name,
 ].join(', ');
 
-/// Was die Pille zeigt: "Storno" (Storno-Bon), "Storniert" oder die Zahlung.
+/// Was die Pille zeigt: "Storno" (Storno-Bon), "Storniert", die Bezeichnung
+/// eines Sonderbelegs oder die Zahlung.
 String receiptPillLabel(Receipt r) {
   if (r.kind == ReceiptKind.voided) return 'Storno';
   if (r.isVoided) return 'Storniert';
-  return r.payment.kind == PaymentKind.cash ? 'Bar' : 'Karte';
+  final special = r.kind.specialTitle;
+  if (special != null) return special;
+  return r.payment?.kind == PaymentKind.cash ? 'Bar' : 'Karte';
 }
 
 /// Status-Pille: Zahlungsart ruhig, Storno und Storniert in Rot.

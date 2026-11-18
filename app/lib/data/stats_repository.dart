@@ -11,6 +11,9 @@ import 'database.dart';
 const _otherCategory = 'Sonstiges';
 const _depositName = 'Pfand';
 
+/// Die Arten von Bons, die in Umsatz und Anzahl zählen.
+final _counted = [ReceiptKind.sale.name, ReceiptKind.voided.name];
+
 class StatsRepository {
   StatsRepository(this._db, this._clock);
 
@@ -51,6 +54,8 @@ class StatsRepository {
         await (_db.select(_db.receiptRows)
               ..where((t) => t.createdAt.isBiggerOrEqualValue(previousFrom))
               ..where((t) => t.createdAt.isSmallerOrEqualValue(now))
+              // Sonderbelege zählen nicht.
+              ..where((t) => t.kind.isIn(_counted))
               ..orderBy([
                 (t) => OrderingTerm.asc(t.createdAt),
                 (t) => OrderingTerm.asc(t.number),

@@ -4,7 +4,24 @@
 import 'catalog.dart';
 import 'pricing.dart';
 
-enum ReceiptKind { sale, voided }
+/// Verkauf, Storno-Bon oder ein Sonderbeleg der Signatur (Startbeleg bis
+/// Schlussbeleg). Sonderbelege haben keinen Tag, keine Zahlung, Betrag 0.
+enum ReceiptKind { sale, voided, start, month, year, zero, collective, closing }
+
+extension ReceiptKindX on ReceiptKind {
+  bool get isSpecial => specialTitle != null;
+
+  /// Bezeichnung eines Sonderbelegs, sonst `null`.
+  String? get specialTitle => switch (this) {
+    ReceiptKind.sale || ReceiptKind.voided => null,
+    ReceiptKind.start => 'Startbeleg',
+    ReceiptKind.month => 'Monatsbeleg',
+    ReceiptKind.year => 'Jahresbeleg',
+    ReceiptKind.zero => 'Nullbeleg',
+    ReceiptKind.collective => 'Sammelbeleg',
+    ReceiptKind.closing => 'Schlussbeleg',
+  };
+}
 
 enum PaymentKind { cash, card }
 
@@ -79,6 +96,28 @@ class Payment {
   final String? cardLast4;
 }
 
+/// Was das Protokoll der Signatur zu einem Bon weiß.
+final class RksvStamp {
+  const RksvStamp({
+    required this.cashBoxId,
+    required this.qrText,
+    required this.damaged,
+    required this.probe,
+  });
+
+  /// Kassen-Kennung der Kette.
+  final String cashBoxId;
+
+  /// Inhalt des QR-Codes.
+  final String qrText;
+
+  /// Wahr, wenn die Signatur beim Bon ausgefallen war.
+  final bool damaged;
+
+  /// Wahr bei der Probe-Signatur.
+  final bool probe;
+}
+
 class Receipt {
   Receipt({
     required this.id,
@@ -92,6 +131,7 @@ class Receipt {
     this.voidedByReceiptId,
     required List<ReceiptLine> lines,
     required this.payment,
+    this.rksv,
     required this.goodsCents,
     required this.depositCents,
     required this.totalCents,
@@ -105,7 +145,9 @@ class Receipt {
   final DateTime createdAt;
   final String staffId;
   final String staffName;
-  final String businessDayId;
+
+  /// Leer bei Sonderbelegen.
+  final String? businessDayId;
   final ReceiptKind kind;
 
   /// Beim Storno-Bon der Bon, den er storniert.
@@ -114,7 +156,12 @@ class Receipt {
   /// Der Storno-Bon, der auf diesen Bon zeigt, falls es einen gibt.
   final String? voidedByReceiptId;
   final List<ReceiptLine> lines;
-  final Payment payment;
+
+  /// Leer bei Sonderbelegen.
+  final Payment? payment;
+
+  /// Leer, wenn der Bon keinen Protokoll-Eintrag hat.
+  final RksvStamp? rksv;
   final int goodsCents;
   final int depositCents;
   final int totalCents;

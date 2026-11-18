@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/core/money.dart';
+import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/devices/printer.dart';
@@ -495,4 +496,57 @@ void main() {
       await check();
     },
   );
+
+  testWidgets('Sonderbeleg: Bezeichnung statt Zahlung, 0,00 €, nur unter '
+      '"Alle", kein Stornieren', (t) async {
+    await pumpBonsWithSales(t, 1, pin: '4711'); // der Chef dürfte stornieren
+    final c = containerOf(t);
+    final staff = c.read(sessionProvider)!;
+    await c
+        .read(databaseProvider)
+        .into(c.read(databaseProvider).receiptRows)
+        .insert(
+          ReceiptRowsCompanion.insert(
+            id: 'm1',
+            number: 2,
+            createdAt: c.read(clockProvider).now(),
+            staffId: staff.id,
+            staffName: staff.name,
+            kind: ReceiptKind.month.name,
+            goodsCents: 0,
+            depositCents: 0,
+            totalCents: 0,
+          ),
+        );
+    await t.pumpAndSettle();
+
+    final row = find.byKey(const Key('receipt-2'));
+    expect(
+      find.descendant(of: row, matching: find.text('Monatsbeleg')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('0,00 €')),
+      findsOneWidget,
+    );
+    for (final f in ['bar', 'karte', 'storniert']) {
+      await _tapFilter(t, f);
+      expect(find.byKey(const Key('receipt-2')), findsNothing, reason: f);
+    }
+    await _tapFilter(t, 'alle');
+    expect(find.byKey(const Key('receipt-2')), findsOneWidget);
+
+    await openReceipt(t, 2);
+    expect(find.text('Bon Nr. 2'), findsOneWidget);
+    expect(find.text('MONATSBELEG'), findsOneWidget);
+    expect(find.text('Zahlung'), findsNothing);
+    expect(find.text('Gegeben'), findsNothing);
+    expect(textOf(t, const Key('detail-total')), '0,00 €');
+    expect(find.byKey(const Key('void-receipt')), findsNothing);
+    expect(t.takeException(), isNull);
+
+    // Zum Vergleich: den Barverkauf darf der Chef stornieren.
+    await openReceipt(t, 1);
+    expect(find.byKey(const Key('void-receipt')), findsOneWidget);
+  });
 }

@@ -324,4 +324,37 @@ void main() {
       expect(s.expectedCashCents, 15000 + 1820);
     },
   );
+
+  test(
+    'Sonderbelege ändern die Tagessumme nicht, auch nicht mit Tag',
+    () async {
+      await days.setOpeningFloat(15000);
+      await sell('s1'); // 1820 bar
+      await shop.sellCard('c1');
+      List<Object> numbers(DaySummary s) => [
+        s.receiptCount,
+        s.cashReceiptCount,
+        s.cardReceiptCount,
+        s.voidCount,
+        s.voidedCents,
+        s.revenueCents,
+        s.cashRevenueCents,
+        s.cardRevenueCents,
+        s.depositCents,
+        s.expectedCashCents,
+        [for (final t in s.taxLines) (t.rate, t.grossCents)],
+      ];
+      final before = numbers((await days.summary())!);
+      await shop.insertSpecialReceipt('m', 3, ReceiptKind.month);
+      await shop.insertSpecialReceipt(
+        'z',
+        4,
+        ReceiptKind.zero,
+        day: await shop.dayId(),
+      );
+      final after = numbers((await days.summary())!);
+      expect(after, before);
+      expect(after.first, 2);
+    },
+  );
 }

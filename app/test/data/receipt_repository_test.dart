@@ -1,5 +1,9 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
+import 'package:kassa/data/database.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
@@ -62,7 +66,7 @@ void main() {
     expect((r.goodsCents, r.depositCents, r.totalCents), (1770, 50, 1820));
     expect(r.grossByRate, {TaxRate.normal: 580, TaxRate.reduced1: 1190});
     expect(
-      (r.payment.kind, r.payment.givenCents, r.payment.changeCents),
+      (r.payment!.kind, r.payment!.givenCents, r.payment!.changeCents),
       (PaymentKind.cash, 2000, 180),
     );
     expect(
@@ -187,9 +191,9 @@ void main() {
     expect(v.staffName, 'Chef');
     expect(v.lines.first.quantity, -r.lines.first.quantity);
     expect(v.lines.last.options.map((o) => o.optionName), ['XXL', 'Nudeln']);
-    expect(v.payment.amountCents, -r.totalCents);
+    expect(v.payment!.amountCents, -r.totalCents);
     expect(
-      (v.payment.kind, v.payment.givenCents, v.payment.changeCents),
+      (v.payment!.kind, v.payment!.givenCents, v.payment!.changeCents),
       (PaymentKind.cash, 0, 0),
     );
     expect(v.businessDayId, r.businessDayId);
@@ -303,18 +307,18 @@ void main() {
       cardScheme: 'VISA',
       cardLast4: '4242',
     );
-    expect(r.payment.kind, PaymentKind.card);
+    expect(r.payment!.kind, PaymentKind.card);
     expect(
-      (r.payment.amountCents, r.payment.givenCents, r.payment.changeCents),
+      (r.payment!.amountCents, r.payment!.givenCents, r.payment!.changeCents),
       (1820, 0, 0),
     );
     final back = await receipts.byId('c1');
     expect(
       (
-        back.payment.provider,
-        back.payment.providerTxCode,
-        back.payment.cardScheme,
-        back.payment.cardLast4,
+        back.payment!.provider,
+        back.payment!.providerTxCode,
+        back.payment!.cardScheme,
+        back.payment!.cardLast4,
       ),
       ('sumup', 'TX9', 'VISA', '4242'),
     );
@@ -352,9 +356,213 @@ void main() {
       'negativem Betrag', () async {
     final sale = await shop.sellCard('c1');
     final v = await receipts.voidReceipt(sale.id, staff: shop.chef);
-    expect(v.payment.kind, PaymentKind.card);
-    expect(v.payment.amountCents, -sale.totalCents);
-    expect(v.payment.providerTxCode, 'TX-c1');
+    expect(v.payment!.kind, PaymentKind.card);
+    expect(v.payment!.amountCents, -sale.totalCents);
+    expect(v.payment!.providerTxCode, 'TX-c1');
     expect(v.totalCents, -sale.totalCents);
+  });
+
+  group('Sonderbelege', () {
+    /// Kompakte JWS-Form mit erfundener Nutzlast und Signatur 01 02 03.
+    String jws(String payload) =>
+        'eyJhbGciOiJFUzI1NiJ9.'
+        '${base64Url.encode(utf8.encode(payload)).replaceAll('=', '')}.AQID';
+
+    Future<void> insertChain(int chain, String mode, String cashBoxId) => shop
+        .db
+        .into(shop.db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: Value(chain),
+            mode: mode,
+            cashBoxId: cashBoxId,
+            zdaId: 'R1-AT100',
+            startedAt: DateTime(2026, 11, 1),
+          ),
+        );
+
+    Future<void> insertEntry(
+      int chain,
+      int position,
+      String receiptId,
+      String jws, {
+      bool damaged = false,
+    }) => shop.db
+        .into(shop.db.rksvEntryRows)
+        .insert(
+          RksvEntryRowsCompanion.insert(
+            chain: chain,
+            position: position,
+            receiptId: receiptId,
+            jws: jws,
+            damaged: damaged,
+            certSerial: '0a1b',
+          ),
+        );
+
+    test('ein Bon ohne Tag und ohne Zahlung wird gelesen', () async {
+      await shop.insertSpecialReceipt('m1', 1, ReceiptKind.month);
+      final r = await receipts.byId('m1');
+      expect(r.kind, ReceiptKind.month);
+      expect(r.businessDayId, isNull);
+      expect(r.payment, isNull);
+      expect(r.lines, isEmpty);
+      expect((r.goodsCents, r.depositCents, r.totalCents), (0, 0, 0));
+      expect(r.rksv, isNull);
+      expect(r.isVoided, isFalse);
+    });
+
+    test('Arten: Sonderbelege und ihre Bezeichnungen', () {
+      expect(
+        {for (final k in ReceiptKind.values) k.name: k.specialTitle},
+        {
+          'sale': null,
+          'voided': null,
+          'start': 'Startbeleg',
+          'month': 'Monatsbeleg',
+          'year': 'Jahresbeleg',
+          'zero': 'Nullbeleg',
+          'collective': 'Sammelbeleg',
+          'closing': 'Schlussbeleg',
+        },
+      );
+      expect(
+        [
+          for (final k in ReceiptKind.values)
+            if (k.isSpecial) k.name,
+        ],
+        ['start', 'month', 'year', 'zero', 'collective', 'closing'],
+      );
+    });
+
+    test('rksv kommt aus Protokoll-Eintrag und Kette', () async {
+      await insertChain(1, 'probe', 'BSPIMB01');
+      await insertChain(2, 'live', 'BSPIMB02');
+      await shop.insertSpecialReceipt('st', 1, ReceiptKind.start);
+      await shop.sell('s1');
+      final sale = (await shop.db.select(shop.db.receiptRows).get())
+          .singleWhere((r) => r.number == 2);
+      await insertEntry(1, 1, 'st', jws('_R1-AT100_BSPIMB01_1'));
+      await insertEntry(
+        2,
+        1,
+        sale.id,
+        jws('_R1-AT100_BSPIMB02_2'),
+        damaged: true,
+      );
+      await shop.sell('s2'); // ohne Eintrag
+
+      final start = (await receipts.byId('st')).rksv!;
+      expect(
+        (start.cashBoxId, start.qrText, start.damaged, start.probe),
+        ('BSPIMB01', '_R1-AT100_BSPIMB01_1_AQID', false, true),
+      );
+      final day = await receipts.watchDay(await shop.dayId()).first;
+      final signed = day.singleWhere((r) => r.number == 2).rksv!;
+      expect(
+        (signed.cashBoxId, signed.qrText, signed.damaged, signed.probe),
+        ('BSPIMB02', '_R1-AT100_BSPIMB02_2_AQID', true, false),
+      );
+      expect(day.singleWhere((r) => r.number == 3).rksv, isNull);
+    });
+
+    test('ein Sonderbeleg lässt sich nicht stornieren, nichts wird '
+        'geschrieben', () async {
+      await shop.insertSpecialReceipt('st', 1, ReceiptKind.start);
+      await expectLater(
+        receipts.voidReceipt('st', staff: shop.chef),
+        throwsA(isA<StateError>()),
+      );
+      expect(await shop.count('receipts'), 1);
+    });
+
+    test('watchDay ordnet Sonderbelege nach der Zeit den Tagen zu', () async {
+      await shop.insertDay(
+        'a',
+        DateTime(2026, 11, 10, 8),
+        closedAt: DateTime(2026, 11, 10, 20),
+      );
+      await shop.insertDay(
+        'b',
+        DateTime(2026, 11, 12, 8),
+        closedAt: DateTime(2026, 11, 12, 20),
+      );
+      await shop.insertDay('c', DateTime(2026, 11, 14, 8));
+      // Sonderbelege: vor dem ersten Tag, zwischen den Tagen, genau beim
+      // Beginn eines Tages und nach dem Beginn des neuesten Tages.
+      await shop.insertSpecialReceipt(
+        'start',
+        1,
+        ReceiptKind.start,
+        at: DateTime(2026, 11, 9, 12),
+      );
+      await shop.insertCardReceipt(
+        'a1',
+        2,
+        500,
+        day: 'a',
+        at: DateTime(2026, 11, 10, 9),
+      );
+      await shop.insertSpecialReceipt(
+        'zero-a',
+        3,
+        ReceiptKind.zero,
+        at: DateTime(2026, 11, 11, 12),
+      );
+      await shop.insertSpecialReceipt(
+        'month-b',
+        4,
+        ReceiptKind.month,
+        at: DateTime(2026, 11, 12, 8),
+      );
+      await shop.insertCardReceipt(
+        'b1',
+        5,
+        500,
+        day: 'b',
+        at: DateTime(2026, 11, 12, 8),
+      );
+      await shop.insertSpecialReceipt(
+        'zero-b',
+        6,
+        ReceiptKind.zero,
+        at: DateTime(2026, 11, 13, 12),
+      );
+      await shop.insertCardReceipt(
+        'c1',
+        7,
+        500,
+        day: 'c',
+        at: DateTime(2026, 11, 14, 9),
+      );
+      await shop.insertSpecialReceipt(
+        'closing',
+        8,
+        ReceiptKind.closing,
+        at: DateTime(2026, 11, 20, 12),
+      );
+
+      Future<List<int>> numbersOf(String day) async => [
+        for (final r in await receipts.watchDay(day).first) r.number,
+      ];
+      expect(await numbersOf('a'), [1, 2, 3]);
+      expect(await numbersOf('b'), [4, 5, 6]);
+      expect(await numbersOf('c'), [7, 8]);
+    });
+
+    test('watchDay meldet einen neuen Sonderbeleg', () async {
+      await shop.sell('s1');
+      final day = await shop.dayId();
+      final emitted = <List<int>>[];
+      final sub = receipts
+          .watchDay(day)
+          .listen((l) => emitted.add([for (final r in l) r.number]));
+      await pumpEventQueue();
+      await shop.insertSpecialReceipt('z', 2, ReceiptKind.zero);
+      await pumpEventQueue();
+      await sub.cancel();
+      expect(emitted.first, [1]);
+      expect(emitted.last, [1, 2]);
+    });
   });
 }

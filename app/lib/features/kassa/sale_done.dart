@@ -56,9 +56,10 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final drawer = settings.cashDrawerEnabled;
     final number = widget.result.receipt.number;
+    // Ein Verkauf hat immer eine Zahlung, nur Sonderbelege haben keine.
     final payment = widget.result.receipt.payment;
-    final changeCents = payment.changeCents;
-    final byCard = payment.kind == PaymentKind.card;
+    final changeCents = payment?.changeCents ?? 0;
+    final byCard = payment?.kind == PaymentKind.card;
     final outcome = _outcome;
     final showPrint =
         settings.printerKind != PrinterKind.none &&
@@ -119,8 +120,8 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                       ),
                       child: byCard
                           ? _CardPaid(
-                              scheme: payment.cardScheme,
-                              last4: payment.cardLast4,
+                              scheme: payment?.cardScheme,
+                              last4: payment?.cardLast4,
                             )
                           : changeCents == 0
                           ? Text(

@@ -262,14 +262,17 @@ List<PrintOp> layoutReceipt(
   if (vatId != null && vatId.isNotEmpty) b.centered('UID $vatId');
   b.rule();
 
-  // 3. Storno
+  // 3. Storno oder Sonderbeleg
   // Das Wort steht immer da, die Nummer des stornierten Bons nur, wenn sie
   // bekannt ist.
+  final special = r.kind.specialTitle;
   if (r.kind == ReceiptKind.voided) {
     b.text('STORNO', align: PrintAlign.center, bold: true);
     if (voidedNumber != null) {
       b.text('zu Bon Nr. $voidedNumber', align: PrintAlign.center);
     }
+  } else if (special != null) {
+    b.text(special.toUpperCase(), align: PrintAlign.center, bold: true);
   }
 
   // 4. Bon-Kopf
@@ -291,8 +294,9 @@ List<PrintOp> layoutReceipt(
     }
   }
 
-  // 6. Pfand und Summe
-  b.rule();
+  // 6. Pfand und Summe. Ein Sonderbeleg hat keine Zeilen: die Linie unter
+  // dem Bon-Kopf genügt.
+  if (!r.kind.isSpecial) b.rule();
   if (r.depositCents != 0) b.row('Pfand', amount(r.depositCents));
   b.row(
     'SUMME EUR',
@@ -307,28 +311,30 @@ List<PrintOp> layoutReceipt(
     b.row(_taxText(t), amount(t.grossCents));
   }
 
-  // 8. Zahlung
+  // 8. Zahlung, bei Sonderbelegen keine
   final p = r.payment;
-  switch (p.kind) {
-    case PaymentKind.cash:
-      b.row('Bar', amount(p.amountCents));
-      if (p.givenCents != p.amountCents) {
-        b.row('Gegeben', amount(p.givenCents));
-        b.row('Rückgeld', amount(p.changeCents));
-      }
-    case PaymentKind.card:
-      b.row('Karte', amount(p.amountCents));
-      final scheme = p.cardScheme;
-      final last4 = p.cardLast4;
-      if (last4 != null && last4.isNotEmpty) {
-        b.indented(
-          scheme == null || scheme.isEmpty
-              ? '**** $last4'
-              : '$scheme **** $last4',
-        );
-      }
-      final tx = p.providerTxCode;
-      if (tx != null && tx.isNotEmpty) b.indented('Beleg $tx');
+  if (p != null) {
+    switch (p.kind) {
+      case PaymentKind.cash:
+        b.row('Bar', amount(p.amountCents));
+        if (p.givenCents != p.amountCents) {
+          b.row('Gegeben', amount(p.givenCents));
+          b.row('Rückgeld', amount(p.changeCents));
+        }
+      case PaymentKind.card:
+        b.row('Karte', amount(p.amountCents));
+        final scheme = p.cardScheme;
+        final last4 = p.cardLast4;
+        if (last4 != null && last4.isNotEmpty) {
+          b.indented(
+            scheme == null || scheme.isEmpty
+                ? '**** $last4'
+                : '$scheme **** $last4',
+          );
+        }
+        final tx = p.providerTxCode;
+        if (tx != null && tx.isNotEmpty) b.indented('Beleg $tx');
+    }
   }
 
   // 9. Schlusstext

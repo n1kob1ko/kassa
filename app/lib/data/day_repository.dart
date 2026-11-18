@@ -185,9 +185,17 @@ class DayRepository {
       isForgottenClose(await openDay(), _clock.now());
 
   Future<DaySummary> _summarize(BusinessDay day) async {
-    final receipts = await (_db.select(
-      _db.receiptRows,
-    )..where((t) => t.businessDayId.equals(day.id))).get();
+    // Nur Verkäufe und Storno-Bons zählen, Sonderbelege nicht.
+    final receipts =
+        await (_db.select(_db.receiptRows)
+              ..where((t) => t.businessDayId.equals(day.id))
+              ..where(
+                (t) => t.kind.isIn([
+                  ReceiptKind.sale.name,
+                  ReceiptKind.voided.name,
+                ]),
+              ))
+            .get();
     final payments = {
       for (final p in await (_db.select(_db.paymentRows).join([
         innerJoin(

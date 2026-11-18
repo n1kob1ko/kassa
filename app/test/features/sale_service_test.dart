@@ -254,7 +254,7 @@ void main() {
       );
       final o = await pay() as CardSaleDone;
       expect((await o.sale.print).ok, isTrue);
-      final p = o.sale.receipt.payment;
+      final p = o.sale.receipt.payment!;
       expect(p.kind, PaymentKind.card);
       expect(
         (p.provider, p.providerTxCode, p.cardScheme, p.cardLast4),
@@ -365,9 +365,9 @@ void main() {
       final catalog = (await container.read(catalogProvider.future))!;
       final r = await service.confirmUnclear(p, catalog: catalog);
       expect(r.receipt.id, 'p1');
-      expect(r.receipt.payment.kind, PaymentKind.card);
-      expect(r.receipt.payment.providerTxCode, isNull);
-      expect(r.receipt.payment.provider, 'sumup');
+      expect(r.receipt.payment!.kind, PaymentKind.card);
+      expect(r.receipt.payment!.providerTxCode, isNull);
+      expect(r.receipt.payment!.provider, 'sumup');
       expect(r.receipt.totalCents, 1820);
       expect(r.receipt.staffName, 'Anna');
       expect(await cardPayments.pending(), isEmpty);

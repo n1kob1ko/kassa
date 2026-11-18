@@ -377,8 +377,8 @@ void main() {
     expect(r.staffName, 'Anna');
     expect(r.number, 1);
     expect(r.totalCents, 315);
-    expect(r.payment.givenCents, 500);
-    expect(r.payment.changeCents, 185);
+    expect(r.payment!.givenCents, 500);
+    expect(r.payment!.changeCents, 185);
     expect(r.lines.single.itemId, 'cola');
   });
 

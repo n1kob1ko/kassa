@@ -9,6 +9,7 @@ import '../domain/catalog.dart';
 import '../domain/pricing.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
+import '../rksv/core/rksv_code.dart';
 import 'database.dart';
 import 'day_repository.dart';
 
@@ -169,6 +170,10 @@ class ReceiptRepository {
         throw const CannotVoidAVoidException();
       }
       if (original.isVoided) throw const AlreadyVoidedException();
+      final payment = original.payment;
+      if (payment == null) {
+        throw StateError('Ein Sonderbeleg kann nicht storniert werden.');
+      }
       return _write(
         id: const Uuid().v4(),
         kind: ReceiptKind.voided,
@@ -194,14 +199,14 @@ class ReceiptRepository {
         depositCents: -original.depositCents,
         totalCents: -original.totalCents,
         payment: Payment(
-          kind: original.payment.kind,
+          kind: payment.kind,
           amountCents: -original.totalCents,
           givenCents: 0,
           changeCents: 0,
-          provider: original.payment.provider,
-          providerTxCode: original.payment.providerTxCode,
-          cardScheme: original.payment.cardScheme,
-          cardLast4: original.payment.cardLast4,
+          provider: payment.provider,
+          providerTxCode: payment.providerTxCode,
+          cardScheme: payment.cardScheme,
+          cardLast4: payment.cardLast4,
         ),
       );
     });
@@ -217,12 +222,28 @@ class ReceiptRepository {
     return r;
   }
 
-  /// Die Bons eines Tages, nach Nummer aufsteigend.
+  /// Die Bons eines Tages und die Sonderbelege ohne Tag, die ab seinem Beginn
+  /// bis zum Beginn des nächsten Tages entstanden sind (beim ersten Tag auch
+  /// alle davor, beim neuesten alle danach). Nach Nummer aufsteigend.
   Stream<List<Receipt>> watchDay(String businessDayId) {
-    final query = _db.select(_db.receiptRows)
-      ..where((t) => t.businessDayId.equals(businessDayId))
-      ..orderBy([(t) => OrderingTerm.asc(t.number)]);
-    return query.watch().asyncMap(_hydrate);
+    final query = _db.customSelect(
+      'SELECT r.* FROM receipts r, '
+      '(SELECT opened_at FROM business_days WHERE id = ?1) d '
+      'WHERE r.business_day_id = ?1 '
+      'OR (r.business_day_id IS NULL '
+      'AND (r.created_at >= d.opened_at OR NOT EXISTS '
+      '(SELECT 1 FROM business_days p WHERE p.opened_at < d.opened_at)) '
+      'AND (r.created_at < (SELECT MIN(n.opened_at) FROM business_days n '
+      'WHERE n.opened_at > d.opened_at) OR NOT EXISTS '
+      '(SELECT 1 FROM business_days n WHERE n.opened_at > d.opened_at))) '
+      'ORDER BY r.number',
+      variables: [Variable.withString(businessDayId)],
+      readsFrom: {_db.receiptRows, _db.businessDayRows, _db.rksvEntryRows},
+    );
+    return query
+        .watch()
+        .map((rows) => [for (final r in rows) _db.receiptRows.map(r.data)])
+        .asyncMap(_hydrate);
   }
 
   Future<Receipt?> _find(String id) async {
@@ -370,6 +391,20 @@ class ReceiptRepository {
       )..where((t) => t.receiptId.isIn(ids))).get())
         p.receiptId: p,
     };
+    final stamps = {
+      for (final j in await (_db.select(_db.rksvEntryRows).join([
+        innerJoin(
+          _db.rksvChainRows,
+          _db.rksvChainRows.chain.equalsExp(_db.rksvEntryRows.chain),
+        ),
+      ])..where(_db.rksvEntryRows.receiptId.isIn(ids))).get())
+        j.readTable(_db.rksvEntryRows).receiptId: RksvStamp(
+          cashBoxId: j.readTable(_db.rksvChainRows).cashBoxId,
+          qrText: qrText(j.readTable(_db.rksvEntryRows).jws),
+          damaged: j.readTable(_db.rksvEntryRows).damaged,
+          probe: j.readTable(_db.rksvChainRows).mode == 'probe',
+        ),
+    };
     final voidedBy = {
       for (final v in await (_db.select(
         _db.receiptRows,
@@ -384,8 +419,7 @@ class ReceiptRepository {
           createdAt: r.createdAt,
           staffId: r.staffId,
           staffName: r.staffName,
-          // Bons ohne Tag (Sonderbelege) schreibt die Kassa noch nicht.
-          businessDayId: r.businessDayId!,
+          businessDayId: r.businessDayId,
           kind: ReceiptKind.values.byName(r.kind),
           voidsReceiptId: r.voidsReceiptId,
           voidedByReceiptId: voidedBy[r.id],
@@ -421,9 +455,10 @@ class ReceiptRepository {
                 },
               ),
           ],
-          payment: () {
-            final p = payments[r.id]!;
-            return Payment(
+          // Sonderbelege haben keine Zahlung.
+          payment: switch (payments[r.id]) {
+            null => null,
+            final p => Payment(
               kind: PaymentKind.values.byName(p.kind),
               amountCents: p.amountCents,
               givenCents: p.givenCents,
@@ -432,8 +467,9 @@ class ReceiptRepository {
               providerTxCode: p.providerTxCode,
               cardScheme: p.cardScheme,
               cardLast4: p.cardLast4,
-            );
-          }(),
+            ),
+          },
+          rksv: stamps[r.id],
           goodsCents: r.goodsCents,
           depositCents: r.depositCents,
           totalCents: r.totalCents,

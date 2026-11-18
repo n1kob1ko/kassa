@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/stats.dart';
 
 import '../support/demo_fixtures.dart';
@@ -206,5 +207,29 @@ void main() {
     expect(o.cardCents, card.totalCents);
     expect(o.revenueCents, 1820 + card.totalCents);
     expect(o.receiptCount, 2);
+  });
+
+  test('Sonderbelege zählen nicht: weder Anzahl noch Balken', () async {
+    shop.clock.value = DateTime(2026, 11, 17, 11, 10);
+    await shop.sell('s1'); // 1820
+    final before = await shop.stats.overview(StatsRange.today);
+    // Ein Startbeleg vor dem ersten Verkauf, ein Nullbeleg danach.
+    await shop.insertSpecialReceipt(
+      'st',
+      2,
+      ReceiptKind.start,
+      at: DateTime(2026, 11, 17, 9),
+    );
+    await shop.insertSpecialReceipt('z', 3, ReceiptKind.zero);
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(
+      (o.revenueCents, o.receiptCount, o.voidCount, o.cashCents, o.cardCents),
+      (1820, 1, 0, 1820, 0),
+    );
+    expect(
+      o.buckets.map((b) => (b.label, b.cents)),
+      before.buckets.map((b) => (b.label, b.cents)),
+    );
+    expect(o.buckets.map((b) => b.label), ['11']);
   });
 }
