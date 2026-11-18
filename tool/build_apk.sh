@@ -23,6 +23,15 @@
 #   KASSA_ALLOW_NO_SUMUP=1
 #                     ohne SumUp-Schlüssel bauen (die Datei hat dann keine
 #                     Kartenzahlung)
+#   KASSA_SERVER_PROPERTIES
+#                     Datei mit der Zeile serverUrl=https://… (die Adresse des
+#                     Servers, mit der sich die Kassa koppelt; Vorgabe:
+#                     $KASSA_BUILD_DIR/server.properties). Die Adresse steht nie
+#                     im Repo und wird hier nie ausgegeben.
+#   KASSA_ALLOW_NO_SERVER=1
+#                     ohne Adresse des Servers bauen (die Kassa arbeitet dann
+#                     wie bisher allein und zeigt "Diese Version hat keinen
+#                     Server")
 #   KASSA_NEW_KEY=1   einen neuen Test-Schlüssel anlegen, wenn keiner da ist
 set -euo pipefail
 
@@ -100,6 +109,35 @@ else
   exit 1
 fi
 
+# Die Adresse des Servers kommt als KASSA_SERVER_URL in die App. Sie wird nie
+# ausgegeben, nur ob sie da ist.
+server_properties="${KASSA_SERVER_PROPERTIES:-$out/server.properties}"
+server_url=""
+if [ -f "$server_properties" ]; then
+  server_url="$(sed -n 's/^serverUrl=//p' "$server_properties" | head -n 1 | tr -d ' \r')"
+elif [ -n "${KASSA_SERVER_PROPERTIES:-}" ]; then
+  echo "KASSA_SERVER_PROPERTIES zeigt auf $server_properties, die Datei fehlt." >&2
+  exit 1
+fi
+if [ -n "$server_url" ]; then
+  case "$server_url" in
+    https://?*) ;;
+    *)
+      echo "In $server_properties muss bei serverUrl= eine Adresse stehen, die mit https:// beginnt." >&2
+      exit 1
+      ;;
+  esac
+  echo "Server: Adresse aus $server_properties"
+elif [ "${KASSA_ALLOW_NO_SERVER:-}" = "1" ]; then
+  echo "Diese Installationsdatei hat keinen Server (keine serverUrl, KASSA_ALLOW_NO_SERVER=1)."
+else
+  {
+    echo "Keine Adresse des Servers: Es fehlt $server_properties oder die Zeile serverUrl=https://… darin."
+    echo "Bitte die Datei dort ablegen, oder bewusst ohne Server bauen: KASSA_ALLOW_NO_SERVER=1."
+  } >&2
+  exit 1
+fi
+
 version="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' "$root/app/pubspec.yaml")"
 if [ -z "$version" ]; then
   echo "Keine Version in app/pubspec.yaml gefunden." >&2
@@ -111,11 +149,14 @@ fi
 expected_cert="$(sed -n 's/^certSha256=//p' "$key_properties" | head -n 1 | tr -d ' :\r' | tr 'A-F' 'a-f')"
 
 build_args=()
+if [ -n "$server_url" ]; then
+  build_args+=("--dart-define=KASSA_SERVER_URL=$server_url")
+fi
 suffix=""
 case "${1:-}" in
   "") ;;
   arm64)
-    build_args=(--target-platform android-arm64)
+    build_args+=(--target-platform android-arm64)
     suffix="-arm64"
     ;;
   *)
@@ -161,3 +202,6 @@ fi
 apk="$out/kassa-$version$suffix.apk"
 cp "$built" "$apk"
 echo "Installationsdatei: $apk"
+if [ -n "$server_url" ]; then has_server="ja"; else has_server="nein"; fi
+if [ -n "${KASSA_SUMUP_PROPERTIES:-}" ]; then has_card="ja"; else has_card="nein"; fi
+echo "Die Datei hat Server: $has_server. Die Datei hat Kartenzahlung: $has_card."

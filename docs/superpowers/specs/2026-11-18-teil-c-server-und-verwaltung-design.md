@@ -360,3 +360,17 @@ Nach dem Gegenlesen durch einen zweiten Prüfer am 18.11.2026 dazugekommen:
 - Das Geheimnis zum Hochladen der Installationsdatei gilt dauerhaft.
 - Eigene nächtliche Sicherung der Datenbank in C2.
 - Die neuen Tablet-Bildschirme sieht Niko als Skizze und als Bild, bevor ihr Teil gebaut wird.
+
+## 9. Abweichungen beim Bau der Stufe C1 (2026-11-18)
+
+Beim Bau von C1 sind folgende Entscheidungen dazugekommen, wo dieser Entwurf schweigt oder etwas anderes sagt:
+
+- Die Adresse des Aufrufers für die Grenze bei falschen Codes wird nie aus Kopfzeilen wie `X-Forwarded-For` gelesen, denn jeder Client kann sie fälschen. Die Einstellung `CLIENT_IP_HEADER` nennt die eine Kopfzeile, die die Plattform selbst setzt. Ohne sie zählt die Adresse der Verbindung.
+- Eine gesperrte Kassa wird am Tablet mit dem Vermerk "blocked" festgehalten. Darum rückt "Zuletzt abgeglichen" während der Sperre nicht weiter.
+- Beim Koppeln speichert das Tablet zuerst die Kassa und ganz zuletzt den Geräte-Schlüssel. So kann ein Abgleich im Hintergrund nie einen neuen Schlüssel mit einem alten Stand verbinden.
+- Eine spätere Seite vom Server wird nur eingespielt, wenn sie zum gespeicherten Stand und zur gespeicherten Kassa passt. Sonst wird sie leise verworfen.
+- Kommt ein Artikel vor seiner Kategorie an, legt das Tablet eine versteckte Platzhalter-Kategorie an. Die echte überschreibt sie im selben Lauf.
+- Fehler am Tablet selbst (Datenbank, geschützter Speicher, eine Seite lässt sich nicht einspielen) werden als "local" festgehalten.
+- Ein Tablet gilt erst als eingerichtet, wenn es eine Speisekarte und mindestens einen Chef hat. Ein Betrieb nur mit Mitarbeitern genügt nicht.
+- Scheitert das Laden der Speisekarte nach dem Koppeln, bietet der Bildschirm neben "Nochmal versuchen" auch "Mit neuem Code koppeln" an.
+- Die Verwaltung bietet bei stillgelegten Mitarbeitern "Wieder einsetzen" an.
