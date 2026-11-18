@@ -1,0 +1,38 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.words {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.mark {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.area {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}

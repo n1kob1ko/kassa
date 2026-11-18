@@ -468,6 +468,24 @@ Der Entwurf zeichnet Symbole als eingebettetes SVG (24er Raster, Linie, runde En
 
 Symbole sind Beiwerk. Jeder Knopf mit Symbol hat eine Beschriftung oder ein semantisches Label (Screenreader), Symbole allein tragen nie Bedeutung außer Plus, Minus, Löschen und Zurück.
 
+## Verwaltung im Browser
+
+Die Verwaltung (`web/`) ist ein Werkzeug für Maus, Tastatur und Handy. Sie nutzt dieselben Farben, dieselbe Schrift und dieselben Radien wie die App, als CSS-Variablen in `web/src/styles/tokens.css` (Namen wie in `ui/tokens.dart`, in Bindestrich-Schreibweise: `accentSoft` heißt `--accent-soft`). Hier darf getippt werden, darum gibt es Eingabefelder.
+
+- **Farben:** beide Paletten aus "Colors", helle und dunkle Ansicht nach Systemeinstellung (`prefers-color-scheme`), dieselben Namen in beiden. Petrol nur für Hauptaktion, aktiven Bereich und Fokus. Schatten "Karte" nur hell.
+- **Schrift:** Figtree aus `web/public/fonts/` (Kopie von `app/assets/fonts/`, nie von einer fremden Adresse), Gewichte 600, 700, 800. Tabellenziffern auf der ganzen Seite. Fließtext 15 px 600, Beschriftungen 14 px 700, Seitentitel 26 px 800 (unter 640 px 22 px), Titel in Karten 24 px 800.
+- **Radien:** Bedienelemente von 44 px (Knöpfe, Eingabefelder, Bereiche) `lg` 12, Hinweis `xxl` 16, Karten und Dialog `card` 20.
+- **Umbruchstellen:** 640 und 1024 px. Ab 1024 px eine Seitenleiste (248 px, `card`, rechts 1 px `line`) mit Logo, Bereichen und dem Konto unten. Darunter oben eine Kopfzeile (56 px) mit Logo und "Abmelden" und unten eine Leiste (64 px) mit den Bereichen, jeweils mit Abstand für die Ränder des Telefons (`env(safe-area-inset-*)`). Seitenrand 16 px, ab 640 px 24 px, ab 1024 px 40 px. Ab 360 px Breite gibt es kein waagrechtes Scrollen.
+- **Eingabefelder:** 44 px hoch, Beschriftung darüber (immer sichtbar, nie nur als Platzhalter), Rand 1,5 px `line`, Hinweis oder Meldung darunter (13 px). Eine Meldung steht in `red` mit Symbol am Feld, nie nur als Farbe, und sagt, was zu tun ist. Meldungen, die zu keinem Feld gehören, stehen über dem Knopf auf `spicyBg` mit `spicyFg`.
+- **Knöpfe:** 44 px hoch (Hauptaktion eines Formulars 48 px), vier Arten: `primary` (`accent`), `secondary` (`fill`), `danger` (`card`, Rand `line`, Schrift `red`, wie "Stornieren"), `quiet` (durchsichtig, `ink2`). Beschäftigt zeigt ein Knopf einen Kreis und behält seine Breite.
+- **Tippflächen:** mindestens 44 px.
+- **Fokusring:** 2 px Petrol mit 2 px Abstand, bei Tastatur-Bedienung an jedem Bedienelement; ein Eingabefeld zeigt ihn, solange es den Fokus hat.
+- **Listen** werden unter 640 px zu Karten (eine Karte pro Zeile), damit nichts seitlich scrollt.
+- **Laden und leer:** Platzhalter in der Form des späteren Inhalts (Skeleton), kein Kreisel mitten im Inhalt. Eine leere Liste sagt, was als Nächstes zu tun ist.
+- **Löschen** heißt stilllegen, danach ein Hinweis mit "Rückgängig" (wie "Hinweis mit Rückgängig", 7 Sekunden), statt vorher zu fragen. Ein Dialog nur, wo etwas nicht rückgängig zu machen ist; unter 640 px kommt er als Blatt von unten.
+- **Bewegung:** 120 bis 320 ms mit derselben Kurve wie die App, nur für Zustand (Druck 120 ms, Farbe 120 ms, Hinweis und Dialog 220 ms). Bei `prefers-reduced-motion` aus.
+- **Sicherheit:** keine Schrift, kein Skript, kein Stil von fremden Adressen und nichts eingebettet (`Content-Security-Policy: default-src 'self'`). Stile kommen nur als CSS-Module aus dem Bau, nie als `style`-Attribut im HTML.
+
 ## Do's and Don'ts
 
 ### Do:

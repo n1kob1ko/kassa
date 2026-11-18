@@ -1,0 +1,17 @@
+.invalid {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xl);
+  padding: var(--space-xxl);
+  border-radius: var(--radius-xxl);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.invalidIcon {
+  flex: none;
+  margin-top: -1px;
+}

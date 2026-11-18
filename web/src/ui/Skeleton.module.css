@@ -1,0 +1,33 @@
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.line {
+  display: block;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.line:last-child:not(:nth-child(2)) {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    animation: none;
+    background: var(--fill);
+  }
+}

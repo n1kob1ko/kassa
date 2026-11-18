@@ -1,0 +1,69 @@
+.region {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-xxl);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-huge);
+  max-width: 560px;
+  min-height: 56px;
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) 20px;
+  border-radius: var(--radius-xxl);
+  background: var(--solid);
+  color: var(--solid-ink);
+  box-shadow: var(--shadow-toast);
+  pointer-events: auto;
+  animation: enter var(--duration-enter) var(--ease);
+}
+
+.toast:not(:has(.undo)) {
+  padding-right: 20px;
+}
+
+.message {
+  min-width: 0;
+  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.undo {
+  flex: none;
+  height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--accent-snack);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.undo:hover {
+  background: color-mix(in srgb, var(--solid-ink) 10%, transparent);
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Unter 1024 px liegt unten die Leiste mit den Bereichen: der Hinweis steht darüber. */
+@media (max-width: 1023.98px) {
+  .region {
+    bottom: calc(var(--bottom-bar-height) + 16px + env(safe-area-inset-bottom));
+  }
+}

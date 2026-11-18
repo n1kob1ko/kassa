@@ -1,0 +1,234 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.skip {
+  position: fixed;
+  z-index: 30;
+  top: 8px;
+  left: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--solid);
+  color: var(--solid-ink);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+.main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-huge) var(--space-page) calc(var(--bottom-bar-height) + 40px + env(safe-area-inset-bottom));
+}
+
+.main:focus {
+  outline: none;
+}
+
+/* Bereiche: gleiche Fläche wie die Reiter der App (aktiv accentSoft mit accentInk). */
+.sideLink,
+.bottomLink {
+  display: flex;
+  align-items: center;
+  color: var(--ink2);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-color) linear,
+    color var(--duration-color) linear;
+}
+
+.sideLink:hover,
+.bottomLink:hover {
+  color: var(--ink);
+}
+
+.sideLink.active,
+.bottomLink.active {
+  color: var(--accent-ink);
+}
+
+.navIcon {
+  display: grid;
+  place-items: center;
+}
+
+.navLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signOut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--control-height);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink2);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-color) linear,
+    color var(--duration-color) linear;
+}
+
+.signOut:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.signOut:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Unter 1024 px: Kopfzeile oben, Bereiche unten. */
+.sidebar {
+  display: none;
+}
+
+.topBar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  height: calc(var(--top-bar-height) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--space-page), env(safe-area-inset-right)) 0
+    max(var(--space-page), env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+.topBar .signOut {
+  margin-right: -12px;
+}
+
+.bottomBar {
+  position: fixed;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md) calc(var(--space-sm) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+
+.bottomLink {
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-xxs);
+  max-width: 120px;
+  min-width: 0;
+  height: calc(var(--bottom-bar-height) - 12px);
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-lg);
+  font-size: 12.5px;
+}
+
+.bottomLink.active .navIcon {
+  width: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+}
+
+.bottomLink .navIcon {
+  height: 28px;
+  width: 48px;
+  transition: background-color var(--duration-color) linear;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .topBar,
+  .bottomBar {
+    display: none;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-huge);
+    height: 100dvh;
+    padding: 20px var(--space-xl) var(--space-xxl);
+    border-right: 1px solid var(--line);
+    background: var(--card);
+  }
+
+  .sidebarLogo {
+    padding: 0 var(--space-sm);
+  }
+
+  .sideNav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+  }
+
+  .sideLink {
+    gap: var(--space-xl);
+    height: var(--control-height);
+    padding: 0 var(--space-xl);
+    border-radius: var(--radius-lg);
+    font-size: 15px;
+  }
+
+  .sideLink:hover {
+    background: var(--fill);
+  }
+
+  .sideLink.active {
+    background: var(--accent-soft);
+  }
+
+  .account {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-top: auto;
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--line);
+  }
+
+  .email {
+    padding: 0 var(--space-xl);
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account .signOut {
+    width: 100%;
+    padding: 0 var(--space-xl);
+  }
+
+  .main {
+    padding: 40px 40px 64px;
+  }
+}

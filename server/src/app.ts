@@ -11,6 +11,7 @@ import type { Config } from './config.js';
 import type { Db } from './db/db.js';
 import { installErrorHandling } from './errors.js';
 import type { FileStore } from './storage/file_store.js';
+import { registerWeb } from './web.js';
 
 export type AppDeps = {
   config: Config;
@@ -62,6 +63,8 @@ export async function buildApp(
   const app = Fastify({ trustProxy: false, bodyLimit: BODY_LIMIT, logger: opts.logger ?? false });
   installErrorHandling(app);
   app.decorate('deps', deps);
+  // Zuerst: der Hook für die Sicherheits-Kopfzeilen gilt nur für Adressen, die nach ihm dazukommen.
+  await registerWeb(app, deps.config.webDir);
   await app.register(cookie);
 
   app.get('/healthz', async () => ({ ok: true }));

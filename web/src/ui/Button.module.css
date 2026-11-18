@@ -1,0 +1,117 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  padding: 0 18px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease),
+    filter var(--duration-press) var(--ease),
+    background-color var(--duration-color) linear,
+    border-color var(--duration-color) linear,
+    color var(--duration-color) linear;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.button:active:not([aria-disabled='true']) {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+.button[aria-disabled='true'] {
+  cursor: default;
+}
+
+.button:disabled {
+  opacity: 0.4;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.primary:hover:not([aria-disabled='true']) {
+  background: var(--accent-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .primary:hover:not([aria-disabled='true']) {
+    background: var(--accent-snack);
+  }
+}
+
+.secondary {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.secondary:hover:not([aria-disabled='true']) {
+  background: var(--fill2);
+}
+
+.danger {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--red);
+}
+
+.danger:hover:not([aria-disabled='true']) {
+  border-color: var(--red);
+}
+
+.quiet {
+  background: transparent;
+  color: var(--ink2);
+}
+
+.quiet:hover:not([aria-disabled='true']) {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+/* Beschäftigt: die Beschriftung hält die Breite und bleibt der Name für Screenreader, sichtbar ist nur der Kreis. */
+.button[aria-busy='true'] .label {
+  opacity: 0;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.6;
+  }
+}

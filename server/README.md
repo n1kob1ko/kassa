@@ -11,3 +11,5 @@ Lokal starten (Node 22, PostgreSQL 16):
 Die Rolle aus `DATABASE_URL` muss Superuser sein oder BYPASSRLS haben (der Benutzer `postgres` bei Railway ist das). Ihr gehören die Tabellen, und die Funktionen für Geräte-Schlüssel und Kopplungscode laufen mit ihren Rechten, bevor der Betrieb bekannt ist. Sonst würde die Sperre pro Betrieb (FORCE ROW LEVEL SECURITY) ihnen jede Zeile verbergen. `migrate` bricht in diesem Fall mit einer Meldung ab.
 
 `CLIENT_IP_HEADER` (optional, zum Beispiel `x-real-ip` bei Railway) nennt die Kopfzeile, aus der der Server die Adresse des Clients für die Grenze bei falschen Kopplungscodes liest. Nur hinter einem Proxy setzen, der diese Kopfzeile bei jeder Anfrage selbst überschreibt, sonst kann jeder Client sie fälschen und sich so beliebig viele Versuche verschaffen. Ohne Angabe gilt die Adresse der Verbindung.
+
+`WEB_DIR` (optional, zum Beispiel `web/dist` aus dem Wurzelordner) nennt den gebauten Ordner der Verwaltung (`npm run build` in `web/`). Ohne ihn liefert der Server nur die Schnittstelle. Zum Entwickeln der Seiten läuft `npm run dev` in `web/` und leitet `/api` und `/laden` an diesen Server auf Port 3000 weiter.

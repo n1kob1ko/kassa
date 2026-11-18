@@ -1,5 +1,8 @@
 {
   "name": "kassa",
   "private": true,
-  "workspaces": ["server"]
+  "workspaces": [
+    "server",
+    "web"
+  ]
 }
