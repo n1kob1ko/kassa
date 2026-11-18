@@ -163,6 +163,7 @@ class CardCheck {
     facts.log.line('Probe-Unterschrift ${_dateTime(_now())}');
     final attempt = _Attempt(this, _Link(_transport), facts);
     attempt.start(CheckRow.signature);
+    attempt.known = left;
     try {
       await _signSteps(attempt, ready, pin);
     } catch (e) {
@@ -589,17 +590,44 @@ class CardCheck {
     final facts = a.facts;
     final hash = _hashOfNow();
     final started = _now();
+    // Vorher merken (write-ahead): Ob die Antwort kommt oder nicht, ob die
+    // App mittendrin stirbt, der Wächter rechnet mit einem Versuch weniger.
+    final key = ready.key;
+    final known = a.known;
+    final assumed = known == null ? 2 : known - 1;
+    final seen = _lowest[key];
+    _lowest[key] = assumed;
+    try {
+      await _guard.recordFailure(key, assumed);
+    } catch (_) {
+      // Nichts ging hinaus: zurück auf den alten Stand, keine PIN.
+      if (seen == null) {
+        _lowest.remove(key);
+      } else {
+        _lowest[key] = seen;
+      }
+      facts.log.line('Wächter konnte vor VERIFY nicht schreiben');
+      a.fail(CheckRow.signature, _T.cannotRemember, _T.cannotRememberHint);
+      return false;
+    }
+    if (!a.live) return false;
+    if (assumed <= 1) _guardBlocks = true;
+    facts.log.line('Wächter vor VERIFY: $assumed');
+
     final CardResponse verified;
-    a.verifyInFlight = ready;
+    a.verifyInFlight = assumed;
     try {
       verified = await session.send(CardCommand.verifyPin(profile, pin));
-    } on SessionException catch (e) {
-      // Nach Ablauf der Zeit hat _limited schon gerechnet.
+    } catch (e) {
+      // Nach Ablauf der Zeit hat _limited die Zeile schon gesetzt. Der vorher
+      // geschriebene Wert bleibt stehen.
       if (!a.live) return false;
       a.verifyInFlight = null;
-      facts.log.line('VERIFY abgebrochen: ${e.detail}');
-      final left = await _recordUnclear(a, ready);
-      a.fail(CheckRow.signature, _T.lost, _unclearHint(left));
+      facts.log.line(
+        'VERIFY abgebrochen: '
+        '${e is SessionException ? e.detail : e.runtimeType}',
+      );
+      a.fail(CheckRow.signature, _T.lost, _unclearHint(assumed));
       return false;
     }
     a.verifyInFlight = null;
@@ -607,7 +635,9 @@ class CardCheck {
       await _wrongVerify(a, ready, verified.status);
       return false;
     }
-    _lowest.remove(ready.key);
+    _lowest.remove(key);
+    _guardBlocks = false;
+    a.known = null;
     try {
       await _guard.clear(ready.key);
     } catch (_) {
@@ -639,10 +669,19 @@ class CardCheck {
   /// Eine Antwort ungleich 9000 auf VERIFY. Der Wächter schreibt, bevor der
   /// Bildschirm davon erfährt.
   Future<void> _wrongVerify(_Attempt a, _ReadyCard ready, int status) async {
+    // Die echte Zahl der Karte ersetzt den vorsichtigen Wert, bevor der
+    // Bildschirm davon erfährt.
     Future<void> record(int left) async {
-      await _remember(ready.key, left, a.facts.log);
-      if (a.live && left <= 1) _guardBlocks = true;
-      if (a.live && left == 0) _cardLocked = true;
+      _lowest[ready.key] = left;
+      if (a.live) {
+        _guardBlocks = left <= 1;
+        _cardLocked = left == 0;
+      }
+      try {
+        await _guard.recordFailure(ready.key, left);
+      } catch (_) {
+        a.facts.log.line('Wächter konnte nicht schreiben');
+      }
     }
 
     if (status & 0xFFF0 == 0x63C0) {
@@ -679,13 +718,11 @@ class CardCheck {
     } on TimeoutException {
       a.link.cut();
       a.facts.log.line('Nach ${timeLimit.inSeconds} Sekunden abgebrochen');
-      // Lief gerade ein VERIFY, ist unklar, ob die Karte gezählt hat.
+      // Lief gerade ein VERIFY, ist unklar, ob die Karte gezählt hat; der
+      // vorsichtige Wert steht schon im Wächter.
       final inFlight = a.verifyInFlight;
       a.verifyInFlight = null;
-      var hint = _T.tooSlowHint;
-      if (inFlight != null) {
-        hint = _unclearHint(await _recordUnclear(a, inFlight));
-      }
+      final hint = inFlight == null ? _T.tooSlowHint : _unclearHint(inFlight);
       _put(_failure(a.running ?? CheckRow.reader, _T.tooSlow, hint));
       return false;
     }
@@ -700,34 +737,6 @@ class CardCheck {
     if (stored == null) return seen;
     if (seen == null) return stored;
     return min(stored, seen);
-  }
-
-  /// Merkt sich [left] im Speicher dieser Instanz und im Wächter.
-  Future<void> _remember(String key, int left, ProbeLog log) async {
-    final seen = _lowest[key];
-    _lowest[key] = seen == null ? left : min(seen, left);
-    try {
-      await _guard.recordFailure(key, left);
-    } catch (_) {
-      log.line('Wächter konnte nicht schreiben');
-    }
-  }
-
-  /// Ein VERIFY ging hinaus, aber kein Status kam zurück: der Wächter rechnet
-  /// mit einem Versuch weniger (nichts bekannt: 2). Gibt den neuen Stand.
-  Future<int> _recordUnclear(_Attempt a, _ReadyCard ready) async {
-    int? known;
-    try {
-      known = await _countOf(ready.key);
-    } catch (_) {
-      known = _lowest[ready.key];
-    }
-    final left = known == null ? 2 : max(0, known - 1);
-    a.facts.log.line('VERIFY ohne Antwort, der Wächter rechnet mit $left');
-    await _remember(ready.key, left, a.facts.log);
-    if (left <= 1) _guardBlocks = true;
-    if (left == 0) _cardLocked = true;
-    return left;
   }
 
   static String _unclearHint(int left) =>
@@ -963,6 +972,11 @@ abstract final class _T {
       'Die Karte hat vermutlich nur noch einen Versuch. Die Kassa schickt die '
       'PIN jetzt nicht mehr. Wird die Karte in der alten Kassa mit der '
       'richtigen PIN verwendet, ist der Zähler wieder voll.';
+  static const cannotRemember =
+      'Die Kassa kann sich den Versuch gerade nicht merken.';
+  static const cannotRememberHint =
+      'Deshalb schickt sie die PIN nicht. Prüf nochmal. Bleibt es dabei, teil '
+      'bitte den Bericht.';
   static const cardLocked = 'Die Karte ist gesperrt.';
   static const cardLockedHint = 'Wende dich an A-Trust.';
   static const rejected = 'Die Karte hat die Unterschrift abgelehnt.';
@@ -1000,8 +1014,13 @@ class _Attempt {
   /// Die Zeile, die gerade läuft.
   CheckRow? running;
 
-  /// Ein VERIFY für diese Karte ist unterwegs, der Status noch nicht da.
-  _ReadyCard? verifyInFlight;
+  /// Bei [CardCheck.sign]: der Zähler, den der Wächter vor diesem Versuch
+  /// kannte; `null`, wenn keiner bekannt ist (auch nach einem 9000).
+  int? known;
+
+  /// Ein VERIFY ist unterwegs, der Status noch nicht da: der vorher in den
+  /// Wächter geschriebene Wert.
+  int? verifyInFlight;
 
   bool get live => !link.isCut;
 

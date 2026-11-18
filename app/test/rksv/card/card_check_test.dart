@@ -170,6 +170,9 @@ class SlowReader implements ReaderTransport {
 
   /// Keine Antwort auf eine Nachricht, für die das `true` ergibt.
   bool Function(Uint8List? out)? hangWhen;
+
+  /// Wirft einen Fehler, der kein ReaderException ist.
+  bool Function(Uint8List? out)? breakWhen;
   Duration? openDelay;
   int count = 0;
 
@@ -189,6 +192,9 @@ class SlowReader implements ReaderTransport {
     final hang = hangAt;
     if (hang != null && count >= hang) return Completer<Uint8List>().future;
     if (hangWhen?.call(out) ?? false) return Completer<Uint8List>().future;
+    if (breakWhen?.call(out) ?? false) {
+      return Future.error(StateError('Kanal kaputt'));
+    }
     return inner.exchange(out, limit: limit);
   }
 
@@ -199,12 +205,54 @@ class SlowReader implements ReaderTransport {
   Future<TabletInfo> info() => inner.info();
 }
 
-/// Ein Wächter, dessen Speicher nicht schreiben kann.
-class BrokenGuard extends MemoryPinGuard {
+/// Ein Wächter, dessen Lesen und Schreiben der Test steuert und der jeden
+/// Aufruf mitschreibt.
+class ScriptedGuard extends MemoryPinGuard {
+  ScriptedGuard([super.store]);
+
+  /// So oft gelingt [retriesLeft], danach wirft es.
+  int readsAllowed = 1 << 30;
+  int reads = 0;
+
+  /// Für die wievielte Schreibung (ab 1) `true` gilt, die wirft.
+  bool Function(int write)? failWrite;
+  final List<int> writes = [];
+  int clears = 0;
+
+  /// Läuft bei jedem Schreiben, bevor es gelingt oder wirft.
+  void Function(int value)? onWrite;
+
   @override
-  Future<void> recordFailure(String cardNumber, int retriesLeft) async =>
+  Future<int?> retriesLeft(String cardNumber) async {
+    reads++;
+    if (reads > readsAllowed) throw StateError('Speicher nicht lesbar');
+    return super.retriesLeft(cardNumber);
+  }
+
+  @override
+  Future<void> recordFailure(String cardNumber, int retriesLeft) async {
+    writes.add(retriesLeft);
+    onWrite?.call(retriesLeft);
+    if (failWrite?.call(writes.length) ?? false) {
       throw StateError('Speicher voll');
+    }
+    await super.recordFailure(cardNumber, retriesLeft);
+  }
+
+  @override
+  Future<void> clear(String cardNumber) async {
+    clears++;
+    await super.clear(cardNumber);
+  }
 }
+
+bool isVerifyMessage(Uint8List? out) =>
+    out != null && compactHex(out).contains('0020008A08');
+
+const cannotRemember = 'Die Kassa kann sich den Versuch gerade nicht merken.';
+const cannotRememberHint =
+    'Deshalb schickt sie die PIN nicht. Prüf nochmal. Bleibt es dabei, teil '
+    'bitte den Bericht.';
 
 /// Verfälscht das Prüfbyte der nächsten Antwort auf VERIFY.
 void corruptVerifyAnswer(Rig rig) {
@@ -860,7 +908,7 @@ void main() {
 
   group('sign', () {
     test('sign mit richtiger PIN: Zeile 5 ok mit Dauer, verifyCount 3, Wächter leer', () async {
-      final guard = MemoryPinGuard({cardNumber: 2});
+      final guard = ScriptedGuard({cardNumber: 2});
       final rig = Rig(guard: guard);
       await rig.check.run();
       rig.tickPerExchange();
@@ -884,6 +932,9 @@ void main() {
       expect(rig.card.verifyCount, 3);
       expect(verifiesSent(rig.reader), 3);
       expect(rig.card.signCount, 3);
+      // Vor jedem VERIFY ein vorsichtiger Eintrag, nach jedem 9000 gelöscht.
+      expect(guard.writes, [1, 2, 2]);
+      expect(guard.clears, 3);
       expect(await guard.retriesLeft(cardNumber), isNull);
       expect(rig.state.canSign, isTrue);
       expect(rig.state.busy, isFalse);
@@ -923,7 +974,7 @@ void main() {
       expect(rig.reader.transfers.last, contains('**'));
       expect(await guard.retriesLeft(cardNumber), 2);
       // Der Wächter schrieb, bevor der Bildschirm das Ergebnis sah.
-      expect(guard.rowAtWrite, [RowState.running]);
+      expect(guard.rowAtWrite, [RowState.running, RowState.running]);
       expect(rig.state.canSign, isTrue);
       expect(rig.state.guardBlocks, isFalse);
       expect(rig.reader.closed, 2);
@@ -1086,7 +1137,9 @@ void main() {
       expect(other.verifyCount, 1);
       expect(verifiesSent(rig.reader), 1);
       expect(eventsAfterLastVerify(rig.reader), ['powerOff']);
-      expect(await rig.guard.retriesLeft(cardNumber), isNull);
+      // Der vorher geschriebene Wert bleibt stehen.
+      expect(await rig.guard.retriesLeft(cardNumber), 2);
+      expect(rig.state.guardBlocks, isFalse);
     });
 
     test(
@@ -1293,11 +1346,14 @@ void main() {
       expect(rig.state.canSign, isTrue);
     });
 
-    test('Wächter kann nicht schreiben: nach zwei falschen PINs sperrt auch ein neuer Lauf', () async {
-      final rig = Rig(guard: BrokenGuard());
+    test('Wächter kann nach der Antwort nicht schreiben: 63C1 sperrt auch einen neuen Lauf', () async {
+      // Der Eintrag vor dem VERIFY gelingt (2), das Schreiben von 63C1 nicht.
+      final guard = ScriptedGuard()..failWrite = (n) => n == 2;
+      final rig = Rig(card: cardOf(acosId41Atr, retriesLeft: 2), guard: guard);
       await rig.check.run();
       await rig.check.sign('654321');
-      await rig.check.sign('654321');
+      expect(guard.writes, [2, 1]);
+      expect(await guard.retriesLeft(cardNumber), 2);
       expect(rig.state.guardBlocks, isTrue);
       await rig.check.run();
       expect(rig.state.guardBlocks, isTrue);
@@ -1308,6 +1364,129 @@ void main() {
       expect(rig.card.verifyCount, verifies);
       expect(rig.reader.opened.length, opened);
       expect(rig.card.retriesLeft, 1);
+    });
+
+    test('gespeicherte 2 aus einer früheren Instanz, Wächter danach unlesbar, Antwort verloren: Wächter 1, nichts mehr', () async {
+      final guard = ScriptedGuard({cardNumber: 2})..readsAllowed = 2;
+      final rig = Rig(card: cardOf(acosId41Atr, retriesLeft: 2), guard: guard);
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      corruptVerifyAnswer(rig);
+      await rig.check.sign('654321');
+      expect(rig.card.retriesLeft, 1);
+      guard.readsAllowed = 1 << 30;
+      expect(await guard.retriesLeft(cardNumber), 1);
+      guard.readsAllowed = 0;
+      expect(rig.state.guardBlocks, isTrue);
+      expect(rig.state.canSign, isFalse);
+      final verifies = rig.card.verifyCount;
+      final masked = verifiesSent(rig.reader);
+      await rig.check.sign('654321');
+      expect(rig.card.verifyCount, verifies);
+      expect(verifiesSent(rig.reader), masked);
+      expect(rig.card.retriesLeft, 1);
+    });
+
+    test(
+      'der vorsichtige Wert steht im Wächter, bevor VERIFY zum Leser geht',
+      () async {
+        for (final (known, written) in [(null, 2), (2, 1)]) {
+          final guard = ScriptedGuard({cardNumber: ?known});
+          final rig = Rig(guard: guard);
+          final transfersAtWrite = <int>[];
+          guard.onWrite = (_) =>
+              transfersAtWrite.add(rig.reader.transfers.length);
+          await rig.check.run();
+          await rig.check.sign('654321');
+          expect(guard.writes.first, written, reason: '$known');
+          final verifyAt = rig.reader.transfers.indexWhere(
+            (t) => t.contains('**'),
+          );
+          expect(verifyAt, greaterThanOrEqualTo(0));
+          // Die erste Schreibung geschah, als VERIFY noch nicht unterwegs war.
+          expect(transfersAtWrite.first, lessThanOrEqualTo(verifyAt));
+        }
+      },
+    );
+
+    test('App stirbt, während VERIFY unterwegs ist: der neue Lauf kennt den vorsichtigen Wert', () {
+      for (final (known, blocked) in [(null, false), (2, true)]) {
+        fakeAsync((async) {
+          final store = <String, int>{cardNumber: ?known};
+          late SlowReader slow;
+          final first = Rig(
+            guard: MemoryPinGuard(store),
+            wrap: (reader) => slow = SlowReader(reader),
+          );
+          first.check.run();
+          async.elapse(const Duration(seconds: 1));
+          slow.hangWhen = isVerifyMessage;
+          first.check.sign('123456');
+          async.elapse(const Duration(seconds: 1));
+          expect(first.state.busy, isTrue);
+
+          // Neustart: der erste Prüflauf ist weg, der Speicher bleibt.
+          final second = Rig(card: first.card, guard: MemoryPinGuard(store));
+          second.check.run();
+          async.elapse(const Duration(seconds: 1));
+          expect(store[cardNumber], known == null ? 2 : 1);
+          expect(second.state.guardBlocks, blocked, reason: '$known');
+          expect(second.state.canSign, !blocked, reason: '$known');
+          if (blocked) {
+            expect(
+              second.row(CheckRow.signature),
+              isRow(RowState.problem, probablyLast, probablyLastHint),
+            );
+          }
+          async.elapse(const Duration(seconds: 30));
+        });
+      }
+    });
+
+    test('Eintrag vor dem VERIFY scheitert: keine PIN zur Karte, eigener Text, Leser frei', () async {
+      for (final known in [null, 2]) {
+        final guard = ScriptedGuard({cardNumber: ?known})
+          ..failWrite = (_) => true;
+        final rig = Rig(guard: guard);
+        await rig.check.run();
+        await rig.check.sign('123456');
+        expect(
+          rig.row(CheckRow.signature),
+          isRow(RowState.problem, cannotRemember, cannotRememberHint),
+        );
+        expect(rig.card.verifyCount, 0);
+        expect(verifiesSent(rig.reader), 0);
+        expect(rig.reader.closed, 2);
+        expect(rig.reader.events.last, 'powerOff');
+        expect(rig.state.busy, isFalse);
+        // Nichts ging hinaus: der Stand in der Instanz ist unverändert.
+        expect(rig.state.guardBlocks, isFalse);
+        expect(rig.state.canSign, isTrue);
+        await rig.check.run();
+        expect(rig.state.canSign, isTrue, reason: '$known');
+        expect(rig.row(CheckRow.signature), isRow(RowState.waiting, ready));
+      }
+    });
+
+    test('ein Fehler anderer Art beim VERIFY gilt als unklar: Leser frei, vorsichtiger Wert bleibt', () async {
+      late SlowReader slow;
+      final guard = ScriptedGuard();
+      final rig = Rig(
+        guard: guard,
+        wrap: (reader) => slow = SlowReader(reader),
+      );
+      await rig.check.run();
+      slow.breakWhen = isVerifyMessage;
+      await rig.check.sign('123456');
+      expect(
+        rig.row(CheckRow.signature),
+        isRow(RowState.problem, lostMessage, unclearHint),
+      );
+      expect(await guard.retriesLeft(cardNumber), 2);
+      expect(guard.writes, [2]);
+      expect(rig.reader.closed, 2);
+      expect(rig.state.busy, isFalse);
+      expect(rig.card.verifyCount, 0);
     });
 
     test('cardLocked: nach 6983 und bei gespeicherter 0, nicht bei 63C2; resetGuard hebt es auf', () async {
