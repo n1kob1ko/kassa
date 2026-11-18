@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
+import 'package:kassa/features/kassa/sale_done.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/features/setup/setup_screen.dart';
 import 'package:kassa/ui/app_header.dart';
@@ -86,7 +87,30 @@ Future<void> _tapKey(WidgetTester t, String key) async {
   await t.pumpAndSettle();
 }
 
+/// Der Bereich selbst endet über der Gestenleiste. Für Bereiche, in denen mit
+/// den Daten der Tests nichts Antippbares bis an den unteren Rand reicht:
+/// sonst bliebe ein Fehlen des Abstands unbemerkt.
+void _expectAboveBottomBar(WidgetTester t, Finder area, String name) {
+  expect(area, findsOneWidget, reason: name);
+  expect(
+    t.getRect(area).bottom,
+    lessThanOrEqualTo(800 - _bottom),
+    reason: '$name endet unter der Gestenleiste',
+  );
+}
+
 void main() {
+  for (final (name, key, area) in const [
+    ('Bons', 'tab-Bons', 'area-bons'),
+    ('Übersicht', 'tab-Übersicht', 'area-overview'),
+  ]) {
+    testWidgets('$name: der Bereich endet über der Gestenleiste', (t) async {
+      await _loggedInWithBars(t);
+      await _tapKey(t, key);
+      _expectAboveBottomBar(t, find.byKey(Key(area)), name);
+    });
+  }
+
   for (final (name, key) in const [
     ('Bons', 'tab-Bons'),
     ('Übersicht', 'tab-Übersicht'),
@@ -130,6 +154,7 @@ void main() {
     await _tapKey(t, 'finish-sale');
     expect(find.byKey(const Key('next-customer')), findsOneWidget);
     _expectTappablesBetweenBars(t, 'Fertig (bar)');
+    _expectAboveBottomBar(t, find.byType(SaleDone), 'Fertig (bar)');
   });
 
   testWidgets('Warten auf Karte und Fertig-Ansicht (Karte): alles Antippbare '
@@ -145,6 +170,7 @@ void main() {
     await t.pumpAndSettle();
     expect(find.byKey(const Key('next-customer')), findsOneWidget);
     _expectTappablesBetweenBars(t, 'Fertig (Karte)');
+    _expectAboveBottomBar(t, find.byType(SaleDone), 'Fertig (Karte)');
   });
 
   testWidgets(

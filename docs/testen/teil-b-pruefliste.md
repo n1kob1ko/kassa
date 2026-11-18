@@ -4,14 +4,19 @@ Diese Liste ist zum Abhaken am echten Tablet, mit echtem Drucker und echtem SumU
 
 Was neu ist: Die Kassa druckt Bons, öffnet die Geldlade und nimmt Karten über SumUp an. Der Rest ist wie in Teil A.
 
-Wichtig: Der Bon trägt noch den Vermerk "TESTBON", weil die Signatur (RKSV) noch fehlt. Bitte noch nicht für echte Verkäufe verwenden. Bei Kartenzahlungen wird echtes Geld bewegt, darum bitte nur kleine Beträge testen und danach zurückbuchen.
+Wichtig: Der Bon trägt noch den Vermerk "TESTBON", weil die Signatur (RKSV) noch fehlt. Die Signatur ist ein Sicherheitscode, den das Finanzamt auf jedem Bon einer Registrierkasse verlangt; ohne ihn ist ein Bon kein gültiger Beleg. Bitte noch nicht für echte Verkäufe verwenden. Bei Kartenzahlungen wird echtes Geld bewegt, darum bitte nur kleine Beträge testen und danach zurückbuchen.
 
-Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine gibt), den SumUp-Kartenleser (geladen), ein SumUp-Konto, eine echte Karte und Internet. In dieser Liste heißt es "Beispiel", wo du etwas Eigenes eintippst.
+Du brauchst: ein Tablet mit Android 8 oder neuer (ältere Geräte können die Kassa nicht installieren), ein zweites Android-Gerät zum Ausprobieren (ein altes Telefon reicht), den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine gibt), den SumUp-Kartenleser (geladen), ein SumUp-Konto, eine echte Karte und Internet. In dieser Liste heißt es "Beispiel", wo du etwas Eigenes eintippst.
+
+## 0. Zuerst auf einem anderen Gerät ausprobieren
+
+- [ ] Bevor du das Tablet anfasst: die neue Installationsdatei (Version 1.1.0) auf ein zweites Android-Gerät laden, installieren und die Kassa einmal öffnen. Am besten zuerst die alte Version 1.0.1 installieren und dann 1.1.0 darüber.
+  Die Kassa geht auf und zeigt die Einrichtung oder die Anmeldung. Wenn sie sich sofort wieder schließt: aufhören, das Tablet nicht aktualisieren und mir Bescheid geben. Auf dem Tablet liegen deine Daten; dort soll nur eine Datei landen, die auf dem anderen Gerät schon gestartet ist.
 
 ## 1. Installieren
 
 - [ ] Die neue Installationsdatei (Version 1.1.0) aufs Tablet laden und antippen. Android fragt, ob die App aktualisiert werden soll: ja.
-  Die Kassa startet wie vorher. Deine Artikel, Bons und Einstellungen sind noch da, nichts ist verloren. Das war die Version 1.0.1.
+  Die Kassa startet wie vorher. Deine Artikel, Bons und Einstellungen sind noch da, nichts ist verloren. Vorher war Version 1.0.1 installiert.
 - [ ] Oben rechts das Regler-Symbol antippen und ganz nach unten sehen.
   Unten links steht "Kassa Version 1.1.0".
 
@@ -20,11 +25,11 @@ Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine
 - [ ] In den Einstellungen bei "Bondrucker" antippen.
   Du siehst die drei Wege: USB, Netzwerk, Bluetooth.
 - [ ] **USB:** Den Drucker mit dem USB-Kabel (über den Verteiler) ans Tablet stecken, USB wählen.
-  Der Drucker wird gefunden. Android fragt, ob die Kassa ihn verwenden darf: erlauben. Danach steht dort der Name des Druckers.
+  Der Drucker wird gefunden. Android fragt, ob die Kassa ihn verwenden darf: erlauben. Danach steht dort der Name des Druckers. War der Drucker aus oder das Tablet neu gestartet, fragt Android beim Öffnen der Kassa noch einmal: wieder erlauben.
 - [ ] **Netzwerk:** Drucker und Tablet im selben WLAN. Netzwerk wählen und "Nochmal suchen" antippen.
   Der Drucker erscheint in der Liste. Wenn nicht, die Adresse des Druckers eintippen ("Adresse eintippen"). Die Adresse steht auf dem Zettel, den der Drucker beim Einschalten mit gedrückter Taste druckt.
 - [ ] **Bluetooth:** Den Drucker zuerst in den Bluetooth-Einstellungen von Android koppeln. Dann in der Kassa Bluetooth wählen.
-  Kassa fragt nach der Erlaubnis für Bluetooth und Standort: erlauben. Der gekoppelte Drucker steht in der Liste.
+  Auf Android 12 und neuer fragt die Kassa nach der Erlaubnis "Geräte in der Nähe": erlauben. Auf älterem Android fragt sie nichts. Der gekoppelte Drucker steht in der Liste.
 - [ ] Mit dem Weg, den du im Betrieb nutzen willst, einen Drucker wählen und wieder entfernen ("Drucker entfernen"), dann noch einmal wählen.
   Der Drucker ist wieder eingerichtet, und die Einstellungen zeigen seinen Namen.
 
@@ -38,13 +43,15 @@ Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine
   Wenn der Text am Rand umbricht, bei den Drucker-Einstellungen die Breite "Schmal" wählen und noch einmal testen.
 - [ ] **Nur bei Bluetooth:** Prüfen, dass der ganze Zettel herauskommt und am Ende nicht abgeschnitten ist.
   Die letzte Zeile ist da, der Zettel wird sauber abgeschnitten.
-- [ ] "Zurück zu den Einstellungen" antippen.
+- [ ] "Zurück" antippen.
   Du siehst wieder die Einstellungen.
 
 ## 4. Bon drucken und Geldlade
 
+- [ ] Vor dem ersten Bon: Adresse, UID-Nummer und der Satz am Ende des Bons kommen aus der Speisekarten-Datei, nicht aus den Einstellungen. Wenn sie in deiner Datei noch fehlen: in der Datei die Zeilen "adresse" (bis zu vier Zeilen, zum Beispiel ["Musterstraße 1", "1010 Wien"]), "uid" (zum Beispiel "ATU12345678") und "bon_ende" (zum Beispiel "Danke und bis bald!") ergänzen. Dann in den Einstellungen bei "Speisekarte neu einspielen" die Datei wählen.
+  Die Kassa liest die Datei ohne Fehlermeldung. Ohne diese Zeilen steht auf dem Bon oben nur der Name des Betriebs.
 - [ ] Einen Artikel bonieren, "Bar" antippen, bezahlen.
-  Der Bon kommt aus dem Drucker. Auf dem Bon stehen Artikel, Summe, Steuer, "Bar" und der Vermerk "TESTBON". Die Geldlade geht auf.
+  Der Bon kommt aus dem Drucker. Auf dem Bon stehen oben Name, Adresse und UID, dann Artikel, Summe, Steuer, "Bar" und der Vermerk "TESTBON". Die Geldlade geht auf.
 - [ ] Den Bon genau ansehen.
   Umlaute und Euro-Zeichen stimmen, Optionen stehen unter dem Artikel, Pfand steht getrennt.
 - [ ] In den Einstellungen "Geldlade" ausschalten und noch einmal bar kassieren.
@@ -54,9 +61,11 @@ Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine
 - [ ] Den Drucker ausschalten und trotzdem einen Bon bonieren und bar bezahlen.
   Der Verkauf geht durch, die Kassa sperrt nichts. Sie meldet, dass der Drucker nicht bereit ist, und bietet "Nochmal drucken" an.
 - [ ] Den Drucker einschalten und "Nochmal drucken" antippen.
-  Der Bon kommt heraus.
+  Der Bon kommt heraus, und die Geldlade geht jetzt auf (beim Bezahlen war der Drucker aus, also blieb sie zu). Bitte notieren, ob sie aufging.
 - [ ] Das Papier aus dem Drucker nehmen und einen Bon drucken.
   Bei USB und Netzwerk sagt die Kassa "Drucker nicht bereit. Das Papier ist leer." Bei Bluetooth kann sie es nicht wissen: Sie sagt "gedruckt", obwohl nichts kommt. Das ist so und kein Fehler der Kassa. Danach Papier wieder einlegen und "Nochmal drucken".
+- [ ] **Nur bei Bluetooth:** Einen langen Bon kassieren, mit mindestens zehn verschiedenen Artikeln, einige davon mit Auswahl (zum Beispiel eine Bowl).
+  Der ganze Bon kommt heraus, bis zur letzten Zeile, und wird sauber abgeschnitten. Die Geldlade geht auf.
 - [ ] Oben "Bons" antippen, einen älteren Bon öffnen und "Drucken" antippen.
   Der Bon kommt noch einmal heraus.
 
@@ -70,7 +79,7 @@ Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine
 - [ ] In den Einstellungen bei "Kartenterminal" "Bei SumUp anmelden" antippen.
   Der Anmelde-Bildschirm von SumUp öffnet sich. Mit deinem SumUp-Konto anmelden.
 - [ ] Zurück in der Kassa nachsehen.
-  Beim Kartenterminal steht "Angemeldet" mit einer Kennung deines Kontos. Einen Namen zeigt SumUp der Kassa nicht, nur die Kennung.
+  Beim Kartenterminal steht die Kennung deines SumUp-Kontos (Buchstaben und Ziffern, zum Beispiel MH12345). Einen Namen zeigt SumUp der Kassa nicht, nur die Kennung.
 - [ ] "Kartenleser verbinden" antippen und dem Bildschirm von SumUp folgen. Den Kartenleser dafür einschalten.
   Der Leser ist verbunden. Die Kassa zeigt keine Fehlermeldung.
 - [ ] In "Geräte testen" bei "Kartenterminal" "Prüfen" antippen.
@@ -83,9 +92,9 @@ Du brauchst: den Bondrucker (mit Papier), eine Geldlade am Drucker (wenn es eine
 - [ ] Die Zahlung abwarten.
   Die Kassa zeigt "Bezahlt", der Bon wird gedruckt und trägt "Karte" als Zahlungsart. Die Geldlade bleibt zu.
 - [ ] Einen Bon bonieren, "Karte" antippen und im Bildschirm von SumUp abbrechen.
-  Die Kassa zeigt "Kartenzahlung abgebrochen." Der Bon ist noch voll und nichts ist gebucht.
+  Die Kassa zeigt "Die Kartenzahlung wurde nicht abgeschlossen." oder "Kartenzahlung abgebrochen." (beides ist richtig). Der Bon ist noch voll und nichts ist gebucht.
 - [ ] Eine Karte ablehnen lassen: eine Karte mit zu wenig Guthaben oder eine falsche PIN dreimal.
-  Die Kassa sagt, dass die Karte abgelehnt wurde. Der Bon ist noch voll.
+  Die Kassa zeigt "Die Kartenzahlung wurde nicht abgeschlossen." Der Bon ist noch voll.
 - [ ] Das Tablet in den Flugmodus stellen und einen Bon bonieren.
   Die Taste "Karte" ist aus und sagt "kein Internet". Bar geht weiter. Danach den Flugmodus wieder ausschalten.
 - [ ] Einen Artikel unter 1,00 € bonieren.
@@ -112,7 +121,7 @@ Hier prüfst du, dass die Kassa nie hängen bleibt, wenn du den Bildschirm von S
 
 - [ ] "Karte" antippen und im Bildschirm von SumUp die Wischgeste "Zuletzt verwendet" machen und die Kassa wegwischen. Dann die Kassa wieder öffnen.
   Die Kassa fragt: "War diese Kartenzahlung erfolgreich?" Sie fragt über allem, und die Kassa dahinter lässt sich nicht bedienen, bis du antwortest.
-- [ ] Noch einmal "Karte" antippen. Dieses Mal Android selbst die Kassa schließen lassen: entweder viele andere Apps öffnen, bis Android die Kassa beendet, oder in den Entwickleroptionen von Android "Aktivitäten nicht speichern" einschalten. Dann im Bildschirm von SumUp zur Kassa zurückkehren.
+- [ ] Diesen Punkt darfst du auslassen, wenn er zu umständlich ist. Noch einmal "Karte" antippen. Dieses Mal Android selbst die Kassa schließen lassen: entweder viele andere Apps öffnen, bis Android die Kassa beendet, oder in den Entwickleroptionen von Android "Aktivitäten nicht speichern" einschalten. Dann im Bildschirm von SumUp zur Kassa zurückkehren.
   Die Kassa fragt nachher, ob die Zahlung angekommen ist. Sie bleibt nicht leer und nicht hängen. Danach die Entwickleroption wieder ausschalten.
 - [ ] In der Frage "Ja, ist angekommen" antippen.
   Es gibt genau einen Bon mit "Karte", der Bon wird gedruckt.
