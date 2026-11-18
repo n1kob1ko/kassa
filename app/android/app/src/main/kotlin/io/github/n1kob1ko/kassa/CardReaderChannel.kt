@@ -145,8 +145,12 @@ class CardReaderChannel(
         }
     }
 
-    // Gelingt immer.
+    // Gelingt immer. Eine noch offene Frage nach der USB-Erlaubnis gilt als
+    // abgelehnt: das wartende open antwortet no_permission und öffnet nichts.
+    // Kam die Erlaubnis schon, steht dessen openReader vor diesem closeReader
+    // auf demselben Thread und wird gleich danach wieder geschlossen.
     private fun close(result: OnceResult) {
+        question?.answer(false)
         try {
             worker.execute {
                 closeReader()
