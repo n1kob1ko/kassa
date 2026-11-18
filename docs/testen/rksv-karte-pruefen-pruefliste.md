@@ -9,6 +9,8 @@ Wichtig zur Karte:
 - Die Signaturkarte von YICHI ist die einzige. Nach drei falschen PIN-Eingaben sperrt sie sich. Darum rät man hier nie: Wenn du die PIN nicht sicher weißt, lass Schritt 4 aus.
 - Die PIN der Signaturkarte ist nicht die Chef-PIN der Kassa. Sie gehört nie in den Chat, in eine Mail oder in den Bericht. Der Bericht enthält sie auch nicht.
 - Die Kassa passt auf den Zähler der Karte auf. Sie merkt sich jeden Versuch, bevor die PIN zur Karte geht, und schickt keine PIN mehr, wenn die Karte nur noch einen Versuch haben könnte. Bricht die Verbindung mitten im Versuch ab, zählt die Kassa den Versuch zur Sicherheit als verbraucht. Was du dann tust, steht in Schritt 5.
+- Die Kassa merkt sich die Versuche am Tablet. Lösch die Kassa oder ihre Daten während des Tests nicht, sonst ist dieses Wissen weg.
+- Die Kassa geht davon aus, dass der Zähler der Karte am Anfang voll ist. Das stimmt, weil die Karte jeden Tag in der alten Kassa mit der richtigen PIN verwendet wird.
 
 ## 1. Was du brauchst
 
@@ -36,7 +38,9 @@ Das solltest du sehen: Die Zeilen werden nacheinander geprüft. Die Zeile "Karte
 - [ ] In der Zeile "Signaturkarte" die Kartenart abschreiben. Sie steht dort, zum Beispiel "a.sign RK CHIP (ACOS-ID 2.1) erkannt."
 - [ ] Steht darunter ein Hinweis, dass die Kartenart bis Mai 2027 getauscht werden muss: diese Zeile genau abschreiben und beim Bericht mitschicken. Daran hängt, ob YICHI eine neue Karte braucht.
 
-Das solltest du sehen: Vier grüne Haken. Bei "Zertifikat" steht eine Seriennummer, ein Datum bei "gültig bis" und "Ausgestellt von …". Bis hierher hat die Kassa nie eine PIN zur Karte geschickt.
+- [ ] Steht bei "Zertifikat" darunter "Das Zertifikat ist seit … abgelaufen. Die Probe-Unterschrift geht trotzdem. Teil bitte den Bericht.", ist die Zeile trotzdem grün. Mach mit Schritt 4 weiter und schick mir am Ende den Bericht. Vielleicht stimmt auch nur das Datum am Tablet nicht.
+
+Das solltest du sehen: Vier grüne Haken. Bei "Zertifikat" steht eine Seriennummer, ein Datum bei "gültig bis" und "Ausgestellt von …" (oder der Hinweis, dass das Zertifikat abgelaufen ist). Bis hierher hat die Kassa nie eine PIN zur Karte geschickt.
 
 ## 4. PIN eingeben
 
@@ -44,7 +48,7 @@ Nur machen, wenn du die PIN der Signaturkarte sicher weißt.
 
 - [ ] Auf "PIN eingeben" tippen.
 - [ ] Im Fenster "PIN der Signaturkarte" die PIN über die Zifferntasten eingeben und "Unterschrift erstellen" antippen.
-- [ ] Geht es schief und steht "Die PIN war falsch. Noch 2 Versuche.", nicht raten. Frag im Betrieb nach der richtigen PIN, bevor du es noch einmal versuchst. Der falsche Versuch ist auf der Karte gezählt. Sie hat jetzt noch 2 Versuche, bis sie mit der richtigen PIN verwendet wird.
+- [ ] Geht es schief und steht "Die PIN war falsch. Noch 2 Versuche.", nicht raten. Frag im Betrieb nach der richtigen PIN, bevor du es noch einmal versuchst. Der falsche Versuch ist auf der Karte gezählt. Sie hat jetzt noch 2 Versuche. Erst eine richtige PIN macht den Zähler wieder voll.
 
 Das solltest du sehen: Im Fenster steht der gelbe Hinweis "Das ist nicht deine Chef-PIN. Nach drei falschen Versuchen sperrt sich die Karte." Die Kassa schickt die PIN nur nach deinem Antippen und wiederholt nach einer falschen PIN nichts von selbst.
 
@@ -58,7 +62,7 @@ Das solltest du sehen: Ein grüner Haken und die Dauer in Sekunden. Die Dauer is
 Bricht die Verbindung während der PIN-Prüfung ab, rechnet die Kassa den Versuch zur Sicherheit als verbraucht. Es gibt zwei Bilder:
 
 - Beim ersten Mal steht in der Zeile "Die Verbindung zur Karte ist abgebrochen." und darunter "Ob die Karte den Versuch gezählt hat, ist unklar." Die Taste "PIN eingeben" bleibt. Du kannst noch einmal prüfen, aber nur, wenn du die PIN sicher weißt.
-- Beim nächsten Mal (oder wenn die Kassa schon einen Versuch weniger kennt) steht dort "Die Karte hat vermutlich nur noch einen Versuch." Die Kassa schickt dann keine PIN mehr, und es erscheint die Taste "Zähler ist wieder voll".
+- Beim nächsten Mal (oder wenn die Kassa schon einen Versuch weniger kennt) steht in der Zeile "Die Karte hat vermutlich nur noch einen Versuch." Dieser Satz kann oben in der Zeile stehen oder als Hinweis unter "Die Verbindung zur Karte ist abgebrochen.". Beides bedeutet dasselbe: Die Kassa schickt keine PIN mehr, und es erscheint die Taste "Zähler ist wieder voll".
 
 Bei diesem zweiten Bild geht es so weiter:
 
@@ -72,7 +76,7 @@ Bei diesem zweiten Bild geht es so weiter:
 - [ ] Auf "Bericht teilen" tippen. Ein Fenster von Android öffnet sich.
 - [ ] Den Text an mich schicken, hier im Chat an mich oder per Mail an dich selbst und dann hier einfügen.
 
-Das solltest du sehen: Der Bericht ist reiner Text. Die PIN steht nicht darin. Steht "Teilen geht auf diesem Tablet nicht.", schreib mir die Zeilen vom Bildschirm ab oder mach ein Foto.
+Das solltest du sehen: Der Bericht ist reiner Text. Die PIN steht nicht darin. Vor jeder Zeile im Teil "Protokoll" steht, wie viele Millisekunden seit dem Start der Prüfung vergangen sind. Steht "Teilen geht auf diesem Tablet nicht.", schreib mir die Zeilen vom Bildschirm ab oder mach ein Foto.
 
 ## 7. Gegenprobe: Drucker
 
@@ -83,9 +87,10 @@ Das solltest du sehen: Der Drucker druckt wie immer. Aufgeschrieben wird, ob er 
 
 ## 8. Wenn eine Zeile rot ist
 
-- [ ] Den Hinweis unter der roten Zeile lesen und befolgen (siehe die Tabelle unten).
-- [ ] Einmal auf "Nochmal prüfen" tippen.
-- [ ] Wenn es wieder rot ist: den Bericht teilen (Schritt 6) und mir schicken.
+- [ ] Den Hinweis unter der roten Zeile lesen (siehe auch die Tabelle unten).
+- [ ] Zuerst auf "Bericht teilen" tippen und den Bericht an mich schicken (Schritt 6), noch bevor du etwas anderes machst. Eine neue Prüfung ersetzt den Bericht.
+- [ ] Dann den Hinweis befolgen und einmal auf "Nochmal prüfen" tippen.
+- [ ] Wenn es wieder rot ist: den Bericht noch einmal teilen und mir schicken.
 
 ## Wenn etwas rot ist
 
@@ -106,7 +111,7 @@ Das solltest du sehen: Der Drucker druckt wie immer. Aufgeschrieben wird, ob er 
 
 ## Was du mir schickst
 
-- [ ] Den Bericht (Text aus "Bericht teilen").
+- [ ] Den Bericht (Text aus "Bericht teilen"). Er enthält jetzt auch die Zeiten in Millisekunden.
 - [ ] Die Kartenart aus Zeile 3, und wenn dabei ein Hinweis zum Tausch bis Mai 2027 stand, auch diese Zeile.
 - [ ] Die Dauer aus Zeile 5.
 - [ ] Das Modell des Kartenlesers und des Verteilers. Ein Foto vom Schild genügt.
