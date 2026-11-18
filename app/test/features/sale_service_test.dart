@@ -9,6 +9,7 @@ import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
@@ -320,6 +321,128 @@ void main() {
       expect(await cardPayments.pending(), isEmpty);
       expect(await shop.count('receipts'), 0);
       expect(container.read(cartProvider).totalCents, cart.totalCents);
+    });
+
+    group('unklare Zahlung nach einem Absturz', () {
+      /// Die offene Zahlung, wie ein Absturz sie hinterlässt: `started`, und
+      /// der Entwurf hat den Bon wieder auf die Kassa gebracht.
+      Future<PendingCardPayment> crashed({bool onRegister = true}) async {
+        if (onRegister) putOnRegister();
+        await cardPayments.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
+        return (await cardPayments.pending()).single;
+      }
+
+      Future<Catalog> catalogOf() async {
+        final c = await container.read(catalogProvider.future);
+        return c!;
+      }
+
+      test('bestätigen mit demselben Bon auf der Kassa: Bon geschrieben, '
+          'Kassa leer, Entwurf weg', () async {
+        await configure();
+        final p = await crashed();
+        final r = await service.confirmUnclear(p, catalog: await catalogOf());
+        expect(r.receipt.id, 'p1');
+        expect(await shop.count('receipts'), 1);
+        expect(await cardPayments.pending(), isEmpty);
+        expect(container.read(cartProvider).isEmpty, isTrue);
+        expect(
+          await container.read(settingsRepositoryProvider).readDraft(),
+          isNull,
+        );
+      });
+
+      test('bestätigen mit anderem Inhalt auf der Kassa: der bleibt '
+          'stehen', () async {
+        await configure();
+        final p = await crashed(onRegister: false);
+        container.read(cartProvider.notifier).restore(cartCard);
+        await service.confirmUnclear(p, catalog: await catalogOf());
+        expect(await shop.count('receipts'), 1);
+        expect(container.read(cartProvider).toJson(), cartCard.toJson());
+        expect(
+          await container.read(settingsRepositoryProvider).readDraft(),
+          isNotNull,
+        );
+      });
+
+      test(
+        'bestätigen nach CardUnknown (Kassa schon leer): bleibt leer',
+        () async {
+          await configure();
+          putOnRegister();
+          terminal.next = const CardUnknown();
+          await pay();
+          expect(container.read(cartProvider).isEmpty, isTrue);
+          final p = (await cardPayments.pending()).single;
+          await service.confirmUnclear(p, catalog: await catalogOf());
+          expect(await shop.count('receipts'), 1);
+          expect(container.read(cartProvider).isEmpty, isTrue);
+        },
+      );
+
+      test('verwerfen mit demselben Bon auf der Kassa: nichts doppelt, keine '
+          'offene Zahlung, kein Bon', () async {
+        final p = await crashed();
+        await service.discardUnclear(p);
+        expect(await cardPayments.pending(), isEmpty);
+        expect(await shop.count('receipts'), 0);
+        expect(container.read(cartProvider).toJson(), cart.toJson());
+        expect(container.read(cartProvider).totalCents, 1820);
+      });
+
+      test('verwerfen mit anderem Inhalt auf der Kassa: der bleibt, nichts '
+          'wird ersetzt', () async {
+        final p = await crashed(onRegister: false);
+        container.read(cartProvider.notifier).restore(cartCard);
+        await service.discardUnclear(p);
+        expect(await cardPayments.pending(), isEmpty);
+        expect(container.read(cartProvider).toJson(), cartCard.toJson());
+      });
+
+      test('bestätigen einer Zahlung, die gerade am Terminal läuft: wirft, '
+          'nichts geschrieben', () async {
+        putOnRegister();
+        terminal.hang = Completer<CardPaymentResult>();
+        final running = pay('p1');
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        final p = (await cardPayments.pending()).single;
+        expect((p.id, p.unknown), ('p1', false));
+        expect(container.read(activeCardPaymentProvider), 'p1');
+        await expectLater(
+          service.confirmUnclear(p, catalog: await catalogOf()),
+          throwsA(isA<CardPaymentRunningException>()),
+        );
+        await expectLater(
+          service.discardUnclear(p),
+          throwsA(isA<CardPaymentRunningException>()),
+        );
+        expect(await shop.count('receipts'), 0);
+        expect(await cardPayments.pending(), hasLength(1));
+        expect(container.read(cartProvider).isEmpty, isFalse);
+        terminal.hang!.complete(const CardPaid(txCode: 'TX1'));
+        expect(await running, isA<CardSaleDone>());
+        expect(await shop.count('receipts'), 1);
+      });
+
+      test('Zahlung schon weg (Bon oder verworfen): bestätigen und verwerfen '
+          'schreiben nichts', () async {
+        final p = await crashed(onRegister: false);
+        await cardPayments.discard('p1');
+        await expectLater(
+          service.confirmUnclear(p, catalog: await catalogOf()),
+          throwsA(isA<CardPaymentGoneException>()),
+        );
+        await expectLater(
+          service.discardUnclear(p),
+          throwsA(isA<CardPaymentGoneException>()),
+        );
+        expect(await shop.count('receipts'), 0);
+        expect(
+          await container.read(settingsRepositoryProvider).readDraft(),
+          isNull,
+        );
+      });
     });
 
     test('dieselbe paymentId zweimal bezahlt gemeldet: ein Bon', () async {

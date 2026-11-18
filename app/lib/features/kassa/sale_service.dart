@@ -76,6 +76,23 @@ class UnreadableCardPaymentException implements Exception {
       'Kartenanbieter nachsehen, ob bezahlt wurde.';
 }
 
+/// Die Zahlung läuft gerade am Terminal und ist keine unklare Zahlung.
+class CardPaymentRunningException implements Exception {
+  const CardPaymentRunningException();
+
+  @override
+  String toString() => 'Diese Kartenzahlung läuft gerade.';
+}
+
+/// Die offene Zahlung gibt es nicht mehr (sie wurde schon abgeschlossen oder
+/// verworfen).
+class CardPaymentGoneException implements Exception {
+  const CardPaymentGoneException();
+
+  @override
+  String toString() => 'Diese Kartenzahlung ist schon abgeschlossen.';
+}
+
 class SaleService {
   SaleService(this._ref);
 
@@ -209,26 +226,45 @@ class SaleService {
     return CardSaleUnclear(paymentId);
   }
 
+  /// Der Bon einer offenen Zahlung, oder `null`, wenn er sich nicht mehr
+  /// zusammenstellen lässt: nicht lesbar, leer oder mit anderem Betrag, als das
+  /// Terminal verlangt hat.
+  static Cart? cartOfPending(PendingCardPayment p, Catalog catalog) {
+    try {
+      final cart = Cart.fromJson(
+        jsonDecode(p.cartJson) as Map<String, dynamic>,
+        catalog,
+      );
+      if (cart.isEmpty || cart.totalCents != p.amountCents) return null;
+      return cart;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Nur eine Zahlung, die es noch gibt und die nicht gerade am Terminal läuft,
+  /// darf entschieden werden.
+  Future<void> _requireDecidable(PendingCardPayment p) async {
+    if (_ref.read(activeCardPaymentProvider) == p.id) {
+      throw const CardPaymentRunningException();
+    }
+    final open = await _ref.read(cardPaymentRepositoryProvider).pending();
+    if (!open.any((o) => o.id == p.id)) throw const CardPaymentGoneException();
+  }
+
   /// Der Kunde hat bezahlt: schließt den Bon aus der offenen Zahlung als
   /// Kartenzahlung ohne Beleg-Code ab. Wirft, wenn sich der Bon nicht mehr
-  /// lesen lässt; die offene Zahlung bleibt dann stehen.
+  /// lesen lässt; die offene Zahlung bleibt dann stehen. Liegt derselbe Bon
+  /// noch auf der Kassa (Absturz: der Entwurf hat ihn zurückgebracht), wird
+  /// die Kassa geleert, damit er nicht noch einmal kassiert wird; anderer
+  /// Inhalt bleibt stehen.
   Future<SaleResult> confirmUnclear(
     PendingCardPayment p, {
     required Catalog catalog,
   }) async {
-    final Cart cart;
-    try {
-      cart = Cart.fromJson(
-        jsonDecode(p.cartJson) as Map<String, dynamic>,
-        catalog,
-      );
-    } catch (_) {
-      throw const UnreadableCardPaymentException();
-    }
-    // Der Betrag muss zu dem passen, was das Terminal verlangt hat.
-    if (cart.isEmpty || cart.totalCents != p.amountCents) {
-      throw const UnreadableCardPaymentException();
-    }
+    await _requireDecidable(p);
+    final cart = cartOfPending(p, catalog);
+    if (cart == null) throw const UnreadableCardPaymentException();
     final receipt = await _ref
         .read(receiptRepositoryProvider)
         .finalizeCardSale(
@@ -237,12 +273,28 @@ class SaleService {
           staff: Staff(id: p.staffId, name: p.staffName, role: StaffRole.staff),
           provider: _ref.read(cardTerminalProvider).providerName,
         );
+    final onRegister = _ref.read(cartProvider);
+    if (!onRegister.isEmpty) {
+      if (jsonEncode(onRegister.toJson()) == p.cartJson) {
+        _ref.read(cartProvider.notifier).clear();
+      } else {
+        // Das Abschließen hat den Entwurf gelöscht; der andere Bon auf der
+        // Kassa soll einen Neustart überstehen.
+        try {
+          await _ref
+              .read(settingsRepositoryProvider)
+              .writeDraft(jsonEncode(onRegister.toJson()));
+        } catch (_) {}
+      }
+    }
     return await _printCard(receipt);
   }
 
   /// Der Kunde hat nicht bezahlt: die offene Zahlung geht weg, der Bon kommt
-  /// zurück auf die Kassa.
+  /// zurück auf die Kassa, aber nur auf eine leere (derselbe Bon wird nicht
+  /// verdoppelt, ein anderer nicht ersetzt).
   Future<void> discardUnclear(PendingCardPayment p) async {
+    await _requireDecidable(p);
     await _ref.read(cardPaymentRepositoryProvider).discard(p.id);
     try {
       final catalog = await _ref.read(catalogRepositoryProvider).current();
