@@ -126,6 +126,24 @@ test('in withBusiness(A) scheitert ein INSERT mit business_id von B', async () =
   expect(r.rowCount).toBe(0);
 });
 
+test('ohne Betrieb scheitert ein INSERT in eine gesperrte Tabelle', async () => {
+  await expect(
+    withSystem(t.db, (c) =>
+      c.query(`insert into categories (business_id, id, name, position, change_seq) values ($1, 'ohne', 'Ohne', 1, 1)`, [a]),
+    ),
+  ).rejects.toThrow(/row-level security/);
+});
+
+test('kassa_app kann den Verlauf schreiben und lesen, aber nicht ändern oder löschen', async () => {
+  await withSystem(t.db, (c) => c.query(`insert into audit_log (action, business_id) values ('test', $1)`, [a]));
+  const read = await t.db.pool.query(`select action from audit_log where action = 'test'`);
+  expect(read.rowCount).toBe(1);
+  await expect(withSystem(t.db, (c) => c.query(`update audit_log set action = 'geändert'`))).rejects.toThrow(
+    /permission denied/,
+  );
+  await expect(withSystem(t.db, (c) => c.query('delete from audit_log'))).rejects.toThrow(/permission denied/);
+});
+
 test('in withBusiness(A) ändert ein UPDATE ohne WHERE nur Zeilen von A', async () => {
   const updated = await withBusiness(t.db, a, (c) => c.query('update items set price_cents = 1'));
   expect(updated.rowCount).toBe(1);

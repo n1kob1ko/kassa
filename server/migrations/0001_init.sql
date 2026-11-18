@@ -214,7 +214,9 @@ grant execute on function find_register_by_token(bytea) to kassa_app;
 grant execute on function claim_pairing_code(bytea, timestamptz) to kassa_app;
 
 grant select, insert, update, delete on
-  businesses, users, sessions, used_secrets, login_failures, audit_log, releases,
+  businesses, users, sessions, used_secrets, login_failures, releases,
   registers, pairing_codes, categories, items, modifier_templates, staff
   to kassa_app;
+-- Den Verlauf darf der Dienst nur ergänzen, nie umschreiben.
+grant select, insert on audit_log to kassa_app;
 grant usage on sequence change_seq, audit_log_id_seq to kassa_app;

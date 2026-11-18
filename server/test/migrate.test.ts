@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import pg from 'pg';
-import { migrate } from '../src/db/migrate.js';
-import { createTestDb, TEST_APP_PASSWORD } from './support/db.js';
+import { migrate, restrictAppRole } from '../src/db/migrate.js';
+import { createTestDb, TEST_APP_PASSWORD, withDatabase } from './support/db.js';
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -32,6 +33,49 @@ test('kassa_app ist weder Superuser noch BYPASSRLS, kann sich aber anmelden', as
   await migrate(t.ownerUrl, { appPassword: TEST_APP_PASSWORD });
   const r = await owner('select rolsuper, rolbypassrls, rolcanlogin from pg_roles where rolname = $1', ['kassa_app']);
   expect(r.rows).toEqual([{ rolsuper: false, rolbypassrls: false, rolcanlogin: true }]);
+});
+
+test('ein Besitzer ohne Superuser und ohne BYPASSRLS wird abgelehnt und nichts angewendet', async () => {
+  const suffix = randomBytes(6).toString('hex');
+  const role = `kassa_owner_${suffix}`;
+  const database = `kassa_test_owner_${suffix}`;
+  await owner(`create role ${role} login nosuperuser nobypassrls`);
+  await owner(`create database ${database} owner ${role}`);
+  try {
+    const url = new URL(withDatabase(t.ownerUrl, database));
+    url.username = role;
+    await expect(migrate(url.toString(), { appPassword: TEST_APP_PASSWORD })).rejects.toThrow(
+      `Database role "${role}" must be a superuser or have BYPASSRLS`,
+    );
+    const c = new pg.Client({ connectionString: url.toString() });
+    await c.connect();
+    try {
+      const tables = await c.query(`select 1 from pg_tables where schemaname = 'public'`);
+      expect(tables.rowCount).toBe(0);
+    } finally {
+      await c.end();
+    }
+  } finally {
+    await owner(`drop database if exists ${database} with (force)`);
+    await owner(`drop role if exists ${role}`);
+  }
+});
+
+test('restrictAppRole nimmt kassa_app Superuser und BYPASSRLS wieder weg', async () => {
+  // Nur in einer Transaktion, die zurückgerollt wird: kassa_app gilt im ganzen Cluster,
+  // und die anderen Testdateien laufen gleichzeitig.
+  const c = new pg.Client({ connectionString: t.ownerUrl });
+  await c.connect();
+  try {
+    await c.query('begin');
+    await c.query('alter role kassa_app superuser bypassrls');
+    await restrictAppRole(c);
+    const r = await c.query('select rolsuper, rolbypassrls from pg_roles where rolname = $1', ['kassa_app']);
+    expect(r.rows).toEqual([{ rolsuper: false, rolbypassrls: false }]);
+  } finally {
+    await c.query('rollback');
+    await c.end();
+  }
 });
 
 test('ein Passwort mit Anführungszeichen wird gesetzt, ohne dass SQL ausgeführt wird', async () => {

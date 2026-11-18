@@ -5,6 +5,34 @@ const MIGRATIONS_DIR = new URL('../../migrations/', import.meta.url);
 const LOCK_KEY = 7417;
 
 /**
+ * Die Funktionen für Geräte-Schlüssel und Kopplungscode laufen mit den Rechten des Besitzers.
+ * FORCE ROW LEVEL SECURITY verbirgt ihnen sonst jede Zeile, darum muss der Besitzer die Sperre umgehen dürfen.
+ */
+async function assertOwnerBypassesRls(client: pg.Client): Promise<void> {
+  const r = await client.query<{ rolname: string; rolsuper: boolean; rolbypassrls: boolean }>(
+    'select rolname, rolsuper, rolbypassrls from pg_roles where rolname = current_user',
+  );
+  const role = r.rows[0]!;
+  if (!role.rolsuper && !role.rolbypassrls) {
+    throw new Error(
+      `Database role "${role.rolname}" must be a superuser or have BYPASSRLS: it owns the tables, ` +
+        'and the SECURITY DEFINER lookup functions run as the owner under FORCE ROW LEVEL SECURITY.',
+    );
+  }
+}
+
+/** kassa_app darf die Sperre nie umgehen, auch wenn die Rolle schon vorher anders angelegt war. */
+export async function restrictAppRole(client: pg.ClientBase): Promise<void> {
+  const r = await client.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+    `select rolsuper, rolbypassrls from pg_roles where rolname = 'kassa_app'`,
+  );
+  const role = r.rows[0];
+  if (role && (role.rolsuper || role.rolbypassrls)) {
+    await client.query('alter role kassa_app nosuperuser nobypassrls');
+  }
+}
+
+/**
  * Wendet server/migrations/*.sql in Namensreihenfolge an, jede in einer Transaktion.
  * Gibt die Namen zurück, die dabei neu angewendet wurden.
  */
@@ -13,6 +41,7 @@ export async function migrate(ownerUrl: string, opts: { appPassword: string }): 
   await client.connect();
   const applied: string[] = [];
   try {
+    await assertOwnerBypassesRls(client);
     await client.query('select pg_advisory_lock($1)', [LOCK_KEY]);
     try {
       await client.query(
@@ -44,6 +73,7 @@ export async function migrate(ownerUrl: string, opts: { appPassword: string }): 
         opts.appPassword,
       ]);
       await client.query(stmt.rows[0]!.stmt);
+      await restrictAppRole(client);
     } finally {
       await client.query('select pg_advisory_unlock($1)', [LOCK_KEY]);
     }
