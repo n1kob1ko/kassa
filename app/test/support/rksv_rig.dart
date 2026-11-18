@@ -80,6 +80,12 @@ class RksvRig {
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
   /// Probe-Signatur wie in der App ([probeSignatureUnitOf]).
+  ///
+  /// Ohne [probeUnit] trägt die Kette nach `enableProbe` die Seriennummer des
+  /// Probe-Zertifikats, signiert wird aber mit dem der Attrappe. Ein
+  /// Ausfall-Eintrag ohne Frage an die Signatur (`trySign: false`) bekommt
+  /// deshalb die Seriennummer der Kette und im Protokoll eine eigene Gruppe.
+  /// In der App ist beides dasselbe Zertifikat.
   static Future<RksvRig> open({bool probeUnit = false}) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());

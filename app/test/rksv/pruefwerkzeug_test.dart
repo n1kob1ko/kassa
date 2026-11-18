@@ -58,11 +58,16 @@ void main() {
       final temp = await Directory.systemTemp.createTemp('kassa-rksv-');
       addTearDown(() => temp.delete(recursive: true));
 
-      // Startbeleg am 18.11.2026 13:05:09.
+      // Feste Zeiten in der Vergangenheit: Das Prüfwerkzeug vergleicht jeden
+      // Bon mit der echten Uhr, ein Bon nach "jetzt" scheitert immer (R11).
+      // Bons vor dem 1.1.2026 liegen vor der Gültigkeit des Test-Zertifikats;
+      // das nimmt das Prüfwerkzeug an.
+      // Startbeleg am 18.11.2025 13:05:09.
+      rig.clock.value = DateTime(2025, 11, 18, 13, 5, 9);
       await rig.service.enableProbe(staff: rig.chef);
       var minute = 0;
       void tick() =>
-          rig.clock.value = DateTime(2026, 11, 18, 13, 6 + minute++, 9);
+          rig.clock.value = DateTime(2025, 11, 18, 13, 6 + minute++, 9);
 
       // Ein Verkauf mit allen fünf Sätzen und Pfand.
       tick();
@@ -110,15 +115,15 @@ void main() {
       tick();
       expect(await rig.service.retrySignature(staff: rig.chef), isTrue);
       // Monatswechsel.
-      rig.clock.value = DateTime(2026, 12, 1, 10);
+      rig.clock.value = DateTime(2025, 12, 1, 10);
       await rig.sell('dezember', const Cart.empty().add(cola));
       // Jahreswechsel.
-      rig.clock.value = DateTime(2027, 1, 2, 10);
+      rig.clock.value = DateTime(2026, 1, 2, 10);
       await rig.sell('jaenner', const Cart.empty().add(teigtaschen));
       // Nullbeleg, Schlussbeleg.
-      rig.clock.value = DateTime(2027, 1, 2, 10, 5);
+      rig.clock.value = DateTime(2026, 1, 2, 10, 5);
       await rig.service.zeroReceipt(staff: rig.chef);
-      rig.clock.value = DateTime(2027, 1, 2, 10, 10);
+      rig.clock.value = DateTime(2026, 1, 2, 10, 10);
       await rig.service.disableProbe(staff: rig.chef);
 
       final kinds = await rig.entryKinds();
