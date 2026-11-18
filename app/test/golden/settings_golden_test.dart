@@ -108,6 +108,8 @@ void main() {
       (t, b) async {
         final s = await pumpPaired(t, brightness: b);
         s.mode = FakeMode.blocked;
+        await t.ensureVisible(find.byKey(const Key('server-sync')));
+        await t.pumpAndSettle();
         await t.tap(find.byKey(const Key('server-sync')));
         await t.pumpAndSettle();
       },
@@ -117,6 +119,8 @@ void main() {
       (t, b) async {
         final s = await pumpPaired(t, brightness: b);
         s.mode = FakeMode.unauthorized;
+        await t.ensureVisible(find.byKey(const Key('server-sync')));
+        await t.pumpAndSettle();
         await t.tap(find.byKey(const Key('server-sync')));
         await t.pumpAndSettle();
       },

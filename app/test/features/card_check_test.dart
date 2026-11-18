@@ -190,11 +190,13 @@ void main() {
         ),
         findsOneWidget,
       );
-      // In der linken Spalte unter "Geräte an dieser Kassa".
+      // Oben in der linken Spalte, "Geräte an dieser Kassa" rechts daneben
+      // (Entwurf `s1b-2`).
       final devices = t.getRect(find.text('Geräte an dieser Kassa'));
       final signature = t.getRect(card);
-      expect(signature.top, greaterThan(devices.bottom));
       expect(signature.left, lessThan(640));
+      expect(devices.left, greaterThan(640));
+      expect(signature.top, lessThan(devices.top));
 
       await t.ensureVisible(_key('open-card-check'));
       await t.pumpAndSettle();

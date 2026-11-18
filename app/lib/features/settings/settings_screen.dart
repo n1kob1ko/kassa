@@ -18,7 +18,8 @@ import 'server_panel.dart';
 import 'settings_rows.dart';
 import 'signature_panel.dart';
 
-/// Der Bereich Einstellungen (nur Chef): Geräte, Anzeige und Kassa in Karten.
+/// Der Bereich Einstellungen (nur Chef): links Signatur und Kassa, rechts
+/// Geräte, Anzeige und Server (Signatur oben links wie im Entwurf `s1b-2`).
 /// Jede Änderung wird sofort gespeichert, der Bildschirm folgt dem Strom der
 /// Einstellungen.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -192,11 +193,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    devices,
-                    gap,
                     SignaturePanel(
                       onOpenCardCheck: () => widget.onCheckingCard(true),
                     ),
+                    gap,
+                    register,
                   ],
                 ),
               ),
@@ -204,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [display, gap, register, gap, const ServerPanel()],
+                  children: [devices, gap, display, gap, const ServerPanel()],
                 ),
               ),
             ],
