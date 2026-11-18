@@ -312,3 +312,83 @@ Hier steht, was beim Bau anders entschieden wurde, als der Entwurf es oben besch
 | Beim Lesen des Zertifikats gilt eine Antwort `62xx` (etwa `6282`, Ende der Datei erreicht) als letzter Block mit Daten. Auf `6Cxx` (falsche Länge) liest die Kassa denselben Block genau einmal mit der genannten Länge neu. Ein zweites `6Cxx` gilt als nicht lesbar. | A-Trust nennt `6282` für READ BINARY, und andere Kartensoftware liest bei `6Cxx` still nach. Sonst fiele das Ende des Zertifikats weg. | Ein Befehl mehr in der festen Liste (READ BINARY mit genauer Länge, nur lesend). |
 
 **Noch ungeprüft.** Hier gibt es weder Kartenleser noch Karte. Alles wurde gegen Nachbildungen getestet, der Kotlin-Teil wurde gebaut und gelesen, aber nie ausgeführt. Auf echter Hardware ist noch nichts bestätigt: Erkennen des Lesers im Verteiler neben dem Drucker, die Erlaubnisfrage von Android, die Übertragung (auch Antworten in Teilen und Bitten um mehr Zeit), das Lesen des Zertifikats, die Probe-Unterschrift mit der echten Karte von YICHI und ihre Dauer, der Hinweis zum Tausch und der Weg über "Zähler ist wieder voll". Das prüft Niko mit `docs/testen/rksv-karte-pruefen-pruefliste.md`.
+
+### 11.2 S1b Kern
+
+Der Stand gilt für die Version 1.4.0. Gebaut ist der Kern mit der Probe-Signatur: Code, Kette, verschlüsselter Zähler, Protokoll, QR-Code am Bon, Sonderbelege, die Karte "Signatur" in den Einstellungen. Die echte Karte kommt in S2.
+
+**Entscheidungen im Plan**
+
+| Nr. | Entscheidung | Preis |
+|---|---|---|
+| K1 | Signiert wird innerhalb der Datenbank-Transaktion des Bons. | Während des Signierens wartet jeder andere Zugriff auf die Datenbank (Probe: Millisekunden, Karte in S2: bis zur Frist). S2 misst neu. |
+| K2 | Beträge im Code ohne Tausenderpunkt. | Weicht bei Bons ab 1.000 Euro vom Mustercode ab. Das Prüfwerkzeug nimmt es an (siehe unten). |
+| K3 | Der Umsatzzähler hat 8 Bytes. | Keiner. |
+| K4 | Probe und Attrappe tragen das Kennzeichen `R1-AT100`. | BMF Belegcheck lehnt Probe-Bons ab. Das ist gewollt. |
+| K5 | Jede Kette hat eigene Kassen-Kennung und eigenen AES-Schlüssel. "Probe beenden" schließt sie mit einem Schlussbeleg, neu einschalten beginnt eine neue. | Mehrere Probe-Ketten in der Datenbank. |
+| K6 | Sonderbelege haben keine Zahlung und keinen Tag (`payment` und `businessDayId` sind leerbar). | Jede Stelle, die `payment` liest, behandelt den leeren Fall. |
+| K7 | Ein Bon lässt sich nur stornieren, solange er zur laufenden Kette gehört (oder die Signatur aus ist). | Bons von vor dem Einschalten sind danach nicht mehr stornierbar. |
+| K8 | Monats- und Jahresbeleg entstehen vor dem ersten Bon eines neuen Monats und tragen dessen Zeit. Bei mehreren leeren Monaten entsteht einer, bei Jahreswechsel ein Jahresbeleg. | Am Wortlaut zu prüfen. |
+| K9 | Scheitert im Zustand Probe etwas Unerwartetes beim Signieren, wird der Bon trotzdem gespeichert und die Probe schaltet sich mit einem Hinweis ab. | Die Probe-Kette endet ohne Schlussbeleg. Für "In Betrieb" entscheidet S2 neu. |
+| K10 | Aufgaben entstehen auch in der Probe. | In der Probe sind es Übungen, die Karte sagt das. |
+| K11 | "Protokoll ausgeben" bietet "Alles", "Dieses Vierteljahr", "Letztes Vierteljahr". | Kein freier Zeitraum. |
+| K12 | Der QR-Code kommt mit dem QR-Befehl des Druckers, mit Schalter "QR-Code als Bild drucken". | Eine Spalte mehr in `settings`. |
+
+**Entscheidungen während des Baus (R1 bis R14)**
+
+| Nr. | Was | Warum |
+|---|---|---|
+| R1 | Der Test "Ausnahme beim Schreiben des Eintrags rollt alles zurück" läuft mit `mode = live`. In der Probe gilt K9. | In `live` gilt K9 nicht, dort zählt "Kette ohne Lücke". K9 selbst prüft ein eigener Test. |
+| R2 | Provider heißen `rksvSecretsProvider`, `rksvJournalProvider`, `rksvServiceProvider`, `protocolSaverProvider`. | Der Plan nannte keine Namen, spätere Tasks brauchten sie. |
+| R3 | `dueBefore` ruft in einer Schleife (höchstens zwei Durchgänge): nach einem Sammelbeleg kann noch ein Monats- oder Jahresbeleg folgen. Den `last`-Teil ersetzt R10. | Entwurf 6.4 verlangt beides, der Plan ließ den Fall offen. |
+| R4 | `ReceiptRepository.yearReceiptBefore` liefert den Jahresbeleg direkt vor dem Verkauf, der Verkauf druckt ihn vor seinem Bon. Die Zeit-Bedingung ersetzt R14. | Der Plan sagt nur "der vor dem Verkauf entstanden ist". |
+| R5 | Tasten rechts in einer Zeile der Karte "Signatur" sind 56 dp hoch, in Blättern mindestens 64 dp, Hauptaktionen 76 dp. | `DESIGN.md` verlangt ab 48 dp, die Zeile im Plan war strenger als Bestand und Bilder. |
+| R6 | `rksv_chains` bekommt die Spalte `cert_serial` (Version 4 ist noch nicht ausgeliefert, also an Ort und Stelle ergänzt). | Nach einem Neustart muss die Kette ihr Zertifikat wiederfinden. |
+| R7 | Ein kaputter JWS je Eintrag wird beim Lesen abgefangen, der Bon kommt ohne QR-Code. | Die Kassa verkauft immer, die Liste der Bons darf nicht brechen. |
+| R8 | `voidReceipt` prüft `kind.isSpecial` und wirft `CannotVoidSpecialException`. | Muster der vorhandenen Ausnahmen. |
+| R9 | Der Test mit dem Prüfwerkzeug verlangt PASS im obersten `verificationState` jeder Ergebnisdatei. Verschachtelte FAIL sind nur bei `TYPE_OF_RECEIPT_*` erlaubt. | Schon das Beispiel des Ministeriums erfüllt "PASS in jeder Zeile" nicht. |
+| R10 | Für Monats- und Jahresbeleg zählt als letzter Eintrag der letzte signierte, der kein Sammelbeleg ist. Das ersetzt den `last`-Teil von R3. | Mit R3 bekam ein Ausfall über den Monatswechsel mit Verkäufen im neuen Monat nie einen Monatsbeleg. |
+| R11 | Das Szenario im Test des Prüfwerkzeugs liegt fest in der Vergangenheit (Start 18.11.2025, Monatswechsel Dezember 2025, Jahreswechsel Jänner 2026). | Das Prüfwerkzeug vergleicht die Belegzeiten mit der echten Uhr. |
+| R12 | Ob es eine beendete Kette gibt, liefert `RksvRepository.watchHasEndedChain()`. | Datenzugriff gehört in die Datenschicht. |
+| R13 | Die Einstellungen sind neu geordnet: links Signatur und Kassa, rechts Geräte, Anzeige, Server. | Sonst passt die Karte "Signatur" nicht auf den Bildschirm. Kostet 19 neu erzeugte Vergleichsbilder. |
+| R14 | `yearReceiptBefore` geht nur nach der Nummer (Nummer direkt davor, Art Jahresbeleg) und wird nur im Verkaufsweg direkt nach dem Anlegen aufgerufen. | Die Zeit stimmt mit der echten Uhr nicht verlässlich. Ein wiederholt zugestellter Verkauf könnte den Jahresbeleg doppelt drucken (hingenommen). |
+
+Vom Implementierer gewählt und angenommen: der Text "Es gibt noch kein Protokoll." und `ExportOutcome` in `dep_export.dart` (Task 7), "Das hat nicht geklappt. Bitte noch einmal." für unerwartete Fehler in der Karte "Signatur" (Task 9), ein Parameter `notice` im Warenkorb mit der Meldung "Die Signatur geht wieder." für 4 Sekunden und ein Hinweis ohne Rahmen in der Akzentfarbe, weil die Regel "eine Stimme" aus `DESIGN.md` vorgeht (Task 10).
+
+**Am Wortlaut zu prüfen.** Das Rechtsinformationssystem (`www.ris.bka.gv.at`) war am 18.11.2026 nicht erreichbar. Diese Annahmen sind noch gegen den Wortlaut der RKSV zu prüfen:
+
+1. Ein Monatsbeleg hat den Betrag 0. Der letzte des Jahres ist der Jahresbeleg, wird gedruckt und bis 15. Februar mit BMF Belegcheck geprüft. Er darf vor dem ersten Bon des neuen Monats entstehen. Für Monate ganz ohne Betrieb braucht es keinen.
+2. Dauert ein Ausfall länger als 48 Stunden, ist er bei FinanzOnline zu melden. Nach dem Ende kommt ein Sammelbeleg mit Betrag 0 als erster signierter Beleg, und das Ende ist zu melden.
+3. Das Protokoll ist vierteljährlich zu sichern.
+4. Bargeld einlegen und entnehmen gehört nicht ins Protokoll.
+
+**Was anders gebaut wurde als im Entwurf**
+
+- Monat und Jahr des letzten Belegs leitet die Kassa aus dem letzten signierten Eintrag der Kette ab, der kein Sammelbeleg ist (R10).
+- Der Jahresbeleg wird über seine Nummer gefunden (die Nummer direkt vor dem Verkauf), nicht über die Zeit (R14).
+- Die Einstellungen sind neu geordnet, die Karte "Signatur" steht links oben (R13).
+- Das Szenario des Prüfwerkzeug-Tests liegt in der Vergangenheit, weil das Prüfwerkzeug die Belegzeiten mit der echten Uhr vergleicht (R11).
+- Ein Jahresbeleg, der vor einem Null- oder Schlussbeleg entsteht (nicht vor einem Verkauf), wird nicht von selbst gedruckt. Er lässt sich in "Bons" nachdrucken.
+- Ein Ausfall der Signatur lässt sich mit der Probe nicht von Hand auslösen. Er ist nur durch Tests geprüft.
+
+**Was über das Prüfwerkzeug des Ministeriums bekannt ist.** Das Werkzeug (Version 1.1.1, nie im Repo) wird über `tool/rksv/pruefen.sh` und den Test `pruefwerkzeug_test.dart` verwendet.
+
+- Es nimmt alle 19 Belege aus dem Protokoll der Kassa an.
+- Es nimmt Beträge ab 1.000 Euro ohne Tausenderpunkt an (K2 stimmt).
+- Es nimmt `R1-AT100` mit einem selbst erstellten Zertifikat an.
+- Verschachtelte Ergebnisse `TYPE_OF_RECEIPT_*` sind FAIL, auch beim Beispiel des Ministeriums selbst.
+- Es endet mit Ausgang 0, auch wenn eine Prüfung scheitert. Darum liest der Test die Ergebnisdateien.
+- Es lehnt Belege ab, die in der Zukunft liegen, weil es mit der echten Uhr vergleicht.
+
+**Bekannte kleine Punkte.** Diese Mängel sind erkannt und hingenommen oder für eine spätere Runde vorgemerkt:
+
+- Die Hilfe "Zum Ausprobieren einschalten" erscheint auch in `live`, dort passiert nach "Einschalten" nichts. Gehört nur in den Zustand "aus".
+- Die Hilfe der Probe endet ohne Kennung in "Kassen-ID .".
+- Scheitert die Prüfung der Fremdschlüssel bei der Migration, öffnet die App die Datenbank nie mehr. Das Risiko ist klein, widerspricht aber "Die Kassa verkauft immer".
+- Die Zeile "QR-Code als Bild drucken" steht unter dem aufklappbaren Drucker-Teil statt zwischen Bondrucker und Kartenterminal wie im Bild, und das Vergleichsbild der Drucker-Einstellungen schneidet sie unten ab.
+- Der Bild-Pfad des QR-Codes ist nur schwach getestet. Steuerzeichen unter 0x20 gehen im QR-Befehl durch.
+- Das Speichern der Datei bei "Protokoll ausgeben" ist am echten Tablet noch nicht probiert (Fenster von Android, Abbruch).
+- Bei zurückgestellter Uhr im Ausfall kann die Aufgabe "Ausfall melden" nach "Erledigt" wiederkommen.
+- Kleine Lücken bei Schlüssellängen und Feldgrößen im Code: 16 oder 24 Byte lange Schlüssel würden still AES-128 oder AES-192 ergeben, ein Zähler-Feld ohne 8 Bytes und ein JWS ohne drei Teile werden nicht eigens abgelehnt. Der Code erzeugt sie nie selbst.
+- Der 29. Februar rollt beim Ablaufdatum des Zertifikats auf den 1. März.
+- Kleinere Testlücken (Frist beim Signieren, Doppeltipp, Bild "Ausfall dunkel" und anderes) stehen im Verlauf des Baus.
