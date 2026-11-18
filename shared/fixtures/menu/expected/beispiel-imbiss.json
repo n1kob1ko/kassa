@@ -1,0 +1,116 @@
+{
+  "menu": {
+    "business": {
+      "addressLines": [
+        "Musterstraße 1",
+        "1010 Wien"
+      ],
+      "name": "Beispiel-Imbiss",
+      "receiptFooter": "Danke und bis bald!",
+      "vatId": "ATU12345678"
+    },
+    "categories": [
+      {
+        "id": "bowls",
+        "name": "Bowls",
+        "position": 0
+      },
+      {
+        "id": "getraenke",
+        "name": "Getränke",
+        "position": 1
+      }
+    ],
+    "items": [
+      {
+        "categoryId": "bowls",
+        "depositCents": 0,
+        "id": "huhn-bowl",
+        "info": null,
+        "name": "Huhn Bowl",
+        "position": 0,
+        "priceCents": 990,
+        "tags": [
+          "spicy"
+        ],
+        "taxPercent": 10,
+        "templateId": "bowl"
+      },
+      {
+        "categoryId": "bowls",
+        "depositCents": 0,
+        "id": "teigtaschen",
+        "info": "5 Stück",
+        "name": "Teigtaschen",
+        "position": 1,
+        "priceCents": 650,
+        "tags": [
+          "vegan"
+        ],
+        "taxPercent": 10,
+        "templateId": null
+      },
+      {
+        "categoryId": "getraenke",
+        "depositCents": 25,
+        "id": "cola",
+        "info": null,
+        "name": "Cola 0,33 l",
+        "position": 2,
+        "priceCents": 290,
+        "tags": [],
+        "taxPercent": 20,
+        "templateId": null
+      }
+    ],
+    "staffSeeds": [],
+    "templates": [
+      {
+        "groups": [
+          {
+            "id": "bowl/0",
+            "max": 1,
+            "min": 1,
+            "name": "Größe",
+            "options": [
+              {
+                "depositCents": null,
+                "id": "bowl/0/0",
+                "isDefault": true,
+                "name": "Normal",
+                "surchargeCents": 0,
+                "taxPercent": null
+              },
+              {
+                "depositCents": null,
+                "id": "bowl/0/1",
+                "isDefault": false,
+                "name": "XXL",
+                "surchargeCents": 200,
+                "taxPercent": null
+              }
+            ]
+          },
+          {
+            "id": "bowl/1",
+            "max": null,
+            "min": 0,
+            "name": "Extra-Sauce",
+            "options": [
+              {
+                "depositCents": null,
+                "id": "bowl/1/0",
+                "isDefault": false,
+                "name": "Teriyaki",
+                "surchargeCents": 50,
+                "taxPercent": null
+              }
+            ]
+          }
+        ],
+        "id": "bowl",
+        "name": "bowl"
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "menu": {
+    "business": {
+      "addressLines": [],
+      "name": "Beispiel-Imbiss",
+      "receiptFooter": null,
+      "vatId": null
+    },
+    "categories": [
+      {
+        "id": "bowls",
+        "name": "Bowls",
+        "position": 0
+      }
+    ],
+    "items": [
+      {
+        "categoryId": "bowls",
+        "depositCents": 0,
+        "id": "huhn-bowl",
+        "info": null,
+        "name": "Huhn Bowl",
+        "position": 0,
+        "priceCents": 990,
+        "tags": [
+          "vegan",
+          "spicy"
+        ],
+        "taxPercent": 10,
+        "templateId": null
+      }
+    ],
+    "staffSeeds": [],
+    "templates": []
+  }
+}

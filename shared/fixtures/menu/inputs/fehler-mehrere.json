@@ -1,0 +1,77 @@
+{
+  "betrieb": "",
+  "adresse": "Musterstraße 1",
+  "bon_ende": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+  "kategorien": [
+    {
+      "id": "bowls",
+      "name": "Bowls"
+    },
+    {
+      "id": "bowls",
+      "name": "Doppelt"
+    }
+  ],
+  "artikel": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "preis_cent": -5,
+      "kategorie": "nudeln",
+      "mwst": 12,
+      "auswahl": "sosse",
+      "kennzeichen": "BIO"
+    },
+    {
+      "id": "cola",
+      "name": "Cola",
+      "preis_cent": 290,
+      "kategorie": "bowls",
+      "mwst": 20
+    },
+    {
+      "name": "Ohne Kennung"
+    },
+    {
+      "id": "cola",
+      "name": "Cola nochmal",
+      "preis_cent": 290,
+      "kategorie": "bowls",
+      "mwst": 20
+    }
+  ],
+  "auswahlgruppen": {
+    "bowl": [
+      {
+        "name": "Größe",
+        "min": 2,
+        "max": 1,
+        "optionen": [
+          {
+            "name": "Normal",
+            "vorgabe": true
+          },
+          {
+            "name": "XXL",
+            "aufpreis_cent": 200
+          }
+        ]
+      },
+      {
+        "optionen": []
+      }
+    ],
+    "leer": 5
+  },
+  "mitarbeiter": [
+    {
+      "name": "Chefin",
+      "pin": "abcd",
+      "rolle": "boss"
+    },
+    {
+      "pin": "1234",
+      "rolle": "chef"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "betrieb": "Beispiel-Imbiss",
+  "kategorien": [
+    {
+      "name": "Bowls"
+    },
+    {
+      "id": "bowls",
+      "name": "Bowls"
+    }
+  ],
+  "artikel": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "preis_cent": 990,
+      "kategorie": "bowls",
+      "mwst": 10
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "problems": [
+    "Betrieb fehlt.",
+    "\"adresse\" muss eine Liste von Zeilen sein.",
+    "\"bon_ende\" darf höchstens 200 Zeichen haben.",
+    "Kategorie \"bowls\" kommt doppelt vor.",
+    "Artikel \"huhn-bowl\": Preis darf nicht negativ sein.",
+    "Artikel \"huhn-bowl\": Kategorie \"nudeln\" gibt es nicht.",
+    "Artikel \"huhn-bowl\": Steuersatz 12 ist nicht erlaubt. Erlaubt sind 20, 10, 13, 0 und 19.",
+    "Artikel \"huhn-bowl\": Auswahl \"sosse\" gibt es nicht.",
+    "Artikel \"huhn-bowl\": Kennzeichen \"BIO\" kennt die Kassa nicht.",
+    "Ein Artikel hat keine Kennung.",
+    "Artikel \"cola\" kommt doppelt vor.",
+    "Auswahl \"bowl\", Gruppe \"Größe\": mindestens 2 und höchstens 1 passt nicht zusammen.",
+    "Auswahl \"bowl\": Eine Gruppe hat keinen Namen.",
+    "Auswahl \"leer\": Die Gruppen fehlen.",
+    "Mitarbeiter \"Chefin\": Die PIN muss aus genau vier Ziffern bestehen.",
+    "Mitarbeiter \"Chefin\": Die Rolle muss \"chef\" oder \"mitarbeiter\" sein.",
+    "Ein Mitarbeiter hat keinen Namen."
+  ]
+}

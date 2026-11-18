@@ -1,0 +1,64 @@
+{
+  "menu": {
+    "business": {
+      "addressLines": [],
+      "name": "Beispiel-Imbiss",
+      "receiptFooter": null,
+      "vatId": null
+    },
+    "categories": [
+      {
+        "id": "bowls",
+        "name": "Bowls",
+        "position": 0
+      }
+    ],
+    "items": [
+      {
+        "categoryId": "bowls",
+        "depositCents": 0,
+        "id": "huhn-bowl",
+        "info": null,
+        "name": "Huhn Bowl",
+        "position": 0,
+        "priceCents": 990,
+        "tags": [],
+        "taxPercent": 10,
+        "templateId": "bowl"
+      }
+    ],
+    "staffSeeds": [],
+    "templates": [
+      {
+        "groups": [
+          {
+            "id": "bowl/0",
+            "max": 1,
+            "min": 1,
+            "name": "Größe",
+            "options": [
+              {
+                "depositCents": 25,
+                "id": "bowl/0/0",
+                "isDefault": false,
+                "name": "Flasche",
+                "surchargeCents": 100,
+                "taxPercent": 20
+              },
+              {
+                "depositCents": 0,
+                "id": "bowl/0/1",
+                "isDefault": false,
+                "name": "Glas",
+                "surchargeCents": 0,
+                "taxPercent": 0
+              }
+            ]
+          }
+        ],
+        "id": "bowl",
+        "name": "bowl"
+      }
+    ]
+  }
+}
