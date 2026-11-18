@@ -6,9 +6,12 @@ import 'package:material_ui/material_ui.dart';
 import '../../app_sync_providers.dart';
 import '../../data/providers.dart';
 import '../../data/sync_state_repository.dart';
+import '../../sync/pairing_service.dart';
+import '../../sync/server_api.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
+import '../setup/pairing_view.dart' show noStaffText;
 import 'pair_question.dart';
 import 'settings_rows.dart';
 
@@ -48,6 +51,9 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
   bool _loading = false;
   bool _loadFailed = false;
 
+  /// "Speisekarte laden" fand am Server keinen Chef: nichts wurde ersetzt.
+  bool _noChef = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +79,7 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
   void _ask(_Intent intent) => setState(() {
     _asking = intent;
     _loadFailed = false;
+    _noChef = false;
   });
 
   void _cancel() => setState(() => _asking = null);
@@ -96,17 +103,41 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
 
   /// Holt die Speisekarte mit dem Schlüssel, den die Kassa schon hat. Geht es
   /// gut, ist niemand mehr angemeldet und die Anmeldung erscheint von selbst.
+  /// Fehlt der Schlüssel oder lehnt der Server ihn ab, hilft nur neues
+  /// Koppeln: das wird festgehalten, dann zeigt die Karte "Neu koppeln".
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _loadFailed = false;
+      _noChef = false;
     });
     try {
       await ref.read(pairingServiceProvider).loadInitial();
+    } on NoChefOnServerException {
+      if (mounted) setState(() => _noChef = true);
+    } on ServerException catch (e) {
+      if (e.failure == ServerFailure.unauthorized) {
+        await _recordUnauthorized();
+      } else if (mounted) {
+        setState(() => _loadFailed = true);
+      }
     } catch (_) {
       if (mounted) setState(() => _loadFailed = true);
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _recordUnauthorized() async {
+    try {
+      await ref
+          .read(syncStateRepositoryProvider)
+          .setResult(
+            at: ref.read(clockProvider).now(),
+            error: ServerFailure.unauthorized.name,
+          );
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    }
   }
 
   @override
@@ -150,15 +181,24 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
       );
     }
     if (sync.blocked) {
-      return const SettingsCard(
+      return SettingsCard(
         title: title,
-        trailing: StatusPill('Gesperrt', ok: false),
+        trailing: const StatusPill('Gesperrt', ok: false),
         rows: [
           _Body(
             main: 'Diese Kassa wurde in der Verwaltung gesperrt.',
             sub:
                 'Bonieren geht weiter. Abgeglichen wird erst wieder, wenn die '
                 'Sperre aufgehoben ist.',
+            // Wer die Sperre eben aufgehoben hat, will nicht 5 Minuten warten.
+            button: PrimaryButton(
+              key: const Key('server-recheck'),
+              label: 'Nochmal prüfen',
+              filled: false,
+              height: 56,
+              leading: _syncing ? const _Spinner() : null,
+              onPressed: _syncing ? null : _sync,
+            ),
           ),
         ],
       );
@@ -191,7 +231,9 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
                 main:
                     'Die Verbindung steht. Die Speisekarte ist noch nicht '
                     'geladen.',
-                warn: _loadFailed
+                warn: _noChef
+                    ? noStaffText
+                    : _loadFailed
                     ? 'Die Speisekarte konnte nicht geladen werden.'
                     : null,
                 button: PrimaryButton(

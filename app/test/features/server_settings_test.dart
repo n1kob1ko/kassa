@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/providers.dart';
@@ -184,7 +186,7 @@ void main() {
     },
   );
 
-  testWidgets('gesperrt zeigt beide Sätze und keine Taste', (t) async {
+  testWidgets('gesperrt zeigt beide Sätze und "Nochmal prüfen"', (t) async {
     final server = await pumpPaired(t);
     server.mode = FakeMode.blocked;
     await _tapAndSettle(t, 'server-sync');
@@ -208,6 +210,44 @@ void main() {
       expect(find.byKey(Key(key)), findsNothing);
     }
     expect(find.text(_failedLine), findsNothing);
+    final recheck = t.widget<PrimaryButton>(
+      find.byKey(const Key('server-recheck')),
+    );
+    expect(recheck.label, 'Nochmal prüfen');
+    expect(recheck.filled, isFalse);
+
+    // Noch gesperrt: bleibt so, mit Taste.
+    final pulls = server.pullRequests.length;
+    await _tapAndSettle(t, 'server-recheck');
+    expect(server.pullRequests.length, greaterThan(pulls));
+    expect(find.text('Gesperrt'), findsOneWidget);
+
+    // Sperre aufgehoben: während des Prüfens läuft der Ring, danach verbunden.
+    server.mode = FakeMode.online;
+    final gate = Completer<void>();
+    server.beforeNextPage = () => gate.future;
+    await t.ensureVisible(find.byKey(const Key('server-recheck')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('server-recheck')));
+    await t.pump();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('server-recheck')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      t
+          .widget<PrimaryButton>(find.byKey(const Key('server-recheck')))
+          .onPressed,
+      isNull,
+    );
+    gate.complete();
+    await t.pumpAndSettle();
+    expect(find.text('Gesperrt'), findsNothing);
+    expect(find.text('Verbunden'), findsOneWidget);
+    expect(find.byKey(const Key('server-recheck')), findsNothing);
   });
 
   testWidgets(
@@ -316,4 +356,151 @@ void main() {
       expect(find.text('Nicht mit dem Server verbunden.'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Speisekarte laden ohne gültigen Schlüssel: "Der Server kennt diese Kassa nicht mehr." mit "Neu koppeln"',
+    (t) async {
+      final server = FakeServer.beispiel()..breakAfterPages = 0;
+      await pumpPaired(t, server: server, load: false);
+      server.breakAfterPages = null;
+      await containerOf(t).read(tokenStoreProvider).clear();
+      await _tapAndSettle(t, 'server-load');
+      await _tapAndSettle(t, 'confirm-pair-question');
+      expect(find.text('Unbekannt'), findsOneWidget);
+      expect(
+        find.text('Der Server kennt diese Kassa nicht mehr.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('server-load')), findsNothing);
+      await _tapAndSettle(t, 'server-repair');
+      await _tapAndSettle(t, 'confirm-pair-question');
+      await _enterCode(t);
+      expect(server.pairRequests, hasLength(2));
+      expect(find.text('PIN eingeben'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Speisekarte laden, der Server lehnt den Schlüssel ab: ebenfalls "Neu koppeln"',
+    (t) async {
+      final server = FakeServer.beispiel()..breakAfterPages = 0;
+      await pumpPaired(t, server: server, load: false);
+      server
+        ..breakAfterPages = null
+        ..mode = FakeMode.unauthorized;
+      await _tapAndSettle(t, 'server-load');
+      await _tapAndSettle(t, 'confirm-pair-question');
+      expect(
+        find.text('Der Server kennt diese Kassa nicht mehr.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('server-repair')), findsOneWidget);
+    },
+  );
+
+  group('Betrieb am Server ohne Chef', () {
+    const noChef =
+        'Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an.';
+
+    Future<FakeServer> pairWithoutChef(WidgetTester t) async {
+      final server = await pumpUnpaired(t);
+      server.archive('staff', '<uuid>');
+      final c = containerOf(t);
+      final staff = (await c.read(staffRepositoryProvider).all()).first;
+      await c
+          .read(receiptRepositoryProvider)
+          .finalizeCashSale(
+            saleId: 'alt-1',
+            cart: const Cart.empty().add(cola),
+            givenCents: 1000,
+            staff: staff,
+          );
+      c.read(cartProvider.notifier).add(cola);
+      await t.pump();
+      await _tapAndSettle(t, 'server-pair');
+      await _tapAndSettle(t, 'confirm-pair-question');
+      await _enterCode(t);
+      return server;
+    }
+
+    testWidgets(
+      'eingerichtetes Tablet: Hinweis, "Zurück zur Kassa", bonieren und alte PIN gehen weiter',
+      (t) async {
+        await pairWithoutChef(t);
+        final c = containerOf(t);
+        expect(find.byType(PairingView), findsOneWidget);
+        expect(find.text(noChef), findsOneWidget);
+        expect(find.byKey(const Key('pair-recheck')), findsOneWidget);
+        final close = t.widget<PrimaryButton>(
+          find.byKey(const Key('pair-close')),
+        );
+        expect(close.label, 'Zurück zur Kassa');
+        expect(close.filled, isFalse);
+
+        await _tapAndSettle(t, 'pair-close');
+        expect(find.byType(PairingView), findsNothing);
+        expect(find.text('Nicht geladen'), findsOneWidget);
+        expect(c.read(sessionProvider), isNotNull);
+        expect(c.read(cartProvider).isEmpty, isFalse);
+        expect(
+          await c.read(receiptRepositoryProvider).find('alt-1'),
+          isNotNull,
+        );
+        final names = (await c.read(staffRepositoryProvider).all()).map(
+          (s) => s.name,
+        );
+        expect(names, isNot(contains('Chefin')));
+
+        // Die alte PIN meldet weiter an.
+        c.read(sessionProvider.notifier).logout();
+        await t.pumpAndSettle();
+        expect(find.text('PIN eingeben'), findsOneWidget);
+        await typePin(t, '4711');
+        await t.pumpAndSettle();
+        expect(c.read(sessionProvider), isNotNull);
+        expect(c.read(cartProvider).isEmpty, isFalse);
+      },
+    );
+
+    testWidgets(
+      '"Speisekarte laden" in den Einstellungen zeigt denselben Satz und ändert nichts',
+      (t) async {
+        await pairWithoutChef(t);
+        await _tapAndSettle(t, 'pair-close');
+        await _tapAndSettle(t, 'server-load');
+        await _tapAndSettle(t, 'confirm-pair-question');
+        expect(find.text('Nicht geladen'), findsOneWidget);
+        expect(find.text(noChef), findsOneWidget);
+        expect(
+          find.text('Die Speisekarte konnte nicht geladen werden.'),
+          findsNothing,
+        );
+        expect(find.byKey(const Key('server-load')), findsOneWidget);
+        expect(containerOf(t).read(sessionProvider), isNotNull);
+      },
+    );
+
+    testWidgets(
+      'Chef in der Verwaltung angelegt: "Nochmal prüfen" lädt die Speisekarte',
+      (t) async {
+        final server = await pairWithoutChef(t);
+        server.upsert(
+          'staff',
+          FakeServer.staffRow(
+            id: 'neue-chefin',
+            name: 'Neue Chefin',
+            pin: '2468',
+            role: 'chef',
+          ),
+        );
+        await _tapAndSettle(t, 'pair-recheck');
+        expect(find.byType(PairingView), findsNothing);
+        expect(find.text('PIN eingeben'), findsOneWidget);
+        expect(containerOf(t).read(cartProvider).isEmpty, isTrue);
+        await typePin(t, '2468');
+        await t.pumpAndSettle();
+        expect(containerOf(t).read(sessionProvider)?.name, 'Neue Chefin');
+      },
+    );
+  });
 }

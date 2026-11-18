@@ -15,6 +15,10 @@ import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'pairing_controller.dart';
 
+/// Der Hinweis, solange der Betrieb keinen Chef mit PIN hat.
+const noStaffText =
+    'Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an.';
+
 /// Der Satz zu einem Fehler beim Koppeln.
 String pairingFailureText(ServerFailure f) => switch (f) {
   ServerFailure.invalidCode => 'Der Code stimmt nicht oder ist abgelaufen.',
@@ -30,13 +34,22 @@ String pairingFailureText(ServerFailure f) => switch (f) {
 };
 
 class PairingView extends ConsumerWidget {
-  const PairingView({super.key, required this.onBack, required this.onNewCode});
+  const PairingView({
+    super.key,
+    required this.onBack,
+    required this.onNewCode,
+    this.onClose,
+  });
 
   /// "Zurück" auf der Code-Eingabe.
   final VoidCallback onBack;
 
   /// "Mit neuem Code koppeln" nach einem gescheiterten Laden.
   final VoidCallback onNewCode;
+
+  /// "Zurück zur Kassa", wenn der Betrieb am Server keinen Chef hat. Nur
+  /// aus den Einstellungen: dort arbeitet die Kassa mit dem alten Stand.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,6 +63,7 @@ class PairingView extends ConsumerWidget {
             state: state,
             controller: controller,
             onNewCode: onNewCode,
+            onClose: onClose,
           );
     return Scaffold(
       backgroundColor: c.ground,
@@ -170,11 +184,13 @@ class _ConnectedCard extends StatelessWidget {
     required this.state,
     required this.controller,
     required this.onNewCode,
+    required this.onClose,
   });
 
   final PairingState state;
   final PairingController controller;
   final VoidCallback onNewCode;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -184,13 +200,12 @@ class _ConnectedCard extends StatelessWidget {
     final register = state.registerName;
     final Widget body;
     switch (state.step) {
-      case PairingStep.noStaff:
+      case PairingStep.noStaff || PairingStep.noChefOnServer:
+        final close = state.step == PairingStep.noChefOnServer ? onClose : null;
         body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _Notice(
-              'Lege in der Verwaltung zuerst einen Mitarbeiter mit PIN an.',
-            ),
+            const _Notice(noStaffText),
             const SizedBox(height: KassaTokens.spaceHuge),
             PrimaryButton(
               key: const Key('pair-recheck'),
@@ -198,6 +213,17 @@ class _ConnectedCard extends StatelessWidget {
               leading: state.busy ? const _Spinner() : null,
               onPressed: state.busy ? null : controller.recheck,
             ),
+            if (close != null) ...[
+              const SizedBox(height: KassaTokens.spaceXl),
+              // Die Kassa arbeitet mit der alten Speisekarte und den alten
+              // PINs weiter, bis der Betrieb einen Chef hat.
+              PrimaryButton(
+                key: const Key('pair-close'),
+                label: 'Zurück zur Kassa',
+                filled: false,
+                onPressed: state.busy ? null : close,
+              ),
+            ],
           ],
         );
       case PairingStep.loadFailed:

@@ -50,7 +50,7 @@ class SyncStateRepository {
 
   /// Merkt sich die Kassa nach dem Koppeln. Der Abgleich beginnt von vorn:
   /// Cursor und `initialPullDone` schreibt danach nur der Abgleich selbst,
-  /// zusammen mit den Daten.
+  /// zusammen mit den Daten. Ein alter Fehler gilt für die neue Kassa nicht.
   Future<void> saveRegister({
     required String registerId,
     required String registerName,
@@ -66,6 +66,7 @@ class SyncStateRepository {
           pullCursor: const Value(0),
           initialPullDone: const Value(false),
           blocked: const Value(false),
+          lastError: const Value(null),
         ),
       );
 

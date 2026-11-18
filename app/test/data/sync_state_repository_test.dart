@@ -34,7 +34,7 @@ void main() {
       businessId: 'b1',
     );
     await db.customStatement(
-      'UPDATE sync_state SET pull_cursor = 42, initial_pull_done = 1, blocked = 1 WHERE id = 1',
+      "UPDATE sync_state SET pull_cursor = 42, initial_pull_done = 1, blocked = 1, last_error = 'unauthorized' WHERE id = 1",
     );
     var s = await repo.current();
     expect(s.pullCursor, 42);
@@ -52,6 +52,9 @@ void main() {
     expect(s.pullCursor, 0);
     expect(s.initialPullDone, isFalse);
     expect(s.blocked, isFalse);
+    // Eine neu gekoppelte Kassa hat noch keinen Fehler, auch nicht den alten
+    // "unbekannt", der sonst wieder "Neu koppeln" zeigte.
+    expect(s.lastError, isNull);
     expect(s.hasRegister, isTrue);
     expect(s.paired, isFalse);
   });

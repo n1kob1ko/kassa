@@ -6,7 +6,7 @@ import 'package:kassa/devices/printer_discovery.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/fake_devices.dart';
-import '../support/pump.dart' show printerOf;
+import '../support/pump.dart' show printerOf, tapKeys;
 import '../support/fake_server.dart';
 import '../support/server_pump.dart';
 import '../support/settings_pump.dart';
@@ -153,5 +153,34 @@ void main() {
         );
       });
     }
+  }
+
+  // Aus den Einstellungen gekoppelt, der Betrieb am Server hat keinen Chef:
+  // Hinweis, "Nochmal prüfen" und "Zurück zur Kassa".
+  for (final (name, brightness) in [
+    ('hell', Brightness.light),
+    ('dunkel', Brightness.dark),
+  ]) {
+    testWidgets('Koppeln aus den Einstellungen, kein Chef am Server ($name)', (
+      t,
+    ) async {
+      final server = await pumpUnpaired(t, brightness: brightness);
+      server.archive('staff', '<uuid>');
+      await t.ensureVisible(find.byKey(const Key('server-pair')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('server-pair')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('confirm-pair-question')));
+      await t.pumpAndSettle();
+      await tapKeys(t, FakeServer.code.split('').join(' '));
+      await t.tap(find.byKey(const Key('pair-submit')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('pair-close')), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile('goldens/koppeln_kein_chef_am_server_$name.png'),
+      );
+    });
   }
 }

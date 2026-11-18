@@ -72,8 +72,20 @@ void main() {
 
   test('die PIN steht nicht im Klartext in der Datenbank', () async {
     await staff.create(name: 'Chef', pin: '4711', role: StaffRole.chef);
-    final rows = await db.customSelect('SELECT * FROM staff').get();
-    expect(rows.single.data.values.join('|'), isNot(contains('4711')));
+    final row = (await db.customSelect('SELECT * FROM staff').get()).single;
+    // Salz (base64 aus 16 Bytes) und Prüfwert (SHA-256 in Hex): darin kann
+    // "4711" zufällig vorkommen. Sie dürfen nur nicht die PIN sein und müssen
+    // genau diese Form haben (keine PIN angehängt oder vorangestellt).
+    final salt = row.read<String>('pin_salt');
+    final hash = row.read<String>('pin_hash');
+    expect(salt, matches(RegExp(r'^[A-Za-z0-9+/]{22}==$')));
+    expect(hash, matches(RegExp(r'^[0-9a-f]{64}$')));
+    // Jede andere Spalte enthält die PIN gar nicht.
+    final others = Map.of(row.data)
+      ..remove('pin_salt')
+      ..remove('pin_hash');
+    expect(others.values.join('|'), isNot(contains('4711')));
+    expect((await staff.findByPin('4711'))?.name, 'Chef');
   });
 
   test('jeder Mitarbeiter hat sein eigenes Salz', () async {

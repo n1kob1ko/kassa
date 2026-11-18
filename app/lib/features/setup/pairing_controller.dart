@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_sync_providers.dart';
 import '../../data/providers.dart';
 import '../../data/sync_state_repository.dart';
+import '../../sync/pairing_service.dart';
 import '../../sync/server_api.dart';
 
 enum PairingStep {
@@ -25,6 +26,10 @@ enum PairingStep {
   /// Alles geladen, der Betrieb hat aber noch keinen Chef (Mitarbeiter mit
   /// PIN und der Rolle Chef).
   noStaff,
+
+  /// Das Tablet hat schon einen Chef, der Betrieb am Server keinen. Nichts
+  /// wurde ersetzt: die Kassa arbeitet mit dem alten Stand weiter.
+  noChefOnServer,
 
   /// Alles geladen und es gibt einen Chef: die Anmeldung folgt.
   done,
@@ -156,8 +161,15 @@ class PairingController extends Notifier<PairingState> {
   Future<void> _load() async {
     try {
       await ref.read(pairingServiceProvider).loadInitial();
+    } on NoChefOnServerException {
+      if (ref.mounted) {
+        state = state.copyWith(step: PairingStep.noChefOnServer, busy: false);
+      }
+      return;
     } catch (_) {
-      if (ref.mounted) state = state.copyWith(step: PairingStep.loadFailed);
+      if (ref.mounted) {
+        state = state.copyWith(step: PairingStep.loadFailed, busy: false);
+      }
       return;
     }
     await _afterLoad();
@@ -181,9 +193,17 @@ class PairingController extends Notifier<PairingState> {
   }
 
   /// "Nochmal prüfen": holt Neues vom Server. Ist jetzt ein Mitarbeiter da,
-  /// schaltet die Einrichtung von selbst weiter.
+  /// schaltet die Einrichtung von selbst weiter. Fehlte dem Server der Chef,
+  /// ist noch nichts geladen: dann lädt es von vorn (`syncNow` tut vor dem
+  /// ersten Laden nichts).
   Future<void> recheck() async {
-    if (state.step != PairingStep.noStaff || state.busy) return;
+    if (state.busy) return;
+    if (state.step == PairingStep.noChefOnServer) {
+      state = state.copyWith(busy: true);
+      await _load();
+      return;
+    }
+    if (state.step != PairingStep.noStaff) return;
     state = state.copyWith(busy: true);
     await ref.read(syncServiceProvider).syncNow();
     if (!ref.mounted) return;

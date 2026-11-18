@@ -8,10 +8,21 @@
 
 import '../core/clock.dart';
 import '../data/sync_state_repository.dart';
+import '../domain/staff.dart';
 import 'server_api.dart';
 import 'server_changes.dart';
 import 'token_store.dart';
 import 'wire.dart';
+
+/// Das Tablet hat schon einen Chef, der Server aber keinen aktiven: Laden
+/// würde alle Mitarbeiter löschen und die Kassa bis zum nächsten Chef in der
+/// Verwaltung sperren. Am Tablet ist nichts geändert.
+class NoChefOnServerException implements Exception {
+  const NoChefOnServerException();
+
+  @override
+  String toString() => 'NoChefOnServerException';
+}
 
 class PairingService {
   PairingService({
@@ -60,6 +71,11 @@ class PairingService {
   /// Holt alle Seiten ab dem Anfang und ersetzt damit Speisekarte,
   /// Mitarbeiter und Betriebsdaten. Danach ist niemand mehr angemeldet.
   /// Wirft [ServerException], dann ist am Tablet nichts geändert.
+  ///
+  /// Hat das Tablet schon einen Chef und der Server keinen aktiven, ersetzt
+  /// es nichts und wirft [NoChefOnServerException]: die Kassa arbeitet mit
+  /// der alten Speisekarte und den alten PINs weiter. Ein leeres Tablet lädt
+  /// trotzdem und wartet danach auf einen Chef.
   Future<void> loadInitial() async {
     final token = await _tokens.read();
     if (token == null) throw const ServerException(ServerFailure.unauthorized);
@@ -75,7 +91,24 @@ class PairingService {
       }
       since = page.next;
     }
+    if (!_hasActiveChef(pages) && await _changes.hasChef()) {
+      throw const NoChefOnServerException();
+    }
     await _changes.replaceAll(pages, at: _clock.now());
-    _onCatalogReplaced();
+    try {
+      _onCatalogReplaced();
+    } catch (_) {
+      // Die Daten sind schon ersetzt: das Laden ist gelungen, auch wenn das
+      // Aufräumen danach (Abmelden, Bon leeren) scheitert.
+    }
+  }
+
+  /// Ob nach allen Seiten ein Chef aktiv ist. Eine spätere Seite gewinnt.
+  static bool _hasActiveChef(List<PullResponse> pages) {
+    final staff = <String, WireStaff>{
+      for (final page in pages)
+        for (final s in page.staff) s.id: s,
+    };
+    return staff.values.any((s) => s.role == StaffRole.chef && !s.archived);
   }
 }

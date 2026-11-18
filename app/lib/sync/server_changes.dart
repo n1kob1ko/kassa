@@ -12,12 +12,23 @@ import '../data/catalog_repository.dart';
 import '../data/database.dart';
 import '../data/settings_repository.dart';
 import '../domain/catalog.dart';
+import '../domain/staff.dart';
 import 'wire.dart';
 
 class ServerChanges {
   ServerChanges(this._db);
 
   final KassaDatabase _db;
+
+  /// Ob am Tablet schon ein Chef ist (Mitarbeiter mit PIN und der Rolle Chef).
+  Future<bool> hasChef() async {
+    final row =
+        await (_db.select(_db.staffRows)
+              ..where((t) => t.role.equals(StaffRole.chef.name))
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
 
   /// Das erste Holen nach dem Koppeln: das Tablet hat danach genau den Stand
   /// aus [pages]. Was der Server nicht kennt, ist stillgelegt (Kategorien,

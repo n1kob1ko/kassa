@@ -278,4 +278,107 @@ void main() {
       expect(await SettingsRepository(t.db).readDraft(), isNull);
     },
   );
+
+  group('Server ohne aktiven Chef', () {
+    /// Die Chefin der Beispieldatei hat am Server die Kennung "<uuid>".
+    const serverChef = '<uuid>';
+
+    test('eingerichtetes Tablet: nichts ersetzt, NoChefOnServerException, Anmeldung und Bon bleiben', () async {
+      final t = await Tablet.open();
+      await t.pairing.pair(FakeServer.code);
+      t.server.archive('staff', serverChef);
+      t.server.upsert(
+        'staff',
+        FakeServer.staffRow(id: 'aushilfe', name: 'Aushilfe', pin: '5555'),
+      );
+      expect(
+        await t.container.read(sessionProvider.notifier).login('1111'),
+        isTrue,
+      );
+      final sub = t.container.listen(cartProvider, (_, _) {});
+      addTearDown(sub.close);
+      t.container.listen(catalogStreamProvider, (_, _) {});
+      await t.container.read(catalogStreamProvider.future);
+      t.container.read(cartProvider.notifier).add(cola);
+      await pumpEventQueue();
+      final before = await t.menu();
+      final stateBefore = await t.state();
+
+      await expectLater(
+        t.pairing.loadInitial(),
+        throwsA(isA<NoChefOnServerException>()),
+      );
+      await pumpEventQueue();
+
+      expect(await t.menu(), before);
+      final s = await t.state();
+      expect(s.initialPullDone, isFalse);
+      expect(s.pullCursor, stateBefore.pullCursor);
+      expect(s.registerId, FakeServer.registerId);
+      expect(t.container.read(sessionProvider)?.name, 'Anna');
+      expect(t.container.read(cartProvider).isEmpty, isFalse);
+      expect(await SettingsRepository(t.db).readDraft(), isNotNull);
+      expect(await t.container.read(setupCompleteProvider.future), isTrue);
+    });
+
+    test('ist danach ein Chef am Server, lädt loadInitial wie sonst', () async {
+      final t = await Tablet.open();
+      await t.pairing.pair(FakeServer.code);
+      t.server.archive('staff', serverChef);
+      await expectLater(
+        t.pairing.loadInitial(),
+        throwsA(isA<NoChefOnServerException>()),
+      );
+
+      t.server.upsert(
+        'staff',
+        FakeServer.staffRow(
+          id: 'neue-chefin',
+          name: 'Neue Chefin',
+          pin: '2468',
+          role: 'chef',
+        ),
+      );
+      await t.pairing.loadInitial();
+
+      expect((await t.state()).paired, isTrue);
+      final staff = await StaffRepository(t.db).all();
+      expect(staff.map((s) => s.name), ['Neue Chefin']);
+    });
+
+    test('leeres Tablet: ersetzt wie bisher, danach fehlt der Chef', () async {
+      final t = await Tablet.open(withMenu: false);
+      await t.pairing.pair(FakeServer.code);
+      t.server.archive('staff', serverChef);
+
+      await t.pairing.loadInitial();
+
+      expect((await t.state()).paired, isTrue);
+      expect(await CatalogRepository(t.db).current(), isNotNull);
+      expect(await StaffRepository(t.db).all(), isEmpty);
+      expect(await t.container.read(setupCompleteProvider.future), isFalse);
+    });
+  });
+
+  test('wirft das Aufräumen nach dem Ersetzen, gilt das Laden trotzdem als gelungen', () async {
+    final t = await Tablet.open();
+    var called = 0;
+    final pairing = PairingService(
+      api: t.container.read(serverApiProvider),
+      tokens: t.tokens,
+      syncState: SyncStateRepository(t.db),
+      changes: ServerChanges(t.db),
+      clock: FixedClock(now),
+      onCatalogReplaced: () {
+        called++;
+        throw StateError('Bon kaputt');
+      },
+    );
+    await pairing.pair(FakeServer.code);
+
+    await pairing.loadInitial();
+
+    expect(called, 1);
+    expect((await t.state()).paired, isTrue);
+  });
 }

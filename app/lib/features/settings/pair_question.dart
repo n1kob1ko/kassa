@@ -103,6 +103,7 @@ class PairingScreen extends ConsumerWidget {
       child: PairingView(
         onBack: () => Navigator.of(context).maybePop(),
         onNewCode: ref.read(pairingControllerProvider.notifier).restart,
+        onClose: () => Navigator.of(context).maybePop(),
       ),
     );
   }
