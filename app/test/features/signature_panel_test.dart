@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/features/settings/signature_panel.dart';
@@ -70,6 +72,15 @@ Future<String> _idOf(WidgetTester t, String kind) async =>
 
 Future<RksvState> _state(WidgetTester t) =>
     containerOf(t).read(rksvRepositoryProvider).current();
+
+/// Schreibt nur den Modus in den Stand, ohne Kette.
+Future<void> _setMode(WidgetTester t, RksvMode mode) async {
+  final db = containerOf(t).read(databaseProvider);
+  await (db.update(db.rksvStateRows)..where((r) => r.id.equals(1))).write(
+    RksvStateRowsCompanion(mode: Value(mode.name)),
+  );
+  await t.pumpAndSettle();
+}
 
 class _BrokenSaver extends RecordingProtocolSaver {
   @override
@@ -445,5 +456,27 @@ void main() {
     await _tap(t, 'rksv-notice-ok');
     expect(find.text(notice), findsNothing);
     expect((await _state(t)).notice, isNull);
+  });
+
+  testWidgets('im Betrieb (live): keine Zeile "Zum Ausprobieren einschalten"', (
+    t,
+  ) async {
+    await _settings(t);
+    await _setMode(t, RksvMode.live);
+    expect((await _state(t)).mode, RksvMode.live);
+    expect(_inCard(find.text('In Betrieb')), findsOneWidget);
+    expect(_key('rksv-probe-on'), findsNothing);
+    expect(_inCard(find.text('Zum Ausprobieren einschalten')), findsNothing);
+  });
+
+  testWidgets('Probe ohne Kassen-ID: der Satz ohne "Kassen-ID"', (t) async {
+    await _settings(t);
+    await _setMode(t, RksvMode.probe);
+    expect((await _state(t)).cashBoxId, isNull);
+    expect(
+      _inCard(find.text('Probe-Signatur, nicht für den echten Betrieb.')),
+      findsOneWidget,
+    );
+    expect(_inCard(find.textContaining('Kassen-ID')), findsNothing);
   });
 }

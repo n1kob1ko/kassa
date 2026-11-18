@@ -199,9 +199,10 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final Widget pill;
     switch (state.mode) {
       case RksvMode.probe:
-        help =
-            'Probe-Signatur, nicht für den echten Betrieb. '
-            'Kassen-ID ${state.cashBoxId ?? ''}.';
+        help = state.cashBoxId == null
+            ? 'Probe-Signatur, nicht für den echten Betrieb.'
+            : 'Probe-Signatur, nicht für den echten Betrieb. '
+                  'Kassen-ID ${state.cashBoxId}.';
         pill = state.outage
             ? const WarnPill('Probe, Signatur ausgefallen')
             : const _AccentPill('Probe');
@@ -234,7 +235,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             busy: _busy,
             onDone: isChef ? _completeTask : null,
           ),
-        if (isChef && !probe)
+        if (isChef && state.mode == RksvMode.off)
           _action(
             _Action.enable,
             key: 'rksv-probe-on',
