@@ -61,7 +61,7 @@
 - **Datenbank:** Version 4 mit Migration und Test von Version 3 mit vorhandenen Bons. Die Trigger für unveränderliche Bons gelten nach der Migration weiter.
 - **Öffentliches Repo:** keine echten Umsätze, keine Server-Adresse, nichts aus `/mnt/project-files/` (Ausnahme: das erfundene Test-Zertifikat, schon im Repo). Testdaten sind der erfundene "Beispiel-Imbiss".
 - **Sprache:** Bezeichner englisch, Texte am Bildschirm und am Bon deutsch in der du-Form, genau wie in diesem Plan. Kein Gedankenstrich in deutschen Texten. Commit-Meldungen deutsch.
-- **Touch-Regel:** kein Textfeld (`test/no_text_field_test.dart`). Neue Tasten mindestens 64 dp hoch, Hauptaktionen 76 dp, wie im Bestand.
+- **Touch-Regel:** kein Textfeld (`test/no_text_field_test.dart`). Tippflächen mindestens 48 dp (`DESIGN.md`). Tasten in Blättern und Rückfragen mindestens 64 dp hoch, Hauptaktionen 76 dp; Tasten rechts in einer Zeile der Einstellungen 56 dp, wie in `card_panel.dart`.
 - **Bildschirme** folgen `docs/design-regeln.md`, `DESIGN.md` und den Bildern unter `/mnt/project-files/kassa-entwurf/rksv/` (Task 0). Material-Widgets aus `package:material_ui/material_ui.dart`.
 - Nur der Chef sieht und bedient die Tasten der Karte "Signatur" (`staff.isChef`), wie bei den anderen Chef-Bereichen der Einstellungen.
 - Nicht anfassen: `app/lib/rksv/card/` (S1a), `PrinterChannel.kt`, `CardReaderChannel.kt`, `server/`.
@@ -571,7 +571,7 @@ Uint8List encodeEscPos(List<PrintOp> document, {bool qrAsImage = false, int colu
 - Create: `app/lib/features/settings/probe_question.dart`, `app/lib/features/settings/protocol_export_sheet.dart`, `app/lib/features/settings/rksv_task_row.dart`
 - Test: `app/test/features/signature_panel_test.dart`, `app/test/golden/signature_panel_golden_test.dart`
 
-**Inhalt der Karte** (Bilder `s1b-1` bis `s1b-3` und `s1b-7` in `/mnt/project-files/kassa-entwurf/rksv/`; Keys in Klammern). Jede Aktion ist eine Zeile mit Titel, Hilfe darunter und rechts einer Taste (neutral, mindestens 52 dp hoch):
+**Inhalt der Karte** (Bilder `s1b-1` bis `s1b-3` und `s1b-7` in `/mnt/project-files/kassa-entwurf/rksv/`; Keys in Klammern). Jede Aktion ist eine Zeile mit Titel, Hilfe darunter und rechts einer Taste (neutral, 56 dp hoch wie in `card_panel.dart`; die Bilder zeigen sie etwas kleiner):
 
 - Zeile `Signatur der Bons` mit Zustand als Pille: `Nicht eingerichtet` (neutral), `Probe` (Akzent), `Probe, Signatur ausgefallen` (Warnung). Hilfe: bei off `Für die Registrierkassen-Pflicht. Noch nicht eingerichtet.`; bei Probe `Probe-Signatur, nicht für den echten Betrieb. Kassen-ID <Kennung>.`
 - Steht `notice`: ein ruhiger Hinweis mit dem Text und der Taste `Verstanden` (`rksv-notice-ok`), die `clearNotice` ruft.
