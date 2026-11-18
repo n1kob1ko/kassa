@@ -14,7 +14,9 @@ export type TestApp = {
   close(): Promise<void>;
 };
 
-export async function testApp(overrides: Partial<AppDeps> & { config?: Partial<Config> } = {}): Promise<TestApp> {
+export async function testApp(
+  overrides: Omit<Partial<AppDeps>, 'config'> & { config?: Partial<Config> } = {},
+): Promise<TestApp> {
   const testDb = await createTestDb();
   const fileDir = await mkdtemp(join(tmpdir(), 'kassa-files-'));
   const now = { value: new Date('2026-11-18T10:00:00Z') };

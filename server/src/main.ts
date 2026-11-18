@@ -1,4 +1,4 @@
-import { buildApp } from './app.js';
+import { buildApp, loggerOptions } from './app.js';
 import { loadConfig } from './config.js';
 import { closeDb, openDb } from './db/db.js';
 import { migrate } from './db/migrate.js';
@@ -9,12 +9,7 @@ const db = openDb(config);
 
 const app = await buildApp(
   { config, db, files: undefined, now: () => new Date() },
-  {
-    logger: {
-      level: 'info',
-      redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
-    },
-  },
+  { logger: loggerOptions() },
 );
 
 const stop = async () => {
