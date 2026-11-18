@@ -1,0 +1,29 @@
+{
+ "aesKeyBase64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+ "cashBoxId": "BSPIMB01",
+ "counters": [
+  {"receiptId": "1", "cents": 0, "encrypted": "NftOIZdMx+o="},
+  {"receiptId": "2", "cents": 1290, "encrypted": "Fe6OUhA9rZg="},
+  {"receiptId": "3", "cents": 1, "encrypted": "f6ElYDnPXKg="},
+  {"receiptId": "17", "cents": 123456789, "encrypted": "7i1AptSNbkA="},
+  {"receiptId": "18", "cents": -500, "encrypted": "jbFKuKiwD10="},
+  {"receiptId": "4711", "cents": 99999999999, "encrypted": "+Xi9iZH7rBw="},
+  {"receiptId": "5", "cents": -1, "encrypted": "uT9UQADlWS4="}
+ ],
+ "chainFromCashBoxId": "KJH6Cn4qea4=",
+ "stornoMarker": "U1RP",
+ "text1": "_R1-AT1_BSPIMB01_1_2026-11-18T13:05:09_0,00_0,00_0,00_0,00_0,00_NftOIZdMx+o=_1a2b3c_KJH6Cn4qea4=",
+ "fakeSignatureBase64": "AQQHCg0QExYZHB8iJSgrLjE0Nzo9QENGSUxPUlVYW15hZGdqbXBzdnl8f4KFiIuOkZSXmp2go6aprK+ytbi7vg==",
+ "jws1": "eyJhbGciOiJFUzI1NiJ9.X1IxLUFUMV9CU1BJTUIwMV8xXzIwMjYtMTEtMThUMTM6MDU6MDlfMCwwMF8wLDAwXzAsMDBfMCwwMF8wLDAwX05mdE9JWmRNeCtvPV8xYTJiM2NfS0pINkNuNHFlYTQ9.AQQHCg0QExYZHB8iJSgrLjE0Nzo9QENGSUxPUlVYW15hZGdqbXBzdnl8f4KFiIuOkZSXmp2go6aprK-ytbi7vg",
+ "qr1": "_R1-AT1_BSPIMB01_1_2026-11-18T13:05:09_0,00_0,00_0,00_0,00_0,00_NftOIZdMx+o=_1a2b3c_KJH6Cn4qea4=_AQQHCg0QExYZHB8iJSgrLjE0Nzo9QENGSUxPUlVYW15hZGdqbXBzdnl8f4KFiIuOkZSXmp2go6aprK+ytbi7vg==",
+ "chainAfterJws1": "uYBCYLNS/Tc=",
+ "text2": "_R1-AT1_BSPIMB01_2_2026-11-18T13:07:41_12,90_4,50_0,00_0,25_0,00_Fe6OUhA9rnc=_1a2b3c_uYBCYLNS/Tc=",
+ "jws2Damaged": "eyJhbGciOiJFUzI1NiJ9.X1IxLUFUMV9CU1BJTUIwMV8yXzIwMjYtMTEtMThUMTM6MDc6NDFfMTIsOTBfNCw1MF8wLDAwXzAsMjVfMCwwMF9GZTZPVWhBOXJuYz1fMWEyYjNjX3VZQkNZTE5TL1RjPQ.U2ljaGVyaGVpdHNlaW5yaWNodHVuZyBhdXNnZWZhbGxlbg",
+ "qr2Damaged": "_R1-AT1_BSPIMB01_2_2026-11-18T13:07:41_12,90_4,50_0,00_0,25_0,00_Fe6OUhA9rnc=_1a2b3c_uYBCYLNS/Tc=_U2ljaGVyaGVpdHNlaW5yaWNodHVuZyBhdXNnZWZhbGxlbg==",
+ "damagedDetected": true,
+ "chainAfterJws2": "u5cB05SqUCw=",
+ "text3Storno": "_R1-AT1_BSPIMB01_3_2026-12-01T00:00:00_-12,90_-4,50_0,00_-0,25_0,00_U1RP_1a2b3c_u5cB05SqUCw=",
+ "text4": "_R1-AT1_BSPIMB01_4_2027-01-02T09:00:00_999,99_0,00_0,05_0,00_-0,01_RUIU9YQIQJc=_1a2b3c_u5cB05SqUCw=",
+ "derSignatureHex": "304502200102030405060708091011121314151617181920212223242526272829303132022100a1a2a3a4a5a6a7a8a9b0b1b2b3b4b5b6b7b8b9c0c1c2c3c4c5c6c7c8c9d0d1d2",
+ "concatSignatureBase64": "AQIDBAUGBwgJEBESExQVFhcYGSAhIiMkJSYnKCkwMTKhoqOkpaanqKmwsbKztLW2t7i5wMHCw8TFxsfIydDR0g=="
+}
