@@ -61,7 +61,8 @@ String receiptPillLabel(Receipt r) {
   return r.payment?.kind == PaymentKind.cash ? 'Bar' : 'Karte';
 }
 
-/// Status-Pille: Zahlungsart ruhig, Storno und Storniert in Rot.
+/// Status-Pille: Zahlungsart ruhig, Storno und Storniert in Rot, die
+/// Bezeichnung eines Sonderbelegs in der Akzentfarbe.
 class ReceiptPill extends StatelessWidget {
   const ReceiptPill(this.receipt, {super.key});
 
@@ -71,19 +72,25 @@ class ReceiptPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final red = receipt.kind == ReceiptKind.voided || receipt.isVoided;
+    final special = receipt.kind.isSpecial;
+    final (bg, fg) = red
+        ? (c.spicyBg, c.spicyFg)
+        : special
+        ? (c.accentSoft, c.accentInk)
+        : (c.fill, c.ink);
     return Container(
       height: 26,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: red ? c.spicyBg : c.fill,
+        color: bg,
         borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
       ),
       child: Text(
         receiptPillLabel(receipt),
         maxLines: 1,
         style: Theme.of(context).textTheme.labelLarge!
-            .copyWith(fontSize: 12.5, color: red ? c.spicyFg : c.ink),
+            .copyWith(fontSize: 12.5, color: fg),
       ),
     );
   }

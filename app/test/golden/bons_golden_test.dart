@@ -1,11 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/data/database.dart';
+import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/bons_pump.dart';
 import '../support/cash_pump.dart' show setUpPrinter;
 import '../support/demo_fixtures.dart';
+import '../support/kassa_pump.dart' show containerOf;
+import '../support/pump.dart' show memoryOverrides;
+import '../support/signature_pump.dart';
 
 // Bildvergleich des Bereichs Bons gegen den freigegebenen Entwurf. Neu
 // erzeugen mit `flutter test --update-goldens test/golden/bons_golden_test.dart`.
@@ -84,6 +91,49 @@ void main() {
         matchesGoldenFile(
           'goldens/bons_drucken_${dark ? 'dunkel' : 'hell'}.png',
         ),
+      );
+    });
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets('Bon mit QR-Code der Probe-Signatur und ein Monatsbeleg '
+        '(${dark ? 'dunkel' : 'hell'})', (t) async {
+      await pumpBonsWithSales(
+        t,
+        0,
+        brightness: dark ? Brightness.dark : Brightness.light,
+        overrides: [...await memoryOverrides(), ...signatureOverrides()],
+      );
+      final sale = await sellCash(
+        t,
+        cart: const Cart.empty().add(teigtaschen).add(cola),
+      );
+      await seedProbe(t);
+      await stampReceipt(t, sale.id);
+      final c = containerOf(t);
+      final db = c.read(databaseProvider);
+      final staff = c.read(sessionProvider)!;
+      await db
+          .into(db.receiptRows)
+          .insert(
+            ReceiptRowsCompanion.insert(
+              id: 'm1',
+              number: 2,
+              createdAt: c.read(clockProvider).now(),
+              staffId: staff.id,
+              staffName: staff.name,
+              kind: ReceiptKind.month.name,
+              goodsCents: 0,
+              depositCents: 0,
+              totalCents: 0,
+            ),
+          );
+      await t.pumpAndSettle();
+      await openReceipt(t, 1);
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile('goldens/bons_qr_${dark ? 'dunkel' : 'hell'}.png'),
       );
     });
   }

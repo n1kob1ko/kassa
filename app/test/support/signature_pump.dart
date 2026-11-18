@@ -10,13 +10,17 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/rksv/core/rksv_code.dart';
+import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 
+import 'fake_signature_unit.dart';
 import 'kassa_pump.dart' show containerOf;
 import 'rksv_rig.dart' show RecordingProtocolSaver;
 
+export 'fake_signature_unit.dart';
 export 'rksv_rig.dart' show RecordingProtocolSaver;
 
 /// Geschützter Speicher im Speicher und [saver] statt des Android-Fensters.
@@ -91,5 +95,52 @@ final twoTasks = [
     id: 'backup-2026-Q4',
     kind: RksvTaskKind.backupProtocol,
     createdAt: DateTime(2026, 11, 17, 9),
+  ),
+];
+
+/// Der Text im QR-Code der Bildvergleiche (fest, damit das Bild gleich
+/// bleibt; kein echter signierter Bon).
+const fixedQrPayload =
+    '_R1-AT100_K7QM2XB4HN_1_2026-11-17T11:00:00_0,00_3,15_0,00_0,00_0,00_'
+    'U2VLIGtpbmQgMA==_01_AAAAAAAAAAA=';
+
+/// Gibt dem Bon [receiptId] einen festen Eintrag im Protokoll der Kette 1
+/// (vorher [seedProbe]). Mit [damaged] als Ausfall-Eintrag.
+Future<void> stampReceipt(
+  WidgetTester t,
+  String receiptId, {
+  int position = 1,
+  bool damaged = false,
+}) async {
+  final db = containerOf(t).read(databaseProvider);
+  final signature = Uint8List.fromList([for (var i = 0; i < 64; i++) i * 3]);
+  await db
+      .into(db.rksvEntryRows)
+      .insert(
+        RksvEntryRowsCompanion.insert(
+          chain: 1,
+          position: position,
+          receiptId: receiptId,
+          jws: damaged
+              ? jwsDamaged(fixedQrPayload)
+              : jwsCompact(fixedQrPayload, signature),
+          damaged: damaged,
+          certSerial: '01',
+        ),
+      );
+  await t.pumpAndSettle();
+}
+
+/// Wie [signatureOverrides], aber das Journal signiert mit [fake] statt mit
+/// der Probe-Signatur: So lässt sich ein Ausfall herbeiführen und beenden.
+List<Override> fakeSignatureOverrides(FakeSignatureUnit fake) => [
+  ...signatureOverrides(),
+  rksvJournalProvider.overrideWith(
+    (ref) => RksvJournal(
+      ref.watch(databaseProvider),
+      ref.watch(rksvSecretsProvider),
+      (_) async => fake,
+      ref.watch(clockProvider),
+    ),
   ),
 ];

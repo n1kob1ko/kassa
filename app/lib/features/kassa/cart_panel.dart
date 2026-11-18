@@ -19,18 +19,21 @@ import 'cart_line_row.dart';
 /// [canPay] ist `false`, solange etwas zusammengestellt wird. "Karte" ist nur
 /// aktiv, wenn das Terminal angemeldet ist, Internet da ist und die Summe
 /// mindestens den Kleinstbetrag des Terminals erreicht; sonst nennt eine Zeile
-/// unter dem Wort den ersten Grund.
+/// unter dem Wort den ersten Grund. [notice] steht über dem Kopf (der
+/// Hinweis zum Ausfall der Signatur).
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
     required this.onPayCash,
     required this.onPayCard,
     this.canPay = true,
+    this.notice,
   });
 
   final VoidCallback onPayCash;
   final VoidCallback onPayCard;
   final bool canPay;
+  final Widget? notice;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -113,6 +116,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       ),
       child: Column(
         children: [
+          ?widget.notice,
           _Header(count: count, empty: cart.isEmpty, onClear: _clear),
           Expanded(
             child: DecoratedBox(

@@ -5,23 +5,29 @@ import '../../domain/receipt.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
-const _failText =
+const voidFailText =
     'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.';
 
-/// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen.
+/// Der Bon gehört nicht zur laufenden Kette der Signatur.
+const voidOlderThanProbeText =
+    'Dieser Bon ist älter als die Probe-Signatur und kann nicht storniert '
+    'werden.';
+
+/// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] ist
+/// der Satz, warum der letzte Versuch nicht geklappt hat.
 class VoidQuestion extends StatelessWidget {
   const VoidQuestion({
     super.key,
     required this.receipt,
     required this.busy,
-    required this.failed,
+    required this.failure,
     required this.onCancel,
     required this.onConfirm,
   });
 
   final Receipt receipt;
   final bool busy;
-  final bool failed;
+  final String? failure;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
 
@@ -76,10 +82,11 @@ class VoidQuestion extends StatelessWidget {
               ),
             ),
           ],
-          if (failed) ...[
+          if (failure case final failure?) ...[
             const SizedBox(height: KassaTokens.spaceSm),
             Text(
-              _failText,
+              failure,
+              key: const Key('void-failure'),
               style: text.bodyMedium!.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,

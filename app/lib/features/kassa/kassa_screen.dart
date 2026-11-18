@@ -20,6 +20,7 @@ import 'cash_sheet.dart';
 import 'category_rail.dart';
 import 'item_grid.dart';
 import 'modifier_panel.dart';
+import 'outage_banner.dart';
 import 'sale_done.dart';
 import 'sale_service.dart';
 
@@ -308,6 +309,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             onPayCash: () => setState(() => _side = _Side.paying),
             onPayCard: _payByCard,
             canPay: building == null,
+            notice: const OutageBanner(),
           ),
           _Side.paying => _AboveBottomBar(
             child: CashSheet(

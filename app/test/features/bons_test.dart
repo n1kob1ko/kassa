@@ -537,8 +537,10 @@ void main() {
     expect(find.byKey(const Key('receipt-2')), findsOneWidget);
 
     await openReceipt(t, 2);
-    expect(find.text('Bon Nr. 2'), findsOneWidget);
-    expect(find.text('MONATSBELEG'), findsOneWidget);
+    // Die Bezeichnung ist der Titel (Pille in der Liste und Titel rechts).
+    expect(find.text('Bon Nr. 2'), findsNothing);
+    expect(find.text('Monatsbeleg'), findsNWidgets(2));
+    expect(find.text('Erstellt von Chef'), findsOneWidget);
     expect(find.text('Zahlung'), findsNothing);
     expect(find.text('Gegeben'), findsNothing);
     expect(textOf(t, const Key('detail-total')), '0,00 €');

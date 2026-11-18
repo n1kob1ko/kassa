@@ -4,10 +4,12 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../data/providers.dart';
+import '../../data/receipt_repository.dart' show NotInCurrentChainException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
 import '../../ui/primary_button.dart';
+import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
@@ -34,7 +36,9 @@ class ReceiptDetail extends ConsumerStatefulWidget {
 class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
   bool _asking = false;
   bool _busy = false;
-  bool _failed = false;
+
+  /// Warum der letzte Storno nicht geklappt hat, sonst `null`.
+  String? _failure;
 
   Receipt? _find(String? id) {
     for (final r in widget.all) {
@@ -49,7 +53,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     if (staff == null) return;
     setState(() {
       _busy = true;
-      _failed = false;
+      _failure = null;
     });
     try {
       final result = await ref
@@ -61,11 +65,13 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         _asking = false;
         _busy = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _failed = true;
+        _failure = e is NotInCurrentChainException
+            ? voidOlderThanProbeText
+            : voidFailText;
       });
     }
   }
@@ -129,10 +135,10 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                   VoidQuestion(
                     receipt: receipt,
                     busy: _busy,
-                    failed: _failed,
+                    failure: _failure,
                     onCancel: () => setState(() {
                       _asking = false;
-                      _failed = false;
+                      _failure = null;
                     }),
                     onConfirm: () => _confirm(receipt),
                   )
@@ -205,6 +211,8 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    // Ein Sonderbeleg heißt nach seiner Art; die Pille sagte dasselbe.
+    final special = receipt.kind.specialTitle;
     return Container(
       height: KassaTokens.receiptHeaderHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -216,7 +224,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            'Bon Nr. ${receipt.number}',
+            special ?? 'Bon Nr. ${receipt.number}',
             maxLines: 1,
             style: text.headlineMedium,
           ),
@@ -235,8 +243,10 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: KassaTokens.spaceLg),
-          ReceiptPill(receipt),
+          if (special == null) ...[
+            const SizedBox(width: KassaTokens.spaceLg),
+            ReceiptPill(receipt),
+          ],
         ],
       ),
     );
@@ -266,7 +276,8 @@ class _Body extends StatelessWidget {
     final payment = r.payment;
     final cash =
         r.kind == ReceiptKind.sale && payment?.kind == PaymentKind.cash;
-    final special = r.kind.specialTitle;
+    final special = r.kind.isSpecial;
+    final rksv = r.rksv;
     final d = r.createdAt;
     return ListView(
       key: const Key('detail-scroll'),
@@ -314,25 +325,16 @@ class _Body extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: c.ink,
                   ),
-                )
-              else if (special != null)
-                Text(
-                  special.toUpperCase(),
-                  style: small.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: c.ink,
-                  ),
                 ),
               Text(
                 '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}',
                 style: small,
               ),
-              Text(
-                r.kind == ReceiptKind.voided
-                    ? 'Storniert von ${r.staffName}'
-                    : 'Boniert von ${r.staffName}',
-                style: small,
-              ),
+              Text(switch (r.kind) {
+                ReceiptKind.voided => 'Storniert von ${r.staffName}',
+                _ when special => 'Erstellt von ${r.staffName}',
+                _ => 'Boniert von ${r.staffName}',
+              }, style: small),
               if (r.isVoided)
                 Padding(
                   padding: const EdgeInsets.only(top: KassaTokens.spaceSm),
@@ -346,7 +348,63 @@ class _Body extends StatelessWidget {
             ],
           ),
         ),
+        if (rksv != null) _SignatureBlock(rksv),
       ],
+    );
+  }
+}
+
+/// Unter der Zahlung: links der QR-Code (180 dp), rechts die Kassen-ID und
+/// klein, was der Code ist, bzw. dass die Signatur ausgefallen war.
+class _SignatureBlock extends StatelessWidget {
+  const _SignatureBlock(this.stamp);
+
+  final RksvStamp stamp;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final small = text.bodySmall!.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.35,
+      color: c.ink2,
+    );
+    return Padding(
+      key: const Key('receipt-signature'),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Row(
+        children: [
+          QrView(data: stamp.qrText),
+          const SizedBox(width: KassaTokens.spaceXxl),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kassen-ID ${stamp.cashBoxId}',
+                  style: text.bodyMedium!.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: c.ink,
+                  ),
+                ),
+                const SizedBox(height: KassaTokens.spaceXs),
+                if (stamp.damaged)
+                  Text('Sicherheitseinrichtung ausgefallen', style: small)
+                else if (stamp.probe) ...[
+                  Text('Testbon mit Probe-Signatur.', style: small),
+                  Text(
+                    'Der QR-Code steht auch am gedruckten Bon.',
+                    style: small,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

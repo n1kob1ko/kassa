@@ -1,8 +1,11 @@
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/kassa_pump.dart';
+import '../support/pump.dart' show memoryOverrides;
+import '../support/signature_pump.dart';
 
 // Bildvergleich des Kassenbildschirms gegen den freigegebenen Entwurf. Neu
 // erzeugen mit `flutter test --update-goldens test/golden/kassa_golden_test.dart`.
@@ -13,8 +16,9 @@ Future<void> _threeLines(
   Size size = const Size(1280, 800),
   Brightness brightness = Brightness.light,
   bool images = false,
+  List<Override>? overrides,
 }) async {
-  await pumpKassa(t, size: size, brightness: brightness);
+  await pumpKassa(t, size: size, brightness: brightness, overrides: overrides);
   if (images) {
     await t.tap(find.byKey(const Key('segment-Mit Bildern')));
     await t.pump();
@@ -73,6 +77,19 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/kassa_bilder_hell.png'),
+    );
+  });
+
+  testWidgets('Kassa mit Hinweis zum Ausfall der Signatur (hell)', (t) async {
+    await _threeLines(
+      t,
+      overrides: [...await memoryOverrides(), ...signatureOverrides()],
+    );
+    await seedProbe(t, outageSince: DateTime(2026, 11, 17, 10, 5));
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/kassa_ausfall_hell.png'),
     );
   });
 }

@@ -4,9 +4,12 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../domain/day.dart';
+import '../../rksv/rksv_state.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart' show germanMonths, germanWeekdays;
 import '../login/session.dart';
+import '../overview/overview_cards.dart' show OverviewCard;
+import '../settings/rksv_task_row.dart';
 import 'cash_movement_sheet.dart';
 import 'count_cash_sheet.dart';
 import 'day_closed_view.dart';
@@ -19,7 +22,8 @@ const _entry = KeypadInput(maxIntDigits: 6);
 /// Tages, rechts in der festen Spalte immer ein Schritt: Wechselgeld am
 /// Morgen, Zählen, In der Lade lassen, eine Bargeld-Bewegung oder "Tag
 /// abgeschlossen". Jedes Schreiben geht über das [DayRepository] mit der
-/// angemeldeten Person.
+/// angemeldeten Person. Unter den Summen stehen die offenen Aufgaben der
+/// Signatur; sie sperren den Abschluss nicht.
 class CloseScreen extends ConsumerStatefulWidget {
   const CloseScreen({super.key, required this.onToKassa});
 
@@ -247,14 +251,21 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
                     child: SingleChildScrollView(
                       key: const Key('close-scroll'),
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: DaySummaryCards(
-                        summary: summary,
-                        drawer: drawer,
-                        movement: open ? _move : null,
-                        canMove: open && !needsFloat,
-                        onCashIn: () => _toggleMove(CashMovementKind.deposit),
-                        onCashOut: () =>
-                            _toggleMove(CashMovementKind.withdrawal),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DaySummaryCards(
+                            summary: summary,
+                            drawer: drawer,
+                            movement: open ? _move : null,
+                            canMove: open && !needsFloat,
+                            onCashIn: () =>
+                                _toggleMove(CashMovementKind.deposit),
+                            onCashOut: () =>
+                                _toggleMove(CashMovementKind.withdrawal),
+                          ),
+                          const _RksvTasksCard(),
+                        ],
                       ),
                     ),
                   ),
@@ -264,6 +275,51 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         ),
         column,
       ],
+    );
+  }
+}
+
+/// Die offenen Aufgaben der Signatur als Karte, wie in den Einstellungen
+/// ([RksvTaskBlock]); "Erledigt" nur für den Chef. Ohne Aufgabe ist nichts
+/// da.
+class _RksvTasksCard extends ConsumerStatefulWidget {
+  const _RksvTasksCard();
+
+  @override
+  ConsumerState<_RksvTasksCard> createState() => _RksvTasksCardState();
+}
+
+class _RksvTasksCardState extends ConsumerState<_RksvTasksCard> {
+  bool _busy = false;
+
+  Future<void> _complete(RksvTask task) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(rksvRepositoryProvider).completeTask(task.id);
+    } catch (_) {
+      // Die Aufgabe bleibt stehen und lässt sich noch einmal erledigen.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(rksvStateProvider).value ?? const RksvState();
+    if (state.tasks.isEmpty) return const SizedBox.shrink();
+    final isChef = ref.watch(sessionProvider)?.isChef ?? false;
+    return Padding(
+      padding: const EdgeInsets.only(top: KassaTokens.spaceXxl),
+      child: OverviewCard(
+        padding: const EdgeInsets.fromLTRB(24, 6, 24, 14),
+        child: RksvTaskBlock(
+          tasks: state.tasks,
+          probe: state.mode == RksvMode.probe,
+          busy: _busy,
+          onDone: isChef ? _complete : null,
+        ),
+      ),
     );
   }
 }
