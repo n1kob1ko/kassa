@@ -59,6 +59,11 @@ abstract interface class PrinterTransport {
   /// Schickt eine Zustandsfrage und gibt das Antwort-Byte zurück. `null`, wenn
   /// der Drucker binnen 1 Sekunde nicht antwortet oder die Frage scheitert.
   Future<int?> status(List<int> request);
+
+  /// Der Druckdienst gibt den laufenden Aufruf auf (Limit abgelaufen). Offene
+  /// oder später zustande kommende Verbindungen dieses Aufrufs werden
+  /// geschlossen; danach darf nichts mehr zum Drucker gehen.
+  void abandon();
 }
 
 abstract interface class ReceiptPrinter {
@@ -137,7 +142,10 @@ class EscPosPrinter implements ReceiptPrinter {
     try {
       return await _attempt(transport, checkStatus, bytes).timeout(
         limit,
-        onTimeout: () => const PrintOutcome.failed(PrintProblem.timeout),
+        onTimeout: () {
+          transport.abandon();
+          return const PrintOutcome.failed(PrintProblem.timeout);
+        },
       );
     } on PrinterException catch (e) {
       return PrintOutcome.failed(e.problem);

@@ -53,4 +53,9 @@ class ChannelTransport implements PrinterTransport {
       return null;
     }
   }
+
+  /// Die Verbindung gehört Android; ein spätes Ergebnis eines aufgegebenen
+  /// Aufrufs wird vom Druckdienst ignoriert, hier gibt es nichts zu schließen.
+  @override
+  void abandon() {}
 }

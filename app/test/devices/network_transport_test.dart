@@ -105,4 +105,73 @@ void main() {
     );
     server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
   });
+
+  group('aufgegebene Aufrufe', () {
+    // Verbindet nach [delay] und zählt die Server-Sicht mit.
+    Future<Socket> Function(String, int, Duration) slowConnector(
+      Future<void> delay,
+    ) => (host, port, limit) async {
+      await delay;
+      return Socket.connect(host, port);
+    };
+
+    test('Zustandsfrage: kommt die Verbindung nach dem 1-Sekunden-Limit, wird sie geschlossen und nichts geschickt', () async {
+      final data = <int>[];
+      final closed = Completer<void>();
+      server.listen((s) {
+        sockets.add(s);
+        s.listen(data.addAll, onDone: closed.complete);
+      });
+      final t = NetworkTransport(
+        '127.0.0.1:${server.port}',
+        connector: slowConnector(
+          Future<void>.delayed(const Duration(milliseconds: 1300)),
+        ),
+      );
+      expect(await t.status(escposStatusPrinter), isNull);
+      await closed.future.timeout(const Duration(seconds: 3));
+      expect(data, isEmpty);
+    });
+
+    test(
+      'abandon: eine noch verbindende send-Anfrage schreibt nichts mehr',
+      () async {
+        final data = <int>[];
+        final closed = Completer<void>();
+        server.listen((s) {
+          sockets.add(s);
+          s.listen(data.addAll, onDone: closed.complete);
+        });
+        final gate = Completer<void>();
+        final t = NetworkTransport(
+          '127.0.0.1:${server.port}',
+          connector: slowConnector(gate.future),
+        );
+        final sending = t.send(Uint8List.fromList([1, 2, 3]));
+        final result = sending.then<Object?>(
+          (_) => null,
+          onError: (Object e) => e,
+        );
+        t.abandon();
+        gate.complete();
+        expect(await result, isA<PrinterException>());
+        await closed.future.timeout(const Duration(seconds: 3));
+        expect(data, isEmpty);
+      },
+    );
+
+    test('abandon schließt eine offene Verbindung', () async {
+      final closed = Completer<void>();
+      server.listen((s) {
+        sockets.add(s); // schweigt
+        s.listen((_) {}, onDone: closed.complete);
+      });
+      final t = NetworkTransport('127.0.0.1:${server.port}');
+      final asking = t.status(escposStatusPrinter);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      t.abandon();
+      await closed.future.timeout(const Duration(seconds: 1));
+      expect(await asking, isNull);
+    });
+  });
 }

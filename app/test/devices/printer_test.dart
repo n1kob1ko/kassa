@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -41,13 +42,21 @@ class RecordingTransport implements PrinterTransport {
   final answers = <int?>[];
   Object? sendError;
   bool hang = false;
+  bool abandoned = false;
+  final late = Completer<void>();
 
   @override
   Future<void> send(Uint8List bytes) async {
-    if (hang) return Future<void>.delayed(const Duration(hours: 1));
+    if (hang) {
+      await late.future;
+      if (abandoned) return; // aufgegeben: nichts kommt beim Drucker an
+    }
     if (sendError != null) throw sendError!;
     sent.add(bytes);
   }
+
+  @override
+  void abandon() => abandoned = true;
 
   @override
   Future<int?> status(List<int> request) async {
@@ -183,6 +192,12 @@ void main() {
     ).printReceipt(receipt());
     expect(outcome.problem, PrintProblem.timeout);
     expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+    // Nach dem Limit wird der Transport aufgegeben; Spätes erreicht den
+    // Drucker nicht mehr.
+    expect(t.abandoned, isTrue);
+    t.late.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(t.sent, isEmpty);
   });
 
   test('Meldungen', () {
