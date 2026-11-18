@@ -1,0 +1,48 @@
+{
+  "invalid_code": {
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "invalid_code",
+        "message": "Der Code stimmt nicht oder ist abgelaufen."
+      }
+    }
+  },
+  "too_many_attempts": {
+    "status": 429,
+    "body": {
+      "error": {
+        "code": "too_many_attempts",
+        "message": "Zu viele Versuche. Bitte in 15 Minuten nochmal."
+      },
+      "retryAfterSeconds": 900
+    }
+  },
+  "other_business": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "other_business",
+        "message": "Dieses Tablet war schon mit einem anderen Betrieb gekoppelt. Lösche die App-Daten, um es mit diesem Betrieb zu koppeln."
+      }
+    }
+  },
+  "unauthorized": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Diese Kassa ist nicht gekoppelt. Bitte koppel sie in den Einstellungen neu."
+      }
+    }
+  },
+  "register_blocked": {
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "register_blocked",
+        "message": "Diese Kassa wurde in der Verwaltung gesperrt."
+      }
+    }
+  }
+}

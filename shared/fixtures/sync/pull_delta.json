@@ -1,0 +1,58 @@
+{
+  "next": 11,
+  "more": false,
+  "categories": [],
+  "items": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "priceCents": 1090,
+      "categoryId": "bowls",
+      "taxPercent": 10,
+      "depositCents": 0,
+      "tags": [
+        "spicy"
+      ],
+      "info": null,
+      "templateId": "bowl",
+      "favorite": false,
+      "inSale": true,
+      "position": 0,
+      "archived": false
+    },
+    {
+      "id": "cola",
+      "name": "Cola 0,33 l",
+      "priceCents": 290,
+      "categoryId": "getraenke",
+      "taxPercent": 20,
+      "depositCents": 25,
+      "tags": [],
+      "info": null,
+      "templateId": null,
+      "favorite": false,
+      "inSale": true,
+      "position": 1,
+      "archived": false
+    },
+    {
+      "id": "teigtaschen",
+      "name": "Teigtaschen",
+      "priceCents": 650,
+      "categoryId": "bowls",
+      "taxPercent": 10,
+      "depositCents": 0,
+      "tags": [
+        "vegan"
+      ],
+      "info": "5 Stück",
+      "templateId": null,
+      "favorite": false,
+      "inSale": true,
+      "position": 1,
+      "archived": true
+    }
+  ],
+  "templates": [],
+  "staff": []
+}

@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 import { buildApp, type AppDeps } from '../../src/app.js';
 import type { Config } from '../../src/config.js';
 import type { Db } from '../../src/db/db.js';
@@ -16,6 +16,7 @@ export type TestApp = {
 
 export async function testApp(
   overrides: Omit<Partial<AppDeps>, 'config'> & { config?: Partial<Config> } = {},
+  opts: { logger?: FastifyServerOptions['logger'] } = {},
 ): Promise<TestApp> {
   const testDb = await createTestDb();
   const fileDir = await mkdtemp(join(tmpdir(), 'kassa-files-'));
@@ -35,7 +36,7 @@ export async function testApp(
     files: overrides.files,
     now: overrides.now ?? (() => now.value),
     ...(overrides.randomCode ? { randomCode: overrides.randomCode } : {}),
-  });
+  }, opts);
   return {
     app,
     db: overrides.db ?? testDb.db,

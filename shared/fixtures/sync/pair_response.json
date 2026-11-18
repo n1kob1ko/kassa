@@ -1,0 +1,7 @@
+{
+  "registerId": "<uuid>",
+  "registerName": "Kassa 1",
+  "businessId": "<uuid>",
+  "businessName": "Beispiel-Imbiss",
+  "token": "<token>"
+}
