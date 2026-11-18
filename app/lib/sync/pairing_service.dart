@@ -41,13 +41,19 @@ class PairingService {
       previousBusinessId: state.businessId,
       deviceModel: _deviceModel,
     );
-    // Zuerst der Schlüssel: ohne ihn wäre eine gespeicherte Kassa wertlos.
-    await _tokens.write(r.token);
+    // Nie ein neuer Schlüssel neben dem alten Stand: ein Abgleich dazwischen
+    // holte sonst mit dem neuen Schlüssel ab dem alten Cursor. Darum zuerst
+    // den alten Schlüssel weg, dann die Kassa (sie ist damit nicht mehr
+    // gekoppelt, kein Abgleich läuft), erst zuletzt der neue Schlüssel.
+    // Bricht etwas dazwischen ab, fehlt der Schlüssel, und das Tablet
+    // verlangt ein neues Koppeln.
+    await _tokens.clear();
     await _syncState.saveRegister(
       registerId: r.registerId,
       registerName: r.registerName,
       businessId: r.businessId,
     );
+    await _tokens.write(r.token);
     return r;
   }
 

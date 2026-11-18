@@ -2,22 +2,40 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/app_sync_providers.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/sync/pairing_service.dart';
 import 'package:kassa/sync/server_api.dart';
+import 'package:kassa/sync/server_changes.dart';
+import 'package:kassa/sync/sync_service.dart';
 import 'package:kassa/sync/token_store.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/fake_server.dart';
 
 final now = DateTime(2026, 11, 18, 10);
+
+/// Ein Schlüssel-Speicher, der nach dem Schreiben noch etwas tun lässt.
+class SpyTokenStore extends MemoryTokenStore {
+  Future<void> Function()? afterWrite;
+
+  @override
+  Future<void> write(String token) async {
+    await super.write(token);
+    final hook = afterWrite;
+    afterWrite = null;
+    if (hook != null) await hook();
+  }
+}
 
 /// Das Tablet mit Datenbank im Speicher, das über die Provider der App mit
 /// dem [FakeServer] spricht.
@@ -33,7 +51,7 @@ class Tablet {
           .create(name: 'Anna', pin: '1111', role: StaffRole.chef);
     }
     final server = FakeServer.beispiel(pageSize: pageSize);
-    final tokens = MemoryTokenStore();
+    final tokens = SpyTokenStore();
     final container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
@@ -49,6 +67,8 @@ class Tablet {
       ],
     );
     addTearDown(() async {
+      // Was der offene Bon noch liest, fertig werden lassen.
+      await pumpEventQueue();
       container.dispose();
       await db.close();
     });
@@ -57,12 +77,21 @@ class Tablet {
 
   final KassaDatabase db;
   final FakeServer server;
-  final MemoryTokenStore tokens;
+  final SpyTokenStore tokens;
   final ProviderContainer container;
 
   PairingService get pairing => container.read(pairingServiceProvider);
 
   Future<SyncState> state() => SyncStateRepository(db).current();
+
+  /// Ein Abgleich wie im Hintergrund, auf denselben Daten.
+  SyncService syncService() => SyncService(
+    api: container.read(serverApiProvider),
+    tokens: tokens,
+    syncState: SyncStateRepository(db),
+    changes: ServerChanges(db),
+    clock: FixedClock(now),
+  );
 
   /// Alles, was das Koppeln und Laden nicht halb ändern darf.
   Future<List<Object>> menu() async => [
@@ -206,6 +235,47 @@ void main() {
         FakeServer.businessId,
       );
       expect(t.server.pairRequests[1]['appVersion'], '1.2.0');
+    },
+  );
+
+  test('pair legt zuerst die Kassa ab, dann den Schlüssel: ein Lauf dazwischen holt nichts', () async {
+    final t = await Tablet.open();
+    await t.pairing.pair(FakeServer.code);
+    await t.pairing.loadInitial();
+    final pulls = t.server.pullRequests.length;
+    SyncState? seenAtWrite;
+    t.tokens.afterWrite = () async {
+      seenAtWrite = await t.state();
+      await t.syncService().syncNow();
+    };
+
+    await t.pairing.pair(FakeServer.code);
+
+    expect(seenAtWrite!.paired, isFalse, reason: 'Kassa vor dem Schlüssel');
+    expect(seenAtWrite!.pullCursor, 0);
+    expect(t.server.pullRequests, hasLength(pulls));
+    expect(await t.tokens.read(), FakeServer.token);
+  });
+
+  test(
+    'nach loadInitial ist auch ein offener Bon in der laufenden App leer',
+    () async {
+      final t = await Tablet.open();
+      await t.pairing.pair(FakeServer.code);
+      // Der Bon lebt, wie an der Kassa, und folgt dem Katalog.
+      final sub = t.container.listen(cartProvider, (_, _) {});
+      addTearDown(sub.close);
+      t.container.listen(catalogStreamProvider, (_, _) {});
+      await t.container.read(catalogStreamProvider.future);
+      t.container.read(cartProvider.notifier).add(cola);
+      await pumpEventQueue();
+      expect(await SettingsRepository(t.db).readDraft(), isNotNull);
+
+      await t.pairing.loadInitial();
+      await pumpEventQueue();
+
+      expect(t.container.read(cartProvider).isEmpty, isTrue);
+      expect(await SettingsRepository(t.db).readDraft(), isNull);
     },
   );
 }

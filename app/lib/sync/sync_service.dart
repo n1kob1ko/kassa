@@ -5,11 +5,18 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+
 import '../core/clock.dart';
 import '../data/sync_state_repository.dart';
 import 'server_api.dart';
 import 'server_changes.dart';
 import 'token_store.dart';
+import 'wire.dart';
+
+/// `lastError` für einen Fehler am Tablet selbst (eine Seite lässt sich nicht
+/// einspielen, die Datenbank oder der geschützte Speicher antwortet nicht).
+const localError = 'local';
 
 enum _Outcome {
   /// Alles geholt.
@@ -33,7 +40,10 @@ class SyncService {
     this._internet = const Stream.empty(),
     this._resumed = const Stream.empty(),
     this._enabled = true,
+    this._onChanged = _nothing,
   });
+
+  static void _nothing() {}
 
   /// Abstand der regelmäßigen Läufe.
   static const interval = Duration(minutes: 5);
@@ -56,6 +66,9 @@ class SyncService {
   final Stream<bool> _internet;
   final Stream<void> _resumed;
   final bool _enabled;
+
+  /// Nach einem Lauf, der Daten am Tablet geändert hat.
+  final void Function() _onChanged;
 
   final _running = StreamController<bool>.broadcast();
   final _subscriptions = <StreamSubscription<Object?>>[];
@@ -121,31 +134,33 @@ class SyncService {
 
   Future<_Outcome> _run() async {
     if (!_enabled || _disposed) return _Outcome.wait;
+    final SyncState state;
     try {
-      final state = await _syncState.current();
-      if (!state.paired) return _Outcome.wait;
-      _setRunning(true);
-      try {
-        return await _pull(state.pullCursor);
-      } finally {
-        _setRunning(false);
-      }
-    } catch (_) {
+      state = await _syncState.current();
+    } catch (e) {
       // Die eigene Datenbank ist nicht lesbar: bald nochmal.
-      return _Outcome.retry;
+      return _recordLocal(e);
+    }
+    if (!state.paired) return _Outcome.wait;
+    _setRunning(true);
+    try {
+      return await _pull(state.pullCursor, state.registerId!);
+    } finally {
+      _setRunning(false);
     }
   }
 
-  Future<_Outcome> _pull(int cursor) async {
+  Future<_Outcome> _pull(int cursor, String registerId) async {
     final String? token;
     try {
       token = await _tokens.read();
-    } catch (_) {
-      return _record(ServerFailure.server);
+    } catch (e) {
+      return _recordLocal(e);
     }
     // Daten wiederhergestellt, geschützter Speicher leer: wie ein
     // ungültiger Schlüssel.
-    if (token == null) return _record(ServerFailure.unauthorized);
+    if (token == null) return _record(ServerFailure.unauthorized.name);
+    var changed = false;
     try {
       var since = cursor;
       while (true) {
@@ -154,37 +169,70 @@ class SyncService {
         if (page.more && page.next <= since) {
           throw const ServerException(ServerFailure.server);
         }
-        await _changes.applyPage(page, at: _clock.now());
+        final applied = await _changes.applyPage(
+          page,
+          at: _clock.now(),
+          since: since,
+          registerId: registerId,
+        );
+        // Inzwischen neu gekoppelt oder ein anderer Lauf war schneller: die
+        // Seite gehört nicht mehr hierher. Kein Fehler, nichts festhalten.
+        if (!applied) return _Outcome.wait;
+        changed = changed || _hasRows(page);
         if (!page.more) break;
         since = page.next;
       }
       await _syncState.setResult(at: _clock.now(), blocked: false);
       return _Outcome.done;
     } on ServerException catch (e) {
-      return _record(e.failure);
-    } catch (_) {
+      return _record(e.failure.name);
+    } catch (e) {
       // Eine Seite ließ sich nicht einspielen. Der Cursor steht noch davor.
-      return _record(ServerFailure.server);
+      return _recordLocal(e);
+    } finally {
+      if (changed && !_disposed) {
+        try {
+          _onChanged();
+        } catch (_) {
+          // Wer zuhört, darf den Lauf nicht scheitern lassen.
+        }
+      }
     }
+  }
+
+  static bool _hasRows(PullResponse p) =>
+      p.business != null ||
+      p.categories.isNotEmpty ||
+      p.items.isNotEmpty ||
+      p.templates.isNotEmpty ||
+      p.staff.isNotEmpty;
+
+  /// Ein Fehler am Tablet selbst. Nur die Art des Fehlers geht ins
+  /// Protokoll, und nur beim Entwickeln: nie der Schlüssel oder eine Antwort.
+  Future<_Outcome> _recordLocal(Object error) {
+    if (kDebugMode) {
+      debugPrint('Abgleich: Fehler am Tablet (${error.runtimeType})');
+    }
+    return _record(localError);
   }
 
   /// Hält den Fehler fest. `blocked` geht auch als Fehler ein, damit
   /// "Zuletzt abgeglichen" nicht weiterrückt.
-  Future<_Outcome> _record(ServerFailure failure) async {
-    final blocked = failure == ServerFailure.blocked;
+  Future<_Outcome> _record(String error) async {
+    final blocked = error == ServerFailure.blocked.name;
     try {
       await _syncState.setResult(
         at: _clock.now(),
-        error: failure.name,
+        error: error,
         blocked: blocked ? true : null,
       );
     } catch (_) {
       // Nicht einmal das Festhalten geht: der nächste Lauf versucht es.
     }
-    return switch (failure) {
-      ServerFailure.blocked || ServerFailure.unauthorized => _Outcome.wait,
-      _ => _Outcome.retry,
-    };
+    if (blocked || error == ServerFailure.unauthorized.name) {
+      return _Outcome.wait;
+    }
+    return _Outcome.retry;
   }
 
   void _setRunning(bool value) {

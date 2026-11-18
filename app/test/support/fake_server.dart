@@ -63,6 +63,10 @@ class FakeServer extends http.BaseClient {
   /// Nach so vielen beantworteten Seiten ist das Internet weg (offline).
   int? breakAfterPages;
 
+  /// Läuft einmal, nachdem die nächste Seite gebildet ist und bevor sie
+  /// hinausgeht. So lässt sich etwas zwischen `pull` und dem Einspielen tun.
+  Future<void> Function()? beforeNextPage;
+
   /// Jede Anfrage an `pair`, als gelesener Körper.
   final pairRequests = <Map<String, dynamic>>[];
 
@@ -189,7 +193,11 @@ class FakeServer extends http.BaseClient {
       }
       _pagesServed++;
       final since = pullRequests.last;
-      return _respond(200, jsonEncode(pageJson(since)));
+      final body = jsonEncode(pageJson(since));
+      final hook = beforeNextPage;
+      beforeNextPage = null;
+      if (hook != null) await hook();
+      return _respond(200, body);
     }
     return _error(404, 'not_found');
   }

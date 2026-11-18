@@ -1,24 +1,17 @@
 // Provider für Datenbank, Uhr und Repositories.
 
-import 'dart:async';
-
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/app_info.dart';
 import '../core/clock.dart';
-import '../devices/internet.dart';
 import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
-import '../features/login/session.dart';
-import '../sync/pairing_service.dart';
 import '../sync/server_api.dart';
 import '../sync/server_changes.dart';
-import '../sync/sync_service.dart';
 import '../sync/token_store.dart';
 import 'card_payment_repository.dart';
 import 'catalog_repository.dart';
@@ -107,53 +100,6 @@ final serverApiProvider = Provider(
 final serverChangesProvider = Provider(
   (ref) => ServerChanges(ref.watch(databaseProvider)),
 );
-
-/// Koppeln und erstes Laden. Ist die Speisekarte ersetzt, ist niemand mehr
-/// angemeldet und die Einrichtung wird neu geprüft.
-final pairingServiceProvider = Provider(
-  (ref) => PairingService(
-    api: ref.watch(serverApiProvider),
-    tokens: ref.watch(tokenStoreProvider),
-    syncState: ref.watch(syncStateRepositoryProvider),
-    changes: ref.watch(serverChangesProvider),
-    clock: ref.watch(clockProvider),
-    onCatalogReplaced: () {
-      ref.read(sessionProvider.notifier).logout();
-      ref.invalidate(catalogProvider);
-    },
-  ),
-);
-
-/// Der Abgleich im Hintergrund, schon gestartet. `KassaApp` liest ihn, sobald
-/// die Kassa gekoppelt ist. Ohne Adresse des Servers tut er nichts.
-final syncServiceProvider = Provider<SyncService>((ref) {
-  final internet = StreamController<bool>();
-  final resumed = StreamController<void>();
-  final service = SyncService(
-    api: ref.watch(serverApiProvider),
-    tokens: ref.watch(tokenStoreProvider),
-    syncState: ref.watch(syncStateRepositoryProvider),
-    changes: ref.watch(serverChangesProvider),
-    clock: ref.watch(clockProvider),
-    internet: internet.stream,
-    resumed: resumed.stream,
-    enabled: hasServer,
-  );
-  ref.onDispose(() {
-    service.dispose();
-    internet.close();
-    resumed.close();
-  });
-  if (!hasServer) return service;
-  ref.listen(internetProvider, (_, next) {
-    final online = next.value;
-    if (online != null) internet.add(online);
-  }, fireImmediately: true);
-  final lifecycle = AppLifecycleListener(onResume: () => resumed.add(null));
-  ref.onDispose(lifecycle.dispose);
-  service.start();
-  return service;
-});
 
 /// Die eingespielte Speisekarte, `null` solange keine da ist.
 final catalogProvider = FutureProvider<Catalog?>(

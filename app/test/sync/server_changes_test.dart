@@ -11,6 +11,7 @@ import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/sync/server_changes.dart';
+import 'package:kassa/sync/wire.dart';
 
 import '../support/fake_server.dart';
 import '../support/sales.dart';
@@ -228,14 +229,27 @@ void main() {
       server = FakeServer.beispiel();
       changes = ServerChanges(db);
       sync = SyncStateRepository(db);
+      await sync.saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
       await changes.replaceAll(server.pages(), at: at);
     });
+
+    Future<bool> apply(PullResponse page, DateTime when) async =>
+        changes.applyPage(
+          page,
+          at: when,
+          since: (await sync.current()).pullCursor,
+          registerId: FakeServer.registerId,
+        );
     tearDown(() => db.close());
 
     Future<void> pullAll(DateTime when) async {
       while (true) {
         final page = server.page((await sync.current()).pullCursor);
-        await changes.applyPage(page, at: when);
+        expect(await apply(page, when), isTrue);
         if (!page.more) return;
       }
     }
@@ -250,7 +264,7 @@ void main() {
       final later = at.add(const Duration(minutes: 5));
 
       final page = server.page((await sync.current()).pullCursor);
-      await changes.applyPage(page, at: later);
+      expect(await apply(page, later), isTrue);
 
       final row = await item('huhn-bowl');
       expect(row.priceCents, 1090);
@@ -355,11 +369,58 @@ void main() {
       final page = server.page((await sync.current()).pullCursor);
 
       await expectLater(
-        changes.applyPage(page, at: at.add(const Duration(hours: 1))),
+        apply(page, at.add(const Duration(hours: 1))),
         throwsA(isA<SqliteException>()),
       );
 
       expect(await snapshot(db), before);
+    });
+
+    test('applyPage mit altem Cursor, anderer Kassa oder vor dem ersten Laden schreibt nichts', () async {
+      server.change('items', 'cola', {'priceCents': 310});
+      final cursor = (await sync.current()).pullCursor;
+      final page = server.page(cursor);
+      final before = await snapshot(db);
+
+      // Ein anderer Lauf ist schon weiter.
+      expect(
+        await changes.applyPage(
+          page,
+          at: at,
+          since: cursor - 1,
+          registerId: FakeServer.registerId,
+        ),
+        isFalse,
+      );
+      // Inzwischen neu gekoppelt: eine andere Kassa.
+      expect(
+        await changes.applyPage(
+          page,
+          at: at,
+          since: cursor,
+          registerId: 'alte-kassa',
+        ),
+        isFalse,
+      );
+      expect(await snapshot(db), before);
+
+      // Neu gekoppelt, erstes Laden steht noch aus.
+      await sync.saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+      final waiting = await snapshot(db);
+      expect(
+        await changes.applyPage(
+          page,
+          at: at,
+          since: 0,
+          registerId: FakeServer.registerId,
+        ),
+        isFalse,
+      );
+      expect(await snapshot(db), waiting);
     });
   });
 }

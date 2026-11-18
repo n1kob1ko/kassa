@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/widgets.dart' show WidgetsFlutterBinding, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/app_sync_providers.dart';
 import 'package:kassa/core/app_info.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/sync_state_repository.dart';
+import 'package:kassa/devices/internet.dart';
+import 'package:kassa/sync/pairing_service.dart';
 import 'package:kassa/sync/server_api.dart';
 import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/sync_service.dart';
@@ -280,7 +284,7 @@ void main() {
       h.server.mode = FakeMode.online;
       h.run(h.sync.setResult(at: start, error: 'offline'));
       h.run(h.tokens.clear());
-      async.elapse(const Duration(seconds: 1));
+      h.run(h.service.syncNow());
       expect(h.pulls, 1);
       expect(h.state().lastError, 'unauthorized');
       h.close();
@@ -288,6 +292,11 @@ void main() {
   });
 
   test('syncNow wirft auch bei unlesbarer Antwort nicht', () {
+    // Fehler am Tablet gehen beim Entwickeln ins Protokoll, nur ihre Art.
+    final printed = <String>[];
+    final original = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) => printed.add('$message');
+    addTearDown(() => debugPrint = original);
     fakeAsync((async) {
       final h = Harness(async);
       h.server.mode = FakeMode.garbage;
@@ -302,7 +311,7 @@ void main() {
       });
       final cursor = h.state().pullCursor;
       h.run(h.service.syncNow());
-      expect(h.state().lastError, 'server');
+      expect(h.state().lastError, 'local', reason: 'ein Fehler am Tablet');
       expect(h.state().pullCursor, cursor);
 
       // Und die Datenbank ist weg.
@@ -310,6 +319,11 @@ void main() {
       h.run(h.service.syncNow());
       h.service.dispose();
     });
+    expect(printed, [
+      'Abgleich: Fehler am Tablet (SqliteException)',
+      'Abgleich: Fehler am Tablet (StateError)',
+    ]);
+    expect(printed.join(), isNot(contains(FakeServer.token)));
   });
 
   test('alle 5 Minuten ein Lauf, und einer, wenn das Internet zurückkommt', () {
@@ -350,4 +364,96 @@ void main() {
       expect(h.pulls, 6, reason: 'nach dispose läuft nichts mehr');
     });
   });
+
+  test('neues Koppeln zwischen pull und Einspielen: die alte Seite wird still verworfen', () {
+    fakeAsync((async) {
+      final h = Harness(async);
+      // Die Seite, die gerade unterwegs ist.
+      h.server.change('items', 'cola', {'priceCents': 310});
+      final pairing = PairingService(
+        api: ServerApi(
+          baseUrl: 'https://kassa.example',
+          client: h.server,
+          appVersion: '1.2.0',
+        ),
+        tokens: h.tokens,
+        syncState: h.sync,
+        changes: ServerChanges(h.db),
+        clock: _FakeClock(async),
+        onCatalogReplaced: () {},
+      );
+      h.server.beforeNextPage = () async {
+        h.server.archive('items', 'cola');
+        await pairing.pair(FakeServer.code);
+        await pairing.loadInitial();
+      };
+
+      h.service.start();
+      h.run(h.service.syncNow());
+
+      final s = h.state();
+      expect(s.pullCursor, h.server.seq, reason: 'Cursor aus loadInitial');
+      expect(s.lastError, isNull);
+      final cola = h.run(
+        (h.db.select(
+          h.db.itemRows,
+        )..where((t) => t.id.equals('cola'))).getSingle(),
+      );
+      expect(cola.archived, isTrue);
+      final pulls = h.pulls;
+      async.elapse(const Duration(minutes: 4, seconds: 59));
+      expect(h.pulls, pulls, reason: 'kein schnelles Wiederholen');
+      h.close();
+    });
+  });
+
+  test(
+    'ein Lauf, der die erste Chefin bringt, macht die Einrichtung fertig',
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      final db = KassaDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final server = FakeServer.beispiel()..archive('staff', '<uuid>');
+      final tokens = MemoryTokenStore();
+      await tokens.write(FakeServer.token);
+      await SyncStateRepository(db).saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+      await ServerChanges(db).replaceAll(server.pages(), at: start);
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          tokenStoreProvider.overrideWithValue(tokens),
+          serverApiProvider.overrideWithValue(
+            ServerApi(
+              baseUrl: 'https://kassa.example',
+              client: server,
+              appVersion: '1.2.0',
+            ),
+          ),
+          hasServerProvider.overrideWithValue(true),
+          internetProvider.overrideWith((ref) => Stream.value(true)),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(setupCompleteProvider, (_, _) {});
+      expect(await container.read(setupCompleteProvider.future), isFalse);
+
+      server.upsert(
+        'staff',
+        FakeServer.staffRow(
+          id: 's-ben',
+          name: 'Ben',
+          pin: '4321',
+          role: 'chef',
+        ),
+      );
+      await container.read(syncServiceProvider).syncNow();
+      await pumpEventQueue();
+
+      expect(await container.read(setupCompleteProvider.future), isTrue);
+    },
+  );
 }

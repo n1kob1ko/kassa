@@ -59,10 +59,29 @@ class ServerChanges {
     });
   }
 
-  /// Jedes spätere Holen: übernimmt eine Seite und rückt den Cursor auf
-  /// `page.next`.
-  Future<void> applyPage(PullResponse page, {required DateTime at}) async {
-    await _db.transaction(() async {
+  /// Jedes spätere Holen: übernimmt eine Seite, die ab [since] für die Kassa
+  /// [registerId] geholt wurde, und rückt den Cursor auf `page.next`.
+  ///
+  /// Gibt `false` zurück und schreibt nichts, wenn die Seite nicht mehr
+  /// passt: das Tablet wurde inzwischen neu gekoppelt (andere Kassa, oder das
+  /// erste Laden steht noch aus) oder ein anderer Lauf hat den Cursor schon
+  /// bewegt.
+  Future<bool> applyPage(
+    PullResponse page, {
+    required DateTime at,
+    required int since,
+    required String registerId,
+  }) async {
+    return _db.transaction(() async {
+      final state = await (_db.select(
+        _db.syncStateRows,
+      )..where((t) => t.id.equals(1))).getSingleOrNull();
+      if (state == null ||
+          !state.initialPullDone ||
+          state.pullCursor != since ||
+          state.registerId != registerId) {
+        return false;
+      }
       final changes = _Changes.merge([page]);
       await _holdCategoriesOf(changes);
       await _apply(changes);
@@ -75,6 +94,7 @@ class ServerChanges {
               lastPullAt: Value(at),
             ),
           );
+      return true;
     });
   }
 

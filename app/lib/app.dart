@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'core/app_info.dart';
+import 'app_sync_providers.dart';
 import 'data/providers.dart';
 import 'data/settings_repository.dart';
 import 'features/login/pin_screen.dart';
@@ -21,7 +21,7 @@ class KassaApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Der Abgleich im Hintergrund beginnt, sobald die Kassa gekoppelt ist.
-    if (hasServer &&
+    if (ref.watch(hasServerProvider) &&
         ref.watch(syncStateProvider.select((s) => s.value?.paired ?? false))) {
       ref.watch(syncServiceProvider);
     }
