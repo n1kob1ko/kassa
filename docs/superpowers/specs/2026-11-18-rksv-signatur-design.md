@@ -352,6 +352,7 @@ Der Stand gilt für die Version 1.4.0. Gebaut ist der Kern mit der Probe-Signatu
 | R12 | Ob es eine beendete Kette gibt, liefert `RksvRepository.watchHasEndedChain()`. | Datenzugriff gehört in die Datenschicht. |
 | R13 | Die Einstellungen sind neu geordnet: links Signatur und Kassa, rechts Geräte, Anzeige, Server. | Sonst passt die Karte "Signatur" nicht auf den Bildschirm. Kostet 19 neu erzeugte Vergleichsbilder. |
 | R14 | `yearReceiptBefore` geht nur nach der Nummer (Nummer direkt davor, Art Jahresbeleg) und wird nur im Verkaufsweg direkt nach dem Anlegen aufgerufen. | Die Zeit stimmt mit der echten Uhr nicht verlässlich. Ein wiederholt zugestellter Verkauf könnte den Jahresbeleg doppelt drucken (hingenommen). |
+| R15 | Ein Verkauf, den jemand während "Nochmal prüfen" antippt, wartet hinter dessen Transaktion (bis 1 Sekunde, dazu das Speichern, dazu die eigene 1 Sekunde). Die Regel "1 Sekunde im Ausfall" gilt je Signierversuch. | Der Verkauf läuft in jedem Fall. Falls falsch: ein Verkauf dauert etwa 2 Sekunden statt 1. |
 
 Vom Implementierer gewählt und angenommen: der Text "Es gibt noch kein Protokoll." und `ExportOutcome` in `dep_export.dart` (Task 7), "Das hat nicht geklappt. Bitte noch einmal." für unerwartete Fehler in der Karte "Signatur" (Task 9), ein Parameter `notice` im Warenkorb mit der Meldung "Die Signatur geht wieder." für 4 Sekunden und ein Hinweis ohne Rahmen in der Akzentfarbe, weil die Regel "eine Stimme" aus `DESIGN.md` vorgeht (Task 10).
 
