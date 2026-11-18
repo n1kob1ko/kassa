@@ -52,10 +52,11 @@ void main() {
         rksvTaskText(task),
         'Startbeleg mit der App "BMF Belegcheck" prüfen.',
       );
+      // Die Aufgabe der alten Kette endet mit ihr.
       await rig.service.disableProbe(staff: rig.chef);
+      expect(await rig.tasks(), isEmpty);
       await rig.service.enableProbe(staff: rig.chef);
       expect(await rig.tasks(), [
-        _checkStart,
         ('check-start-2', RksvTaskKind.checkStart, ''),
       ]);
     });

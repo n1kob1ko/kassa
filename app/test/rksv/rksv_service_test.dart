@@ -397,4 +397,40 @@ void main() {
       }
     });
   });
+
+  test('Aufgaben der Probe enden mit der Probe: disableProbe leert sie, '
+      'neu einschalten bringt genau den Startbeleg der neuen Kette', () async {
+    await rig.service.enableProbe(staff: rig.chef);
+    expect((await rig.rksv.current()).tasks.map((t) => t.id), [
+      'check-start-1',
+    ]);
+    await rig.service.disableProbe(staff: rig.chef);
+    final off = await rig.rksv.current();
+    expect(off.mode, RksvMode.off);
+    expect(off.tasks, isEmpty);
+    expect((await rig.stateRow()).tasks, '[]');
+
+    await rig.service.enableProbe(staff: rig.chef);
+    expect((await rig.rksv.current()).tasks.map((t) => t.id), [
+      'check-start-2',
+    ]);
+  });
+
+  test('Aufgaben der Probe enden mit der Probe auch nach einem unerwarteten '
+      'Fehler (K9); der Hinweis bleibt', () async {
+    await rig.service.enableProbe(staff: rig.chef);
+    expect((await rig.rksv.current()).tasks, isNotEmpty);
+    rig.secrets.failReads = true;
+    await rig.sell('s1', cart);
+    final state = await rig.stateRow();
+    expect((state.mode, state.tasks), ('off', '[]'));
+    expect(state.notice, isNotNull);
+    expect((await rig.rksv.current()).tasks, isEmpty);
+
+    rig.secrets.failReads = false;
+    await rig.service.enableProbe(staff: rig.chef);
+    expect((await rig.rksv.current()).tasks.map((t) => t.id), [
+      'check-start-2',
+    ]);
+  });
 }

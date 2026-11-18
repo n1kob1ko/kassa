@@ -458,6 +458,8 @@ class RksvJournal {
         chain: const Value(null),
         outageSince: const Value(null),
         outageReason: const Value(null),
+        // Die Aufgaben gehören zur Probe und enden mit ihr.
+        tasks: const Value('[]'),
         notice: const Value(_notice),
       ),
     );
