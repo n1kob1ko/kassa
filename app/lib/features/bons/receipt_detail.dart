@@ -1,12 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
+import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
+import '../../ui/undo_toast.dart';
+import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import 'receipt_list.dart';
 import 'void_question.dart';
@@ -47,9 +52,10 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       _failed = false;
     });
     try {
-      await ref
-          .read(receiptRepositoryProvider)
+      final result = await ref
+          .read(saleServiceProvider)
           .voidReceipt(receipt.id, staff: staff);
+      _announce(result.print);
       if (!mounted) return;
       setState(() {
         _asking = false;
@@ -64,6 +70,21 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     }
   }
 
+  /// Zeigt das Ergebnis des Druckens als Hinweis unten, ohne "Rückgängig".
+  Future<void> _announce(Future<PrintOutcome> print) async {
+    final outcome = await print;
+    if (!mounted) return;
+    // Ohne Drucker gibt es nichts zu melden.
+    if (outcome.problem == PrintProblem.notSetUp) return;
+    showUndoToast(
+      context,
+      message: outcome.ok ? 'Bon gedruckt' : outcome.message,
+    );
+  }
+
+  Future<void> _print(Receipt receipt) =>
+      _announce(ref.read(saleServiceProvider).reprint(receipt));
+
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
@@ -71,6 +92,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     final staff = ref.watch(sessionProvider);
     final settings =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
+    final hasPrinter = settings.printerKind != PrinterKind.none;
     final canVoid =
         receipt != null &&
         receipt.kind == ReceiptKind.sale &&
@@ -104,17 +126,37 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                     }),
                     onConfirm: () => _confirm(receipt),
                   )
-                else if (canVoid)
+                else if (canVoid || hasPrinter)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: BonsActionButton(
-                      key: const Key('void-receipt'),
-                      label: 'Stornieren',
-                      height: KassaTokens.secondaryActionHeight,
-                      radius: KassaTokens.radiusXxl,
-                      border: c.line,
-                      fg: c.red,
-                      onTap: () => setState(() => _asking = true),
+                    child: Row(
+                      children: [
+                        if (hasPrinter)
+                          Expanded(
+                            child: PrimaryButton(
+                              key: const Key('print-receipt'),
+                              label: 'Drucken',
+                              icon: LucideIcons.printer,
+                              filled: false,
+                              height: KassaTokens.secondaryActionHeight,
+                              onPressed: () => _print(receipt),
+                            ),
+                          ),
+                        if (hasPrinter && canVoid)
+                          const SizedBox(width: KassaTokens.spaceMd),
+                        if (canVoid)
+                          Expanded(
+                            child: BonsActionButton(
+                              key: const Key('void-receipt'),
+                              label: 'Stornieren',
+                              height: KassaTokens.secondaryActionHeight,
+                              radius: KassaTokens.radiusXxl,
+                              border: c.line,
+                              fg: c.red,
+                              onTap: () => setState(() => _asking = true),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],

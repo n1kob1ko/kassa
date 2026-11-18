@@ -4,6 +4,7 @@ import 'package:kassa/domain/cart.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/bons_pump.dart';
+import '../support/cash_pump.dart' show setUpPrinter;
 import '../support/demo_fixtures.dart';
 
 // Bildvergleich des Bereichs Bons gegen den freigegebenen Entwurf. Neu
@@ -67,4 +68,23 @@ void main() {
       matchesGoldenFile('goldens/bons_storniert_dunkel.png'),
     );
   });
+
+  for (final dark in [false, true]) {
+    testWidgets('Bons mit Taste Drucken (${dark ? 'dunkel' : 'hell'})', (
+      t,
+    ) async {
+      await _threeReceipts(
+        t,
+        brightness: dark ? Brightness.dark : Brightness.light,
+      );
+      await setUpPrinter(t);
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile(
+          'goldens/bons_drucken_${dark ? 'dunkel' : 'hell'}.png',
+        ),
+      );
+    });
+  }
 }

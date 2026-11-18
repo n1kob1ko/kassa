@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
-import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/features/login/session.dart';
@@ -52,10 +51,13 @@ Future<void> pumpAppLoggedInAsChef(
     brightness: brightness,
     textScale: textScale,
     overrides: [
-      ...await memoryOverrides(pickedFile: pickedFile, picker: picker),
+      ...await memoryOverrides(
+        pickedFile: pickedFile,
+        picker: picker,
+        printer: printer,
+      ),
       // Die Netzsuche öffnet Sockets: Tests ersetzen sie immer.
       printerDiscoveryProvider.overrideWithValue(discovery ?? FakeDiscovery()),
-      if (printer != null) receiptPrinterProvider.overrideWithValue(printer),
       ...extra,
     ],
   );

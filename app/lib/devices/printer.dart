@@ -136,7 +136,24 @@ class EscPosPrinter implements ReceiptPrinter {
         encodeEscPos(layoutTestPrint(business, clock.now(), columns: columns)),
   );
 
+  /// Ende des letzten Aufrufs. Das Limit gilt je Transport für einen Aufruf,
+  /// darum läuft immer nur einer: der nächste beginnt, wenn der vorige zu Ende
+  /// ist oder aufgegeben wurde.
+  Future<void> _last = Future.value();
+
   Future<PrintOutcome> _run({
+    required bool checkStatus,
+    required Future<Uint8List> Function() bytes,
+  }) {
+    final previous = _last;
+    final finished = Completer<void>();
+    _last = finished.future;
+    return previous
+        .then((_) => _runNow(checkStatus: checkStatus, bytes: bytes))
+        .whenComplete(finished.complete);
+  }
+
+  Future<PrintOutcome> _runNow({
     required bool checkStatus,
     required Future<Uint8List> Function() bytes,
   }) async {

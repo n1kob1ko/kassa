@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
@@ -121,6 +124,86 @@ void main() {
     await t.tap(find.byKey(const Key('given-500')));
     await t.pump();
     expect(textOf(t, const Key('change')), '1,85 €');
+  });
+
+  testWidgets('mit Drucker heißt die Taste "Abschließen und Bon drucken", ohne '
+      '"Abschließen"', (t) async {
+    await openCash(t, ['cola']);
+    expect(_finishButton(t).label, 'Abschließen');
+    await t.tap(find.byKey(const Key('cash-back')));
+    await t.pumpAndSettle();
+    await setUpPrinter(t);
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    expect(_finishButton(t).label, 'Abschließen und Bon drucken');
+  });
+
+  testWidgets('ohne Drucker gibt es keine Druckzeile', (t) async {
+    await openCash(t, ['cola']);
+    await _finish(t);
+    expect(find.byKey(const Key('print-state')), findsNothing);
+    expect(find.byKey(const Key('reprint')), findsNothing);
+    expect(printerOf(t).log, isEmpty);
+  });
+
+  testWidgets('Fertig-Ansicht: "Bon gedruckt"', (t) async {
+    await openCash(t, ['cola'], withPrinter: true);
+    await _finish(t);
+    expect(textOf(t, const Key('print-state')), 'Bon gedruckt');
+    expect(find.byKey(const Key('reprint')), findsNothing);
+    expect(printerOf(t).log, ['drawer', startsWith('print:')]);
+  });
+
+  testWidgets('Drucker hängt: "Bon wird gedruckt …", Nächster Kunde sofort', (
+    t,
+  ) async {
+    await openCash(t, ['cola'], withPrinter: true);
+    printerOf(t).hold = Completer<void>();
+    await _finish(t);
+    expect(textOf(t, const Key('print-state')), 'Bon wird gedruckt …');
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pump();
+    expect(textOf(t, const Key('cart-total')), '0,00 €');
+    printerOf(t).hold!.complete();
+    await t.pumpAndSettle();
+  });
+
+  testWidgets(
+    'Drucker nicht bereit: Meldung, Nochmal drucken druckt erneut, Nächster '
+    'Kunde geht sofort',
+    (t) async {
+      await openCash(t, ['cola'], withPrinter: true);
+      printerOf(t).next = const PrintOutcome.failed(PrintProblem.paperOut);
+      await _finish(t);
+      expect(
+        textOf(t, const Key('print-state')),
+        'Drucker nicht bereit. Das Papier ist leer.',
+      );
+      expect(
+        t.getSize(find.byKey(const Key('reprint'))).height,
+        greaterThanOrEqualTo(64),
+      );
+      expect(
+        t
+            .widget<PrimaryButton>(find.byKey(const Key('next-customer')))
+            .onPressed,
+        isNotNull,
+      );
+      printerOf(t).next = const PrintOutcome.ok();
+      await t.tap(find.byKey(const Key('reprint')));
+      await t.pumpAndSettle();
+      expect(textOf(t, const Key('print-state')), 'Bon gedruckt');
+      expect(printerOf(t).printed, hasLength(2));
+      expect(printerOf(t).printed.toSet(), hasLength(1)); // derselbe Bon
+    },
+  );
+
+  testWidgets('Abschließen löscht den Entwurf in der Datenbank', (t) async {
+    await openCash(t, ['cola']);
+    await t.pumpAndSettle();
+    expect(await draftOf(t), isNotNull);
+    await _finish(t);
+    expect(await draftOf(t), isNull);
   });
 
   testWidgets(

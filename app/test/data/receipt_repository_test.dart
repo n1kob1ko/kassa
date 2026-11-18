@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/receipt_repository.dart';
+import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/receipt.dart';
@@ -16,6 +17,33 @@ void main() {
     receipts = shop.receipts;
   });
   tearDown(() => shop.close());
+
+  test('Abschließen löscht den Bon-Entwurf im selben Schritt', () async {
+    final settings = SettingsRepository(shop.db);
+    await settings.writeDraft('{"x":1}');
+    await shop.receipts.finalizeCashSale(
+      saleId: 's1',
+      cart: cart,
+      givenCents: 2000,
+      staff: shop.anna,
+    );
+    expect(await settings.readDraft(), isNull);
+  });
+
+  test('scheitert das Speichern, bleibt der Entwurf', () async {
+    final settings = SettingsRepository(shop.db);
+    await settings.writeDraft('{"x":1}');
+    await expectLater(
+      shop.receipts.finalizeCashSale(
+        saleId: 's1',
+        cart: const Cart.empty(),
+        givenCents: 0,
+        staff: shop.anna,
+      ),
+      throwsA(isA<EmptyCartException>()),
+    );
+    expect(await settings.readDraft(), '{"x":1}');
+  });
 
   test('Bon bekommt Nummer 1, Zeilen, Summen, Zahlung', () async {
     final cart = const Cart.empty()

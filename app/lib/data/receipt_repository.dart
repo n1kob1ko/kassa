@@ -51,6 +51,8 @@ class ReceiptRepository {
 
   /// Schließt einen Barverkauf ab. Die Id des Bons ist [saleId]: gibt es ihn
   /// schon, kommt der gespeicherte Bon zurück und nichts wird geschrieben.
+  /// Im selben Schritt geht der Bon-Entwurf weg: ein Absturz direkt danach
+  /// bietet denselben Verkauf nicht noch einmal an.
   Future<Receipt> finalizeCashSale({
     required String saleId,
     required Cart cart,
@@ -85,7 +87,7 @@ class ReceiptRepository {
             grossByRate: grossByRateOfLine(cart.lines[i]),
           ),
       ];
-      return _write(
+      final saved = await _write(
         id: saleId,
         kind: ReceiptKind.sale,
         staff: staff,
@@ -100,6 +102,10 @@ class ReceiptRepository {
           changeCents: givenCents - cart.totalCents,
         ),
       );
+      await (_db.update(_db.settingsRows)..where((t) => t.id.equals(1))).write(
+        const SettingsRowsCompanion(receiptDraft: Value(null)),
+      );
+      return saved;
     });
   }
 

@@ -5,9 +5,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/money.dart';
 import '../../data/providers.dart';
+import '../../data/settings_repository.dart';
 import '../../domain/cart.dart';
 import '../../domain/cash.dart';
-import '../../domain/receipt.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
@@ -15,6 +15,7 @@ import '../../ui/tokens.dart';
 import '../login/session.dart';
 import 'cart_controller.dart';
 import 'cash_inputs.dart';
+import 'sale_service.dart';
 
 const saveFailedMessage =
     'Der Bon konnte nicht gespeichert werden. Bitte noch einmal.';
@@ -56,7 +57,7 @@ class CashSheet extends ConsumerStatefulWidget {
 
   final Cart cart;
   final VoidCallback onBack;
-  final ValueChanged<Receipt> onPaid;
+  final ValueChanged<SaleResult> onPaid;
 
   @override
   ConsumerState<CashSheet> createState() => _CashSheetState();
@@ -106,7 +107,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
     // Der erste Tipp sperrt sofort, noch vor dem nächsten Bild.
     if (_saving || _given < _total) return;
     final staff = ref.read(sessionProvider);
-    final repo = ref.read(receiptRepositoryProvider);
+    final service = ref.read(saleServiceProvider);
     final cartCtl = ref.read(cartProvider.notifier);
     if (staff == null) return;
     setState(() {
@@ -114,7 +115,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
       _failed = false;
     });
     try {
-      final receipt = await repo.finalizeCashSale(
+      final result = await service.completeCash(
         saleId: _saleId,
         cart: widget.cart,
         givenCents: _given,
@@ -123,7 +124,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
       // Der Bon ist gespeichert: der offene Bon und sein Entwurf gehen weg,
       // auch wenn die Ansicht inzwischen weg ist.
       cartCtl.clear();
-      if (mounted) widget.onPaid(receipt);
+      if (mounted) widget.onPaid(result);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -141,6 +142,10 @@ class _CashSheetState extends ConsumerState<CashSheet> {
     final typing = _typing;
     final short = _given < _total;
     final suggestions = cashSuggestions(_total);
+    final hasPrinter =
+        (ref.watch(settingsStreamProvider).value ?? const RegisterSettings())
+            .printerKind !=
+        PrinterKind.none;
     return PayColumnFrame(
       child: Column(
         children: [
@@ -240,7 +245,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
             padding: const EdgeInsets.all(12),
             child: PrimaryButton(
               key: const Key('finish-sale'),
-              label: 'Abschließen',
+              label: hasPrinter ? 'Abschließen und Bon drucken' : 'Abschließen',
               height: KassaTokens.mainActionHeight,
               onPressed: short || _saving ? null : _finish,
             ),

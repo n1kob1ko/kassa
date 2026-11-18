@@ -5,31 +5,59 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../devices/printer.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
+import 'sale_service.dart';
 
-/// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer und das Rückgeld, das die
-/// Person jetzt herausgibt. "Nächster Kunde" führt zur leeren Kassa zurück.
-class SaleDone extends ConsumerWidget {
-  const SaleDone({
-    super.key,
-    required this.number,
-    required this.changeCents,
-    required this.onNext,
-  });
+/// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
+/// das Rückgeld, das die Person jetzt herausgibt. "Nächster Kunde" führt zur
+/// leeren Kassa zurück und ist immer sofort aktiv, auch während des Druckens.
+class SaleDone extends ConsumerStatefulWidget {
+  const SaleDone({super.key, required this.result, required this.onNext});
 
-  final int number;
-  final int changeCents;
+  final SaleResult result;
   final VoidCallback onNext;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SaleDone> createState() => _SaleDoneState();
+}
+
+class _SaleDoneState extends ConsumerState<SaleDone> {
+  /// `null`, solange gedruckt wird.
+  PrintOutcome? _outcome;
+
+  @override
+  void initState() {
+    super.initState();
+    _await(widget.result.print);
+  }
+
+  void _await(Future<PrintOutcome> print) {
+    print.then((outcome) {
+      if (mounted) setState(() => _outcome = outcome);
+    });
+  }
+
+  void _reprint() {
+    setState(() => _outcome = null);
+    _await(ref.read(saleServiceProvider).reprint(widget.result.receipt));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
-    final drawer =
-        (ref.watch(settingsStreamProvider).value ?? const RegisterSettings())
-            .cashDrawerEnabled;
+    final settings =
+        ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
+    final drawer = settings.cashDrawerEnabled;
+    final number = widget.result.receipt.number;
+    final changeCents = widget.result.receipt.payment.changeCents;
+    final outcome = _outcome;
+    final showPrint =
+        settings.printerKind != PrinterKind.none &&
+        outcome?.problem != PrintProblem.notSetUp;
     return PayColumnFrame(
       child: Column(
         children: [
@@ -71,6 +99,10 @@ class SaleDone extends ConsumerWidget {
                         color: c.ink2,
                       ),
                     ),
+                    if (showPrint) ...[
+                      const SizedBox(height: KassaTokens.spaceMd),
+                      _PrintState(outcome: outcome, onReprint: _reprint),
+                    ],
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -130,8 +162,68 @@ class SaleDone extends ConsumerWidget {
               filled: false,
               solid: true,
               height: KassaTokens.mainActionHeight,
-              onPressed: onNext,
+              onPressed: widget.onNext,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Die Zeile unter der Bon-Nummer: "Bon wird gedruckt …", "Bon gedruckt" oder
+/// die Meldung des Druckers in `warnBg` mit "Nochmal drucken".
+class _PrintState extends StatelessWidget {
+  const _PrintState({required this.outcome, required this.onReprint});
+
+  /// `null`, solange gedruckt wird.
+  final PrintOutcome? outcome;
+  final VoidCallback onReprint;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final line = text.bodyLarge!.copyWith(
+      fontWeight: FontWeight.w600,
+      color: c.ink2,
+    );
+    final o = outcome;
+    if (o == null) {
+      return Text(
+        'Bon wird gedruckt …',
+        key: const Key('print-state'),
+        style: line,
+      );
+    }
+    if (o.ok) {
+      return Text('Bon gedruckt', key: const Key('print-state'), style: line);
+    }
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            o.message,
+            key: const Key('print-state'),
+            style: text.bodyLarge!.copyWith(
+              fontWeight: FontWeight.w700,
+              color: c.warnInk,
+            ),
+          ),
+          const SizedBox(height: KassaTokens.spaceMd),
+          PrimaryButton(
+            key: const Key('reprint'),
+            label: 'Nochmal drucken',
+            icon: LucideIcons.printer,
+            filled: false,
+            height: 64,
+            onPressed: onReprint,
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/core/money.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
@@ -59,6 +60,53 @@ class _CountingVoids extends ReceiptRepository {
 }
 
 void main() {
+  testWidgets('Drucken im Bon-Detail druckt genau diesen Bon', (t) async {
+    await pumpBonsWithSales(t, 3);
+    await setUpPrinter(t);
+    await openReceipt(t, 2);
+    expect(t.getSize(find.byKey(const Key('print-receipt'))).height, 72);
+    final id = (await queryRows(
+      t,
+      'SELECT id FROM receipts WHERE number = 2',
+    )).single['id'];
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pumpAndSettle();
+    expect(printerOf(t).log, ['print:$id']); // ohne Lade
+    expect(find.text('Bon gedruckt'), findsOneWidget);
+    expect(find.byKey(const Key('undo')), findsNothing);
+  });
+
+  testWidgets('Drucken meldet ein Problem als Hinweis', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await setUpPrinter(t);
+    await openReceipt(t, 1);
+    printerOf(t).next = const PrintOutcome.failed(PrintProblem.coverOpen);
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pumpAndSettle();
+    expect(
+      find.text('Drucker nicht bereit. Der Deckel ist offen.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ohne Drucker gibt es die Taste Drucken nicht', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await openReceipt(t, 1);
+    expect(find.byKey(const Key('print-receipt')), findsNothing);
+    expect(find.byKey(const Key('void-receipt')), findsOneWidget);
+  });
+
+  testWidgets('Storno druckt den Storno-Bon, die Lade bleibt zu', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await setUpPrinter(t);
+    await _startVoid(t, 1);
+    await t.tap(find.byKey(const Key('confirm-void')));
+    await t.pumpAndSettle();
+    final log = printerOf(t).log;
+    expect(log, hasLength(1));
+    expect(log.single, startsWith('print:'));
+  });
+
   testWidgets('Liste des offenen Tages, neuester zuerst, Detail rechts', (
     t,
   ) async {

@@ -4,7 +4,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../domain/catalog.dart';
-import '../../domain/receipt.dart';
 import '../../ui/tokens.dart';
 import 'cart_controller.dart';
 import 'cart_panel.dart';
@@ -13,6 +12,7 @@ import 'category_rail.dart';
 import 'item_grid.dart';
 import 'modifier_panel.dart';
 import 'sale_done.dart';
+import 'sale_service.dart';
 
 const _favoritesId = 'favorites';
 
@@ -34,7 +34,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
   String? _categoryId;
   Item? _building;
   _Side _side = _Side.cart;
-  Receipt? _paid;
+  SaleResult? _paid;
 
   /// Was die Person eben getippt hat, bis die Datenbank es bestätigt: so
   /// wechselt die Ansicht im selben Bild.
@@ -54,8 +54,8 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
         .catchError((Object _) {});
   }
 
-  void _onPaid(Receipt receipt) => setState(() {
-    _paid = receipt;
+  void _onPaid(SaleResult result) => setState(() {
+    _paid = result;
     _side = _Side.done;
   });
 
@@ -168,8 +168,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
             onPaid: _onPaid,
           ),
           _Side.done => SaleDone(
-            number: _paid!.number,
-            changeCents: _paid!.payment.changeCents,
+            result: _paid!,
             onNext: () => setState(() {
               _paid = null;
               _side = _Side.cart;

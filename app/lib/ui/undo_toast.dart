@@ -10,11 +10,13 @@ OverlayEntry? _current;
 /// Zeigt unten mittig einen Hinweis mit der Taste "Rückgängig". Bleibt
 /// [KassaTokens.snackStay] (7 Sekunden) stehen. Ein neuer Hinweis ersetzt den
 /// alten. Antippen von "Rückgängig" ruft [onUndo] einmal und schließt ihn.
-/// Die Rückgabe schließt den Hinweis von außen (mehrfach aufrufbar).
+/// Ohne [onUndo] zeigt der Hinweis nur den Text (z. B. das Ergebnis des
+/// Druckens). Die Rückgabe schließt den Hinweis von außen (mehrfach
+/// aufrufbar).
 VoidCallback showUndoToast(
   BuildContext context, {
   required String message,
-  required VoidCallback onUndo,
+  VoidCallback? onUndo,
 }) {
   final overlay = Overlay.of(context, rootOverlay: true);
   _current?.remove();
@@ -29,10 +31,12 @@ VoidCallback showUndoToast(
   entry = OverlayEntry(
     builder: (context) => _ToastHost(
       message: message,
-      onUndo: () {
-        close();
-        onUndo();
-      },
+      onUndo: onUndo == null
+          ? null
+          : () {
+              close();
+              onUndo();
+            },
       onTimeout: close,
     ),
   );
@@ -55,7 +59,7 @@ class _ToastHost extends StatefulWidget {
   });
 
   final String message;
-  final VoidCallback onUndo;
+  final VoidCallback? onUndo;
   final VoidCallback onTimeout;
 
   @override
@@ -113,10 +117,10 @@ class _ToastHostState extends State<_ToastHost> {
 /// Aussehen des Hinweises: Höhe 60, Rundung 16, `solid` mit `solidInk`.
 /// Eigenes Widget, damit Bildvergleiche es ohne Overlay zeigen können.
 class UndoToastView extends StatelessWidget {
-  const UndoToastView({super.key, required this.message, required this.onUndo});
+  const UndoToastView({super.key, required this.message, this.onUndo});
 
   final String message;
-  final VoidCallback onUndo;
+  final VoidCallback? onUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +129,7 @@ class UndoToastView extends StatelessWidget {
     return Container(
       key: const Key('undo-toast'),
       constraints: const BoxConstraints(minHeight: 60),
-      padding: const EdgeInsets.only(left: 20, right: 6),
+      padding: EdgeInsets.only(left: 20, right: onUndo == null ? 20 : 6),
       decoration: BoxDecoration(
         color: c.solid,
         borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
@@ -151,25 +155,27 @@ class UndoToastView extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 24),
-            Pressable(
-              key: const Key('undo'),
-              onTap: onUndo,
-              minTapSize: const Size(0, KassaTokens.minTap),
-              child: Container(
-                height: KassaTokens.minTap,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                alignment: Alignment.center,
-                child: Text(
-                  'Rückgängig',
-                  style: text.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: c.accentSnack,
+            if (onUndo != null) ...[
+              const SizedBox(width: 24),
+              Pressable(
+                key: const Key('undo'),
+                onTap: onUndo,
+                minTapSize: const Size(0, KassaTokens.minTap),
+                child: Container(
+                  height: KassaTokens.minTap,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Rückgängig',
+                    style: text.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: c.accentSnack,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

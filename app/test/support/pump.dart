@@ -24,12 +24,16 @@ import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/devices/device_providers.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/theme.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'demo_fixtures.dart';
+import 'fake_devices.dart';
+import 'kassa_pump.dart' show containerOf;
 
 Future<void>? _fonts;
 
@@ -100,12 +104,14 @@ Future<void> pumpApp(
 /// [seeded] sind der Beispiel-Imbiss eingespielt, der Chef "Chef" (PIN 4711)
 /// und die Mitarbeiterin "Anna" (PIN 1234) angelegt, sonst ist alles leer.
 /// Die Datenbank wird am Ende des Tests geschlossen. [pickedFile] ist der Text,
-/// den die Dateiauswahl liefert (`null`: die Person bricht ab).
+/// den die Dateiauswahl liefert (`null`: die Person bricht ab). Der Drucker
+/// ist ein [FakePrinter] (oder [printer]); Tests erreichen ihn mit [printerOf].
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
   String? pickedFile,
   MenuFilePicker? picker,
+  ReceiptPrinter? printer,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -118,6 +124,7 @@ Future<List<Override>> memoryOverrides({
   }
   return [
     databaseProvider.overrideWithValue(db),
+    receiptPrinterProvider.overrideWithValue(printer ?? FakePrinter()),
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
@@ -127,6 +134,10 @@ Future<List<Override>> memoryOverrides({
     ),
   ];
 }
+
+/// Der falsche Drucker der laufenden Oberfläche.
+FakePrinter printerOf(WidgetTester t) =>
+    containerOf(t).read(receiptPrinterProvider) as FakePrinter;
 
 /// Dateiwähler, der wirft, solange [broken] gesetzt ist, danach [text] liefert.
 class BrokenPicker implements MenuFilePicker {

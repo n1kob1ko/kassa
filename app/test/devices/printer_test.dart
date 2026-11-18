@@ -184,6 +184,43 @@ void main() {
     expect(t.sent, [encodeDrawerKick()]);
   });
 
+  test(
+    'zwei Aufrufe gleichzeitig: der zweite beginnt erst nach dem ersten',
+    () async {
+      final gate = Completer<void>();
+      final t = RecordingTransport()..statusGate = gate;
+      final p = printerOf(t);
+      final first = p.printReceipt(receipt(id: 'a'));
+      final second = p.openDrawer();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(t.started, hasLength(1)); // der zweite wartet
+      expect(t.sent, isEmpty);
+      gate.complete();
+      expect((await first).ok, isTrue);
+      expect((await second).ok, isTrue);
+      expect(t.started, hasLength(2));
+      expect(t.sent, [
+        encodeEscPos(layoutReceipt(receipt(id: 'a'), business)),
+        encodeDrawerKick(),
+      ]);
+    },
+  );
+
+  test(
+    'ein hängender erster Aufruf blockiert den zweiten nicht für immer',
+    () async {
+      final t = RecordingTransport()..hang = true;
+      final p = printerOf(t, limit: const Duration(milliseconds: 100));
+      final first = p.printReceipt(receipt());
+      final second = p.openDrawer();
+      expect((await first).problem, PrintProblem.timeout);
+      expect(t.started, hasLength(1)); // der zweite begann erst nach dem Limit
+      t.hang = false;
+      expect((await second).ok, isTrue);
+      expect(t.started, hasLength(2));
+    },
+  );
+
   test('testPrint schickt den Testdruck', () async {
     final t = RecordingTransport();
     await printerOf(t).testPrint();
