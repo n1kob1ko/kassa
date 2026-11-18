@@ -3,19 +3,23 @@
  * Server und Seiten. Startet die Test-Datenbank, falls sie noch nicht läuft, legt eine frische Datenbank an
  * und startet den gebauten Server auf einem freien Port. Am Ende stoppt er den Server, löscht die Datenbank
  * und den Temp-Ordner und stoppt den Cluster nur dann, wenn er ihn selbst gestartet hat.
+ *
+ * Alle Testdateien teilen diesen Server, und der Einmal-Schlüssel gilt nur einmal: jede Testdatei muss im Namen
+ * nach auth.spec.ts sortieren und darf mit der E-Mail des Anbieters keine falschen Anmeldungen erzeugen.
  */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdtemp, open, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, open, readFile, rm, type FileHandle } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
-export const E2E_SETUP_TOKEN = 'e2e-setup-token';
-export const E2E_RELEASE_TOKEN = 'e2e-release-token';
+// Beide mindestens 32 Zeichen lang, wie der Server es für echte Schlüssel verlangt.
+export const E2E_SETUP_TOKEN = 'e2e-setup-token-0123456789abcdefghij';
+export const E2E_RELEASE_TOKEN = 'e2e-release-token-0123456789abcdefghi';
 /** Das Anbieter-Konto, das auth.spec.ts über "Einrichten" anlegt. */
 export const E2E_PROVIDER = { email: 'beispiel@example.com', password: 'beispiel-passwort-123' };
 
@@ -100,51 +104,60 @@ export default async function startE2eServer(): Promise<() => Promise<void>> {
     throw new Error('Server oder Seiten sind nicht gebaut. Starte die Browser-Tests mit "npm run e2e" in web/.');
   }
 
-  const startedCluster = !(await clusterRunning());
-  if (startedCluster) execFileSync(join(REPO, 'server/tool/test-db.sh'), ['start'], { stdio: 'inherit' });
-
-  // Eigene Vorsilbe: die Server-Tests räumen beim Start alle Datenbanken kassa_test_* weg.
-  const dbName = `kassa_e2e_${randomBytes(6).toString('hex')}`;
-  await admin(`create database ${dbName}`);
-  const tmp = await mkdtemp(join(tmpdir(), 'kassa-e2e-'));
-  const logFile = join(tmp, 'server.log');
-  const log = await open(logFile, 'w');
-
-  const port = await freePort();
-  const url = `http://127.0.0.1:${port}`;
-  const databaseUrl = withDatabase(TEST_DB, dbName);
-  const child = spawn(process.execPath, [serverMain], {
-    cwd: REPO,
-    env: {
-      PATH: process.env.PATH,
-      DATABASE_URL: databaseUrl,
-      APP_DB_PASSWORD,
-      PORT: String(port),
-      PUBLIC_URL: url,
-      SETUP_TOKEN: E2E_SETUP_TOKEN,
-      RELEASE_TOKEN: E2E_RELEASE_TOKEN,
-      FILE_DIR: join(tmp, 'files'),
-      WEB_DIR: 'web/dist',
-    },
-    stdio: ['ignore', log.fd, log.fd],
-  });
-
+  // Alles, was angelegt wird, trägt sich hier ein, sobald es existiert. Die Aufräumarbeit läuft am Ende
+  // und genauso, wenn der Start auf halbem Weg scheitert.
+  let startedCluster = false;
+  let dbName: string | undefined;
+  let tmp: string | undefined;
+  let log: FileHandle | undefined;
+  let child: ChildProcess | undefined;
   const teardown = async () => {
-    await stopChild(child);
-    await log.close().catch(() => undefined);
-    await admin(`drop database if exists ${dbName} with (force)`);
-    await rm(tmp, { recursive: true, force: true });
+    if (child) await stopChild(child);
+    await log?.close().catch(() => undefined);
+    if (dbName) await admin(`drop database if exists ${dbName} with (force)`);
+    if (tmp) await rm(tmp, { recursive: true, force: true });
     if (startedCluster) execFileSync(join(REPO, 'server/tool/test-db.sh'), ['stop'], { stdio: 'inherit' });
   };
 
   try {
+    if (!(await clusterRunning())) {
+      startedCluster = true;
+      execFileSync(join(REPO, 'server/tool/test-db.sh'), ['start'], { stdio: 'inherit' });
+    }
+
+    // Eigene Vorsilbe: die Server-Tests räumen beim Start alle Datenbanken kassa_test_* weg.
+    const name = `kassa_e2e_${randomBytes(6).toString('hex')}`;
+    await admin(`create database ${name}`);
+    dbName = name;
+    tmp = await mkdtemp(join(tmpdir(), 'kassa-e2e-'));
+    const logFile = join(tmp, 'server.log');
+    log = await open(logFile, 'w');
+
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}`;
+    const databaseUrl = withDatabase(TEST_DB, name);
+    child = spawn(process.execPath, [serverMain], {
+      cwd: REPO,
+      env: {
+        PATH: process.env.PATH,
+        DATABASE_URL: databaseUrl,
+        APP_DB_PASSWORD,
+        PORT: String(port),
+        PUBLIC_URL: url,
+        SETUP_TOKEN: E2E_SETUP_TOKEN,
+        RELEASE_TOKEN: E2E_RELEASE_TOKEN,
+        FILE_DIR: join(tmp, 'files'),
+        WEB_DIR: 'web/dist',
+      },
+      stdio: ['ignore', log.fd, log.fd],
+    });
     await waitForHealth(url, child, logFile);
+
+    process.env.KASSA_E2E_URL = url;
+    process.env.KASSA_E2E_DATABASE_URL = databaseUrl;
   } catch (err) {
-    await teardown();
+    await teardown().catch(() => undefined);
     throw err;
   }
-
-  process.env.KASSA_E2E_URL = url;
-  process.env.KASSA_E2E_DATABASE_URL = databaseUrl;
   return teardown;
 }

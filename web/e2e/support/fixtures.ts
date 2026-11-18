@@ -27,16 +27,33 @@ export const test = base.extend<{ pageProblems: string[] }>({
 export { expect };
 
 /**
- * Meldet die Seite als Anbieter an (Cookie im Kontext der Seite). Gibt es das Konto noch nicht, legt der
- * Einmal-Schlüssel es an. auth.spec.ts läuft zuerst und legt es dabei über die Seite "Einrichten" an.
+ * Meldet die Seite als Anbieter an (Cookie im Kontext der Seite). Gibt es das Konto noch nicht (Anmeldung 401
+ * `login_failed` und der Einmal-Schlüssel gilt noch), legt der Schlüssel es an. auth.spec.ts läuft zuerst und legt
+ * es dabei über die Seite "Einrichten" an. Jede andere Antwort bricht mit ihrem echten Grund ab.
  */
 export async function signInAsProvider(page: Page): Promise<void> {
   const headers = { 'X-Kassa-Request': '1' };
   const login = await page.request.post('/api/auth/login', { headers, data: E2E_PROVIDER });
   if (login.ok()) return;
+  const loginBody = await login.text();
+  const loginCode = login.status() === 401 ? (JSON.parse(loginBody) as { error?: { code?: string } }).error?.code : undefined;
+  if (loginCode !== 'login_failed') {
+    throw new Error(`Anmeldung als Anbieter gescheitert: ${login.status()} ${loginBody}`);
+  }
+
+  const check = await page.request.get(`/api/auth/setup?token=${encodeURIComponent(E2E_SETUP_TOKEN)}`);
+  const { valid } = (await check.json()) as { valid?: boolean };
+  if (!valid) {
+    throw new Error(
+      'Anmeldung als Anbieter gescheitert (login_failed), und der Einmal-Schlüssel ist schon verbraucht: ' +
+        'das Konto gibt es mit einem anderen Passwort, oder eine Testdatei hat es geändert.',
+    );
+  }
   const setup = await page.request.post('/api/auth/setup', {
     headers,
     data: { token: E2E_SETUP_TOKEN, ...E2E_PROVIDER },
   });
-  expect(setup.ok(), 'Anbieter-Konto anlegen').toBe(true);
+  if (!setup.ok()) {
+    throw new Error(`Anbieter-Konto anlegen gescheitert: ${setup.status()} ${await setup.text()}`);
+  }
 }

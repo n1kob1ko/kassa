@@ -68,6 +68,11 @@ export function Dialog({ title, open, onClose, children, actions }: DialogProps)
           first.focus();
         }
       }}
+      onClose={() => {
+        // Der Browser kann den Dialog auch selbst schließen (in Chromium etwa das zweite Escape, das sich nicht
+        // abbrechen lässt). Dann muss der Zustand der Seite mitgehen.
+        if (open) onClose();
+      }}
       onClick={(e) => {
         // Klick auf den abgedunkelten Rand schließt, Klicks im Inhalt nicht.
         if (e.target === e.currentTarget) onClose();

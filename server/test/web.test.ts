@@ -152,3 +152,25 @@ test('ohne gebauten Ordner startet der Server ohne Seiten, die Kopfzeilen bleibe
     expectSecurityHeaders(health.headers);
   }
 });
+
+test('liegt der Ordner selbst unter einem Ordner "assets", bleiben Schrift und index.html ohne langen Zwischenspeicher', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'kassa-web-'));
+  const nested = join(parent, 'assets', 'dist');
+  await mkdir(join(nested, 'fonts'), { recursive: true });
+  await mkdir(join(nested, 'assets'));
+  await writeFile(join(nested, 'index.html'), INDEX);
+  await writeFile(join(nested, 'fonts', 'Figtree-Bold.ttf'), 'schrift');
+  await writeFile(join(nested, 'assets', 'index-a1b2c3.js'), SCRIPT);
+  try {
+    const t = await fresh({ webDir: nested });
+    const font = await t.app.inject({ method: 'GET', url: '/fonts/Figtree-Bold.ttf' });
+    expect(font.statusCode).toBe(200);
+    expect(font.headers['cache-control']).toBe('no-cache');
+    const page = await t.app.inject({ method: 'GET', url: '/betriebe' });
+    expect(page.headers['cache-control']).toBe('no-cache');
+    const script = await t.app.inject({ method: 'GET', url: '/assets/index-a1b2c3.js' });
+    expect(script.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+});

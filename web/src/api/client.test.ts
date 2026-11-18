@@ -131,3 +131,10 @@ test('401 außerhalb der Anmeldeseiten führt zur Anmeldung, auf den Anmeldeseit
   }
   expect(redirects).toBe(1);
 });
+
+test('eine 2xx-Antwort, die kein JSON ist, wird ein ApiError statt eines SyntaxError', async () => {
+  respond = () => new Response('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+  const err = await api.get('/api/auth/me').catch((e: unknown) => e);
+  expect(err).toBeInstanceOf(ApiError);
+  expect(err).toMatchObject({ status: 200, code: 'internal', message: 'Das hat nicht geklappt. Bitte nochmal versuchen.' });
+});

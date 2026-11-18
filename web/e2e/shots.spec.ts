@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test';
 import { signInAsProvider, test } from './support/fixtures';
-import { E2E_PROVIDER } from './support/server';
 
 /**
  * Bildschirmfotos zum Ansehen, nur mit KASSA_SHOTS_DIR=<Ordner>, etwa:
@@ -38,7 +37,8 @@ for (const size of sizes) {
         await page.getByRole('heading', { name: 'Anmelden' }).waitFor();
         await shoot(page, `anmelden-${suffix}`);
 
-        await page.getByLabel('E-Mail').fill(E2E_PROVIDER.email);
+        // Nie die E-Mail des Anbieters: Fehlversuche dort würden seine Anmeldung sperren.
+        await page.getByLabel('E-Mail').fill('kein-konto@example.com');
         await page.getByLabel('Passwort', { exact: true }).fill('falsches-passwort');
         await page.getByRole('button', { name: 'Anmelden' }).click();
         await page.getByRole('alert').waitFor();

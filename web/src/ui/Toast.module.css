@@ -1,13 +1,21 @@
+/* Popover in der obersten Ebene: die Vorgaben des Browsers für [popover] (Mitte, Rand, Fläche) zurücksetzen. */
 .region {
   position: fixed;
-  z-index: 20;
-  left: 0;
-  right: 0;
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  inset: auto 0 calc(20px + env(safe-area-inset-bottom));
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0 var(--space-xxl);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.region:popover-open {
   display: flex;
   justify-content: center;
-  padding: 0 var(--space-xxl);
-  pointer-events: none;
 }
 
 .toast {
@@ -64,6 +72,6 @@
 /* Unter 1024 px liegt unten die Leiste mit den Bereichen: der Hinweis steht darüber. */
 @media (max-width: 1023.98px) {
   .region {
-    bottom: calc(var(--bottom-bar-height) + 16px + env(safe-area-inset-bottom));
+    inset-block-end: calc(var(--bottom-bar-height) + 16px + env(safe-area-inset-bottom));
   }
 }

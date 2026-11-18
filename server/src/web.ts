@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 
 const CONTENT_SECURITY_POLICY =
   "default-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
@@ -22,15 +22,9 @@ async function isDirectory(dir: string): Promise<boolean> {
   }
 }
 
-function setCacheHeaders(reply: FastifyReply, filePath: string): void {
-  if (basename(filePath) === 'index.html') {
-    reply.header('cache-control', 'no-cache');
-  } else if (filePath.includes('/assets/')) {
-    // Vite schreibt einen Prüfwert in jeden Dateinamen unter assets/, eine neue Fassung hat einen neuen Namen.
-    reply.header('cache-control', IMMUTABLE);
-  } else {
-    reply.header('cache-control', 'no-cache');
-  }
+/** Vite schreibt einen Prüfwert in jeden Dateinamen unter assets/, eine neue Fassung hat einen neuen Namen. */
+function cacheControl(root: string, filePath: string): string {
+  return relative(root, filePath).startsWith(`assets${sep}`) ? IMMUTABLE : 'no-cache';
 }
 
 /**
@@ -62,7 +56,7 @@ export async function registerWeb(app: FastifyInstance, webDir: string | undefin
     wildcard: false,
     cacheControl: false,
     dotfiles: 'ignore',
-    setHeaders: setCacheHeaders,
+    setHeaders: (reply, filePath) => reply.header('cache-control', cacheControl(root, filePath)),
   });
 
   // Jede andere Seitenadresse (etwa /betriebe oder /b/<Betrieb>/kassen) bekommt index.html, den Rest macht der Browser.

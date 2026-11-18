@@ -94,8 +94,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw err;
   }
   if (res.status === 204) return undefined as T;
-  const text = await res.text();
-  return (text === '' ? undefined : JSON.parse(text)) as T;
+  // Eine Antwort, die kein JSON ist (etwa eine Fehlerseite eines Proxys mit 200), ist für die Seite ein Fehler.
+  try {
+    const text = await res.text();
+    return (text === '' ? undefined : JSON.parse(text)) as T;
+  } catch {
+    throw new ApiError(res.status, 'internal', INTERNAL_MESSAGE);
+  }
 }
 
 export const api = {
