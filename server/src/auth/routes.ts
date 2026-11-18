@@ -129,13 +129,33 @@ export function installAuth(app: FastifyInstance): void {
     const hash = await hashPassword(body.password, config.passwordCost);
     const at = now();
 
-    const { user, token } = await withSystem(db, async (c) => {
+    const emailTaken = () => new ApiError(409, 'email_taken', 'Diese E-Mail-Adresse ist schon vergeben.');
+    const { user, token, reset } = await withSystem(db, async (c) => {
       // Der Schlüssel gilt als verbraucht, sobald diese Transaktion gelingt. Von zwei gleichzeitigen gewinnt eine.
+      // Jeder Fehler danach rollt alles zurück: Schlüssel, Passwort und Sitzungen bleiben dann, wie sie waren.
       const used = await c.query(
         'insert into used_secrets (secret_hash, used_at) values ($1, $2) on conflict do nothing',
         [sha256(body.token), at],
       );
       if (used.rowCount === 0) throw setupInvalid();
+
+      const existing = (
+        await c.query<UserRow>(
+          `select id, email, role, business_id, password_hash, disabled_at from users where lower(email) = $1 for update`,
+          [email],
+        )
+      ).rows[0];
+      if (existing) {
+        // Ein neuer Schlüssel setzt nur das Passwort eines Anbieters neu. Er macht nie einen Chef zum Anbieter
+        // und hebt keine Sperre auf.
+        if (existing.role !== 'provider' || existing.disabled_at !== null) throw emailTaken();
+        await c.query('update users set password_hash = $2 where id = $1', [existing.id, hash]);
+        await c.query('delete from sessions where user_id = $1', [existing.id]);
+        await clearLoginFailures(c, email);
+        const found: SessionUser = { id: existing.id, email: existing.email, role: 'provider', businessId: null };
+        return { user: found, token: await openSession(c, found, at, 'auth.setup_reset'), reset: true };
+      }
+
       let id: string;
       try {
         const r = await c.query<{ id: string }>(
@@ -144,16 +164,14 @@ export function installAuth(app: FastifyInstance): void {
         );
         id = r.rows[0]!.id;
       } catch (err) {
-        if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
-          throw new ApiError(409, 'email_taken', 'Diese E-Mail-Adresse ist schon vergeben.');
-        }
+        if ((err as { code?: string }).code === UNIQUE_VIOLATION) throw emailTaken();
         throw err;
       }
       const created: SessionUser = { id, email, role: 'provider', businessId: null };
-      return { user: created, token: await openSession(c, created, at, 'auth.setup') };
+      return { user: created, token: await openSession(c, created, at, 'auth.setup'), reset: false };
     });
     setSessionCookie(reply, token);
-    return reply.code(201).send({ user });
+    return reply.code(reset ? 200 : 201).send({ user });
   });
 
   app.post('/api/auth/login', async (req, reply) => {

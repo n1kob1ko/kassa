@@ -90,12 +90,96 @@ test('ein abgelehntes Einrichten verbraucht den Schlüssel nicht', async () => {
   expect(long.statusCode).toBe(422);
   expect(long.json().error.code).toBe('email_invalid');
 
-  await createProvider(a.app, a.db);
-  const taken = await setup(a, { token: SETUP, email: 'BEISPIEL@example.com', password: TEST_PASSWORD });
+  const chef = await createChef(a.db, await createBusiness(a.db));
+  const taken = await setup(a, { token: SETUP, email: chef.user.email.toUpperCase(), password: TEST_PASSWORD });
   expect(taken.statusCode).toBe(409);
   expect(taken.json().error.code).toBe('email_taken');
 
   expect((await setup(a, { token: SETUP, email: 'neu@example.com', password: TEST_PASSWORD })).statusCode).toBe(201);
+});
+
+const NEW_PASSWORD = 'neues-passwort-456';
+
+test('neuer Schlüssel mit der E-Mail des Anbieters setzt sein Passwort neu', async () => {
+  const a = await fresh({ config: { setupToken: SETUP } });
+  const old = await createProvider(a.app, a.db);
+  await withSystem(a.db, (c) =>
+    c.query(`insert into login_failures (email_hash, at) values ($1, $2)`, [sha256(PROVIDER_EMAIL), a.now.value]),
+  );
+
+  const res = await setup(a, { token: SETUP, email: ' Beispiel@Example.com', password: NEW_PASSWORD });
+  expect(res.statusCode).toBe(200);
+  expect(res.json().user).toEqual(old.user);
+
+  // Die neue Sitzung gilt, die alte nicht mehr.
+  expect((await me(a, cookieOf(res))).json().user).toEqual(old.user);
+  expect((await me(a, old.cookie)).statusCode).toBe(401);
+  // Die Fehlversuche sind gelöscht.
+  const failures = await withSystem(a.db, (c) => c.query('select count(*)::int as n from login_failures'));
+  expect(failures.rows[0].n).toBe(0);
+
+  expect((await login(a, PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(401);
+  expect((await login(a, PROVIDER_EMAIL, NEW_PASSWORD)).statusCode).toBe(200);
+
+  // Der Schlüssel ist verbraucht, es gibt weiter genau einen Benutzer.
+  expect((await setup(a, { token: SETUP, email: PROVIDER_EMAIL, password: 'noch-ein-passwort' })).statusCode).toBe(403);
+  const users = await withSystem(a.db, (c) => c.query('select id, role from users'));
+  expect(users.rows).toEqual([{ id: old.user.id, role: 'provider' }]);
+});
+
+test('Zurücksetzen prüft Passwort und E-Mail, bevor der Schlüssel verbraucht wird', async () => {
+  const a = await fresh({ config: { setupToken: SETUP } });
+  const old = await createProvider(a.app, a.db);
+  const short = await setup(a, { token: SETUP, email: PROVIDER_EMAIL, password: '123456789' });
+  expect(short.statusCode).toBe(422);
+  expect(short.json().error.code).toBe('password_too_short');
+  expect((await me(a, old.cookie)).statusCode).toBe(200);
+  expect((await login(a, PROVIDER_EMAIL, TEST_PASSWORD)).statusCode).toBe(200);
+  expect((await a.app.inject({ method: 'GET', url: `/api/auth/setup?token=${SETUP}` })).json()).toEqual({ valid: true });
+});
+
+test('Schlüssel mit der E-Mail eines Chefs oder Gesperrten: 409, der Schlüssel bleibt gültig', async () => {
+  const a = await fresh({ config: { setupToken: SETUP } });
+  const chef = await createChef(a.db, await createBusiness(a.db));
+  const provider = await createProvider(a.app, a.db);
+  await withSystem(a.db, (c) => c.query('update users set disabled_at = now() where id = $1', [provider.user.id]));
+
+  for (const email of [chef.user.email, PROVIDER_EMAIL]) {
+    const res = await setup(a, { token: SETUP, email, password: NEW_PASSWORD });
+    expect(res.statusCode, email).toBe(409);
+    expect(res.json().error.code).toBe('email_taken');
+    expect(res.headers['set-cookie']).toBeUndefined();
+  }
+  // Nichts hat sich geändert: der Chef bleibt Chef mit altem Passwort und Sitzung, der Gesperrte gesperrt.
+  expect((await me(a, chef.cookie)).json().user).toEqual(chef.user);
+  expect((await login(a, chef.user.email, TEST_PASSWORD)).statusCode).toBe(200);
+  expect((await login(a, chef.user.email, NEW_PASSWORD)).statusCode).toBe(401);
+  const rows = await withSystem(a.db, (c) =>
+    c.query('select role, disabled_at is not null as blocked from users order by role'),
+  );
+  expect(rows.rows).toEqual([
+    { role: 'chef', blocked: false },
+    { role: 'provider', blocked: true },
+  ]);
+
+  // Derselbe Schlüssel gilt danach für ein richtiges Einrichten.
+  const ok = await setup(a, { token: SETUP, email: 'neu@example.com', password: NEW_PASSWORD });
+  expect(ok.statusCode).toBe(201);
+  expect(ok.json().user.role).toBe('provider');
+});
+
+test('Zurücksetzen steht im Verlauf, das Passwort nicht', async () => {
+  const a = await fresh({ config: { setupToken: SETUP } });
+  const old = await createProvider(a.app, a.db);
+  const res = await setup(a, { token: SETUP, email: PROVIDER_EMAIL, password: NEW_PASSWORD });
+  const rows = (await withSystem(a.db, (c) => c.query('select * from audit_log order by id'))).rows;
+  expect(rows.map((r) => [r.action, r.user_id, r.business_id])).toEqual([['auth.setup_reset', old.user.id, null]]);
+  const text = JSON.stringify(rows);
+  for (const s of [NEW_PASSWORD, TEST_PASSWORD, SETUP, cookieOf(res).split('=')[1]!, old.cookie.split('=')[1]!]) {
+    expect(text).not.toContain(s);
+    expect(text).not.toContain(sha256(s).toString('hex'));
+  }
+  expect(text).not.toMatch(/scrypt/);
 });
 
 test('ohne SETUP_TOKEN ist Einrichten immer 403', async () => {
