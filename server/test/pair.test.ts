@@ -171,6 +171,76 @@ test('11. Fehlversuch derselben Adresse in 15 Minuten: 429, nach 15 Minuten wied
   }
 });
 
+test('40 falsche Codes gleichzeitig von einer Adresse: höchstens 10 erreichen die Datenbank, der Rest 429', async () => {
+  const ip = nextIp();
+  const results = await Promise.all(
+    Array.from({ length: 40 }, (_, i) => pair(pairBody(String(10_000_000 + i)), ip)),
+  );
+  const status = results.map((r) => r.statusCode);
+  expect(status.filter((s) => s === 404).length).toBeLessThanOrEqual(10);
+  expect(status.filter((s) => s === 404).length + status.filter((s) => s === 429).length).toBe(40);
+  for (const r of results.filter((x) => x.statusCode === 429)) {
+    expect(r.json().error.code).toBe('too_many_attempts');
+    expect(r.json().retryAfterSeconds).toBeGreaterThan(0);
+  }
+  // Auch der richtige Code kommt jetzt nicht mehr durch.
+  expect((await pair(pairBody(await code()), ip)).statusCode).toBe(429);
+});
+
+test('ein gelungenes Koppeln verbraucht keinen der 10 Versuche', async () => {
+  const ip = nextIp();
+  for (let i = 0; i < 9; i++) expectInvalidCode(await pair(pairBody('00000000'), ip));
+  for (let i = 0; i < 3; i++) expect((await pair(pairBody(await code()), ip)).statusCode).toBe(200);
+  expectInvalidCode(await pair(pairBody('00000000'), ip));
+  expect((await pair(pairBody('00000000'), ip)).statusCode).toBe(429);
+});
+
+test('409 other_business verbraucht keinen der 10 Versuche', async () => {
+  const ip = nextIp();
+  const c = await code();
+  for (let i = 0; i < 9; i++) expectInvalidCode(await pair(pairBody('00000000'), ip));
+  for (let i = 0; i < 3; i++) expect((await pair(pairBody(c, businessB), ip)).statusCode).toBe(409);
+  expectInvalidCode(await pair(pairBody('00000000'), ip));
+  expect((await pair(pairBody('00000000'), ip)).statusCode).toBe(429);
+});
+
+test('ohne CLIENT_IP_HEADER ändern X-Forwarded-For und X-Real-IP die Adresse nicht', async () => {
+  const ip = nextIp();
+  for (let i = 0; i < 10; i++) expectInvalidCode(await pair(pairBody('00000000'), ip));
+  for (const headers of [{ 'x-forwarded-for': '1.2.3.4' }, { 'x-real-ip': '1.2.3.5' }, { 'x-forwarded-for': '1.2.3.6, 1.2.3.7' }]) {
+    const res = await app().inject({ method: 'POST', url: '/api/device/pair', payload: pairBody('00000000'), remoteAddress: ip, headers });
+    expect(res.statusCode, JSON.stringify(headers)).toBe(429);
+  }
+});
+
+describe('mit CLIENT_IP_HEADER=x-real-ip', () => {
+  let p: TestApp;
+  beforeAll(async () => {
+    p = await testApp({ config: { clientIpHeader: 'x-real-ip' } });
+  });
+  afterAll(async () => {
+    await p.close();
+  });
+  const send = (headers: Record<string, string | string[]>) =>
+    p.app.inject({ method: 'POST', url: '/api/device/pair', payload: pairBody('00000000'), remoteAddress: '10.9.9.9', headers });
+
+  test('verschiedene X-Real-IP zählen getrennt, X-Forwarded-For zählt nicht', async () => {
+    for (let i = 0; i < 10; i++) expect((await send({ 'x-real-ip': '203.0.113.1' })).statusCode).toBe(404);
+    expect((await send({ 'x-real-ip': '203.0.113.1' })).statusCode).toBe(429);
+    expect((await send({ 'x-real-ip': '203.0.113.1', 'x-forwarded-for': '198.51.100.7' })).statusCode).toBe(429);
+    expect((await send({ 'x-real-ip': '203.0.113.2' })).statusCode).toBe(404);
+    expect((await send({ 'x-real-ip': '203.0.113.2', 'x-forwarded-for': '203.0.113.1' })).statusCode).toBe(404);
+  });
+
+  test('ohne, mit leerer oder mit mehrfacher Kopfzeile gilt die Adresse der Verbindung', async () => {
+    for (let i = 0; i < 10; i++) expect((await send({})).statusCode).toBe(404);
+    expect((await send({})).statusCode).toBe(429);
+    expect((await send({ 'x-real-ip': '' })).statusCode).toBe(429);
+    expect((await send({ 'x-real-ip': ['203.0.113.50', '203.0.113.51'] })).statusCode).toBe(429);
+    expect((await send({ 'x-real-ip': '203.0.113.52' })).statusCode).toBe(404);
+  });
+});
+
 test('Code mit Buchstaben oder 7 Ziffern: 404 invalid_code', async () => {
   const c = await code();
   const ip = nextIp();
@@ -238,5 +308,53 @@ describe('SlidingWindow', () => {
     expect(w.retryAfterMs('x', t(1000))).toBe(0);
     expect(w.hit('x', t(1000))).toBe(true);
     expect(w.hit('x', t(1001))).toBe(false);
+  });
+
+  test('release gibt einen reservierten Treffer zurück', () => {
+    const w = new SlidingWindow(2, 1000);
+    expect(w.hit('x', t(0))).toBe(true);
+    expect(w.hit('x', t(10))).toBe(true);
+    expect(w.hit('x', t(20))).toBe(false);
+    w.release('x', t(10));
+    expect(w.hit('x', t(30))).toBe(true);
+    expect(w.hit('x', t(40))).toBe(false);
+    // Nach dem Zurückgeben aller Treffer ist der Schlüssel weg.
+    w.release('x', t(0));
+    w.release('x', t(30));
+    expect(w.size).toBe(0);
+  });
+
+  test('abgelaufene Schlüssel fallen beim nächsten hit heraus', () => {
+    const w = new SlidingWindow(3, 1000);
+    w.hit('a', t(0));
+    w.hit('b', t(500));
+    expect(w.size).toBe(2);
+    w.hit('c', t(1000));
+    expect(w.size).toBe(2);
+    w.hit('c', t(1600));
+    expect(w.size).toBe(1);
+  });
+
+  test('höchstens maxKeys Schlüssel: ein neuer gilt dann als über der Grenze, bis alte ablaufen', () => {
+    const w = new SlidingWindow(3, 1000, { maxKeys: 2 });
+    expect(w.hit('a', t(0))).toBe(true);
+    expect(w.hit('b', t(100))).toBe(true);
+    expect(w.hit('c', t(200))).toBe(false);
+    expect(w.retryAfterMs('c', t(200))).toBe(800);
+    // Bekannte Schlüssel zählen weiter.
+    expect(w.hit('a', t(300))).toBe(true);
+    expect(w.size).toBe(2);
+    // b läuft bei 1100 ab, a erst bei 1300.
+    expect(w.hit('c', t(1100))).toBe(true);
+    expect(w.hit('d', t(1100))).toBe(false);
+    expect(w.size).toBe(2);
+  });
+
+  test('Vorgabe sind 50 000 Schlüssel', () => {
+    const w = new SlidingWindow(1, 1000);
+    for (let i = 0; i < 50_000; i++) expect(w.hit(`k${i}`, t(0))).toBe(true);
+    expect(w.hit('neu', t(0))).toBe(false);
+    expect(w.hit('neu', t(1000))).toBe(true);
+    expect(w.size).toBe(1);
   });
 });

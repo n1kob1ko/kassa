@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { audit } from '../audit.js';
 import { isUuid } from '../auth/guards.js';
 import { randomToken, sha256 } from '../auth/secrets.js';
+import { clientAddress } from '../client_address.js';
 import { setBusiness, withSystem } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { SlidingWindow } from '../rate_limit.js';
@@ -26,36 +27,17 @@ type Paired = { registerId: string; registerName: string; businessId: string; bu
 
 /** POST /api/device/pair: ein Tablet löst einen Kopplungscode ein und bekommt seinen Geräte-Schlüssel. */
 export function installPairRoutes(app: FastifyInstance): void {
-  const { db, now } = app.deps;
+  const { config, db, now } = app.deps;
   // Pro App eine eigene Zählung, damit Tests sich nicht gegenseitig sperren.
   const failures = new SlidingWindow(MAX_ATTEMPTS, ATTEMPT_WINDOW_MS);
 
-  app.post('/api/device/pair', async (req, reply) => {
-    const at = now();
-    const wait = failures.retryAfterMs(req.ip, at);
-    if (wait > 0) {
-      const seconds = Math.ceil(wait / 1000);
-      const minutes = Math.ceil(seconds / 60);
-      reply.header('retry-after', String(seconds));
-      throw new ApiError(
-        429,
-        'too_many_attempts',
-        `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
-        { retryAfterSeconds: seconds },
-      );
-    }
-
-    const parsed = pairBody.safeParse(req.body);
+  /** Prüft die Anfrage und koppelt. Ein falscher Code wirft `wrongCode()`, alles andere zählt nicht als Fehlversuch. */
+  async function attempt(rawBody: unknown, at: Date, wrongCode: () => ApiError): Promise<Paired & { token: string }> {
+    const parsed = pairBody.safeParse(rawBody);
     if (!parsed.success) throw new ApiError(400, 'bad_request', 'Die Anfrage ist nicht in Ordnung.');
     const body = parsed.data;
     const previous = body.previousBusinessId?.toLowerCase() ?? null;
-
-    // Nur ein falscher Code zählt als Fehlversuch, ein Tablet eines anderen Betriebs nicht.
-    const failed = () => {
-      failures.hit(req.ip, at);
-      return invalidCode();
-    };
-    if (typeof body.code !== 'string' || !CODE.test(body.code)) throw failed();
+    if (typeof body.code !== 'string' || !CODE.test(body.code)) throw wrongCode();
     const code = body.code;
 
     const token = randomToken();
@@ -92,7 +74,35 @@ export function installPairRoutes(app: FastifyInstance): void {
       );
       return { registerId, registerName: claim.register_name, businessId, businessName: business.name };
     });
-    if (!paired) throw failed();
+    if (!paired) throw wrongCode();
     return { ...paired, token };
+  }
+
+  app.post('/api/device/pair', async (req, reply) => {
+    const at = now();
+    const ip = clientAddress(req, config);
+    // Vor jeder Arbeit an der Datenbank einen Platz reservieren, damit auch gleichzeitige Anfragen
+    // höchstens 10 Codes pro Adresse prüfen. Nur ein falscher Code behält seinen Platz.
+    if (!failures.hit(ip, at)) {
+      const seconds = Math.max(Math.ceil(failures.retryAfterMs(ip, at) / 1000), 1);
+      const minutes = Math.ceil(seconds / 60);
+      reply.header('retry-after', String(seconds));
+      throw new ApiError(
+        429,
+        'too_many_attempts',
+        `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
+        { retryAfterSeconds: seconds },
+      );
+    }
+    let wrong = false;
+    try {
+      return await attempt(req.body, at, () => {
+        wrong = true;
+        return invalidCode();
+      });
+    } finally {
+      // Gekoppelt, anderer Betrieb, falsche Anfrage: Der Platz geht zurück.
+      if (!wrong) failures.release(ip, at);
+    }
   });
 }

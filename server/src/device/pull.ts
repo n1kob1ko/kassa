@@ -32,6 +32,7 @@ function readInt(v: unknown, min: number): number | null {
   return Number.isSafeInteger(n) && n >= min ? n : null;
 }
 
+// bigint kommt als Text. Angenommen wird, dass Änderungs-Nummern unter 2^53 bleiben, sonst wäre Number ungenau.
 const seqOf = (r: { change_seq: string }) => Number(r.change_seq);
 
 /** Vorlagen gehen in fester Reihenfolge der Schlüssel hinaus, egal wie jsonb sie speichert. */

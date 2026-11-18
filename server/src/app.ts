@@ -47,7 +47,8 @@ export async function buildApp(
   deps: AppDeps,
   opts: { logger?: FastifyServerOptions['logger'] } = {},
 ): Promise<FastifyInstance> {
-  const app = Fastify({ trustProxy: true, bodyLimit: BODY_LIMIT, logger: opts.logger ?? false });
+  // Kopfzeilen wie X-Forwarded-For kann jeder Client setzen. Die Adresse des Clients liest clientAddress().
+  const app = Fastify({ trustProxy: false, bodyLimit: BODY_LIMIT, logger: opts.logger ?? false });
   installErrorHandling(app);
   app.decorate('deps', deps);
   await app.register(cookie);

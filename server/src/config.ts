@@ -16,6 +16,8 @@ export type Config = {
   fileDir?: string;
   s3?: S3Config;
   webDir?: string;
+  /** Kopfzeile mit der Adresse des Clients, klein geschrieben. Nur hinter einem Proxy setzen, der sie überschreibt. */
+  clientIpHeader?: string;
   passwordCost: number;
 };
 
@@ -80,6 +82,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     }
   }
 
+  let clientIpHeader = present(env, 'CLIENT_IP_HEADER')?.trim().toLowerCase();
+  if (clientIpHeader === '') clientIpHeader = undefined;
+  if (clientIpHeader !== undefined && !/^[a-z0-9-]+$/.test(clientIpHeader)) {
+    problems.push('CLIENT_IP_HEADER muss der Name einer Kopfzeile sein, zum Beispiel x-real-ip');
+  }
+
   const parts: string[] = [];
   if (missing.length > 0) parts.push(`Es fehlen Einstellungen: ${missing.join(', ')}`);
   parts.push(...problems);
@@ -95,6 +103,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     fileDir,
     s3,
     webDir: present(env, 'WEB_DIR'),
+    clientIpHeader,
     passwordCost: 131072,
   };
 }

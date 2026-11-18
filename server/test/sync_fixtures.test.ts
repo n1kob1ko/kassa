@@ -67,6 +67,11 @@ test('Koppeln, ganzes und geändertes Holen und Fehler wie in shared/fixtures/sy
   const unauthorized = await pull(f.app, 'kein-gueltiger-schluessel', '?since=0');
   expect(unauthorized.statusCode).toBe(401);
 
+  const sinceInvalid = await pull(f.app, token, '?since=abc');
+  expect(sinceInvalid.statusCode).toBe(422);
+  const limitInvalid = await pull(f.app, token, '?since=0&limit=0');
+  expect(limitInvalid.statusCode).toBe(422);
+
   const blockRes = await f.app.inject({
     method: 'POST',
     url: `/api/admin/businesses/${businessId}/registers/${registerId}/block`,
@@ -83,5 +88,7 @@ test('Koppeln, ganzes und geändertes Holen und Fehler wie in shared/fixtures/sy
     other_business: error(otherBusiness),
     unauthorized: error(unauthorized),
     register_blocked: error(blocked),
+    since_invalid: error(sinceInvalid),
+    limit_invalid: error(limitInvalid),
   });
 });

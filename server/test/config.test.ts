@@ -51,6 +51,12 @@ describe('loadConfig', () => {
     });
   });
 
+  test('CLIENT_IP_HEADER: ohne Angabe keiner, sonst klein geschrieben, kein gültiger Name ist ein Fehler', () => {
+    expect(loadConfig(base).clientIpHeader).toBeUndefined();
+    expect(loadConfig({ ...base, CLIENT_IP_HEADER: 'X-Real-IP' }).clientIpHeader).toBe('x-real-ip');
+    expect(() => loadConfig({ ...base, CLIENT_IP_HEADER: 'x real ip' })).toThrow(/CLIENT_IP_HEADER/);
+  });
+
   test('S3-Einstellungen werden gelesen, unvollständige sind ein Fehler', () => {
     const { FILE_DIR: _ignored, ...rest } = base;
     expect(loadConfig({ ...rest, ...s3 }).s3).toEqual({

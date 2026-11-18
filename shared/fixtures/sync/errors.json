@@ -44,5 +44,23 @@
         "message": "Diese Kassa wurde in der Verwaltung gesperrt."
       }
     }
+  },
+  "since_invalid": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "since_invalid",
+        "message": "Die Angabe since muss eine ganze Zahl ab 0 sein."
+      }
+    }
+  },
+  "limit_invalid": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "limit_invalid",
+        "message": "Die Angabe limit muss eine ganze Zahl ab 1 sein."
+      }
+    }
   }
 }
