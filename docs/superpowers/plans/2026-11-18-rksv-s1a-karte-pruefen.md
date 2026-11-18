@@ -583,6 +583,10 @@ final readerTransportProvider, shareSheetProvider, pinGuardProvider, cardCheckPr
 
 | Zeile | Lage | `message` | `hint` |
 |---|---|---|---|
+| Kartenleser | vor dem ersten Lauf (`waiting`) | "Wird geprüft, sobald du auf "Jetzt prüfen" tippst." | |
+| Zugriff | vor dem ersten Lauf | "Android fragt einmal, ob die Kassa den Leser verwenden darf." | |
+| Signaturkarte | vor dem ersten Lauf | "Die Karte muss im Leser stecken." | |
+| Zertifikat | vor dem ersten Lauf | "Seriennummer und Gültigkeit der Karte." | |
 | Kartenleser | gefunden | "<Name> gefunden." (ohne Namen: "Kartenleser gefunden.") | |
 | | keiner | "Kein Kartenleser gefunden." | "Steckt der Leser am Verteiler, und hat der Verteiler Strom?" |
 | Zugriff | erlaubt | "Die Kassa darf den Kartenleser verwenden." | |
