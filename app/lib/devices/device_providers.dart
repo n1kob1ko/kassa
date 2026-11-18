@@ -80,7 +80,10 @@ class _NoPrinter implements ReceiptPrinter {
   static const _outcome = PrintOutcome.failed(PrintProblem.notSetUp);
 
   @override
-  Future<PrintOutcome> printReceipt(Receipt receipt) async => _outcome;
+  Future<PrintOutcome> printReceipt(
+    Receipt receipt, {
+    bool openDrawer = false,
+  }) async => _outcome;
 
   @override
   Future<PrintOutcome> openDrawer() async => _outcome;

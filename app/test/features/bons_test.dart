@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
@@ -135,6 +137,27 @@ void main() {
     expect(printerOf(t).log, ['print:$id']); // ohne Lade
     expect(find.text('Bon gedruckt'), findsOneWidget);
     expect(find.byKey(const Key('undo')), findsNothing);
+  });
+
+  testWidgets('Drucken: weitere Tipps, solange gedruckt wird, drucken nicht '
+      'noch einmal', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await setUpPrinter(t);
+    await openReceipt(t, 1);
+    final hold = printerOf(t).hold = Completer<void>();
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pump();
+    expect(printerOf(t).log, hasLength(1));
+    hold.complete();
+    printerOf(t).hold = null;
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pumpAndSettle();
+    expect(printerOf(t).log, hasLength(2));
   });
 
   testWidgets('Drucken meldet ein Problem als Hinweis', (t) async {

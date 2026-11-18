@@ -9,17 +9,23 @@ import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/domain/receipt.dart';
 
 class FakePrinter implements ReceiptPrinter {
-  /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`, `test`.
+  /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`,
+  /// `print+drawer:<Bon-Id>` (Bon mit dem Befehl für die Lade im selben
+  /// Auftrag), `test`.
   final List<String> log = [];
 
-  /// Die Bon-Ids der gedruckten Bons.
+  /// Die Bon-Ids der gedruckten Bons, mit und ohne Lade.
   List<String> get printed => [
     for (final e in log)
-      if (e.startsWith('print:')) e.substring('print:'.length),
+      if (e.startsWith('print')) e.substring(e.indexOf(':') + 1),
   ];
 
   /// Das Ergebnis des nächsten und aller weiteren Aufrufe.
   PrintOutcome next = const PrintOutcome.ok();
+
+  /// Ob bei einem Druck mit Lade der Befehl für die Lade ankommt; ohne Wert
+  /// genau dann, wenn [next] gelingt.
+  bool? kickGoesOut;
 
   /// Solange gesetzt, wartet jeder Aufruf darauf.
   Completer<void>? hold;
@@ -32,8 +38,18 @@ class FakePrinter implements ReceiptPrinter {
   }
 
   @override
-  Future<PrintOutcome> printReceipt(Receipt receipt) =>
-      _call('print:${receipt.id}');
+  Future<PrintOutcome> printReceipt(
+    Receipt receipt, {
+    bool openDrawer = false,
+  }) async {
+    if (!openDrawer) return _call('print:${receipt.id}');
+    final o = await _call('print+drawer:${receipt.id}');
+    final sent = kickGoesOut ?? o.ok;
+    final problem = o.problem;
+    return problem == null
+        ? PrintOutcome.ok(drawerSent: sent)
+        : PrintOutcome.failed(problem, drawerSent: sent);
+  }
 
   @override
   Future<PrintOutcome> openDrawer() => _call('drawer');
@@ -61,6 +77,9 @@ class FakeDiscovery implements PrinterDiscovery {
 
   /// Die Antwort von `requestAccess`.
   bool access;
+
+  /// Wird von `requestAccess` geworfen, solange gesetzt.
+  Object? accessError;
 
   /// Solange gesetzt, wartet jede Suche darauf.
   Completer<void>? hold;
@@ -97,6 +116,7 @@ class FakeDiscovery implements PrinterDiscovery {
   @override
   Future<bool> requestAccess(PrinterKind kind, String address) async {
     accessRequests.add('${kind.name}:$address');
+    if (accessError != null) throw accessError!;
     return access;
   }
 }

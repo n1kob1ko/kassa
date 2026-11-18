@@ -14,7 +14,6 @@ import 'package:kassa/features/login/session.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'fake_devices.dart';
 import 'kassa_pump.dart';
 import 'pump.dart';
 
@@ -60,9 +59,8 @@ Future<void> pumpAppLoggedInAsChef(
         printer: printer,
         terminal: terminal,
         internet: internet,
+        discovery: discovery,
       ),
-      // Die Netzsuche öffnet Sockets: Tests ersetzen sie immer.
-      printerDiscoveryProvider.overrideWithValue(discovery ?? FakeDiscovery()),
       ...extra,
     ],
   );

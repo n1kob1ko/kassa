@@ -155,6 +155,19 @@ void main() {
     );
   });
 
+  test('Storno-Bon ohne bekannte Nummer: STORNO steht trotzdem da, keine '
+      'Zeile "zu Bon Nr."', () async {
+    final shop = await TestShop.open();
+    addTearDown(shop.close);
+    final r = await shop.sell('s1');
+    final v = await shop.receipts.voidReceipt(r.id, staff: shop.chef);
+    final t = texts(layoutReceipt(v, business));
+    expect(t, containsAllInOrder(['STORNO', row('SUMME EUR', '-18,20')]));
+    expect(t.where((x) => x.startsWith('zu Bon Nr.')), isEmpty);
+    // Ein gewöhnlicher Bon trägt das Wort nicht.
+    expect(texts(layoutReceipt(r, business)), isNot(contains('STORNO')));
+  });
+
   test('Kartenzahlung: eine Zeile Karte', () async {
     final shop = await TestShop.open();
     addTearDown(shop.close);

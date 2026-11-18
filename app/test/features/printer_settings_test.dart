@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/ui/address_keypad.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/printer.dart';
@@ -187,6 +188,25 @@ void main() {
     await t.tap(find.byKey(const Key('printer-found-192.168.1.50:9100')));
     await t.pumpAndSettle();
     expect(discovery.accessRequests, isEmpty);
+  });
+
+  testWidgets('Adresse mit führenden Nullen: 192.168.001.050 wird als '
+      '192.168.1.50 gespeichert', (t) async {
+    await pumpSettings(t);
+    await _openPanel(t);
+    await _typeAddress(t, '192.168.001.050');
+    expect(_saveEnabled(t), isTrue);
+    await t.tap(find.byKey(const Key('printer-address-save')));
+    await t.pumpAndSettle();
+    final s = await settingsOf(t);
+    expect(s.printerAddress, '192.168.1.50:9100');
+    expect(s.printerName, 'Drucker 192.168.1.50');
+  });
+
+  test('normalizedIpv4: jede Zahl ohne führende Nullen', () {
+    expect(normalizedIpv4('192.168.001.050'), '192.168.1.50');
+    expect(normalizedIpv4('010.000.000.001'), '10.0.0.1');
+    expect(normalizedIpv4('192.168.1.50'), '192.168.1.50');
   });
 
   testWidgets(

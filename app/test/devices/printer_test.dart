@@ -6,6 +6,7 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/devices/escpos.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/business_info.dart';
+import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
 
@@ -178,9 +179,95 @@ void main() {
     },
   );
 
+  group('printReceipt mit openDrawer', () {
+    test('Lade und Bon in einem Auftrag: der Laden-Befehl zuerst', () async {
+      final t = RecordingTransport();
+      final r = receipt();
+      final outcome = await printerOf(t).printReceipt(r, openDrawer: true);
+      expect(outcome.ok, isTrue);
+      expect(outcome.drawerSent, isTrue);
+      expect(t.started, hasLength(1)); // ein Aufruf, eine Verbindung
+      expect(t.sent, [
+        encodeEscPos([const PrintDrawerKick(), ...layoutReceipt(r, business)]),
+      ]);
+      // Nach Initialisieren und Zeichentabelle kommt als Erstes die Lade.
+      expect(t.sent.single.sublist(5, 10), encodeDrawerKick());
+    });
+
+    test('ohne openDrawer: kein Laden-Befehl, drawerSent false', () async {
+      final t = RecordingTransport();
+      final outcome = await printerOf(t).printReceipt(receipt());
+      expect(outcome.drawerSent, isFalse);
+      expect(t.sent, [encodeEscPos(layoutReceipt(receipt(), business))]);
+    });
+
+    test('Papier leer: die Lade geht allein auf, Ergebnis paperOut', () async {
+      final t = RecordingTransport()..answers.addAll([0x1A, 0x72]);
+      final outcome = await printerOf(t)
+          .printReceipt(receipt(), openDrawer: true);
+      expect(outcome.problem, PrintProblem.paperOut);
+      expect(outcome.drawerSent, isTrue);
+      expect(t.sent, [encodeDrawerKick()]);
+      expect(t.started, hasLength(1));
+    });
+
+    test(
+      'Deckel offen: die Lade geht allein auf, Ergebnis coverOpen',
+      () async {
+        final t = RecordingTransport()..answers.addAll([0x1A, 0x12]);
+        final outcome = await printerOf(t)
+            .printReceipt(receipt(), openDrawer: true);
+        expect(outcome.problem, PrintProblem.coverOpen);
+        expect(outcome.drawerSent, isTrue);
+        expect(t.sent, [encodeDrawerKick()]);
+      },
+    );
+
+    test('Papier leer und der Laden-Befehl scheitert: paperOut, drawerSent '
+        'false', () async {
+      final t = RecordingTransport()
+        ..answers.addAll([0x1A, 0x72])
+        ..sendError = const PrinterException(PrintProblem.unreachable);
+      final outcome = await printerOf(t)
+          .printReceipt(receipt(), openDrawer: true);
+      expect(outcome.problem, PrintProblem.paperOut);
+      expect(outcome.drawerSent, isFalse);
+    });
+
+    test('Senden scheitert: Problem, drawerSent false', () async {
+      final t = RecordingTransport()
+        ..sendError = const PrinterException(PrintProblem.noPermission);
+      final outcome = await printerOf(t)
+          .printReceipt(receipt(), openDrawer: true);
+      expect(outcome.problem, PrintProblem.noPermission);
+      expect(outcome.drawerSent, isFalse);
+    });
+
+    test('Drucker antwortet nicht: nach einem Limit timeout, drawerSent '
+        'false', () async {
+      final t = RecordingTransport()..hang = true;
+      final outcome = await printerOf(
+        t,
+        limit: const Duration(milliseconds: 100),
+      ).printReceipt(receipt(), openDrawer: true);
+      expect(outcome.problem, PrintProblem.timeout);
+      expect(outcome.drawerSent, isFalse);
+      expect(t.started, hasLength(1));
+    });
+
+    test('ohne Drucker: notSetUp', () async {
+      final outcome = await printerOf(null)
+          .printReceipt(receipt(), openDrawer: true);
+      expect(outcome.problem, PrintProblem.notSetUp);
+      expect(outcome.drawerSent, isFalse);
+    });
+  });
+
   test('openDrawer schickt genau den Laden-Befehl', () async {
     final t = RecordingTransport();
-    expect((await printerOf(t).openDrawer()).ok, isTrue);
+    final outcome = await printerOf(t).openDrawer();
+    expect(outcome.ok, isTrue);
+    expect(outcome.drawerSent, isTrue);
     expect(t.sent, [encodeDrawerKick()]);
   });
 

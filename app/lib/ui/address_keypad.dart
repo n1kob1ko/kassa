@@ -16,6 +16,12 @@ bool isIpv4Address(String text) {
   return true;
 }
 
+/// [text] (eine IPv4-Adresse) ohne führende Nullen in den vier Zahlen:
+/// `192.168.001.050` wird `192.168.1.50`. Manche Drucker drucken ihre Adresse
+/// so aus; mit den Nullen fände die Kassa sie nicht.
+String normalizedIpv4(String text) =>
+    text.split('.').map((part) => int.parse(part).toString()).join('.');
+
 /// Adresse eintippen ohne Systemtastatur: Anzeige, Zahlenfeld mit Ziffern,
 /// Punkt und Löschen, "Zurück" und "Übernehmen". "Übernehmen" ist erst aktiv,
 /// wenn vier Zahlen von 0 bis 255 dastehen.
@@ -125,7 +131,7 @@ class _AddressKeypadState extends State<AddressKeypad> {
                 label: 'Übernehmen',
                 height: 60,
                 onPressed: isIpv4Address(_input)
-                    ? () => widget.onSubmit(_input)
+                    ? () => widget.onSubmit(normalizedIpv4(_input))
                     : null,
               ),
             ),

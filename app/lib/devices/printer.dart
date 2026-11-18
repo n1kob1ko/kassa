@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import '../core/clock.dart';
 import '../domain/business_info.dart';
+import '../domain/print_document.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_layout.dart';
 import 'escpos.dart';
@@ -22,10 +23,17 @@ enum PrintProblem {
 /// Ergebnis eines Druckversuchs. Ein Druckfehler ist nie eine Ausnahme: die
 /// Kassa darf wegen des Druckers keinen Verkauf aufhalten.
 class PrintOutcome {
-  const PrintOutcome.ok() : problem = null;
-  const PrintOutcome.failed(PrintProblem this.problem);
+  const PrintOutcome.ok({this.drawerSent = false}) : problem = null;
+  const PrintOutcome.failed(
+    PrintProblem this.problem, {
+    this.drawerSent = false,
+  });
 
   final PrintProblem? problem;
+
+  /// Der Befehl für die Geldlade ist beim Drucker angekommen (nur bei einem
+  /// Aufruf, der die Lade öffnen sollte).
+  final bool drawerSent;
 
   bool get ok => problem == null;
 
@@ -72,7 +80,12 @@ abstract interface class PrinterTransport {
 }
 
 abstract interface class ReceiptPrinter {
-  Future<PrintOutcome> printReceipt(Receipt receipt);
+  /// Druckt den Bon. Mit [openDrawer] sind die ersten Befehle desselben
+  /// Auftrags die für die Geldlade: ein Aufruf, eine Verbindung. Meldet der
+  /// Drucker, dass er nicht drucken kann (Papier leer, Deckel offen), geht der
+  /// Befehl für die Lade allein hinaus, und das Ergebnis ist das Problem des
+  /// Druckers.
+  Future<PrintOutcome> printReceipt(Receipt receipt, {bool openDrawer = false});
   Future<PrintOutcome> openDrawer();
   Future<PrintOutcome> testPrint();
 }
@@ -102,8 +115,12 @@ class EscPosPrinter implements ReceiptPrinter {
   final Duration limit;
 
   @override
-  Future<PrintOutcome> printReceipt(Receipt receipt) => _run(
+  Future<PrintOutcome> printReceipt(
+    Receipt receipt, {
+    bool openDrawer = false,
+  }) => _run(
     checkStatus: true,
+    openDrawer: openDrawer,
     bytes: () async {
       final voidsId = receipt.voidsReceiptId;
       int? voidedNumber;
@@ -114,20 +131,24 @@ class EscPosPrinter implements ReceiptPrinter {
           voidedNumber = null; // ohne Nummer trotzdem drucken
         }
       }
-      return encodeEscPos(
-        layoutReceipt(
+      return encodeEscPos([
+        if (openDrawer) const PrintDrawerKick(),
+        ...layoutReceipt(
           receipt,
           business,
           columns: columns,
           voidedNumber: voidedNumber,
         ),
-      );
+      ]);
     },
   );
 
   @override
-  Future<PrintOutcome> openDrawer() =>
-      _run(checkStatus: false, bytes: () async => encodeDrawerKick());
+  Future<PrintOutcome> openDrawer() => _run(
+    checkStatus: false,
+    openDrawer: true,
+    bytes: () async => encodeDrawerKick(),
+  );
 
   @override
   Future<PrintOutcome> testPrint() => _run(
@@ -141,20 +162,30 @@ class EscPosPrinter implements ReceiptPrinter {
   /// ist oder aufgegeben wurde.
   Future<void> _last = Future.value();
 
+  /// [openDrawer]: Die Bytes enthalten den Befehl für die Lade; kann der
+  /// Drucker nicht drucken, geht dieser Befehl allein hinaus.
   Future<PrintOutcome> _run({
     required bool checkStatus,
+    bool openDrawer = false,
     required Future<Uint8List> Function() bytes,
   }) {
     final previous = _last;
     final finished = Completer<void>();
     _last = finished.future;
     return previous
-        .then((_) => _runNow(checkStatus: checkStatus, bytes: bytes))
+        .then(
+          (_) => _runNow(
+            checkStatus: checkStatus,
+            openDrawer: openDrawer,
+            bytes: bytes,
+          ),
+        )
         .whenComplete(finished.complete);
   }
 
   Future<PrintOutcome> _runNow({
     required bool checkStatus,
+    required bool openDrawer,
     required Future<Uint8List> Function() bytes,
   }) async {
     final transport = this.transport;
@@ -164,7 +195,13 @@ class EscPosPrinter implements ReceiptPrinter {
     final call = _Call();
     try {
       transport.startCall(limit);
-      return await _attempt(transport, call, checkStatus, bytes).timeout(
+      return await _attempt(
+        transport,
+        call,
+        checkStatus,
+        openDrawer,
+        bytes,
+      ).timeout(
         limit,
         onTimeout: () {
           call.givenUp = true;
@@ -185,16 +222,26 @@ class EscPosPrinter implements ReceiptPrinter {
     PrinterTransport transport,
     _Call call,
     bool checkStatus,
+    bool openDrawer,
     Future<Uint8List> Function() bytes,
   ) async {
     if (checkStatus) {
       final problem = await _offlineProblem(transport, call);
-      if (problem != null) return PrintOutcome.failed(problem);
+      if (problem != null) {
+        if (!openDrawer || call.givenUp) return PrintOutcome.failed(problem);
+        // Die Lade geht trotzdem auf: das Rückgeld wartet nicht auf Papier.
+        var sent = false;
+        try {
+          await transport.send(encodeDrawerKick());
+          sent = !call.givenUp;
+        } catch (_) {}
+        return PrintOutcome.failed(problem, drawerSent: sent);
+      }
     }
     final data = await bytes();
     if (call.givenUp) return const PrintOutcome.failed(PrintProblem.timeout);
     await transport.send(data);
-    return const PrintOutcome.ok();
+    return PrintOutcome.ok(drawerSent: openDrawer);
   }
 
   /// Bit 3 (0x08) der Druckerstatus-Antwort heißt offline. Ein Fehler oder

@@ -151,7 +151,7 @@ void main() {
     await _finish(t);
     expect(textOf(t, const Key('print-state')), 'Bon gedruckt');
     expect(find.byKey(const Key('reprint')), findsNothing);
-    expect(printerOf(t).log, ['drawer', startsWith('print:')]);
+    expect(printerOf(t).log, [startsWith('print+drawer:')]);
   });
 
   testWidgets('Drucker hängt: "Bon wird gedruckt …", Nächster Kunde sofort', (
@@ -197,6 +197,32 @@ void main() {
       expect(printerOf(t).printed.toSet(), hasLength(1)); // derselbe Bon
     },
   );
+
+  testWidgets('Lade ging nicht auf: "Nochmal drucken" öffnet sie mit dem '
+      'Bon, danach nicht mehr', (t) async {
+    await openCash(t, ['cola'], withPrinter: true);
+    printerOf(t).next = const PrintOutcome.failed(PrintProblem.timeout);
+    await _finish(t);
+    expect(
+      textOf(t, const Key('print-state')),
+      'Drucker nicht bereit. Er antwortet nicht.',
+    );
+    printerOf(t).next = const PrintOutcome.failed(PrintProblem.paperOut);
+    printerOf(t).kickGoesOut = true;
+    await t.tap(find.byKey(const Key('reprint')));
+    await t.pumpAndSettle();
+    printerOf(t)
+      ..next = const PrintOutcome.ok()
+      ..kickGoesOut = null;
+    await t.tap(find.byKey(const Key('reprint')));
+    await t.pumpAndSettle();
+    expect(textOf(t, const Key('print-state')), 'Bon gedruckt');
+    final log = printerOf(t).log;
+    expect(log, hasLength(3));
+    expect(log[0], startsWith('print+drawer:'));
+    expect(log[1], startsWith('print+drawer:')); // die Lade fehlte noch
+    expect(log[2], startsWith('print:')); // die Lade ist schon aufgegangen
+  });
 
   testWidgets('Abschließen löscht den Entwurf in der Datenbank', (t) async {
     await openCash(t, ['cola']);

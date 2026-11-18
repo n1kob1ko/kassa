@@ -395,10 +395,11 @@ class PrinterChannel(
         }
     }
 
-    // Verbindet über SPP und schreibt. Verbinden und Schreiben zusammen haben
-    // höchstens 5 Sekunden und nie mehr als die Frist, dann schließt der
-    // Zeitgeber den Socket. Ist die Frist nach dem Verbinden abgelaufen, geht
-    // nichts zum Drucker. Der Socket wird in jedem Fall geschlossen.
+    // Verbindet über SPP und schreibt. Verbinden, Schreiben und die kurze
+    // Pause danach haben zusammen höchstens 5 Sekunden und nie mehr als die
+    // Frist, dann schließt der Zeitgeber den Socket. Ist die Frist nach dem
+    // Verbinden abgelaufen, geht nichts zum Drucker. Der Socket wird in jedem
+    // Fall geschlossen.
     private fun bluetoothSend(address: String, bytes: ByteArray, deadline: Long) {
         val adapter = bluetoothAdapter()
         if (adapter == null || !adapter.isEnabled) throw ChannelError(UNREACHABLE)
@@ -438,6 +439,17 @@ class PrinterChannel(
                 out.flush()
             } catch (e: IOException) {
                 throw ChannelError(if (timedOut.get()) TIMEOUT else UNREACHABLE)
+            }
+            // flush() heißt nur, dass die Bytes beim Bluetooth-Stack sind. Eine
+            // kurze Pause vor dem Schließen, damit das Ende des Bons noch
+            // hinausgeht; nie länger, als die Frist erlaubt.
+            val pause = minOf(BLUETOOTH_DRAIN_MS, remainingMs(deadline) - DRAIN_MARGIN_MS)
+            if (pause > 0) {
+                try {
+                    Thread.sleep(pause)
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
             }
         } finally {
             limit?.cancel(false)
@@ -601,6 +613,11 @@ class PrinterChannel(
         private const val USB_SEND_LIMIT_MS = 5000
         private const val STATUS_LIMIT_MS = 1000
         private const val BLUETOOTH_LIMIT_MS = 5000
+
+        // Pause nach dem Schreiben über Bluetooth, und wie viel von der Frist
+        // danach mindestens übrig bleibt.
+        private const val BLUETOOTH_DRAIN_MS = 300L
+        private const val DRAIN_MARGIN_MS = 200L
         private const val DEFAULT_BUDGET_MS = 5000L
         private const val PERMISSION_LIMIT_MS = 30_000L
 

@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
+import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
@@ -41,7 +42,8 @@ class KassaScreen extends ConsumerStatefulWidget {
 /// Was die rechte Spalte zeigt.
 enum _Side { cart, paying, waitingForCard, done }
 
-class _KassaScreenState extends ConsumerState<KassaScreen> {
+class _KassaScreenState extends ConsumerState<KassaScreen>
+    with WidgetsBindingObserver {
   String? _categoryId;
   Item? _building;
   _Side _side = _Side.cart;
@@ -75,7 +77,62 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _prepareTerminal();
+    _preparePrinter();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _preparePrinter();
+  }
+
+  /// Eine Frage nach der Erlaubnis für den Drucker läuft gerade.
+  bool _askingPrinter = false;
+
+  /// Wann die letzte Frage abgelehnt wurde. Das Schließen der Frage selbst
+  /// bringt die App wieder in den Vordergrund; gleich danach wird nicht
+  /// noch einmal gefragt.
+  DateTime? _printerRefusedAt;
+
+  static const _askAgainAfter = Duration(seconds: 10);
+
+  /// Holt die Erlaubnis für einen USB- oder Bluetooth-Drucker, bevor der erste
+  /// Bon gedruckt wird: Android vergisst sie für USB, wenn der Drucker
+  /// ausgeschaltet oder das Tablet neu gestartet wird. Netzwerk braucht keine.
+  /// Fehler gehen still unter: ein Gerät hält nie einen Verkauf auf.
+  Future<void> _preparePrinter() async {
+    if (_askingPrinter) return;
+    final clock = ref.read(clockProvider);
+    final refused = _printerRefusedAt;
+    if (refused != null && clock.now().difference(refused) < _askAgainAfter) {
+      return;
+    }
+    // Während einer Kartenzahlung liegt der Bildschirm von SumUp darüber.
+    if (ref.read(activeCardPaymentProvider) != null) return;
+    _askingPrinter = true;
+    try {
+      final settings = await ref.read(settingsRepositoryProvider).current();
+      final address = settings.printerAddress?.trim() ?? '';
+      final kind = settings.printerKind;
+      if (address.isEmpty ||
+          (kind != PrinterKind.usb && kind != PrinterKind.bluetooth)) {
+        return;
+      }
+      final granted = await ref
+          .read(printerDiscoveryProvider)
+          .requestAccess(kind, address);
+      _printerRefusedAt = granted ? null : clock.now();
+    } catch (_) {
+    } finally {
+      _askingPrinter = false;
+    }
   }
 
   /// Weckt den Kartenleser, wenn das Terminal angemeldet ist. Fehler gehen

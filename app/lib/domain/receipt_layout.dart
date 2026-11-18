@@ -263,9 +263,13 @@ List<PrintOp> layoutReceipt(
   b.rule();
 
   // 3. Storno
-  if (r.kind == ReceiptKind.voided && voidedNumber != null) {
+  // Das Wort steht immer da, die Nummer des stornierten Bons nur, wenn sie
+  // bekannt ist.
+  if (r.kind == ReceiptKind.voided) {
     b.text('STORNO', align: PrintAlign.center, bold: true);
-    b.text('zu Bon Nr. $voidedNumber', align: PrintAlign.center);
+    if (voidedNumber != null) {
+      b.text('zu Bon Nr. $voidedNumber', align: PrintAlign.center);
+    }
   }
 
   // 4. Bon-Kopf

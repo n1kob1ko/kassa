@@ -24,7 +24,7 @@ class SaleResult {
   final Receipt receipt;
 
   /// Das Ergebnis des Druckens; endet nach höchstens einem Druckaufruf
-  /// (5 Sekunden) und wirft nie.
+  /// (5 Sekunden, Lade und Bon zusammen) und wirft nie.
   final Future<PrintOutcome> print;
 }
 
@@ -101,6 +101,13 @@ class SaleService {
   /// Das Drucken je `saleId`: ein zweiter Aufruf mit derselben Id druckt nicht
   /// noch einmal, sondern gibt das erste Ergebnis zurück.
   final Map<String, Future<PrintOutcome>> _prints = {};
+
+  /// Barverkäufe, bei denen der Befehl für die Lade nicht beim Drucker
+  /// angekommen ist: "Nochmal drucken" in der Fertig-Ansicht holt ihn nach.
+  final Set<String> _drawerMissing = {};
+
+  /// Bons, die in diesem Lauf schon gedruckt wurden.
+  final Set<String> _printedOk = {};
 
   /// Speichert den Barverkauf und stößt dann Lade und Druck an. Wartet auf die
   /// Datenbank, nicht auf den Drucker.
@@ -331,9 +338,42 @@ class SaleService {
   static String _euro(int cents) =>
       '${cents ~/ 100},${(cents % 100).toString().padLeft(2, '0')} €';
 
-  /// Druckt den Bon noch einmal, ohne die Lade.
+  /// Druckt den Bon noch einmal, ohne die Lade (Bon-Detail).
   Future<PrintOutcome> reprint(Receipt receipt) async =>
       _output(receipt, await _settings(), openDrawer: false);
+
+  /// "Nochmal drucken" in der Fertig-Ansicht. Ist bei diesem Barverkauf die
+  /// Lade nicht aufgegangen (und ist sie eingeschaltet), geht sie jetzt mit
+  /// dem Bon auf. Ist der Bon schon gedruckt und fehlt nur die Lade, öffnet
+  /// sich nur die Lade: der Gast bekommt keinen zweiten Bon.
+  Future<PrintOutcome> printAgain(Receipt receipt) async {
+    final settings = await _settings();
+    final kick =
+        _drawerMissing.contains(receipt.id) &&
+        settings.cashDrawerEnabled &&
+        receipt.kind == ReceiptKind.sale &&
+        receipt.payment.kind == PaymentKind.cash;
+    if (kick && _printedOk.contains(receipt.id)) {
+      return _drawerOnly(receipt.id, settings);
+    }
+    return _output(receipt, settings, openDrawer: kick);
+  }
+
+  Future<PrintOutcome> _drawerOnly(
+    String receiptId,
+    RegisterSettings settings,
+  ) async {
+    if (settings.printerKind == PrinterKind.none) {
+      return const PrintOutcome.failed(PrintProblem.notSetUp);
+    }
+    try {
+      final outcome = await _ref.read(receiptPrinterProvider).openDrawer();
+      if (outcome.ok) _drawerMissing.remove(receiptId);
+      return outcome;
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+  }
 
   /// Storniert den Bon und druckt den Storno-Bon. Die Lade bleibt zu.
   Future<SaleResult> voidReceipt(
@@ -355,7 +395,26 @@ class SaleService {
     }
   }
 
+  /// Druckt den Bon, mit [openDrawer] im selben Auftrag mit der Lade, und
+  /// merkt sich, ob die Lade aufging.
   Future<PrintOutcome> _output(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required bool openDrawer,
+  }) async {
+    final outcome = await _send(receipt, settings, openDrawer: openDrawer);
+    if (openDrawer) {
+      if (outcome.drawerSent) {
+        _drawerMissing.remove(receipt.id);
+      } else {
+        _drawerMissing.add(receipt.id);
+      }
+    }
+    if (outcome.ok) _printedOk.add(receipt.id);
+    return outcome;
+  }
+
+  Future<PrintOutcome> _send(
     Receipt receipt,
     RegisterSettings settings, {
     required bool openDrawer,
@@ -364,14 +423,9 @@ class SaleService {
       return const PrintOutcome.failed(PrintProblem.notSetUp);
     }
     try {
-      final printer = _ref.read(receiptPrinterProvider);
-      if (openDrawer) {
-        final drawer = await printer.openDrawer();
-        // Antwortet der Drucker gar nicht, käme der Bon erst nach einem
-        // zweiten Limit: dann gleich melden, "Nochmal drucken" bleibt.
-        if (drawer.problem == PrintProblem.timeout) return drawer;
-      }
-      return await printer.printReceipt(receipt);
+      return await _ref
+          .read(receiptPrinterProvider)
+          .printReceipt(receipt, openDrawer: openDrawer);
     } catch (_) {
       return const PrintOutcome.failed(PrintProblem.unreachable);
     }

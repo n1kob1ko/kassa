@@ -82,8 +82,18 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     );
   }
 
-  Future<void> _print(Receipt receipt) =>
-      _announce(ref.read(saleServiceProvider).reprint(receipt));
+  /// Solange "Drucken" läuft, tun weitere Tipps darauf nichts.
+  bool _printing = false;
+
+  Future<void> _print(Receipt receipt) async {
+    if (_printing) return;
+    _printing = true;
+    try {
+      await _announce(ref.read(saleServiceProvider).reprint(receipt));
+    } finally {
+      _printing = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

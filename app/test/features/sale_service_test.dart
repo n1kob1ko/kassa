@@ -67,11 +67,11 @@ void main() {
     staff: shop.anna,
   );
 
-  test('Bar mit Lade: erst Lade, dann Bon', () async {
+  test('Bar mit Lade: Lade und Bon in einem Druckauftrag', () async {
     await configure();
     final r = await sell();
     expect((await r.print).ok, isTrue);
-    expect(printer.log, ['drawer', 'print:s1']);
+    expect(printer.log, ['print+drawer:s1']);
   });
 
   test('Lade ausgeschaltet: nur Bon', () async {
@@ -121,7 +121,91 @@ void main() {
     expect(b.receipt.id, a.receipt.id);
     expect(await shop.count('receipts'), 1);
     expect(printer.printed, ['s1']);
-    expect(printer.log.where((e) => e == 'drawer'), hasLength(1));
+    expect(printer.log, ['print+drawer:s1']);
+  });
+
+  group('Nochmal drucken nach dem Verkauf', () {
+    test(
+      'Lade ging nicht auf: Nochmal drucken öffnet sie mit dem Bon',
+      () async {
+        await configure();
+        printer.next = const PrintOutcome.failed(PrintProblem.timeout);
+        final r = await sell();
+        expect((await r.print).drawerSent, isFalse);
+        printer.next = const PrintOutcome.ok();
+        expect((await service.printAgain(r.receipt)).ok, isTrue);
+        expect(printer.log, ['print+drawer:s1', 'print+drawer:s1']);
+        // Jetzt ist sie aufgegangen: ein weiteres Mal ohne Lade.
+        await service.printAgain(r.receipt);
+        expect(printer.log.last, 'print:s1');
+      },
+    );
+
+    test(
+      'Lade ging auf, nur der Bon fehlt: Nochmal drucken ohne Lade',
+      () async {
+        await configure();
+        printer
+          ..next = const PrintOutcome.failed(PrintProblem.paperOut)
+          ..kickGoesOut = true;
+        final r = await sell();
+        expect((await r.print).drawerSent, isTrue);
+        printer.next = const PrintOutcome.ok();
+        await service.printAgain(r.receipt);
+        expect(printer.log, ['print+drawer:s1', 'print:s1']);
+      },
+    );
+
+    test(
+      'Bon gedruckt, nur die Lade fehlt: nur die Lade, kein zweiter Bon',
+      () async {
+        await configure();
+        printer.kickGoesOut = false;
+        final r = await sell();
+        final first = await r.print;
+        expect((first.ok, first.drawerSent), (true, false));
+        expect((await service.printAgain(r.receipt)).ok, isTrue);
+        expect(printer.log, ['print+drawer:s1', 'drawer']);
+      },
+    );
+
+    test('Lade inzwischen ausgeschaltet: Nochmal drucken ohne Lade', () async {
+      await configure();
+      printer.next = const PrintOutcome.failed(PrintProblem.unreachable);
+      final r = await sell();
+      await r.print;
+      await configure(drawer: false);
+      printer.next = const PrintOutcome.ok();
+      await service.printAgain(r.receipt);
+      expect(printer.log, ['print+drawer:s1', 'print:s1']);
+    });
+
+    test('Kartenzahlung: Nochmal drucken nie mit Lade', () async {
+      await configure();
+      container.read(cartProvider.notifier).restore(cart);
+      printer.next = const PrintOutcome.failed(PrintProblem.unreachable);
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+      ) as CardSaleDone;
+      await o.sale.print;
+      printer.next = const PrintOutcome.ok();
+      await service.printAgain(o.sale.receipt);
+      expect(printer.log, ['print:p1', 'print:p1']);
+      expect(await shop.count('receipts'), 1);
+    });
+
+    test('Drucken im Bon-Detail (reprint) öffnet die Lade nie, auch wenn sie '
+        'beim Verkauf nicht aufging', () async {
+      await configure();
+      printer.next = const PrintOutcome.failed(PrintProblem.timeout);
+      final r = await sell();
+      await r.print;
+      printer.next = const PrintOutcome.ok();
+      await service.reprint(r.receipt);
+      expect(printer.log, ['print+drawer:s1', 'print:s1']);
+    });
   });
 
   test('Storno druckt den Storno-Bon und öffnet die Lade nicht', () async {

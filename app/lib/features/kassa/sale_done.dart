@@ -45,7 +45,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
 
   void _reprint() {
     setState(() => _outcome = null);
-    _await(ref.read(saleServiceProvider).reprint(widget.result.receipt));
+    _await(ref.read(saleServiceProvider).printAgain(widget.result.receipt));
   }
 
   @override

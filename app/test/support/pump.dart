@@ -28,6 +28,7 @@ import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
+import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/theme.dart';
@@ -110,7 +111,8 @@ Future<void> pumpApp(
 /// ist ein [FakePrinter] (oder [printer]); Tests erreichen ihn mit [printerOf].
 /// Das Kartenterminal ist ein [FakeCardTerminal] (oder [terminal]), erreichbar
 /// mit [terminalOf]. Das Internet ist da, oder es folgt dem Strom [internet]
-/// (siehe [InternetSwitch]).
+/// (siehe [InternetSwitch]). Die Druckersuche ist eine [FakeDiscovery] (oder
+/// [discovery]), erreichbar mit [discoveryOf].
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
@@ -119,6 +121,7 @@ Future<List<Override>> memoryOverrides({
   ReceiptPrinter? printer,
   CardTerminal? terminal,
   Stream<bool>? internet,
+  PrinterDiscovery? discovery,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -133,6 +136,8 @@ Future<List<Override>> memoryOverrides({
     databaseProvider.overrideWithValue(db),
     receiptPrinterProvider.overrideWithValue(printer ?? FakePrinter()),
     cardTerminalProvider.overrideWithValue(terminal ?? FakeCardTerminal()),
+    // Die Netzsuche öffnet Sockets: Tests ersetzen sie immer.
+    printerDiscoveryProvider.overrideWithValue(discovery ?? FakeDiscovery()),
     internetProvider.overrideWith((ref) => internet ?? Stream.value(true)),
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
@@ -147,6 +152,10 @@ Future<List<Override>> memoryOverrides({
 /// Der falsche Drucker der laufenden Oberfläche.
 FakePrinter printerOf(WidgetTester t) =>
     containerOf(t).read(receiptPrinterProvider) as FakePrinter;
+
+/// Die falsche Druckersuche der laufenden Oberfläche.
+FakeDiscovery discoveryOf(WidgetTester t) =>
+    containerOf(t).read(printerDiscoveryProvider) as FakeDiscovery;
 
 /// Schaltet das Internet der Tests an und aus: `memoryOverrides(internet:
 /// switch_.stream)`.
