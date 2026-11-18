@@ -1,6 +1,8 @@
 // Stand der Signatur (RKSV): Zustand, laufende Kette, Umsatzzähler, Ausfall,
 // offene Aufgaben und ein Hinweis. Ohne Datenbank und ohne Oberfläche.
 
+import 'dart:convert';
+
 /// `off`: Nicht eingerichtet (oder außer Betrieb), `probe`: Probe-Signatur,
 /// `live`: in Betrieb mit Chipkarte.
 enum RksvMode { off, probe, live }
@@ -45,6 +47,24 @@ final class RksvTask {
     detail: (j['detail'] as String?) ?? '',
   );
 }
+
+/// Die Aufgaben aus `rksv_state.tasks`. Kaputtes JSON ergibt eine leere
+/// Liste: Eine verlorene Aufgabe ist besser als eine Kassa, die den Stand
+/// nicht lesen kann.
+List<RksvTask> decodeRksvTasks(String json) {
+  try {
+    final list = jsonDecode(json) as List<Object?>;
+    return [
+      for (final e in list) RksvTask.fromJson(e! as Map<String, Object?>),
+    ];
+  } on Object {
+    return const [];
+  }
+}
+
+/// Die Aufgaben für `rksv_state.tasks`.
+String encodeRksvTasks(List<RksvTask> tasks) =>
+    jsonEncode([for (final t in tasks) t.toJson()]);
 
 /// Der Satz der Aufgabe am Bildschirm.
 String rksvTaskText(RksvTask t) => switch (t.kind) {

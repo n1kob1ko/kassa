@@ -52,6 +52,9 @@ SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
 
 const _reasonSilent = 'Die Signatur hat nicht geantwortet.';
 const _reasonError = 'Die Signatur hat einen Fehler gemeldet.';
+
+/// Ab dieser Dauer ist ein Ausfall bei FinanzOnline zu melden.
+const _outageToReport = Duration(hours: 48);
 const _notice =
     'Die Probe-Signatur wurde beendet, weil sie nicht mehr arbeiten konnte. '
     'Der Verkauf läuft normal weiter.';
@@ -77,6 +80,8 @@ class RksvJournal {
   /// nichts bei mode off.
   /// [mustSign]: kein Ausfall-Eintrag, sondern SignatureFailure (für
   /// Sammelbeleg und Startbeleg).
+  /// [trySign] false: gleich der Ausfall-Eintrag, ohne die Signatur zu
+  /// fragen (der Sammelbeleg davor ist eben gescheitert).
   Future<void> record({
     required String receiptId,
     required int number,
@@ -84,6 +89,7 @@ class RksvJournal {
     required ReceiptKind kind,
     required List<int> sumsCents,
     bool mustSign = false,
+    bool trySign = true,
   }) async {
     // 1. Zustand, Kette, letzter Eintrag.
     final state = await _state();
@@ -108,15 +114,17 @@ class RksvJournal {
       previous: chainValue(last?.jws ?? chainRow.cashBoxId),
       limit: state.outageSince == null ? signLimit : signLimitDuringOutage,
       mustSign: mustSign,
+      skipReason: trySign ? null : (state.outageReason ?? _reasonError),
     );
 
     // 6. Eintrag und Zähler.
+    final position = (last?.position ?? 0) + 1;
     await _db
         .into(_db.rksvEntryRows)
         .insert(
           RksvEntryRowsCompanion.insert(
             chain: chain,
-            position: (last?.position ?? 0) + 1,
+            position: position,
             receiptId: receiptId,
             jws: signed.jws,
             damaged: signed.failure != null,
@@ -141,7 +149,163 @@ class RksvJournal {
       ),
     );
 
-    // 7. Aufgaben: kommen mit den Sonderbelegen von selbst (Task 6).
+    // 7. Aufgaben.
+    await _addTasks(
+      state: state,
+      chain: chain,
+      kind: kind,
+      position: position,
+      createdAt: createdAt,
+      last: last,
+      outageSince: state.outageSince ?? (startsOutage ? createdAt : null),
+    );
+  }
+
+  /// Neue Aufgaben nach dem Eintrag an [position]; jede nur, wenn es ihre Id
+  /// noch nicht gibt. [outageSince]: Beginn des Ausfalls, der bis zu diesem
+  /// Eintrag lief (auch wenn ihn dieser Sammelbeleg beendet).
+  Future<void> _addTasks({
+    required RksvStateRow state,
+    required int chain,
+    required ReceiptKind kind,
+    required int position,
+    required DateTime createdAt,
+    required RksvEntryRow? last,
+    required DateTime? outageSince,
+  }) async {
+    final now = _clock.now();
+    final added = <RksvTask>[];
+    void add(String id, RksvTaskKind k, [String detail = '']) =>
+        added.add(RksvTask(id: id, kind: k, createdAt: now, detail: detail));
+
+    if (kind == ReceiptKind.start) {
+      add('check-start-$chain', RksvTaskKind.checkStart);
+    }
+    final lastTime = last == null ? null : await _timeOf(last);
+    if (kind == ReceiptKind.year) {
+      final before = await _lastTime(
+        chain,
+        before: position,
+        skipCollective: true,
+      );
+      final year = '${(before ?? createdAt).year}';
+      add('check-year-$year', RksvTaskKind.checkYear, year);
+    }
+    if (outageSince != null) {
+      bool long(DateTime t) => t.difference(outageSince) > _outageToReport;
+      // Nur beim ersten Eintrag nach 48 Stunden: Eine erledigte Meldung kommt
+      // nicht mit dem nächsten Bon wieder.
+      if (long(createdAt) && (lastTime == null || !long(lastTime))) {
+        final first = await _firstOutageEntry(chain, position) ?? position;
+        add(
+          'report-outage-$chain-$first',
+          RksvTaskKind.reportOutage,
+          _dateTime(outageSince),
+        );
+      }
+      if (kind == ReceiptKind.collective && long(createdAt)) {
+        add(
+          'report-outage-end-$chain-$position',
+          RksvTaskKind.reportOutageEnd,
+          _dateTime(createdAt),
+        );
+      }
+    }
+    if (lastTime != null && _quarter(lastTime) < _quarter(createdAt)) {
+      final q = (createdAt.month - 1) ~/ 3 + 1;
+      add('backup-${createdAt.year}-Q$q', RksvTaskKind.backupProtocol);
+    }
+
+    if (added.isEmpty) return;
+    final tasks = decodeRksvTasks(state.tasks);
+    final known = {for (final t in tasks) t.id};
+    final fresh = [
+      for (final t in added)
+        if (known.add(t.id)) t,
+    ];
+    if (fresh.isEmpty) return;
+    await _writeState(
+      RksvStateRowsCompanion(
+        tasks: Value(encodeRksvTasks([...tasks, ...fresh])),
+      ),
+    );
+  }
+
+  /// Position des ersten Ausfall-Eintrags des Ausfalls, der bis zum Eintrag
+  /// an [position] lief: der erste mit Vermerk nach dem letzten Sammelbeleg
+  /// davor.
+  Future<int?> _firstOutageEntry(int chain, int position) async {
+    final collectiveAt = _db.rksvEntryRows.position.max();
+    final lastCollective =
+        await (_db.selectOnly(_db.rksvEntryRows).join([
+                innerJoin(
+                  _db.receiptRows,
+                  _db.receiptRows.id.equalsExp(_db.rksvEntryRows.receiptId),
+                ),
+              ])
+              ..addColumns([collectiveAt])
+              ..where(
+                _db.rksvEntryRows.chain.equals(chain) &
+                    _db.rksvEntryRows.position.isSmallerThanValue(position) &
+                    _db.receiptRows.kind.equals(ReceiptKind.collective.name),
+              ))
+            .map((r) => r.read(collectiveAt))
+            .getSingle() ??
+        0;
+    final first = _db.rksvEntryRows.position.min();
+    return (_db.selectOnly(_db.rksvEntryRows)
+          ..addColumns([first])
+          ..where(
+            _db.rksvEntryRows.chain.equals(chain) &
+                _db.rksvEntryRows.damaged.equals(true) &
+                _db.rksvEntryRows.position.isBiggerThanValue(lastCollective),
+          ))
+        .map((r) => r.read(first))
+        .getSingle();
+  }
+
+  /// Zeit des Bons zum Eintrag [e].
+  Future<DateTime> _timeOf(RksvEntryRow e) async => (await (_db.select(
+    _db.receiptRows,
+  )..where((t) => t.id.equals(e.receiptId))).getSingle()).createdAt;
+
+  /// Zeit des letzten Eintrags der Kette (vor Position [before], wenn
+  /// angegeben), mit [skipCollective] ohne Sammelbelege. `null` ohne.
+  Future<DateTime?> _lastTime(
+    int chain, {
+    int? before,
+    bool skipCollective = false,
+  }) async {
+    final query =
+        _db.select(_db.rksvEntryRows).join([
+            innerJoin(
+              _db.receiptRows,
+              _db.receiptRows.id.equalsExp(_db.rksvEntryRows.receiptId),
+            ),
+          ])
+          ..where(_db.rksvEntryRows.chain.equals(chain))
+          ..orderBy([OrderingTerm.desc(_db.rksvEntryRows.position)])
+          ..limit(1);
+    if (before != null) {
+      query.where(_db.rksvEntryRows.position.isSmallerThanValue(before));
+    }
+    if (skipCollective) {
+      query.where(
+        _db.receiptRows.kind.equals(ReceiptKind.collective.name).not(),
+      );
+    }
+    return (await query.getSingleOrNull())
+        ?.readTable(_db.receiptRows)
+        .createdAt;
+  }
+
+  static int _quarter(DateTime t) => t.year * 4 + (t.month - 1) ~/ 3;
+
+  /// `18.11.2026 13:05`
+  static String _dateTime(DateTime t) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(t.day)}.${two(t.month)}.${t.year} '
+        '${two(t.hour)}:${two(t.minute)}';
   }
 
   /// Liest den AES-Schlüssel, rechnet den Zähler (2.), baut die Einheit und
@@ -162,6 +326,7 @@ class RksvJournal {
     required String previous,
     required Duration limit,
     required bool mustSign,
+    String? skipReason,
   }) async {
     String? counterField;
     SignatureUnit? unit;
@@ -200,6 +365,13 @@ class RksvJournal {
               receiptId: '$number',
               counterCents: counter,
             );
+      if (skipReason != null) {
+        return (
+          jws: jwsDamaged(text()),
+          certSerial: chainRow.certSerial,
+          failure: skipReason,
+        );
+      }
       final u = await _unitOf(chain);
       stopIfLate();
       unit = u;
@@ -238,9 +410,21 @@ class RksvJournal {
   }
 
   /// Welcher Beleg vor einem Verkauf oder Storno fällig ist: collective (bei
-  /// Ausfall), sonst year, month, oder null. In Task 5 liefert sie immer
-  /// null; die Regeln kommen in Task 6.
-  Future<ReceiptKind?> dueBefore(DateTime now) async => null;
+  /// Ausfall), sonst year, month, oder null. Maßgeblich ist die Zeit des
+  /// letzten Eintrags der Kette, der kein Sammelbeleg ist: Nach einem
+  /// Sammelbeleg kann so noch ein Monats- oder Jahresbeleg folgen. Liegt
+  /// [now] davor (Uhr zurückgestellt), ist nichts fällig.
+  Future<ReceiptKind?> dueBefore(DateTime now) async {
+    final state = await _state();
+    final chain = state.chain;
+    if (_mode(state) == RksvMode.off || chain == null) return null;
+    if (state.outageSince != null) return ReceiptKind.collective;
+    final last = await _lastTime(chain, skipCollective: true);
+    if (last == null || now.isBefore(last)) return null;
+    if (now.year > last.year) return ReceiptKind.year;
+    if (now.month > last.month) return ReceiptKind.month;
+    return null;
+  }
 
   /// Darf der Bon [receiptId] storniert werden? Ohne Signatur immer, sonst
   /// nur, wenn er einen Eintrag in der laufenden Kette hat (K7).

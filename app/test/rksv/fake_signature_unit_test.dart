@@ -44,4 +44,20 @@ void main() {
     expect(result, isNotNull);
     expect(result!.length, 64);
   });
+
+  test('FakeSignatureUnit: silent blockiert wieder, sobald es nach release() '
+      'neu gesetzt wird', () async {
+    final fake = FakeSignatureUnit()..mode = FakeMode.silent;
+    fake.release();
+    expect(await fake.sign('x'), hasLength(64));
+    fake.mode = FakeMode.silent;
+    Uint8List? result;
+    final pending = fake.sign('y').then((v) => result = v);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(result, isNull);
+    fake.release();
+    await pending;
+    expect(result, hasLength(64));
+    expect(fake.signCalls, 2);
+  });
 }

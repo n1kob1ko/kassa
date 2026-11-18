@@ -1,8 +1,6 @@
 // Liest den Stand der Signatur und beobachtet ihn. Erledigt Aufgaben und
 // löscht den Hinweis. Einträge, Ketten und Zähler schreibt das Journal.
 
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 
 import '../core/enums.dart';
@@ -27,16 +25,14 @@ class RksvRepository {
       _db.rksvStateRows,
     )..where((t) => t.id.equals(1))).getSingleOrNull();
     if (row == null) return;
-    final tasks = _decodeTasks(row.tasks);
+    final tasks = decodeRksvTasks(row.tasks);
     final rest = [
       for (final t in tasks)
         if (t.id != id) t,
     ];
     if (rest.length == tasks.length) return;
     await _writeState(
-      RksvStateRowsCompanion(
-        tasks: Value(jsonEncode([for (final t in rest) t.toJson()])),
-      ),
+      RksvStateRowsCompanion(tasks: Value(encodeRksvTasks(rest))),
     );
   });
 
@@ -64,21 +60,8 @@ class RksvRepository {
       counterCents: r.counterCents,
       outageSince: r.outageSince,
       outageReason: r.outageReason,
-      tasks: _decodeTasks(r.tasks),
+      tasks: decodeRksvTasks(r.tasks),
       notice: r.notice,
     );
-  }
-
-  /// Kaputtes JSON ergibt eine leere Liste: Eine verlorene Aufgabe ist
-  /// besser als eine Kassa, die den Stand nicht lesen kann.
-  static List<RksvTask> _decodeTasks(String json) {
-    try {
-      final list = jsonDecode(json) as List<Object?>;
-      return [
-        for (final e in list) RksvTask.fromJson(e! as Map<String, Object?>),
-      ];
-    } on Object {
-      return const [];
-    }
   }
 }

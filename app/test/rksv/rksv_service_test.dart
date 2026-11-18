@@ -20,6 +20,18 @@ class _ForgetfulSecrets extends MemoryRksvSecrets {
   Future<void> writeAesKey(int chain, Uint8List key) async {}
 }
 
+/// Ein Speicher, der das Zurücklesen besteht und danach beim Lesen des
+/// AES-Schlüssels wirft (also beim Startbeleg).
+class _BreaksAfterReadBack extends MemoryRksvSecrets {
+  var _aesReads = 0;
+
+  @override
+  Future<Uint8List?> aesKey(int chain) {
+    if (++_aesReads > 1) throw StateError('Der Speicher ist weg.');
+    return super.aesKey(chain);
+  }
+}
+
 void main() {
   late RksvRig rig;
 
@@ -270,5 +282,42 @@ void main() {
       throwsA(isA<CannotVoidSpecialException>()),
     );
     await rig.verifyChain(1);
+  });
+
+  test('enableProbe: ein anderer Fehler beim Einschalten (Speicher wirft '
+      'beim Startbeleg) ergibt RksvProblem, nichts geschrieben', () async {
+    final service = RksvService(
+      rig.db,
+      _BreaksAfterReadBack(),
+      rig.receipts,
+      rig.clock,
+    );
+    await expectLater(
+      service.enableProbe(staff: rig.chef),
+      throwsA(
+        isA<RksvProblem>().having(
+          (p) => p.message,
+          'message',
+          'Die Probe-Signatur konnte nicht eingeschaltet werden.',
+        ),
+      ),
+    );
+    expect(await rig.count('rksv_chains'), 0);
+    expect(await rig.count('rksv_certificates'), 1);
+    expect(await rig.count('receipts'), 0);
+    expect(await rig.count('rksv_entries'), 0);
+    final state = await rig.stateRow();
+    expect((state.mode, state.chain, state.tasks), ('off', null, '[]'));
+  });
+
+  test('enableProbe löscht einen alten Hinweis (K9)', () async {
+    await rig.service.enableProbe(staff: rig.chef);
+    rig.secrets.failReads = true;
+    await rig.sell('s1', cart);
+    expect((await rig.stateRow()).notice, isNotNull);
+    rig.secrets.failReads = false;
+    await rig.service.enableProbe(staff: rig.chef);
+    final state = await rig.stateRow();
+    expect((state.mode, state.chain, state.notice), ('probe', 2, null));
   });
 }

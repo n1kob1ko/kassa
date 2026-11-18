@@ -13,9 +13,20 @@ enum FakeMode { ok, error, silent }
 /// Attrappe der Signatureinheit mit Schlüssel und Zertifikat aus
 /// `test_card.dart`. Signiert deterministisch.
 class FakeSignatureUnit implements SignatureUnit {
-  FakeMode mode = FakeMode.ok;
+  FakeMode _mode = FakeMode.ok;
   int signCalls = 0;
-  final Completer<void> _released = Completer<void>();
+  Completer<void> _released = Completer<void>();
+
+  FakeMode get mode => _mode;
+
+  /// Wer [FakeMode.silent] nach einem [release] neu setzt, lässt sign() wieder
+  /// warten, bis zum nächsten [release].
+  set mode(FakeMode value) {
+    if (value == FakeMode.silent && _released.isCompleted) {
+      _released = Completer<void>();
+    }
+    _mode = value;
+  }
 
   /// Bei [FakeMode.silent] kehrt sign() nie zurück, bis dies gerufen wird; dann
   /// mit gültiger Signatur.

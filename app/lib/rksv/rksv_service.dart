@@ -1,5 +1,5 @@
-// Probe-Signatur ein- und ausschalten. Task 6 und 7 ergänzen Nullbeleg,
-// "Nochmal prüfen" und "Protokoll ausgeben".
+// Probe-Signatur ein- und ausschalten, Nullbeleg, "Nochmal prüfen". Task 7
+// ergänzt "Protokoll ausgeben".
 
 import 'dart:math';
 
@@ -28,6 +28,8 @@ final class RksvProblem implements Exception {
 
 const _storageProblem =
     'Das Tablet konnte den Schlüssel nicht sicher speichern.';
+const _enableProblem = 'Die Probe-Signatur konnte nicht eingeschaltet werden.';
+const _notRunning = 'Die Signatur ist nicht eingeschaltet.';
 
 /// Zeichen der Kassen-Kennung: ohne I, O, 0 und 1, damit sie sich sicher
 /// abschreiben lässt.
@@ -50,8 +52,9 @@ class RksvService {
 
   /// Neue Kette: Kassen-Kennung, AES-Schlüssel, Probe-Schlüssel und
   /// Zertifikat erzeugen, Startbeleg signieren. Wirft RksvProblem, wenn der
-  /// geschützte Speicher nicht schreibt oder die Signatur scheitert; dann
-  /// bleibt alles wie vorher. Läuft die Signatur schon: [StateError].
+  /// geschützte Speicher nicht schreibt, die Signatur scheitert oder sonst
+  /// etwas schiefgeht; dann bleibt alles wie vorher. Ein alter Hinweis geht
+  /// weg. Läuft die Signatur schon: [StateError].
   Future<Receipt> enableProbe({required Staff staff}) {
     // Alles in einer Transaktion, auch das Schreiben der Schlüssel: Ein
     // zweiter Aufruf zugleich wartet und sieht dann die laufende Probe, statt
@@ -62,69 +65,80 @@ class RksvService {
           RksvMode.off) {
         throw StateError('Die Signatur läuft schon.');
       }
-      final highest = _db.rksvChainRows.chain.max();
-      final chain =
-          (await (_db.selectOnly(_db.rksvChainRows)..addColumns([highest]))
-                  .map((r) => r.read(highest))
-                  .getSingle() ??
-              0) +
-          1;
-      final cashBoxId = String.fromCharCodes([
-        for (var i = 0; i < 10; i++)
-          _cashBoxIdAlphabet.codeUnitAt(
-            _random.nextInt(_cashBoxIdAlphabet.length),
-          ),
-      ]);
-      final aesKey = Uint8List.fromList([
-        for (var i = 0; i < 32; i++) _random.nextInt(256),
-      ]);
-      final now = _clock.now();
-      final probe = ProbeSignatureUnit.create(
-        cashBoxId: cashBoxId,
-        now: now,
-        random: _random,
-      );
-      await _storeSecrets(chain, aesKey, probe.privateKey);
-
-      await _db
-          .into(_db.rksvCertificateRows)
-          .insert(
-            RksvCertificateRowsCompanion.insert(
-              serialHex: probe.serialHex,
-              certificate: probe.certificateDer,
-            ),
-          );
-      await _db
-          .into(_db.rksvChainRows)
-          .insert(
-            RksvChainRowsCompanion.insert(
-              chain: Value(chain),
-              mode: RksvMode.probe.name,
-              cashBoxId: cashBoxId,
-              zdaId: 'AT100',
-              certSerial: probe.serialHex,
-              startedAt: now,
-            ),
-          );
-      await _writeState(
-        RksvStateRowsCompanion(
-          mode: Value(RksvMode.probe.name),
-          chain: Value(chain),
-          counterCents: const Value(0),
-          outageSince: const Value(null),
-          outageReason: const Value(null),
-        ),
-      );
       try {
-        return await _receipts.createSpecial(
-          ReceiptKind.start,
-          staff: staff,
-          mustSign: true,
-        );
+        return await _startChain(staff);
+      } on RksvProblem {
+        rethrow;
       } on SignatureFailure catch (e) {
         throw RksvProblem(e.reason);
+      } on Object {
+        // Alles andere (etwa ein Speicher, der beim Startbeleg wirft): Die
+        // Transaktion rollt alles zurück.
+        throw const RksvProblem(_enableProblem);
       }
     });
+  }
+
+  Future<Receipt> _startChain(Staff staff) async {
+    final highest = _db.rksvChainRows.chain.max();
+    final chain =
+        (await (_db.selectOnly(
+              _db.rksvChainRows,
+            )..addColumns([highest])).map((r) => r.read(highest)).getSingle() ??
+            0) +
+        1;
+    final cashBoxId = String.fromCharCodes([
+      for (var i = 0; i < 10; i++)
+        _cashBoxIdAlphabet.codeUnitAt(
+          _random.nextInt(_cashBoxIdAlphabet.length),
+        ),
+    ]);
+    final aesKey = Uint8List.fromList([
+      for (var i = 0; i < 32; i++) _random.nextInt(256),
+    ]);
+    final now = _clock.now();
+    final probe = ProbeSignatureUnit.create(
+      cashBoxId: cashBoxId,
+      now: now,
+      random: _random,
+    );
+    await _storeSecrets(chain, aesKey, probe.privateKey);
+
+    await _db
+        .into(_db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: probe.serialHex,
+            certificate: probe.certificateDer,
+          ),
+        );
+    await _db
+        .into(_db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: Value(chain),
+            mode: RksvMode.probe.name,
+            cashBoxId: cashBoxId,
+            zdaId: 'AT100',
+            certSerial: probe.serialHex,
+            startedAt: now,
+          ),
+        );
+    await _writeState(
+      RksvStateRowsCompanion(
+        mode: Value(RksvMode.probe.name),
+        chain: Value(chain),
+        counterCents: const Value(0),
+        outageSince: const Value(null),
+        outageReason: const Value(null),
+        notice: const Value(null),
+      ),
+    );
+    return _receipts.createSpecial(
+      ReceiptKind.start,
+      staff: staff,
+      mustSign: true,
+    );
   }
 
   /// Schreibt beide Schlüssel und liest sie zurück.
@@ -182,6 +196,25 @@ class RksvService {
       return closing;
     });
   }
+
+  /// Nullbeleg, auf Wunsch des Chefs (gedruckt wird er vom Bildschirm).
+  /// Ohne laufende Signatur: [RksvProblem].
+  Future<Receipt> zeroReceipt({required Staff staff}) {
+    return _db.transaction(() async {
+      final state = await _state();
+      if (enumByNameOr(RksvMode.values, state.mode, RksvMode.off) ==
+          RksvMode.off) {
+        throw const RksvProblem(_notRunning);
+      }
+      return _receipts.createSpecial(ReceiptKind.zero, staff: staff);
+    });
+  }
+
+  /// "Nochmal prüfen": versucht den Sammelbeleg. true, wenn die Signatur
+  /// wieder geht (der Sammelbeleg ist geschrieben, der Ausfall zu Ende);
+  /// false ohne Ausfall oder wenn sie noch nicht geht, dann ohne Änderung.
+  Future<bool> retrySignature({required Staff staff}) =>
+      _receipts.retryCollective(staff: staff);
 
   Future<RksvStateRow> _state() =>
       (_db.select(_db.rksvStateRows)..where((t) => t.id.equals(1))).getSingle();

@@ -6,7 +6,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' show OrderingTerm, Value, driftRuntimeOptions;
+import 'package:drift/drift.dart'
+    show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
@@ -24,6 +25,7 @@ import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
+import 'package:kassa/rksv/rksv_state.dart';
 import 'package:pointycastle/digests/sha256.dart';
 
 import 'demo_fixtures.dart';
@@ -148,6 +150,26 @@ class RksvRig {
               (t) => OrderingTerm.asc(t.position),
             ]))
           .get();
+
+  /// Art des Bons je Eintrag der Kette [chain], nach Position.
+  Future<List<String>> entryKinds([int chain = 1]) async {
+    final rows =
+        await (db.select(db.rksvEntryRows).join([
+                innerJoin(
+                  db.receiptRows,
+                  db.receiptRows.id.equalsExp(db.rksvEntryRows.receiptId),
+                ),
+              ])
+              ..where(db.rksvEntryRows.chain.equals(chain))
+              ..orderBy([OrderingTerm.asc(db.rksvEntryRows.position)]))
+            .get();
+    return [for (final r in rows) r.readTable(db.receiptRows).kind];
+  }
+
+  /// Die offenen Aufgaben als (Id, Art, Satz-Angabe).
+  Future<List<(String, RksvTaskKind, String)>> tasks() async => [
+    for (final t in (await rksv.current()).tasks) (t.id, t.kind, t.detail),
+  ];
 
   Future<RksvEntryRow?> entryOf(String receiptId) => (db.select(
     db.rksvEntryRows,

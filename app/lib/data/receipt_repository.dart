@@ -254,9 +254,11 @@ class ReceiptRepository {
   /// Schreibt einen Sonderbeleg der Art [kind] (Betrag 0, ohne Zeilen, ohne
   /// Zahlung, ohne Tag) mit seinem Eintrag im Protokoll. Start-, Null- und
   /// Schlussbeleg löst der Chef aus; Monats-, Jahres- und Sammelbeleg
-  /// entstehen von selbst vor einem Verkauf. Mit [mustSign] wirft jeder
-  /// Fehler der Signatur ([SignatureFailure]) und jeder andere, und nichts
-  /// bleibt stehen. Ohne laufende Signatur: [StateError].
+  /// entstehen von selbst vor einem Verkauf. Vor einem Null- oder
+  /// Schlussbeleg steht, was fällig ist, wie vor einem Verkauf. Mit
+  /// [mustSign] wirft jeder Fehler der Signatur ([SignatureFailure]) und
+  /// jeder andere, und nichts bleibt stehen. Ohne laufende Signatur:
+  /// [StateError].
   Future<Receipt> createSpecial(
     ReceiptKind kind, {
     required Staff staff,
@@ -270,7 +272,31 @@ class ReceiptRepository {
       if (journal == null || !await journal.isActive()) {
         throw StateError('Sonderbelege gibt es nur mit Signatur.');
       }
-      return _writeSpecial(journal, kind, staff: staff, mustSign: mustSign);
+      final signatureDown =
+          (kind == ReceiptKind.zero || kind == ReceiptKind.closing) &&
+          await _writeDue(journal, staff);
+      return _writeSpecial(
+        journal,
+        kind,
+        staff: staff,
+        mustSign: mustSign,
+        trySign: !signatureDown,
+      );
+    });
+  }
+
+  /// "Nochmal prüfen": Läuft ein Ausfall, versucht dies den Sammelbeleg.
+  /// true, wenn er geschrieben ist und der Ausfall damit endet; false ohne
+  /// Ausfall oder wenn die Signatur noch nicht geht (dann ist nichts
+  /// geschrieben).
+  Future<bool> retryCollective({required Staff staff}) {
+    return _db.transaction(() async {
+      final journal = _journal;
+      if (journal == null ||
+          await journal.dueBefore(_clock.now()) != ReceiptKind.collective) {
+        return false;
+      }
+      return _tryCollective(journal, staff);
     });
   }
 
@@ -330,6 +356,7 @@ class ReceiptRepository {
     final journal = _journal;
     final signing = journal != null && await journal.isActive();
     List<int>? sums;
+    var signatureDown = false;
     if (signing) {
       sums = _codeSumsOf(lines, depositCents);
       if (sums.fold<int>(0, (a, b) => a + b) != totalCents) {
@@ -337,7 +364,7 @@ class ReceiptRepository {
           'Die Beträge je Satz ergeben nicht die Summe des Bons $id.',
         );
       }
-      await _writeDue(journal, staff);
+      signatureDown = await _writeDue(journal, staff);
     }
     final dayId = (await _days.openOrCreateDay()).id;
     final number = await _nextNumber();
@@ -419,6 +446,7 @@ class ReceiptRepository {
         createdAt: createdAt,
         kind: kind,
         sumsCents: sums!,
+        trySign: !signatureDown,
       );
     }
     return byId(id);
@@ -442,28 +470,42 @@ class ReceiptRepository {
 
   /// Schreibt, was vor einem Verkauf oder Storno fällig ist. Höchstens zwei
   /// Runden: Auf einen Sammelbeleg kann ein Monats- oder Jahresbeleg folgen.
-  /// Der Sammelbeleg steht in einer eigenen Transaktion; scheitert seine
-  /// Signatur, wird nur er zurückgerollt und der Ausfall dauert an.
-  Future<void> _writeDue(RksvJournal journal, Staff staff) async {
+  /// Ein gescheiterter Sammelbeleg beendet die Runden. true, wenn die
+  /// Signatur eben nicht ging: Der Bon danach fragt sie dann nicht noch
+  /// einmal.
+  Future<bool> _writeDue(RksvJournal journal, Staff staff) async {
     for (var round = 0; round < 2; round++) {
       final due = await journal.dueBefore(_clock.now());
-      if (due == null) return;
+      if (due == null) return false;
       if (due != ReceiptKind.collective) {
         await _writeSpecial(journal, due, staff: staff);
-        continue;
+      } else if (!await _tryCollective(journal, staff)) {
+        return true;
       }
-      try {
-        await _db.transaction(
-          () => _writeSpecial(journal, due, staff: staff, mustSign: true),
-        );
-      } on SignatureFailure {
-        return;
-      } on Object {
-        // Unerwartet (K9): Der Sammelbeleg ist zurückgerollt, die Probe
-        // endet, der Verkauf läuft weiter. Außerhalb der Probe weiterwerfen.
-        if (!await journal.endProbeAfterError()) rethrow;
-        return;
-      }
+    }
+    return false;
+  }
+
+  /// Der Sammelbeleg in einer eigenen Transaktion; scheitert seine Signatur,
+  /// wird nur er zurückgerollt, der Ausfall dauert an, und es kommt false.
+  Future<bool> _tryCollective(RksvJournal journal, Staff staff) async {
+    try {
+      await _db.transaction(
+        () => _writeSpecial(
+          journal,
+          ReceiptKind.collective,
+          staff: staff,
+          mustSign: true,
+        ),
+      );
+      return true;
+    } on SignatureFailure {
+      return false;
+    } on Object {
+      // Unerwartet (K9): Der Sammelbeleg ist zurückgerollt, die Probe
+      // endet, der Verkauf läuft weiter. Außerhalb der Probe weiterwerfen.
+      if (!await journal.endProbeAfterError()) rethrow;
+      return false;
     }
   }
 
@@ -472,6 +514,7 @@ class ReceiptRepository {
     ReceiptKind kind, {
     required Staff staff,
     bool mustSign = false,
+    bool trySign = true,
   }) async {
     final id = const Uuid().v4();
     final number = await _nextNumber();
@@ -510,6 +553,7 @@ class ReceiptRepository {
         createdAt: createdAt,
         kind: kind,
         sumsCents: zero,
+        trySign: trySign,
       );
     }
     return byId(id);
@@ -526,6 +570,7 @@ class ReceiptRepository {
     required DateTime createdAt,
     required ReceiptKind kind,
     required List<int> sumsCents,
+    bool trySign = true,
   }) async {
     try {
       await _db.transaction(
@@ -535,6 +580,7 @@ class ReceiptRepository {
           createdAt: createdAt,
           kind: kind,
           sumsCents: sumsCents,
+          trySign: trySign,
         ),
       );
     } on Object {
