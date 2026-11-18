@@ -1,16 +1,22 @@
 // Die Statusleiste oben und die Gestenleiste unten gehören dem Tablet. Die
 // App zeichnet zwar bis an den Rand, legt aber nichts Bedienbares darunter.
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
+import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/features/setup/setup_screen.dart';
 import 'package:kassa/ui/app_header.dart';
 import 'package:kassa/features/login/pin_screen.dart';
 import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/fake_devices.dart';
+import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/settings_pump.dart';
 
@@ -36,7 +42,111 @@ SystemUiOverlayStyle _overlayStyle(WidgetTester t) => t
     )
     .value;
 
+/// Alles Antippbare liegt zwischen den Systemleisten: nichts beginnt über der
+/// Statusleiste, nichts reicht unter die Gestenleiste. Was in einer Liste
+/// zum Scrollen steht, zählt mit dem sichtbaren Ausschnitt der Liste.
+void _expectTappablesBetweenBars(WidgetTester t, String area) {
+  final all = find.byType(Pressable);
+  expect(all, findsWidgets, reason: area);
+  const screen = Rect.fromLTWH(0, 0, 1280, 800);
+  for (final e in all.evaluate()) {
+    final target = find.byElementPredicate((x) => x == e);
+    var rect = t.getRect(target);
+    if (!rect.overlaps(screen)) continue; // gar nicht sichtbar
+    final scroll = find.ancestor(of: target, matching: find.byType(Scrollable));
+    if (scroll.evaluate().isNotEmpty) {
+      final view = t.getRect(scroll.first);
+      expect(view.bottom, lessThanOrEqualTo(800 - _bottom), reason: area);
+      rect = rect.intersect(view);
+      if (rect.isEmpty) continue;
+    }
+    final label = '$area: ${e.widget.key ?? 'Taste ohne Schlüssel'} $rect';
+    expect(rect.top, greaterThanOrEqualTo(_top), reason: label);
+    expect(rect.bottom, lessThanOrEqualTo(800 - _bottom), reason: label);
+  }
+}
+
+Future<FakeCardTerminal> _loggedInWithBars(
+  WidgetTester t, {
+  Completer<CardPaymentResult>? hang,
+}) async {
+  _withSystemBars(t);
+  final terminal = FakeCardTerminal(
+    statusValue: const CardTerminalStatus(
+      CardTerminalState.ready,
+      merchantName: 'MH12345',
+    ),
+  )..hang = hang;
+  await pumpAppLoggedInAsChef(t, terminal: terminal);
+  return terminal;
+}
+
+Future<void> _tapKey(WidgetTester t, String key) async {
+  await t.tap(find.byKey(Key(key)));
+  await t.pumpAndSettle();
+}
+
 void main() {
+  for (final (name, key) in const [
+    ('Bons', 'tab-Bons'),
+    ('Übersicht', 'tab-Übersicht'),
+    ('Artikel', 'tab-Artikel'),
+    ('Abschluss', 'tab-Abschluss'),
+    ('Einstellungen', 'settings'),
+  ]) {
+    testWidgets('$name: alles Antippbare liegt zwischen den Systemleisten', (
+      t,
+    ) async {
+      await _loggedInWithBars(t);
+      await _tapKey(t, key);
+      _expectTappablesBetweenBars(t, name);
+    });
+  }
+
+  testWidgets('Geräte testen: alles Antippbare liegt zwischen den '
+      'Systemleisten', (t) async {
+    await _loggedInWithBars(t);
+    await _tapKey(t, 'settings');
+    await t.ensureVisible(find.byKey(const Key('open-device-test')));
+    await _tapKey(t, 'open-device-test');
+    expect(find.byKey(const Key('device-test')), findsOneWidget);
+    _expectTappablesBetweenBars(t, 'Geräte testen');
+  });
+
+  testWidgets('Kassa mit Bon: alles Antippbare liegt zwischen den '
+      'Systemleisten', (t) async {
+    await _loggedInWithBars(t);
+    await tapItem(t, 'cola');
+    _expectTappablesBetweenBars(t, 'Kassa');
+  });
+
+  testWidgets('Blatt "Bar bezahlen" und Fertig-Ansicht (bar): alles '
+      'Antippbare liegt zwischen den Systemleisten', (t) async {
+    await _loggedInWithBars(t);
+    await tapItem(t, 'cola');
+    await _tapKey(t, 'pay-cash');
+    expect(find.byKey(const Key('finish-sale')), findsOneWidget);
+    _expectTappablesBetweenBars(t, 'Bar bezahlen');
+    await _tapKey(t, 'finish-sale');
+    expect(find.byKey(const Key('next-customer')), findsOneWidget);
+    _expectTappablesBetweenBars(t, 'Fertig (bar)');
+  });
+
+  testWidgets('Warten auf Karte und Fertig-Ansicht (Karte): alles Antippbare '
+      'liegt zwischen den Systemleisten', (t) async {
+    final hang = Completer<CardPaymentResult>();
+    await _loggedInWithBars(t, hang: hang);
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-card')));
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const Key('card-wait')), findsOneWidget);
+    _expectTappablesBetweenBars(t, 'Warte auf Karte');
+    hang.complete(const CardPaid(txCode: 'T1'));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('next-customer')), findsOneWidget);
+    _expectTappablesBetweenBars(t, 'Fertig (Karte)');
+  });
+
   testWidgets(
     'Kassa: Reiter liegen unter der Statusleiste, die Kopfleiste füllt sie aus',
     (t) async {
