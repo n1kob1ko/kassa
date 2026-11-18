@@ -197,10 +197,10 @@ test('sperren setzt blocked, aufheben nimmt es weg, beides im Verlauf', async ()
   expect(r2.statusCode).toBe(200);
   expect(r2.json().register.blocked).toBe(false);
   expect((await list(b)).json().registers[0].blocked).toBe(false);
-  const mine = (rows: { business_id: string }[]) => rows.filter((r) => r.business_id === b);
+  const mine = (rows: { business_id: string; detail: unknown }[]) => rows.filter((r) => r.business_id === b);
   expect(mine(await auditRows('register.block'))).toHaveLength(1);
   expect(mine(await auditRows('register.unblock'))).toHaveLength(1);
-  expect(mine(await auditRows('register.block'))[0].detail).toEqual({ registerId: id });
+  expect(mine(await auditRows('register.block'))[0]?.detail).toEqual({ registerId: id });
 });
 
 test('zweimal sperren ist kein Fehler und behält den ersten Zeitpunkt', async () => {
