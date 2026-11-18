@@ -10,6 +10,7 @@ import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
+import '../rksv/rksv_state.dart';
 import '../sync/server_api.dart';
 import '../sync/server_changes.dart';
 import '../sync/token_store.dart';
@@ -18,6 +19,7 @@ import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
 import 'receipt_repository.dart';
+import 'rksv_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
 import 'stats_repository.dart';
@@ -76,6 +78,15 @@ final syncStateRepositoryProvider = Provider(
 /// Stand des Abgleichs mit dem Server als Strom.
 final syncStateProvider = StreamProvider<SyncState>(
   (ref) => ref.watch(syncStateRepositoryProvider).watch(),
+);
+
+final rksvRepositoryProvider = Provider(
+  (ref) => RksvRepository(ref.watch(databaseProvider)),
+);
+
+/// Stand der Signatur als Strom.
+final rksvStateProvider = StreamProvider<RksvState>(
+  (ref) => ref.watch(rksvRepositoryProvider).watch(),
 );
 
 /// Der Geräte-Schlüssel im geschützten Speicher. Tests setzen

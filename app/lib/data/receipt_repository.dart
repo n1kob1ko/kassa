@@ -258,7 +258,7 @@ class ReceiptRepository {
             createdAt: _clock.now(),
             staffId: staff.id,
             staffName: staff.name,
-            businessDayId: dayId,
+            businessDayId: Value(dayId),
             kind: kind.name,
             voidsReceiptId: Value(voidsReceiptId),
             goodsCents: goodsCents,
@@ -384,7 +384,8 @@ class ReceiptRepository {
           createdAt: r.createdAt,
           staffId: r.staffId,
           staffName: r.staffName,
-          businessDayId: r.businessDayId,
+          // Bons ohne Tag (Sonderbelege) schreibt die Kassa noch nicht.
+          businessDayId: r.businessDayId!,
           kind: ReceiptKind.values.byName(r.kind),
           voidsReceiptId: r.voidsReceiptId,
           voidedByReceiptId: voidedBy[r.id],

@@ -98,4 +98,19 @@ void main() {
       );
     },
   );
+
+  test('QR-Code als Bild: Vorgabe falsch, wird gespeichert und bleibt ohne Drucker', () async {
+    expect((await settings.current()).printerQrAsImage, isFalse);
+    await settings.save(
+      const RegisterSettings(
+        printerKind: PrinterKind.usb,
+        printerQrAsImage: true,
+      ),
+    );
+    final s = await settings.current();
+    expect(s.printerQrAsImage, isTrue);
+    expect(s.copyWith(printerColumns: 32).printerQrAsImage, isTrue);
+    expect(s.copyWith(printerQrAsImage: false).printerQrAsImage, isFalse);
+    expect(s.withoutPrinter().printerQrAsImage, isTrue);
+  });
 }

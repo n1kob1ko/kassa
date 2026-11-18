@@ -3168,6 +3168,21 @@ class $SettingsRowsTable extends SettingsRows
     requiredDuringInsert: false,
     defaultValue: const Constant(48),
   );
+  static const VerificationMeta _printerQrAsImageMeta = const VerificationMeta(
+    'printerQrAsImage',
+  );
+  @override
+  late final GeneratedColumn<bool> printerQrAsImage = GeneratedColumn<bool>(
+    'printer_qr_as_image',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("printer_qr_as_image" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3180,6 +3195,7 @@ class $SettingsRowsTable extends SettingsRows
     printerAddress,
     printerName,
     printerColumns,
+    printerQrAsImage,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3271,6 +3287,15 @@ class $SettingsRowsTable extends SettingsRows
         ),
       );
     }
+    if (data.containsKey('printer_qr_as_image')) {
+      context.handle(
+        _printerQrAsImageMeta,
+        printerQrAsImage.isAcceptableOrUnknown(
+          data['printer_qr_as_image']!,
+          _printerQrAsImageMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3320,6 +3345,10 @@ class $SettingsRowsTable extends SettingsRows
         DriftSqlType.int,
         data['${effectivePrefix}printer_columns'],
       )!,
+      printerQrAsImage: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}printer_qr_as_image'],
+      )!,
     );
   }
 
@@ -3342,6 +3371,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   final String? printerAddress;
   final String? printerName;
   final int printerColumns;
+
+  /// Den QR-Code als Bild drucken statt mit dem QR-Befehl des Druckers.
+  final bool printerQrAsImage;
   const SettingsRow({
     required this.id,
     required this.cashDrawerEnabled,
@@ -3353,6 +3385,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.printerAddress,
     this.printerName,
     required this.printerColumns,
+    required this.printerQrAsImage,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3373,6 +3406,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       map['printer_name'] = Variable<String>(printerName);
     }
     map['printer_columns'] = Variable<int>(printerColumns);
+    map['printer_qr_as_image'] = Variable<bool>(printerQrAsImage);
     return map;
   }
 
@@ -3394,6 +3428,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ? const Value.absent()
           : Value(printerName),
       printerColumns: Value(printerColumns),
+      printerQrAsImage: Value(printerQrAsImage),
     );
   }
 
@@ -3413,6 +3448,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       printerAddress: serializer.fromJson<String?>(json['printerAddress']),
       printerName: serializer.fromJson<String?>(json['printerName']),
       printerColumns: serializer.fromJson<int>(json['printerColumns']),
+      printerQrAsImage: serializer.fromJson<bool>(json['printerQrAsImage']),
     );
   }
   @override
@@ -3429,6 +3465,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'printerAddress': serializer.toJson<String?>(printerAddress),
       'printerName': serializer.toJson<String?>(printerName),
       'printerColumns': serializer.toJson<int>(printerColumns),
+      'printerQrAsImage': serializer.toJson<bool>(printerQrAsImage),
     };
   }
 
@@ -3443,6 +3480,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> printerAddress = const Value.absent(),
     Value<String?> printerName = const Value.absent(),
     int? printerColumns,
+    bool? printerQrAsImage,
   }) => SettingsRow(
     id: id ?? this.id,
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
@@ -3456,6 +3494,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         : this.printerAddress,
     printerName: printerName.present ? printerName.value : this.printerName,
     printerColumns: printerColumns ?? this.printerColumns,
+    printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
   );
   SettingsRow copyWithCompanion(SettingsRowsCompanion data) {
     return SettingsRow(
@@ -3485,6 +3524,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       printerColumns: data.printerColumns.present
           ? data.printerColumns.value
           : this.printerColumns,
+      printerQrAsImage: data.printerQrAsImage.present
+          ? data.printerQrAsImage.value
+          : this.printerQrAsImage,
     );
   }
 
@@ -3500,7 +3542,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('printerKind: $printerKind, ')
           ..write('printerAddress: $printerAddress, ')
           ..write('printerName: $printerName, ')
-          ..write('printerColumns: $printerColumns')
+          ..write('printerColumns: $printerColumns, ')
+          ..write('printerQrAsImage: $printerQrAsImage')
           ..write(')'))
         .toString();
   }
@@ -3517,6 +3560,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     printerAddress,
     printerName,
     printerColumns,
+    printerQrAsImage,
   );
   @override
   bool operator ==(Object other) =>
@@ -3531,7 +3575,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.printerKind == this.printerKind &&
           other.printerAddress == this.printerAddress &&
           other.printerName == this.printerName &&
-          other.printerColumns == this.printerColumns);
+          other.printerColumns == this.printerColumns &&
+          other.printerQrAsImage == this.printerQrAsImage);
 }
 
 class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
@@ -3545,6 +3590,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> printerAddress;
   final Value<String?> printerName;
   final Value<int> printerColumns;
+  final Value<bool> printerQrAsImage;
   const SettingsRowsCompanion({
     this.id = const Value.absent(),
     this.cashDrawerEnabled = const Value.absent(),
@@ -3556,6 +3602,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.printerAddress = const Value.absent(),
     this.printerName = const Value.absent(),
     this.printerColumns = const Value.absent(),
+    this.printerQrAsImage = const Value.absent(),
   });
   SettingsRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -3568,6 +3615,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.printerAddress = const Value.absent(),
     this.printerName = const Value.absent(),
     this.printerColumns = const Value.absent(),
+    this.printerQrAsImage = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
     Expression<int>? id,
@@ -3580,6 +3628,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? printerAddress,
     Expression<String>? printerName,
     Expression<int>? printerColumns,
+    Expression<bool>? printerQrAsImage,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3592,6 +3641,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       if (printerAddress != null) 'printer_address': printerAddress,
       if (printerName != null) 'printer_name': printerName,
       if (printerColumns != null) 'printer_columns': printerColumns,
+      if (printerQrAsImage != null) 'printer_qr_as_image': printerQrAsImage,
     });
   }
 
@@ -3606,6 +3656,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? printerAddress,
     Value<String?>? printerName,
     Value<int>? printerColumns,
+    Value<bool>? printerQrAsImage,
   }) {
     return SettingsRowsCompanion(
       id: id ?? this.id,
@@ -3618,6 +3669,7 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       printerAddress: printerAddress ?? this.printerAddress,
       printerName: printerName ?? this.printerName,
       printerColumns: printerColumns ?? this.printerColumns,
+      printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
     );
   }
 
@@ -3654,6 +3706,9 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     if (printerColumns.present) {
       map['printer_columns'] = Variable<int>(printerColumns.value);
     }
+    if (printerQrAsImage.present) {
+      map['printer_qr_as_image'] = Variable<bool>(printerQrAsImage.value);
+    }
     return map;
   }
 
@@ -3669,7 +3724,8 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
           ..write('printerKind: $printerKind, ')
           ..write('printerAddress: $printerAddress, ')
           ..write('printerName: $printerName, ')
-          ..write('printerColumns: $printerColumns')
+          ..write('printerColumns: $printerColumns, ')
+          ..write('printerQrAsImage: $printerQrAsImage')
           ..write(')'))
         .toString();
   }
@@ -4872,9 +4928,9 @@ class $ReceiptRowsTable extends ReceiptRows
   late final GeneratedColumn<String> businessDayId = GeneratedColumn<String>(
     'business_day_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES business_days (id)',
     ),
@@ -5006,8 +5062,6 @@ class $ReceiptRowsTable extends ReceiptRows
           _businessDayIdMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_businessDayIdMeta);
     }
     if (data.containsKey('kind')) {
       context.handle(
@@ -5085,7 +5139,7 @@ class $ReceiptRowsTable extends ReceiptRows
       businessDayId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}business_day_id'],
-      )!,
+      ),
       kind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}kind'],
@@ -5121,9 +5175,12 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
   final DateTime createdAt;
   final String staffId;
   final String staffName;
-  final String businessDayId;
 
-  /// `sale` oder `voided`.
+  /// Leer bei Sonderbelegen: sie gehören zu keinem Tag.
+  final String? businessDayId;
+
+  /// `sale` oder `voided`, bei Sonderbelegen `start`, `month`, `year`,
+  /// `zero`, `collective` oder `closing`.
   final String kind;
 
   /// Beim Storno-Bon der Bon, den er storniert. Ein eindeutiger Index sorgt
@@ -5138,7 +5195,7 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     required this.createdAt,
     required this.staffId,
     required this.staffName,
-    required this.businessDayId,
+    this.businessDayId,
     required this.kind,
     this.voidsReceiptId,
     required this.goodsCents,
@@ -5153,7 +5210,9 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['staff_id'] = Variable<String>(staffId);
     map['staff_name'] = Variable<String>(staffName);
-    map['business_day_id'] = Variable<String>(businessDayId);
+    if (!nullToAbsent || businessDayId != null) {
+      map['business_day_id'] = Variable<String>(businessDayId);
+    }
     map['kind'] = Variable<String>(kind);
     if (!nullToAbsent || voidsReceiptId != null) {
       map['voids_receipt_id'] = Variable<String>(voidsReceiptId);
@@ -5171,7 +5230,9 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       createdAt: Value(createdAt),
       staffId: Value(staffId),
       staffName: Value(staffName),
-      businessDayId: Value(businessDayId),
+      businessDayId: businessDayId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(businessDayId),
       kind: Value(kind),
       voidsReceiptId: voidsReceiptId == null && nullToAbsent
           ? const Value.absent()
@@ -5193,7 +5254,7 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       staffId: serializer.fromJson<String>(json['staffId']),
       staffName: serializer.fromJson<String>(json['staffName']),
-      businessDayId: serializer.fromJson<String>(json['businessDayId']),
+      businessDayId: serializer.fromJson<String?>(json['businessDayId']),
       kind: serializer.fromJson<String>(json['kind']),
       voidsReceiptId: serializer.fromJson<String?>(json['voidsReceiptId']),
       goodsCents: serializer.fromJson<int>(json['goodsCents']),
@@ -5210,7 +5271,7 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'staffId': serializer.toJson<String>(staffId),
       'staffName': serializer.toJson<String>(staffName),
-      'businessDayId': serializer.toJson<String>(businessDayId),
+      'businessDayId': serializer.toJson<String?>(businessDayId),
       'kind': serializer.toJson<String>(kind),
       'voidsReceiptId': serializer.toJson<String?>(voidsReceiptId),
       'goodsCents': serializer.toJson<int>(goodsCents),
@@ -5225,7 +5286,7 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     DateTime? createdAt,
     String? staffId,
     String? staffName,
-    String? businessDayId,
+    Value<String?> businessDayId = const Value.absent(),
     String? kind,
     Value<String?> voidsReceiptId = const Value.absent(),
     int? goodsCents,
@@ -5237,7 +5298,9 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     createdAt: createdAt ?? this.createdAt,
     staffId: staffId ?? this.staffId,
     staffName: staffName ?? this.staffName,
-    businessDayId: businessDayId ?? this.businessDayId,
+    businessDayId: businessDayId.present
+        ? businessDayId.value
+        : this.businessDayId,
     kind: kind ?? this.kind,
     voidsReceiptId: voidsReceiptId.present
         ? voidsReceiptId.value
@@ -5327,7 +5390,7 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
   final Value<DateTime> createdAt;
   final Value<String> staffId;
   final Value<String> staffName;
-  final Value<String> businessDayId;
+  final Value<String?> businessDayId;
   final Value<String> kind;
   final Value<String?> voidsReceiptId;
   final Value<int> goodsCents;
@@ -5354,7 +5417,7 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     required DateTime createdAt,
     required String staffId,
     required String staffName,
-    required String businessDayId,
+    this.businessDayId = const Value.absent(),
     required String kind,
     this.voidsReceiptId = const Value.absent(),
     required int goodsCents,
@@ -5366,7 +5429,6 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
        createdAt = Value(createdAt),
        staffId = Value(staffId),
        staffName = Value(staffName),
-       businessDayId = Value(businessDayId),
        kind = Value(kind),
        goodsCents = Value(goodsCents),
        depositCents = Value(depositCents),
@@ -5407,7 +5469,7 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     Value<DateTime>? createdAt,
     Value<String>? staffId,
     Value<String>? staffName,
-    Value<String>? businessDayId,
+    Value<String?>? businessDayId,
     Value<String>? kind,
     Value<String?>? voidsReceiptId,
     Value<int>? goodsCents,
@@ -8357,6 +8419,1619 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
   }
 }
 
+class $RksvChainRowsTable extends RksvChainRows
+    with TableInfo<$RksvChainRowsTable, RksvChainRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RksvChainRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _chainMeta = const VerificationMeta('chain');
+  @override
+  late final GeneratedColumn<int> chain = GeneratedColumn<int>(
+    'chain',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cashBoxIdMeta = const VerificationMeta(
+    'cashBoxId',
+  );
+  @override
+  late final GeneratedColumn<String> cashBoxId = GeneratedColumn<String>(
+    'cash_box_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _zdaIdMeta = const VerificationMeta('zdaId');
+  @override
+  late final GeneratedColumn<String> zdaId = GeneratedColumn<String>(
+    'zda_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+    'ended_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    chain,
+    mode,
+    cashBoxId,
+    zdaId,
+    startedAt,
+    endedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rksv_chains';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RksvChainRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('chain')) {
+      context.handle(
+        _chainMeta,
+        chain.isAcceptableOrUnknown(data['chain']!, _chainMeta),
+      );
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modeMeta);
+    }
+    if (data.containsKey('cash_box_id')) {
+      context.handle(
+        _cashBoxIdMeta,
+        cashBoxId.isAcceptableOrUnknown(data['cash_box_id']!, _cashBoxIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cashBoxIdMeta);
+    }
+    if (data.containsKey('zda_id')) {
+      context.handle(
+        _zdaIdMeta,
+        zdaId.isAcceptableOrUnknown(data['zda_id']!, _zdaIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_zdaIdMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {chain};
+  @override
+  RksvChainRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RksvChainRow(
+      chain: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chain'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      cashBoxId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cash_box_id'],
+      )!,
+      zdaId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}zda_id'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      ),
+    );
+  }
+
+  @override
+  $RksvChainRowsTable createAlias(String alias) {
+    return $RksvChainRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
+  final int chain;
+
+  /// `probe` oder `live`.
+  final String mode;
+  final String cashBoxId;
+  final String zdaId;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  const RksvChainRow({
+    required this.chain,
+    required this.mode,
+    required this.cashBoxId,
+    required this.zdaId,
+    required this.startedAt,
+    this.endedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['chain'] = Variable<int>(chain);
+    map['mode'] = Variable<String>(mode);
+    map['cash_box_id'] = Variable<String>(cashBoxId);
+    map['zda_id'] = Variable<String>(zdaId);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || endedAt != null) {
+      map['ended_at'] = Variable<DateTime>(endedAt);
+    }
+    return map;
+  }
+
+  RksvChainRowsCompanion toCompanion(bool nullToAbsent) {
+    return RksvChainRowsCompanion(
+      chain: Value(chain),
+      mode: Value(mode),
+      cashBoxId: Value(cashBoxId),
+      zdaId: Value(zdaId),
+      startedAt: Value(startedAt),
+      endedAt: endedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endedAt),
+    );
+  }
+
+  factory RksvChainRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RksvChainRow(
+      chain: serializer.fromJson<int>(json['chain']),
+      mode: serializer.fromJson<String>(json['mode']),
+      cashBoxId: serializer.fromJson<String>(json['cashBoxId']),
+      zdaId: serializer.fromJson<String>(json['zdaId']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'chain': serializer.toJson<int>(chain),
+      'mode': serializer.toJson<String>(mode),
+      'cashBoxId': serializer.toJson<String>(cashBoxId),
+      'zdaId': serializer.toJson<String>(zdaId),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime?>(endedAt),
+    };
+  }
+
+  RksvChainRow copyWith({
+    int? chain,
+    String? mode,
+    String? cashBoxId,
+    String? zdaId,
+    DateTime? startedAt,
+    Value<DateTime?> endedAt = const Value.absent(),
+  }) => RksvChainRow(
+    chain: chain ?? this.chain,
+    mode: mode ?? this.mode,
+    cashBoxId: cashBoxId ?? this.cashBoxId,
+    zdaId: zdaId ?? this.zdaId,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt.present ? endedAt.value : this.endedAt,
+  );
+  RksvChainRow copyWithCompanion(RksvChainRowsCompanion data) {
+    return RksvChainRow(
+      chain: data.chain.present ? data.chain.value : this.chain,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      cashBoxId: data.cashBoxId.present ? data.cashBoxId.value : this.cashBoxId,
+      zdaId: data.zdaId.present ? data.zdaId.value : this.zdaId,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvChainRow(')
+          ..write('chain: $chain, ')
+          ..write('mode: $mode, ')
+          ..write('cashBoxId: $cashBoxId, ')
+          ..write('zdaId: $zdaId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(chain, mode, cashBoxId, zdaId, startedAt, endedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RksvChainRow &&
+          other.chain == this.chain &&
+          other.mode == this.mode &&
+          other.cashBoxId == this.cashBoxId &&
+          other.zdaId == this.zdaId &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt);
+}
+
+class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
+  final Value<int> chain;
+  final Value<String> mode;
+  final Value<String> cashBoxId;
+  final Value<String> zdaId;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> endedAt;
+  const RksvChainRowsCompanion({
+    this.chain = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.cashBoxId = const Value.absent(),
+    this.zdaId = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+  });
+  RksvChainRowsCompanion.insert({
+    this.chain = const Value.absent(),
+    required String mode,
+    required String cashBoxId,
+    required String zdaId,
+    required DateTime startedAt,
+    this.endedAt = const Value.absent(),
+  }) : mode = Value(mode),
+       cashBoxId = Value(cashBoxId),
+       zdaId = Value(zdaId),
+       startedAt = Value(startedAt);
+  static Insertable<RksvChainRow> custom({
+    Expression<int>? chain,
+    Expression<String>? mode,
+    Expression<String>? cashBoxId,
+    Expression<String>? zdaId,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+  }) {
+    return RawValuesInsertable({
+      if (chain != null) 'chain': chain,
+      if (mode != null) 'mode': mode,
+      if (cashBoxId != null) 'cash_box_id': cashBoxId,
+      if (zdaId != null) 'zda_id': zdaId,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+    });
+  }
+
+  RksvChainRowsCompanion copyWith({
+    Value<int>? chain,
+    Value<String>? mode,
+    Value<String>? cashBoxId,
+    Value<String>? zdaId,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? endedAt,
+  }) {
+    return RksvChainRowsCompanion(
+      chain: chain ?? this.chain,
+      mode: mode ?? this.mode,
+      cashBoxId: cashBoxId ?? this.cashBoxId,
+      zdaId: zdaId ?? this.zdaId,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (chain.present) {
+      map['chain'] = Variable<int>(chain.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (cashBoxId.present) {
+      map['cash_box_id'] = Variable<String>(cashBoxId.value);
+    }
+    if (zdaId.present) {
+      map['zda_id'] = Variable<String>(zdaId.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvChainRowsCompanion(')
+          ..write('chain: $chain, ')
+          ..write('mode: $mode, ')
+          ..write('cashBoxId: $cashBoxId, ')
+          ..write('zdaId: $zdaId, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RksvCertificateRowsTable extends RksvCertificateRows
+    with TableInfo<$RksvCertificateRowsTable, RksvCertificateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RksvCertificateRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _serialHexMeta = const VerificationMeta(
+    'serialHex',
+  );
+  @override
+  late final GeneratedColumn<String> serialHex = GeneratedColumn<String>(
+    'serial_hex',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _certificateMeta = const VerificationMeta(
+    'certificate',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> certificate =
+      GeneratedColumn<Uint8List>(
+        'certificate',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _issuersMeta = const VerificationMeta(
+    'issuers',
+  );
+  @override
+  late final GeneratedColumn<String> issuers = GeneratedColumn<String>(
+    'issuers',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [serialHex, certificate, issuers];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rksv_certificates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RksvCertificateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('serial_hex')) {
+      context.handle(
+        _serialHexMeta,
+        serialHex.isAcceptableOrUnknown(data['serial_hex']!, _serialHexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serialHexMeta);
+    }
+    if (data.containsKey('certificate')) {
+      context.handle(
+        _certificateMeta,
+        certificate.isAcceptableOrUnknown(
+          data['certificate']!,
+          _certificateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_certificateMeta);
+    }
+    if (data.containsKey('issuers')) {
+      context.handle(
+        _issuersMeta,
+        issuers.isAcceptableOrUnknown(data['issuers']!, _issuersMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {serialHex};
+  @override
+  RksvCertificateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RksvCertificateRow(
+      serialHex: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}serial_hex'],
+      )!,
+      certificate: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}certificate'],
+      )!,
+      issuers: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issuers'],
+      )!,
+    );
+  }
+
+  @override
+  $RksvCertificateRowsTable createAlias(String alias) {
+    return $RksvCertificateRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RksvCertificateRow extends DataClass
+    implements Insertable<RksvCertificateRow> {
+  final String serialHex;
+  final Uint8List certificate;
+
+  /// Zertifikate der Aussteller: JSON-Liste aus base64.
+  final String issuers;
+  const RksvCertificateRow({
+    required this.serialHex,
+    required this.certificate,
+    required this.issuers,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['serial_hex'] = Variable<String>(serialHex);
+    map['certificate'] = Variable<Uint8List>(certificate);
+    map['issuers'] = Variable<String>(issuers);
+    return map;
+  }
+
+  RksvCertificateRowsCompanion toCompanion(bool nullToAbsent) {
+    return RksvCertificateRowsCompanion(
+      serialHex: Value(serialHex),
+      certificate: Value(certificate),
+      issuers: Value(issuers),
+    );
+  }
+
+  factory RksvCertificateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RksvCertificateRow(
+      serialHex: serializer.fromJson<String>(json['serialHex']),
+      certificate: serializer.fromJson<Uint8List>(json['certificate']),
+      issuers: serializer.fromJson<String>(json['issuers']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'serialHex': serializer.toJson<String>(serialHex),
+      'certificate': serializer.toJson<Uint8List>(certificate),
+      'issuers': serializer.toJson<String>(issuers),
+    };
+  }
+
+  RksvCertificateRow copyWith({
+    String? serialHex,
+    Uint8List? certificate,
+    String? issuers,
+  }) => RksvCertificateRow(
+    serialHex: serialHex ?? this.serialHex,
+    certificate: certificate ?? this.certificate,
+    issuers: issuers ?? this.issuers,
+  );
+  RksvCertificateRow copyWithCompanion(RksvCertificateRowsCompanion data) {
+    return RksvCertificateRow(
+      serialHex: data.serialHex.present ? data.serialHex.value : this.serialHex,
+      certificate: data.certificate.present
+          ? data.certificate.value
+          : this.certificate,
+      issuers: data.issuers.present ? data.issuers.value : this.issuers,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvCertificateRow(')
+          ..write('serialHex: $serialHex, ')
+          ..write('certificate: $certificate, ')
+          ..write('issuers: $issuers')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(serialHex, $driftBlobEquality.hash(certificate), issuers);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RksvCertificateRow &&
+          other.serialHex == this.serialHex &&
+          $driftBlobEquality.equals(other.certificate, this.certificate) &&
+          other.issuers == this.issuers);
+}
+
+class RksvCertificateRowsCompanion extends UpdateCompanion<RksvCertificateRow> {
+  final Value<String> serialHex;
+  final Value<Uint8List> certificate;
+  final Value<String> issuers;
+  final Value<int> rowid;
+  const RksvCertificateRowsCompanion({
+    this.serialHex = const Value.absent(),
+    this.certificate = const Value.absent(),
+    this.issuers = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RksvCertificateRowsCompanion.insert({
+    required String serialHex,
+    required Uint8List certificate,
+    this.issuers = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : serialHex = Value(serialHex),
+       certificate = Value(certificate);
+  static Insertable<RksvCertificateRow> custom({
+    Expression<String>? serialHex,
+    Expression<Uint8List>? certificate,
+    Expression<String>? issuers,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (serialHex != null) 'serial_hex': serialHex,
+      if (certificate != null) 'certificate': certificate,
+      if (issuers != null) 'issuers': issuers,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RksvCertificateRowsCompanion copyWith({
+    Value<String>? serialHex,
+    Value<Uint8List>? certificate,
+    Value<String>? issuers,
+    Value<int>? rowid,
+  }) {
+    return RksvCertificateRowsCompanion(
+      serialHex: serialHex ?? this.serialHex,
+      certificate: certificate ?? this.certificate,
+      issuers: issuers ?? this.issuers,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (serialHex.present) {
+      map['serial_hex'] = Variable<String>(serialHex.value);
+    }
+    if (certificate.present) {
+      map['certificate'] = Variable<Uint8List>(certificate.value);
+    }
+    if (issuers.present) {
+      map['issuers'] = Variable<String>(issuers.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvCertificateRowsCompanion(')
+          ..write('serialHex: $serialHex, ')
+          ..write('certificate: $certificate, ')
+          ..write('issuers: $issuers, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RksvEntryRowsTable extends RksvEntryRows
+    with TableInfo<$RksvEntryRowsTable, RksvEntryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RksvEntryRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _chainMeta = const VerificationMeta('chain');
+  @override
+  late final GeneratedColumn<int> chain = GeneratedColumn<int>(
+    'chain',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES rksv_chains (chain)',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _receiptIdMeta = const VerificationMeta(
+    'receiptId',
+  );
+  @override
+  late final GeneratedColumn<String> receiptId = GeneratedColumn<String>(
+    'receipt_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'UNIQUE REFERENCES receipts (id)',
+    ),
+  );
+  static const VerificationMeta _jwsMeta = const VerificationMeta('jws');
+  @override
+  late final GeneratedColumn<String> jws = GeneratedColumn<String>(
+    'jws',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _damagedMeta = const VerificationMeta(
+    'damaged',
+  );
+  @override
+  late final GeneratedColumn<bool> damaged = GeneratedColumn<bool>(
+    'damaged',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("damaged" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _certSerialMeta = const VerificationMeta(
+    'certSerial',
+  );
+  @override
+  late final GeneratedColumn<String> certSerial = GeneratedColumn<String>(
+    'cert_serial',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    chain,
+    position,
+    receiptId,
+    jws,
+    damaged,
+    certSerial,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rksv_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RksvEntryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('chain')) {
+      context.handle(
+        _chainMeta,
+        chain.isAcceptableOrUnknown(data['chain']!, _chainMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_chainMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('receipt_id')) {
+      context.handle(
+        _receiptIdMeta,
+        receiptId.isAcceptableOrUnknown(data['receipt_id']!, _receiptIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_receiptIdMeta);
+    }
+    if (data.containsKey('jws')) {
+      context.handle(
+        _jwsMeta,
+        jws.isAcceptableOrUnknown(data['jws']!, _jwsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jwsMeta);
+    }
+    if (data.containsKey('damaged')) {
+      context.handle(
+        _damagedMeta,
+        damaged.isAcceptableOrUnknown(data['damaged']!, _damagedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_damagedMeta);
+    }
+    if (data.containsKey('cert_serial')) {
+      context.handle(
+        _certSerialMeta,
+        certSerial.isAcceptableOrUnknown(data['cert_serial']!, _certSerialMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_certSerialMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {chain, position};
+  @override
+  RksvEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RksvEntryRow(
+      chain: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chain'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      receiptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_id'],
+      )!,
+      jws: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}jws'],
+      )!,
+      damaged: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}damaged'],
+      )!,
+      certSerial: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cert_serial'],
+      )!,
+    );
+  }
+
+  @override
+  $RksvEntryRowsTable createAlias(String alias) {
+    return $RksvEntryRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RksvEntryRow extends DataClass implements Insertable<RksvEntryRow> {
+  final int chain;
+
+  /// Stelle in der Kette, lückenlos ab 1.
+  final int position;
+  final String receiptId;
+
+  /// Kompakte JWS-Form.
+  final String jws;
+
+  /// Wahr, wenn die Signatur ausgefallen war.
+  final bool damaged;
+  final String certSerial;
+  const RksvEntryRow({
+    required this.chain,
+    required this.position,
+    required this.receiptId,
+    required this.jws,
+    required this.damaged,
+    required this.certSerial,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['chain'] = Variable<int>(chain);
+    map['position'] = Variable<int>(position);
+    map['receipt_id'] = Variable<String>(receiptId);
+    map['jws'] = Variable<String>(jws);
+    map['damaged'] = Variable<bool>(damaged);
+    map['cert_serial'] = Variable<String>(certSerial);
+    return map;
+  }
+
+  RksvEntryRowsCompanion toCompanion(bool nullToAbsent) {
+    return RksvEntryRowsCompanion(
+      chain: Value(chain),
+      position: Value(position),
+      receiptId: Value(receiptId),
+      jws: Value(jws),
+      damaged: Value(damaged),
+      certSerial: Value(certSerial),
+    );
+  }
+
+  factory RksvEntryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RksvEntryRow(
+      chain: serializer.fromJson<int>(json['chain']),
+      position: serializer.fromJson<int>(json['position']),
+      receiptId: serializer.fromJson<String>(json['receiptId']),
+      jws: serializer.fromJson<String>(json['jws']),
+      damaged: serializer.fromJson<bool>(json['damaged']),
+      certSerial: serializer.fromJson<String>(json['certSerial']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'chain': serializer.toJson<int>(chain),
+      'position': serializer.toJson<int>(position),
+      'receiptId': serializer.toJson<String>(receiptId),
+      'jws': serializer.toJson<String>(jws),
+      'damaged': serializer.toJson<bool>(damaged),
+      'certSerial': serializer.toJson<String>(certSerial),
+    };
+  }
+
+  RksvEntryRow copyWith({
+    int? chain,
+    int? position,
+    String? receiptId,
+    String? jws,
+    bool? damaged,
+    String? certSerial,
+  }) => RksvEntryRow(
+    chain: chain ?? this.chain,
+    position: position ?? this.position,
+    receiptId: receiptId ?? this.receiptId,
+    jws: jws ?? this.jws,
+    damaged: damaged ?? this.damaged,
+    certSerial: certSerial ?? this.certSerial,
+  );
+  RksvEntryRow copyWithCompanion(RksvEntryRowsCompanion data) {
+    return RksvEntryRow(
+      chain: data.chain.present ? data.chain.value : this.chain,
+      position: data.position.present ? data.position.value : this.position,
+      receiptId: data.receiptId.present ? data.receiptId.value : this.receiptId,
+      jws: data.jws.present ? data.jws.value : this.jws,
+      damaged: data.damaged.present ? data.damaged.value : this.damaged,
+      certSerial: data.certSerial.present
+          ? data.certSerial.value
+          : this.certSerial,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvEntryRow(')
+          ..write('chain: $chain, ')
+          ..write('position: $position, ')
+          ..write('receiptId: $receiptId, ')
+          ..write('jws: $jws, ')
+          ..write('damaged: $damaged, ')
+          ..write('certSerial: $certSerial')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(chain, position, receiptId, jws, damaged, certSerial);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RksvEntryRow &&
+          other.chain == this.chain &&
+          other.position == this.position &&
+          other.receiptId == this.receiptId &&
+          other.jws == this.jws &&
+          other.damaged == this.damaged &&
+          other.certSerial == this.certSerial);
+}
+
+class RksvEntryRowsCompanion extends UpdateCompanion<RksvEntryRow> {
+  final Value<int> chain;
+  final Value<int> position;
+  final Value<String> receiptId;
+  final Value<String> jws;
+  final Value<bool> damaged;
+  final Value<String> certSerial;
+  final Value<int> rowid;
+  const RksvEntryRowsCompanion({
+    this.chain = const Value.absent(),
+    this.position = const Value.absent(),
+    this.receiptId = const Value.absent(),
+    this.jws = const Value.absent(),
+    this.damaged = const Value.absent(),
+    this.certSerial = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RksvEntryRowsCompanion.insert({
+    required int chain,
+    required int position,
+    required String receiptId,
+    required String jws,
+    required bool damaged,
+    required String certSerial,
+    this.rowid = const Value.absent(),
+  }) : chain = Value(chain),
+       position = Value(position),
+       receiptId = Value(receiptId),
+       jws = Value(jws),
+       damaged = Value(damaged),
+       certSerial = Value(certSerial);
+  static Insertable<RksvEntryRow> custom({
+    Expression<int>? chain,
+    Expression<int>? position,
+    Expression<String>? receiptId,
+    Expression<String>? jws,
+    Expression<bool>? damaged,
+    Expression<String>? certSerial,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (chain != null) 'chain': chain,
+      if (position != null) 'position': position,
+      if (receiptId != null) 'receipt_id': receiptId,
+      if (jws != null) 'jws': jws,
+      if (damaged != null) 'damaged': damaged,
+      if (certSerial != null) 'cert_serial': certSerial,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RksvEntryRowsCompanion copyWith({
+    Value<int>? chain,
+    Value<int>? position,
+    Value<String>? receiptId,
+    Value<String>? jws,
+    Value<bool>? damaged,
+    Value<String>? certSerial,
+    Value<int>? rowid,
+  }) {
+    return RksvEntryRowsCompanion(
+      chain: chain ?? this.chain,
+      position: position ?? this.position,
+      receiptId: receiptId ?? this.receiptId,
+      jws: jws ?? this.jws,
+      damaged: damaged ?? this.damaged,
+      certSerial: certSerial ?? this.certSerial,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (chain.present) {
+      map['chain'] = Variable<int>(chain.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (receiptId.present) {
+      map['receipt_id'] = Variable<String>(receiptId.value);
+    }
+    if (jws.present) {
+      map['jws'] = Variable<String>(jws.value);
+    }
+    if (damaged.present) {
+      map['damaged'] = Variable<bool>(damaged.value);
+    }
+    if (certSerial.present) {
+      map['cert_serial'] = Variable<String>(certSerial.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvEntryRowsCompanion(')
+          ..write('chain: $chain, ')
+          ..write('position: $position, ')
+          ..write('receiptId: $receiptId, ')
+          ..write('jws: $jws, ')
+          ..write('damaged: $damaged, ')
+          ..write('certSerial: $certSerial, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RksvStateRowsTable extends RksvStateRows
+    with TableInfo<$RksvStateRowsTable, RksvStateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RksvStateRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('off'),
+  );
+  static const VerificationMeta _chainMeta = const VerificationMeta('chain');
+  @override
+  late final GeneratedColumn<int> chain = GeneratedColumn<int>(
+    'chain',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _counterCentsMeta = const VerificationMeta(
+    'counterCents',
+  );
+  @override
+  late final GeneratedColumn<int> counterCents = GeneratedColumn<int>(
+    'counter_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _outageSinceMeta = const VerificationMeta(
+    'outageSince',
+  );
+  @override
+  late final GeneratedColumn<DateTime> outageSince = GeneratedColumn<DateTime>(
+    'outage_since',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _outageReasonMeta = const VerificationMeta(
+    'outageReason',
+  );
+  @override
+  late final GeneratedColumn<String> outageReason = GeneratedColumn<String>(
+    'outage_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tasksMeta = const VerificationMeta('tasks');
+  @override
+  late final GeneratedColumn<String> tasks = GeneratedColumn<String>(
+    'tasks',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _noticeMeta = const VerificationMeta('notice');
+  @override
+  late final GeneratedColumn<String> notice = GeneratedColumn<String>(
+    'notice',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    mode,
+    chain,
+    counterCents,
+    outageSince,
+    outageReason,
+    tasks,
+    notice,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rksv_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RksvStateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    }
+    if (data.containsKey('chain')) {
+      context.handle(
+        _chainMeta,
+        chain.isAcceptableOrUnknown(data['chain']!, _chainMeta),
+      );
+    }
+    if (data.containsKey('counter_cents')) {
+      context.handle(
+        _counterCentsMeta,
+        counterCents.isAcceptableOrUnknown(
+          data['counter_cents']!,
+          _counterCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('outage_since')) {
+      context.handle(
+        _outageSinceMeta,
+        outageSince.isAcceptableOrUnknown(
+          data['outage_since']!,
+          _outageSinceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('outage_reason')) {
+      context.handle(
+        _outageReasonMeta,
+        outageReason.isAcceptableOrUnknown(
+          data['outage_reason']!,
+          _outageReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tasks')) {
+      context.handle(
+        _tasksMeta,
+        tasks.isAcceptableOrUnknown(data['tasks']!, _tasksMeta),
+      );
+    }
+    if (data.containsKey('notice')) {
+      context.handle(
+        _noticeMeta,
+        notice.isAcceptableOrUnknown(data['notice']!, _noticeMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RksvStateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RksvStateRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      )!,
+      chain: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chain'],
+      ),
+      counterCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}counter_cents'],
+      )!,
+      outageSince: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}outage_since'],
+      ),
+      outageReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outage_reason'],
+      ),
+      tasks: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tasks'],
+      )!,
+      notice: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notice'],
+      ),
+    );
+  }
+
+  @override
+  $RksvStateRowsTable createAlias(String alias) {
+    return $RksvStateRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RksvStateRow extends DataClass implements Insertable<RksvStateRow> {
+  final int id;
+
+  /// `off`, `probe` oder `live`.
+  final String mode;
+
+  /// Die laufende Kette, `null` ohne.
+  final int? chain;
+  final int counterCents;
+  final DateTime? outageSince;
+  final String? outageReason;
+
+  /// Offene Aufgaben als JSON-Liste.
+  final String tasks;
+  final String? notice;
+  const RksvStateRow({
+    required this.id,
+    required this.mode,
+    this.chain,
+    required this.counterCents,
+    this.outageSince,
+    this.outageReason,
+    required this.tasks,
+    this.notice,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['mode'] = Variable<String>(mode);
+    if (!nullToAbsent || chain != null) {
+      map['chain'] = Variable<int>(chain);
+    }
+    map['counter_cents'] = Variable<int>(counterCents);
+    if (!nullToAbsent || outageSince != null) {
+      map['outage_since'] = Variable<DateTime>(outageSince);
+    }
+    if (!nullToAbsent || outageReason != null) {
+      map['outage_reason'] = Variable<String>(outageReason);
+    }
+    map['tasks'] = Variable<String>(tasks);
+    if (!nullToAbsent || notice != null) {
+      map['notice'] = Variable<String>(notice);
+    }
+    return map;
+  }
+
+  RksvStateRowsCompanion toCompanion(bool nullToAbsent) {
+    return RksvStateRowsCompanion(
+      id: Value(id),
+      mode: Value(mode),
+      chain: chain == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chain),
+      counterCents: Value(counterCents),
+      outageSince: outageSince == null && nullToAbsent
+          ? const Value.absent()
+          : Value(outageSince),
+      outageReason: outageReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(outageReason),
+      tasks: Value(tasks),
+      notice: notice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notice),
+    );
+  }
+
+  factory RksvStateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RksvStateRow(
+      id: serializer.fromJson<int>(json['id']),
+      mode: serializer.fromJson<String>(json['mode']),
+      chain: serializer.fromJson<int?>(json['chain']),
+      counterCents: serializer.fromJson<int>(json['counterCents']),
+      outageSince: serializer.fromJson<DateTime?>(json['outageSince']),
+      outageReason: serializer.fromJson<String?>(json['outageReason']),
+      tasks: serializer.fromJson<String>(json['tasks']),
+      notice: serializer.fromJson<String?>(json['notice']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'mode': serializer.toJson<String>(mode),
+      'chain': serializer.toJson<int?>(chain),
+      'counterCents': serializer.toJson<int>(counterCents),
+      'outageSince': serializer.toJson<DateTime?>(outageSince),
+      'outageReason': serializer.toJson<String?>(outageReason),
+      'tasks': serializer.toJson<String>(tasks),
+      'notice': serializer.toJson<String?>(notice),
+    };
+  }
+
+  RksvStateRow copyWith({
+    int? id,
+    String? mode,
+    Value<int?> chain = const Value.absent(),
+    int? counterCents,
+    Value<DateTime?> outageSince = const Value.absent(),
+    Value<String?> outageReason = const Value.absent(),
+    String? tasks,
+    Value<String?> notice = const Value.absent(),
+  }) => RksvStateRow(
+    id: id ?? this.id,
+    mode: mode ?? this.mode,
+    chain: chain.present ? chain.value : this.chain,
+    counterCents: counterCents ?? this.counterCents,
+    outageSince: outageSince.present ? outageSince.value : this.outageSince,
+    outageReason: outageReason.present ? outageReason.value : this.outageReason,
+    tasks: tasks ?? this.tasks,
+    notice: notice.present ? notice.value : this.notice,
+  );
+  RksvStateRow copyWithCompanion(RksvStateRowsCompanion data) {
+    return RksvStateRow(
+      id: data.id.present ? data.id.value : this.id,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      chain: data.chain.present ? data.chain.value : this.chain,
+      counterCents: data.counterCents.present
+          ? data.counterCents.value
+          : this.counterCents,
+      outageSince: data.outageSince.present
+          ? data.outageSince.value
+          : this.outageSince,
+      outageReason: data.outageReason.present
+          ? data.outageReason.value
+          : this.outageReason,
+      tasks: data.tasks.present ? data.tasks.value : this.tasks,
+      notice: data.notice.present ? data.notice.value : this.notice,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvStateRow(')
+          ..write('id: $id, ')
+          ..write('mode: $mode, ')
+          ..write('chain: $chain, ')
+          ..write('counterCents: $counterCents, ')
+          ..write('outageSince: $outageSince, ')
+          ..write('outageReason: $outageReason, ')
+          ..write('tasks: $tasks, ')
+          ..write('notice: $notice')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    mode,
+    chain,
+    counterCents,
+    outageSince,
+    outageReason,
+    tasks,
+    notice,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RksvStateRow &&
+          other.id == this.id &&
+          other.mode == this.mode &&
+          other.chain == this.chain &&
+          other.counterCents == this.counterCents &&
+          other.outageSince == this.outageSince &&
+          other.outageReason == this.outageReason &&
+          other.tasks == this.tasks &&
+          other.notice == this.notice);
+}
+
+class RksvStateRowsCompanion extends UpdateCompanion<RksvStateRow> {
+  final Value<int> id;
+  final Value<String> mode;
+  final Value<int?> chain;
+  final Value<int> counterCents;
+  final Value<DateTime?> outageSince;
+  final Value<String?> outageReason;
+  final Value<String> tasks;
+  final Value<String?> notice;
+  const RksvStateRowsCompanion({
+    this.id = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.chain = const Value.absent(),
+    this.counterCents = const Value.absent(),
+    this.outageSince = const Value.absent(),
+    this.outageReason = const Value.absent(),
+    this.tasks = const Value.absent(),
+    this.notice = const Value.absent(),
+  });
+  RksvStateRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.chain = const Value.absent(),
+    this.counterCents = const Value.absent(),
+    this.outageSince = const Value.absent(),
+    this.outageReason = const Value.absent(),
+    this.tasks = const Value.absent(),
+    this.notice = const Value.absent(),
+  });
+  static Insertable<RksvStateRow> custom({
+    Expression<int>? id,
+    Expression<String>? mode,
+    Expression<int>? chain,
+    Expression<int>? counterCents,
+    Expression<DateTime>? outageSince,
+    Expression<String>? outageReason,
+    Expression<String>? tasks,
+    Expression<String>? notice,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (mode != null) 'mode': mode,
+      if (chain != null) 'chain': chain,
+      if (counterCents != null) 'counter_cents': counterCents,
+      if (outageSince != null) 'outage_since': outageSince,
+      if (outageReason != null) 'outage_reason': outageReason,
+      if (tasks != null) 'tasks': tasks,
+      if (notice != null) 'notice': notice,
+    });
+  }
+
+  RksvStateRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? mode,
+    Value<int?>? chain,
+    Value<int>? counterCents,
+    Value<DateTime?>? outageSince,
+    Value<String?>? outageReason,
+    Value<String>? tasks,
+    Value<String?>? notice,
+  }) {
+    return RksvStateRowsCompanion(
+      id: id ?? this.id,
+      mode: mode ?? this.mode,
+      chain: chain ?? this.chain,
+      counterCents: counterCents ?? this.counterCents,
+      outageSince: outageSince ?? this.outageSince,
+      outageReason: outageReason ?? this.outageReason,
+      tasks: tasks ?? this.tasks,
+      notice: notice ?? this.notice,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (chain.present) {
+      map['chain'] = Variable<int>(chain.value);
+    }
+    if (counterCents.present) {
+      map['counter_cents'] = Variable<int>(counterCents.value);
+    }
+    if (outageSince.present) {
+      map['outage_since'] = Variable<DateTime>(outageSince.value);
+    }
+    if (outageReason.present) {
+      map['outage_reason'] = Variable<String>(outageReason.value);
+    }
+    if (tasks.present) {
+      map['tasks'] = Variable<String>(tasks.value);
+    }
+    if (notice.present) {
+      map['notice'] = Variable<String>(notice.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RksvStateRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('mode: $mode, ')
+          ..write('chain: $chain, ')
+          ..write('counterCents: $counterCents, ')
+          ..write('outageSince: $outageSince, ')
+          ..write('outageReason: $outageReason, ')
+          ..write('tasks: $tasks, ')
+          ..write('notice: $notice')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KassaDatabase extends GeneratedDatabase {
   _$KassaDatabase(QueryExecutor e) : super(e);
   $KassaDatabaseManager get managers => $KassaDatabaseManager(this);
@@ -8387,6 +10062,11 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
   late final $PendingCardPaymentRowsTable pendingCardPaymentRows =
       $PendingCardPaymentRowsTable(this);
   late final $SyncStateRowsTable syncStateRows = $SyncStateRowsTable(this);
+  late final $RksvChainRowsTable rksvChainRows = $RksvChainRowsTable(this);
+  late final $RksvCertificateRowsTable rksvCertificateRows =
+      $RksvCertificateRowsTable(this);
+  late final $RksvEntryRowsTable rksvEntryRows = $RksvEntryRowsTable(this);
+  late final $RksvStateRowsTable rksvStateRows = $RksvStateRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8408,6 +10088,10 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
     paymentRows,
     pendingCardPaymentRows,
     syncStateRows,
+    rksvChainRows,
+    rksvCertificateRows,
+    rksvEntryRows,
+    rksvStateRows,
   ];
 }
 
@@ -10742,6 +12426,7 @@ typedef $$SettingsRowsTableCreateCompanionBuilder =
       Value<String?> printerAddress,
       Value<String?> printerName,
       Value<int> printerColumns,
+      Value<bool> printerQrAsImage,
     });
 typedef $$SettingsRowsTableUpdateCompanionBuilder =
     SettingsRowsCompanion Function({
@@ -10755,6 +12440,7 @@ typedef $$SettingsRowsTableUpdateCompanionBuilder =
       Value<String?> printerAddress,
       Value<String?> printerName,
       Value<int> printerColumns,
+      Value<bool> printerQrAsImage,
     });
 
 class $$SettingsRowsTableFilterComposer
@@ -10813,6 +12499,11 @@ class $$SettingsRowsTableFilterComposer
 
   ColumnFilters<int> get printerColumns => $composableBuilder(
     column: $table.printerColumns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get printerQrAsImage => $composableBuilder(
+    column: $table.printerQrAsImage,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10875,6 +12566,11 @@ class $$SettingsRowsTableOrderingComposer
     column: $table.printerColumns,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get printerQrAsImage => $composableBuilder(
+    column: $table.printerQrAsImage,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsRowsTableAnnotationComposer
@@ -10931,6 +12627,11 @@ class $$SettingsRowsTableAnnotationComposer
     column: $table.printerColumns,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get printerQrAsImage => $composableBuilder(
+    column: $table.printerQrAsImage,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsRowsTableTableManager
@@ -10974,6 +12675,7 @@ class $$SettingsRowsTableTableManager
                 Value<String?> printerAddress = const Value.absent(),
                 Value<String?> printerName = const Value.absent(),
                 Value<int> printerColumns = const Value.absent(),
+                Value<bool> printerQrAsImage = const Value.absent(),
               }) => SettingsRowsCompanion(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -10985,6 +12687,7 @@ class $$SettingsRowsTableTableManager
                 printerAddress: printerAddress,
                 printerName: printerName,
                 printerColumns: printerColumns,
+                printerQrAsImage: printerQrAsImage,
               ),
           createCompanionCallback:
               ({
@@ -10998,6 +12701,7 @@ class $$SettingsRowsTableTableManager
                 Value<String?> printerAddress = const Value.absent(),
                 Value<String?> printerName = const Value.absent(),
                 Value<int> printerColumns = const Value.absent(),
+                Value<bool> printerQrAsImage = const Value.absent(),
               }) => SettingsRowsCompanion.insert(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -11009,6 +12713,7 @@ class $$SettingsRowsTableTableManager
                 printerAddress: printerAddress,
                 printerName: printerName,
                 printerColumns: printerColumns,
+                printerQrAsImage: printerQrAsImage,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -11932,7 +13637,7 @@ typedef $$ReceiptRowsTableCreateCompanionBuilder =
       required DateTime createdAt,
       required String staffId,
       required String staffName,
-      required String businessDayId,
+      Value<String?> businessDayId,
       required String kind,
       Value<String?> voidsReceiptId,
       required int goodsCents,
@@ -11947,7 +13652,7 @@ typedef $$ReceiptRowsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String> staffId,
       Value<String> staffName,
-      Value<String> businessDayId,
+      Value<String?> businessDayId,
       Value<String> kind,
       Value<String?> voidsReceiptId,
       Value<int> goodsCents,
@@ -11964,9 +13669,9 @@ final class $$ReceiptRowsTableReferences
       .businessDayRows
       .createAlias('receipts__business_day_id__business_days__id');
 
-  $$BusinessDayRowsTableProcessedTableManager get businessDayId {
-    final $_column = $_itemColumn<String>('business_day_id')!;
-
+  $$BusinessDayRowsTableProcessedTableManager? get businessDayId {
+    final $_column = $_itemColumn<String>('business_day_id');
+    if ($_column == null) return null;
     final manager = $$BusinessDayRowsTableTableManager(
       $_db,
       $_db.businessDayRows,
@@ -12029,6 +13734,24 @@ final class $$ReceiptRowsTableReferences
     ).filter((f) => f.receiptId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_paymentRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$RksvEntryRowsTable, List<RksvEntryRow>>
+  _rksvEntryRowsRefsTable(_$KassaDatabase db) => MultiTypedResultKey.fromTable(
+    db.rksvEntryRows,
+    aliasName: 'receipts__id__rksv_entries__receipt_id',
+  );
+
+  $$RksvEntryRowsTableProcessedTableManager get rksvEntryRowsRefs {
+    final manager = $$RksvEntryRowsTableTableManager(
+      $_db,
+      $_db.rksvEntryRows,
+    ).filter((f) => f.receiptId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_rksvEntryRowsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -12176,6 +13899,31 @@ class $$ReceiptRowsTableFilterComposer
           }) => $$PaymentRowsTableFilterComposer(
             $db: $db,
             $table: $db.paymentRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> rksvEntryRowsRefs(
+    Expression<bool> Function($$RksvEntryRowsTableFilterComposer f) f,
+  ) {
+    final $$RksvEntryRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.rksvEntryRows,
+      getReferencedColumn: (t) => t.receiptId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvEntryRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.rksvEntryRows,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12424,6 +14172,31 @@ class $$ReceiptRowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> rksvEntryRowsRefs<T extends Object>(
+    Expression<T> Function($$RksvEntryRowsTableAnnotationComposer a) f,
+  ) {
+    final $$RksvEntryRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.rksvEntryRows,
+      getReferencedColumn: (t) => t.receiptId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvEntryRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.rksvEntryRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ReceiptRowsTableTableManager
@@ -12444,6 +14217,7 @@ class $$ReceiptRowsTableTableManager
             bool voidsReceiptId,
             bool receiptLineRowsRefs,
             bool paymentRowsRefs,
+            bool rksvEntryRowsRefs,
           })
         > {
   $$ReceiptRowsTableTableManager(_$KassaDatabase db, $ReceiptRowsTable table)
@@ -12464,7 +14238,7 @@ class $$ReceiptRowsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> staffId = const Value.absent(),
                 Value<String> staffName = const Value.absent(),
-                Value<String> businessDayId = const Value.absent(),
+                Value<String?> businessDayId = const Value.absent(),
                 Value<String> kind = const Value.absent(),
                 Value<String?> voidsReceiptId = const Value.absent(),
                 Value<int> goodsCents = const Value.absent(),
@@ -12492,7 +14266,7 @@ class $$ReceiptRowsTableTableManager
                 required DateTime createdAt,
                 required String staffId,
                 required String staffName,
-                required String businessDayId,
+                Value<String?> businessDayId = const Value.absent(),
                 required String kind,
                 Value<String?> voidsReceiptId = const Value.absent(),
                 required int goodsCents,
@@ -12527,12 +14301,14 @@ class $$ReceiptRowsTableTableManager
                 voidsReceiptId = false,
                 receiptLineRowsRefs = false,
                 paymentRowsRefs = false,
+                rksvEntryRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (receiptLineRowsRefs) db.receiptLineRows,
                     if (paymentRowsRefs) db.paymentRows,
+                    if (rksvEntryRowsRefs) db.rksvEntryRows,
                   ],
                   addJoins:
                       <
@@ -12617,6 +14393,26 @@ class $$ReceiptRowsTableTableManager
                           referencedColumn: 'receipt_id',
                           typedResults: items,
                         ),
+                      if (rksvEntryRowsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          ReceiptRow,
+                          $ReceiptRowsTable,
+                          RksvEntryRow,
+                          $RksvEntryRowsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ReceiptRowsTableReferences
+                              ._rksvEntryRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ReceiptRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).rksvEntryRowsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'receipt_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -12642,6 +14438,7 @@ typedef $$ReceiptRowsTableProcessedTableManager =
         bool voidsReceiptId,
         bool receiptLineRowsRefs,
         bool paymentRowsRefs,
+        bool rksvEntryRowsRefs,
       })
     >;
 typedef $$ReceiptLineRowsTableCreateCompanionBuilder =
@@ -14353,6 +16150,1214 @@ typedef $$SyncStateRowsTableProcessedTableManager =
       SyncStateRow,
       PrefetchHooks Function()
     >;
+typedef $$RksvChainRowsTableCreateCompanionBuilder =
+    RksvChainRowsCompanion Function({
+      Value<int> chain,
+      required String mode,
+      required String cashBoxId,
+      required String zdaId,
+      required DateTime startedAt,
+      Value<DateTime?> endedAt,
+    });
+typedef $$RksvChainRowsTableUpdateCompanionBuilder =
+    RksvChainRowsCompanion Function({
+      Value<int> chain,
+      Value<String> mode,
+      Value<String> cashBoxId,
+      Value<String> zdaId,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+    });
+
+final class $$RksvChainRowsTableReferences
+    extends BaseReferences<_$KassaDatabase, $RksvChainRowsTable, RksvChainRow> {
+  $$RksvChainRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$RksvEntryRowsTable, List<RksvEntryRow>>
+  _rksvEntryRowsRefsTable(_$KassaDatabase db) => MultiTypedResultKey.fromTable(
+    db.rksvEntryRows,
+    aliasName: 'rksv_chains__chain__rksv_entries__chain',
+  );
+
+  $$RksvEntryRowsTableProcessedTableManager get rksvEntryRowsRefs {
+    final manager = $$RksvEntryRowsTableTableManager(
+      $_db,
+      $_db.rksvEntryRows,
+    ).filter((f) => f.chain.chain.sqlEquals($_itemColumn<int>('chain')!));
+
+    final cache = $_typedResult.readTableOrNull(_rksvEntryRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$RksvChainRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $RksvChainRowsTable> {
+  $$RksvChainRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get chain => $composableBuilder(
+    column: $table.chain,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cashBoxId => $composableBuilder(
+    column: $table.cashBoxId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get zdaId => $composableBuilder(
+    column: $table.zdaId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> rksvEntryRowsRefs(
+    Expression<bool> Function($$RksvEntryRowsTableFilterComposer f) f,
+  ) {
+    final $$RksvEntryRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chain,
+      referencedTable: $db.rksvEntryRows,
+      getReferencedColumn: (t) => t.chain,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvEntryRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.rksvEntryRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RksvChainRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $RksvChainRowsTable> {
+  $$RksvChainRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get chain => $composableBuilder(
+    column: $table.chain,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cashBoxId => $composableBuilder(
+    column: $table.cashBoxId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get zdaId => $composableBuilder(
+    column: $table.zdaId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RksvChainRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $RksvChainRowsTable> {
+  $$RksvChainRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get chain =>
+      $composableBuilder(column: $table.chain, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<String> get cashBoxId =>
+      $composableBuilder(column: $table.cashBoxId, builder: (column) => column);
+
+  GeneratedColumn<String> get zdaId =>
+      $composableBuilder(column: $table.zdaId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  Expression<T> rksvEntryRowsRefs<T extends Object>(
+    Expression<T> Function($$RksvEntryRowsTableAnnotationComposer a) f,
+  ) {
+    final $$RksvEntryRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chain,
+      referencedTable: $db.rksvEntryRows,
+      getReferencedColumn: (t) => t.chain,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvEntryRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.rksvEntryRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RksvChainRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $RksvChainRowsTable,
+          RksvChainRow,
+          $$RksvChainRowsTableFilterComposer,
+          $$RksvChainRowsTableOrderingComposer,
+          $$RksvChainRowsTableAnnotationComposer,
+          $$RksvChainRowsTableCreateCompanionBuilder,
+          $$RksvChainRowsTableUpdateCompanionBuilder,
+          (RksvChainRow, $$RksvChainRowsTableReferences),
+          RksvChainRow,
+          PrefetchHooks Function({bool rksvEntryRowsRefs})
+        > {
+  $$RksvChainRowsTableTableManager(
+    _$KassaDatabase db,
+    $RksvChainRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RksvChainRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RksvChainRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RksvChainRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> chain = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<String> cashBoxId = const Value.absent(),
+                Value<String> zdaId = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> endedAt = const Value.absent(),
+              }) => RksvChainRowsCompanion(
+                chain: chain,
+                mode: mode,
+                cashBoxId: cashBoxId,
+                zdaId: zdaId,
+                startedAt: startedAt,
+                endedAt: endedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> chain = const Value.absent(),
+                required String mode,
+                required String cashBoxId,
+                required String zdaId,
+                required DateTime startedAt,
+                Value<DateTime?> endedAt = const Value.absent(),
+              }) => RksvChainRowsCompanion.insert(
+                chain: chain,
+                mode: mode,
+                cashBoxId: cashBoxId,
+                zdaId: zdaId,
+                startedAt: startedAt,
+                endedAt: endedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RksvChainRowsTable, RksvChainRow>(table),
+                  $$RksvChainRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({rksvEntryRowsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (rksvEntryRowsRefs) db.rksvEntryRows,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (rksvEntryRowsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      RksvChainRow,
+                      $RksvChainRowsTable,
+                      RksvEntryRow,
+                      $RksvEntryRowsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$RksvChainRowsTableReferences
+                          ._rksvEntryRowsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$RksvChainRowsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).rksvEntryRowsRefs,
+                      currentColumn: 'chain',
+                      referencedColumn: 'chain',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RksvChainRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $RksvChainRowsTable,
+      RksvChainRow,
+      $$RksvChainRowsTableFilterComposer,
+      $$RksvChainRowsTableOrderingComposer,
+      $$RksvChainRowsTableAnnotationComposer,
+      $$RksvChainRowsTableCreateCompanionBuilder,
+      $$RksvChainRowsTableUpdateCompanionBuilder,
+      (RksvChainRow, $$RksvChainRowsTableReferences),
+      RksvChainRow,
+      PrefetchHooks Function({bool rksvEntryRowsRefs})
+    >;
+typedef $$RksvCertificateRowsTableCreateCompanionBuilder =
+    RksvCertificateRowsCompanion Function({
+      required String serialHex,
+      required Uint8List certificate,
+      Value<String> issuers,
+      Value<int> rowid,
+    });
+typedef $$RksvCertificateRowsTableUpdateCompanionBuilder =
+    RksvCertificateRowsCompanion Function({
+      Value<String> serialHex,
+      Value<Uint8List> certificate,
+      Value<String> issuers,
+      Value<int> rowid,
+    });
+
+class $$RksvCertificateRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $RksvCertificateRowsTable> {
+  $$RksvCertificateRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get serialHex => $composableBuilder(
+    column: $table.serialHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get certificate => $composableBuilder(
+    column: $table.certificate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issuers => $composableBuilder(
+    column: $table.issuers,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RksvCertificateRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $RksvCertificateRowsTable> {
+  $$RksvCertificateRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get serialHex => $composableBuilder(
+    column: $table.serialHex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get certificate => $composableBuilder(
+    column: $table.certificate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issuers => $composableBuilder(
+    column: $table.issuers,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RksvCertificateRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $RksvCertificateRowsTable> {
+  $$RksvCertificateRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get serialHex =>
+      $composableBuilder(column: $table.serialHex, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get certificate => $composableBuilder(
+    column: $table.certificate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get issuers =>
+      $composableBuilder(column: $table.issuers, builder: (column) => column);
+}
+
+class $$RksvCertificateRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $RksvCertificateRowsTable,
+          RksvCertificateRow,
+          $$RksvCertificateRowsTableFilterComposer,
+          $$RksvCertificateRowsTableOrderingComposer,
+          $$RksvCertificateRowsTableAnnotationComposer,
+          $$RksvCertificateRowsTableCreateCompanionBuilder,
+          $$RksvCertificateRowsTableUpdateCompanionBuilder,
+          (
+            RksvCertificateRow,
+            BaseReferences<
+              _$KassaDatabase,
+              $RksvCertificateRowsTable,
+              RksvCertificateRow
+            >,
+          ),
+          RksvCertificateRow,
+          PrefetchHooks Function()
+        > {
+  $$RksvCertificateRowsTableTableManager(
+    _$KassaDatabase db,
+    $RksvCertificateRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RksvCertificateRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RksvCertificateRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RksvCertificateRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> serialHex = const Value.absent(),
+                Value<Uint8List> certificate = const Value.absent(),
+                Value<String> issuers = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RksvCertificateRowsCompanion(
+                serialHex: serialHex,
+                certificate: certificate,
+                issuers: issuers,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String serialHex,
+                required Uint8List certificate,
+                Value<String> issuers = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RksvCertificateRowsCompanion.insert(
+                serialHex: serialHex,
+                certificate: certificate,
+                issuers: issuers,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RksvCertificateRowsTable, RksvCertificateRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$KassaDatabase,
+                    $RksvCertificateRowsTable,
+                    RksvCertificateRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RksvCertificateRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $RksvCertificateRowsTable,
+      RksvCertificateRow,
+      $$RksvCertificateRowsTableFilterComposer,
+      $$RksvCertificateRowsTableOrderingComposer,
+      $$RksvCertificateRowsTableAnnotationComposer,
+      $$RksvCertificateRowsTableCreateCompanionBuilder,
+      $$RksvCertificateRowsTableUpdateCompanionBuilder,
+      (
+        RksvCertificateRow,
+        BaseReferences<
+          _$KassaDatabase,
+          $RksvCertificateRowsTable,
+          RksvCertificateRow
+        >,
+      ),
+      RksvCertificateRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RksvEntryRowsTableCreateCompanionBuilder =
+    RksvEntryRowsCompanion Function({
+      required int chain,
+      required int position,
+      required String receiptId,
+      required String jws,
+      required bool damaged,
+      required String certSerial,
+      Value<int> rowid,
+    });
+typedef $$RksvEntryRowsTableUpdateCompanionBuilder =
+    RksvEntryRowsCompanion Function({
+      Value<int> chain,
+      Value<int> position,
+      Value<String> receiptId,
+      Value<String> jws,
+      Value<bool> damaged,
+      Value<String> certSerial,
+      Value<int> rowid,
+    });
+
+final class $$RksvEntryRowsTableReferences
+    extends BaseReferences<_$KassaDatabase, $RksvEntryRowsTable, RksvEntryRow> {
+  $$RksvEntryRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $RksvChainRowsTable _chainTable(_$KassaDatabase db) =>
+      db.rksvChainRows.createAlias('rksv_entries__chain__rksv_chains__chain');
+
+  $$RksvChainRowsTableProcessedTableManager get chain {
+    final $_column = $_itemColumn<int>('chain')!;
+
+    final manager = $$RksvChainRowsTableTableManager(
+      $_db,
+      $_db.rksvChainRows,
+    ).filter((f) => f.chain.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_chainTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ReceiptRowsTable _receiptIdTable(_$KassaDatabase db) =>
+      db.receiptRows.createAlias('rksv_entries__receipt_id__receipts__id');
+
+  $$ReceiptRowsTableProcessedTableManager get receiptId {
+    final $_column = $_itemColumn<String>('receipt_id')!;
+
+    final manager = $$ReceiptRowsTableTableManager(
+      $_db,
+      $_db.receiptRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_receiptIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RksvEntryRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $RksvEntryRowsTable> {
+  $$RksvEntryRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jws => $composableBuilder(
+    column: $table.jws,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get damaged => $composableBuilder(
+    column: $table.damaged,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get certSerial => $composableBuilder(
+    column: $table.certSerial,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$RksvChainRowsTableFilterComposer get chain {
+    final $$RksvChainRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chain,
+      referencedTable: $db.rksvChainRows,
+      getReferencedColumn: (t) => t.chain,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvChainRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.rksvChainRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ReceiptRowsTableFilterComposer get receiptId {
+    final $$ReceiptRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receiptId,
+      referencedTable: $db.receiptRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceiptRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.receiptRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RksvEntryRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $RksvEntryRowsTable> {
+  $$RksvEntryRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jws => $composableBuilder(
+    column: $table.jws,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get damaged => $composableBuilder(
+    column: $table.damaged,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get certSerial => $composableBuilder(
+    column: $table.certSerial,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$RksvChainRowsTableOrderingComposer get chain {
+    final $$RksvChainRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chain,
+      referencedTable: $db.rksvChainRows,
+      getReferencedColumn: (t) => t.chain,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvChainRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.rksvChainRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ReceiptRowsTableOrderingComposer get receiptId {
+    final $$ReceiptRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receiptId,
+      referencedTable: $db.receiptRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceiptRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.receiptRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RksvEntryRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $RksvEntryRowsTable> {
+  $$RksvEntryRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get jws =>
+      $composableBuilder(column: $table.jws, builder: (column) => column);
+
+  GeneratedColumn<bool> get damaged =>
+      $composableBuilder(column: $table.damaged, builder: (column) => column);
+
+  GeneratedColumn<String> get certSerial => $composableBuilder(
+    column: $table.certSerial,
+    builder: (column) => column,
+  );
+
+  $$RksvChainRowsTableAnnotationComposer get chain {
+    final $$RksvChainRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.chain,
+      referencedTable: $db.rksvChainRows,
+      getReferencedColumn: (t) => t.chain,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RksvChainRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.rksvChainRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ReceiptRowsTableAnnotationComposer get receiptId {
+    final $$ReceiptRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.receiptId,
+      referencedTable: $db.receiptRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReceiptRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.receiptRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RksvEntryRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $RksvEntryRowsTable,
+          RksvEntryRow,
+          $$RksvEntryRowsTableFilterComposer,
+          $$RksvEntryRowsTableOrderingComposer,
+          $$RksvEntryRowsTableAnnotationComposer,
+          $$RksvEntryRowsTableCreateCompanionBuilder,
+          $$RksvEntryRowsTableUpdateCompanionBuilder,
+          (RksvEntryRow, $$RksvEntryRowsTableReferences),
+          RksvEntryRow,
+          PrefetchHooks Function({bool chain, bool receiptId})
+        > {
+  $$RksvEntryRowsTableTableManager(
+    _$KassaDatabase db,
+    $RksvEntryRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RksvEntryRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RksvEntryRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RksvEntryRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> chain = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> receiptId = const Value.absent(),
+                Value<String> jws = const Value.absent(),
+                Value<bool> damaged = const Value.absent(),
+                Value<String> certSerial = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RksvEntryRowsCompanion(
+                chain: chain,
+                position: position,
+                receiptId: receiptId,
+                jws: jws,
+                damaged: damaged,
+                certSerial: certSerial,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int chain,
+                required int position,
+                required String receiptId,
+                required String jws,
+                required bool damaged,
+                required String certSerial,
+                Value<int> rowid = const Value.absent(),
+              }) => RksvEntryRowsCompanion.insert(
+                chain: chain,
+                position: position,
+                receiptId: receiptId,
+                jws: jws,
+                damaged: damaged,
+                certSerial: certSerial,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RksvEntryRowsTable, RksvEntryRow>(table),
+                  $$RksvEntryRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({chain = false, receiptId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (chain) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.chain,
+                        referencedTable: $$RksvEntryRowsTableReferences
+                            ._chainTable(db),
+                        referencedColumn: $$RksvEntryRowsTableReferences
+                            ._chainTable(db)
+                            .chain,
+                      ) as T;
+                    }
+                    if (receiptId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.receiptId,
+                        referencedTable: $$RksvEntryRowsTableReferences
+                            ._receiptIdTable(db),
+                        referencedColumn: $$RksvEntryRowsTableReferences
+                            ._receiptIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RksvEntryRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $RksvEntryRowsTable,
+      RksvEntryRow,
+      $$RksvEntryRowsTableFilterComposer,
+      $$RksvEntryRowsTableOrderingComposer,
+      $$RksvEntryRowsTableAnnotationComposer,
+      $$RksvEntryRowsTableCreateCompanionBuilder,
+      $$RksvEntryRowsTableUpdateCompanionBuilder,
+      (RksvEntryRow, $$RksvEntryRowsTableReferences),
+      RksvEntryRow,
+      PrefetchHooks Function({bool chain, bool receiptId})
+    >;
+typedef $$RksvStateRowsTableCreateCompanionBuilder =
+    RksvStateRowsCompanion Function({
+      Value<int> id,
+      Value<String> mode,
+      Value<int?> chain,
+      Value<int> counterCents,
+      Value<DateTime?> outageSince,
+      Value<String?> outageReason,
+      Value<String> tasks,
+      Value<String?> notice,
+    });
+typedef $$RksvStateRowsTableUpdateCompanionBuilder =
+    RksvStateRowsCompanion Function({
+      Value<int> id,
+      Value<String> mode,
+      Value<int?> chain,
+      Value<int> counterCents,
+      Value<DateTime?> outageSince,
+      Value<String?> outageReason,
+      Value<String> tasks,
+      Value<String?> notice,
+    });
+
+class $$RksvStateRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $RksvStateRowsTable> {
+  $$RksvStateRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get chain => $composableBuilder(
+    column: $table.chain,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get counterCents => $composableBuilder(
+    column: $table.counterCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get outageSince => $composableBuilder(
+    column: $table.outageSince,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outageReason => $composableBuilder(
+    column: $table.outageReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tasks => $composableBuilder(
+    column: $table.tasks,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notice => $composableBuilder(
+    column: $table.notice,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RksvStateRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $RksvStateRowsTable> {
+  $$RksvStateRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get chain => $composableBuilder(
+    column: $table.chain,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get counterCents => $composableBuilder(
+    column: $table.counterCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get outageSince => $composableBuilder(
+    column: $table.outageSince,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outageReason => $composableBuilder(
+    column: $table.outageReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tasks => $composableBuilder(
+    column: $table.tasks,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notice => $composableBuilder(
+    column: $table.notice,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RksvStateRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $RksvStateRowsTable> {
+  $$RksvStateRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<int> get chain =>
+      $composableBuilder(column: $table.chain, builder: (column) => column);
+
+  GeneratedColumn<int> get counterCents => $composableBuilder(
+    column: $table.counterCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get outageSince => $composableBuilder(
+    column: $table.outageSince,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get outageReason => $composableBuilder(
+    column: $table.outageReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tasks =>
+      $composableBuilder(column: $table.tasks, builder: (column) => column);
+
+  GeneratedColumn<String> get notice =>
+      $composableBuilder(column: $table.notice, builder: (column) => column);
+}
+
+class $$RksvStateRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $RksvStateRowsTable,
+          RksvStateRow,
+          $$RksvStateRowsTableFilterComposer,
+          $$RksvStateRowsTableOrderingComposer,
+          $$RksvStateRowsTableAnnotationComposer,
+          $$RksvStateRowsTableCreateCompanionBuilder,
+          $$RksvStateRowsTableUpdateCompanionBuilder,
+          (
+            RksvStateRow,
+            BaseReferences<_$KassaDatabase, $RksvStateRowsTable, RksvStateRow>,
+          ),
+          RksvStateRow,
+          PrefetchHooks Function()
+        > {
+  $$RksvStateRowsTableTableManager(
+    _$KassaDatabase db,
+    $RksvStateRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RksvStateRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RksvStateRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RksvStateRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<int?> chain = const Value.absent(),
+                Value<int> counterCents = const Value.absent(),
+                Value<DateTime?> outageSince = const Value.absent(),
+                Value<String?> outageReason = const Value.absent(),
+                Value<String> tasks = const Value.absent(),
+                Value<String?> notice = const Value.absent(),
+              }) => RksvStateRowsCompanion(
+                id: id,
+                mode: mode,
+                chain: chain,
+                counterCents: counterCents,
+                outageSince: outageSince,
+                outageReason: outageReason,
+                tasks: tasks,
+                notice: notice,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> mode = const Value.absent(),
+                Value<int?> chain = const Value.absent(),
+                Value<int> counterCents = const Value.absent(),
+                Value<DateTime?> outageSince = const Value.absent(),
+                Value<String?> outageReason = const Value.absent(),
+                Value<String> tasks = const Value.absent(),
+                Value<String?> notice = const Value.absent(),
+              }) => RksvStateRowsCompanion.insert(
+                id: id,
+                mode: mode,
+                chain: chain,
+                counterCents: counterCents,
+                outageSince: outageSince,
+                outageReason: outageReason,
+                tasks: tasks,
+                notice: notice,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RksvStateRowsTable, RksvStateRow>(table),
+                  BaseReferences<
+                    _$KassaDatabase,
+                    $RksvStateRowsTable,
+                    RksvStateRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RksvStateRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $RksvStateRowsTable,
+      RksvStateRow,
+      $$RksvStateRowsTableFilterComposer,
+      $$RksvStateRowsTableOrderingComposer,
+      $$RksvStateRowsTableAnnotationComposer,
+      $$RksvStateRowsTableCreateCompanionBuilder,
+      $$RksvStateRowsTableUpdateCompanionBuilder,
+      (
+        RksvStateRow,
+        BaseReferences<_$KassaDatabase, $RksvStateRowsTable, RksvStateRow>,
+      ),
+      RksvStateRow,
+      PrefetchHooks Function()
+    >;
 
 class $KassaDatabaseManager {
   final _$KassaDatabase _db;
@@ -14392,4 +17397,12 @@ class $KassaDatabaseManager {
       );
   $$SyncStateRowsTableTableManager get syncStateRows =>
       $$SyncStateRowsTableTableManager(_db, _db.syncStateRows);
+  $$RksvChainRowsTableTableManager get rksvChainRows =>
+      $$RksvChainRowsTableTableManager(_db, _db.rksvChainRows);
+  $$RksvCertificateRowsTableTableManager get rksvCertificateRows =>
+      $$RksvCertificateRowsTableTableManager(_db, _db.rksvCertificateRows);
+  $$RksvEntryRowsTableTableManager get rksvEntryRows =>
+      $$RksvEntryRowsTableTableManager(_db, _db.rksvEntryRows);
+  $$RksvStateRowsTableTableManager get rksvStateRows =>
+      $$RksvStateRowsTableTableManager(_db, _db.rksvStateRows);
 }

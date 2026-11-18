@@ -2,7 +2,7 @@
 // Mitarbeiter Anna (Rolle staff) und Chef (Rolle chef). Spätere Tests
 // erweitern die Klasse um ihre Repositories.
 
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
@@ -98,7 +98,7 @@ class TestShop {
             createdAt: clock.now(),
             staffId: anna.id,
             staffName: anna.name,
-            businessDayId: day,
+            businessDayId: Value(day),
             kind: ReceiptKind.sale.name,
             goodsCents: totalCents,
             depositCents: 0,

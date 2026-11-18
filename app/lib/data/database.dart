@@ -1,6 +1,5 @@
 // SQLite-Datenbank der Kassa (drift). Enthält Katalog, Mitarbeiter und
-// Einstellungen, Bons und Geschäftstage. Tabellen für den Tagesabschluss
-// folgen mit den Aufgaben, die sie brauchen.
+// Einstellungen, Bons und Geschäftstage und das Protokoll der Signatur (RKSV).
 
 import 'package:drift/drift.dart';
 
@@ -144,6 +143,10 @@ class SettingsRows extends Table {
   TextColumn get printerName => text().nullable()();
   IntColumn get printerColumns => integer().withDefault(const Constant(48))();
 
+  /// Den QR-Code als Bild drucken statt mit dem QR-Befehl des Druckers.
+  BoolColumn get printerQrAsImage =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -203,9 +206,13 @@ class ReceiptRows extends Table {
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get staffId => text()();
   TextColumn get staffName => text()();
-  TextColumn get businessDayId => text().references(BusinessDayRows, #id)();
 
-  /// `sale` oder `voided`.
+  /// Leer bei Sonderbelegen: sie gehören zu keinem Tag.
+  TextColumn get businessDayId =>
+      text().nullable().references(BusinessDayRows, #id)();
+
+  /// `sale` oder `voided`, bei Sonderbelegen `start`, `month`, `year`,
+  /// `zero`, `collective` oder `closing`.
   TextColumn get kind => text()();
 
   /// Beim Storno-Bon der Bon, den er storniert. Ein eindeutiger Index sorgt
@@ -336,6 +343,88 @@ class SyncStateRows extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Eine Kette der Signatur. Eine beendete Kette (`endedAt` gesetzt) ist
+/// unveränderlich, gelöscht wird keine.
+class RksvChainRows extends Table {
+  @override
+  String get tableName => 'rksv_chains';
+
+  IntColumn get chain => integer()();
+
+  /// `probe` oder `live`.
+  TextColumn get mode => text()();
+  TextColumn get cashBoxId => text()();
+  TextColumn get zdaId => text()();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {chain};
+}
+
+/// Zertifikate, mit denen signiert wurde. Unveränderlich.
+class RksvCertificateRows extends Table {
+  @override
+  String get tableName => 'rksv_certificates';
+
+  TextColumn get serialHex => text()();
+  BlobColumn get certificate => blob()();
+
+  /// Zertifikate der Aussteller: JSON-Liste aus base64.
+  TextColumn get issuers => text().withDefault(const Constant('[]'))();
+
+  @override
+  Set<Column> get primaryKey => {serialHex};
+}
+
+/// Das Protokoll: ein Eintrag je signiertem Bon. Unveränderlich.
+class RksvEntryRows extends Table {
+  @override
+  String get tableName => 'rksv_entries';
+
+  IntColumn get chain => integer().references(RksvChainRows, #chain)();
+
+  /// Stelle in der Kette, lückenlos ab 1.
+  IntColumn get position => integer()();
+  TextColumn get receiptId => text().unique().references(ReceiptRows, #id)();
+
+  /// Kompakte JWS-Form.
+  TextColumn get jws => text()();
+
+  /// Wahr, wenn die Signatur ausgefallen war.
+  BoolColumn get damaged => boolean()();
+  TextColumn get certSerial => text()();
+
+  @override
+  Set<Column> get primaryKey => {chain, position};
+}
+
+/// Genau eine Zeile (id = 1): Stand der Signatur. Die Kassen-Kennung steht in
+/// der laufenden Kette, der letzte Monatsbeleg ergibt sich aus ihrem letzten
+/// Eintrag. Die Schlüssel liegen im geschützten Speicher, nie hier.
+class RksvStateRows extends Table {
+  @override
+  String get tableName => 'rksv_state';
+
+  IntColumn get id => integer()();
+
+  /// `off`, `probe` oder `live`.
+  TextColumn get mode => text().withDefault(const Constant('off'))();
+
+  /// Die laufende Kette, `null` ohne.
+  IntColumn get chain => integer().nullable()();
+  IntColumn get counterCents => integer().withDefault(const Constant(0))();
+  DateTimeColumn get outageSince => dateTime().nullable()();
+  TextColumn get outageReason => text().nullable()();
+
+  /// Offene Aufgaben als JSON-Liste.
+  TextColumn get tasks => text().withDefault(const Constant('[]'))();
+  TextColumn get notice => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     BusinessRows,
@@ -354,22 +443,23 @@ class SyncStateRows extends Table {
     PaymentRows,
     PendingCardPaymentRows,
     SyncStateRows,
+    RksvChainRows,
+    RksvCertificateRows,
+    RksvEntryRows,
+    RksvStateRows,
   ],
 )
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      await customStatement(
-        'CREATE UNIQUE INDEX receipts_voids_receipt_id '
-        'ON receipts (voids_receipt_id)',
-      );
+      await _createReceiptsVoidsIndex();
       // Höchstens ein offener Tag. NULL gilt in einem eindeutigen Index immer
       // als verschieden, darum der Ausdruck, der für offene Tage gleich ist.
       await customStatement(
@@ -399,17 +489,15 @@ class KassaDatabase extends _$KassaDatabase {
         'receipt_line_options',
         'payments',
       ]) {
-        for (final action in const ['UPDATE', 'DELETE']) {
-          await customStatement(
-            'CREATE TRIGGER ${table}_no_${action.toLowerCase()} '
-            'BEFORE $action ON $table BEGIN '
-            "SELECT RAISE(ABORT, 'Bons sind unveränderlich'); END",
-          );
-        }
+        await _createReceiptGuards(table);
       }
+      await _createRksvGuards();
+      await _insertRksvState();
     },
+    // Jeder Schritt prüft auch [to], damit die Tests der älteren Schritte
+    // genau bis zu ihrer Version migrieren.
     onUpgrade: (m, from, to) async {
-      if (from < 2) {
+      if (from < 2 && to >= 2) {
         await m.addColumn(settingsRows, settingsRows.printerKind);
         await m.addColumn(settingsRows, settingsRows.printerAddress);
         await m.addColumn(settingsRows, settingsRows.printerName);
@@ -423,12 +511,93 @@ class KassaDatabase extends _$KassaDatabase {
         await m.addColumn(paymentRows, paymentRows.cardLast4);
         await m.createTable(pendingCardPaymentRows);
       }
-      if (from < 3) {
+      if (from < 3 && to >= 3) {
         await m.createTable(syncStateRows);
+      }
+      if (from < 4 && to >= 4) {
+        // Neu aufbauen, damit business_day_id leer sein darf. Ohne
+        // Fremdschlüssel, sonst würde das Löschen der alten Tabelle an den
+        // Verweisen von Zeilen und Zahlungen scheitern. Trigger und Index
+        // entstehen danach wie in onCreate neu.
+        await customStatement('PRAGMA foreign_keys = OFF');
+        await transaction(() async {
+          for (final action in const ['update', 'delete']) {
+            await customStatement('DROP TRIGGER IF EXISTS receipts_no_$action');
+          }
+          await customStatement(
+            'DROP INDEX IF EXISTS receipts_voids_receipt_id',
+          );
+          await m.alterTable(TableMigration(receiptRows));
+          await _createReceiptsVoidsIndex();
+          await _createReceiptGuards('receipts');
+
+          await m.addColumn(settingsRows, settingsRows.printerQrAsImage);
+          await m.createTable(rksvChainRows);
+          await m.createTable(rksvCertificateRows);
+          await m.createTable(rksvEntryRows);
+          await m.createTable(rksvStateRows);
+          await _createRksvGuards();
+          await _insertRksvState();
+
+          final broken = await customSelect('PRAGMA foreign_key_check').get();
+          if (broken.isNotEmpty) {
+            throw StateError(
+              'Verweise nach der Migration auf Version 4 kaputt: '
+              '${broken.map((r) => r.data).toList()}',
+            );
+          }
+        });
+        await customStatement('PRAGMA foreign_keys = ON');
       }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Höchstens ein Storno je Bon.
+  Future<void> _createReceiptsVoidsIndex() => customStatement(
+    'CREATE UNIQUE INDEX receipts_voids_receipt_id '
+    'ON receipts (voids_receipt_id)',
+  );
+
+  Future<void> _createReceiptGuards(String table) async {
+    for (final action in const ['UPDATE', 'DELETE']) {
+      await customStatement(
+        'CREATE TRIGGER ${table}_no_${action.toLowerCase()} '
+        'BEFORE $action ON $table BEGIN '
+        "SELECT RAISE(ABORT, 'Bons sind unveränderlich'); END",
+      );
+    }
+  }
+
+  /// Protokoll und Zertifikate sind unveränderlich, Ketten nur, solange sie
+  /// laufen, und gelöscht wird keine.
+  Future<void> _createRksvGuards() async {
+    for (final action in const ['UPDATE', 'DELETE']) {
+      await customStatement(
+        'CREATE TRIGGER rksv_entries_no_${action.toLowerCase()} '
+        'BEFORE $action ON rksv_entries BEGIN '
+        "SELECT RAISE(ABORT, 'Das Protokoll ist unveränderlich'); END",
+      );
+      await customStatement(
+        'CREATE TRIGGER rksv_certificates_no_${action.toLowerCase()} '
+        'BEFORE $action ON rksv_certificates BEGIN '
+        "SELECT RAISE(ABORT, 'Zertifikate sind unveränderlich'); END",
+      );
+    }
+    await customStatement(
+      'CREATE TRIGGER rksv_chains_no_update_ended '
+      'BEFORE UPDATE ON rksv_chains WHEN OLD.ended_at IS NOT NULL BEGIN '
+      "SELECT RAISE(ABORT, 'Beendete Ketten sind unveränderlich'); END",
+    );
+    await customStatement(
+      'CREATE TRIGGER rksv_chains_no_delete '
+      'BEFORE DELETE ON rksv_chains BEGIN '
+      "SELECT RAISE(ABORT, 'Ketten können nicht gelöscht werden'); END",
+    );
+  }
+
+  Future<void> _insertRksvState() =>
+      into(rksvStateRows).insert(const RksvStateRowsCompanion(id: Value(1)));
 }

@@ -19,6 +19,7 @@ class RegisterSettings {
     this.printerAddress,
     this.printerName,
     this.printerColumns = 48,
+    this.printerQrAsImage = false,
   });
 
   final bool cashDrawerEnabled;
@@ -30,6 +31,9 @@ class RegisterSettings {
   final String? printerName;
   final int printerColumns;
 
+  /// Den QR-Code als Bild drucken statt mit dem QR-Befehl des Druckers.
+  final bool printerQrAsImage;
+
   RegisterSettings copyWith({
     bool? cashDrawerEnabled,
     bool? showImages,
@@ -39,6 +43,7 @@ class RegisterSettings {
     String? printerAddress,
     String? printerName,
     int? printerColumns,
+    bool? printerQrAsImage,
   }) => RegisterSettings(
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
     showImages: showImages ?? this.showImages,
@@ -48,6 +53,7 @@ class RegisterSettings {
     printerAddress: printerAddress ?? this.printerAddress,
     printerName: printerName ?? this.printerName,
     printerColumns: printerColumns ?? this.printerColumns,
+    printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
   );
 
   /// Kein Drucker mehr: Art `none`, Adresse und Name leer (`copyWith` kann
@@ -58,6 +64,7 @@ class RegisterSettings {
     themeMode: themeMode,
     voidRequiresChef: voidRequiresChef,
     printerColumns: printerColumns,
+    printerQrAsImage: printerQrAsImage,
   );
 }
 
@@ -86,6 +93,7 @@ class SettingsRepository {
           printerAddress: Value(s.printerAddress),
           printerName: Value(s.printerName),
           printerColumns: Value(s.printerColumns),
+          printerQrAsImage: Value(s.printerQrAsImage),
         ),
       );
 
@@ -123,5 +131,6 @@ class SettingsRepository {
           printerAddress: r.printerAddress,
           printerName: r.printerName,
           printerColumns: r.printerColumns,
+          printerQrAsImage: r.printerQrAsImage,
         );
 }
