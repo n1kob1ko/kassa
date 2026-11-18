@@ -83,6 +83,11 @@ final catalogStreamProvider = StreamProvider<Catalog?>(
   (ref) => ref.watch(catalogRepositoryProvider).watch(),
 );
 
+/// Alle offenen Kartenzahlungen (gestartet und unklar), die älteste zuerst.
+final pendingCardPaymentsProvider = StreamProvider<List<PendingCardPayment>>(
+  (ref) => ref.watch(cardPaymentRepositoryProvider).watchPending(),
+);
+
 /// Die Einstellungen der Kassa als Strom.
 final settingsStreamProvider = StreamProvider<RegisterSettings>(
   (ref) => ref.watch(settingsRepositoryProvider).watch(),

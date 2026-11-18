@@ -209,7 +209,9 @@ void main() {
     expect(find.byKey(const Key('card-message')), findsNothing);
   });
 
-  testWidgets('unklar: zurück zur Kassa, nichts weiter zu sehen', (t) async {
+  testWidgets('unklar: zurück zur Kassa, darüber die Frage zur Zahlung', (
+    t,
+  ) async {
     final terminal = FakeCardTerminal()..next = const CardUnknown();
     await _open(t, ['cola'], overrides: await _setup(terminal: terminal));
     await _tapCard(t);
@@ -217,8 +219,8 @@ void main() {
     expect(find.byKey(const Key('card-wait')), findsNothing);
     expect(find.byKey(const Key('card-message')), findsNothing);
     expect(find.text('Bezahlt'), findsNothing);
+    expect(find.byKey(const Key('unclear-card')), findsOneWidget);
     expect(find.text('Noch nichts boniert'), findsOneWidget);
-    expect(find.byKey(const Key('pay-card')), findsOneWidget);
   });
 
   testWidgets('zwei schnelle Tipps auf Karte: ein Aufruf am Terminal', (

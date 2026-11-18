@@ -1,0 +1,466 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/app.dart';
+import 'package:kassa/core/clock.dart';
+import 'package:kassa/core/money.dart';
+import 'package:kassa/data/database.dart';
+import 'package:kassa/data/providers.dart';
+import 'package:kassa/devices/card_terminal.dart';
+import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/ui/primary_button.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../support/cash_pump.dart';
+import '../support/demo_fixtures.dart';
+import '../support/fake_devices.dart';
+import '../support/kassa_pump.dart';
+import '../support/pump.dart';
+import '../support/sales.dart';
+import '../support/settings_pump.dart';
+
+const _anna = Staff(id: 'anna', name: 'Anna', role: StaffRole.staff);
+
+/// Eine offene Zahlung aus einem früheren Lauf: [id], Bon und Startzeit.
+typedef _Open = (String, Cart, DateTime);
+
+final _first = DateTime(2026, 11, 17, 12, 4);
+final _second = DateTime(2026, 11, 17, 12, 30);
+
+/// Datenbank mit offenen Zahlungen, noch vor dem Start der Oberfläche.
+/// [draft] legt den Entwurf der Kassa an, wie ihn ein Absturz hinterlässt.
+Future<List<Override>> _setup({
+  List<_Open> open = const [],
+  Cart? draft,
+  FakeCardTerminal? terminal,
+  FakePrinter? printer,
+}) async {
+  final clock = FixedClock(_first);
+  final overrides = await memoryOverrides(
+    clock: clock,
+    terminal: terminal,
+    printer: printer,
+  );
+  final c = ProviderContainer(overrides: overrides);
+  try {
+    final staff = await c.read(staffRepositoryProvider).all();
+    final anna = staff.firstWhere((s) => s.name == 'Anna');
+    for (final (id, cart, at) in open) {
+      clock.value = at;
+      await c
+          .read(cardPaymentRepositoryProvider)
+          .begin(paymentId: id, cart: cart, staff: anna);
+    }
+    clock.value = DateTime(2026, 11, 17, 13);
+    if (draft != null) {
+      await c
+          .read(settingsRepositoryProvider)
+          .writeDraft(jsonEncode(draft.toJson()));
+    }
+  } finally {
+    c.dispose();
+  }
+  return overrides;
+}
+
+Future<void> _start(WidgetTester t, List<Override> overrides) async {
+  await pumpKassa(t, overrides: overrides);
+  await t.pumpAndSettle();
+}
+
+Finder _inSheet(String text) =>
+    find.descendant(of: _sheet, matching: find.text(text));
+
+Finder get _sheet => find.byKey(const Key('unclear-card'));
+
+Future<void> _tap(WidgetTester t, String key) async {
+  await t.tap(find.byKey(Key(key)));
+  await t.pumpAndSettle();
+}
+
+Future<int> _pending(WidgetTester t) async =>
+    (await containerOf(t).read(cardPaymentRepositoryProvider).pending()).length;
+
+Future<List<Map<String, Object?>>> _receipts(WidgetTester t) =>
+    queryRows(t, 'SELECT id, kind FROM receipts');
+
+String _json(Cart c) => jsonEncode(c.toJson());
+
+void main() {
+  testWidgets('ohne offene Zahlung erscheint nichts', (t) async {
+    await _start(t, await _setup());
+    expect(_sheet, findsNothing);
+    expect(find.byKey(const Key('area-kassa')), findsOneWidget);
+  });
+
+  testWidgets('eine gestartete Zahlung aus einem früheren Lauf erscheint '
+      'nach dem Anmelden', (t) async {
+    final overrides = await _setup(open: [('p1', cart, _first)]);
+    // Vor der Anmeldung liegt nichts über der Anmeldung.
+    await pumpApp(t, const KassaApp(), overrides: overrides);
+    await t.pumpAndSettle();
+    expect(_sheet, findsNothing);
+    await typePin(t, '1234');
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    expect(find.text('War diese Kartenzahlung erfolgreich?'), findsOneWidget);
+    expect(find.text('18,20 €'), findsOneWidget);
+    expect(find.text('Gestartet um 12:04 von Anna'), findsOneWidget);
+    debugPrint(
+      find
+          .byType(Text)
+          .evaluate()
+          .map((e) => (e.widget as Text).data)
+          .toList()
+          .toString(),
+    );
+    expect(find.text('2 × Cola 0,33 l'), findsOneWidget);
+    expect(_inSheet('Huhn Bowl'), findsOneWidget);
+    expect(
+      find.text(
+        'Die Kassa hat von SumUp keine Antwort bekommen. Schau in der '
+        'SumUp-App unter Verkäufe nach, ob 18,20 € um 12:04 angekommen ist.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Ja, ist angekommen'), findsOneWidget);
+    expect(find.text('Nein, nicht angekommen'), findsOneWidget);
+    expect(t.getSize(find.byKey(const Key('unclear-paid'))).height, 80);
+    expect(t.getSize(find.byKey(const Key('unclear-not-paid'))).height, 80);
+    expect(find.byKey(const Key('unclear-confirm')), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('mehr als vier Zeilen: vier, dann "und 3 weitere"', (t) async {
+    final big = const Cart.empty()
+        .add(cola)
+        .add(teigtaschen)
+        .add(huhnBowl, options: [xxl, nudeln])
+        .add(huhnBowl, options: [normal, reis])
+        .add(leitungswasser)
+        .add(catalog.item('pommes'))
+        .add(catalog.item('mochi'));
+    expect(big.lines.length, greaterThan(4));
+    await _start(t, await _setup(open: [('p1', big, _first)]));
+    final more = big.lines.length - 4;
+    expect(find.text('und $more weitere'), findsOneWidget);
+    expect(find.byKey(const Key('unclear-line-3')), findsOneWidget);
+    expect(find.byKey(const Key('unclear-line-4')), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Ja und Bestätigen: ein Bon mit Karte, gedruckt, Blatt weg', (
+    t,
+  ) async {
+    final printer = FakePrinter();
+    await _start(
+      t,
+      await _setup(open: [('p1', cart, _first)], printer: printer),
+    );
+    await setUpPrinter(t);
+    await _tap(t, 'unclear-paid');
+    expect(
+      find.text('Die Kassa schreibt den Bon als Kartenzahlung und druckt ihn.'),
+      findsOneWidget,
+    );
+    expect(await _receipts(t), isEmpty);
+    expect(t.getSize(find.byKey(const Key('unclear-confirm'))).height, 80);
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    final rows = await queryRows(
+      t,
+      "SELECT r.id, p.kind FROM receipts r JOIN payments p ON p.receipt_id = r.id",
+    );
+    expect(rows.single['id'], 'p1');
+    expect(rows.single['kind'], 'card');
+    expect(await _pending(t), 0);
+    expect(printer.printed, ['p1']);
+  });
+
+  testWidgets('Nein und Bestätigen: kein Bon, die Artikel liegen wieder auf '
+      'dem Bon, Blatt weg', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    expect(cartOf(t).isEmpty, isTrue);
+    await _tap(t, 'unclear-not-paid');
+    expect(
+      find.text(
+        'Die Kassa verwirft die Zahlung und legt die Artikel wieder auf den '
+        'Bon.',
+      ),
+      findsOneWidget,
+    );
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(await _receipts(t), isEmpty);
+    expect(await _pending(t), 0);
+    expect(_json(cartOf(t)), _json(cart));
+    expect(textOf(t, const Key('cart-total')), '18,20 €');
+  });
+
+  testWidgets('Zurück führt zur Wahl, nichts ist geschrieben', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    await _tap(t, 'unclear-paid');
+    expect(find.byKey(const Key('unclear-confirm')), findsOneWidget);
+    expect(t.getSize(find.byKey(const Key('unclear-back'))).height, 72);
+    await _tap(t, 'unclear-back');
+    expect(find.byKey(const Key('unclear-confirm')), findsNothing);
+    expect(find.byKey(const Key('unclear-paid')), findsOneWidget);
+    expect(find.byKey(const Key('unclear-not-paid')), findsOneWidget);
+    expect(await _receipts(t), isEmpty);
+    expect(await _pending(t), 1);
+    await _tap(t, 'unclear-not-paid');
+    await _tap(t, 'unclear-back');
+    expect(await _pending(t), 1);
+    expect(cartOf(t).isEmpty, isTrue);
+  });
+
+  testWidgets('das Blatt lässt sich nicht wegtippen und nicht mit Zurück '
+      'schließen', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    await t.tapAt(const Offset(8, 8));
+    await t.pumpAndSettle();
+    await t.tapAt(const Offset(1270, 790));
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    // Was darunter liegt, nimmt keine Tipps an.
+    await t.tap(find.byKey(const Key('tab-Bons')), warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('area-bons')), findsNothing);
+    await t.tap(find.byKey(const Key('item-tofu-bowl')), warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(cartOf(t).isEmpty, isTrue);
+  });
+
+  testWidgets('das Blatt liegt auch über den Einstellungen', (t) async {
+    await pumpSettings(t);
+    expect(find.byKey(const Key('area-settings')), findsOneWidget);
+    expect(_sheet, findsNothing);
+    await containerOf(t)
+        .read(cardPaymentRepositoryProvider)
+        .begin(paymentId: 'p1', cart: cart, staff: _anna);
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    expect(find.byKey(const Key('area-settings')), findsOneWidget);
+    await t.tap(find.byKey(const Key('settings')), warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('area-settings')), findsOneWidget);
+    expect(_sheet, findsOneWidget);
+  });
+
+  testWidgets('das Blatt liegt auch über dem Blatt "Bar bezahlen"', (t) async {
+    await _start(t, await _setup());
+    await tapItem(t, 'cola');
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('finish-sale')), findsOneWidget);
+    await containerOf(t)
+        .read(cardPaymentRepositoryProvider)
+        .begin(paymentId: 'p1', cart: cart, staff: _anna);
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+  });
+
+  testWidgets('zwei offene Zahlungen kommen nacheinander, die ältere zuerst', (
+    t,
+  ) async {
+    await _start(
+      t,
+      await _setup(open: [('p2', cartCard, _second), ('p1', cart, _first)]),
+    );
+    expect(find.text('18,20 €'), findsOneWidget);
+    expect(find.text('Gestartet um 12:04 von Anna'), findsOneWidget);
+    await _tap(t, 'unclear-not-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsOneWidget);
+    expect(find.text(formatEuro(cartCard.totalCents)), findsOneWidget);
+    expect(find.text('Gestartet um 12:30 von Anna'), findsOneWidget);
+    // Die zweite beginnt wieder bei der Wahl.
+    expect(find.byKey(const Key('unclear-paid')), findsOneWidget);
+    expect(find.byKey(const Key('unclear-confirm')), findsNothing);
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect((await _receipts(t)).single['id'], 'p2');
+  });
+
+  testWidgets('zwei schnelle Tipps auf Bestätigen ergeben einen Bon', (
+    t,
+  ) async {
+    final printer = FakePrinter();
+    await _start(
+      t,
+      await _setup(open: [('p1', cart, _first)], printer: printer),
+    );
+    await setUpPrinter(t);
+    await _tap(t, 'unclear-paid');
+    await t.tap(find.byKey(const Key('unclear-confirm')));
+    await t.tap(find.byKey(const Key('unclear-confirm')), warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(await _receipts(t), hasLength(1));
+    expect(printer.printed, ['p1']);
+    expect(_sheet, findsNothing);
+  });
+
+  testWidgets('unklar direkt nach einer Zahlung (CardUnknown) zeigt dasselbe '
+      'Blatt', (t) async {
+    final terminal = FakeCardTerminal()..next = const CardUnknown();
+    await _start(t, await _setup(terminal: terminal));
+    await tapItem(t, 'cola');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    final total = cartOf(t).totalCents;
+    await t.tap(find.byKey(const Key('pay-card')));
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    expect(find.text(formatEuro(total)), findsOneWidget);
+    expect(find.text('2 × Cola 0,33 l'), findsNothing);
+    expect(_inSheet('Cola 0,33 l'), findsOneWidget);
+    expect(_inSheet('Teigtaschen'), findsOneWidget);
+    expect(cartOf(t).isEmpty, isTrue);
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(await _receipts(t), hasLength(1));
+    expect(cartOf(t).isEmpty, isTrue);
+  });
+
+  testWidgets('eine Zahlung, die gerade am Terminal läuft, löst das Blatt '
+      'nicht aus', (t) async {
+    final hang = Completer<CardPaymentResult>();
+    final terminal = FakeCardTerminal()..hang = hang;
+    await _start(t, await _setup(terminal: terminal));
+    await tapItem(t, 'cola');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('pay-card')));
+    await t.pump(const Duration(milliseconds: 100));
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const Key('card-wait')), findsOneWidget);
+    expect(await _pending(t), 1);
+    expect(_sheet, findsNothing);
+    hang.complete(const CardPaid(txCode: 'TX1'));
+    await t.pumpAndSettle();
+    expect(_sheet, findsNothing);
+    expect(find.text('Bezahlt'), findsOneWidget);
+    expect(await _receipts(t), hasLength(1));
+  });
+
+  testWidgets('Bon nicht mehr baubar: nur Nein bleibt', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    // Die Speisekarte hat sich geändert: ein Artikel des Bons gibt es nicht
+    // mehr.
+    final db = containerOf(t).read(databaseProvider);
+    await db
+        .update(db.pendingCardPaymentRows)
+        .write(
+          PendingCardPaymentRowsCompanion(
+            cartJson: Value(
+              jsonEncode({
+                'lines': [
+                  {
+                    'lineId': 'a',
+                    'itemId': 'gibt-es-nicht',
+                    'quantity': 1,
+                    'optionIds': <String>[],
+                  },
+                ],
+              }),
+            ),
+          ),
+        );
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    expect(
+      find.text(
+        'Der Bon lässt sich nicht mehr zusammenstellen, weil sich die '
+        'Speisekarte geändert hat. Wähle Nein. Ist das Geld bei SumUp '
+        'angekommen, buche es in der SumUp-App zurück und kassiere neu.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('unclear-paid')), findsNothing);
+    expect(find.byKey(const Key('unclear-not-paid')), findsOneWidget);
+    await _tap(t, 'unclear-not-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(await _pending(t), 0);
+    expect(await _receipts(t), isEmpty);
+    expect(cartOf(t).isEmpty, isTrue);
+  });
+
+  group('Absturz mitten in der Kartenzahlung: derselbe Bon liegt schon auf '
+      'der Kassa', () {
+    testWidgets('Ja: Bon geschrieben und die Kassa ist leer', (t) async {
+      await _start(t, await _setup(open: [('p1', cart, _first)], draft: cart));
+      expect(_sheet, findsOneWidget);
+      expect(_json(cartOf(t)), _json(cart));
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(await _receipts(t), hasLength(1));
+      expect(cartOf(t).isEmpty, isTrue);
+      expect(await draftOf(t), isNull);
+      expect(find.text('Noch nichts boniert'), findsOneWidget);
+    });
+
+    testWidgets('Nein: der Bon liegt einmal auf der Kassa, nicht doppelt', (
+      t,
+    ) async {
+      await _start(t, await _setup(open: [('p1', cart, _first)], draft: cart));
+      await _tap(t, 'unclear-not-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(await _receipts(t), isEmpty);
+      expect(await _pending(t), 0);
+      expect(_json(cartOf(t)), _json(cart));
+      expect(cartOf(t).totalCents, 1820);
+      expect(await draftOf(t), _json(cart));
+    });
+
+    testWidgets('Ja mit anderem Inhalt auf der Kassa: der bleibt stehen', (
+      t,
+    ) async {
+      await _start(
+        t,
+        await _setup(open: [('p1', cart, _first)], draft: cartCard),
+      );
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(await _receipts(t), hasLength(1));
+      expect(_json(cartOf(t)), _json(cartCard));
+      expect(await draftOf(t), _json(cartCard));
+    });
+
+    testWidgets('Nein mit anderem Inhalt auf der Kassa: der bleibt, nichts '
+        'wird ersetzt', (t) async {
+      await _start(
+        t,
+        await _setup(open: [('p1', cart, _first)], draft: cartCard),
+      );
+      await _tap(t, 'unclear-not-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(await _pending(t), 0);
+      expect(_json(cartOf(t)), _json(cartCard));
+    });
+  });
+
+  testWidgets('Tasten des Blatts sind mindestens 48 dp hoch', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    for (final k in ['unclear-paid', 'unclear-not-paid']) {
+      expect(t.getSize(find.byKey(Key(k))).height, greaterThanOrEqualTo(48));
+    }
+    expect(
+      find.descendant(of: _sheet, matching: find.byType(PrimaryButton)),
+      findsNWidgets(2),
+    );
+  });
+}

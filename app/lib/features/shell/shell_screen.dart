@@ -10,6 +10,7 @@ import '../close/close_screen.dart';
 import '../close/forgotten_close_banner.dart';
 import '../items/items_screen.dart';
 import '../kassa/kassa_screen.dart';
+import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
 import '../settings/settings_screen.dart';
@@ -34,40 +35,58 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final staff = ref.watch(sessionProvider);
     final c = KassaColors.of(context);
     if (staff == null) return Scaffold(backgroundColor: c.ground);
+    final blocked = ref.watch(unclearCardPaymentsProvider).isNotEmpty;
     return Scaffold(
       backgroundColor: c.ground,
-      body: Column(
+      body: Stack(
         children: [
-          AppHeader(
-            area: _area,
-            settingsActive: _settingsOpen,
-            onArea: (a) => setState(() {
-              _area = a;
-              _settingsOpen = false;
-            }),
-            staffName: staff.name,
-            isChef: staff.isChef,
-            onStaff: ref.read(sessionProvider.notifier).logout,
-            onSettings: () => setState(() => _settingsOpen = !_settingsOpen),
-            businessName: ref.watch(catalogProvider).value?.businessName,
-            offline: !(ref.watch(internetProvider).value ?? true),
-          ),
-          if (_settingsOpen || _area != AppArea.close)
-            ForgottenCloseBanner(
-              isChef: staff.isChef,
-              onClose: () => setState(() {
-                _area = AppArea.close;
-                _settingsOpen = false;
-              }),
-            ),
-          Expanded(
-            child: _settingsOpen && staff.isChef
-                ? const SettingsScreen(key: Key('area-settings'))
-                : _areaWidget(
-                    _area,
-                    () => setState(() => _area = AppArea.kassa),
+          // Solange das Blatt zur unklaren Kartenzahlung offen ist, erreicht
+          // nichts darunter Tipps, Tastatur oder Vorlesehilfe.
+          ExcludeSemantics(
+            excluding: blocked,
+            child: ExcludeFocus(
+              excluding: blocked,
+              child: Column(
+                children: [
+                  AppHeader(
+                    area: _area,
+                    settingsActive: _settingsOpen,
+                    onArea: (a) => setState(() {
+                      _area = a;
+                      _settingsOpen = false;
+                    }),
+                    staffName: staff.name,
+                    isChef: staff.isChef,
+                    onStaff: ref.read(sessionProvider.notifier).logout,
+                    onSettings: () =>
+                        setState(() => _settingsOpen = !_settingsOpen),
+                    businessName: ref
+                        .watch(catalogProvider)
+                        .value
+                        ?.businessName,
+                    offline: !(ref.watch(internetProvider).value ?? true),
                   ),
+                  if (_settingsOpen || _area != AppArea.close)
+                    ForgottenCloseBanner(
+                      isChef: staff.isChef,
+                      onClose: () => setState(() {
+                        _area = AppArea.close;
+                        _settingsOpen = false;
+                      }),
+                    ),
+                  Expanded(
+                    child: _settingsOpen && staff.isChef
+                        ? const SettingsScreen(key: Key('area-settings'))
+                        : _areaWidget(
+                            _area,
+                            () => setState(() => _area = AppArea.kassa),
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
+          const Positioned.fill(child: UnclearCardOverlay()),
         ],
       ),
     );
