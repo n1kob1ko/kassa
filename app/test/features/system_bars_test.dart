@@ -4,6 +4,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/setup/setup_screen.dart';
 import 'package:kassa/ui/app_header.dart';
 import 'package:kassa/features/login/pin_screen.dart';
@@ -71,6 +72,18 @@ void main() {
     );
     expect(
       t.getRect(find.byKey(const Key('pay-card'))).bottom,
+      lessThanOrEqualTo(800 - _bottom),
+    );
+  });
+
+  testWidgets('Kassa: die Bon-Spalte reicht bis an den unteren Rand', (
+    t,
+  ) async {
+    _withSystemBars(t);
+    await pumpAppLoggedInAsChef(t);
+    expect(t.getRect(find.byType(CartPanel)).bottom, 800);
+    expect(
+      t.getRect(find.byKey(const Key('pay-cash'))).bottom,
       lessThanOrEqualTo(800 - _bottom),
     );
   });

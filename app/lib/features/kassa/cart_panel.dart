@@ -141,7 +141,12 @@ class _CartPanelState extends ConsumerState<CartPanel> {
           ),
           _Totals(cart: cart, taxCents: tax),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: EdgeInsets.fromLTRB(
+              12,
+              0,
+              12,
+              12 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: Row(
               children: [
                 Expanded(

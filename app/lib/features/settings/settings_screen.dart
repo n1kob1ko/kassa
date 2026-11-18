@@ -19,7 +19,17 @@ import 'settings_rows.dart';
 /// Jede Änderung wird sofort gespeichert, der Bildschirm folgt dem Strom der
 /// Einstellungen.
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({
+    super.key,
+    required this.testingDevices,
+    required this.onTestingDevices,
+  });
+
+  /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
+  /// Der Zustand liegt in der Kopfleiste-Hülle (`ShellScreen`), damit auch
+  /// "Zurück" des Tablets sie schließen kann.
+  final bool testingDevices;
+  final ValueChanged<bool> onTestingDevices;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -27,9 +37,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _failed = false;
-
-  /// Die Seite "Geräte testen" ersetzt die Karten, bis "Zurück" getippt wird.
-  bool _testingDevices = false;
 
   Future<void> _change(
     RegisterSettings Function(RegisterSettings s) change,
@@ -45,10 +52,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_testingDevices) {
+    if (widget.testingDevices) {
       return DeviceTestScreen(
         key: const Key('device-test'),
-        onBack: () => setState(() => _testingDevices = false),
+        onBack: () => widget.onTestingDevices(false),
       );
     }
     final c = KassaColors.of(context);
@@ -75,7 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         Pressable(
           key: const Key('open-device-test'),
-          onTap: () => setState(() => _testingDevices = true),
+          onTap: () => widget.onTestingDevices(true),
           semanticLabel: 'Geräte testen',
           child: SettingsRow(
             title: 'Geräte testen',

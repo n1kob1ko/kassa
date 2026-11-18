@@ -97,7 +97,9 @@ class _ToastHostState extends State<_ToastHost> {
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 20),
+          padding: EdgeInsets.only(
+            bottom: 20 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: TweenAnimationBuilder<double>(
             tween: Tween(begin: instant ? 1 : 0, end: 1),
             duration: instant ? Duration.zero : KassaTokens.motionSnack,

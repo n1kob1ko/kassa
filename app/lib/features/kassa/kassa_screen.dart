@@ -189,43 +189,52 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
     final building = _building;
     final template = building == null ? null : catalog.templateOf(building);
 
+    // Unten bleibt Platz für die Gestenleiste. Die Bon-Spalte füllt ihn mit
+    // ihrer Fläche selbst aus.
+    final bottomBar = MediaQuery.paddingOf(context).bottom;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CategoryRail(
-          entries: entries,
-          selectedId: selected,
-          onSelected: _selectCategory,
+        Padding(
+          padding: EdgeInsets.only(bottom: bottomBar),
+          child: CategoryRail(
+            entries: entries,
+            selectedId: selected,
+            onSelected: _selectCategory,
+          ),
         ),
         Expanded(
-          child: AnimatedOpacity(
-            key: const Key('item-area-dim'),
-            opacity: _side == _Side.cart ? 1.0 : 0.5,
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : KassaTokens.motionFade,
-            curve: KassaTokens.motionCurve,
-            child: IgnorePointer(
-              ignoring: _side != _Side.cart,
-              child: building != null && template != null
-                  ? ModifierPanel(
-                      key: Key('builder-${building.id}'),
-                      item: building,
-                      template: template,
-                      onCancel: () => setState(() => _building = null),
-                      onAdd: (options) {
-                        cartCtl.add(building, options: options);
-                        setState(() => _building = null);
-                      },
-                    )
-                  : ItemArea(
-                      title: entry?.name ?? '',
-                      items: items,
-                      quantities: quantities,
-                      showImages: showImages,
-                      onShowImages: _setImages,
-                      onItem: (item) => _tapItem(catalog, item),
-                    ),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomBar),
+            child: AnimatedOpacity(
+              key: const Key('item-area-dim'),
+              opacity: _side == _Side.cart ? 1.0 : 0.5,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : KassaTokens.motionFade,
+              curve: KassaTokens.motionCurve,
+              child: IgnorePointer(
+                ignoring: _side != _Side.cart,
+                child: building != null && template != null
+                    ? ModifierPanel(
+                        key: Key('builder-${building.id}'),
+                        item: building,
+                        template: template,
+                        onCancel: () => setState(() => _building = null),
+                        onAdd: (options) {
+                          cartCtl.add(building, options: options);
+                          setState(() => _building = null);
+                        },
+                      )
+                    : ItemArea(
+                        title: entry?.name ?? '',
+                        items: items,
+                        quantities: quantities,
+                        showImages: showImages,
+                        onShowImages: _setImages,
+                        onItem: (item) => _tapItem(catalog, item),
+                      ),
+              ),
             ),
           ),
         ),
@@ -235,21 +244,46 @@ class _KassaScreenState extends ConsumerState<KassaScreen> {
             onPayCard: _payByCard,
             canPay: building == null,
           ),
-          _Side.paying => CashSheet(
-            cart: cart,
-            onBack: () => setState(() => _side = _Side.cart),
-            onPaid: _onPaid,
+          _Side.paying => _AboveBottomBar(
+            child: CashSheet(
+              cart: cart,
+              onBack: () => setState(() => _side = _Side.cart),
+              onPaid: _onPaid,
+            ),
           ),
-          _Side.waitingForCard => CardWait(amountCents: _cardCents),
-          _Side.done => SaleDone(
-            result: _paid!,
-            onNext: () => setState(() {
-              _paid = null;
-              _side = _Side.cart;
-            }),
+          _Side.waitingForCard => _AboveBottomBar(
+            child: CardWait(amountCents: _cardCents),
+          ),
+          _Side.done => _AboveBottomBar(
+            child: SaleDone(
+              result: _paid!,
+              onNext: () => setState(() {
+                _paid = null;
+                _side = _Side.cart;
+              }),
+            ),
           ),
         },
       ],
+    );
+  }
+}
+
+/// Die rechte Spalte außer dem Bon bleibt über der Gestenleiste; der Streifen
+/// darunter hat die Farbe der Spalte.
+class _AboveBottomBar extends StatelessWidget {
+  const _AboveBottomBar({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: KassaColors.of(context).card,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        child: child,
+      ),
     );
   }
 }

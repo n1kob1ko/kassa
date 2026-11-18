@@ -176,19 +176,23 @@ Steuersätze: 20 %, 10 %, 13 %, 0 % und der Sondersatz, wie die RKSV sie getrenn
 ### 5.6 Kartenzahlung mit SumUp
 
 - Anbindung über das SumUp Reader SDK für Android. Es unterstützt das Air (belegt). Die SumUp-Cloud-Schnittstelle unterstützt nur Solo und kommt deshalb vorerst nicht in Frage.
-- Der Betrieb meldet sich einmal in den Einstellungen mit seinem SumUp-Konto an.
-- Jede Zahlung trägt eine eigene Kennung von Kassa. Stürzt die App zwischen Zahlung und Bon ab, fragt sie beim nächsten Start bei SumUp nach, ob die Zahlung durchging, und schließt den Bon nach oder verwirft ihn.
-- Während der Zahlung zeigt SumUp seinen eigenen Bildschirm. Der lässt sich nur begrenzt anpassen (zu prüfen, wie weit).
+- Der Betrieb meldet sich einmal in den Einstellungen mit seinem SumUp-Konto an. Das SDK liefert nur die Händler-Kennung, keinen Namen des Betriebs. Darum zeigen die Einstellungen diese Kennung.
+- Mindestbetrag für eine Kartenzahlung: 1,00 €. Darunter ist die Taste "Karte" aus und nennt den Grund.
+- Jede Zahlung trägt eine eigene Kennung von Kassa. Stürzt die App zwischen Zahlung und Bon ab, fragt die Kassa beim nächsten Start die Person an der Kassa, ob die Zahlung durchging, und schließt den Bon nach oder verwirft ihn. Das Nachfragen bei SumUp selbst kommt erst mit dem Server.
+- Schließt Android die App, während der SumUp-Bildschirm offen ist, geht die Antwort verloren. Die Kassa fragt die Person danach genauso.
+- Die Kassa verlangt für dieselbe Zahlungskennung nie ein zweites Mal Geld vom Terminal.
+- Während der Zahlung zeigt SumUp seinen eigenen Bildschirm. Der Erfolgs-Bildschirm von SumUp wird übersprungen, der Fehler-Bildschirm bleibt.
 - **Nicht nur SumUp Air auf Dauer** (Frage von Niko, 17.11.2026). Version 1 bindet SumUp an, weil der Pilotbetrieb ein Air hat, und wird mit dem Air getestet. Andere SumUp-Geräte wie das Solo sollen über dasselbe SDK laufen. Das ist vor einer Zusage an einen Kunden am echten Gerät zu prüfen.
 - Die Zahlungsanbindung sitzt hinter einer Schnittstelle (Betrag senden, Ergebnis empfangen, Zahlung nachfragen, abbrechen, rückbuchen). Weitere Anbieter kommen später je nach Bedarf der Kunden als eigene Umsetzung dieser Schnittstelle dazu, zum Beispiel Bankterminals über das ZVT-Protokoll (etwa Hobex), myPOS oder Stripe Terminal. Keiner davon ist bisher geprüft. Welcher Anbieter zu einer Kassa gehört, steht in den Einstellungen der Kassa.
-- Storno eines Karten-Bons: Kassa erzeugt den Storno-Bon. Ob die Rückbuchung auf die Karte aus Kassa heraus ausgelöst werden kann, ist zu prüfen. Sonst zeigt Kassa den Hinweis, sie in der SumUp-App zu machen.
+- Storno eines Karten-Bons: Kassa erzeugt den Storno-Bon. Das SDK kann nicht rückbuchen. Darum steht in der Frage zum Storno der Hinweis, die Rückbuchung in der SumUp-App zu machen.
 
 ### 5.7 Bondruck und Geldlade
 
-- Druckersprache ESC/POS, wie sie Epson, Star und die meisten Bondrucker verstehen. Papier 80 mm.
+- Druckersprache ESC/POS, wie sie Epson, Star und die meisten Bondrucker verstehen. Papier 80 mm. Zeichensatz PC858, damit Umlaute und das Euro-Zeichen stimmen.
 - Drei Anschlussarten hinter einer Schnittstelle: USB, Netzwerk, Bluetooth.
 - Empfohlenes Testgerät: Epson TM-m30III (Claudes Vorschlag, noch nicht gekauft). Ob der vorhandene Drucker des Pilotbetriebs bleiben kann, hängt vom Modell ab, das noch nicht bekannt ist.
 - Der Bon enthält: Logo und Daten des Betriebs, Kassen-Kennung, laufende Nummer, Datum und Uhrzeit, Zeilen mit Menge und gewählten Optionen, Pfand getrennt, Summe, Beträge pro Steuersatz, Zahlungsart, QR-Code der RKSV, Text am Bon-Ende.
+- Bis der Server und die Signatur da sind, hat der Bon kein Logo und keine Kassen-Kennung, und er trägt den Vermerk "TESTBON". Der Vermerk fällt mit der Signatur weg.
 - Die Geldlade wird über den Drucker geöffnet, nur bei Barzahlung und nur, wenn sie in den Einstellungen eingeschaltet ist.
 - Fällt der Drucker aus, wird der Bon trotzdem gespeichert und signiert. Kassa meldet "Drucker nicht bereit" und bietet "Nochmal drucken" an. Claudes Entscheidung: Der Verkauf wird nicht gesperrt.
 
@@ -318,7 +322,7 @@ Beantwortet von Niko am 17.11.2026: Das Repo ist öffentlich. Die Anfrage an fis
 8. RKSV im Wortlaut: Pflichtangaben am Bon, Form des Protokolls, Sonderbelege, Fristen, Bargeld-Bewegungen. Prüfwerkzeug und Beispieldaten.
 9. Ansteuerung der A-Trust-Karte und passende Kartenleser für Android (Machbarkeitstest).
 10. Steuerliche Behandlung des Einwegpfands am Bon und im Protokoll.
-11. SumUp Reader SDK: Anmeldung, Abfrage einer Zahlung nach Absturz, Rückbuchung, Anpassung des Zahlungsbildschirms, welche SumUp-Geräte außer dem Air das SDK ansteuert.
+11. SumUp Reader SDK: geklärt. Anmeldung geht, eine Abfrage der Zahlung nach einem Absturz gibt es im SDK nicht (die Kassa fragt die Person, Nachfragen bei SumUp kommt mit dem Server), Rückbuchung gibt es nicht (Hinweis auf die SumUp-App), vom Zahlungsbildschirm lässt sich der Erfolgs-Bildschirm überspringen. Offen bleibt, ob andere SumUp-Geräte als das Air das SDK ansteuert: am echten Gerät prüfen.
 12. Ob das Redmi Pad Pro am USB-Verteiler gleichzeitig lädt und Geräte erkennt.
 13. Kosten des Servers bei Railway.
 14. Wie Nikos Bestellanzeige ihre Bestellungen bekommt (vor dem Pilotbetrieb).

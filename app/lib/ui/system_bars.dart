@@ -6,11 +6,13 @@ import 'tokens.dart';
 /// Rahmen um die ganze App für die Leisten des Tablets.
 ///
 /// Android zeichnet die App bis an den Rand, unter die Statusleiste oben und
-/// die Gesten- oder Tastenleiste unten. Dieser Rahmen hält links, rechts und
-/// unten alles Bedienbare aus diesen Zonen heraus und stellt die Zeichen der
-/// Leisten passend zur hellen oder dunklen Ansicht ein. Den Platz oben füllt
-/// jede Seite selbst: die Kopfleiste mit ihrer eigenen Farbe (siehe
-/// `AppHeader`), Seiten ohne Kopfleiste mit einem `SafeArea`.
+/// die Gesten- oder Tastenleiste unten. Dieser Rahmen hält links und rechts
+/// alles Bedienbare aus diesen Zonen heraus und stellt die Zeichen der Leisten
+/// passend zur hellen oder dunklen Ansicht ein. Den Platz oben füllt jede Seite
+/// selbst: die Kopfleiste mit ihrer eigenen Farbe (siehe `AppHeader`), Seiten
+/// ohne Kopfleiste mit einem `SafeArea`. Den Platz unten hält jede Seite selbst
+/// frei, damit die Bon-Spalte der Kassa bis an den Rand reichen kann (siehe
+/// `ShellScreen` und `KassaScreen`).
 class SystemBarsFrame extends StatelessWidget {
   const SystemBarsFrame({super.key, required this.child});
 
@@ -32,7 +34,7 @@ class SystemBarsFrame extends StatelessWidget {
       ),
       child: ColoredBox(
         color: KassaColors.of(context).ground,
-        child: SafeArea(top: false, child: child),
+        child: SafeArea(top: false, bottom: false, child: child),
       ),
     );
   }
