@@ -183,11 +183,7 @@ class RksvJournal {
     }
     final lastTime = last == null ? null : await _timeOf(last);
     if (kind == ReceiptKind.year) {
-      final before = await _lastTime(
-        chain,
-        before: position,
-        skipCollective: true,
-      );
+      final before = await _lastTime(chain, before: position, signedOnly: true);
       final year = '${(before ?? createdAt).year}';
       add('check-year-$year', RksvTaskKind.checkYear, year);
     }
@@ -270,11 +266,12 @@ class RksvJournal {
   )..where((t) => t.id.equals(e.receiptId))).getSingle()).createdAt;
 
   /// Zeit des letzten Eintrags der Kette (vor Position [before], wenn
-  /// angegeben), mit [skipCollective] ohne Sammelbelege. `null` ohne.
+  /// angegeben), mit [signedOnly] nur unter den signierten Einträgen ohne
+  /// Sammelbelege. `null` ohne.
   Future<DateTime?> _lastTime(
     int chain, {
     int? before,
-    bool skipCollective = false,
+    bool signedOnly = false,
   }) async {
     final query =
         _db.select(_db.rksvEntryRows).join([
@@ -289,9 +286,10 @@ class RksvJournal {
     if (before != null) {
       query.where(_db.rksvEntryRows.position.isSmallerThanValue(before));
     }
-    if (skipCollective) {
+    if (signedOnly) {
       query.where(
-        _db.receiptRows.kind.equals(ReceiptKind.collective.name).not(),
+        _db.rksvEntryRows.damaged.equals(false) &
+            _db.receiptRows.kind.equals(ReceiptKind.collective.name).not(),
       );
     }
     return (await query.getSingleOrNull())
@@ -411,15 +409,16 @@ class RksvJournal {
 
   /// Welcher Beleg vor einem Verkauf oder Storno fällig ist: collective (bei
   /// Ausfall), sonst year, month, oder null. Maßgeblich ist die Zeit des
-  /// letzten Eintrags der Kette, der kein Sammelbeleg ist: Nach einem
-  /// Sammelbeleg kann so noch ein Monats- oder Jahresbeleg folgen. Liegt
-  /// [now] davor (Uhr zurückgestellt), ist nichts fällig.
+  /// letzten signierten Eintrags der Kette, der kein Sammelbeleg ist: Nach
+  /// einem Sammelbeleg folgt so noch der Monats- oder Jahresbeleg, auch wenn
+  /// im neuen Monat schon Bons mit Ausfall-Vermerk stehen. Liegt [now] davor
+  /// (Uhr zurückgestellt), ist nichts fällig.
   Future<ReceiptKind?> dueBefore(DateTime now) async {
     final state = await _state();
     final chain = state.chain;
     if (_mode(state) == RksvMode.off || chain == null) return null;
     if (state.outageSince != null) return ReceiptKind.collective;
-    final last = await _lastTime(chain, skipCollective: true);
+    final last = await _lastTime(chain, signedOnly: true);
     if (last == null || now.isBefore(last)) return null;
     if (now.year > last.year) return ReceiptKind.year;
     if (now.month > last.month) return ReceiptKind.month;

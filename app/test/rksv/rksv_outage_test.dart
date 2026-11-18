@@ -271,6 +271,117 @@ void main() {
       },
     );
 
+    test('R10: Ausfall ab 30. November, zwei Bons im Dezember mit '
+        'Ausfall-Vermerk, Signatur am 2. Dezember wieder da: Sammelbeleg, '
+        'Monatsbeleg, Verkauf; genau ein Monatsbeleg', () async {
+      rig.clock.value = DateTime(2026, 11, 30, 22);
+      rig.fake.mode = FakeMode.error;
+      await rig.sell('s1', cart);
+      rig.clock.value = DateTime(2026, 12, 1, 9);
+      await rig.sell('s2', cart);
+      rig.clock.value = DateTime(2026, 12, 1, 10);
+      await rig.sell('s3', cart);
+      rig.fake.mode = FakeMode.ok;
+      rig.clock.value = DateTime(2026, 12, 2, 9);
+      final s4 = await rig.sell('s4', cart);
+      expect(await rig.entryKinds(), [
+        'start',
+        'sale',
+        'sale',
+        'sale',
+        'collective',
+        'month',
+        'sale',
+      ]);
+      expect(s4.rksv!.damaged, isFalse);
+      rig.clock.value = DateTime(2026, 12, 20);
+      await rig.sell('s5', cart);
+      expect((await rig.entryKinds()).where((k) => k == 'month'), hasLength(1));
+      await rig.verifyChain(1);
+      expect(await rig.journal.chainIsSound(1), isTrue);
+    });
+
+    test('R10: ebenso über den Jahreswechsel: Sammelbeleg, Jahresbeleg mit '
+        'checkYear für das alte Jahr', () async {
+      rig.clock.value = DateTime(2026, 12, 31, 19);
+      await rig.sell('s0', cart); // signiert, mit Monatsbeleg davor
+      rig.clock.value = DateTime(2026, 12, 31, 20);
+      rig.fake.mode = FakeMode.error;
+      await rig.sell('s1', cart);
+      rig.clock.value = DateTime(2027, 1, 1, 12);
+      await rig.sell('s2', cart);
+      rig.fake.mode = FakeMode.ok;
+      rig.clock.value = DateTime(2027, 1, 2, 9);
+      await rig.sell('s3', cart);
+      expect(await rig.entryKinds(), [
+        'start',
+        'month',
+        'sale',
+        'sale',
+        'sale',
+        'collective',
+        'year',
+        'sale',
+      ]);
+      expect(
+        await rig.tasks(),
+        contains(('check-year-2026', RksvTaskKind.checkYear, '2026')),
+      );
+      expect(
+        (await rig.tasks()).where((t) => t.$2 == RksvTaskKind.checkYear),
+        hasLength(1),
+      );
+      await rig.verifyChain(1);
+    });
+
+    test('R10: kurzer Ausfall in einem Monat: nur der Sammelbeleg', () async {
+      rig.fake.mode = FakeMode.error;
+      await rig.sell('s1', cart);
+      rig.clock.value = DateTime(2026, 11, 19, 9);
+      await rig.sell('s2', cart);
+      rig.fake.mode = FakeMode.ok;
+      rig.clock.value = DateTime(2026, 11, 20, 9);
+      await rig.sell('s3', cart);
+      expect(await rig.entryKinds(), [
+        'start',
+        'sale',
+        'sale',
+        'collective',
+        'sale',
+      ]);
+      await rig.verifyChain(1);
+    });
+
+    test(
+      'R10: ein Monatsbeleg, dessen Signatur scheitert, beginnt einen '
+      'Ausfall; nach dem Sammelbeleg folgt ein signierter Monatsbeleg',
+      () async {
+        await rig.sell('s1', cart);
+        rig.clock.value = DateTime(2026, 12, 1, 9);
+        rig.fake.mode = FakeMode.error;
+        await rig.sell('s2', cart);
+        expect(await rig.entryKinds(), ['start', 'sale', 'month', 'sale']);
+        final damagedMonth = (await rig.entries(1))[2];
+        expect(damagedMonth.damaged, isTrue);
+        expect((await rig.stateRow()).outageSince, DateTime(2026, 12, 1, 9));
+
+        rig.fake.mode = FakeMode.ok;
+        rig.clock.value = DateTime(2026, 12, 1, 11);
+        await rig.sell('s3', cart);
+        expect(await rig.entryKinds(), [
+          'start',
+          'sale',
+          'month',
+          'sale',
+          'collective',
+          'month',
+          'sale',
+        ]);
+        expect((await rig.entries(1))[5].damaged, isFalse);
+        await rig.verifyChain(1);
+      },
+    );
+
     test('ein Sammelbeleg, der scheitert, beendet die Runde: kein Monatsbeleg '
         'im Ausfall', () async {
       rig.clock.value = DateTime(2026, 11, 30, 22);
