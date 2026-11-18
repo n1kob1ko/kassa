@@ -122,6 +122,39 @@ class _GatedReader implements ReaderTransport {
   Future<void> close() => inner.close();
 }
 
+/// Reicht alles an den nachgebauten Leser weiter; ist [armed], wartet
+/// `close`, bis [release] gerufen wird (der Lauf ist so lange beschäftigt).
+class _CloseGate implements ReaderTransport {
+  _CloseGate(this.inner);
+
+  final FakeCardReader inner;
+  final _gate = Completer<void>();
+  bool armed = false;
+
+  void release() {
+    if (!_gate.isCompleted) _gate.complete();
+  }
+
+  @override
+  Future<List<UsbDeviceInfo>> list() => inner.list();
+
+  @override
+  Future<TabletInfo> info() => inner.info();
+
+  @override
+  Future<Uint8List> open(String address) => inner.open(address);
+
+  @override
+  Future<Uint8List> exchange(Uint8List? out, {required Duration limit}) =>
+      inner.exchange(out, limit: limit);
+
+  @override
+  Future<void> close() async {
+    if (armed) await _gate.future;
+    await inner.close();
+  }
+}
+
 void main() {
   testWidgets(
     'Einstellungen zeigen die Karte "Signatur" mit "Nicht eingerichtet"; Tippen öffnet "Karte prüfen"',
@@ -535,6 +568,41 @@ void main() {
       expect(_key('card-check-pin'), findsOneWidget);
       // Zur Karte ging dabei nichts.
       expect(reader.card!.verifyCount, 0);
+    },
+  );
+
+  testWidgets(
+    'solange die Probe-Unterschrift noch läuft, fehlt "Zähler ist wieder voll", auch wenn der Wächter schon sperrt',
+    (t) async {
+      late _CloseGate gate;
+      final reader = await pumpCardCheck(
+        t,
+        card: testSignatureCard(retriesLeft: 2),
+        wrap: (inner) => gate = _CloseGate(inner),
+      );
+      await _run(t);
+      expect(_check(t).state.canSign, isTrue);
+      gate.armed = true;
+      await _openPin(t);
+      await typePin(t, '654321');
+      await t.tap(_key('card-pin-submit'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 50));
+
+      // 63C1 ist da, der Leser wird noch freigegeben.
+      final state = _check(t).state;
+      expect(state.busy, isTrue);
+      expect(state.guardBlocks, isTrue);
+      expect(state.cardLocked, isFalse);
+      expect(find.text(_lastTry), findsOneWidget);
+      expect(_key('card-check-reset-guard'), findsNothing);
+      expect(find.text('Zähler ist wieder voll'), findsNothing);
+
+      gate.release();
+      await t.pumpAndSettle();
+      expect(_check(t).state.busy, isFalse);
+      expect(_key('card-check-reset-guard'), findsOneWidget);
+      expect(reader.card!.verifyCount, 1);
     },
   );
 

@@ -130,7 +130,8 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
     final finished = reader == RowState.ok || reader == RowState.problem;
     final signature = state.rows[CheckRow.signature]!;
     final showPin = state.canSign && signature.state != RowState.ok;
-    final showReset = _canResetGuard(state);
+    // Während ein Lauf den Leser hat, gibt es nichts zurückzusetzen.
+    final showReset = _canResetGuard(state) && !busy;
 
     final rows = <Widget>[
       for (final row in CheckRow.values)
@@ -152,7 +153,7 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
           below: row == CheckRow.signature && showReset
               ? (_confirmReset
                     ? _ResetQuestion(
-                        onConfirm: busy ? null : _resetGuard,
+                        onConfirm: _resetGuard,
                         onCancel: () => setState(() => _confirmReset = false),
                       )
                     : UnconstrainedBox(
@@ -163,9 +164,8 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
                             label: 'Zähler ist wieder voll',
                             filled: false,
                             height: 56,
-                            onPressed: busy
-                                ? null
-                                : () => setState(() => _confirmReset = true),
+                            onPressed: () =>
+                                setState(() => _confirmReset = true),
                           ),
                         ),
                       ))
