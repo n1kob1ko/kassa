@@ -371,6 +371,7 @@ Vom Implementierer gewählt und angenommen: der Text "Es gibt noch kein Protokol
 - Das Szenario des Prüfwerkzeug-Tests liegt in der Vergangenheit, weil das Prüfwerkzeug die Belegzeiten mit der echten Uhr vergleicht (R11).
 - Ein Jahresbeleg, der vor einem Null- oder Schlussbeleg entsteht (nicht vor einem Verkauf), wird nicht von selbst gedruckt. Er lässt sich in "Bons" nachdrucken.
 - Ein Ausfall der Signatur lässt sich mit der Probe nicht von Hand auslösen. Er ist nur durch Tests geprüft.
+- Der Test des Prüfwerkzeugs im Repo führt nur eines der zwei Programme des Ministeriums aus, das für das Protokoll, und nur mit der Attrappe (6.12 verlangt mehr). In der Schlussprüfung liefen beide Programme von Hand gegen Ketten, die die Attrappe und die echte Probe-Signatur signiert hatten, und alle bestanden. Ein Test mit der Probe-Signatur und mit der Datei der QR-Codes ist für S2 offen.
 
 **Was über das Prüfwerkzeug des Ministeriums bekannt ist.** Das Werkzeug (Version 1.1.1, nie im Repo) wird über `tool/rksv/pruefen.sh` und den Test `pruefwerkzeug_test.dart` verwendet.
 
@@ -383,9 +384,7 @@ Vom Implementierer gewählt und angenommen: der Text "Es gibt noch kein Protokol
 
 **Bekannte kleine Punkte.** Diese Mängel sind erkannt und hingenommen oder für eine spätere Runde vorgemerkt:
 
-- Die Hilfe "Zum Ausprobieren einschalten" erscheint auch in `live`, dort passiert nach "Einschalten" nichts. Gehört nur in den Zustand "aus".
-- Die Hilfe der Probe endet ohne Kennung in "Kassen-ID .".
-- Scheitert die Prüfung der Fremdschlüssel bei der Migration, öffnet die App die Datenbank nie mehr. Das Risiko ist klein, widerspricht aber "Die Kassa verkauft immer".
+- Ein Jahresbeleg, der direkt vor einem Storno entsteht, wird auch nicht von selbst gedruckt. Er steht in der Liste der Bons und lässt sich dort drucken.
 - Die Zeile "QR-Code als Bild drucken" steht unter dem aufklappbaren Drucker-Teil statt zwischen Bondrucker und Kartenterminal wie im Bild, und das Vergleichsbild der Drucker-Einstellungen schneidet sie unten ab.
 - Der Bild-Pfad des QR-Codes ist nur schwach getestet. Steuerzeichen unter 0x20 gehen im QR-Befehl durch.
 - Das Speichern der Datei bei "Protokoll ausgeben" ist am echten Tablet noch nicht probiert (Fenster von Android, Abbruch).
@@ -393,3 +392,5 @@ Vom Implementierer gewählt und angenommen: der Text "Es gibt noch kein Protokol
 - Kleine Lücken bei Schlüssellängen und Feldgrößen im Code: 16 oder 24 Byte lange Schlüssel würden still AES-128 oder AES-192 ergeben, ein Zähler-Feld ohne 8 Bytes und ein JWS ohne drei Teile werden nicht eigens abgelehnt. Der Code erzeugt sie nie selbst.
 - Der 29. Februar rollt beim Ablaufdatum des Zertifikats auf den 1. März.
 - Kleinere Testlücken (Frist beim Signieren, Doppeltipp, Bild "Ausfall dunkel" und anderes) stehen im Verlauf des Baus.
+
+**Schlussprüfung.** Behoben sind fünf Punkte. Die Migration auf Version 4 hält nur noch bei kaputten Verweisen an, die sie selbst verursacht; alte bleiben, wie sie sind, und die App öffnet. Das Einschalten der Probe wartet höchstens 5 Sekunden auf den geschützten Speicher und meldet dann den Satz zum Speicher, ein Verkauf wartet nicht länger. Die Aufgaben der Probe enden mit der Probe, beim Beenden und nach einem unerwarteten Fehler. Die Zeile "Zum Ausprobieren einschalten" steht nur im Zustand "aus". Die Hilfe der Probe nennt ohne Kennung keine Kassen-ID mehr. Die übrigen kleinen Punkte der Schlussprüfung warten auf S2: die Uhr wird für einen Bon zweimal gelesen, eine falsche Summe hält auch in der Probe den Verkauf auf, ein `StateError` in der Karte "Signatur" bleibt ohne Satz, der Grund eines Ausfalls wird nicht gezeigt, toter Code, der Test der Migration vergleicht zu wenig, und der Hinweis kann ein altes "Geht noch nicht." zeigen.
