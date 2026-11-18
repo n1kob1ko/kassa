@@ -1,6 +1,6 @@
 import { DeleteObjectCommand, GetObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
-import type { Readable } from 'node:stream';
+import { PassThrough, pipeline, type Readable } from 'node:stream';
 import type { S3Config } from '../config.js';
 import { assertSafeKey, type FileStore } from './file_store.js';
 
@@ -35,11 +35,21 @@ export class S3FileStore implements FileStore {
   async put(key: string, body: Readable, contentType: string): Promise<void> {
     assertSafeKey(key);
     // Die Länge ist beim Durchreichen nicht bekannt: Upload schickt den Strom in Teilen und bricht bei einem Fehler ab.
+    // Upload liest ein Feld "size" am Strom als Länge des Inhalts. Der Strom des Aufrufers kann so ein Feld für
+    // etwas anderes haben (der Zähler der Installationsdatei steht am Anfang auf 0), dann scheitert jede Datei über
+    // 5 MB. Deshalb bekommt Upload einen eigenen, schlichten Strom. pipeline reicht einen Abbruch in beide Richtungen weiter.
+    const plain = new PassThrough();
+    pipeline(body, plain, () => undefined);
     const upload = new Upload({
       client: this.client as S3Client,
-      params: { Bucket: this.bucket, Key: key, Body: body, ContentType: contentType },
+      params: { Bucket: this.bucket, Key: key, Body: plain, ContentType: contentType },
     });
-    await upload.done();
+    try {
+      await upload.done();
+    } catch (err) {
+      plain.destroy();
+      throw err;
+    }
   }
 
   async get(key: string): Promise<{ body: Readable; size: number } | null> {

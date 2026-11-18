@@ -1,5 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { expect, test } from 'vitest';
 import { S3FileStore, s3ClientConfig } from '../src/storage/s3_file_store.js';
 
@@ -79,4 +79,50 @@ test('S3_URL_STYLE: virtual schickt den Bucket im Hostnamen, path im Pfad', () =
     region: 'eu',
     credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
   });
+});
+
+// Am echten Bucket gefunden (Task 17): Der Strom der Installationsdatei zählt seine Bytes in einem Feld "size".
+// Die Bibliothek hielt das für die Länge des Inhalts (0) und brach jede Datei über 5 MB ab.
+test('put: ein großer Strom mit eigenem Feld "size" wird in Teilen hochgeladen', async () => {
+  const s = stubClient((sent) => {
+    if (sent.name === 'CreateMultipartUploadCommand') return { UploadId: 'u1' };
+    if (sent.name === 'UploadPartCommand') return { ETag: `"e${String(sent.input.PartNumber)}"` };
+    return {};
+  });
+  const client = new S3Client({
+    endpoint: cfg.endpoint,
+    region: cfg.region,
+    forcePathStyle: true,
+    credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+  });
+  client.send = s.client.send as never;
+
+  const counting = Object.assign(new PassThrough(), { size: 0 });
+  const chunk = Buffer.alloc(1024 * 1024, 7);
+  Readable.from(Array.from({ length: 6 }, () => chunk)).pipe(counting);
+
+  await new S3FileStore(cfg, client).put('releases/gross.apk', counting, 'application/x-test');
+  expect(s.sent.map((x) => x.name)).toEqual([
+    'CreateMultipartUploadCommand',
+    'UploadPartCommand',
+    'UploadPartCommand',
+    'CompleteMultipartUploadCommand',
+  ]);
+});
+
+test('put: bricht der Strom ab, scheitert put mit diesem Fehler und der Upload wird abgebrochen', async () => {
+  const s = stubClient((sent) => (sent.name === 'CreateMultipartUploadCommand' ? { UploadId: 'u1' } : { ETag: '"e"' }));
+  const client = new S3Client({
+    endpoint: cfg.endpoint,
+    region: cfg.region,
+    forcePathStyle: true,
+    credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+  });
+  client.send = s.client.send as never;
+
+  const source = new PassThrough();
+  source.write(Buffer.alloc(6 * 1024 * 1024, 7));
+  setImmediate(() => source.destroy(new Error('abgerissen')));
+  await expect(new S3FileStore(cfg, client).put('releases/halb.apk', source, 'application/x-test')).rejects.toThrow();
+  expect(s.sent.map((x) => x.name)).not.toContain('CompleteMultipartUploadCommand');
 });
