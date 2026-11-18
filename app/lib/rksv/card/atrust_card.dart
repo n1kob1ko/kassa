@@ -19,7 +19,9 @@ enum PinFormat {
   format2,
 }
 
-class CardProfile {
+// final: Kein anderer Code kann ein Profil mit eigener PIN-Referenz oder
+// eigenem PIN-Format nachbauen (`implements`).
+final class CardProfile {
   const CardProfile._({
     required this.kind,
     required this.label,
@@ -148,7 +150,9 @@ CardProfile? profileForAtr(Uint8List atr) {
   return null;
 }
 
-class CardCommand {
+// final: Ohne `implements` gibt es keinen frei zusammengesetzten Befehl und
+// keinen Befehl mit PIN, der sich als nicht geheim ausgibt.
+final class CardCommand {
   CardCommand._(List<int> bytes, this.label, {this.secret = false})
     : bytes = Uint8List.fromList(bytes).asUnmodifiableView();
 

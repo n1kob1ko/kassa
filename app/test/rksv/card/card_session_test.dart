@@ -522,4 +522,35 @@ void main() {
     expect(first.data, reader.card!.certificate.sublist(0, 256));
     expect(reader.cardBlocks - before, 9); // 258 Bytes in Stücken zu 32
   });
+
+  test('nach connectionLost auf VERIFY ist die Sitzung tot: kein weiterer Austausch außer dem Ausschalten', () async {
+    final s = await start();
+    s.reader.corruptBlockNumber = s.reader.cardBlocks + 1;
+    final lost = await sessionErrorOf(
+      () => s.session.send(CardCommand.verifyPin(s.card.profile, '123456')),
+    );
+    expect(lost.problem, SessionProblem.connectionLost);
+    final exchanges = s.reader.exchanges;
+    final events = s.reader.events.length;
+
+    final dead = await sessionErrorOf(
+      () => s.session.send(CardCommand.selectFile([0x3F, 0x00])),
+    );
+    expect(dead.problem, SessionProblem.connectionLost);
+    expect(dead.detail, 'Sitzung nach Abbruch beendet');
+    expect(s.reader.exchanges, exchanges);
+
+    await s.session.end();
+    expect(s.reader.exchanges, exchanges + 1);
+    expect(s.reader.events.sublist(events), ['powerOff']);
+    expect(s.card.verifyCount, 1);
+    expect(
+      s.reader.transfers.where((t) => t.contains('0020008A08****************')),
+      hasLength(1),
+    );
+    expect(
+      s.reader.events.where((e) => e == 'command 0020008A08****************'),
+      hasLength(1),
+    );
+  });
 }

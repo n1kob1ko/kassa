@@ -37,6 +37,11 @@ class CardSession {
   final T1? _t1;
   final ProbeLog? _log;
 
+  /// Nach einem Abbruch geht nichts mehr zur Karte: Die Nummern von T=1
+  /// könnten nicht mehr stimmen, und die Karte hielte einen neuen Befehl für
+  /// eine Wiederholung.
+  bool _dead = false;
+
   /// Das Limit für jeden Lesevorgang des laufenden Befehls.
   Duration _limit = _shortLimit;
 
@@ -153,7 +158,15 @@ class CardSession {
 
   /// Schickt [command] und gibt die Antwort der Karte zurück. Jeder Fehler
   /// der Verbindung endet mit [SessionException] ([SessionProblem.connectionLost]).
+  /// Nach einem solchen Fehler ist die Sitzung tot: Jedes weitere [send]
+  /// wirft sofort, ohne etwas zu schicken.
   Future<CardResponse> send(CardCommand command) async {
+    if (_dead) {
+      throw const SessionException(
+        SessionProblem.connectionLost,
+        'Sitzung nach Abbruch beendet',
+      );
+    }
     final out = Uint8List.fromList(command.bytes);
     final secret = command.secret;
     final shown = secret
@@ -192,6 +205,7 @@ class CardSession {
   }
 
   SessionException _lost(CardCommand command, String shown, String detail) {
+    _dead = true;
     _log?.line('${command.label}: $shown; keine Antwort ($detail)');
     return SessionException(SessionProblem.connectionLost, detail);
   }
