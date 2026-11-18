@@ -331,7 +331,42 @@ void main() {
       expect(b.sale.receipt.id, a.sale.receipt.id);
       expect(await shop.count('receipts'), 1);
       expect(printer.printed, ['p1']);
+      expect(terminal.payments, hasLength(1));
       expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test('Id mit unklarer offener Zahlung: unklar, kein Aufruf des Terminals, '
+        'Zeile unverändert', () async {
+      putOnRegister();
+      terminal.next = const CardUnknown();
+      await pay();
+      final before = (await cardPayments.pending()).single;
+      final other = const Cart.empty().add(teigtaschen).add(cola);
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: other,
+        staff: shop.anna,
+      ) as CardSaleUnclear;
+      expect(o.paymentId, 'p1');
+      expect(terminal.payments, hasLength(1));
+      final after = (await cardPayments.pending()).single;
+      expect(after.unknown, isTrue);
+      expect(after.cartJson, before.cartJson);
+      expect(after.amountCents, 1820);
+      expect(container.read(activeCardPaymentProvider), isNull);
+    });
+
+    test('Id mit liegengebliebener Zahlung (gestartet): unklar, kein Aufruf '
+        'des Terminals, Zeile danach unklar', () async {
+      putOnRegister();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await cardPayments.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
+      final o = await pay() as CardSaleUnclear;
+      expect(o.paymentId, 'p1');
+      expect(terminal.payments, isEmpty);
+      final row = (await cardPayments.pending()).single;
+      expect((row.unknown, row.amountCents), (true, 1820));
+      expect(await shop.count('receipts'), 0);
     });
 
     test(

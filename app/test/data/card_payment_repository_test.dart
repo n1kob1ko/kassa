@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 
+import 'package:kassa/domain/cart.dart';
+
+import '../support/demo_fixtures.dart';
 import '../support/sales.dart';
 
 void main() {
@@ -55,9 +58,26 @@ void main() {
     ]);
   });
 
-  test('begin mit derselben Id zweimal: eine Zeile', () async {
-    await repo.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
-    await repo.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
-    expect(await repo.pending(), hasLength(1));
-  });
+  test(
+    'begin mit derselben Id zweimal: wirft, die erste Zeile bleibt',
+    () async {
+      await repo.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
+      await repo.markUnknown('p1');
+      final first = (await repo.pending()).single;
+      await expectLater(
+        repo.begin(
+          paymentId: 'p1',
+          cart: const Cart.empty().add(teigtaschen),
+          staff: shop.chef,
+        ),
+        throwsA(anything),
+      );
+      final rows = await repo.pending();
+      expect(rows, hasLength(1));
+      expect(
+        (rows.single.cartJson, rows.single.amountCents, rows.single.unknown),
+        (first.cartJson, first.amountCents, true),
+      );
+    },
+  );
 }

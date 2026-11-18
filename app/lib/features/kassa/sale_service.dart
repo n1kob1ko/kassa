@@ -132,6 +132,26 @@ class SaleService {
       ..set(paymentId);
     try {
       final pending = _ref.read(cardPaymentRepositoryProvider);
+      // Dieselbe Id nie ein zweites Mal am Terminal abbuchen: gibt es schon
+      // einen Bon oder eine offene Zahlung dazu, wird nur das gemeldet.
+      try {
+        final known = await _ref
+            .read(receiptRepositoryProvider)
+            .find(paymentId);
+        if (known != null) {
+          final print =
+              _prints[paymentId] ?? Future.value(const PrintOutcome.ok());
+          return CardSaleDone(SaleResult(receipt: known, print: print));
+        }
+        final open = await pending.pending();
+        if (open.any((p) => p.id == paymentId)) {
+          return await _unclear(paymentId);
+        }
+      } catch (_) {
+        return const CardSaleFailed(
+          'Die Kartenzahlung konnte nicht gestartet werden.',
+        );
+      }
       try {
         await pending.begin(paymentId: paymentId, cart: cart, staff: staff);
       } catch (_) {

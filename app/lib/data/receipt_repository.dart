@@ -207,6 +207,9 @@ class ReceiptRepository {
     });
   }
 
+  /// Der Bon mit dieser Id, oder `null`.
+  Future<Receipt?> find(String id) => _find(id);
+
   /// Wirft [StateError], wenn es den Bon nicht gibt.
   Future<Receipt> byId(String id) async {
     final r = await _find(id);

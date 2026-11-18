@@ -40,13 +40,15 @@ class CardPaymentRepository {
   final KassaDatabase _db;
   final Clock _clock;
 
+  /// Schreibt die offene Zahlung. Eine Zeile mit dieser Id wird nie
+  /// überschrieben: gibt es sie schon, wirft der Aufruf.
   Future<void> begin({
     required String paymentId,
     required Cart cart,
     required Staff staff,
   }) => _db
       .into(_db.pendingCardPaymentRows)
-      .insertOnConflictUpdate(
+      .insert(
         PendingCardPaymentRowsCompanion.insert(
           id: paymentId,
           cartJson: jsonEncode(cart.toJson()),
