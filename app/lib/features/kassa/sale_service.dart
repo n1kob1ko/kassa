@@ -23,8 +23,9 @@ class SaleResult {
   /// Der gespeicherte Bon.
   final Receipt receipt;
 
-  /// Das Ergebnis des Druckens; endet nach höchstens einem Druckaufruf
-  /// (5 Sekunden, Lade und Bon zusammen) und wirft nie.
+  /// Das Ergebnis des Druckens (des Bons); endet nach höchstens einem
+  /// Druckaufruf (5 Sekunden, Lade und Bon zusammen), steht davor ein
+  /// Jahresbeleg, nach zweien. Wirft nie.
   final Future<PrintOutcome> print;
 }
 
@@ -126,7 +127,7 @@ class SaleService {
           staff: staff,
         );
     final settings = await _settings();
-    final print = _prints[saleId] ??= _output(
+    final print = _prints[saleId] ??= _outputSale(
       receipt,
       settings,
       openDrawer: settings.cashDrawerEnabled,
@@ -357,7 +358,7 @@ class SaleService {
 
   Future<SaleResult> _printCard(Receipt receipt) async {
     final settings = await _settings();
-    final print = _prints[receipt.id] ??= _output(
+    final print = _prints[receipt.id] ??= _outputSale(
       receipt,
       settings,
       openDrawer: false,
@@ -432,6 +433,29 @@ class SaleService {
     } catch (_) {
       return const RegisterSettings();
     }
+  }
+
+  /// Druck nach einem eben abgeschlossenen Verkauf: Steht direkt davor ein
+  /// Jahresbeleg (er entsteht im selben Schritt), kommt er zuerst. Scheitert
+  /// sein Druck, wird der Bon trotzdem gedruckt; das Ergebnis ist das des
+  /// Bons. Monats- und Sammelbelege werden nicht gedruckt.
+  Future<PrintOutcome> _outputSale(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required bool openDrawer,
+  }) async {
+    if (settings.printerKind != PrinterKind.none) {
+      try {
+        final year = await _ref
+            .read(receiptRepositoryProvider)
+            .yearReceiptBefore(receipt);
+        if (year != null) await _send(year, settings, openDrawer: false);
+      } catch (_) {
+        // Der Jahresbeleg steht gespeichert und lässt sich in den Bons
+        // nachdrucken; der Bon des Verkaufs geht trotzdem hinaus.
+      }
+    }
+    return _output(receipt, settings, openDrawer: openDrawer);
   }
 
   /// Druckt den Bon, mit [openDrawer] im selben Auftrag mit der Lade, und

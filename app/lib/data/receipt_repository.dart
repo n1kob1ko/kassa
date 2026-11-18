@@ -300,6 +300,22 @@ class ReceiptRepository {
     });
   }
 
+  /// Der Jahresbeleg, der direkt vor [sale] steht (Nummer `sale.number - 1`,
+  /// Art `year`), sonst `null`. Ein fälliger Jahresbeleg entsteht im selben
+  /// Schritt direkt vor dem Bon, der ihn auslöst; die Zeit wird nicht
+  /// verglichen.
+  Future<Receipt?> yearReceiptBefore(Receipt sale) async {
+    final row =
+        await (_db.select(_db.receiptRows)..where(
+              (t) =>
+                  t.number.equals(sale.number - 1) &
+                  t.kind.equals(ReceiptKind.year.name),
+            ))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return (await _hydrate([row])).single;
+  }
+
   /// Der Bon mit dieser Id, oder `null`.
   Future<Receipt?> find(String id) => _find(id);
 
