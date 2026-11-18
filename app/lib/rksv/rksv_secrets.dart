@@ -47,11 +47,13 @@ class SecureRksvSecrets implements RksvSecrets {
 }
 
 /// Für Tests. Mit [failReads] schlagen alle Lesezugriffe fehl, mit
-/// [hangReads] kehren sie nie zurück.
+/// [hangReads] kehren sie nie zurück, mit [hangWrites] die Schreibzugriffe
+/// auch nicht.
 class MemoryRksvSecrets implements RksvSecrets {
   final Map<String, Uint8List> _values = {};
   bool failReads = false;
   bool hangReads = false;
+  bool hangWrites = false;
 
   Future<Uint8List?> _read(String name) async {
     if (hangReads) await Completer<void>().future;
@@ -63,14 +65,19 @@ class MemoryRksvSecrets implements RksvSecrets {
   @override
   Future<Uint8List?> aesKey(int chain) => _read('rksv_aes_$chain');
 
+  Future<void> _write(String name, Uint8List value) async {
+    if (hangWrites) await Completer<void>().future;
+    _values[name] = Uint8List.fromList(value);
+  }
+
   @override
-  Future<void> writeAesKey(int chain, Uint8List key) async =>
-      _values['rksv_aes_$chain'] = Uint8List.fromList(key);
+  Future<void> writeAesKey(int chain, Uint8List key) =>
+      _write('rksv_aes_$chain', key);
 
   @override
   Future<Uint8List?> probeKey(int chain) => _read('rksv_probe_key_$chain');
 
   @override
-  Future<void> writeProbeKey(int chain, Uint8List key) async =>
-      _values['rksv_probe_key_$chain'] = Uint8List.fromList(key);
+  Future<void> writeProbeKey(int chain, Uint8List key) =>
+      _write('rksv_probe_key_$chain', key);
 }

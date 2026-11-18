@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/domain/receipt.dart';
@@ -30,6 +31,27 @@ class _BreaksAfterReadBack extends MemoryRksvSecrets {
     if (++_aesReads > 1) throw StateError('Der Speicher ist weg.');
     return super.aesKey(chain);
   }
+}
+
+/// Wartet in gedachter Zeit auf [f], ohne die Zeit weiterzudrehen.
+T _await<T>(FakeAsync async, Future<T> f) {
+  late T value;
+  Object? error;
+  var done = false;
+  f.then(
+    (v) {
+      value = v;
+      done = true;
+    },
+    onError: (Object e) {
+      error = e;
+      done = true;
+    },
+  );
+  async.flushMicrotasks();
+  if (!done) fail('Nicht fertig, ohne dass die Zeit weiterläuft.');
+  if (error != null) throw error!;
+  return value;
 }
 
 void main() {
@@ -319,5 +341,60 @@ void main() {
     await rig.service.enableProbe(staff: rig.chef);
     final state = await rig.stateRow();
     expect((state.mode, state.chain, state.notice), ('probe', 2, null));
+  });
+
+  test('enableProbe mit Speicher, der beim Schreiben nicht antwortet: nach 5 '
+      'Sekunden (fake_async) RksvProblem, mode off, keine Kette, kein '
+      'Startbeleg; ein Verkauf geht durch', () {
+    fakeAsync((async) {
+      final rig = _await(async, RksvRig.open());
+      try {
+        rig.secrets.hangWrites = true;
+        Object? outcome;
+        rig.service
+            .enableProbe(staff: rig.chef)
+            .then<void>((r) => outcome = r, onError: (Object e) => outcome = e);
+        Receipt? waiting;
+        rig.sell('s1', cart).then((r) => waiting = r);
+        async.elapse(
+          const Duration(seconds: 5) - const Duration(milliseconds: 1),
+        );
+        expect(outcome, isNull);
+        expect(waiting, isNull);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(
+          outcome,
+          isA<RksvProblem>().having(
+            (p) => p.message,
+            'message',
+            'Das Tablet konnte den Schlüssel nicht sicher speichern.',
+          ),
+        );
+        expect(waiting, isNotNull);
+        expect(waiting!.rksv, isNull);
+
+        final state = _await(async, rig.stateRow());
+        expect((state.mode, state.chain, state.tasks), ('off', null, '[]'));
+        expect(_await(async, rig.count('rksv_chains')), 0);
+        expect(_await(async, rig.count('rksv_entries')), 0);
+        expect(
+          _await(
+            async,
+            rig.db
+                .customSelect(
+                  "SELECT COUNT(*) c FROM receipts WHERE kind = 'start'",
+                )
+                .getSingle(),
+          ).read<int>('c'),
+          0,
+        );
+
+        final sold = _await(async, rig.sell('s2', cart));
+        expect((sold.kind, sold.rksv), (ReceiptKind.sale, null));
+        expect(_await(async, rig.count('receipts')), 2);
+      } finally {
+        _await(async, rig.close());
+      }
+    });
   });
 }

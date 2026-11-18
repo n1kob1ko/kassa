@@ -146,17 +146,24 @@ class RksvService {
     );
   }
 
-  /// Schreibt beide Schlüssel und liest sie zurück.
+  /// Höchstens so lange wartet das Einschalten auf den geschützten Speicher.
+  /// Es hält dabei die Datenbank, also warten auch die Verkäufe.
+  static const storageLimit = Duration(seconds: 5);
+
+  /// Schreibt beide Schlüssel und liest sie zurück, zusammen höchstens
+  /// [storageLimit] lang.
   Future<void> _storeSecrets(int chain, Uint8List aesKey, Uint8List key) async {
     bool same(Uint8List? a, Uint8List b) =>
         a != null && a.length == b.length && _equal(a, b);
     try {
-      await _secrets.writeAesKey(chain, aesKey);
-      await _secrets.writeProbeKey(chain, key);
-      if (!same(await _secrets.aesKey(chain), aesKey) ||
-          !same(await _secrets.probeKey(chain), key)) {
-        throw const RksvProblem(_storageProblem);
-      }
+      await () async {
+        await _secrets.writeAesKey(chain, aesKey);
+        await _secrets.writeProbeKey(chain, key);
+        if (!same(await _secrets.aesKey(chain), aesKey) ||
+            !same(await _secrets.probeKey(chain), key)) {
+          throw const RksvProblem(_storageProblem);
+        }
+      }().timeout(storageLimit);
     } on RksvProblem {
       rethrow;
     } on Object {
