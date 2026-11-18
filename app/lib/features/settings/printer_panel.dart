@@ -281,7 +281,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       color: c.ink2,
     );
     return [
-      if (_notice != null) ...[_WarnBox(_notice!), gap],
+      if (_notice != null) ...[WarnBox(_notice!), gap],
       if (_searching) ...[
         Text(
           _kind == PrinterKind.network
@@ -296,7 +296,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
           const _SkeletonRow(),
         ],
       ] else if (_searchProblem != null)
-        _WarnBox(_searchProblem!)
+        WarnBox(_searchProblem!)
       else if (_found.isEmpty)
         Text(_nothingFound[_kind]!, style: body)
       else
@@ -361,7 +361,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
         const SizedBox(height: KassaTokens.spaceLg),
         result.ok
             ? _OkBox('Testdruck geschickt. Kommt Papier?')
-            : _WarnBox(result.message, key: const Key('printer-result')),
+            : WarnBox(result.message, key: const Key('printer-result')),
       ],
       const SizedBox(height: KassaTokens.spaceXxl),
       Text(
@@ -566,34 +566,6 @@ class _SkeletonRow extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Satz in der Warnfläche: etwas stimmt nicht, und was zu tun ist.
-class _WarnBox extends StatelessWidget {
-  const _WarnBox(this.message, {super.key});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = KassaColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.warnBg,
-        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
-      ),
-      child: Text(
-        message,
-        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          height: 1.3,
-          color: c.warnInk,
         ),
       ),
     );

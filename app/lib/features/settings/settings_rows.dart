@@ -223,3 +223,31 @@ class DevicePill extends StatelessWidget {
     );
   }
 }
+
+/// Satz in der Warnfläche: etwas stimmt nicht, und was zu tun ist.
+class WarnBox extends StatelessWidget {
+  const WarnBox(this.message, {super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+      ),
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          height: 1.3,
+          color: c.warnInk,
+        ),
+      ),
+    );
+  }
+}

@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/app_info.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
+import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
 import 'settings_rows.dart';
@@ -24,6 +27,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _failed = false;
 
+  /// Die Seite "Geräte testen" ersetzt die Karten, bis "Zurück" getippt wird.
+  bool _testingDevices = false;
+
   Future<void> _change(
     RegisterSettings Function(RegisterSettings s) change,
   ) async {
@@ -38,6 +44,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_testingDevices) {
+      return DeviceTestScreen(
+        key: const Key('device-test'),
+        onBack: () => setState(() => _testingDevices = false),
+      );
+    }
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final s =
@@ -62,6 +74,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             label: 'Geldlade',
             value: s.cashDrawerEnabled,
             onChanged: (v) => _change((s) => s.copyWith(cashDrawerEnabled: v)),
+          ),
+        ),
+        Pressable(
+          key: const Key('open-device-test'),
+          onTap: () => setState(() => _testingDevices = true),
+          semanticLabel: 'Geräte testen',
+          child: SettingsRow(
+            title: 'Geräte testen',
+            help: 'Testdruck, Lade öffnen.',
+            control: Icon(LucideIcons.chevronRight, size: 24, color: c.ink2),
           ),
         ),
       ],
