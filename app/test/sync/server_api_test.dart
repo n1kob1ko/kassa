@@ -131,6 +131,29 @@ void main() {
     },
   );
 
+  test(
+    'jeder andere Fehler der Verbindung (IOException) ergibt offline',
+    () async {
+      for (final error in <IOException>[
+        const TlsException('Zertifikat'),
+        const HttpException('Verbindung zu'),
+        const FileSystemException('weg'),
+      ]) {
+        final api = apiWith((_) async => throw error);
+        expect(
+          await failureOf(api.pair(code: '1')),
+          ServerFailure.offline,
+          reason: '$error',
+        );
+        expect(
+          await failureOf(api.pull(token: 't', since: 0)),
+          ServerFailure.offline,
+          reason: '$error',
+        );
+      }
+    },
+  );
+
   test('Antwort 200 mit Unsinn ergibt server', () async {
     for (final response in [
       http.Response('<html>', 200),

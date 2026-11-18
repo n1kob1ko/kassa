@@ -92,9 +92,8 @@ class ServerApi {
           .timeout(_timeout);
     } on TimeoutException {
       throw const ServerException(ServerFailure.timeout);
-    } on SocketException {
-      throw const ServerException(ServerFailure.offline);
-    } on HandshakeException {
+    } on IOException {
+      // Auch SocketException, HandshakeException, TlsException, HttpException.
       throw const ServerException(ServerFailure.offline);
     } on http.ClientException {
       throw const ServerException(ServerFailure.offline);

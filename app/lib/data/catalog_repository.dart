@@ -121,7 +121,7 @@ class CatalogRepository {
                 categoryId: i.categoryId,
                 taxPercent: i.taxRate.percent,
                 depositCents: Value(i.depositCents),
-                tags: Value(_encodeTags(i.tags)),
+                tags: Value(encodeItemTags(i.tags)),
                 info: Value(i.info),
                 templateId: Value(i.templateId),
                 favorite: Value(old?.favorite ?? i.favorite),
@@ -267,14 +267,17 @@ class CatalogRepository {
             inSale: Value.absentIfNull(inSale),
             favorite: Value.absentIfNull(favorite),
             depositCents: Value.absentIfNull(depositCents),
-            tags: Value.absentIfNull(tags == null ? null : _encodeTags(tags)),
+            tags: Value.absentIfNull(
+              tags == null ? null : encodeItemTags(tags),
+            ),
           ),
         );
     if (changed == 0) throw StateError('Artikel "$itemId" gibt es nicht.');
   }
 }
 
-String _encodeTags(Set<ItemTag> tags) =>
+/// Die Kennzeichen eines Artikels, wie die Spalte `tags` sie hält.
+String encodeItemTags(Set<ItemTag> tags) =>
     (tags.map((t) => t.name).toList()..sort()).join(',');
 
 Set<ItemTag> _decodeTags(String s) => {
