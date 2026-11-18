@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/providers.dart';
 import '../data/settings_repository.dart';
 import '../domain/receipt.dart';
+import 'channel_transport.dart';
 import 'network_transport.dart';
 import 'printer.dart';
 
@@ -16,11 +17,13 @@ typedef TransportFactory = PrinterTransport? Function(
 /// eingerichtet ist.
 final transportFactoryProvider = Provider<TransportFactory>(
   (ref) => (settings) {
-    final address = settings.printerAddress;
+    final address = settings.printerAddress?.trim();
+    if (address == null || address.isEmpty) return null;
     return switch (settings.printerKind) {
-      PrinterKind.network when address != null && address.trim().isNotEmpty =>
-        NetworkTransport(address),
-      _ => null,
+      PrinterKind.network => NetworkTransport(address),
+      PrinterKind.usb => ChannelTransport(PrinterKind.usb, address),
+      PrinterKind.bluetooth => ChannelTransport(PrinterKind.bluetooth, address),
+      PrinterKind.none => null,
     };
   },
 );
