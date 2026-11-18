@@ -192,6 +192,48 @@ void main() {
     await emitted;
   });
 
+  group('watchHasEndedChain', () {
+    Future<void> insertChain({DateTime? endedAt}) => db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: const Value(1),
+            mode: 'probe',
+            cashBoxId: 'ABCDEFGHJK',
+            zdaId: 'AT100',
+            certSerial: '0a1b',
+            startedAt: _created,
+            endedAt: Value(endedAt),
+          ),
+        );
+
+    test('false ohne Kette', () async {
+      expect(await repo.watchHasEndedChain().first, isFalse);
+    });
+
+    test('false mit laufender Kette', () async {
+      await insertChain();
+      expect(await repo.watchHasEndedChain().first, isFalse);
+    });
+
+    test('true mit beendeter Kette', () async {
+      await insertChain(endedAt: _created.add(const Duration(hours: 1)));
+      expect(await repo.watchHasEndedChain().first, isTrue);
+    });
+
+    test('meldet das Beenden der laufenden Kette', () async {
+      await insertChain();
+      final emitted = expectLater(
+        repo.watchHasEndedChain(),
+        emitsInOrder([false, true]),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await (db.update(db.rksvChainRows)..where((t) => t.chain.equals(1)))
+          .write(RksvChainRowsCompanion(endedAt: Value(_created)));
+      await emitted;
+    });
+  });
+
   test('kaputtes JSON in tasks ergibt eine leere Liste statt einer Ausnahme', () async {
     for (final broken in const [
       '{nicht json',

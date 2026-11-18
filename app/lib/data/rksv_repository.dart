@@ -19,6 +19,17 @@ class RksvRepository {
   /// Stands oder der Ketten den neuen.
   Stream<RksvState> watch() => _query().watchSingleOrNull().map(_toState);
 
+  /// true, sobald es eine beendete Kette gibt (`ended_at` gesetzt): Dann
+  /// bleibt "Protokoll ausgeben" auch ohne laufende Signatur. Meldet nur
+  /// Änderungen des Werts.
+  Stream<bool> watchHasEndedChain() =>
+      (_db.select(_db.rksvChainRows)
+            ..where((t) => t.endedAt.isNotNull())
+            ..limit(1))
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
   /// Entfernt die Aufgabe mit [id]. Eine unbekannte Id ändert nichts.
   Future<void> completeTask(String id) => _db.transaction(() async {
     final row = await (_db.select(

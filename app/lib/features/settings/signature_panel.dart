@@ -23,19 +23,6 @@ import 'settings_rows.dart';
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 const _notSaved = 'Die Datei konnte nicht gespeichert werden.';
 
-/// Ob es eine beendete Kette gibt: Dann bleibt "Protokoll ausgeben" auch
-/// ohne laufende Signatur. Liest nur, in derselben Datenbank wie der Rest.
-final _endedChainProvider = StreamProvider<bool>((ref) {
-  final db = ref.watch(databaseProvider);
-  return db
-      .customSelect(
-        'SELECT COUNT(*) AS c FROM rksv_chains WHERE ended_at IS NOT NULL',
-        readsFrom: {db.rksvChainRows},
-      )
-      .watchSingle()
-      .map((r) => r.read<int>('c') > 0);
-});
-
 /// Welche Zeile eine Rückmeldung bekommt.
 enum _Action { enable, zero, export, disable, other }
 
@@ -204,7 +191,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final c = KassaColors.of(context);
     final state = ref.watch(rksvStateProvider).value ?? const RksvState();
     final isChef = ref.watch(sessionProvider)?.isChef ?? false;
-    final ended = ref.watch(_endedChainProvider).value ?? false;
+    final ended = ref.watch(rksvHasEndedChainProvider).value ?? false;
     final probe = state.mode == RksvMode.probe;
     final notice = state.notice;
 

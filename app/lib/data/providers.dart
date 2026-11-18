@@ -91,6 +91,11 @@ final rksvStateProvider = StreamProvider<RksvState>(
   (ref) => ref.watch(rksvRepositoryProvider).watch(),
 );
 
+/// Ob es eine beendete Kette der Signatur gibt, als Strom.
+final rksvHasEndedChainProvider = StreamProvider<bool>(
+  (ref) => ref.watch(rksvRepositoryProvider).watchHasEndedChain(),
+);
+
 /// Der Geräte-Schlüssel im geschützten Speicher. Tests setzen
 /// `MemoryTokenStore` ein.
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
