@@ -150,7 +150,7 @@ class RowToggle extends StatelessWidget {
   }
 }
 
-/// Neutrale Pille ohne Punkt: "Noch nicht dabei".
+/// Neutrale Pille ohne Punkt: "Noch nicht dabei", "Nicht eingerichtet".
 class NeutralPill extends StatelessWidget {
   const NeutralPill(this.label, {super.key});
 
@@ -174,6 +174,51 @@ class NeutralPill extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: c.ink2,
         ),
+      ),
+    );
+  }
+}
+
+/// Pille eines eingerichteten Geräts: `fill`, `ink`, grüner Punkt und der Name
+/// (bei langen Namen mit Auslassung).
+class DevicePill extends StatelessWidget {
+  const DevicePill(this.label, {super.key});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Container(
+      height: 30,
+      constraints: const BoxConstraints(maxWidth: 240),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: c.fill,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: c.green, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: KassaTokens.spaceSm),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: c.ink,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

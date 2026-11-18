@@ -1,0 +1,630 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../../data/providers.dart';
+import '../../data/settings_repository.dart';
+import '../../devices/device_providers.dart';
+import '../../devices/printer.dart';
+import '../../devices/printer_discovery.dart';
+import '../../ui/address_keypad.dart';
+import '../../ui/pressable.dart';
+import '../../ui/primary_button.dart';
+import '../../ui/segmented.dart';
+import '../../ui/tokens.dart';
+import '../items/item_detail.dart' show FailedHint;
+import 'settings_rows.dart';
+
+const _noPermission =
+    'Kassa darf den Drucker nicht verwenden. Bitte die Erlaubnis geben.';
+const _searchFailed = 'Die Suche hat nicht geklappt.';
+
+const _nothingFound = {
+  PrinterKind.network:
+      'Kein Drucker gefunden. Ist er eingeschaltet und im selben WLAN?',
+  PrinterKind.usb: 'Kein Drucker am USB-Anschluss gefunden.',
+  PrinterKind.bluetooth:
+      'Kein Drucker gekoppelt. Bitte zuerst in den Bluetooth-Einstellungen '
+      'des Tablets koppeln.',
+};
+
+/// Die Zeile "Bondrucker" samt dem Feld zum Einrichten: ein Tipp öffnet es
+/// darunter in derselben Karte, ohne Dialog (wie beim neuen Einspielen).
+/// Verbindung wählen, Drucker suchen und antippen, Testdruck, Breite,
+/// Drucker entfernen. Jede Speicherung geht vom gespeicherten Stand aus, damit
+/// keine andere Einstellung verloren geht.
+class PrinterPanel extends ConsumerStatefulWidget {
+  const PrinterPanel({super.key});
+
+  @override
+  ConsumerState<PrinterPanel> createState() => _PrinterPanelState();
+}
+
+class _PrinterPanelState extends ConsumerState<PrinterPanel> {
+  bool _open = false;
+  PrinterKind _kind = PrinterKind.network;
+
+  bool _searching = false;
+  List<FoundPrinter> _found = const [];
+  String? _searchProblem;
+  int _generation = 0;
+
+  bool _typing = false;
+  String? _notice;
+  bool _saveFailed = false;
+
+  bool _testing = false;
+  PrintOutcome? _result;
+
+  Future<void> _save(
+    RegisterSettings Function(RegisterSettings s) change,
+  ) async {
+    final repo = ref.read(settingsRepositoryProvider);
+    try {
+      await repo.save(change(await repo.current()));
+      if (mounted && _saveFailed) setState(() => _saveFailed = false);
+    } catch (_) {
+      if (mounted) setState(() => _saveFailed = true);
+    }
+  }
+
+  void _toggle(RegisterSettings s) {
+    setState(() {
+      _open = !_open;
+      _typing = false;
+      _notice = null;
+      _result = null;
+      if (_open && s.printerKind != PrinterKind.none) _kind = s.printerKind;
+    });
+    if (_open) _search();
+  }
+
+  void _selectKind(PrinterKind kind) {
+    if (kind == _kind) return;
+    setState(() {
+      _kind = kind;
+      _typing = false;
+    });
+    _search();
+  }
+
+  Future<void> _search() async {
+    final generation = ++_generation;
+    final discovery = ref.read(printerDiscoveryProvider);
+    final kind = _kind;
+    setState(() {
+      _searching = true;
+      _found = const [];
+      _searchProblem = null;
+      _notice = null;
+    });
+    List<FoundPrinter> found = const [];
+    String? problem;
+    try {
+      found = await switch (kind) {
+        PrinterKind.usb => discovery.usb(),
+        PrinterKind.bluetooth => discovery.bluetooth(),
+        _ => discovery.network(),
+      };
+    } on PrinterException catch (e) {
+      problem = e.problem == PrintProblem.noPermission
+          ? _noPermission
+          : _searchFailed;
+    } catch (_) {
+      problem = _searchFailed;
+    }
+    // Eine spätere Suche (oder das Schließen) gilt mehr als diese Antwort.
+    if (!mounted || generation != _generation) return;
+    setState(() {
+      _searching = false;
+      _found = found;
+      _searchProblem = problem;
+    });
+  }
+
+  Future<void> _choose(FoundPrinter printer) async {
+    if (printer.kind != PrinterKind.network) {
+      var allowed = false;
+      try {
+        allowed = await ref
+            .read(printerDiscoveryProvider)
+            .requestAccess(printer.kind, printer.address);
+      } catch (_) {}
+      if (!mounted) return;
+      if (!allowed) {
+        setState(() => _notice = _noPermission);
+        return;
+      }
+    }
+    setState(() {
+      _notice = null;
+      _typing = false;
+      _result = null;
+    });
+    await _save(
+      (s) => s.copyWith(
+        printerKind: printer.kind,
+        printerAddress: printer.address,
+        printerName: printer.name,
+      ),
+    );
+  }
+
+  Future<void> _chooseTyped(String host) => _choose(
+    FoundPrinter(
+      kind: PrinterKind.network,
+      name: 'Drucker $host',
+      address: '$host:$rawPrintPort',
+    ),
+  );
+
+  Future<void> _testPrint() async {
+    if (_testing) return;
+    setState(() {
+      _testing = true;
+      _result = null;
+    });
+    PrintOutcome outcome;
+    try {
+      outcome = await ref.read(receiptPrinterProvider).testPrint();
+    } catch (_) {
+      outcome = const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      _result = outcome;
+    });
+  }
+
+  Future<void> _remove() async {
+    setState(() => _result = null);
+    await _save((s) => s.withoutPrinter());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final s =
+        ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
+    final set = s.printerKind != PrinterKind.none;
+    final name = s.printerName;
+
+    final header = Semantics(
+      button: true,
+      expanded: _open,
+      child: GestureDetector(
+        key: const Key('printer-row'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _toggle(s),
+        child: SettingsRow(
+          title: 'Bondrucker',
+          help: set
+              ? 'Tippen, um den Drucker zu ändern.'
+              : 'Tippen, um einen Drucker zu wählen.',
+          control: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (set && name != null && name.isNotEmpty)
+                DevicePill(name)
+              else
+                const NeutralPill('Nicht eingerichtet'),
+              const SizedBox(width: KassaTokens.spaceMd),
+              Icon(
+                _open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                size: 22,
+                color: c.ink2,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        if (_open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: _panel(context, s),
+          ),
+      ],
+    );
+  }
+
+  Widget _panel(BuildContext context, RegisterSettings s) {
+    final set = s.printerKind != PrinterKind.none;
+    const gap = SizedBox(height: KassaTokens.spaceXl);
+    return Column(
+      key: const Key('printer-panel'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Segmented<PrinterKind>(
+            segments: const [
+              (PrinterKind.network, 'Netzwerk'),
+              (PrinterKind.usb, 'USB'),
+              (PrinterKind.bluetooth, 'Bluetooth'),
+            ],
+            selected: _kind,
+            keyFor: (k) => Key('printer-kind-${k.name}'),
+            onSelected: _selectKind,
+          ),
+        ),
+        gap,
+        if (_typing)
+          AddressKeypad(
+            onSubmit: _chooseTyped,
+            onCancel: () => setState(() => _typing = false),
+          )
+        else
+          ..._finder(context, s),
+        if (_saveFailed) const FailedHint(),
+        if (set) ..._chosen(context, s),
+      ],
+    );
+  }
+
+  /// Notiz, Suchergebnis (Platzhalter, Satz oder Liste) und die Tasten
+  /// "Nochmal suchen" und "Adresse eintippen".
+  List<Widget> _finder(BuildContext context, RegisterSettings s) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    const gap = SizedBox(height: KassaTokens.spaceLg);
+    final body = text.bodyMedium!.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      height: 1.3,
+      color: c.ink2,
+    );
+    return [
+      if (_notice != null) ...[_WarnBox(_notice!), gap],
+      if (_searching) ...[
+        Text(
+          _kind == PrinterKind.network
+              ? 'Suche läuft. Das kann einen Moment dauern.'
+              : 'Suche läuft.',
+          key: const Key('printer-searching'),
+          style: body,
+        ),
+        gap,
+        for (var i = 0; i < 3; i++) ...[
+          if (i > 0) const SizedBox(height: KassaTokens.spaceMd),
+          const _SkeletonRow(),
+        ],
+      ] else if (_searchProblem != null)
+        _WarnBox(_searchProblem!)
+      else if (_found.isEmpty)
+        Text(_nothingFound[_kind]!, style: body)
+      else
+        for (var i = 0; i < _found.length; i++) ...[
+          if (i > 0) const SizedBox(height: KassaTokens.spaceMd),
+          _FoundRow(
+            printer: _found[i],
+            selected:
+                s.printerKind == _found[i].kind &&
+                s.printerAddress == _found[i].address,
+            onTap: () => _choose(_found[i]),
+          ),
+        ],
+      gap,
+      Row(
+        children: [
+          Expanded(
+            child: PrimaryButton(
+              key: const Key('printer-search'),
+              label: 'Nochmal suchen',
+              filled: false,
+              height: 56,
+              icon: LucideIcons.refreshCw,
+              onPressed: _searching ? null : _search,
+            ),
+          ),
+          if (_kind == PrinterKind.network) ...[
+            const SizedBox(width: KassaTokens.spaceLg),
+            Expanded(
+              child: PrimaryButton(
+                key: const Key('printer-address-open'),
+                label: 'Adresse eintippen',
+                filled: false,
+                height: 56,
+                icon: LucideIcons.keyboard,
+                onPressed: () => setState(() => _typing = true),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ];
+  }
+
+  /// Nach der Wahl: Testdruck, Ergebnis, Breite, Entfernen.
+  List<Widget> _chosen(BuildContext context, RegisterSettings s) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final result = _result;
+    return [
+      const SizedBox(height: KassaTokens.spaceXxl),
+      Container(height: KassaTokens.borderThin, color: c.line),
+      const SizedBox(height: KassaTokens.spaceXxl),
+      PrimaryButton(
+        key: const Key('printer-test'),
+        label: _testing ? 'Druckt …' : 'Testdruck',
+        height: 64,
+        icon: LucideIcons.printer,
+        onPressed: _testing ? null : _testPrint,
+      ),
+      if (result != null) ...[
+        const SizedBox(height: KassaTokens.spaceLg),
+        result.ok
+            ? _OkBox('Testdruck geschickt. Kommt Papier?')
+            : _WarnBox(result.message, key: const Key('printer-result')),
+      ],
+      const SizedBox(height: KassaTokens.spaceXxl),
+      Text(
+        'Breite',
+        style: text.bodyMedium!.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: KassaTokens.spaceMd),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Segmented<int>(
+          segments: const [(48, 'Normal'), (42, 'Schmal')],
+          selected: s.printerColumns,
+          keyFor: (v) => Key('printer-width-$v'),
+          onSelected: (v) => _save((s) => s.copyWith(printerColumns: v)),
+        ),
+      ),
+      const SizedBox(height: KassaTokens.spaceSm),
+      Text(
+        'Schmal wählen, wenn der Testdruck am Rand umbricht.',
+        style: text.bodyMedium!.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.3,
+          color: c.ink2,
+        ),
+      ),
+      const SizedBox(height: KassaTokens.spaceXl),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Pressable(
+          key: const Key('printer-remove'),
+          onTap: _remove,
+          minTapSize: const Size(0, KassaTokens.minTap),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: KassaTokens.spaceLg,
+              vertical: KassaTokens.spaceMd,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.trash2, size: 20, color: c.red),
+                const SizedBox(width: KassaTokens.spaceMd),
+                Text(
+                  'Drucker entfernen',
+                  style: text.bodyMedium!.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: c.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+}
+
+/// Ein gefundener Drucker: 64 dp hoch, antippbar. Der gewählte hat Rand und
+/// Haken.
+class _FoundRow extends StatelessWidget {
+  const _FoundRow({
+    required this.printer,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final FoundPrinter printer;
+  final bool selected;
+  final VoidCallback onTap;
+
+  String get _detail => switch (printer.kind) {
+    PrinterKind.network => printer.address.split(':').first,
+    PrinterKind.usb => 'USB-Anschluss',
+    _ => printer.address,
+  };
+
+  IconData get _icon => switch (printer.kind) {
+    PrinterKind.usb => LucideIcons.usb,
+    PrinterKind.bluetooth => LucideIcons.bluetooth,
+    _ => LucideIcons.wifi,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final instant = MediaQuery.disableAnimationsOf(context);
+    return Pressable(
+      key: Key('printer-found-${printer.address}'),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: instant ? Duration.zero : KassaTokens.motionFast,
+        curve: Curves.linear,
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? c.accentSoft : c.card,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+          border: Border.all(
+            color: selected ? c.accent : c.line,
+            width: KassaTokens.borderButton,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: selected ? c.card : c.fill,
+                borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
+              ),
+              child: Icon(
+                _icon,
+                size: 22,
+                color: selected ? c.accentInk : c.ink2,
+              ),
+            ),
+            const SizedBox(width: KassaTokens.spaceXl),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    printer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium!.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? c.accentInk : c.ink,
+                    ),
+                  ),
+                  Text(
+                    _detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodySmall!.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: c.ink2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected) Icon(LucideIcons.check, size: 22, color: c.accentInk),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Grauer Platzhalter einer Drucker-Zeile während der Suche.
+class _SkeletonRow extends StatelessWidget {
+  const _SkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return ExcludeSemantics(
+      child: Container(
+        key: const Key('printer-skeleton'),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: c.fill,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: c.fill2,
+                borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
+              ),
+            ),
+            const SizedBox(width: KassaTokens.spaceXl),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Container(
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: c.fill2,
+                      borderRadius: BorderRadius.circular(KassaTokens.radiusXs),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Satz in der Warnfläche: etwas stimmt nicht, und was zu tun ist.
+class _WarnBox extends StatelessWidget {
+  const _WarnBox(this.message, {super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+      ),
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          height: 1.3,
+          color: c.warnInk,
+        ),
+      ),
+    );
+  }
+}
+
+/// Satz in der grünen Fläche: es hat geklappt.
+class _OkBox extends StatelessWidget {
+  const _OkBox(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.veganBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+      ),
+      child: Text(
+        message,
+        key: const Key('printer-result'),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          height: 1.3,
+          color: c.veganFg,
+        ),
+      ),
+    );
+  }
+}

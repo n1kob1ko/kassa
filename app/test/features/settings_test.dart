@@ -268,8 +268,9 @@ void main() {
       await pumpSettings(t);
       expect(find.text('Bondrucker'), findsOneWidget);
       expect(find.text('Kartenterminal'), findsOneWidget);
-      expect(find.text('Kommt mit einem späteren Update.'), findsNWidgets(2));
-      expect(find.text('Noch nicht dabei'), findsNWidgets(2));
+      expect(find.text('Kommt mit einem späteren Update.'), findsOneWidget);
+      expect(find.text('Noch nicht dabei'), findsOneWidget);
+      expect(find.text('Nicht eingerichtet'), findsOneWidget);
       expect(find.textContaining('Kundenanzeige'), findsNothing);
     },
   );

@@ -5,13 +5,14 @@ import 'pressable.dart';
 import 'tokens.dart';
 
 /// Zahlenfeld: 3 Spalten, Abstand 8, Tastenhöhe 56. Meldet nur Tasten über
-/// [onKey]: `'0'` bis `'9'`, `','` und `'back'`. Es gibt nie eine
-/// Systemtastatur.
+/// [onKey]: `'0'` bis `'9'`, das Trennzeichen (`','`, bei [separator] `'.'`
+/// der Punkt) und `'back'`. Es gibt nie eine Systemtastatur.
 class Keypad extends StatelessWidget {
   const Keypad({
     super.key,
     required this.onKey,
     this.showComma = true,
+    this.separator = ',',
     this.keyHeight = KassaTokens.keypadKeyHeight,
   });
 
@@ -19,6 +20,10 @@ class Keypad extends StatelessWidget {
 
   /// Ohne Komma bleibt die Zelle leer, damit das Raster gleich bleibt.
   final bool showComma;
+
+  /// Das Zeichen der Taste neben der Null: Komma (Beträge) oder Punkt
+  /// (Adressen, dann mit dem Schlüssel `key-dot`).
+  final String separator;
 
   /// Höhe einer Taste. Die Anmeldung nutzt 72.
   final double keyHeight;
@@ -42,12 +47,12 @@ class Keypad extends StatelessWidget {
 
     final comma = showComma
         ? _KeypadKey(
-            key: const Key('key-comma'),
+            key: Key(separator == '.' ? 'key-dot' : 'key-comma'),
             height: keyHeight,
             quiet: true,
-            semanticLabel: 'Komma',
-            onTap: () => onKey(','),
-            child: Text(',', style: _keyStyle(context)),
+            semanticLabel: separator == '.' ? 'Punkt' : 'Komma',
+            onTap: () => onKey(separator),
+            child: Text(separator, style: _keyStyle(context)),
           )
         : SizedBox(height: keyHeight);
     final back = _KeypadKey(

@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/devices/printer_discovery.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/fake_devices.dart';
 import '../support/settings_pump.dart';
 
 // Bildvergleich der Einstellungen gegen den freigegebenen Entwurf. Neu
@@ -38,4 +41,34 @@ void main() {
       matchesGoldenFile('goldens/einstellungen_neu_einspielen_hell.png'),
     );
   });
+
+  for (final (name, brightness) in [
+    ('hell', Brightness.light),
+    ('dunkel', Brightness.dark),
+  ]) {
+    testWidgets('Einstellungen, Bondrucker einrichten ($name)', (t) async {
+      await pumpSettings(
+        t,
+        brightness: brightness,
+        discovery: FakeDiscovery(
+          foundNetwork: [
+            const FoundPrinter(
+              kind: PrinterKind.network,
+              name: 'Drucker 192.168.1.50',
+              address: '192.168.1.50:9100',
+            ),
+          ],
+        ),
+      );
+      await t.tap(find.byKey(const Key('printer-row')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('printer-found-192.168.1.50:9100')));
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile('goldens/einstellungen_drucker_$name.png'),
+      );
+    });
+  }
 }

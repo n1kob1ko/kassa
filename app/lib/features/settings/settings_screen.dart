@@ -7,6 +7,7 @@ import '../../data/settings_repository.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
+import 'printer_panel.dart';
 import 'reimport_panel.dart';
 import 'settings_rows.dart';
 
@@ -47,11 +48,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final devices = SettingsCard(
       title: 'Geräte an dieser Kassa',
       rows: [
-        const SettingsRow(
-          title: 'Bondrucker',
-          help: 'Kommt mit einem späteren Update.',
-          control: NeutralPill('Noch nicht dabei'),
-        ),
+        const PrinterPanel(),
         const SettingsRow(
           title: 'Kartenterminal',
           help: 'Kommt mit einem späteren Update.',
