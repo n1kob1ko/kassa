@@ -75,7 +75,8 @@ void main() {
   testWidgets('ohne Drucker steht "Nicht eingerichtet"', (t) async {
     await pumpSettings(t);
     expect(find.byKey(const Key('printer-row')), findsOneWidget);
-    expect(find.text('Nicht eingerichtet'), findsOneWidget);
+    // Der Drucker und die Signatur der Bons.
+    expect(find.text('Nicht eingerichtet'), findsNWidgets(2));
     expect(find.text('Noch nicht dabei'), findsNothing);
     expect(find.byKey(const Key('printer-test')), findsNothing);
   });
@@ -92,7 +93,8 @@ void main() {
     );
     await t.pumpAndSettle();
     expect(find.text('Drucker 192.168.1.50'), findsOneWidget);
-    expect(find.text('Nicht eingerichtet'), findsNothing);
+    // Nur noch die Signatur der Bons.
+    expect(find.text('Nicht eingerichtet'), findsOneWidget);
   });
 
   testWidgets('Tipp öffnet das Feld in der Karte, noch ein Tipp schließt es', (
@@ -331,7 +333,8 @@ void main() {
     expect(s.printerAddress, isNull);
     expect(s.printerName, isNull);
     expect(find.byKey(const Key('printer-test')), findsNothing);
-    expect(find.text('Nicht eingerichtet'), findsOneWidget);
+    // Der Drucker und die Signatur der Bons.
+    expect(find.text('Nicht eingerichtet'), findsNWidgets(2));
   });
 
   testWidgets('nichts gefunden: der Satz passt zur Verbindung, Nochmal suchen '

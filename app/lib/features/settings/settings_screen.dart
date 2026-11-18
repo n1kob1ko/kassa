@@ -9,12 +9,14 @@ import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
+import 'card_check_screen.dart';
 import 'card_panel.dart';
 import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
 import 'server_panel.dart';
 import 'settings_rows.dart';
+import 'signature_panel.dart';
 
 /// Der Bereich Einstellungen (nur Chef): Geräte, Anzeige und Kassa in Karten.
 /// Jede Änderung wird sofort gespeichert, der Bildschirm folgt dem Strom der
@@ -24,6 +26,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     super.key,
     required this.testingDevices,
     required this.onTestingDevices,
+    required this.checkingCard,
+    required this.onCheckingCard,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -31,6 +35,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
   /// "Zurück" des Tablets sie schließen kann.
   final bool testingDevices;
   final ValueChanged<bool> onTestingDevices;
+
+  /// Die Seite "Karte prüfen" ersetzt die Karten wie "Geräte testen".
+  final bool checkingCard;
+  final ValueChanged<bool> onCheckingCard;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -57,6 +65,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return DeviceTestScreen(
         key: const Key('device-test'),
         onBack: () => widget.onTestingDevices(false),
+      );
+    }
+    if (widget.checkingCard) {
+      return CardCheckScreen(
+        key: const Key('card-check'),
+        onBack: () => widget.onCheckingCard(false),
       );
     }
     final c = KassaColors.of(context);
@@ -174,7 +188,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: devices),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    devices,
+                    gap,
+                    SignaturePanel(
+                      onOpenCardCheck: () => widget.onCheckingCard(true),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(width: KassaTokens.spaceXxl),
               Expanded(
                 child: Column(

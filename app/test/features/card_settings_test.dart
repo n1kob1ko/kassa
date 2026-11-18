@@ -58,7 +58,8 @@ void main() {
     await _settings(t, status: _none);
     expect(find.byKey(const Key('card-row')), findsOneWidget);
     expect(find.text('Diese Version wurde ohne SumUp gebaut.'), findsOneWidget);
-    expect(find.text('Nicht eingerichtet'), findsNWidgets(2)); // Drucker, Karte
+    // Drucker, Karte, Signatur der Bons.
+    expect(find.text('Nicht eingerichtet'), findsNWidgets(3));
     expect(find.byKey(const Key('card-login')), findsNothing);
     expect(find.byKey(const Key('card-logout')), findsNothing);
     expect(find.text('Kommt mit einem späteren Update.'), findsNothing);

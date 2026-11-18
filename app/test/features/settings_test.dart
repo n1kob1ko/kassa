@@ -269,7 +269,8 @@ void main() {
     expect(find.text('Kartenterminal'), findsOneWidget);
     expect(find.text('Kommt mit einem späteren Update.'), findsNothing);
     expect(find.text('Noch nicht dabei'), findsNothing);
-    expect(find.text('Nicht eingerichtet'), findsOneWidget); // der Drucker
+    // Der Drucker und die Signatur der Bons.
+    expect(find.text('Nicht eingerichtet'), findsNWidgets(2));
     expect(find.textContaining('Kundenanzeige'), findsNothing);
   });
 

@@ -34,8 +34,11 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// Die Seite "Geräte testen" ersetzt die Karten der Einstellungen.
   bool _testingDevices = false;
 
+  /// Die Seite "Karte prüfen" ersetzt die Karten der Einstellungen.
+  bool _checkingCard = false;
+
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
-  /// testen", dann die Einstellungen. An der Kassa tut es nichts, die App
+  /// testen" oder "Karte prüfen", dann die Einstellungen. An der Kassa tut es nichts, die App
   /// verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -44,6 +47,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     if (ref.read(unclearCardPaymentsProvider).isNotEmpty) return;
     if (_testingDevices) {
       setState(() => _testingDevices = false);
+    } else if (_checkingCard) {
+      setState(() => _checkingCard = false);
     } else if (_settingsOpen) {
       setState(() => _settingsOpen = false);
     }
@@ -83,6 +88,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _area = a;
                           _settingsOpen = false;
                           _testingDevices = false;
+                          _checkingCard = false;
                         });
                       },
                       staffName: staff.name,
@@ -96,6 +102,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                         setState(() {
                           _settingsOpen = !_settingsOpen;
                           _testingDevices = false;
+                          _checkingCard = false;
                         });
                       },
                       businessName: ref
@@ -113,6 +120,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                             _area = AppArea.close;
                             _settingsOpen = false;
                             _testingDevices = false;
+                            _checkingCard = false;
                           });
                         },
                       ),
@@ -124,6 +132,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                                 testingDevices: _testingDevices,
                                 onTestingDevices: (v) =>
                                     setState(() => _testingDevices = v),
+                                checkingCard: _checkingCard,
+                                onCheckingCard: (v) =>
+                                    setState(() => _checkingCard = v),
                               ),
                             )
                           : _areaWidget(
