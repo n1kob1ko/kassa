@@ -115,13 +115,16 @@ void main() {
       ),
       throwsA(isA<FormatException>()),
     );
-    // Jedes einzelne Byte kaputt: nie etwas anderes als FormatException.
-    for (var i = 0; i < testCertificate.length; i++) {
-      final broken = Uint8List.fromList(testCertificate)..[i] ^= 0xff;
-      try {
-        CardCertificate.parse(broken);
-      } on FormatException {
-        // erlaubt
+    // Jedes einzelne Byte kaputt: immer derselbe feste Text, ohne Bytes.
+    for (final mask in [0xff, 0x01, 0x80]) {
+      for (var i = 0; i < testCertificate.length; i++) {
+        final broken = Uint8List.fromList(testCertificate)..[i] ^= mask;
+        try {
+          CardCertificate.parse(broken);
+        } on FormatException catch (e) {
+          expect(e.message, 'Kein gültiges Zertifikat.', reason: 'Byte $i');
+          expect(e.source, isNull, reason: 'Byte $i');
+        }
       }
     }
     try {

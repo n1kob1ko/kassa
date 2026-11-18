@@ -43,9 +43,9 @@ class CardCertificate {
   static CardCertificate parse(Uint8List der) {
     try {
       return _parse(der);
-    } on FormatException {
-      rethrow;
     } catch (_) {
+      // Jeder Fehler, auch die FormatExceptions der Bibliotheken, wird zu
+      // einem festen Text: deren Texte und `source` enthalten Eingabebytes.
       throw const FormatException('Kein gültiges Zertifikat.');
     }
   }
