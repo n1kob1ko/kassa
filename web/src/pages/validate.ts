@@ -14,9 +14,3 @@ export function emailProblem(email: string): string | undefined {
 export function passwordLength(password: string): number {
   return [...password].length;
 }
-
-/** "Bitte in 3 Minuten nochmal." aus den Sekunden, die der Server nennt. */
-export function waitText(seconds: number | undefined): string {
-  const minutes = Math.max(1, Math.ceil((seconds ?? 60) / 60));
-  return `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`;
-}

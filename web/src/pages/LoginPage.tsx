@@ -4,7 +4,7 @@ import { afterLoginPath, useLogin, useMe } from '../api/auth';
 import { Button } from '../ui/Button';
 import { TextField } from '../ui/TextField';
 import { AuthLayout, FormAlert, formClass } from './AuthLayout';
-import { emailProblem, waitText } from './validate';
+import { emailProblem } from './validate';
 
 type Problems = { email?: string; password?: string; form?: string };
 
@@ -42,9 +42,8 @@ export function LoginPage() {
           if (err.code === 'login_failed') {
             setProblems({ form: 'E-Mail oder Passwort stimmt nicht.' });
             passwordRef.current?.select();
-          } else if (err.code === 'too_many_attempts') {
-            setProblems({ form: waitText(err.retryAfterSeconds) });
           } else {
+            // Auch bei zu vielen Versuchen: Der Server nennt die Wartezeit, egal ob für die E-Mail oder die Adresse.
             setProblems({ form: err.message });
           }
         },

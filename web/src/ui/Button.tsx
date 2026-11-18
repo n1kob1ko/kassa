@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { Link, type LinkProps } from 'react-router';
 import styles from './Button.module.css';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -28,5 +29,14 @@ export function Button({ variant, busy = false, className, children, type, disab
       <span className={styles.label}>{children}</span>
       {busy && <span className={styles.spinner} aria-hidden="true" />}
     </button>
+  );
+}
+
+/** Ein Link, der wie ein Knopf aussieht: für einen Weg zu einer anderen Seite. */
+export function ButtonLink({ variant, className, children, ...rest }: LinkProps & { variant: 'primary' | 'secondary' }) {
+  return (
+    <Link className={[styles.button, styles[variant], className].filter(Boolean).join(' ')} {...rest}>
+      <span className={styles.label}>{children}</span>
+    </Link>
   );
 }

@@ -69,10 +69,11 @@ test('Betrieb anlegen, Chef anlegen, Kassa koppeln', async ({ page }) => {
   await expect(dialog.getByText('Speisekarten-Datei hierher ziehen oder auswählen')).toBeVisible();
   await dialog.locator('input[type=file]').setInputFiles(MENU_FILE);
 
-  await expect(page).toHaveURL(/\/b\/[0-9a-f-]{36}\/kassen$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Kassen' })).toBeVisible();
+  // Ohne Chef kann sich am Tablet niemand anmelden: nach dem Anlegen geht es zuerst zu den Mitarbeitern.
+  await expect(page).toHaveURL(/\/b\/[0-9a-f-]{36}\/mitarbeiter$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Mitarbeiter' })).toBeVisible();
   await expect(page.getByText('Beispiel-Imbiss').first()).toBeVisible();
-  await expect(page.getByText('Noch keine Kassa gekoppelt.')).toBeVisible();
+  await expect(page.getByText('Noch kein Mitarbeiter. Lege zuerst einen Chef an.')).toBeVisible();
 
   // Die Leiste: Alle Betriebe, Kassen, Mitarbeiter, Speisekarte.
   const nav = page.getByRole('navigation', { name: 'Bereiche' }).first();
@@ -80,8 +81,15 @@ test('Betrieb anlegen, Chef anlegen, Kassa koppeln', async ({ page }) => {
     await expect(nav.getByRole('link', { name: label })).toBeVisible();
   }
 
-  await nav.getByRole('link', { name: 'Mitarbeiter' }).click();
-  await expect(page.getByText('Noch kein Mitarbeiter. Lege zuerst einen Chef an.')).toBeVisible();
+  // Kassen ohne Chef: statt "Kassa koppeln" der Hinweis mit dem Weg zu den Mitarbeitern.
+  await nav.getByRole('link', { name: 'Kassen' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kassen' })).toBeVisible();
+  await expect(page.getByText('Noch keine Kassa gekoppelt.')).toBeVisible();
+  await expect(page.getByText('Lege zuerst einen Chef mit PIN an.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kassa koppeln' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Zu den Mitarbeitern' }).click();
+  await expect(page).toHaveURL(/\/b\/[0-9a-f-]{36}\/mitarbeiter$/);
+
   await page.getByRole('button', { name: 'Mitarbeiter anlegen' }).click();
   await page.getByRole('dialog').getByLabel('Name').fill('Chefin');
   await page.getByRole('dialog').getByLabel('PIN').fill('1234');
@@ -90,6 +98,7 @@ test('Betrieb anlegen, Chef anlegen, Kassa koppeln', async ({ page }) => {
   await expect(row(page, 'Chefin')).toContainText('Chef');
 
   await nav.getByRole('link', { name: 'Kassen' }).click();
+  await expect(page.getByText('Lege zuerst einen Chef mit PIN an.')).toHaveCount(0);
   await page.getByRole('button', { name: 'Kassa koppeln' }).click();
   await expect(page.getByRole('dialog').getByLabel('Name')).toHaveValue('Kassa 1');
   await page.getByRole('dialog').getByRole('button', { name: 'Code erzeugen' }).click();
@@ -97,7 +106,11 @@ test('Betrieb anlegen, Chef anlegen, Kassa koppeln', async ({ page }) => {
   const code = page.getByTestId('pairing-code');
   await expect(code).toHaveText(/^\d{4} \d{4}$/);
   await expect(page.getByRole('dialog').getByText(/^gilt noch (14:[3-5]\d|15:00)$/)).toBeVisible();
-  await expect(page.getByRole('dialog').getByText('Am Tablet: Mit Code koppeln')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Neues Tablet: Mit Code koppeln')).toBeVisible();
+  await expect(
+    page.getByRole('dialog').getByText('Tablet mit Speisekarte: Einstellungen, Server, Mit Server verbinden'),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Am Tablet: Mit Code koppeln')).toHaveCount(0);
 
   const digits = ((await code.textContent()) ?? '').replace(' ', '');
   const paired = await page.request.post('/api/device/pair', {
@@ -247,6 +260,7 @@ test('Person bearbeiten: Name, Rolle und PIN neu setzen', async ({ page }) => {
 
 test('sperren zeigt "Gesperrt", aufheben zeigt wieder "Verbunden"', async ({ page }) => {
   const b = await createBusiness(page);
+  await createStaff(page, b.id, 'Chefin', 'chef', '1234');
   await pairRegister(page, b.id, 'Theke');
   await page.goto(`/b/${b.id}/kassen`);
   await expect(row(page, 'Theke')).toContainText('Verbunden');
@@ -393,6 +407,7 @@ test('Hinweis: bleibt stehen, solange die Maus darauf ruht, auch wenn ein neuer 
 
 test('Kopplungscode läuft ab: "Der Code ist abgelaufen." mit neuem Code', async ({ page }) => {
   const b = await createBusiness(page);
+  await createStaff(page, b.id, 'Chefin', 'chef', '1234');
   await page.goto(`/b/${b.id}/kassen`);
   await page.clock.install();
   await page.getByRole('button', { name: 'Kassa koppeln' }).click();
@@ -414,6 +429,32 @@ test('Kopplungscode läuft ab: "Der Code ist abgelaufen." mit neuem Code', async
   await page.getByRole('button', { name: 'Neuen Code erzeugen' }).click();
   await expect(code).toHaveText(/^\d{4} \d{4}$/);
   expect(await code.textContent()).not.toBe(first);
+});
+
+test('Server antwortet no_chef: der Satz steht im Dialog', async ({ page }) => {
+  const b = await createBusiness(page);
+  // Die Seite glaubt an eine Chefin (etwa eben in einem anderen Fenster stillgelegt), der Server kennt keine.
+  await page.route(`**/api/admin/businesses/${b.id}/staff`, (route) =>
+    route.fulfill({ json: { staff: [{ id: '22222222-2222-4222-8222-222222222222', name: 'Chefin', role: 'chef', archived: false }] } }),
+  );
+  await page.goto(`/b/${b.id}/kassen`);
+  await page.getByRole('button', { name: 'Kassa koppeln' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Code erzeugen' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('Lege zuerst einen Chef mit PIN an.');
+  await expect(page.getByTestId('pairing-code')).toHaveCount(0);
+});
+
+test('Kassen in der Liste, aber kein Chef mehr: Hinweis statt "Kassa koppeln" im Kopf', async ({ page }) => {
+  const b = await createBusiness(page);
+  await createStaff(page, b.id, 'Chefin', 'chef', '1234');
+  await pairRegister(page, b.id, 'Theke');
+  await page.route(`**/api/admin/businesses/${b.id}/staff`, (route) => route.fulfill({ json: { staff: [] } }));
+  await page.goto(`/b/${b.id}/kassen`);
+  await expect(row(page, 'Theke')).toContainText('Verbunden');
+  await expect(page.getByText('Lege zuerst einen Chef mit PIN an.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kassa koppeln' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Zu den Mitarbeitern' }).click();
+  await expect(page).toHaveURL(new RegExp(`/b/${b.id}/mitarbeiter$`));
 });
 
 test('ein Chef sieht nur seinen Betrieb, keine Betriebe und keine Installationsdateien', async ({ page }) => {

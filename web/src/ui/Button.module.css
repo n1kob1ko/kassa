@@ -115,3 +115,18 @@
     opacity: 0.6;
   }
 }
+
+/* Als Link (ButtonLink): ohne Unterstreichung, die Farbe der Variante auch beim Darüberfahren. */
+a.button {
+  text-decoration: none;
+}
+
+a.primary,
+a.primary:hover {
+  color: var(--on-accent);
+}
+
+a.secondary,
+a.secondary:hover {
+  color: var(--ink);
+}

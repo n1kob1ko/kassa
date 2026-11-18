@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
-import { E2E_PROVIDER, E2E_SETUP_TOKEN } from './server';
+import { E2E_CLIENT_HEADER, E2E_PROVIDER, E2E_SETUP_TOKEN } from './server';
 
 /**
  * `test` mit einer Prüfung nach jedem Test: kein Fehler im Skript der Seite und keine Meldung in der Konsole,
@@ -7,6 +7,11 @@ import { E2E_PROVIDER, E2E_SETUP_TOKEN } from './server';
  * meldet Chromium als "Failed to load resource"; die zählen nicht.
  */
 export const test = base.extend<{ pageProblems: string[] }>({
+  // Alle Tests kommen von 127.0.0.1. Der Server zählt Anmeldungen pro Adresse (30 in 15 Minuten) und liest sie hier
+  // aus E2E_CLIENT_HEADER (CLIENT_IP_HEADER in server.ts): Jeder Test ist so ein eigenes Gegenüber.
+  extraHTTPHeaders: async ({}, use, testInfo) => {
+    await use({ [E2E_CLIENT_HEADER]: `e2e-${testInfo.testId}` });
+  },
   pageProblems: [
     async ({ page }, use) => {
       const problems: string[] = [];

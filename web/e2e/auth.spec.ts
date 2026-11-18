@@ -100,6 +100,24 @@ test('nach zu vielen Fehlversuchen nennt die Anmeldung die Wartezeit', async ({ 
   await expect(page.getByRole('alert')).toHaveText('Zu viele Versuche. Bitte in 1 Minute nochmal.');
 });
 
+test('Grenze pro Adresse: die Anmeldung zeigt den Satz des Servers', async ({ page }) => {
+  await page.route('**/api/auth/login', (route) =>
+    route.fulfill({
+      status: 429,
+      headers: { 'retry-after': '840' },
+      json: {
+        error: { code: 'too_many_attempts', message: 'Zu viele Versuche. Bitte in 14 Minuten nochmal.' },
+        retryAfterSeconds: 60,
+      },
+    }),
+  );
+  await page.goto('/anmelden');
+  await page.getByLabel('E-Mail').fill('niemand@example.com');
+  await passwordField(page).fill('falsches-passwort');
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Zu viele Versuche. Bitte in 14 Minuten nochmal.');
+});
+
 test('ohne Anmeldung führt /betriebe nach /anmelden', async ({ page }) => {
   await page.goto('/betriebe');
   await expect(page).toHaveURL(/\/anmelden$/);

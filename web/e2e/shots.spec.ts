@@ -219,8 +219,19 @@ for (const size of sizes) {
         await shoot(page, `kassen-sperren-${suffix}`);
         await page.keyboard.press('Escape');
 
+        await page.route(`**/api/admin/businesses/${full}/staff`, (route) => route.fulfill({ json: { staff: [] } }));
+        await page.reload();
+        await expect(page.getByRole('link', { name: 'Zu den Mitarbeitern' })).toBeVisible();
+        await shoot(page, `kassen-ohne-chef-liste-${suffix}`);
+        await page.unroute(`**/api/admin/businesses/${full}/staff`);
+
         await page.goto(`/b/${empty}/kassen`);
-        await expect(page.getByText('Noch keine Kassa gekoppelt.')).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Zu den Mitarbeitern' })).toBeVisible();
+        await shoot(page, `kassen-ohne-chef-${suffix}`);
+
+        await post(page, `/api/admin/businesses/${empty}/staff`, { name: 'Chefin', role: 'chef', pin: '1234' });
+        await page.reload();
+        await expect(page.getByRole('button', { name: 'Kassa koppeln' })).toBeVisible();
         await shoot(page, `kassen-leer-${suffix}`);
 
         await page.getByRole('button', { name: 'Kassa koppeln' }).click();
@@ -239,6 +250,7 @@ for (const size of sizes) {
         await signInAsProvider(page);
         await theScene(page);
         const empty = await freshBusiness(page);
+        await post(page, `/api/admin/businesses/${empty}/staff`, { name: 'Chefin', role: 'chef', pin: '1234' });
         await page.goto(`/b/${empty}/kassen`);
         await page.clock.install();
         await page.getByRole('button', { name: /Kassa koppeln|Koppeln/ }).first().click();

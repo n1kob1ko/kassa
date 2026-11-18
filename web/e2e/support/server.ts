@@ -20,6 +20,8 @@ import pg from 'pg';
 // Beide mindestens 32 Zeichen lang, wie der Server es für echte Schlüssel verlangt.
 export const E2E_SETUP_TOKEN = 'e2e-setup-token-0123456789abcdefghij';
 export const E2E_RELEASE_TOKEN = 'e2e-release-token-0123456789abcdefghi';
+/** Kopfzeile, die der Server als Adresse des Clients liest (CLIENT_IP_HEADER). fixtures.ts setzt sie pro Test. */
+export const E2E_CLIENT_HEADER = 'x-kassa-e2e-client';
 /** Das Anbieter-Konto, das auth.spec.ts über "Einrichten" anlegt. */
 export const E2E_PROVIDER = { email: 'beispiel@example.com', password: 'beispiel-passwort-123' };
 
@@ -146,6 +148,7 @@ export default async function startE2eServer(): Promise<() => Promise<void>> {
         PUBLIC_URL: url,
         SETUP_TOKEN: E2E_SETUP_TOKEN,
         RELEASE_TOKEN: E2E_RELEASE_TOKEN,
+        CLIENT_IP_HEADER: E2E_CLIENT_HEADER,
         FILE_DIR: join(tmp, 'files'),
         WEB_DIR: 'web/dist',
       },

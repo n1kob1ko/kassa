@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCreatePairingCode, useRegisters, useSetBlocked, type PairingCode, type Register } from '../api/registers';
+import { staffKey, useStaff } from '../api/staff';
 import { ApiError } from '../api/client';
 import { ago } from '../format';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { CodeDisplay, useRemaining } from '../ui/CodeDisplay';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { DataList, DataRow, ListSkeleton, LoadError } from '../ui/DataList';
@@ -21,6 +23,8 @@ import styles from './RegistersPage.module.css';
 /** Wie oft die Liste bei offenem Kopplungsdialog neu geladen wird. */
 const POLL_MS = 3000;
 const FORM_ID = 'kopplung-formular';
+/** Ohne Chef gibt der Server keinen Code (409 no_chef): am Tablet könnte sich sonst niemand anmelden. */
+const NO_CHEF = 'Lege zuerst einen Chef mit PIN an.';
 
 type Issued = PairingCode & { expires: Date; knownIds: string[] };
 
@@ -40,6 +44,7 @@ function PairDialog({
   onClose: () => void;
 }) {
   const create = useCreatePairingCode(business);
+  const queryClient = useQueryClient();
   const [name, setName] = useState(`Kassa ${registers.length + 1}`);
   const [problem, setProblem] = useState<{ field?: string; form?: string }>({});
   const [issued, setIssued] = useState<Issued | null>(null);
@@ -61,7 +66,15 @@ function PairDialog({
     const knownIds = registers.map((r) => r.id);
     create.mutate(trimmed, {
       onSuccess: (code) => setIssued({ ...code, expires: new Date(code.expiresAt), knownIds }),
-      onError: (err: ApiError) => setProblem(err.code === 'name_invalid' ? { field: err.message } : { form: err.message }),
+      onError: (err: ApiError) => {
+        if (err.code === 'name_invalid') return setProblem({ field: err.message });
+        if (err.code === 'no_chef') {
+          // Die Seite hielt die Liste der Mitarbeiter für aktuell: neu laden, dann zeigt sie den Hinweis.
+          void queryClient.invalidateQueries({ queryKey: staffKey(business) });
+          return setProblem({ form: NO_CHEF });
+        }
+        setProblem({ form: err.message });
+      },
     });
   };
 
@@ -89,7 +102,10 @@ function PairDialog({
         {expired ? (
           <p className={styles.help}>Erzeuge einen neuen Code und gib ihn am Tablet ein.</p>
         ) : (
-          <p className={styles.help}>Am Tablet: Mit Code koppeln</p>
+          <div className={styles.where}>
+            <p className={styles.help}>Neues Tablet: Mit Code koppeln</p>
+            <p className={styles.help}>Tablet mit Speisekarte: Einstellungen, Server, Mit Server verbinden</p>
+          </div>
         )}
         {problem.form && <FormAlert>{problem.form}</FormAlert>}
       </div>
@@ -152,6 +168,9 @@ export function RegistersPage() {
   const pair = useDialogState();
   const confirm = useDialogState<Register>();
   const query = useRegisters(b.id, pair.open ? POLL_MS : undefined);
+  const staff = useStaff(b.id);
+  // Solange die Liste lädt, weder Knopf noch Hinweis. Kann sie nicht laden, entscheidet der Server (no_chef).
+  const hasChef = staff.data ? staff.data.some((s) => s.role === 'chef' && !s.archived) : staff.isError ? true : undefined;
   const setBlocked = useSetBlocked(b.id);
 
   const block = (r: Register, blocked: boolean) =>
@@ -166,17 +185,32 @@ export function RegistersPage() {
     </Button>
   );
 
+  const toStaff = (variant: 'primary' | 'secondary') => (
+    <ButtonLink variant={variant} to={`/b/${b.id}/mitarbeiter`}>
+      Zu den Mitarbeitern
+    </ButtonLink>
+  );
+  const headerAction =
+    hasChef === undefined ? undefined : hasChef ? (
+      addButton
+    ) : (
+      <div className={styles.noChef}>
+        <p className={styles.noChefText}>{NO_CHEF}</p>
+        {toStaff('secondary')}
+      </div>
+    );
+
   return (
     <>
-      <PageHeader title="Kassen" subtitle={b.name} actions={list && list.length > 0 ? addButton : undefined} />
+      <PageHeader title="Kassen" subtitle={b.name} actions={list && list.length > 0 ? headerAction : undefined} />
 
       {query.isPending && <ListSkeleton label="Kassen werden geladen" />}
       {query.isError && !list && <LoadError message={query.error.message} onRetry={() => void query.refetch()} />}
       {list?.length === 0 && (
         <EmptyState
           title="Noch keine Kassa gekoppelt."
-          text="Koppel das erste Tablet: Du bekommst einen Code, den du in der Kassa-App eingibst."
-          action={addButton}
+          text={hasChef === false ? NO_CHEF : 'Kopple das erste Tablet: Du bekommst einen Code, den du in der Kassa-App eingibst.'}
+          action={hasChef === undefined ? undefined : hasChef ? addButton : toStaff('primary')}
         />
       )}
       {list && list.length > 0 && (

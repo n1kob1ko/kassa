@@ -21,7 +21,8 @@ function CreateBusinessDialog({ open, onClose }: { open: boolean; onClose: () =>
   const upload = async (file: File) => {
     setFileName(file.name);
     create.mutate(await file.text(), {
-      onSuccess: ({ business }) => void navigate(`/b/${business.id}/kassen`),
+      // Zuerst ein Chef mit PIN: ohne ihn gibt es keinen Kopplungscode.
+      onSuccess: ({ business }) => void navigate(`/b/${business.id}/mitarbeiter`),
     });
   };
 
