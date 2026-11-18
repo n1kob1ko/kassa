@@ -9,6 +9,8 @@ import 'channel_transport.dart';
 import 'network_transport.dart';
 import 'printer.dart';
 
+export 'card_terminal.dart' show cardTerminalProvider;
+
 typedef TransportFactory = PrinterTransport? Function(
   RegisterSettings settings,
 );

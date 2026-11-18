@@ -310,4 +310,18 @@ void main() {
     expect(s.expectedCashCents, 16820);
     expect(s.cashReceiptCount, 1);
   });
+
+  test(
+    'Abschluss trennt Bar und Karte: erwartetes Bargeld zählt nur bar',
+    () async {
+      await days.setOpeningFloat(15000);
+      await sell('s1'); // 1820 bar
+      final card = await shop.sellCard('c1');
+      final s = (await days.summary())!;
+      expect(s.cashRevenueCents, 1820);
+      expect(s.cardRevenueCents, card.totalCents);
+      expect((s.cashReceiptCount, s.cardReceiptCount), (1, 1));
+      expect(s.expectedCashCents, 15000 + 1820);
+    },
+  );
 }

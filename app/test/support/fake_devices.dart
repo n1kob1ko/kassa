@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/domain/receipt.dart';
@@ -97,5 +98,74 @@ class FakeDiscovery implements PrinterDiscovery {
   Future<bool> requestAccess(PrinterKind kind, String address) async {
     accessRequests.add('${kind.name}:$address');
     return access;
+  }
+}
+
+/// Ein Aufruf von `pay` am falschen Terminal.
+class CardPayment {
+  const CardPayment(this.paymentId, this.amountCents, this.title);
+
+  final String paymentId;
+  final int amountCents;
+  final String title;
+}
+
+/// Falsches Kartenterminal. [next] ist ein [CardPaymentResult] oder eine
+/// Funktion, die eines (auch als `Future`) liefert oder wirft.
+class FakeCardTerminal implements CardTerminal {
+  FakeCardTerminal({
+    this.statusValue = const CardTerminalStatus(CardTerminalState.ready),
+  });
+
+  CardTerminalStatus statusValue;
+
+  /// Ein [CardPaymentResult] oder eine Funktion `() => ...` dazu.
+  Object next = const CardPaid(txCode: 'TX1');
+
+  /// Solange gesetzt, wartet `pay` darauf ("hängt").
+  Completer<CardPaymentResult>? hang;
+
+  /// Die Aufrufe von `pay` in der Reihenfolge.
+  final List<CardPayment> payments = [];
+
+  /// Die übrigen Aufrufe: `login`, `logout`, `readerSettings`, `prepare`.
+  final List<String> calls = [];
+
+  @override
+  String get providerName => 'sumup';
+
+  @override
+  int get minimumCents => 100;
+
+  @override
+  Future<CardTerminalStatus> status() async => statusValue;
+
+  @override
+  Future<CardTerminalStatus> login() async {
+    calls.add('login');
+    return statusValue;
+  }
+
+  @override
+  Future<void> logout() async => calls.add('logout');
+
+  @override
+  Future<void> openReaderSettings() async => calls.add('readerSettings');
+
+  @override
+  Future<void> prepare() async => calls.add('prepare');
+
+  @override
+  Future<CardPaymentResult> pay({
+    required String paymentId,
+    required int amountCents,
+    required String title,
+  }) async {
+    payments.add(CardPayment(paymentId, amountCents, title));
+    final h = hang;
+    if (h != null) return h.future;
+    final n = next;
+    if (n is CardPaymentResult) return n;
+    return await (n as dynamic Function())() as CardPaymentResult;
   }
 }

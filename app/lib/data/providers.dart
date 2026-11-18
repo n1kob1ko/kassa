@@ -8,6 +8,7 @@ import '../domain/catalog.dart';
 import '../domain/day.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
+import 'card_payment_repository.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
@@ -47,6 +48,13 @@ final receiptRepositoryProvider = Provider(
     ref.watch(databaseProvider),
     ref.watch(clockProvider),
     ref.watch(dayRepositoryProvider),
+  ),
+);
+
+final cardPaymentRepositoryProvider = Provider(
+  (ref) => CardPaymentRepository(
+    ref.watch(databaseProvider),
+    ref.watch(clockProvider),
   ),
 );
 

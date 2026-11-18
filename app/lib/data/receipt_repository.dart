@@ -65,33 +65,11 @@ class ReceiptRepository {
       if (cart.isEmpty) throw const EmptyCartException();
       if (givenCents < cart.totalCents) throw const InsufficientCashException();
 
-      final groupNames = await _groupNamesOf(cart);
-      final lines = [
-        for (var i = 0; i < cart.lines.length; i++)
-          ReceiptLine(
-            position: i,
-            itemId: cart.lines[i].item.id,
-            name: cart.lines[i].item.name,
-            info: cart.lines[i].item.info,
-            unitPriceCents: cart.lines[i].unitPriceCents,
-            quantity: cart.lines[i].quantity,
-            unitDepositCents: cart.lines[i].unitDepositCents,
-            options: [
-              for (final o in cart.lines[i].options)
-                ReceiptLineOption(
-                  groupName: groupNames[o.id] ?? '',
-                  optionName: o.name,
-                  surchargeCents: o.surchargeCents,
-                ),
-            ],
-            grossByRate: grossByRateOfLine(cart.lines[i]),
-          ),
-      ];
       final saved = await _write(
         id: saleId,
         kind: ReceiptKind.sale,
         staff: staff,
-        lines: lines,
+        lines: await _linesOf(cart),
         goodsCents: cart.goodsCents,
         depositCents: cart.depositCents,
         totalCents: cart.totalCents,
@@ -107,6 +85,79 @@ class ReceiptRepository {
       );
       return saved;
     });
+  }
+
+  /// Schließt einen Kartenverkauf ab, nachdem das Terminal bezahlt gemeldet
+  /// hat. Bon, Zahlung, Entwurf und offene Zahlung ändern sich in einem
+  /// Schritt. Gibt es den Bon zu [saleId] schon, kommt er zurück; die offene
+  /// Zahlung mit dieser Id geht trotzdem weg.
+  Future<Receipt> finalizeCardSale({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+    required String provider,
+    String? txCode,
+    String? cardScheme,
+    String? cardLast4,
+  }) {
+    return _db.transaction(() async {
+      final existing = await _find(saleId);
+      if (existing == null && cart.isEmpty) throw const EmptyCartException();
+      final saved =
+          existing ??
+          await _write(
+            id: saleId,
+            kind: ReceiptKind.sale,
+            staff: staff,
+            lines: await _linesOf(cart),
+            goodsCents: cart.goodsCents,
+            depositCents: cart.depositCents,
+            totalCents: cart.totalCents,
+            payment: Payment(
+              kind: PaymentKind.card,
+              amountCents: cart.totalCents,
+              givenCents: 0,
+              changeCents: 0,
+              provider: provider,
+              providerTxCode: txCode,
+              cardScheme: cardScheme,
+              cardLast4: cardLast4,
+            ),
+          );
+      await (_db.delete(
+        _db.pendingCardPaymentRows,
+      )..where((t) => t.id.equals(saleId))).go();
+      if (existing == null) {
+        await (_db.update(_db.settingsRows)..where((t) => t.id.equals(1)))
+            .write(const SettingsRowsCompanion(receiptDraft: Value(null)));
+      }
+      return saved;
+    });
+  }
+
+  Future<List<ReceiptLine>> _linesOf(Cart cart) async {
+    final groupNames = await _groupNamesOf(cart);
+    return [
+      for (var i = 0; i < cart.lines.length; i++)
+        ReceiptLine(
+          position: i,
+          itemId: cart.lines[i].item.id,
+          name: cart.lines[i].item.name,
+          info: cart.lines[i].item.info,
+          unitPriceCents: cart.lines[i].unitPriceCents,
+          quantity: cart.lines[i].quantity,
+          unitDepositCents: cart.lines[i].unitDepositCents,
+          options: [
+            for (final o in cart.lines[i].options)
+              ReceiptLineOption(
+                groupName: groupNames[o.id] ?? '',
+                optionName: o.name,
+                surchargeCents: o.surchargeCents,
+              ),
+          ],
+          grossByRate: grossByRateOfLine(cart.lines[i]),
+        ),
+    ];
   }
 
   /// Storniert einen Bon durch einen neuen Storno-Bon mit negativen Beträgen.
@@ -147,6 +198,10 @@ class ReceiptRepository {
           amountCents: -original.totalCents,
           givenCents: 0,
           changeCents: 0,
+          provider: original.payment.provider,
+          providerTxCode: original.payment.providerTxCode,
+          cardScheme: original.payment.cardScheme,
+          cardLast4: original.payment.cardLast4,
         ),
       );
     });
@@ -254,6 +309,10 @@ class ReceiptRepository {
             amountCents: payment.amountCents,
             givenCents: payment.givenCents,
             changeCents: payment.changeCents,
+            provider: Value(payment.provider),
+            providerTxCode: Value(payment.providerTxCode),
+            cardScheme: Value(payment.cardScheme),
+            cardLast4: Value(payment.cardLast4),
           ),
         );
     return byId(id);
@@ -365,6 +424,10 @@ class ReceiptRepository {
               amountCents: p.amountCents,
               givenCents: p.givenCents,
               changeCents: p.changeCents,
+              provider: p.provider,
+              providerTxCode: p.providerTxCode,
+              cardScheme: p.cardScheme,
+              cardLast4: p.cardLast4,
             );
           }(),
           goodsCents: r.goodsCents,

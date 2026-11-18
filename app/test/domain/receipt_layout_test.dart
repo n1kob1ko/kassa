@@ -166,6 +166,42 @@ void main() {
     expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
   });
 
+  test('Kartenbon: Karte, MASTERCARD **** 1234, Beleg TX1, keine Zeile '
+      'Gegeben', () async {
+    final shop = await TestShop.open();
+    addTearDown(shop.close);
+    final r = await shop.receipts.finalizeCardSale(
+      saleId: 'c1',
+      cart: cart,
+      staff: shop.anna,
+      provider: 'sumup',
+      txCode: 'TX1',
+      cardScheme: 'MASTERCARD',
+      cardLast4: '1234',
+    );
+    final t = texts(layoutReceipt(r, business));
+    final i = t.indexOf(row('Karte', '18,20'));
+    expect(i, isNonNegative);
+    expect(t[i + 1].trim(), 'MASTERCARD **** 1234');
+    expect(t[i + 2].trim(), 'Beleg TX1');
+    expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
+  });
+
+  test('Kartenbon ohne Kartendaten: nur die Zeile Karte', () async {
+    final shop = await TestShop.open();
+    addTearDown(shop.close);
+    final bare = await shop.receipts.finalizeCardSale(
+      saleId: 'c2',
+      cart: cart,
+      staff: shop.anna,
+      provider: 'sumup',
+    );
+    final t = texts(layoutReceipt(bare, business));
+    final i = t.indexWhere((x) => x.startsWith('Karte'));
+    expect(t.any((x) => x.contains('****') || x.contains('Beleg')), isFalse);
+    expect(i, isNonNegative);
+  });
+
   test(
     'keine Zeile ist breiter als das Papier, auch bei 42 und 32 Zeichen',
     () {

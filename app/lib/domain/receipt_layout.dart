@@ -314,6 +314,17 @@ List<PrintOp> layoutReceipt(
       }
     case PaymentKind.card:
       b.row('Karte', amount(p.amountCents));
+      final scheme = p.cardScheme;
+      final last4 = p.cardLast4;
+      if (last4 != null && last4.isNotEmpty) {
+        b.indented(
+          scheme == null || scheme.isEmpty
+              ? '**** $last4'
+              : '$scheme **** $last4',
+        );
+      }
+      final tx = p.providerTxCode;
+      if (tx != null && tx.isNotEmpty) b.indented('Beleg $tx');
   }
 
   // 9. Schlusstext

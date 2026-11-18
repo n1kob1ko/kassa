@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/card_payment_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
@@ -285,5 +286,75 @@ void main() {
       ),
       throwsA(anything),
     );
+  });
+
+  test('Kartenbon: Zahlung mit Anbieter, Beleg-Code und Karte, Entwurf und '
+      'offene Zahlung im selben Schritt weg', () async {
+    final cards = CardPaymentRepository(shop.db, shop.clock);
+    await cards.begin(paymentId: 'c1', cart: cart, staff: shop.anna);
+    final settings = SettingsRepository(shop.db);
+    await settings.writeDraft('{"lines":[]}');
+    final r = await receipts.finalizeCardSale(
+      saleId: 'c1',
+      cart: cart,
+      staff: shop.anna,
+      provider: 'sumup',
+      txCode: 'TX9',
+      cardScheme: 'VISA',
+      cardLast4: '4242',
+    );
+    expect(r.payment.kind, PaymentKind.card);
+    expect(
+      (r.payment.amountCents, r.payment.givenCents, r.payment.changeCents),
+      (1820, 0, 0),
+    );
+    final back = await receipts.byId('c1');
+    expect(
+      (
+        back.payment.provider,
+        back.payment.providerTxCode,
+        back.payment.cardScheme,
+        back.payment.cardLast4,
+      ),
+      ('sumup', 'TX9', 'VISA', '4242'),
+    );
+    expect(await cards.pending(), isEmpty);
+    expect(await settings.readDraft(), isNull);
+  });
+
+  test('Kartenbon: gleiche saleId zweimal ergibt einen Bon', () async {
+    final a = await shop.sellCard('c1');
+    final b = await shop.sellCard('c1');
+    expect(b.id, a.id);
+    expect(await shop.count('receipts'), 1);
+  });
+
+  test(
+    'Kartenbon: leerer Bon wird abgelehnt, die offene Zahlung bleibt',
+    () async {
+      final cards = CardPaymentRepository(shop.db, shop.clock);
+      await cards.begin(paymentId: 'c1', cart: cart, staff: shop.anna);
+      await expectLater(
+        receipts.finalizeCardSale(
+          saleId: 'c1',
+          cart: const Cart.empty(),
+          staff: shop.anna,
+          provider: 'sumup',
+        ),
+        throwsA(isA<EmptyCartException>()),
+      );
+      expect(await cards.pending(), hasLength(1));
+      expect(await shop.count('receipts'), 0);
+    },
+  );
+
+  test('Storno eines Karten-Bons: Storno-Bon mit Zahlungsart Karte und '
+      'negativem Betrag', () async {
+    final sale = await shop.sellCard('c1');
+    final v = await receipts.voidReceipt(sale.id, staff: shop.chef);
+    expect(v.payment.kind, PaymentKind.card);
+    expect(v.payment.amountCents, -sale.totalCents);
+    expect(v.payment.providerTxCode, 'TX-c1');
+    expect(v.totalCents, -sale.totalCents);
   });
 }

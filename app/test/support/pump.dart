@@ -25,6 +25,7 @@ import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/devices/device_providers.dart';
+import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
@@ -106,12 +107,15 @@ Future<void> pumpApp(
 /// Die Datenbank wird am Ende des Tests geschlossen. [pickedFile] ist der Text,
 /// den die Dateiauswahl liefert (`null`: die Person bricht ab). Der Drucker
 /// ist ein [FakePrinter] (oder [printer]); Tests erreichen ihn mit [printerOf].
+/// Das Kartenterminal ist ein [FakeCardTerminal] (oder [terminal]), erreichbar
+/// mit [terminalOf].
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
   String? pickedFile,
   MenuFilePicker? picker,
   ReceiptPrinter? printer,
+  CardTerminal? terminal,
 }) async {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final db = KassaDatabase(NativeDatabase.memory());
@@ -125,6 +129,7 @@ Future<List<Override>> memoryOverrides({
   return [
     databaseProvider.overrideWithValue(db),
     receiptPrinterProvider.overrideWithValue(printer ?? FakePrinter()),
+    cardTerminalProvider.overrideWithValue(terminal ?? FakeCardTerminal()),
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
@@ -138,6 +143,10 @@ Future<List<Override>> memoryOverrides({
 /// Der falsche Drucker der laufenden Oberfläche.
 FakePrinter printerOf(WidgetTester t) =>
     containerOf(t).read(receiptPrinterProvider) as FakePrinter;
+
+/// Das falsche Kartenterminal der laufenden Oberfläche.
+FakeCardTerminal terminalOf(WidgetTester t) =>
+    containerOf(t).read(cardTerminalProvider) as FakeCardTerminal;
 
 /// Dateiwähler, der wirft, solange [broken] gesetzt ist, danach [text] liefert.
 class BrokenPicker implements MenuFilePicker {

@@ -197,4 +197,14 @@ void main() {
       expect(o.byCategory.fold<int>(0, (s, c) => s + c.cents), o.revenueCents);
     },
   );
+
+  test('Übersicht zählt den Kartenanteil', () async {
+    await shop.sell('s1'); // 1820 bar
+    final card = await shop.sellCard('c1');
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(o.cashCents, 1820);
+    expect(o.cardCents, card.totalCents);
+    expect(o.revenueCents, 1820 + card.totalCents);
+    expect(o.receiptCount, 2);
+  });
 }

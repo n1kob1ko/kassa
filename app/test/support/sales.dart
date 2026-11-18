@@ -24,6 +24,9 @@ final Cart cart = const Cart.empty()
     .add(cola)
     .add(huhnBowl, options: [xxl, nudeln]);
 
+/// Ein kleiner Bon für Kartenzahlungen: 1 x Teigtaschen, 1 x Cola.
+final Cart cartCard = const Cart.empty().add(teigtaschen).add(cola);
+
 class TestShop {
   TestShop._(
     this.db,
@@ -122,6 +125,18 @@ class TestShop {
     givenCents: 2000,
     staff: anna,
   );
+
+  /// Verkauft [cart] (Standard: [cartCard]) mit Karte als Anna.
+  Future<Receipt> sellCard(String saleId, {Cart? cart}) =>
+      receipts.finalizeCardSale(
+        saleId: saleId,
+        cart: cart ?? cartCard,
+        staff: anna,
+        provider: 'sumup',
+        txCode: 'TX-$saleId',
+        cardScheme: 'VISA',
+        cardLast4: '4242',
+      );
 
   /// Id des offenen Geschäftstags.
   Future<String> dayId() async {

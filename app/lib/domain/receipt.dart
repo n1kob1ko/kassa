@@ -60,12 +60,23 @@ class Payment {
     required this.amountCents,
     required this.givenCents,
     required this.changeCents,
+    this.provider,
+    this.providerTxCode,
+    this.cardScheme,
+    this.cardLast4,
   });
 
   final PaymentKind kind;
   final int amountCents;
   final int givenCents;
   final int changeCents;
+
+  /// Nur bei Kartenzahlung: Anbieter, dessen Beleg-Code, Kartenart und die
+  /// letzten vier Ziffern (soweit bekannt).
+  final String? provider;
+  final String? providerTxCode;
+  final String? cardScheme;
+  final String? cardLast4;
 }
 
 class Receipt {
