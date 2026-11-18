@@ -5,11 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/providers.dart';
 import '../data/settings_repository.dart';
 import '../domain/receipt.dart';
+import 'card_terminal.dart';
 import 'channel_transport.dart';
 import 'network_transport.dart';
 import 'printer.dart';
+import 'sumup_terminal.dart';
 
-export 'card_terminal.dart' show cardTerminalProvider;
+export 'internet.dart' show internetProvider;
+
+/// Das Kartenterminal der Kassa.
+final cardTerminalProvider = Provider<CardTerminal>((ref) => SumUpTerminal());
 
 typedef TransportFactory = PrinterTransport? Function(
   RegisterSettings settings,

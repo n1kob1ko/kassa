@@ -108,7 +108,7 @@ Future<void> pumpApp(
 /// den die Dateiauswahl liefert (`null`: die Person bricht ab). Der Drucker
 /// ist ein [FakePrinter] (oder [printer]); Tests erreichen ihn mit [printerOf].
 /// Das Kartenterminal ist ein [FakeCardTerminal] (oder [terminal]), erreichbar
-/// mit [terminalOf].
+/// mit [terminalOf]. Das Internet ist da.
 Future<List<Override>> memoryOverrides({
   bool seeded = true,
   Clock? clock,
@@ -130,6 +130,7 @@ Future<List<Override>> memoryOverrides({
     databaseProvider.overrideWithValue(db),
     receiptPrinterProvider.overrideWithValue(printer ?? FakePrinter()),
     cardTerminalProvider.overrideWithValue(terminal ?? FakeCardTerminal()),
+    internetProvider.overrideWith((ref) => Stream.value(true)),
     clockProvider.overrideWithValue(
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),

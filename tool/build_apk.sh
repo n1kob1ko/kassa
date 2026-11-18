@@ -13,6 +13,10 @@
 #
 #   KASSA_BUILD_DIR   Ordner für Schlüssel und Installationsdatei
 #                     (Vorgabe: /mnt/project-files/kassa-build)
+#   KASSA_SUMUP_PROPERTIES
+#                     Datei mit der Zeile affiliateKey=… für die
+#                     Kartenzahlung mit SumUp (Vorgabe:
+#                     $KASSA_BUILD_DIR/sumup.properties, falls vorhanden)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -47,6 +51,20 @@ PROPS
   )
 fi
 export KASSA_KEY_PROPERTIES="$key_properties"
+
+# Der SumUp-Schlüssel wird nie ausgegeben, nur die Datei wird genannt.
+if [ -z "${KASSA_SUMUP_PROPERTIES:-}" ] && [ -f "$out/sumup.properties" ]; then
+  KASSA_SUMUP_PROPERTIES="$out/sumup.properties"
+fi
+if [ -n "${KASSA_SUMUP_PROPERTIES:-}" ] && [ -f "$KASSA_SUMUP_PROPERTIES" ]; then
+  export KASSA_SUMUP_PROPERTIES
+  echo "Kartenzahlung mit SumUp: Schlüssel aus $KASSA_SUMUP_PROPERTIES"
+elif [ -n "${KASSA_SUMUP_PROPERTIES:-}" ]; then
+  echo "$KASSA_SUMUP_PROPERTIES fehlt: Es wird ohne Kartenzahlung gebaut."
+  unset KASSA_SUMUP_PROPERTIES
+else
+  echo "Keine sumup.properties in $out: Es wird ohne Kartenzahlung gebaut."
+fi
 
 version="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' "$root/app/pubspec.yaml")"
 if [ -z "$version" ]; then

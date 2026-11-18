@@ -3,9 +3,14 @@
     <uses-feature android:name="android.hardware.usb.host" android:required="false"/>
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- Netzwerkdrucker und Kartenzahlung; ob Internet da ist, meldet
+         InternetChannel. Die übrigen Erlaubnisse für SumUp bringt das SDK
+         selbst mit. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
         android:label="Kassa"
-        android:name="${applicationName}"
+        android:name=".KassaApplication"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

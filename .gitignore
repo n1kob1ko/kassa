@@ -14,3 +14,5 @@ app/android/**/GeneratedPluginRegistrant.*
 *.jks
 *.keystore
 key.properties
+# SumUp-Schlüssel für die Kartenzahlung
+sumup.properties

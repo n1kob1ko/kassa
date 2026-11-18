@@ -33,6 +33,19 @@ val requestedAbis = (project.findProperty("target-platform") as String?)
         }
     }
     .orEmpty()
+
+// SumUp affiliate key for card payments. KASSA_SUMUP_PROPERTIES names a
+// properties file outside the repository with the line `affiliateKey=…`;
+// tool/build_apk.sh sets it. Without the variable or the file the key is
+// empty and the app reports card payment as not set up.
+val sumUpPropertiesFile = System.getenv("KASSA_SUMUP_PROPERTIES")
+    ?.takeIf { it.isNotBlank() }
+    ?.let { file(it) }
+    ?.takeIf { it.isFile }
+val sumUpAffiliateKey = Properties().apply {
+    sumUpPropertiesFile?.inputStream()?.use { load(it) }
+}.getProperty("affiliateKey").orEmpty().trim()
+
 val splitPerAbi = (project.findProperty("split-per-abi") as String?)?.toBoolean() ?: false
 
 android {
@@ -43,13 +56,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // The SumUp SDK uses Java APIs that older Android versions lack.
+        isCoreLibraryDesugaringEnabled = true
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     defaultConfig {
         applicationId = "io.github.n1kob1ko.kassa"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // The SumUp SDK needs Android 8.0 or newer.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -57,6 +77,11 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        buildConfigField(
+            "String",
+            "SUMUP_AFFILIATE_KEY",
+            "\"" + sumUpAffiliateKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"",
+        )
     }
 
     signingConfigs {
@@ -105,4 +130,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    // The SumUp SDK leaves the versions of its Compose libraries to this list.
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    implementation("com.sumup:merchant-sdk:7.2.0")
 }

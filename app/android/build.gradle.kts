@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // SumUp SDK for card payments
+        maven { url = uri("https://maven.sumup.com/releases") }
     }
 }
 

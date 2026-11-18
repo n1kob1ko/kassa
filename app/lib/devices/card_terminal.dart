@@ -1,8 +1,6 @@
 // Die Schnittstelle zum Kartenterminal. Der Kern kennt nur sie, nie den
 // Anbieter dahinter.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 enum CardTerminalState { notConfigured, loggedOut, ready }
 
 class CardTerminalStatus {
@@ -98,42 +96,3 @@ abstract interface class CardTerminal {
     required String title,
   });
 }
-
-/// Solange kein Anbieter angeschlossen ist: meldet immer "nicht eingerichtet".
-class NoCardTerminal implements CardTerminal {
-  const NoCardTerminal();
-
-  @override
-  String get providerName => 'sumup';
-
-  @override
-  int get minimumCents => 100;
-
-  static const _status = CardTerminalStatus(CardTerminalState.notConfigured);
-
-  @override
-  Future<CardTerminalStatus> status() async => _status;
-
-  @override
-  Future<CardTerminalStatus> login() async => _status;
-
-  @override
-  Future<void> logout() async {}
-
-  @override
-  Future<void> openReaderSettings() async {}
-
-  @override
-  Future<void> prepare() async {}
-
-  @override
-  Future<CardPaymentResult> pay({
-    required String paymentId,
-    required int amountCents,
-    required String title,
-  }) async => const CardFailed(CardFailure.notLoggedIn);
-}
-
-final cardTerminalProvider = Provider<CardTerminal>(
-  (ref) => const NoCardTerminal(),
-);
