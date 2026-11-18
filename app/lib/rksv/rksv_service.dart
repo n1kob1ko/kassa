@@ -1,6 +1,7 @@
-// Probe-Signatur ein- und ausschalten, Nullbeleg, "Nochmal prüfen". Task 7
-// ergänzt "Protokoll ausgeben".
+// Probe-Signatur ein- und ausschalten, Nullbeleg, "Nochmal prüfen",
+// "Protokoll ausgeben".
 
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -11,6 +12,7 @@ import '../data/database.dart';
 import '../data/receipt_repository.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
+import 'dep_export.dart';
 import 'probe_signature_unit.dart';
 import 'rksv_secrets.dart';
 import 'rksv_state.dart';
@@ -30,6 +32,7 @@ const _storageProblem =
     'Das Tablet konnte den Schlüssel nicht sicher speichern.';
 const _enableProblem = 'Die Probe-Signatur konnte nicht eingeschaltet werden.';
 const _notRunning = 'Die Signatur ist nicht eingeschaltet.';
+const _noProtocol = 'Es gibt noch kein Protokoll.';
 
 /// Zeichen der Kassen-Kennung: ohne I, O, 0 und 1, damit sie sich sicher
 /// abschreiben lässt.
@@ -42,6 +45,7 @@ class RksvService {
     this._receipts,
     this._clock, {
     Random? random,
+    this._saver = const FilePickerProtocolSaver(),
   }) : _random = random ?? Random.secure();
 
   final KassaDatabase _db;
@@ -49,6 +53,7 @@ class RksvService {
   final ReceiptRepository _receipts;
   final Clock _clock;
   final Random _random;
+  final ProtocolSaver _saver;
 
   /// Neue Kette: Kassen-Kennung, AES-Schlüssel, Probe-Schlüssel und
   /// Zertifikat erzeugen, Startbeleg signieren. Wirft RksvProblem, wenn der
@@ -215,6 +220,59 @@ class RksvService {
   /// false ohne Ausfall oder wenn sie noch nicht geht, dann ohne Änderung.
   Future<bool> retrySignature({required Staff staff}) =>
       _receipts.retryCollective(staff: staff);
+
+  /// "Protokoll ausgeben": die laufende Kette, sonst die zuletzt beendete,
+  /// im Zeitraum [range] (Vierteljahre von [now] aus, Ortszeit). Ohne Kette:
+  /// [RksvProblem]. Ohne Eintrag im Zeitraum: [ExportOutcome.empty], dann
+  /// öffnet sich kein Fenster.
+  Future<ExportOutcome> exportProtocol(
+    ExportRange range, {
+    required DateTime now,
+  }) async {
+    final state = await _state();
+    final running = state.chain;
+    final chain = running != null
+        ? await (_db.select(
+            _db.rksvChainRows,
+          )..where((t) => t.chain.equals(running))).getSingleOrNull()
+        : await (_db.select(_db.rksvChainRows)
+                ..where((t) => t.endedAt.isNotNull())
+                ..orderBy([(t) => OrderingTerm.desc(t.chain)])
+                ..limit(1))
+              .getSingleOrNull();
+    if (chain == null) throw const RksvProblem(_noProtocol);
+
+    final quarter = DateTime(now.year, now.month - (now.month - 1) % 3);
+    final (from, until) = switch (range) {
+      ExportRange.all => (null, null),
+      ExportRange.thisQuarter => (
+        quarter,
+        DateTime(quarter.year, quarter.month + 3),
+      ),
+      ExportRange.lastQuarter => (
+        DateTime(quarter.year, quarter.month - 3),
+        quarter,
+      ),
+    };
+    final text = await buildDepExport(
+      _db,
+      chain: chain.chain,
+      from: from,
+      until: until,
+    );
+    final groups =
+        (jsonDecode(text) as Map<String, dynamic>)['Belege-Gruppe'] as List;
+    if (groups.isEmpty) return ExportOutcome.empty;
+    final saved = await _saver.save(
+      depFileName(
+        cashBoxId: chain.cashBoxId,
+        probe: chain.mode == RksvMode.probe.name,
+        now: now,
+      ),
+      Uint8List.fromList(utf8.encode(text)),
+    );
+    return saved ? ExportOutcome.saved : ExportOutcome.cancelled;
+  }
 
   Future<RksvStateRow> _state() =>
       (_db.select(_db.rksvStateRows)..where((t) => t.id.equals(1))).getSingle();

@@ -1,7 +1,8 @@
 // Testaufbau für die Signatur: Datenbank im Speicher, feste Uhr, Beispiel-
 // Katalog, Anna (staff) und Chef (chef), geschützter Speicher im Speicher,
 // Attrappe der Signatur, Journal, Bons und RksvService. Dazu verifyChain,
-// das eine Kette unabhängig vom Journal nachrechnet.
+// das eine Kette unabhängig vom Journal nachrechnet. Gespeicherte Protokolle
+// landen in [RksvRig.saver].
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -22,6 +23,7 @@ import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/rksv/card/certificate.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
+import 'package:kassa/rksv/dep_export.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
@@ -30,6 +32,23 @@ import 'package:pointycastle/digests/sha256.dart';
 
 import 'demo_fixtures.dart';
 import 'fake_signature_unit.dart';
+
+/// Speichert ausgegebene Protokolle im Speicher. Mit [accept] false bricht
+/// die Person den Speichern-Dialog ab.
+class RecordingProtocolSaver implements ProtocolSaver {
+  bool accept = true;
+  final saved = <(String, Uint8List)>[];
+
+  @override
+  Future<bool> save(String fileName, Uint8List bytes) async {
+    if (!accept) return false;
+    saved.add((fileName, bytes));
+    return true;
+  }
+
+  /// Der Text der zuletzt gespeicherten Datei.
+  String get lastText => utf8.decode(saved.last.$2);
+}
 
 class RksvRig {
   RksvRig._(
@@ -43,6 +62,7 @@ class RksvRig {
     this.rksv,
     this.anna,
     this.chef,
+    this.saver,
   );
 
   final KassaDatabase db;
@@ -55,6 +75,7 @@ class RksvRig {
   final RksvRepository rksv;
   final Staff anna;
   final Staff chef;
+  final RecordingProtocolSaver saver;
 
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
@@ -98,7 +119,8 @@ class RksvRig {
       DayRepository(db, clock),
       journal: journal,
     );
-    final service = RksvService(db, secrets, receipts, clock);
+    final saver = RecordingProtocolSaver();
+    final service = RksvService(db, secrets, receipts, clock, saver: saver);
     return RksvRig._(
       db,
       clock,
@@ -110,6 +132,7 @@ class RksvRig {
       RksvRepository(db),
       anna,
       chef,
+      saver,
     );
   }
 
