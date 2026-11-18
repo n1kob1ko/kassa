@@ -8,6 +8,8 @@ class MainActivity : FlutterActivity() {
     private var printerChannel: PrinterChannel? = null
     private var sumUpChannel: SumUpChannel? = null
     private var internetChannel: InternetChannel? = null
+    private var cardReaderChannel: CardReaderChannel? = null
+    private var shareChannel: ShareChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -16,6 +18,8 @@ class MainActivity : FlutterActivity() {
         printerChannel = PrinterChannel(this, messenger)
         sumUpChannel = SumUpChannel(this, messenger)
         internetChannel = InternetChannel(applicationContext, messenger)
+        cardReaderChannel = CardReaderChannel(this, messenger)
+        shareChannel = ShareChannel(this, messenger)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
@@ -30,6 +34,10 @@ class MainActivity : FlutterActivity() {
         sumUpChannel = null
         internetChannel?.dispose()
         internetChannel = null
+        cardReaderChannel?.dispose()
+        cardReaderChannel = null
+        shareChannel?.dispose()
+        shareChannel = null
     }
 
     override fun onRequestPermissionsResult(
