@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/settings_repository.dart';
@@ -231,6 +233,131 @@ void main() {
         ),
       ),
       isNull,
+    );
+  });
+
+  group('Zeitbudget', () {
+    test('send und status nennen dem Kanal die verbleibende Zeit', () async {
+      final calls = <MethodCall>[];
+      answer((call) async {
+        calls.add(call);
+        return null;
+      });
+      final t = ChannelTransport(PrinterKind.bluetooth, 'AA')
+        ..startCall(const Duration(seconds: 3));
+      await t.status([1]);
+      await t.send(Uint8List.fromList([1]));
+
+      for (final call in calls) {
+        final budget = (call.arguments as Map)['budgetMs'];
+        expect(budget, isA<int>());
+        expect(budget as int, inInclusiveRange(2500, 3000));
+      }
+      expect(calls, hasLength(2));
+    });
+
+    test('ohne startCall gilt printCallLimit ab dem Aufruf', () async {
+      MethodCall? seen;
+      answer((call) async {
+        seen = call;
+        return null;
+      });
+      await ChannelTransport(PrinterKind.usb, '1:2').send(Uint8List(1));
+      expect(
+        (seen!.arguments as Map)['budgetMs'] as int,
+        inInclusiveRange(
+          printCallLimit.inMilliseconds - 500,
+          printCallLimit.inMilliseconds,
+        ),
+      );
+    });
+
+    test(
+      'abgelaufenes Budget: nichts geht an den Kanal, send wirft timeout',
+      () async {
+        var called = 0;
+        answer((call) async {
+          called++;
+          return 1;
+        });
+        final t = ChannelTransport(PrinterKind.usb, '1:2')
+          ..startCall(Duration.zero);
+        expect(await problemOfSend(t), PrintProblem.timeout);
+        expect(await t.status([1]), isNull);
+        expect(called, 0);
+      },
+    );
+
+    test('nach abandon wird eine späte Antwort ignoriert', () async {
+      final late = Completer<Object?>();
+      answer((call) => late.future);
+      final t = ChannelTransport(PrinterKind.bluetooth, 'AA')
+        ..startCall(const Duration(seconds: 5));
+      final sending = problemOfSend(t);
+      final asking = t.status([1]);
+      t.abandon();
+      late.complete(0x12);
+      expect(await sending, PrintProblem.timeout);
+      expect(await asking, isNull);
+    });
+
+    test(
+      'ein neuer Aufruf nach abandon hat wieder ein eigenes Budget',
+      () async {
+        MethodCall? seen;
+        answer((call) async {
+          seen = call;
+          return null;
+        });
+        final t = ChannelTransport(PrinterKind.usb, '1:2')
+          ..startCall(Duration.zero)
+          ..abandon()
+          ..startCall(const Duration(seconds: 2));
+        await t.send(Uint8List(1));
+        expect(
+          (seen!.arguments as Map)['budgetMs'] as int,
+          inInclusiveRange(1500, 2000),
+        );
+      },
+    );
+  });
+
+  group('requestAccess', () {
+    test('fragt über den Kanal mit Art und Adresse', () async {
+      final calls = <MethodCall>[];
+      answer((call) async {
+        calls.add(call);
+        return (call.arguments as Map)['kind'] == 'usb';
+      });
+      const discovery = ChannelPrinterDiscovery();
+      expect(await discovery.requestAccess(PrinterKind.usb, '1:2'), isTrue);
+      expect(
+        await discovery.requestAccess(PrinterKind.bluetooth, 'AA'),
+        isFalse,
+      );
+      expect(calls.map((c) => c.method), ['requestAccess', 'requestAccess']);
+      expect((calls[0].arguments as Map)['address'], '1:2');
+      expect((calls[1].arguments as Map)['kind'], 'bluetooth');
+      expect((calls[0].arguments as Map).containsKey('budgetMs'), isFalse);
+    });
+
+    test(
+      'Netzwerk braucht keine Erlaubnis, ohne Kanal oder bei Fehler false',
+      () async {
+        const discovery = ChannelPrinterDiscovery();
+        messenger.setMockMethodCallHandler(printerChannel, null);
+        expect(
+          await discovery.requestAccess(PrinterKind.network, '10.0.0.5'),
+          isTrue,
+        );
+        expect(await discovery.requestAccess(PrinterKind.usb, '1:2'), isFalse);
+        expect(await discovery.requestAccess(PrinterKind.none, ''), isFalse);
+        answer((call) async => throw PlatformException(code: 'unreachable'));
+        expect(
+          await discovery.requestAccess(PrinterKind.bluetooth, 'AA'),
+          isFalse,
+        );
+      },
     );
   });
 }

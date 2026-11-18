@@ -71,6 +71,11 @@ class NetworkTransport implements PrinterTransport {
     }
   }
 
+  /// Jeder Socket hat seine eigenen Grenzen; nach dem Limit schließt
+  /// [abandon] alles.
+  @override
+  void startCall(Duration limit) {}
+
   @override
   void abandon() {
     _epoch++;

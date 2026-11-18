@@ -30,6 +30,12 @@ abstract interface class PrinterDiscovery {
 
   /// Drucker im Netzwerk.
   Future<List<FoundPrinter>> network();
+
+  /// Fragt nach der Erlaubnis, den Drucker zu verwenden (USB: dieses Gerät,
+  /// Bluetooth: BLUETOOTH_CONNECT), ohne etwas zu drucken. Beim Auswählen
+  /// des Druckers aufrufen, damit das Drucken selbst nicht fragen muss.
+  /// Netzwerk braucht keine Erlaubnis.
+  Future<bool> requestAccess(PrinterKind kind, String address);
 }
 
 /// Sucht über den Kanal `kassa/printer`. Ohne Android sind die Listen leer;
@@ -48,6 +54,15 @@ class ChannelPrinterDiscovery implements PrinterDiscovery {
 
   @override
   Future<List<FoundPrinter>> network() async => const [];
+
+  @override
+  Future<bool> requestAccess(PrinterKind kind, String address) async =>
+      switch (kind) {
+        PrinterKind.network => true,
+        PrinterKind.none => false,
+        PrinterKind.usb ||
+        PrinterKind.bluetooth => requestChannelAccess(channel, kind, address),
+      };
 
   Future<List<FoundPrinter>> _list(String method, PrinterKind kind) async {
     final List<Object?>? rows;

@@ -43,10 +43,18 @@ class RecordingTransport implements PrinterTransport {
   Object? sendError;
   bool hang = false;
   bool abandoned = false;
+  final started = <Duration>[];
   final late = Completer<void>();
 
   @override
+  void startCall(Duration limit) => started.add(limit);
+
+  int sendCalls = 0;
+  Completer<void>? statusGate;
+
+  @override
   Future<void> send(Uint8List bytes) async {
+    sendCalls++;
     if (hang) {
       await late.future;
       if (abandoned) return; // aufgegeben: nichts kommt beim Drucker an
@@ -61,6 +69,8 @@ class RecordingTransport implements PrinterTransport {
   @override
   Future<int?> status(List<int> request) async {
     asked.add(request);
+    final gate = statusGate;
+    if (gate != null) await gate.future;
     return answers.isEmpty ? null : answers.removeAt(0);
   }
 }
@@ -198,6 +208,50 @@ void main() {
     t.late.complete();
     await Future<void>.delayed(Duration.zero);
     expect(t.sent, isEmpty);
+  });
+
+  test(
+    'Limit läuft während der Zustandsfrage ab: send wird nie aufgerufen',
+    () async {
+      final gate = Completer<void>();
+      final t = RecordingTransport()
+        ..statusGate = gate
+        ..answers.addAll([0x08, 0x00]); // offline: zweite Frage würde folgen
+      final outcome = await printerOf(
+        t,
+        limit: const Duration(milliseconds: 100),
+      ).printReceipt(receipt());
+      expect(outcome.problem, PrintProblem.timeout);
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(t.sendCalls, 0);
+      expect(t.asked, hasLength(1)); // keine zweite Frage nach dem Limit
+    },
+  );
+
+  test(
+    'Limit läuft während der Zustandsfrage ab (Antwort online): kein send',
+    () async {
+      final gate = Completer<void>();
+      final t = RecordingTransport()..statusGate = gate;
+      final outcome = await printerOf(
+        t,
+        limit: const Duration(milliseconds: 100),
+      ).printReceipt(receipt());
+      expect(outcome.problem, PrintProblem.timeout);
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(t.sendCalls, 0);
+    },
+  );
+
+  test('jeder Aufruf nennt dem Transport zuerst sein Zeitlimit', () async {
+    final t = RecordingTransport();
+    const limit = Duration(milliseconds: 1234);
+    await printerOf(t, limit: limit).printReceipt(receipt());
+    await printerOf(t, limit: limit).openDrawer();
+    await printerOf(t, limit: limit).testPrint();
+    expect(t.started, [limit, limit, limit]);
   });
 
   test('Meldungen', () {

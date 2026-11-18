@@ -60,6 +60,11 @@ abstract interface class PrinterTransport {
   /// der Drucker binnen 1 Sekunde nicht antwortet oder die Frage scheitert.
   Future<int?> status(List<int> request);
 
+  /// Der Druckdienst beginnt einen Aufruf (Zustandsfragen und Senden), der
+  /// höchstens [limit] dauern darf. Was danach noch käme, geht nicht mehr zum
+  /// Drucker.
+  void startCall(Duration limit);
+
   /// Der Druckdienst gibt den laufenden Aufruf auf (Limit abgelaufen). Offene
   /// oder später zustande kommende Verbindungen dieses Aufrufs werden
   /// geschlossen; danach darf nichts mehr zum Drucker gehen.
@@ -139,10 +144,13 @@ class EscPosPrinter implements ReceiptPrinter {
     if (transport == null) {
       return const PrintOutcome.failed(PrintProblem.notSetUp);
     }
+    final call = _Call();
     try {
-      return await _attempt(transport, checkStatus, bytes).timeout(
+      transport.startCall(limit);
+      return await _attempt(transport, call, checkStatus, bytes).timeout(
         limit,
         onTimeout: () {
+          call.givenUp = true;
           transport.abandon();
           return const PrintOutcome.failed(PrintProblem.timeout);
         },
@@ -154,25 +162,34 @@ class EscPosPrinter implements ReceiptPrinter {
     }
   }
 
+  /// Nach dem Limit ([_Call.givenUp]) beginnt kein weiterer Schritt mehr:
+  /// keine zweite Zustandsfrage und kein Senden.
   Future<PrintOutcome> _attempt(
     PrinterTransport transport,
+    _Call call,
     bool checkStatus,
     Future<Uint8List> Function() bytes,
   ) async {
     if (checkStatus) {
-      final problem = await _offlineProblem(transport);
+      final problem = await _offlineProblem(transport, call);
       if (problem != null) return PrintOutcome.failed(problem);
     }
-    await transport.send(await bytes());
+    final data = await bytes();
+    if (call.givenUp) return const PrintOutcome.failed(PrintProblem.timeout);
+    await transport.send(data);
     return const PrintOutcome.ok();
   }
 
   /// Bit 3 (0x08) der Druckerstatus-Antwort heißt offline. Ein Fehler oder
   /// keine Antwort ist kein Grund, nicht zu drucken.
-  Future<PrintProblem?> _offlineProblem(PrinterTransport transport) async {
+  Future<PrintProblem?> _offlineProblem(
+    PrinterTransport transport,
+    _Call call,
+  ) async {
     try {
       final state = await transport.status(escposStatusPrinter);
       if (state == null || state & 0x08 == 0) return null;
+      if (call.givenUp) return PrintProblem.timeout;
       final paper = await transport.status(escposStatusPaper);
       if (paper != null && paper & 0x60 != 0) return PrintProblem.paperOut;
       return PrintProblem.coverOpen;
@@ -180,4 +197,9 @@ class EscPosPrinter implements ReceiptPrinter {
       return null;
     }
   }
+}
+
+/// Zustand eines einzelnen Druckaufrufs.
+class _Call {
+  bool givenUp = false;
 }
