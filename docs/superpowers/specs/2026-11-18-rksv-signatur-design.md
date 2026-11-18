@@ -30,7 +30,7 @@ Erfolg heißt: Die Kassa erzeugt Bons, ein Protokoll und Sonderbelege, die das P
 | 4,9 % Umsatzsteuer | Seit 1. Juli 2026 für ausgewählte Nahrungsmittel. Der Betrag steht im Code im Feld "Betrag-Satz-Besonders", zusammen mit 19 %. Am Bon steht der Satz getrennt. | Mitteilung im README des BMF-Repos vom 13.03.2026, Entwurf der Verordnung auf bmf.gv.at | mittel: gelesen als Ankündigung und Entwurf, nicht als kundgemachter Text |
 | Digitaler Bon | Seit 1. Oktober 2026 soll ein digitaler Bon die Belegpflicht erfüllen (zum Beispiel QR-Code an der Kundenanzeige). Freiwillig. | Blog eines Kassenherstellers | niedrig, am Gesetz zu prüfen |
 | Wortlaut der RKSV (§§ 6 bis 17, Anlage) | Nur in Teilen gelesen. Das Rechtsinformationssystem ist von hier nicht erreichbar (bei Niko angefragt). | gesetzefinden.at (lückenhaft) | Der Wortlaut wird vor dem Bau der bindenden Teile geprüft, siehe Abschnitt 9. |
-| Befehle der A-Trust-Karte | Noch keine Unterlage von A-Trust gefunden. Öffentlich ist der Treiber `card-atrust-acos.c` im Projekt OpenSC. | Suche | niedrig. Deshalb zuerst "Karte prüfen", siehe 6.9. |
+| Befehle der A-Trust-Karte | Erledigt am 18.11.2026: A-Trust veröffentlicht die Befehle der Karte. "Karte prüfen" liest damit das Zertifikat und erstellt eine Probe-Unterschrift, siehe 6.9 und Abschnitt 11. Zuerst stand hier: noch keine Unterlage gefunden, öffentlich nur der Treiber `card-atrust-acos.c` im Projekt OpenSC. | Unterlagen von A-Trust | hoch für die Befehle, an echter Hardware noch ungeprüft |
 
 Folge aus dem Ablauf der Karten: Welche Karte YICHI hat, entscheidet, ob sich der Bau für diese Karte überhaupt lohnt. Ist es eine der beiden alten Arten, muss YICHI bis Mai 2027 ohnehin eine neue Karte kaufen, und die Kassa sollte dann gleich für die neue gebaut werden.
 
@@ -269,3 +269,39 @@ Der erste Plan umfasst nur S1. Von S2 legt er nur die Schnittstelle fest (6.7). 
 ## 10. Dem Bau überlassen
 
 Namen von Klassen und Tabellen, Aufteilung in Dateien, genaue Fristen in Sekunden, Aussehen der Zeilen im Bildschirm "Karte prüfen" innerhalb der Design-Regeln, Form des gedruckten Zettels mit den Angaben für FinanzOnline.
+
+## 11. Abweichungen beim Bau
+
+Hier steht, was beim Bau anders entschieden wurde, als der Entwurf es oben beschreibt oder offenlässt, und was es kostet. Der Stand gilt für die Version 1.3.0.
+
+### 11.1 S1a "Karte prüfen"
+
+**Was anders ist als in 6.9.** Zeile 5 (Probe-Unterschrift mit PIN) ist schon in der ersten Version dabei, nicht erst in einer späteren. Die Befehle von A-Trust liegen vor, und die Kassa gibt Zeile 5 für fünf Kartenarten frei: die erste Generation (ACOS), CardOS 5.3, ACOS-ID 2.1, ACOS-ID 3 und ACOS-ID 4.1. Für jede andere Karte zeigt der Bildschirm ihre rohe Antwort und sperrt die PIN-Prüfung wie in 6.9 beschrieben.
+
+**Entscheidungen im Plan**
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| K1 | Die Kassa handelt mit der Karte keine höhere Geschwindigkeit aus. | Ein Schritt weniger, der an einer einzigen Karte schiefgehen kann. | Das Zertifikat lesen dauert rund eine Sekunde länger. |
+| K2 | Nur das Protokoll T=1, kein T=0. | A-Trust schreibt T=1 vor. | Eine fremde Karte mit T=0 zeigt "kennt die Kassa nicht". |
+| K3 | Der USB-Teil des Druckers wird nicht angefasst. Die Frage nach der USB-Erlaubnis steht ein zweites Mal im neuen Kanal. | Entwurf 6.7: Der Drucker-Teil bleibt unberührt. | Rund 80 Zeilen doppelt. |
+| K4 | Der Bericht geht als Text über das Teilen-Fenster von Android. | Kein neues Paket, funktioniert mit Mail und Messenger. | Kein Anhang als Datei. |
+| K5 | Nach einer gelungenen Probe-Unterschrift folgen zwei weitere, um die Dauer zu messen. | Die Dauer entscheidet, ob die Karte die Frist von 5 Sekunden pro Bon hält. | Zwei Sekunden länger. |
+| K6 | Ein PIN-Wächter merkt sich einen Fehlversuch und schickt bei nur noch einem Versuch keine PIN mehr. | YICHI hat nur diese eine Karte. | Ein Dialog mehr, falls der Zähler in der alten Kassa wieder aufgefüllt wurde. |
+| K7 | Die PIN wird in S1a nicht gespeichert. | Sie wird erst bei der Einrichtung gebraucht (S2). | Für jede Probe neu eingeben. |
+
+**Entscheidungen während des Baus**
+
+| Entscheidung | Warum | Preis |
+|---|---|---|
+| Die Frist von 20 Sekunden beginnt erst, wenn der Leser geöffnet ist, also nach dem Fenster, in dem Android um die Erlaubnis fragt. | Wer zum ersten Mal erlaubt, braucht länger als 20 Sekunden zum Lesen und Antippen. Ein Abbruch bei offenem Fenster zeigte "Das hat zu lange gedauert." über dem Fenster von Android. | Ein Lauf kann beim allerersten Mal bis zu 80 Sekunden dauern (die Erlaubnisfrage selbst endet nach 60 Sekunden). |
+| Schließt der Bildschirm den Leser, wird eine offene Frage nach der Erlaubnis abgebrochen. | Sonst bliebe eine Frage hängen, die niemand mehr beantwortet. | Keiner. |
+| Nach einer verlorenen Verbindung ist die Sitzung tot und schickt nichts mehr. | Ein späterer Block ginge mit veralteter Blocknummer hinaus. Der Schutz der Karte soll nicht davon abhängen, dass der Bildschirm sich richtig verhält. | Keiner: Ein Lauf endet nach einer verlorenen Verbindung ohnehin. |
+| Befehle und Kartenarten lassen sich von außen nicht bauen (`final class`, kein öffentlicher Konstruktor). | Es gibt keinen Weg, einen frei zusammengesetzten Befehl an die Karte zu schicken. | Eine neue Kartenart braucht eine Änderung im Code der Kassa, keine Einstellung. |
+| Der PIN-Wächter schreibt voraus: Bevor die PIN zur Karte geht, steht die vorsichtig gezählte Zahl der Versuche im Speicher (einen weniger als bekannt, oder 2, wenn nichts bekannt ist). Bei Erfolg wird sie gelöscht, die echte Antwort der Karte überschreibt sie. Ist das Schreiben nicht möglich, geht keine PIN hinaus. | Ein Ausgang, bei dem keine Antwort kam (Verbindung weg, Zeit abgelaufen, Absturz), muss gegen die Versuche zählen. Sonst könnte die nächste falsche PIN die Karte sperren. | Wird die Verbindung bei richtiger PIN unterbrochen, verweigert die Kassa die PIN, obwohl die Karte in Ordnung ist. Dann hilft nur "Zähler ist wieder voll", nachdem die Karte in der alten Kassa mit der richtigen PIN benutzt wurde. Dazu kommen zwei Schreibvorgänge pro PIN-Prüfung. |
+| Die niedrigste bekannte Zahl der Versuche liegt zusätzlich im Arbeitsspeicher. | Fällt der Speicher auf dem Tablet aus, soll die Kassa trotzdem nicht mehr Versuche annehmen, als sie sicher weiß. | Nach einem Neustart der App und kaputtem Speicher fehlt dieses Wissen, die Kassa schickt dann keine PIN. |
+| Ist die Karte wirklich gesperrt (Zähler 0, Antwort "Karte gesperrt"), zeigt der Bildschirm "Zähler ist wieder voll" nicht an. | Die Taste würde eine gesperrte Karte als benutzbar ausgeben. Hilfe gibt dort nur A-Trust. | Keiner. |
+| Der Bericht vermerkt eine Karte, die ihre Geschwindigkeit fest vorgibt (ACOS-ID 2.1). | Kann ein Leser das nicht, bricht die Verbindung ab. Der Hinweis erspart die Suche. | Eine Zeile mehr im Bericht. |
+| Fehlertexte aus dem Lesen des Zertifikats sind fest und nennen keine Bytes. | Aus einem Fehlertext sollen weder Teile des Zertifikats noch Bytes der Karte in den Bericht oder auf den Bildschirm gelangen. | Weniger Einzelheiten beim Suchen eines Fehlers. Die rohen Antworten stehen im Bericht. |
+
+**Noch ungeprüft.** Hier gibt es weder Kartenleser noch Karte. Alles wurde gegen Nachbildungen getestet, der Kotlin-Teil wurde gebaut und gelesen, aber nie ausgeführt. Auf echter Hardware ist noch nichts bestätigt: Erkennen des Lesers im Verteiler neben dem Drucker, die Erlaubnisfrage von Android, die Übertragung (auch Antworten in Teilen und Bitten um mehr Zeit), das Lesen des Zertifikats, die Probe-Unterschrift mit der echten Karte von YICHI und ihre Dauer, der Hinweis zum Tausch und der Weg über "Zähler ist wieder voll". Das prüft Niko mit `docs/testen/rksv-karte-pruefen-pruefliste.md`.
