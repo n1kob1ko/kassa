@@ -5,6 +5,8 @@ import 'package:drift/drift.dart' show OpeningDetails, OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
+// ignore: depend_on_referenced_packages
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
@@ -584,6 +586,46 @@ void main() {
         )
         .getSingle();
     expect(rev.read<int>('rev'), 1);
+    await db.close();
+  });
+
+  test('4 → 5 ist ganz oder gar nicht: scheitert ein später Schritt, bleibt '
+      'die Datei auf Version 4 und die Migration läuft danach durch', () async {
+    final file = await copyFixture('kassa_v4.sqlite');
+    // Ein Trigger gleichen Namens lässt einen der letzten Schritte scheitern.
+    final broken = NativeDatabase(
+      file,
+      setup: (raw) => raw.execute(
+        'CREATE TRIGGER outbox_reports_update AFTER UPDATE ON items '
+        'BEGIN SELECT 1; END',
+      ),
+    );
+    final first = KassaDatabase(broken);
+    await expectLater(first.select(first.syncStateRows).get(), throwsA(anything));
+    await first.close();
+
+    final raw = sqlite.sqlite3.open(file.path);
+    expect(raw.select('PRAGMA user_version').single.values.single, 4);
+    final itemColumns = [
+      for (final r in raw.select('PRAGMA table_info(items)')) r['name'],
+    ];
+    expect(itemColumns, isNot(contains('photo_file_id')));
+    expect(
+      raw.select("SELECT name FROM sqlite_master WHERE name = 'outbox'"),
+      isEmpty,
+    );
+    raw.execute('DROP TRIGGER outbox_reports_update');
+    raw.close();
+
+    final db = KassaDatabase(NativeDatabase(file));
+    expect(await count(db, 'receipts'), 4);
+    expect(await count(db, 'outbox'), 9 + 15);
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      5,
+    );
     await db.close();
   });
 

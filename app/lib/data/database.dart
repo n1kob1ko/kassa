@@ -653,19 +653,24 @@ class KassaDatabase extends _$KassaDatabase {
         await customStatement('PRAGMA foreign_keys = ON');
       }
       if (from < 5 && to >= 5) {
-        await m.addColumn(itemRows, itemRows.photoFileId);
-        await m.addColumn(itemRows, itemRows.photoColor);
-        await m.addColumn(businessRows, businessRows.logoFileId);
-        await m.addColumn(businessRows, businessRows.logoPath);
-        await m.addColumn(businessRows, businessRows.logoColor);
-        await m.addColumn(syncStateRows, syncStateRows.deviceId);
-        await m.addColumn(syncStateRows, syncStateRows.lastPushAt);
-        await m.addColumn(syncStateRows, syncStateRows.photosAutoEnabled);
-        await m.createTable(outboxRows);
-        await m.createTable(reportRows);
-        await _createOutboxIndex();
-        await _createOutboxTriggers();
-        await _fillOutboxWithExisting();
+        // Ganz oder gar nicht: drift setzt die Version erst nach allen
+        // Schritten, ein halber Schritt würde beim nächsten Start an den
+        // schon vorhandenen Spalten scheitern.
+        await transaction(() async {
+          await m.addColumn(itemRows, itemRows.photoFileId);
+          await m.addColumn(itemRows, itemRows.photoColor);
+          await m.addColumn(businessRows, businessRows.logoFileId);
+          await m.addColumn(businessRows, businessRows.logoPath);
+          await m.addColumn(businessRows, businessRows.logoColor);
+          await m.addColumn(syncStateRows, syncStateRows.deviceId);
+          await m.addColumn(syncStateRows, syncStateRows.lastPushAt);
+          await m.addColumn(syncStateRows, syncStateRows.photosAutoEnabled);
+          await m.createTable(outboxRows);
+          await m.createTable(reportRows);
+          await _createOutboxIndex();
+          await _createOutboxTriggers();
+          await _fillOutboxWithExisting();
+        });
       }
     },
     beforeOpen: (details) async {
