@@ -36,7 +36,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      5,
+      db.schemaVersion,
     );
 
     final entries =
@@ -100,7 +100,7 @@ void main() {
   // die App zwischen ADD COLUMN und diesem Schreiben beendet, hat die Datei
   // die Spalte schon und steht noch auf Version 4.
   test('Datei von Version 4, die die Spalte unit schon hat: öffnet, endet '
-      'auf Version 5, Ketten und Einträge bleiben', () async {
+      'auf der aktuellen Version, Ketten und Einträge bleiben', () async {
     final file = await copyFixture('kassa_v4.sqlite');
     final db = KassaDatabase(
       NativeDatabase(
@@ -128,7 +128,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      5,
+      db.schemaVersion,
     );
     expect(await count(db, 'rksv_entries'), 5);
     expect(await count(db, 'rksv_certificates'), 2);
