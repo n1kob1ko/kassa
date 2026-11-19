@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FastifyInstance, FastifyServerOptions } from 'fastify';
-import { buildApp, type AppDeps } from '../../src/app.js';
+import { buildApp, type AppDeps, type Timeouts } from '../../src/app.js';
 import type { Config } from '../../src/config.js';
 import type { Db } from '../../src/db/db.js';
 import { LocalFileStore } from '../../src/storage/local_file_store.js';
@@ -18,7 +18,7 @@ export type TestApp = {
 
 export async function testApp(
   overrides: Omit<Partial<AppDeps>, 'config'> & { config?: Partial<Config> } = {},
-  opts: { logger?: FastifyServerOptions['logger'] } = {},
+  opts: { logger?: FastifyServerOptions['logger']; timeouts?: Timeouts } = {},
 ): Promise<TestApp> {
   const testDb = await createTestDb();
   const fileDir = await mkdtemp(join(tmpdir(), 'kassa-files-'));

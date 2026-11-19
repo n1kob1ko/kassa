@@ -1,9 +1,9 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { audit } from '../audit.js';
 import { isUuid } from '../auth/guards.js';
 import { randomToken, sha256 } from '../auth/secrets.js';
-import { clientAddress } from '../client_address.js';
+import { clientAddress, rateKey } from '../client_address.js';
 import { setBusiness, withSystem } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { SlidingWindow } from '../rate_limit.js';
@@ -11,6 +11,9 @@ import { SlidingWindow } from '../rate_limit.js';
 const CODE = /^[0-9]{8}$/;
 const MAX_ATTEMPTS = 10;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+/** Falsche Codes über alle Adressen zusammen: Raten mit vielen Adressen soll nicht gelingen. */
+const MAX_ATTEMPTS_ALL = 200;
+const ALL = 'all';
 const MAX_TEXT = 100;
 
 const optionalText = z.string().max(MAX_TEXT).nullable().optional();
@@ -30,6 +33,7 @@ export function installPairRoutes(app: FastifyInstance): void {
   const { config, db, now } = app.deps;
   // Pro App eine eigene Zählung, damit Tests sich nicht gegenseitig sperren.
   const failures = new SlidingWindow(MAX_ATTEMPTS, ATTEMPT_WINDOW_MS);
+  const failuresAll = new SlidingWindow(MAX_ATTEMPTS_ALL, ATTEMPT_WINDOW_MS, { maxKeys: 1 });
 
   /** Prüft die Anfrage und koppelt. Ein falscher Code wirft `wrongCode()`, alles andere zählt nicht als Fehlversuch. */
   async function attempt(rawBody: unknown, at: Date, wrongCode: () => ApiError): Promise<Paired & { token: string }> {
@@ -80,19 +84,14 @@ export function installPairRoutes(app: FastifyInstance): void {
 
   app.post('/api/device/pair', async (req, reply) => {
     const at = now();
-    const ip = clientAddress(req, config);
-    // Vor jeder Arbeit an der Datenbank einen Platz reservieren, damit auch gleichzeitige Anfragen
-    // höchstens 10 Codes pro Adresse prüfen. Nur ein falscher Code behält seinen Platz.
-    if (!failures.hit(ip, at)) {
-      const seconds = Math.max(Math.ceil(failures.retryAfterMs(ip, at) / 1000), 1);
-      const minutes = Math.ceil(seconds / 60);
-      reply.header('retry-after', String(seconds));
-      throw new ApiError(
-        429,
-        'too_many_attempts',
-        `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
-        { retryAfterSeconds: seconds },
-      );
+    const ip = rateKey(clientAddress(req, config));
+    // Vor jeder Arbeit an der Datenbank je einen Platz pro Adresse (Netz) und über alle reservieren, damit auch
+    // gleichzeitige Anfragen die Grenzen halten. Nur ein falscher Code behält seine Plätze.
+    // Eine abgewiesene Anfrage hält keinen Platz, die Sperre speist sich also nicht selbst.
+    if (!failures.hit(ip, at)) throw tooMany(reply, failures.retryAfterMs(ip, at));
+    if (!failuresAll.hit(ALL, at)) {
+      failures.release(ip, at);
+      throw tooMany(reply, failuresAll.retryAfterMs(ALL, at));
     }
     let wrong = false;
     try {
@@ -101,8 +100,23 @@ export function installPairRoutes(app: FastifyInstance): void {
         return invalidCode();
       });
     } finally {
-      // Gekoppelt, anderer Betrieb, falsche Anfrage: Der Platz geht zurück.
-      if (!wrong) failures.release(ip, at);
+      // Gekoppelt, anderer Betrieb, falsche Anfrage: Die Plätze gehen zurück.
+      if (!wrong) {
+        failures.release(ip, at);
+        failuresAll.release(ALL, at);
+      }
     }
   });
+}
+
+function tooMany(reply: FastifyReply, retryAfterMs: number): ApiError {
+  const seconds = Math.max(Math.ceil(retryAfterMs / 1000), 1);
+  const minutes = Math.ceil(seconds / 60);
+  reply.header('retry-after', String(seconds));
+  return new ApiError(
+    429,
+    'too_many_attempts',
+    `Zu viele Versuche. Bitte in ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'} nochmal.`,
+    { retryAfterSeconds: seconds },
+  );
 }

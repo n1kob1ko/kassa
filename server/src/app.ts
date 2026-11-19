@@ -36,6 +36,18 @@ export type AppDeps = {
 
 export const BODY_LIMIT = 1024 * 1024;
 
+/** Zeitgrenzen für Verbindungen in Millisekunden. */
+export type Timeouts = {
+  /** Die Kopfzeilen einer Anfrage müssen so schnell da sein (Node: server.headersTimeout). */
+  headersMs: number;
+  /** So lange darf eine Verbindung mitten in einer Anfrage nichts senden (Fastify connectionTimeout, Node: server.timeout). */
+  idleMs: number;
+  /** So lange darf die ganze Anfrage dauern, Kopfzeilen und Körper (Fastify requestTimeout, Node: server.requestTimeout). */
+  requestMs: number;
+};
+
+export const DEFAULT_TIMEOUTS: Timeouts = { headersMs: 30_000, idleMs: 60_000, requestMs: 5 * 60_000 };
+
 /**
  * Der Pfad ohne Abfrage. Der geheime Teil eines Installations-Links ist eine Fähigkeit und bleibt aus dem Protokoll:
  * `/laden/<geheim>/kassa-1.2.0.apk` wird zu `/laden/…/kassa-1.2.0.apk`.
@@ -68,10 +80,21 @@ export function loggerOptions(stream?: { write(msg: string): void }): FastifySer
 /** Alles, was Zustand hält (Zähler, Sperren), gehört hierher und nicht in Modul-Variablen: Tests bauen viele Apps. */
 export async function buildApp(
   deps: AppDeps,
-  opts: { logger?: FastifyServerOptions['logger'] } = {},
+  opts: { logger?: FastifyServerOptions['logger']; timeouts?: Timeouts } = {},
 ): Promise<FastifyInstance> {
   // Kopfzeilen wie X-Forwarded-For kann jeder Client setzen. Die Adresse des Clients liest clientAddress().
-  const app = Fastify({ trustProxy: false, bodyLimit: BODY_LIMIT, logger: opts.logger ?? false });
+  const timeouts = opts.timeouts ?? DEFAULT_TIMEOUTS;
+  const app = Fastify({
+    trustProxy: false,
+    bodyLimit: BODY_LIMIT,
+    logger: opts.logger ?? false,
+    connectionTimeout: timeouts.idleMs,
+    requestTimeout: timeouts.requestMs,
+    // Node prüft die Zeitgrenzen nur in diesem Takt (Vorgabe 30 s): kurz genug für die kürzeste Grenze.
+    http: { connectionsCheckingInterval: Math.min(timeouts.headersMs, timeouts.idleMs, 5000) },
+  });
+  // Fastify kennt keine eigene Einstellung dafür: Die Kopfzeilen müssen vor der ganzen Anfrage fertig sein.
+  app.server.headersTimeout = Math.min(timeouts.headersMs, timeouts.requestMs);
   installErrorHandling(app);
   app.decorate('deps', deps);
   // Zuerst: der Hook für die Sicherheits-Kopfzeilen gilt nur für Adressen, die nach ihm dazukommen.

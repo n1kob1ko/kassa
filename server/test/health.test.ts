@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, expect, test } from 'vitest';
+import { connect, type Socket } from 'node:net';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { ApiError } from '../src/errors.js';
 import { testApp } from './support/app.js';
 
@@ -62,4 +63,63 @@ test('ungültiges JSON ist 400 bad_request', async () => {
   });
   expect(res.statusCode).toBe(400);
   expect(res.json().error.code).toBe('bad_request');
+});
+
+describe('Zeitgrenzen', () => {
+  let s: Awaited<ReturnType<typeof testApp>>;
+  let port: number;
+  const sockets: Socket[] = [];
+  beforeAll(async () => {
+    s = await testApp({}, { timeouts: { headersMs: 400, idleMs: 300, requestMs: 4000 } });
+    s.app.post('/api/test/echo', async (req) => ({ size: JSON.stringify(req.body).length }));
+    await s.app.listen({ host: '127.0.0.1', port: 0 });
+    port = (s.app.server.address() as { port: number }).port;
+  });
+  afterAll(async () => {
+    for (const k of sockets) k.destroy();
+    await s.close();
+  });
+
+  const open = async (): Promise<{ sock: Socket; closed: Promise<void>; received: () => string }> => {
+    const sock = connect(port, '127.0.0.1');
+    sockets.push(sock);
+    sock.on('error', () => {});
+    let data = '';
+    sock.on('data', (d) => (data += d.toString()));
+    const closed = new Promise<void>((resolve) => sock.on('close', () => resolve()));
+    await new Promise<void>((resolve) => sock.on('connect', () => resolve()));
+    return { sock, closed, received: () => data };
+  };
+  const head = (length: number) =>
+    `POST /api/test/echo HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: ${length}\r\n\r\n`;
+  const within = (p: Promise<void>, ms: number) =>
+    Promise.race([p.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), ms))]);
+
+  test('eine Anfrage, die ihren Körper nie beendet, bekommt ihre Verbindung geschlossen', async () => {
+    const { sock, closed } = await open();
+    sock.write(head(1000) + '{"a":');
+    expect(await within(closed, 3000)).toBe(true);
+  });
+
+  test('Kopfzeilen, die nie fertig werden, bekommen ihre Verbindung geschlossen', async () => {
+    const { sock, closed } = await open();
+    sock.write('POST /api/test/echo HTTP/1.1\r\nHost: x\r\n');
+    expect(await within(closed, 3000)).toBe(true);
+  });
+
+  test('ein langsamer, aber stetiger Upload innerhalb der Gesamtzeit wird nicht abgeschnitten', async () => {
+    const { sock, closed, received } = await open();
+    const body = JSON.stringify({ t: 'x'.repeat(30) });
+    sock.write(head(body.length));
+    // Der Körper dauert insgesamt länger als die Ruhegrenze, aber nie schweigt die Verbindung so lange.
+    for (const ch of body) {
+      sock.write(ch);
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    await new Promise((r) => setTimeout(r, 100));
+    expect(received()).toMatch(/^HTTP\/1\.1 200/);
+    expect(received()).toContain('"size"');
+    sock.end();
+    await closed;
+  });
 });

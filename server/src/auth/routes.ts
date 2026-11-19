@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { z } from 'zod';
 import { audit } from '../audit.js';
-import { clientAddress } from '../client_address.js';
+import { clientAddress, rateKey } from '../client_address.js';
 import { withSystem } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { SlidingWindow } from '../rate_limit.js';
@@ -199,7 +199,7 @@ export function installAuth(app: FastifyInstance): void {
     const at = now();
 
     // Vor dem Rechnen des Passworts: Jeder Versuch kostet Rechenzeit und Speicher, auch mit immer neuer E-Mail.
-    const address = clientAddress(req, config);
+    const address = rateKey(clientAddress(req, config));
     if (!attemptsPerAddress.hit(address, at)) {
       throw tooManyAttempts(reply, Math.ceil(attemptsPerAddress.retryAfterMs(address, at) / 1000));
     }
