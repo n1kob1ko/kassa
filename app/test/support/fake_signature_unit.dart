@@ -15,6 +15,9 @@ enum FakeMode { ok, error, silent }
 class FakeSignatureUnit implements SignatureUnit {
   FakeMode _mode = FakeMode.ok;
   int signCalls = 0;
+
+  /// Der Satz der [SignatureFailure] bei [FakeMode.error].
+  String failure = 'Die Attrappe signiert nicht.';
   Completer<void> _released = Completer<void>();
 
   FakeMode get mode => _mode;
@@ -46,7 +49,7 @@ class FakeSignatureUnit implements SignatureUnit {
     signCalls++;
     switch (mode) {
       case FakeMode.error:
-        throw const SignatureFailure('Die Attrappe signiert nicht.');
+        throw SignatureFailure(failure);
       case FakeMode.silent:
         await _released.future;
       case FakeMode.ok:

@@ -17,27 +17,42 @@ import 'rksv_secrets.dart';
 import 'rksv_state.dart';
 import 'signature_unit.dart';
 
-/// Liefert die Signatur-Einheit einer Kette; in der App: Probe-Signatur aus
-/// RksvSecrets und rksv_certificates.
+/// Liefert die Signatur-Einheit einer Kette; in der App [signatureUnitOf].
 typedef SignatureUnitOf = Future<SignatureUnit> Function(int chain);
 
-/// Die Signatur-Einheit der App: bei einer Probe-Kette die Probe-Signatur mit
-/// dem Schlüssel aus [secrets] und dem Zertifikat der Kette. Fehlt etwas, ist
-/// das ein unerwarteter Fehler ([StateError]), kein Ausfall.
-SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
-    (chain) async {
-      final row = await (db.select(db.rksvChainRows).join([
-        innerJoin(
-          db.rksvCertificateRows,
-          db.rksvCertificateRows.serialHex.equalsExp(
-            db.rksvChainRows.certSerial,
-          ),
-        ),
-      ])..where(db.rksvChainRows.chain.equals(chain))).getSingleOrNull();
-      if (row == null) {
-        throw StateError('Kette $chain oder ihr Zertifikat fehlt.');
-      }
-      if (row.readTable(db.rksvChainRows).mode != RksvMode.probe.name) {
+/// Baut die Online-Einheit einer Kette aus ihren gespeicherten Zeilen.
+typedef OnlineUnitOf = Future<SignatureUnit> Function(
+  RksvChainRow chain,
+  RksvCertificateRow certificate,
+);
+
+/// Die Signatur-Einheit der App, nach `rksv_chains.unit`: bei `probe` die
+/// Probe-Signatur mit dem Schlüssel aus [secrets] und dem Zertifikat der
+/// Kette, bei `atrustTest` und `atrust` was [online] aus Kette und
+/// Zertifikat baut. Fehlt etwas, passt der Modus nicht oder ist die Einheit
+/// unbekannt, ist das ein unerwarteter Fehler ([StateError]), kein Ausfall.
+SignatureUnitOf signatureUnitOf(
+  KassaDatabase db,
+  RksvSecrets secrets, {
+  required OnlineUnitOf online,
+}) => (chain) async {
+  final row = await (db.select(db.rksvChainRows).join([
+    innerJoin(
+      db.rksvCertificateRows,
+      db.rksvCertificateRows.serialHex.equalsExp(db.rksvChainRows.certSerial),
+    ),
+  ])..where(db.rksvChainRows.chain.equals(chain))).getSingleOrNull();
+  if (row == null) {
+    throw StateError('Kette $chain oder ihr Zertifikat fehlt.');
+  }
+  final chainRow = row.readTable(db.rksvChainRows);
+  final certificate = row.readTable(db.rksvCertificateRows);
+  final unit =
+      RksvUnit.values.asNameMap()[chainRow.unit] ??
+      (throw StateError('Kette $chain hat eine unbekannte Signatur-Einheit.'));
+  switch (unit) {
+    case RksvUnit.probe:
+      if (chainRow.mode != RksvMode.probe.name) {
         throw StateError('Kette $chain ist keine Probe-Kette.');
       }
       final key = await secrets.probeKey(chain);
@@ -46,11 +61,33 @@ SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
       }
       return ProbeSignatureUnit(
         privateKey: key,
-        certificateDer: row.readTable(db.rksvCertificateRows).certificate,
+        certificateDer: certificate.certificate,
       );
-    };
+    case RksvUnit.atrustTest:
+      // Testsystem heißt Testbon (Plan, Global Constraints).
+      if (chainRow.mode != RksvMode.probe.name) {
+        throw StateError('Kette $chain am Testsystem ist keine Probe-Kette.');
+      }
+      return online(chainRow, certificate);
+    case RksvUnit.atrust:
+      return online(chainRow, certificate);
+  }
+};
+
+/// Wie [signatureUnitOf], aber nur für Probe-Ketten: Eine Kette mit einer
+/// Online-Einheit ist ein [StateError].
+SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
+    signatureUnitOf(
+      db,
+      secrets,
+      online: (chain, _) async =>
+          throw StateError('Kette ${chain.chain} ist keine Probe-Kette.'),
+    );
 
 const _reasonSilent = 'Die Signatur hat nicht geantwortet.';
+
+/// Nur noch, wenn ohne Frage an die Signatur ein Ausfall-Vermerk entsteht und
+/// kein Grund gespeichert ist.
 const _reasonError = 'Die Signatur hat einen Fehler gemeldet.';
 
 /// Ab dieser Dauer ist ein Ausfall bei FinanzOnline zu melden.
@@ -388,9 +425,10 @@ class RksvJournal {
     String failure;
     try {
       return await attempt().timeout(limit);
-    } on SignatureFailure {
+    } on SignatureFailure catch (e) {
       if (mustSign) rethrow;
-      failure = _reasonError;
+      // Der Satz der Einheit wird der Grund des Ausfalls (P2).
+      failure = e.reason;
     } on TimeoutException {
       tooLate = true;
       if (unit == null) {

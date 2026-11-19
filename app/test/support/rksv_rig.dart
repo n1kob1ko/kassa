@@ -31,6 +31,7 @@ import 'package:kassa/rksv/rksv_state.dart';
 import 'package:pointycastle/digests/sha256.dart';
 
 import 'demo_fixtures.dart';
+import 'fake_atrust.dart';
 import 'fake_signature_unit.dart';
 
 /// Speichert ausgegebene Protokolle im Speicher. Mit [accept] false bricht
@@ -86,7 +87,13 @@ class RksvRig {
   /// Ausfall-Eintrag ohne Frage an die Signatur (`trySign: false`) bekommt
   /// deshalb die Seriennummer der Kette und im Protokoll eine eigene Gruppe.
   /// In der App ist beides dasselbe Zertifikat.
-  static Future<RksvRig> open({bool probeUnit = false}) async {
+  ///
+  /// Mit [unitOf] baut das Journal seine Einheiten damit (etwa
+  /// [signatureUnitOf] mit einer Online-Einheit an [FakeAtrust]).
+  static Future<RksvRig> open({
+    bool probeUnit = false,
+    SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
+  }) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 18, 13, 5, 9));
@@ -116,7 +123,11 @@ class RksvRig {
     final journal = RksvJournal(
       db,
       secrets,
-      probeUnit ? probeSignatureUnitOf(db, secrets) : (_) async => fake,
+      unitOf != null
+          ? unitOf(db, secrets)
+          : probeUnit
+          ? probeSignatureUnitOf(db, secrets)
+          : (_) async => fake,
       clock,
     );
     final receipts = ReceiptRepository(
@@ -234,6 +245,45 @@ class RksvRig {
     );
   }
 
+  /// Setzt eine laufende Online-Probe direkt in die Datenbank (den Weg der
+  /// App dorthin baut erst ein späterer Schritt): das Zertifikat von [atrust]
+  /// mit seinen Ausstellern, Kette 1 mit der Einheit `atrustTest`, dem Modus
+  /// `probe`, der Kennung `AT1` und der Kassen-Kennung `ONLINETEST`, dazu
+  /// der AES-Schlüssel aus den Bytes 0 bis 31. Ohne Startbeleg.
+  Future<void> startAtrustTest(FakeAtrust atrust) async {
+    await secrets.writeAesKey(
+      1,
+      Uint8List.fromList(List.generate(32, (i) => i)),
+    );
+    await db
+        .into(db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: '2159b9f6',
+            certificate: atrust.certificateDer,
+            issuers: Value(
+              jsonEncode([for (final i in atrust.issuersDer) base64.encode(i)]),
+            ),
+          ),
+        );
+    await db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: const Value(1),
+            mode: 'probe',
+            unit: const Value('atrustTest'),
+            cashBoxId: 'ONLINETEST',
+            zdaId: 'AT1',
+            certSerial: '2159b9f6',
+            startedAt: clock.now(),
+          ),
+        );
+    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
+      const RksvStateRowsCompanion(mode: Value('probe'), chain: Value(1)),
+    );
+  }
+
   /// Rechnet die Kette [chain] nach, ohne das Journal zu fragen: Positionen
   /// 1 bis n, Felder des Codes gegen den Bon, jeder Kettenwert, jede Signatur
   /// gegen ihr Zertifikat (oder der Ausfall-Text), jeder Zähler gegen die
@@ -259,7 +309,7 @@ class RksvRig {
       final f = text.split('_');
       expect(f, hasLength(13), reason: '$at: $text');
       expect(f[0], '', reason: at);
-      expect(f[1], 'R1-AT100', reason: at);
+      expect(f[1], 'R1-${chainRow.zdaId}', reason: at);
       expect(f[2], chainRow.cashBoxId, reason: at);
       expect(f[3], '${receipt.number}', reason: at);
       expect(DateTime.parse(f[4]), receipt.createdAt, reason: at);

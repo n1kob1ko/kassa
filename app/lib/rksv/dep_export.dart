@@ -66,8 +66,7 @@ Future<String> buildDepExport(
       compact = [];
       groups.add({
         'Signaturzertifikat': base64.encode(cert.certificate),
-        'Zertifizierungsstellen': (jsonDecode(cert.issuers) as List)
-            .cast<String>(),
+        'Zertifizierungsstellen': issuersBase64(cert),
         'Belege-kompakt': compact,
       });
     }
@@ -75,6 +74,11 @@ Future<String> buildDepExport(
   }
   return jsonEncode({'Belege-Gruppe': groups});
 }
+
+/// Die Zertifikate der Aussteller von [cert] in base64, wie sie in
+/// `rksv_certificates.issuers` stehen.
+List<String> issuersBase64(RksvCertificateRow cert) =>
+    (jsonDecode(cert.issuers) as List).cast<String>();
 
 /// `kassa-protokoll-PROBE-<Kennung>-<JJJJMMTT>.json` bei Probe, sonst ohne
 /// `PROBE-`.

@@ -8720,6 +8720,16 @@ class $RksvChainRowsTable extends RksvChainRows
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('probe'),
+  );
   static const VerificationMeta _cashBoxIdMeta = const VerificationMeta(
     'cashBoxId',
   );
@@ -8780,6 +8790,7 @@ class $RksvChainRowsTable extends RksvChainRows
   List<GeneratedColumn> get $columns => [
     chain,
     mode,
+    unit,
     cashBoxId,
     zdaId,
     certSerial,
@@ -8811,6 +8822,12 @@ class $RksvChainRowsTable extends RksvChainRows
       );
     } else if (isInserting) {
       context.missing(_modeMeta);
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
     }
     if (data.containsKey('cash_box_id')) {
       context.handle(
@@ -8867,6 +8884,10 @@ class $RksvChainRowsTable extends RksvChainRows
         DriftSqlType.string,
         data['${effectivePrefix}mode'],
       )!,
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      )!,
       cashBoxId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}cash_box_id'],
@@ -8901,6 +8922,10 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
 
   /// `probe` oder `live`.
   final String mode;
+
+  /// Wer die Kette signiert: `probe` (Probe-Signatur auf dem Tablet),
+  /// `atrustTest` (Testsystem von A-Trust) oder `atrust`. Siehe `RksvUnit`.
+  final String unit;
   final String cashBoxId;
   final String zdaId;
 
@@ -8911,6 +8936,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
   const RksvChainRow({
     required this.chain,
     required this.mode,
+    required this.unit,
     required this.cashBoxId,
     required this.zdaId,
     required this.certSerial,
@@ -8922,6 +8948,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     final map = <String, Expression>{};
     map['chain'] = Variable<int>(chain);
     map['mode'] = Variable<String>(mode);
+    map['unit'] = Variable<String>(unit);
     map['cash_box_id'] = Variable<String>(cashBoxId);
     map['zda_id'] = Variable<String>(zdaId);
     map['cert_serial'] = Variable<String>(certSerial);
@@ -8936,6 +8963,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     return RksvChainRowsCompanion(
       chain: Value(chain),
       mode: Value(mode),
+      unit: Value(unit),
       cashBoxId: Value(cashBoxId),
       zdaId: Value(zdaId),
       certSerial: Value(certSerial),
@@ -8954,6 +8982,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     return RksvChainRow(
       chain: serializer.fromJson<int>(json['chain']),
       mode: serializer.fromJson<String>(json['mode']),
+      unit: serializer.fromJson<String>(json['unit']),
       cashBoxId: serializer.fromJson<String>(json['cashBoxId']),
       zdaId: serializer.fromJson<String>(json['zdaId']),
       certSerial: serializer.fromJson<String>(json['certSerial']),
@@ -8967,6 +8996,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     return <String, dynamic>{
       'chain': serializer.toJson<int>(chain),
       'mode': serializer.toJson<String>(mode),
+      'unit': serializer.toJson<String>(unit),
       'cashBoxId': serializer.toJson<String>(cashBoxId),
       'zdaId': serializer.toJson<String>(zdaId),
       'certSerial': serializer.toJson<String>(certSerial),
@@ -8978,6 +9008,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
   RksvChainRow copyWith({
     int? chain,
     String? mode,
+    String? unit,
     String? cashBoxId,
     String? zdaId,
     String? certSerial,
@@ -8986,6 +9017,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
   }) => RksvChainRow(
     chain: chain ?? this.chain,
     mode: mode ?? this.mode,
+    unit: unit ?? this.unit,
     cashBoxId: cashBoxId ?? this.cashBoxId,
     zdaId: zdaId ?? this.zdaId,
     certSerial: certSerial ?? this.certSerial,
@@ -8996,6 +9028,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     return RksvChainRow(
       chain: data.chain.present ? data.chain.value : this.chain,
       mode: data.mode.present ? data.mode.value : this.mode,
+      unit: data.unit.present ? data.unit.value : this.unit,
       cashBoxId: data.cashBoxId.present ? data.cashBoxId.value : this.cashBoxId,
       zdaId: data.zdaId.present ? data.zdaId.value : this.zdaId,
       certSerial: data.certSerial.present
@@ -9011,6 +9044,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
     return (StringBuffer('RksvChainRow(')
           ..write('chain: $chain, ')
           ..write('mode: $mode, ')
+          ..write('unit: $unit, ')
           ..write('cashBoxId: $cashBoxId, ')
           ..write('zdaId: $zdaId, ')
           ..write('certSerial: $certSerial, ')
@@ -9024,6 +9058,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
   int get hashCode => Object.hash(
     chain,
     mode,
+    unit,
     cashBoxId,
     zdaId,
     certSerial,
@@ -9036,6 +9071,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
       (other is RksvChainRow &&
           other.chain == this.chain &&
           other.mode == this.mode &&
+          other.unit == this.unit &&
           other.cashBoxId == this.cashBoxId &&
           other.zdaId == this.zdaId &&
           other.certSerial == this.certSerial &&
@@ -9046,6 +9082,7 @@ class RksvChainRow extends DataClass implements Insertable<RksvChainRow> {
 class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
   final Value<int> chain;
   final Value<String> mode;
+  final Value<String> unit;
   final Value<String> cashBoxId;
   final Value<String> zdaId;
   final Value<String> certSerial;
@@ -9054,6 +9091,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
   const RksvChainRowsCompanion({
     this.chain = const Value.absent(),
     this.mode = const Value.absent(),
+    this.unit = const Value.absent(),
     this.cashBoxId = const Value.absent(),
     this.zdaId = const Value.absent(),
     this.certSerial = const Value.absent(),
@@ -9063,6 +9101,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
   RksvChainRowsCompanion.insert({
     this.chain = const Value.absent(),
     required String mode,
+    this.unit = const Value.absent(),
     required String cashBoxId,
     required String zdaId,
     required String certSerial,
@@ -9076,6 +9115,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
   static Insertable<RksvChainRow> custom({
     Expression<int>? chain,
     Expression<String>? mode,
+    Expression<String>? unit,
     Expression<String>? cashBoxId,
     Expression<String>? zdaId,
     Expression<String>? certSerial,
@@ -9085,6 +9125,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
     return RawValuesInsertable({
       if (chain != null) 'chain': chain,
       if (mode != null) 'mode': mode,
+      if (unit != null) 'unit': unit,
       if (cashBoxId != null) 'cash_box_id': cashBoxId,
       if (zdaId != null) 'zda_id': zdaId,
       if (certSerial != null) 'cert_serial': certSerial,
@@ -9096,6 +9137,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
   RksvChainRowsCompanion copyWith({
     Value<int>? chain,
     Value<String>? mode,
+    Value<String>? unit,
     Value<String>? cashBoxId,
     Value<String>? zdaId,
     Value<String>? certSerial,
@@ -9105,6 +9147,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
     return RksvChainRowsCompanion(
       chain: chain ?? this.chain,
       mode: mode ?? this.mode,
+      unit: unit ?? this.unit,
       cashBoxId: cashBoxId ?? this.cashBoxId,
       zdaId: zdaId ?? this.zdaId,
       certSerial: certSerial ?? this.certSerial,
@@ -9121,6 +9164,9 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
     }
     if (mode.present) {
       map['mode'] = Variable<String>(mode.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
     }
     if (cashBoxId.present) {
       map['cash_box_id'] = Variable<String>(cashBoxId.value);
@@ -9145,6 +9191,7 @@ class RksvChainRowsCompanion extends UpdateCompanion<RksvChainRow> {
     return (StringBuffer('RksvChainRowsCompanion(')
           ..write('chain: $chain, ')
           ..write('mode: $mode, ')
+          ..write('unit: $unit, ')
           ..write('cashBoxId: $cashBoxId, ')
           ..write('zdaId: $zdaId, ')
           ..write('certSerial: $certSerial, ')
@@ -16504,6 +16551,7 @@ typedef $$RksvChainRowsTableCreateCompanionBuilder =
     RksvChainRowsCompanion Function({
       Value<int> chain,
       required String mode,
+      Value<String> unit,
       required String cashBoxId,
       required String zdaId,
       required String certSerial,
@@ -16514,6 +16562,7 @@ typedef $$RksvChainRowsTableUpdateCompanionBuilder =
     RksvChainRowsCompanion Function({
       Value<int> chain,
       Value<String> mode,
+      Value<String> unit,
       Value<String> cashBoxId,
       Value<String> zdaId,
       Value<String> certSerial,
@@ -16582,6 +16631,11 @@ class $$RksvChainRowsTableFilterComposer
 
   ColumnFilters<String> get mode => $composableBuilder(
     column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16673,6 +16727,11 @@ class $$RksvChainRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get cashBoxId => $composableBuilder(
     column: $table.cashBoxId,
     builder: (column) => ColumnOrderings(column),
@@ -16732,6 +16791,9 @@ class $$RksvChainRowsTableAnnotationComposer
 
   GeneratedColumn<String> get mode =>
       $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
 
   GeneratedColumn<String> get cashBoxId =>
       $composableBuilder(column: $table.cashBoxId, builder: (column) => column);
@@ -16827,6 +16889,7 @@ class $$RksvChainRowsTableTableManager
               ({
                 Value<int> chain = const Value.absent(),
                 Value<String> mode = const Value.absent(),
+                Value<String> unit = const Value.absent(),
                 Value<String> cashBoxId = const Value.absent(),
                 Value<String> zdaId = const Value.absent(),
                 Value<String> certSerial = const Value.absent(),
@@ -16835,6 +16898,7 @@ class $$RksvChainRowsTableTableManager
               }) => RksvChainRowsCompanion(
                 chain: chain,
                 mode: mode,
+                unit: unit,
                 cashBoxId: cashBoxId,
                 zdaId: zdaId,
                 certSerial: certSerial,
@@ -16845,6 +16909,7 @@ class $$RksvChainRowsTableTableManager
               ({
                 Value<int> chain = const Value.absent(),
                 required String mode,
+                Value<String> unit = const Value.absent(),
                 required String cashBoxId,
                 required String zdaId,
                 required String certSerial,
@@ -16853,6 +16918,7 @@ class $$RksvChainRowsTableTableManager
               }) => RksvChainRowsCompanion.insert(
                 chain: chain,
                 mode: mode,
+                unit: unit,
                 cashBoxId: cashBoxId,
                 zdaId: zdaId,
                 certSerial: certSerial,

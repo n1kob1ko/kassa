@@ -151,7 +151,8 @@ void main() {
         expect(e.certSerial, (await rig.fake.info()).serialHex);
         var state = await rig.stateRow();
         expect(state.outageSince, rig.clock.now());
-        expect(state.outageReason, 'Die Signatur hat einen Fehler gemeldet.');
+        // Der Grund ist der Satz der Einheit (hier der Attrappe).
+        expect(state.outageReason, 'Die Attrappe signiert nicht.');
         expect(state.counterCents, 1820);
 
         rig.clock.value = rig.clock.value.add(const Duration(minutes: 1));

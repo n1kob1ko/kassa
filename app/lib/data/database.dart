@@ -353,6 +353,10 @@ class RksvChainRows extends Table {
 
   /// `probe` oder `live`.
   TextColumn get mode => text()();
+
+  /// Wer die Kette signiert: `probe` (Probe-Signatur auf dem Tablet),
+  /// `atrustTest` (Testsystem von A-Trust) oder `atrust`. Siehe `RksvUnit`.
+  TextColumn get unit => text().withDefault(const Constant('probe'))();
   TextColumn get cashBoxId => text()();
   TextColumn get zdaId => text()();
 
@@ -457,7 +461,7 @@ class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -539,7 +543,9 @@ class KassaDatabase extends _$KassaDatabase {
           await _createReceiptGuards('receipts');
 
           await m.addColumn(settingsRows, settingsRows.printerQrAsImage);
-          await m.createTable(rksvChainRows);
+          // In der Form von Version 4: createTable legte die heutige Form an,
+          // und Schritt 5 fände seine Spalte schon vor.
+          await customStatement(_rksvChainsV4);
           await m.createTable(rksvCertificateRows);
           await m.createTable(rksvEntryRows);
           await m.createTable(rksvStateRows);
@@ -559,11 +565,25 @@ class KassaDatabase extends _$KassaDatabase {
         });
         await customStatement('PRAGMA foreign_keys = ON');
       }
+      if (from < 5 && to >= 5) {
+        // Vorhandene Ketten signiert die Probe-Signatur. ADD COLUMN lässt die
+        // Trigger der Tabelle stehen.
+        await m.addColumn(rksvChainRows, rksvChainRows.unit);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// `rksv_chains`, wie Version 4 sie angelegt hat (ohne `unit`).
+  static const _rksvChainsV4 =
+      'CREATE TABLE "rksv_chains" ("chain" INTEGER NOT NULL, '
+      '"mode" TEXT NOT NULL, "cash_box_id" TEXT NOT NULL, '
+      '"zda_id" TEXT NOT NULL, "cert_serial" TEXT NOT NULL '
+      'REFERENCES rksv_certificates(serial_hex), '
+      '"started_at" INTEGER NOT NULL, "ended_at" INTEGER NULL, '
+      'PRIMARY KEY(chain))';
 
   /// Zahl der kaputten Verweise je Tabelle, Zieltabelle und Fremdschlüssel.
   /// Gezählt statt nach rowid verglichen, weil der Neuaufbau einer Tabelle
