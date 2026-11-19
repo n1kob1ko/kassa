@@ -62,13 +62,29 @@
 
 ## Befunde aus Task 1
 
-(trägt der Controller ein, bevor Task 2 beginnt)
+Lauf `atrust-testsystem` Nummer 1 am 19.11.2026 (Commit 16f08ca), bestanden.
+
+| Punkt | Befund | Folge |
+|---|---|---|
+| HTTPS | GitHub vertraut dem Zertifikat von `hs-abnahme.a-trust.at`. | P8 greift nicht. Das Tablet zeigt es in "Verbindung prüfen". |
+| `ZDA` | 200, `{"zdaid":"AT1"}`, `application/json; charset=utf-8`. | Kennzeichen der Online-Probe ist `AT1`. |
+| `Certificate` | 200. Felder `Signaturzertifikat`, `Zertifizierungsstellen` (2 Stück), `Zertifikatsseriennummer` (`559528438`), `ZertifikatsseriennummerHex` (`2159B9F6`, Großbuchstaben), `alg` (`ES256`). Inhaber `UID: ATU12345678`, Aussteller `a-sign-Premium-Test-Sig-02`. | Vergleich der Seriennummer ohne Groß- und Kleinschreibung, wie geplant. |
+| **Gültigkeit** | Das Zertifikat des Test-Benutzers ist **abgelaufen**: gültig 10.03.2016 bis 10.05.2020. | "Verbindung prüfen" darf am Testsystem ein abgelaufenes Zertifikat nicht als Problem melden (Task 5 geändert). Weicht von Entwurf 6.6 ab ("heute gültig"); für das echte System bleibt die Prüfung. |
+| Aussteller-Zertifikate | Beide haben RSA-Schlüssel. `CardCertificate.parse` lehnt sie ab (nur P-256). | Aussteller-Zertifikate werden nur gespeichert und ausgegeben, nie mit `CardCertificate.parse` gelesen. |
+| Anmelden | 200, Felder `sessionid` (32 Zeichen) und `sessionkey` (44 Zeichen). | wie geplant |
+| `Sign/Hash` | 200, Feld `signature`, **Base64-URL ohne `=`**, 64 Bytes, passt zum Zertifikat. Dauer von GitHub aus 125 bis 129 ms je Signatur. | Der Client nimmt weiter beide Alphabete an. |
+| Unbekannte Sitzung | 401, Körper ist eine HTML-Seite ("401 - Unauthorized"), kein JSON. | Fehler nur am Statuscode erkennen, den Körper bei Status ungleich 200 nie lesen. |
+| Gesperrter Benutzer | 403, HTML-Seite. | wie geplant (`rejected`) |
+| Abmelden | 200, `{"result":true}`. **Danach signiert dieselbe Sitzung weiter mit 200.** | Auf das Abmelden ist kein Verlass. Task 8 Punkt 3 geändert: der Weg "401, neu anmelden" wird am Testsystem mit einer erfundenen Sitzung geprüft. |
+| Unbekannte Adresse | 404, HTML-Seite. | `server` |
+
+Der frühe Lauf des Prüfwerkzeugs von Hand (Task 1, Step 4) ist entfallen: Ohne Zugang zum Testsystem lässt sich von hier keine Signatur erzeugen. Die Frage klärt Task 8.
 
 ---
 
 ### Task 0: Bilder (macht der Controller, kein Unterauftrag)
 
-Zeichnet die neuen Bildschirme im bestehenden Stil und zeigt sie Niko, ohne auf Antwort zu warten: Karte "Signatur" im Zustand "Nicht eingerichtet" mit der neuen Zeile, im Zustand "Online-Probe", mit Ausfall und Grund, mit abgelehnten Zugangsdaten; Blatt "Mit A-Trust ausprobieren?"; Bildschirm "Verbindung prüfen" (läuft, vier Haken, Kreuz in Zeile 1, Kreuz in Zeile 3). Die Bilder liegen unter `/mnt/project-files/kassa-design/` und gehen als Vorlage an Task 6.
+Zeichnet die neuen Bildschirme im bestehenden Stil und zeigt sie Niko, ohne auf Antwort zu warten: Karte "Signatur" im Zustand "Nicht eingerichtet" mit der neuen Zeile, im Zustand "Online-Probe", mit Ausfall und Grund, mit abgelehnten Zugangsdaten; Blatt "Mit A-Trust ausprobieren?"; Bildschirm "Verbindung prüfen" (läuft, vier Haken, Kreuz in Zeile 1, Kreuz in Zeile 3). Die Bilder liegen unter `/mnt/project-files/kassa-entwurf/rksv/s2a-*.png` (erzeugt mit `zeichnen_s2a.py` im selben Ordner) und gehen als Vorlage an Task 6 und Task 7.
 
 ### Task 1: Erkundung des Testsystems (macht der Controller)
 
@@ -132,7 +148,8 @@ final class AtrustException implements Exception {
 }
 
 class AtrustClient {
-  AtrustClient(http.Client client, AtrustSystem system);
+  AtrustClient(http.Client client, this.system);
+  final AtrustSystem system;
   Future<String> zdaId(String user);
   Future<AtrustCertificate> certificate(String user);
   Future<AtrustSession> login(String user, String password);
@@ -349,10 +366,10 @@ Zeilen und Sätze von `ConnectionCheck`:
 
 | Zeile | ok | Problem |
 |---|---|---|
-| `reach` (`zdaId`) | `A-Trust erreicht (… ms).` | je `AtrustException.sentence`, dazu der Rat: bei `noInternet` `WLAN prüfen.`, bei `untrusted` `Bitte den Bericht schicken.`, sonst `Später noch einmal versuchen.` |
-| `certificate` | `Zertifikat geladen: <Aussteller>, Nummer <hex>, gültig bis <TT.MM.JJJJ>.` | `alg` nicht `ES256`, Schlüssel nicht P-256, heute nicht gültig: `Das Zertifikat von A-Trust passt nicht: <Grund>.` |
+| `reach` (`zdaId`) | `A-Trust erreicht (0,2 Sekunden).` (Dauer in Sekunden mit einer Nachkommastelle, mit Komma) | je `AtrustException.sentence`, dazu der Rat: bei `noInternet` `WLAN prüfen.`, bei `untrusted` `Bitte den Bericht schicken.`, sonst `Später noch einmal versuchen.` |
+| `certificate` | Echtes System: `Zertifikat geladen: Nummer <hex>, gültig bis <TT.MM.JJJJ>.`, darunter klein `Ausgestellt von <Aussteller>.` Testsystem: `Zertifikat geladen: Nummer <hex>.`, darunter klein `Test-Zertifikat von A-Trust (<Aussteller>), abgelaufen am <TT.MM.JJJJ>. Für die Online-Probe ist das in Ordnung.` (ist es nicht abgelaufen: `…, gültig bis <TT.MM.JJJJ>.`) | `alg` nicht `ES256` oder Schlüssel nicht P-256: `Das Zertifikat von A-Trust passt nicht: <Grund>.` Nur am echten System auch: heute nicht gültig. |
 | `login` | `Angemeldet.` | bei `rejected`: `A-Trust hat die Zugangsdaten abgelehnt.` |
-| `signature` | `Probe-Unterschrift erstellt und geprüft (… ms).` | Satz der Einheit |
+| `signature` | `Probe-Unterschrift erstellt und geprüft (0,2 Sekunden).` | Satz der Einheit |
 
 Eine gescheiterte Zeile lässt die folgenden auf `waiting`. Zeile 4 signiert den SHA-256 von `Kassa Verbindung prüfen` über eine `OnlineSignatureUnit` mit dem eben geladenen Zertifikat.
 
@@ -427,9 +444,9 @@ Der Test läuft nur mit `KASSA_ATRUST_TEST=1`, mit dem echten `http.Client` gege
 
 1. `ConnectionCheck.run` ergibt vier Haken.
 2. 20 Signaturen über eine `OnlineSignatureUnit`, jede am Zertifikat geprüft; genau eine Anmeldung.
-3. Nach `logout` signiert die Einheit trotzdem (neu angemeldet).
+3. `client.signHash` mit einer erfundenen Sitzung (`AtrustSession('unbekannt', <Schlüssel der echten Sitzung>)`) wirft `sessionExpired`; `logout` der echten Sitzung antwortet ohne Fehler. (Am Testsystem signiert eine abgemeldete Sitzung weiter, siehe Befunde.)
 4. Der gesperrte Benutzer `u039193334`: `login` wirft `rejected`; ein Halter mit ihm setzt `rejected` und schickt beim zweiten `session()` nichts. Insgesamt höchstens zwei Anmeldungen mit diesem Benutzer je Lauf.
-5. Eine Kette im `RksvRig` mit echter Online-Einheit: `enableOnlineProbe`, zwei Verkäufe (einer mit 1.234,56 Euro), ein Storno, ein Nullbeleg, `disableProbe`. Die Zeiten der Bons liegen in der Vergangenheit der echten Uhr (Kern R11), aber innerhalb der Gültigkeit des Zertifikats aus Task 1. `chainIsSound` ist wahr.
+5. Eine Kette im `RksvRig` mit echter Online-Einheit: `enableOnlineProbe`, zwei Verkäufe (einer mit 1.234,56 Euro), ein Storno, ein Nullbeleg, `disableProbe`. Die Zeiten der Bons liegen innerhalb der Gültigkeit des Test-Zertifikats (Start 18.11.2019, Monatswechsel Dezember 2019), also auch in der Vergangenheit der echten Uhr (Kern R11). `chainIsSound` ist wahr.
 6. Das ausgegebene Protokoll und die Datei mit Schlüssel und Zertifikat für das Prüfwerkzeug (AES-Schlüssel der Test-Kette, erfunden) schreibt der Test nach `build/atrust/` und druckt beide zwischen den Zeilen `-----DEP-----`, `-----CRYPTO-----`, `-----ENDE-----`, jeweils Base64 in einer Zeile.
 
 `tool/rksv/pruefen_datei.sh <dep-export.json> <cryptographicMaterialContainer.json> [Ordner des Prüfwerkzeugs]` lässt das Prüfwerkzeug über zwei Dateien laufen und endet mit Fehler, wenn in einer Ergebnisdatei der oberste `verificationState` nicht `PASS` ist (Regel wie Kern R9).
