@@ -1,0 +1,66 @@
+name: server
+
+# Tests von Server und Verwaltung im Browser, dazu der Bau des Abbilds, bevor
+# Railway es baut. Ohne Geheimnisse: die Tests brauchen nur ihre eigene
+# Datenbank, das Abbild wird nur gebaut und kurz gestartet, nirgends hochgeladen.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'server/**'
+      - 'web/**'
+      - 'shared/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/server.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Die Tests starten mit server/tool/test-db.sh einen eigenen Cluster aus
+      # /usr/lib/postgresql/16/bin (auch pg_dump und pg_restore für die Sicherung).
+      - name: PostgreSQL 16
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/initdb ] || [ ! -x /usr/lib/postgresql/16/bin/pg_restore ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends postgresql-16
+          fi
+          /usr/lib/postgresql/16/bin/initdb --version
+      - run: npm ci
+      - name: Server
+        working-directory: server
+        run: |
+          npm run typecheck
+          npx vitest run
+      - name: Verwaltung im Browser
+        working-directory: web
+        run: |
+          npm test
+          npm run typecheck
+
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t kassa-server .
+      # pg_dump muss Version 18 sein, sonst scheitert die nächtliche Sicherung.
+      - name: pg_dump im Abbild
+        run: |
+          out="$(docker run --rm --user node kassa-server pg_dump --version)"
+          echo "$out"
+          echo "$out" | grep -Eq '^pg_dump \(PostgreSQL\) 18\.'
+          out="$(docker run --rm --user node kassa-server sh -c '"$PG_DUMP_PATH" --version')"
+          echo "$out"
+          echo "$out" | grep -Eq '^pg_dump \(PostgreSQL\) 18\.'
+      # sharp liegt in /app/node_modules (Arbeitsordner des Abbilds).
+      - name: sharp im Abbild
+        run: docker run --rm --user node -w /app kassa-server node -e "import('sharp').then(()=>console.log('sharp ok'))"

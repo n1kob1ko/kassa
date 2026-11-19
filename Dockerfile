@@ -37,23 +37,27 @@ ENV NODE_ENV=production \
     PORT=3000 \
     WEB_DIR=/app/web/dist
 
-# server/package.json gehört dazu: "type": "module" macht aus dist/*.js Module.
-COPY --from=build /app/node_modules node_modules
-COPY --from=build /app/server/package.json server/package.json
-COPY --from=build /app/server/dist server/dist
-COPY --from=build /app/server/migrations server/migrations
-COPY --from=build /app/web/dist web/dist
-
 # pg_dump für die nächtliche Sicherung. Es muss mindestens so neu sein wie die
 # Datenbank (PostgreSQL 18). Debian selbst liefert eine ältere Fassung, darum
 # kommt das Paket aus dem Paketverzeichnis von PostgreSQL (apt.postgresql.org).
 # Die letzte Zeile lässt den Bau scheitern, wenn pg_dump danach nicht startet.
+# Dieser Schritt steht vor dem Code, damit eine Änderung am Code ihn nicht neu lädt.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates postgresql-common \
  && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
  && apt-get install -y --no-install-recommends postgresql-client-18 \
  && rm -rf /var/lib/apt/lists/* \
  && pg_dump --version
+
+# Direkt das Programm von Version 18, nicht der Wrapper von postgresql-common.
+ENV PG_DUMP_PATH=/usr/lib/postgresql/18/bin/pg_dump
+
+# server/package.json gehört dazu: "type": "module" macht aus dist/*.js Module.
+COPY --from=build /app/node_modules node_modules
+COPY --from=build /app/server/package.json server/package.json
+COPY --from=build /app/server/dist server/dist
+COPY --from=build /app/server/migrations server/migrations
+COPY --from=build /app/web/dist web/dist
 
 USER node
 EXPOSE 3000
