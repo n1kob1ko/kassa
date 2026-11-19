@@ -1,9 +1,11 @@
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import type pg from 'pg';
-import { withBusiness } from '../db/tenant.js';
+import { withBusiness, withBusinessWrite } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { writeServerReport } from '../reports.js';
 import { contentHash } from './content_hash.js';
+import { handleItemChange } from './push_item_change.js';
+import { handleReport } from './push_report.js';
 import { requireRegister, type Register } from './guard.js';
 import {
   certificateEntry,
@@ -213,7 +215,12 @@ export const handlers: Record<string, EntryHandler> = {
   day: handleDay,
   cash_movement: handleMovement,
   receipt: handleReceipt,
+  item_change: handleItemChange,
+  report: handleReport,
 };
+
+/** Arten, die eine Änderungs-Nummer ziehen und darum in withBusinessWrite laufen. */
+const WRITE_KINDS = new Set(['item_change']);
 
 type Result = { seq: number } & (EntryResult | { status: 'error' });
 
@@ -243,7 +250,8 @@ export function installPushRoutes(app: FastifyInstance): void {
         continue;
       }
       try {
-        results.push({ seq: entry.seq, ...(await withBusiness(db, register.businessId, (c) => handler(c, ctx, entry))) });
+        const run = WRITE_KINDS.has(entry.kind) ? withBusinessWrite : withBusiness;
+        results.push({ seq: entry.seq, ...(await run(db, register.businessId, (c) => handler(c, ctx, entry))) });
       } catch (err) {
         // Nur die Art und der Fehler, nie der Inhalt des Eintrags.
         req.log.error({ err, seq: entry.seq, kind: entry.kind }, 'Eintrag konnte nicht angenommen werden');

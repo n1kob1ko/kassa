@@ -72,6 +72,6 @@ export function sampleDay(overrides: Record<string, unknown> = {}): Record<strin
 
 /** Ein Eintrag des Pakets: `entry(5, 'receipt', sampleReceipt())`. */
 export function entry(seq: number, kind: string, value: object): object {
-  const key = { rksv_certificate: 'certificate', rksv_chain: 'chain', cash_movement: 'movement' }[kind] ?? kind;
+  const key = { rksv_certificate: 'certificate', rksv_chain: 'chain', cash_movement: 'movement', item_change: 'change' }[kind] ?? kind;
   return { seq, kind, [key]: value };
 }

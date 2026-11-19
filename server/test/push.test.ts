@@ -37,7 +37,7 @@ describe('Beispielpaket', () => {
   test('Paket aus push_request.json wird angenommen und liegt am Server', async () => {
     const res = await send(fixtureRequest.entries, token, fixtureRequest.deviceId);
     expect(res.status).toBe(200);
-    expect(statuses(res)).toEqual(['accepted', 'accepted', 'accepted', 'accepted', 'accepted', 'rejected/invalid', 'rejected/invalid']);
+    expect(statuses(res)).toEqual(['accepted', 'accepted', 'accepted', 'accepted', 'accepted', 'accepted', 'accepted']);
     expect(res.results.map((r) => r.seq)).toEqual([1, 2, 3, 4, 5, 6, 7]);
 
     const [receipt] = await rows(businessId, 'select * from receipts');
@@ -67,10 +67,11 @@ describe('Beispielpaket', () => {
     const res = await send(fixtureRequest.entries, token, fixtureRequest.deviceId);
     expect(res.status).toBe(200);
     // Der offene Tag und die offene Kette werden überschrieben, das ist kein neuer Eintrag.
-    expect(statuses(res)).toEqual(['duplicate', 'accepted', 'accepted', 'duplicate', 'duplicate', 'rejected/invalid', 'rejected/invalid']);
+    expect(statuses(res)).toEqual(['duplicate', 'accepted', 'accepted', 'duplicate', 'duplicate', 'accepted', 'duplicate']);
     const after = await Promise.all(tables.map((t) => count(businessId, t)));
     expect(after).toEqual(before);
-    expect(await count(businessId, 'reports')).toBe(0);
+    // Der Bericht des Tablets steht einmal da, der Server schreibt keinen eigenen.
+    expect(await rows(businessId, "select source from reports")).toEqual([{ source: 'device' }]);
   });
 });
 
