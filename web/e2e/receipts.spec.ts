@@ -338,7 +338,7 @@ test('Betrieb ohne Bon: leerer Zustand ohne Filter', async ({ page }) => {
   const site = await createSite(page, { name: 'Imbiss ganz leer' });
   await page.goto(`/b/${site.businessId}/bons`);
   await expect(page.getByText('Noch kein Bon.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Sobald an der Kassa boniert wird, erscheinen die Umsätze hier.')).toBeVisible();
+  await expect(page.getByText('Sobald an der Kassa boniert wird, erscheinen die Bons hier.')).toBeVisible();
   await expect(page.getByRole('radiogroup', { name: 'Zahlungsart' })).toHaveCount(0);
 });
 
@@ -368,6 +368,50 @@ test('Tastatur: Tab bis zum Bon, Eingabe öffnet, Escape schließt, der Fokus ke
   await expect(page.getByRole('dialog', { name: 'Bon 2' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(receiptRow(page, 2)).toBeFocused();
+});
+
+test('Tab im Blatt des Bons: nach dem letzten zum ersten, vor dem ersten zum letzten', async ({ page }) => {
+  const site = await createSite(page, { name: 'Imbiss mit Tab' });
+  const { storno } = await seedReceipts(page, site);
+  await page.goto(`/b/${site.businessId}/bons/${storno.id}`);
+  const detail = page.getByRole('dialog', { name: 'Bon 4' });
+  const close = detail.getByRole('button', { name: 'Schließen' });
+  const pair = detail.getByRole('link', { name: 'Zum stornierten Bon 3' });
+  await expect(pair).toBeVisible();
+  await close.focus();
+
+  await page.keyboard.press('Tab');
+  await expect(pair).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(pair).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(close).toBeFocused();
+});
+
+test('Fremder Bon und fremder Tag unter dem eigenen Betrieb: gibt es nicht', async ({ page }) => {
+  const own = await createSite(page, { name: 'Imbiss eigener' });
+  const other = await createSite(page, { name: 'Imbiss fremder' });
+  const foreign = saleReceipt({ number: 7, createdAt: earlierToday(1)[0]!, lines: [line(MENU.teigtaschen, 3)] });
+  const day = openDay({ openedAt: earlierToday(1)[0]!, openingFloatCents: 98_765 });
+  await pushEntries(page, other, [
+    { kind: 'day', day },
+    { kind: 'receipt', receipt: foreign },
+  ]);
+
+  await page.goto(`/b/${own.businessId}/bons/${foreign.id}`);
+  const detail = page.getByRole('dialog', { name: 'Bon', exact: true });
+  await expect(detail).toContainText('Diesen Bon gibt es nicht.');
+  await expect(detail).not.toContainText('Teigtaschen');
+  await expect(detail).not.toContainText('€');
+  await expect(detail.getByTestId('total')).toHaveCount(0);
+
+  await page.goto(`/b/${own.businessId}/tage/${day.id}`);
+  const dayDetail = page.getByRole('dialog');
+  await expect(dayDetail).toContainText('Diesen Tag gibt es nicht.');
+  await expect(dayDetail).not.toContainText('987,65');
+  await expect(dayDetail.getByTestId('opening-float')).toHaveCount(0);
 });
 
 test('Tage: offener Tag, abgeschlossener Tag mit Differenz und Bewegung', async ({ page }) => {
@@ -496,6 +540,74 @@ test.describe('Handy', () => {
     await detail.getByRole('button', { name: 'Zurück' }).click();
     await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/bons\\?zahlung=bar$`));
     await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('Tab bleibt am Handy im Bon und im Blatt "Mehr", in beide Richtungen', async ({ page }) => {
+    const site = await createSite(page, { name: 'Imbiss Handy-Tab' });
+    const { storno, withOption } = await seedReceipts(page, site);
+
+    // Bon mit Verweis: "Zurück" ist das erste, der Verweis das letzte Ziel.
+    await page.goto(`/b/${site.businessId}/bons/${storno.id}`);
+    const detail = page.getByRole('dialog', { name: 'Bon 4' });
+    const back = detail.getByRole('button', { name: 'Zurück' });
+    const pair = detail.getByRole('link', { name: 'Zum stornierten Bon 3' });
+    await expect(pair).toBeVisible();
+    await back.focus();
+    await page.keyboard.press('Tab');
+    await expect(pair).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(back).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(pair).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(back).toBeFocused();
+
+    // Bon ohne Verweis: "Zurück" ist das einzige Ziel, Tab und Shift+Tab bleiben darauf.
+    await page.goto(`/b/${site.businessId}/bons/${withOption.id}`);
+    const plain = page.getByRole('dialog', { name: 'Bon 1' });
+    const plainBack = plain.getByRole('button', { name: 'Zurück' });
+    await expect(plainBack).toBeVisible();
+    await plainBack.focus();
+    await page.keyboard.press('Tab');
+    await expect(plainBack).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(plainBack).toBeFocused();
+
+    // Das Blatt "Mehr": Schließen zuerst, "Alle Betriebe" zuletzt.
+    await page.goto(`/b/${site.businessId}/umsaetze`);
+    await bottomBar(page).getByRole('button', { name: 'Mehr' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Mehr' });
+    const close = sheet.getByRole('button', { name: 'Schließen' });
+    const lastLink = sheet.getByRole('link', { name: 'Alle Betriebe' });
+    await close.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(lastLink).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+  });
+
+  test('Nach dem Neuladen ist das Blatt "Mehr" zu und die Leiste geht', async ({ page }) => {
+    const site = await createSite(page, { name: 'Imbiss Handy-Neuladen' });
+    await page.goto(`/b/${site.businessId}/umsaetze`);
+    const more = bottomBar(page).getByRole('button', { name: 'Mehr' });
+    await more.click();
+    await expect(page.getByRole('dialog', { name: 'Mehr' })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'Umsätze' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    await bottomBar(page).getByRole('link', { name: 'Bons' }).click();
+    await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/bons$`));
+    await expect(page.getByRole('heading', { level: 1, name: 'Bons' })).toBeVisible();
+
+    // "Mehr" geht wieder auf, Zurück schließt es.
+    await more.click();
+    await expect(page.getByRole('dialog', { name: 'Mehr' })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/bons$`));
   });
 });
 

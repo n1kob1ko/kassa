@@ -423,6 +423,10 @@ for (const size of sizes) {
         await page.goto(`/b/${businessId}/bons?zahlung=karte&stornos=1`);
         await expect(page.getByText('Kein Bon passt zu diesem Filter.')).toBeVisible();
         await shoot(page, `bons-leer-${suffix}`);
+        const empty = await freshBusiness(page);
+        await page.goto(`/b/${empty}/bons`);
+        await expect(page.getByText('Sobald an der Kassa boniert wird, erscheinen die Bons hier.')).toBeVisible();
+        await shoot(page, `bons-leer-ohne-bon-${suffix}`);
 
         await page.goto(`/b/${businessId}/bons/${sale}`);
         await expect(page.getByRole('dialog').getByTestId('total')).toBeVisible();

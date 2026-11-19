@@ -21,6 +21,10 @@ export type DialogProps = {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+function isVisible(el: HTMLElement): boolean {
+  return typeof el.checkVisibility === 'function' ? el.checkVisibility() : el.getClientRects().length > 0;
+}
+
 /**
  * Dialog über der Seite (das native `<dialog>` als Modal: der Rest der Seite ist gesperrt).
  * Der Fokus bleibt im Dialog, Escape schließt ihn, danach geht der Fokus zurück, wo er vorher war.
@@ -72,7 +76,8 @@ export function Dialog({ title, open, onClose, children, actions, variant = 'cen
       }}
       onKeyDown={(e) => {
         if (e.key !== 'Tab') return;
-        const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE));
+        // Nur sichtbare Ziele: die Variante `side` versteckt je nach Breite "Zurück" oder "Schließen".
+        const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(isVisible);
         const first = items[0];
         const last = items[items.length - 1];
         if (!first || !last) return;

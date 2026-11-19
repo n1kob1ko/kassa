@@ -150,7 +150,7 @@ export function ReceiptsPage() {
         }
       />
     ) : (
-      <EmptyState title="Noch kein Bon." text="Sobald an der Kassa boniert wird, erscheinen die Umsätze hier." />
+      <EmptyState title="Noch kein Bon." text="Sobald an der Kassa boniert wird, erscheinen die Bons hier." />
     );
   } else if (query.data) {
     // Mit einem Tag im Filter steht das Datum schon oben; sonst trägt jede Gruppe ihren Tag als Überschrift.

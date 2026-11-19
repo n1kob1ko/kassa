@@ -28,8 +28,12 @@ export function splitForPhone(nav: NavItem[]): { bar: NavItem[]; more: NavItem[]
   return { bar, more: [...regular.slice(BAR_TARGETS - 1), ...nav.filter((item) => item.phoneInMore)] };
 }
 
-/** Das Blatt "Mehr" gehört zur Adresse (ein Eintrag im Verlauf): Zurück am Handy schließt es. */
-type MoreState = { more?: boolean } | null;
+/**
+ * Das Blatt "Mehr" ist ein Eintrag im Verlauf: Zurück am Handy schließt es. Der Eintrag trägt die Kennung dieses
+ * Ladens der Seite; nach dem Neuladen passt sie nicht mehr, und das Blatt bleibt zu.
+ */
+type MoreState = { more?: string } | null;
+const PAGE_LOAD = Math.random().toString(36).slice(2);
 
 function isCurrent(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`);
@@ -55,11 +59,11 @@ export function AppShell({ nav, children }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { bar, more } = splitForPhone(nav);
-  const moreOpen = (location.state as MoreState)?.more === true && more.length > 0;
+  const moreOpen = (location.state as MoreState)?.more === PAGE_LOAD && more.length > 0;
   const moreButton = useRef<HTMLButtonElement>(null);
   const moreCurrent = more.some((item) => isCurrent(location.pathname, item.to));
 
-  const openMore = () => navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { state: { more: true } });
+  const openMore = () => navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { state: { more: PAGE_LOAD } });
   const closeMore = () => navigate(-1);
 
   const links = (items: NavItem[], className: string, short = false) =>
