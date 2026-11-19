@@ -10,6 +10,7 @@ import 'package:drift/drift.dart';
 
 import '../data/catalog_repository.dart';
 import '../data/database.dart';
+import '../data/outbox_repository.dart';
 import '../data/settings_repository.dart';
 import '../domain/catalog.dart';
 import '../domain/staff.dart';
@@ -55,6 +56,10 @@ class ServerChanges {
       await _db.delete(_db.modifierTemplateRows).go();
       await _db.delete(_db.staffRows).go();
       await _apply(merged);
+      // Der Stand des Servers gilt, so wie es die Rückfrage beim Koppeln
+      // sagt: Artikel-Änderungen, die noch warten, gehen nie nachträglich
+      // hinauf. Bons und alles andere in der Liste bleiben.
+      await OutboxRepository(_db).clearItemChanges();
       await SettingsRepository(_db).writeDraft(null);
       await _db
           .into(_db.syncStateRows)
@@ -99,7 +104,12 @@ class ServerChanges {
       }
       final changes = _Changes.merge([page]);
       await _holdCategoriesOf(changes);
-      await _apply(changes);
+      // Ein Feld, für das noch eine Änderung vom Tablet wartet, bleibt wie es
+      // ist: der Server kennt die Änderung noch nicht.
+      await _apply(
+        changes,
+        keep: await OutboxRepository(_db).pendingItemFields(),
+      );
       await _db
           .into(_db.syncStateRows)
           .insertOnConflictUpdate(
@@ -143,7 +153,14 @@ class ServerChanges {
 
   /// Kategorien und Vorlagen vor Artikeln, damit jeder Artikel seine
   /// Kategorie schon vorfindet.
-  Future<void> _apply(_Changes c) async {
+  ///
+  /// [keep]: Artikel und die Felder, die nicht überschrieben werden (siehe
+  /// `OutboxRepository.pendingItemFields`). Ein Artikel, den es am Tablet noch
+  /// nicht gibt, wird immer ganz geschrieben.
+  Future<void> _apply(
+    _Changes c, {
+    Map<String, Set<String>> keep = const {},
+  }) async {
     final business = c.business;
     if (business != null) {
       await _db
@@ -174,8 +191,48 @@ class ServerChanges {
       await _deleteTemplate(t.id, keepRow: !t.archived);
       if (!t.archived) await _writeTemplate(t);
     }
+    final known = keep.isEmpty
+        ? const <String>{}
+        : {
+            for (final r
+                in await (_db.selectOnly(_db.itemRows)
+                      ..addColumns([_db.itemRows.id])
+                      ..where(_db.itemRows.id.isIn(keep.keys)))
+                    .get())
+              r.read(_db.itemRows.id)!,
+          };
     for (final i in c.items.values) {
       // photoPath fehlt absichtlich: das Foto gehört dem Tablet.
+      final held = known.contains(i.id) ? keep[i.id]! : const <String>{};
+      if (held.isNotEmpty) {
+        await (_db.update(_db.itemRows)..where((t) => t.id.equals(i.id))).write(
+          ItemRowsCompanion(
+            name: Value(i.name),
+            priceCents: held.contains('priceCents')
+                ? const Value.absent()
+                : Value(i.priceCents),
+            categoryId: Value(i.categoryId),
+            taxPercent: Value(i.taxRate.percent),
+            depositCents: held.contains('depositCents')
+                ? const Value.absent()
+                : Value(i.depositCents),
+            tags: held.contains('tags')
+                ? const Value.absent()
+                : Value(encodeItemTags(i.tags)),
+            info: Value(i.info),
+            templateId: Value(i.templateId),
+            favorite: held.contains('favorite')
+                ? const Value.absent()
+                : Value(i.favorite),
+            inSale: held.contains('inSale')
+                ? const Value.absent()
+                : Value(i.inSale),
+            position: Value(i.position),
+            archived: Value(i.archived),
+          ),
+        );
+        continue;
+      }
       await _db
           .into(_db.itemRows)
           .insertOnConflictUpdate(

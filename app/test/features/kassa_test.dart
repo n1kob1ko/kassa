@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/database.dart';
+import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
@@ -12,6 +15,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/fake_server.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -48,6 +52,7 @@ Future<void> _addBowl(
 }
 
 void main() {
+  offenerBonTests();
   testWidgets('Tipp auf Artikel legt ihn auf den Bon, Pfand steht getrennt', (
     t,
   ) async {
@@ -616,5 +621,97 @@ void main() {
     await _addBowl(t);
     expect(t.takeException(), isNull);
     expect(_text('XXL, Reis'), findsOneWidget);
+  });
+}
+
+/// Was der offene Bon nach einer Preisänderung zeigt.
+typedef _Bon = ({
+  String total,
+  int unitPrice,
+  int lines,
+  int quantity,
+  bool sameLine,
+  bool draftKeepsItems,
+});
+
+/// Legt eine Cola auf den Bon, ändert ihren Preis auf 4,00 € mit [change]
+/// und liest, was der Bon danach zeigt.
+Future<_Bon> _billAfterPriceChange(
+  WidgetTester t,
+  Future<void> Function(ProviderContainer c) change,
+) async {
+  await pumpKassaWith(t, ['cola']);
+  final c = containerOf(t);
+  final before = cartOf(t).lines.single;
+  await change(c);
+  await t.pumpAndSettle();
+  final after = cartOf(t);
+  final draft = await draftOf(t);
+  return (
+    total: _total(t),
+    unitPrice: after.lines.single.item.priceCents,
+    lines: after.lines.length,
+    quantity: after.lines.single.quantity,
+    sameLine: after.lines.single.lineId == before.lineId,
+    draftKeepsItems: draft!.contains('"itemId":"cola"'),
+  );
+}
+
+void offenerBonTests() {
+  // Festgehalten am Verhalten der App (Weg a, Preis unter "Artikel"): der
+  // offene Bon behält Zeile und Menge und rechnet mit dem neuen Preis.
+  const expected = (
+    total: '4,25 €',
+    unitPrice: 400,
+    lines: 1,
+    quantity: 1,
+    sameLine: true,
+    draftKeepsItems: true,
+  );
+
+  testWidgets('offener Bon: Preis am Tablet geändert folgt dem neuen Preis', (
+    t,
+  ) async {
+    final bon = await _billAfterPriceChange(
+      t,
+      (c) =>
+          c.read(catalogRepositoryProvider).updateItem('cola', priceCents: 400),
+    );
+    expect(bon, expected);
+  });
+
+  testWidgets('offener Bon: Preis vom Server wirkt genau so', (t) async {
+    final bon = await _billAfterPriceChange(t, (c) async {
+      final db = c.read(databaseProvider);
+      final server = FakeServer.beispiel();
+      final since = server.seq;
+      await SyncStateRepository(db).saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+      await db
+          .into(db.syncStateRows)
+          .insertOnConflictUpdate(
+            SyncStateRowsCompanion(
+              id: const Value(1),
+              pullCursor: Value(since),
+              initialPullDone: const Value(true),
+            ),
+          );
+      server.change('items', 'cola', {'priceCents': 400});
+      final applied = await c
+          .read(serverChangesProvider)
+          .applyPage(
+            server.page(since),
+            at: DateTime(2026, 11, 17, 11),
+            since: since,
+            registerId: FakeServer.registerId,
+          );
+      expect(applied, isTrue);
+      // Wie nach einer geholten Änderung im Abgleich (`onChanged`).
+      c.invalidate(catalogProvider);
+    });
+    expect(bon, expected);
   });
 }

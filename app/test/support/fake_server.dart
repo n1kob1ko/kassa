@@ -64,6 +64,10 @@ class FakeServer extends http.BaseClient {
   /// (zum Beispiel `too_many_attempts`).
   String? pairErrorCode;
 
+  /// Ist es gesetzt, nennt die Antwort von `pair` diesen Betrieb statt des
+  /// Beispiel-Imbisses.
+  String? pairBusinessId;
+
   /// Nach so vielen beantworteten Seiten ist das Internet weg (offline).
   int? breakAfterPages;
 
@@ -278,7 +282,7 @@ class FakeServer extends http.BaseClient {
       jsonEncode({
         'registerId': registerId,
         'registerName': 'Kassa 1',
-        'businessId': businessId,
+        'businessId': pairBusinessId ?? businessId,
         'businessName': 'Beispiel-Imbiss',
         'token': token,
       }),

@@ -2,13 +2,16 @@
 
 import 'package:drift/drift.dart';
 
+import '../core/clock.dart';
 import '../domain/catalog.dart';
 import 'database.dart';
+import 'outbox_repository.dart';
 
 class CatalogRepository {
-  CatalogRepository(this._db);
+  CatalogRepository(this._db, {this._clock = const SystemClock()});
 
   final KassaDatabase _db;
+  final Clock _clock;
 
   /// Spielt [c] ein. Läuft in einer Transaktion: scheitert etwas, bleibt der
   /// alte Stand. Favorit und Im-Verkauf bestehender Artikel bleiben erhalten,
@@ -250,6 +253,13 @@ class CatalogRepository {
 
   /// Ändert nur die angegebenen Felder. Wirft [StateError], wenn es den
   /// Artikel nicht gibt.
+  ///
+  /// An einem gekoppelten Tablet (die Kassa hat einen Platz beim Server)
+  /// entsteht in derselben Transaktion pro Feld, dessen Wert sich wirklich
+  /// ändert, ein Eintrag "noch zu senden" mit Wert und Zeitpunkt. Ein Wert,
+  /// der schon gilt, schreibt nichts. Das Pfand ist immer eine Zahl (ohne
+  /// Pfand 0), die Kennzeichen gehen als Liste in der gespeicherten
+  /// Reihenfolge (nach Namen sortiert).
   Future<void> updateItem(
     String itemId, {
     int? priceCents,
@@ -257,23 +267,52 @@ class CatalogRepository {
     bool? favorite,
     int? depositCents,
     Set<ItemTag>? tags,
-  }) async {
-    final changed =
-        await (_db.update(
-          _db.itemRows,
-        )..where((t) => t.id.equals(itemId))).write(
-          ItemRowsCompanion(
-            priceCents: Value.absentIfNull(priceCents),
-            inSale: Value.absentIfNull(inSale),
-            favorite: Value.absentIfNull(favorite),
-            depositCents: Value.absentIfNull(depositCents),
-            tags: Value.absentIfNull(
-              tags == null ? null : encodeItemTags(tags),
-            ),
-          ),
-        );
-    if (changed == 0) throw StateError('Artikel "$itemId" gibt es nicht.');
-  }
+  }) => _db.transaction(() async {
+    final old = await (_db.select(
+      _db.itemRows,
+    )..where((t) => t.id.equals(itemId))).getSingleOrNull();
+    if (old == null) throw StateError('Artikel "$itemId" gibt es nicht.');
+    final newTags = tags == null ? null : encodeItemTags(tags);
+
+    await (_db.update(_db.itemRows)..where((t) => t.id.equals(itemId))).write(
+      ItemRowsCompanion(
+        priceCents: Value.absentIfNull(priceCents),
+        inSale: Value.absentIfNull(inSale),
+        favorite: Value.absentIfNull(favorite),
+        depositCents: Value.absentIfNull(depositCents),
+        tags: Value.absentIfNull(newTags),
+      ),
+    );
+
+    final state = await (_db.select(
+      _db.syncStateRows,
+    )..where((t) => t.id.equals(1))).getSingleOrNull();
+    if (state?.registerId == null) return;
+
+    final changes = <String, Object>{
+      if (priceCents != null && priceCents != old.priceCents)
+        'priceCents': priceCents,
+      if (inSale != null && inSale != old.inSale) 'inSale': inSale,
+      if (favorite != null && favorite != old.favorite) 'favorite': favorite,
+      if (depositCents != null && depositCents != old.depositCents)
+        'depositCents': depositCents,
+      if (newTags != null && newTags != old.tags)
+        'tags': [
+          for (final n in newTags.split(','))
+            if (n.isNotEmpty) n,
+        ],
+    };
+    final outbox = OutboxRepository(_db);
+    final at = _clock.now();
+    for (final e in changes.entries) {
+      await outbox.addItemChange(
+        itemId: itemId,
+        field: e.key,
+        value: e.value,
+        changedAt: at,
+      );
+    }
+  });
 }
 
 /// Die Kennzeichen eines Artikels, wie die Spalte `tags` sie hält.

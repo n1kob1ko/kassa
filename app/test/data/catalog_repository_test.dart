@@ -4,8 +4,11 @@ import 'dart:io';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/outbox_repository.dart';
+import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/menu_import.dart';
 
@@ -380,4 +383,119 @@ void main() {
       expect((await repo.current())!.business.addressLines, isEmpty);
     },
   );
+
+  group('Artikel-Änderungen für den Server', () {
+    final changedAt = DateTime(2026, 11, 19, 8, 10);
+    late OutboxRepository outbox;
+    late CatalogRepository synced;
+
+    Future<void> pairTablet() => SyncStateRepository(db).saveRegister(
+      registerId: 'r-1',
+      registerName: 'Kassa 1',
+      businessId: 'b-1',
+    );
+
+    Future<List<(String, String, String, DateTime?)>> pending() async => [
+      for (final e in await outbox.nextBatch())
+        if (e.kind == 'item_change') (e.ref, e.field!, e.value!, e.changedAt),
+    ];
+
+    setUp(() {
+      outbox = OutboxRepository(db);
+      synced = CatalogRepository(db, clock: FixedClock(changedAt));
+    });
+
+    test('gekoppelt: Preis ändern schreibt genau einen Eintrag priceCents mit Zeitpunkt', () async {
+      await pairTablet();
+      await synced.updateItem('cola', priceCents: 310);
+      expect(await pending(), [('cola', 'priceCents', '310', changedAt)]);
+      expect(
+        (await repo.current())!.item('cola').priceCents,
+        310,
+        reason: 'der Artikel selbst ist geschrieben',
+      );
+    });
+
+    test(
+      'alle fünf Felder zusammen: ein Eintrag je Feld, Kennzeichen als Liste',
+      () async {
+        await pairTablet();
+        final before = (await repo.current())!.item('cola');
+        await synced.updateItem(
+          'cola',
+          priceCents: before.priceCents + 10,
+          favorite: !before.favorite,
+          tags: {ItemTag.vegan, ItemTag.spicy},
+          depositCents: before.depositCents + 5,
+          inSale: !before.inSale,
+        );
+        final rows = await pending();
+        expect(
+          {for (final r in rows) r.$2},
+          {'priceCents', 'favorite', 'tags', 'depositCents', 'inSale'},
+        );
+        expect(rows.every((r) => r.$4 == changedAt), isTrue);
+        expect(rows.firstWhere((r) => r.$2 == 'tags').$3, '["spicy","vegan"]');
+        expect(
+          rows.firstWhere((r) => r.$2 == 'favorite').$3,
+          '${!before.favorite}',
+        );
+      },
+    );
+
+    test(
+      'gekoppelt: Preis und Favorit zusammen ergeben zwei Einträge',
+      () async {
+        await pairTablet();
+        final before = (await repo.current())!.item('cola');
+        await synced.updateItem(
+          'cola',
+          priceCents: before.priceCents + 10,
+          favorite: !before.favorite,
+          inSale: before.inSale,
+          depositCents: before.depositCents,
+        );
+        expect([for (final r in await pending()) r.$2]..sort(), [
+          'favorite',
+          'priceCents',
+        ]);
+      },
+    );
+
+    test('gleicher Wert noch einmal: kein Eintrag', () async {
+      await pairTablet();
+      final before = (await repo.current())!.item('cola');
+      await synced.updateItem(
+        'cola',
+        priceCents: before.priceCents,
+        inSale: before.inSale,
+        favorite: before.favorite,
+        depositCents: before.depositCents,
+        tags: before.tags,
+      );
+      expect(await pending(), isEmpty);
+    });
+
+    test('nicht gekoppelt: kein Eintrag', () async {
+      await synced.updateItem('cola', priceCents: 310);
+      expect(await pending(), isEmpty);
+      expect((await repo.current())!.item('cola').priceCents, 310);
+    });
+
+    test('Artikel fehlt: StateError, kein Eintrag', () async {
+      await pairTablet();
+      await expectLater(
+        synced.updateItem('gibt-es-nicht', priceCents: 1),
+        throwsA(isA<StateError>()),
+      );
+      expect(await pending(), isEmpty);
+    });
+
+    test('zweite Preisänderung ersetzt die wartende erste', () async {
+      await pairTablet();
+      await synced.updateItem('cola', priceCents: 310);
+      await synced.updateItem('cola', priceCents: 320);
+      expect(await pending(), [('cola', 'priceCents', '320', changedAt)]);
+    });
+  });
 }

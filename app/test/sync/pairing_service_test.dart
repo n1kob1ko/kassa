@@ -242,6 +242,40 @@ void main() {
     },
   );
 
+  test('Antwort beim Koppeln nennt anderen Betrieb: otherBusiness, nichts gespeichert', () async {
+    final t = await Tablet.open();
+    await t.pairing.pair(FakeServer.code);
+    await t.pairing.loadInitial();
+    final menu = await t.menu();
+    final state = await t.state();
+    final token = await t.tokens.read();
+    t.server.pairBusinessId = '99999999-9999-4999-8999-999999999999';
+
+    expect(
+      await failureOf(t.pairing.pair(FakeServer.code)),
+      ServerFailure.otherBusiness,
+    );
+
+    expect(await t.tokens.read(), token);
+    final after = await t.state();
+    expect(after.registerId, state.registerId);
+    expect(after.businessId, state.businessId);
+    expect(after.paired, isTrue);
+    expect(after.pullCursor, state.pullCursor);
+    expect(await t.menu(), menu);
+  });
+
+  test(
+    'erstes Koppeln und erneutes Koppeln im selben Betrieb gehen durch',
+    () async {
+      final t = await Tablet.open();
+      expect((await t.state()).businessId, isNull);
+      await t.pairing.pair(FakeServer.code);
+      await t.pairing.pair(FakeServer.code);
+      expect((await t.state()).businessId, FakeServer.businessId);
+    },
+  );
+
   test('pair legt zuerst die Kassa ab, dann den Schlüssel: ein Lauf dazwischen holt nichts', () async {
     final t = await Tablet.open();
     await t.pairing.pair(FakeServer.code);

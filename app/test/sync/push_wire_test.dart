@@ -198,6 +198,49 @@ void main() {
     expect(checked, 5);
   });
 
+  test('App baut den Artikel-Eintrag der Beispieldatei', () async {
+    final expected = entries.singleWhere((e) => e['kind'] == 'item_change');
+    final c = expected['change'] as Map<String, dynamic>;
+    final built = await payloads.build(
+      OutboxEntry(
+        id: expected['seq'] as int,
+        kind: 'item_change',
+        ref: c['itemId'] as String,
+        field: c['field'] as String,
+        value: jsonEncode(c['value']),
+        changedAt: DateTime.parse(c['changedAt'] as String),
+        rev: 0,
+      ),
+    );
+    expect(jsonDecode(jsonEncode(built)), expected);
+  });
+
+  test(
+    'Artikel-Eintrag: Wahrheitswert und Liste gehen als JSON-Werte hinaus',
+    () async {
+      Future<Object?> valueOf(String field, String value) async {
+        final built = await payloads.build(
+          OutboxEntry(
+            id: 1,
+            kind: 'item_change',
+            ref: 'cola',
+            field: field,
+            value: value,
+            changedAt: DateTime.utc(2026, 11, 19, 8, 10, 0, 5),
+            rev: 0,
+          ),
+        );
+        final change = jsonDecode(jsonEncode(built))['change'] as Map;
+        expect(change['changedAt'], '2026-11-19T08:10:00.005Z');
+        return change['value'];
+      }
+
+      expect(await valueOf('favorite', 'true'), true);
+      expect(await valueOf('tags', '["spicy","vegan"]'), ['spicy', 'vegan']);
+      expect(await valueOf('depositCents', '25'), 25);
+    },
+  );
+
   test('Zeiten gehen als ISO 8601 in UTC mit Millisekunden', () async {
     final built = await payloads.build(entry(3, 'day', refOfDay()));
     expect(
@@ -317,16 +360,15 @@ void main() {
     },
   );
 
-  test('Artikel-Änderung und Bericht sind noch nicht gebaut, werden aber nie still verschluckt', () async {
-    await expectLater(
-      payloads.build(entry(1, 'item_change', 'huhn-bowl')),
-      throwsA(isA<UnimplementedError>()),
-    );
-    await expectLater(
-      payloads.build(entry(1, 'report', 'x')),
-      throwsA(isA<UnimplementedError>()),
-    );
-  });
+  test(
+    'Bericht ist noch nicht gebaut, wird aber nie still verschluckt',
+    () async {
+      await expectLater(
+        payloads.build(entry(1, 'report', 'x')),
+        throwsA(isA<UnimplementedError>()),
+      );
+    },
+  );
 }
 
 String refOfDay() => '7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21';

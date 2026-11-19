@@ -2,8 +2,10 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
@@ -218,6 +220,39 @@ void main() {
     });
   });
 
+  test(
+    'Koppeln löscht wartende Artikel-Änderungen und lässt Bons in der Liste',
+    () async {
+      final db = KassaDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      await SyncStateRepository(db).saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+      await ServerChanges(db).replaceAll(FakeServer.beispiel().pages(), at: at);
+      await CatalogRepository(
+        db,
+        clock: FixedClock(at),
+      ).updateItem('cola', priceCents: 999, favorite: true);
+      await db
+          .into(db.outboxRows)
+          .insert(OutboxRowsCompanion.insert(kind: 'receipt', ref: 'bon-1'));
+      final outbox = OutboxRepository(db);
+      expect(await outbox.pendingItemFields(), isNotEmpty);
+
+      await ServerChanges(db).replaceAll(FakeServer.beispiel().pages(), at: at);
+
+      expect(await outbox.pendingItemFields(), isEmpty);
+      final rest = await outbox.nextBatch();
+      expect([for (final e in rest) (e.kind, e.ref)], [('receipt', 'bon-1')]);
+      final cola = await (db.select(
+        db.itemRows,
+      )..where((t) => t.id.equals('cola'))).getSingle();
+      expect(cola.priceCents, 290, reason: 'der Stand des Servers gilt');
+    },
+  );
+
   group('applyPage', () {
     late KassaDatabase db;
     late FakeServer server;
@@ -421,6 +456,68 @@ void main() {
         isFalse,
       );
       expect(await snapshot(db), waiting);
+    });
+
+    group('wartende Artikel-Änderungen', () {
+      late CatalogRepository tablet;
+      late OutboxRepository outbox;
+
+      setUp(() {
+        tablet = CatalogRepository(db, clock: FixedClock(at));
+        outbox = OutboxRepository(db);
+      });
+
+      test('wartende Preisänderung: Seite vom Server lässt den Preis, übernimmt aber den Namen', () async {
+        final before = await item('huhn-bowl');
+        await tablet.updateItem('huhn-bowl', priceCents: 1234);
+        server.change('items', 'huhn-bowl', {
+          'priceCents': 1090,
+          'name': 'Huhn Bowl neu',
+          'favorite': !before.favorite,
+        });
+        server.change('items', 'cola', {'priceCents': 310});
+
+        await pullAll(at);
+
+        final bowl = await item('huhn-bowl');
+        expect(bowl.priceCents, 1234, reason: 'wartender Preis bleibt');
+        expect(bowl.name, 'Huhn Bowl neu');
+        expect(bowl.favorite, !before.favorite, reason: 'Feld ohne Eintrag');
+        expect((await item('cola')).priceCents, 310, reason: 'anderer Artikel');
+        expect(await outbox.pendingItemFields(), {
+          'huhn-bowl': {'priceCents'},
+        });
+      });
+
+      test(
+        'nach dem Senden bringt die nächste Seite den Preis vom Server',
+        () async {
+          await tablet.updateItem('huhn-bowl', priceCents: 1234);
+          server.change('items', 'huhn-bowl', {'priceCents': 1090});
+          await pullAll(at);
+          expect((await item('huhn-bowl')).priceCents, 1234);
+
+          final sent = (await outbox.nextBatch()).single;
+          await outbox.remove(sent.id, rev: sent.rev);
+          server.change('items', 'huhn-bowl', {'priceCents': 1190});
+          await pullAll(at);
+
+          expect((await item('huhn-bowl')).priceCents, 1190);
+        },
+      );
+
+      test('ein neuer Artikel wird ganz geschrieben, auch mit wartenden Änderungen anderer', () async {
+        await tablet.updateItem('huhn-bowl', priceCents: 1234);
+        server.upsert('items', {
+          ...server.rowOf('items', 'cola'),
+          'id': 'wasser',
+          'name': 'Wasser',
+          'priceCents': 250,
+        });
+        await pullAll(at);
+        final wasser = await item('wasser');
+        expect((wasser.name, wasser.priceCents), ('Wasser', 250));
+      });
     });
   });
 }

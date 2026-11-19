@@ -52,6 +52,13 @@ class PairingService {
       previousBusinessId: state.businessId,
       deviceModel: _deviceModel,
     );
+    // Kennt das Tablet schon einen Betrieb und die Antwort nennt einen
+    // anderen, bleibt alles wie es war: weder Schlüssel noch Kassa noch
+    // Speisekarte werden angefasst.
+    final known = state.businessId;
+    if (known != null && known != r.businessId) {
+      throw const ServerException(ServerFailure.otherBusiness);
+    }
     // Nie ein neuer Schlüssel neben dem alten Stand: ein Abgleich dazwischen
     // holte sonst mit dem neuen Schlüssel ab dem alten Cursor. Darum zuerst
     // den alten Schlüssel weg, dann die Kassa (sie ist damit nicht mehr

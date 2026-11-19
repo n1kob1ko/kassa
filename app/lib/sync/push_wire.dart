@@ -67,14 +67,29 @@ class PushPayloads {
       'day' => await _day(e.ref),
       'cash_movement' => await _movement(e.ref),
       'receipt' => await _receipt(e.ref),
-      // Kommt mit Task 8 (Artikel-Änderungen der Liste).
-      'item_change' => throw UnimplementedError('item_change: Task 8'),
+      'item_change' => _itemChange(e),
       // Kommt mit Task 10 (Berichte).
       'report' => throw UnimplementedError('report: Task 10'),
       _ => throw ArgumentError.value(e.kind, 'kind', 'Unbekannte Art'),
     };
     if (body == null) return null;
     return {'seq': e.id, 'kind': e.kind, ...body};
+  }
+
+  /// Eine Artikel-Änderung trägt Feld, Wert (JSON) und Zeitpunkt selbst.
+  Map<String, Object?>? _itemChange(OutboxEntry e) {
+    final field = e.field;
+    final value = e.value;
+    final changedAt = e.changedAt;
+    if (field == null || value == null || changedAt == null) return null;
+    return {
+      'change': {
+        'itemId': e.ref,
+        'field': field,
+        'value': jsonDecode(value),
+        'changedAt': _iso(changedAt),
+      },
+    };
   }
 
   Future<Map<String, Object?>?> _certificate(String serialHex) async {

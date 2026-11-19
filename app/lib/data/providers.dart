@@ -38,7 +38,10 @@ final databaseProvider = Provider<KassaDatabase>((ref) {
 final clockProvider = Provider<Clock>((ref) => const SystemClock());
 
 final catalogRepositoryProvider = Provider(
-  (ref) => CatalogRepository(ref.watch(databaseProvider)),
+  (ref) => CatalogRepository(
+    ref.watch(databaseProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
 
 final staffRepositoryProvider = Provider(
