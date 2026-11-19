@@ -9,6 +9,7 @@ import {
   expectSyncFixture,
   fixtureBusiness,
   normalize,
+  pairDevice,
   pull,
   reimport,
   syncFixture,
@@ -91,4 +92,17 @@ test('Koppeln, ganzes und geändertes Holen und Fehler wie in shared/fixtures/sy
     since_invalid: error(sinceInvalid),
     limit_invalid: error(limitInvalid),
   });
+});
+
+test('Senden: Paket aus push_request.json und die Antwort wie in push_response.json', async () => {
+  const { token } = await pairDevice(f.app, provider.cookie, businessId);
+  const request = syncFixture('push_request') as { deviceId: string; entries: object[] };
+  const res = await f.app.inject({
+    method: 'POST',
+    url: '/api/device/sync/push',
+    headers: { authorization: `Bearer ${token}` },
+    payload: request,
+  });
+  expect(res.statusCode).toBe(200);
+  expectSyncFixture('push_response', normalize(res.json()));
 });

@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "seq": 1,
+      "status": "accepted"
+    },
+    {
+      "seq": 2,
+      "status": "accepted"
+    },
+    {
+      "seq": 3,
+      "status": "accepted"
+    },
+    {
+      "seq": 4,
+      "status": "accepted"
+    },
+    {
+      "seq": 5,
+      "status": "accepted"
+    },
+    {
+      "seq": 6,
+      "status": "rejected",
+      "reason": "invalid"
+    },
+    {
+      "seq": 7,
+      "status": "rejected",
+      "reason": "invalid"
+    }
+  ]
+}

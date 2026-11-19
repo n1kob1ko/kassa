@@ -7,6 +7,7 @@ import { installStaffRoutes } from './admin/staff.js';
 import { installAuth } from './auth/routes.js';
 import { installPairRoutes } from './device/pair.js';
 import { installPullRoutes } from './device/pull.js';
+import { installPushRoutes } from './device/push.js';
 import { clientAddress } from './client_address.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
@@ -78,6 +79,7 @@ export async function buildApp(
   // Adressen für das Tablet: Geräte-Schlüssel statt Sitzung, ohne den Schutz für den Browser.
   installPairRoutes(app);
   installPullRoutes(app);
+  installPushRoutes(app);
 
   return app;
 }
