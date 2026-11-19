@@ -103,6 +103,24 @@
   background: var(--fill2);
 }
 
+/* Ohne Umsatz bleibt nur die Grundlinie; die leise Zeile steht frei in der Fläche. */
+.area[data-empty] .grid > span:not(:last-child) {
+  visibility: hidden;
+}
+
+.emptyText {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 var(--space-xl);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-align: center;
+  pointer-events: none;
+}
+
 .bars {
   position: relative;
   display: flex;

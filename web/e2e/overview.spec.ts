@@ -64,6 +64,35 @@ test('Betrieb ohne Bons: Umsätze sind die erste Seite und zeigen den leeren Zus
   await expect(nav.getByRole('link', { name: 'Umsätze' })).toHaveAttribute('aria-current', 'page');
 });
 
+test('nur ältere Bons: heute die normale Seite mit 0,00 €, auf 7 Tage die Zahlen', async ({ page }) => {
+  const site = await createSite(page, { name: 'Imbiss vom Wochenende' });
+  // Zwei und drei Tage vor jetzt: nie heute, immer in den letzten 7 Tagen.
+  const now = Date.now();
+  await pushEntries(page, site, [
+    { kind: 'receipt', receipt: saleReceipt({ createdAt: new Date(now - 2 * DAY), lines: [line(MENU.huhnBowl)] }) },
+    { kind: 'receipt', receipt: saleReceipt({ createdAt: new Date(now - 3 * DAY), payment: 'card', lines: [line(MENU.cola, 2)] }) },
+  ]);
+  await page.goto(`/b/${site.businessId}/umsaetze`);
+
+  await expect(page.getByTestId('revenue')).toHaveText(eur('0,00'));
+  await expect(page.getByTestId('receipt-count')).toHaveText('0');
+  await expect(page.getByText('Noch kein Bon.', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Umsatz pro Stunde' })).toBeVisible();
+  await expect(page.getByTestId('cash')).toHaveText(eur('0,00'));
+  await expect(page.getByTestId('card')).toHaveText(eur('0,00'));
+  await expect(page.getByTestId('cash-share')).toHaveCount(0);
+  await expect(page.getByTestId('card-share')).toHaveCount(0);
+  await expect(page.getByText('Kein Verkauf in diesem Zeitraum.')).toHaveCount(2);
+  await expect(page.getByText(/NaN/)).toHaveCount(0);
+
+  await range(page, '7 Tage').check();
+  await expect(page.getByTestId('revenue')).toHaveText(eur('16,20'));
+  await expect(page.getByTestId('receipt-count')).toHaveText('2');
+  await expect(bars(page)).toHaveCount(7);
+  await expect(page.getByTestId('card-share')).toHaveText('39 %');
+  await expect(page.getByText('Kein Verkauf in diesem Zeitraum.')).toHaveCount(0);
+});
+
 test('drei Bons: Umsatz, Bons, bar und Karte, meistverkauft; Wechsel auf 7 Tage bleibt in der Adresse', async ({ page }) => {
   const site = await createSite(page, { name: 'Imbiss am Markt' });
   await seedFourReceipts(page, site);

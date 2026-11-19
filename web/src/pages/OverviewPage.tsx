@@ -77,9 +77,11 @@ function Payments({ data }: { data: Overview }) {
             <dd className={styles.payAmount} data-testid={p.key}>
               {money(p.cents)}
             </dd>
-            <dd className={styles.payShare} data-testid={`${p.key}-share`}>
-              {share(p.part, total)} %
-            </dd>
+            {total > 0 && (
+              <dd className={styles.payShare} data-testid={`${p.key}-share`}>
+                {share(p.part, total)} %
+              </dd>
+            )}
           </div>
         ))}
       </dl>
@@ -94,7 +96,7 @@ function TopItems({ data }: { data: Overview }) {
         Meistverkauft
       </h2>
       {data.topItems.length === 0 ? (
-        <p className={styles.muted}>In diesem Zeitraum wurde nichts verkauft.</p>
+        <p className={styles.muted}>Kein Verkauf in diesem Zeitraum.</p>
       ) : (
         <ol className={styles.rows} aria-label="Meistverkauft">
           {data.topItems.map((item) => (
@@ -118,7 +120,7 @@ function Categories({ data }: { data: Overview }) {
         Umsatz nach Kategorie
       </h2>
       {data.byCategory.length === 0 ? (
-        <p className={styles.muted}>In diesem Zeitraum wurde nichts verkauft.</p>
+        <p className={styles.muted}>Kein Verkauf in diesem Zeitraum.</p>
       ) : (
         <ul className={styles.rows} aria-label="Umsatz nach Kategorie">
           {data.byCategory.map((c) => (
@@ -172,6 +174,7 @@ function Content({ data, refreshing }: { data: Overview; refreshing: boolean }) 
           </div>
           <BarChart
             key={data.range}
+            emptyText={data.range === 'today' ? 'Heute noch kein Bon.' : 'Kein Verkauf in diesem Zeitraum.'}
             buckets={chartBuckets(data)}
             label={data.range === 'today' ? 'Umsatz pro Stunde' : 'Umsatz pro Tag'}
           />
@@ -238,7 +241,8 @@ export function OverviewPage() {
   let body;
   if (data) {
     body =
-      data.receiptCount === 0 && data.voidCount === 0 && data.revenueCents === 0 ? (
+      // Leer nur, solange der Betrieb noch gar keinen Bon hat. Ein Zeitraum ohne Bon zeigt die Seite mit 0,00 €.
+      !data.hasReceipts ? (
         <EmptyState title="Noch kein Bon." text="Sobald an der Kassa boniert wird, erscheinen die Umsätze hier." />
       ) : (
         // Ein Fehler beim stillen Nachladen lässt die letzten Zahlen stehen.
@@ -255,6 +259,7 @@ export function OverviewPage() {
       <PageHeader
         title="Umsätze"
         subtitle={b.name}
+        wideActions
         actions={
           <Segmented
             label="Zeitraum"

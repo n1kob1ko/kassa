@@ -16,6 +16,8 @@ export type BarChartProps = {
   buckets: ChartBucket[];
   /** Titel über dem Diagramm und Name der Gruppe: "Umsatz pro Stunde". */
   label: string;
+  /** Leise Zeile im Diagramm, solange keine Säule einen Umsatz hat. Achse und Plätze bleiben. */
+  emptyText?: string;
 };
 
 /** Ungefähre Breite einer Achsenbeschriftung in px pro Zeichen bei 12 px, plus Luft dazwischen. */
@@ -61,7 +63,7 @@ function useWidth<T extends HTMLElement>() {
  * Wischen über das Diagramm, also ist die ganze Fläche die Tippfläche. Was gewählt ist, steht oben rechts als Text;
  * ohne Wahl die höchste Säule. Säulen ohne Umsatz behalten ihren Platz auf der Achse.
  */
-export function BarChart({ buckets, label }: BarChartProps) {
+export function BarChart({ buckets, label, emptyText }: BarChartProps) {
   const [barsRef, width] = useWidth<HTMLDivElement>();
   const [picked, setPicked] = useState<string | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
@@ -73,7 +75,8 @@ export function BarChart({ buckets, label }: BarChartProps) {
   const pickedIndex = picked === null ? -1 : buckets.findIndex((b) => b.key === picked);
   const chosen = pickedIndex >= 0 ? pickedIndex : Math.max(0, highest);
   const active = hovered !== null && hovered < n ? hovered : chosen;
-  const shown = buckets[active];
+  // Ohne Umsatz gibt es keine höchste Säule: der Wert steht erst, wenn eine gewählt ist.
+  const shown = max > 0 || hovered !== null || pickedIndex >= 0 ? buckets[active] : undefined;
 
   const longest = buckets.reduce((m, b) => Math.max(m, b.axisLabel.length), 1);
   const step = labelStep(n, longest, width);
@@ -81,6 +84,7 @@ export function BarChart({ buckets, label }: BarChartProps) {
   const overhang = n > 1 && width > 0 && longest * CHAR_PX > width / n;
 
   const focusBar = (i: number) => {
+    if (n === 0) return;
     const target = Math.min(n - 1, Math.max(0, i));
     setPicked(buckets[target]!.key);
     barsRef.current?.querySelectorAll<HTMLButtonElement>('button')[target]?.focus();
@@ -112,16 +116,18 @@ export function BarChart({ buckets, label }: BarChartProps) {
 
       <div className={styles.plot}>
         <div className={styles.ticks} aria-hidden="true">
-          <span>{tick(top)}</span>
-          <span>{tick(top / 2)}</span>
+          {/* Ohne Umsatz nur die Grundlinie beschriften: eine erfundene obere Linie sagt nichts. */}
+          <span>{max > 0 ? tick(top) : ''}</span>
+          <span>{max > 0 ? tick(top / 2) : ''}</span>
           <span>{tick(0)}</span>
         </div>
-        <div className={styles.area}>
+        <div className={styles.area} data-empty={max === 0 || undefined}>
           <div className={styles.grid} aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
+          {max === 0 && emptyText && <p className={styles.emptyText}>{emptyText}</p>}
           <div
             ref={barsRef}
             role="group"
@@ -129,12 +135,14 @@ export function BarChart({ buckets, label }: BarChartProps) {
             className={styles.bars}
             onKeyDown={onKeyDown}
             onPointerMove={(e) => {
+              if (n === 0) return;
               const i = indexAt(e);
               setHovered(i);
               // Mit dem Finger über das Diagramm wischen: was zuletzt unter dem Finger war, bleibt gewählt.
               if (e.pointerType !== 'mouse' && e.buttons > 0) setPicked(buckets[i]!.key);
             }}
             onPointerDown={(e) => {
+              if (n === 0) return;
               const i = indexAt(e);
               setHovered(i);
               setPicked(buckets[i]!.key);

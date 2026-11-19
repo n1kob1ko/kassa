@@ -39,8 +39,8 @@
     font-size: 22px;
   }
 
-  /* Unter dem Titel darf ein Bedienelement die ganze Breite nutzen (Umschalter auf "Umsätze"). Knöpfe bleiben so breit wie ihr Text. */
-  .actions {
+  /* Nur mit `wideActions`: das Bedienelement unter dem Titel nutzt die ganze Breite. */
+  .wide {
     width: 100%;
   }
 }

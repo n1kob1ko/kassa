@@ -84,7 +84,12 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           )
         ).rows[0]!;
 
-        const real = (await c.query(`select 1 from receipts where not is_test limit 1`)).rowCount === 1;
+        // Irgendein Bon des Betriebs (jede Zeit, jede Art, auch Testbons): ohne ihn zeigt die Seite den leeren Zustand.
+        const { has_receipts: hasReceipts, real } = (
+          await c.query<{ has_receipts: boolean; real: boolean }>(
+            `select exists (select 1 from receipts) as has_receipts, exists (select 1 from receipts where not is_test) as real`,
+          )
+        ).rows[0]!;
 
         const rows = (
           await c.query<{
@@ -214,6 +219,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
         return {
           range,
           testMode: !real,
+          hasReceipts,
           revenueCents: revenue,
           previousRevenueCents: previousRevenue,
           receiptCount,

@@ -172,6 +172,22 @@ describe('Umsätze', () => {
     expect((await overview(s.businessId, 'today')).json().buckets).toEqual([]);
   });
 
+  test('hasReceipts: falsch ohne Bon, wahr nach einem Bon vor mehr als 30 Tagen, der zweite Betrieb bleibt falsch', async () => {
+    const s1 = await siteFor(a, provider, 'Mit altem Bon');
+    const s2 = await siteFor(a, provider, 'Ohne Bon');
+    a.now.value = new Date('2026-11-19T12:00:00.000Z');
+    for (const range of ['today', 'days7', 'days30']) {
+      expect((await overview(s1.businessId, range)).json().hasReceipts, range).toBe(false);
+    }
+    await send(a, s1, [['receipt', receipt('2026-09-01T09:00:00.000Z')]]);
+    for (const range of ['today', 'days7', 'days30']) {
+      const body = (await overview(s1.businessId, range)).json();
+      expect(body.hasReceipts, range).toBe(true);
+      expect(body.receiptCount, range).toBe(0);
+      expect((await overview(s2.businessId, range)).json().hasReceipts, range).toBe(false);
+    }
+  });
+
   test('range unbekannt: 422', async () => {
     const s = await siteFor(a, provider);
     const res = await overview(s.businessId, 'year');

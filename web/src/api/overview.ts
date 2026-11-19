@@ -12,6 +12,8 @@ export type Overview = {
   range: OverviewRange;
   /** Der Betrieb hat noch keinen echten Bon: alle Zahlen sind aus Testbons. */
   testMode: boolean;
+  /** Der Betrieb hat überhaupt schon einen Bon (jede Zeit, jede Art, auch Testbons). Ohne ihn: leerer Zustand. */
+  hasReceipts: boolean;
   revenueCents: number;
   previousRevenueCents: number;
   receiptCount: number;

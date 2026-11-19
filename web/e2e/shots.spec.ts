@@ -312,6 +312,15 @@ for (const size of sizes) {
         await page.keyboard.press('ArrowLeft');
         await shoot(page, `umsaetze-30-balken-${suffix}`);
 
+        // Heute noch kein Bon, aber Bons in den Tagen davor: die normale Seite mit 0,00 €.
+        const quiet = await createSite(page, { name: 'Imbiss am Morgen' });
+        await pushEntries(page, quiet, [
+          { kind: 'receipt', receipt: saleReceipt({ createdAt: new Date(Date.now() - 2 * 24 * 60 * 60_000), lines: [line(ITEMS.huhnBowl), line(ITEMS.cola)] }) },
+        ]);
+        await page.goto(`/b/${quiet.businessId}/umsaetze`);
+        await expect(page.getByText('Heute noch kein Bon.')).toBeVisible();
+        await shoot(page, `umsaetze-heute-leer-${suffix}`);
+
         const empty = await freshBusiness(page);
         await page.goto(`/b/${empty}/umsaetze`);
         await expect(page.getByText('Noch kein Bon.')).toBeVisible();
