@@ -131,7 +131,7 @@ Das Kennzeichen im Code ist das, was A-Trust nennt, auch am Testsystem (vermutli
 
 Im Zustand "abgelehnt" spricht die Kassa nicht mehr mit A-Trust, auch nicht bei "Nochmal prüfen" in der Kassa. Der Hinweis sagt dann: "A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen." Nur der Chef hebt den Zustand in den Einstellungen auf, mit einem ausdrücklichen Antippen, und jedes Antippen ist genau ein Versuch. So kann die Kassa das Konto nicht sperren. Der Zustand überlebt einen Neustart.
 
-Im echten Betrieb gilt: Jeder Fehler der Signatureinheit, erwartet oder nicht, ist ein Ausfall. Der Bon wird mit Vermerk gespeichert. Nur wenn die Datenbank selbst nicht schreibt, scheitert der Verkauf. (Kern K9, das Abschalten bei einem unerwarteten Fehler, gilt nur für die Probe mit eigenem Schlüssel.)
+Im echten Betrieb gilt: Jeder Fehler der Signatureinheit, erwartet oder nicht, ist ein Ausfall. Der Bon wird mit Vermerk gespeichert. Nur wenn die Datenbank selbst nicht schreibt, scheitert der Verkauf. (Kern K9, das Abschalten bei einem unerwarteten Fehler, gilt weiter nur im Zustand Probe und dort nur für Fehler außerhalb der Signatureinheit, etwa einen nicht lesbaren AES-Schlüssel. Die Online-Einheit meldet jeden eigenen Fehler als Ausfall.)
 
 ### 6.4 Geheimnisse und was A-Trust erfährt
 
