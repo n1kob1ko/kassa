@@ -18,7 +18,11 @@ import '../rksv/fixtures/test_card.dart';
 /// ausgestelltes Zertifikat mit der Seriennummer des Testsystems. Das
 /// Passwort wird nie gespeichert und nie ausgegeben.
 class FakeAtrust {
-  FakeAtrust() {
+  /// [validFrom]: Beginn der Gültigkeit des Zertifikats (zehn Jahre lang).
+  /// Ohne Angabe ab 10.03.2016, also am 18.11.2026 abgelaufen wie beim
+  /// Testsystem. Der Fake antwortet am Pfad jeder [AtrustSystem]-Adresse
+  /// (beide haben denselben Pfad); angesprochen wird keine.
+  FakeAtrust({DateTime? validFrom}) {
     final params = ECCurve_secp256r1();
     final d = BigInt.parse(testPrivateKeyHex, radix: 16);
     certificateDer = buildSelfSignedCertificate(
@@ -26,7 +30,7 @@ class FakeAtrust {
       publicKey: ECPublicKey(params.G * d, params),
       serial: BigInt.parse('2159b9f6', radix: 16),
       commonName: 'Beispiel-Imbiss Test',
-      from: DateTime.utc(2016, 3, 10),
+      from: validFrom ?? DateTime.utc(2016, 3, 10),
     );
   }
 
@@ -55,6 +59,9 @@ class FakeAtrust {
 
   /// Jede Antwort kommt erst nach dieser Zeit (für fake_async).
   Duration delay = Duration.zero;
+
+  /// Das Feld `alg` der Antwort auf `GET …/Certificate`.
+  String alg = 'ES256';
 
   /// Jede Anfrage scheitert mit [SocketException].
   bool offline = false;
@@ -91,7 +98,7 @@ class FakeAtrust {
         ],
         'Zertifikatsseriennummer': '559528438',
         'ZertifikatsseriennummerHex': '2159B9F6',
-        'alg': 'ES256',
+        'alg': alg,
       }),
       ('PUT', ['Session', _]) => _login(),
       ('POST', ['Session', final id, 'Sign', 'Hash']) => _sign(

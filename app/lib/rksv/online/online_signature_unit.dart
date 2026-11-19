@@ -52,8 +52,10 @@ class OnlineSignatureUnit implements SignatureUnit {
       final certificate = _certificate ??= CardCertificate.parse(
         _certificateDer,
       );
+      // UTF-8 gleicht bei Belegen (immer ASCII) ascii.encode und erlaubt
+      // den Text der Probe-Unterschrift in "Verbindung prüfen".
       final hash = SHA256Digest().process(
-        Uint8List.fromList(ascii.encode(signingInput)),
+        Uint8List.fromList(utf8.encode(signingInput)),
       );
       var session = await _session();
       Uint8List signature;

@@ -1,5 +1,5 @@
-// Probe-Signatur ein- und ausschalten, Nullbeleg, "Nochmal prüfen",
-// "Protokoll ausgeben".
+// Probe-Signatur und Online-Probe ein- und ausschalten, Nullbeleg,
+// "Nochmal prüfen", "Protokoll ausgeben".
 
 import 'dart:convert';
 import 'dart:math';
@@ -13,6 +13,8 @@ import '../data/receipt_repository.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
 import 'dep_export.dart';
+import 'online/atrust_client.dart';
+import 'online/connection_check.dart';
 import 'probe_signature_unit.dart';
 import 'rksv_secrets.dart';
 import 'rksv_state.dart';
@@ -84,23 +86,43 @@ class RksvService {
     });
   }
 
+  /// Online-Probe (Entwurf 6.5): neue Kette am Testsystem von A-Trust mit
+  /// Kennung und Zertifikat aus [facts], Startbeleg von A-Trust signiert
+  /// (P3: in der Transaktion, mit der Frist des Journals; sonst fragt hier
+  /// nichts bei A-Trust). Fehler wie bei [enableProbe]: RksvProblem, scheitert
+  /// die Signatur mit dem Satz der Einheit, und nichts bleibt zurück. Läuft
+  /// die Signatur schon, oder stammen [facts] nicht vom Testsystem:
+  /// [StateError].
+  Future<Receipt> enableOnlineProbe({
+    required Staff staff,
+    required ConnectionFacts facts,
+  }) {
+    return _db.transaction(() async {
+      // Testsystem heißt Testbon (Plan, Global Constraints).
+      if (facts.system != AtrustSystem.test) {
+        throw StateError('Die Online-Probe läuft nur am Testsystem.');
+      }
+      final state = await _state();
+      if (enumByNameOr(RksvMode.values, state.mode, RksvMode.off) !=
+          RksvMode.off) {
+        throw StateError('Die Signatur läuft schon.');
+      }
+      try {
+        return await _startOnlineChain(staff, facts);
+      } on RksvProblem {
+        rethrow;
+      } on SignatureFailure catch (e) {
+        throw RksvProblem(e.reason);
+      } on Object {
+        throw const RksvProblem(_enableProblem);
+      }
+    });
+  }
+
   Future<Receipt> _startChain(Staff staff) async {
-    final highest = _db.rksvChainRows.chain.max();
-    final chain =
-        (await (_db.selectOnly(
-              _db.rksvChainRows,
-            )..addColumns([highest])).map((r) => r.read(highest)).getSingle() ??
-            0) +
-        1;
-    final cashBoxId = String.fromCharCodes([
-      for (var i = 0; i < 10; i++)
-        _cashBoxIdAlphabet.codeUnitAt(
-          _random.nextInt(_cashBoxIdAlphabet.length),
-        ),
-    ]);
-    final aesKey = Uint8List.fromList([
-      for (var i = 0; i < 32; i++) _random.nextInt(256),
-    ]);
+    final chain = await _nextChain();
+    final cashBoxId = _newCashBoxId();
+    final aesKey = _newAesKey();
     final now = _clock.now();
     final probe = ProbeSignatureUnit.create(
       cashBoxId: cashBoxId,
@@ -129,6 +151,68 @@ class RksvService {
             startedAt: now,
           ),
         );
+    return _startReceipt(chain, staff);
+  }
+
+  Future<Receipt> _startOnlineChain(Staff staff, ConnectionFacts facts) async {
+    final chain = await _nextChain();
+    final cashBoxId = _newCashBoxId();
+    final aesKey = _newAesKey();
+    final certificate = facts.certificate;
+    await _storeSecrets(chain, aesKey);
+
+    // Eine zweite Online-Probe mit demselben Zertifikat findet die Zeile
+    // schon vor; sie bleibt, wie sie ist.
+    await _db
+        .into(_db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: certificate.serialHex,
+            certificate: certificate.certificateDer,
+            issuers: Value(
+              jsonEncode([
+                for (final i in certificate.issuersDer) base64.encode(i),
+              ]),
+            ),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+    await _db
+        .into(_db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: Value(chain),
+            mode: RksvMode.probe.name,
+            unit: Value(RksvUnit.atrustTest.name),
+            cashBoxId: cashBoxId,
+            zdaId: facts.zdaId,
+            certSerial: certificate.serialHex,
+            startedAt: _clock.now(),
+          ),
+        );
+    return _startReceipt(chain, staff);
+  }
+
+  Future<int> _nextChain() async {
+    final highest = _db.rksvChainRows.chain.max();
+    return (await (_db.selectOnly(
+              _db.rksvChainRows,
+            )..addColumns([highest])).map((r) => r.read(highest)).getSingle() ??
+            0) +
+        1;
+  }
+
+  String _newCashBoxId() => String.fromCharCodes([
+    for (var i = 0; i < 10; i++)
+      _cashBoxIdAlphabet.codeUnitAt(_random.nextInt(_cashBoxIdAlphabet.length)),
+  ]);
+
+  Uint8List _newAesKey() =>
+      Uint8List.fromList([for (var i = 0; i < 32; i++) _random.nextInt(256)]);
+
+  /// Stand auf die neue Kette [chain], dann ihr Startbeleg (muss signiert
+  /// sein).
+  Future<Receipt> _startReceipt(int chain, Staff staff) async {
     await _writeState(
       RksvStateRowsCompanion(
         mode: Value(RksvMode.probe.name),
@@ -150,17 +234,22 @@ class RksvService {
   /// Es hält dabei die Datenbank, also warten auch die Verkäufe.
   static const storageLimit = Duration(seconds: 5);
 
-  /// Schreibt beide Schlüssel und liest sie zurück, zusammen höchstens
-  /// [storageLimit] lang.
-  Future<void> _storeSecrets(int chain, Uint8List aesKey, Uint8List key) async {
+  /// Schreibt den AES-Schlüssel und, wenn es einen gibt, den Probe-Schlüssel
+  /// [probeKey] und liest sie zurück, zusammen höchstens [storageLimit] lang.
+  Future<void> _storeSecrets(
+    int chain,
+    Uint8List aesKey, [
+    Uint8List? probeKey,
+  ]) async {
     bool same(Uint8List? a, Uint8List b) =>
         a != null && a.length == b.length && _equal(a, b);
     try {
       await () async {
         await _secrets.writeAesKey(chain, aesKey);
-        await _secrets.writeProbeKey(chain, key);
+        if (probeKey != null) await _secrets.writeProbeKey(chain, probeKey);
         if (!same(await _secrets.aesKey(chain), aesKey) ||
-            !same(await _secrets.probeKey(chain), key)) {
+            (probeKey != null &&
+                !same(await _secrets.probeKey(chain), probeKey))) {
           throw const RksvProblem(_storageProblem);
         }
       }().timeout(storageLimit);

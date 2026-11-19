@@ -24,6 +24,9 @@ import 'package:kassa/domain/staff.dart';
 import 'package:kassa/rksv/card/certificate.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/dep_export.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
+import 'package:kassa/rksv/online/atrust_session_keeper.dart';
+import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
@@ -64,6 +67,8 @@ class RksvRig {
     this.anna,
     this.chef,
     this.saver,
+    this.atrust,
+    this.keeper,
   );
 
   final KassaDatabase db;
@@ -78,6 +83,13 @@ class RksvRig {
   final Staff chef;
   final RecordingProtocolSaver saver;
 
+  /// Der nachgebaute A-Trust aus `open(atrust: …)`, sonst null.
+  final FakeAtrust? atrust;
+
+  /// Der Sitzungshalter am Testsystem über [atrust] (mit [secrets] und
+  /// [clock]), sonst null.
+  final AtrustSessionKeeper? keeper;
+
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
   /// Probe-Signatur wie in der App ([probeSignatureUnitOf]).
@@ -90,10 +102,16 @@ class RksvRig {
   ///
   /// Mit [unitOf] baut das Journal seine Einheiten damit (etwa
   /// [signatureUnitOf] mit einer Online-Einheit an [FakeAtrust]).
+  ///
+  /// Mit [atrust] signiert das Journal wie in der App ([signatureUnitOf]):
+  /// Probe-Ketten mit der Probe-Signatur, Ketten `atrustTest` mit einer
+  /// [OnlineSignatureUnit] am Testsystem über [atrust] und [keeper].
   static Future<RksvRig> open({
     bool probeUnit = false,
     SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
+    FakeAtrust? atrust,
   }) async {
+    assert(unitOf == null || atrust == null);
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 18, 13, 5, 9));
@@ -120,11 +138,34 @@ class RksvRig {
             certificate: info.certificateDer,
           ),
         );
+    final keeper = atrust == null
+        ? null
+        : AtrustSessionKeeper(
+            client: AtrustClient(atrust.client, AtrustSystem.test),
+            user: atrustTestUser,
+            password: atrustTestPassword,
+            secrets: secrets,
+            clock: clock,
+          );
     final journal = RksvJournal(
       db,
       secrets,
       unitOf != null
           ? unitOf(db, secrets)
+          : atrust != null
+          ? signatureUnitOf(
+              db,
+              secrets,
+              online: (chain, cert) async => OnlineSignatureUnit(
+                client: AtrustClient(atrust.client, AtrustSystem.test),
+                keeper: keeper!,
+                zdaId: chain.zdaId,
+                certificateDer: cert.certificate,
+                issuerCertificatesDer: [
+                  for (final i in issuersBase64(cert)) base64.decode(i),
+                ],
+              ),
+            )
           : probeUnit
           ? probeSignatureUnitOf(db, secrets)
           : (_) async => fake,
@@ -150,6 +191,8 @@ class RksvRig {
       anna,
       chef,
       saver,
+      atrust,
+      keeper,
     );
   }
 
