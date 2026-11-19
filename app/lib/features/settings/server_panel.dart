@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app_sync_providers.dart';
+import '../../data/outbox_repository.dart';
 import '../../data/providers.dart';
 import '../../data/sync_state_repository.dart';
 import '../../sync/pairing_service.dart';
@@ -32,6 +33,10 @@ String lastSyncText(DateTime? at, DateTime now) {
   final days = d.inDays;
   return days == 1 ? 'vor 1 Tag' : 'vor $days Tagen';
 }
+
+String _rejectedText(int n) => n == 1
+    ? '1 Eintrag wurde vom Server abgelehnt. Niko weiß Bescheid.'
+    : '$n Einträge wurden vom Server abgelehnt. Niko weiß Bescheid.';
 
 enum _Intent { pair, load }
 
@@ -253,6 +258,10 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
     final failed = failures.contains(sync.lastError);
     final who = business == null ? 'Verbunden' : 'Verbunden mit $business';
     final register = sync.registerName;
+    // Solange der Zähler lädt oder scheitert, zeigt die Karte nichts davon.
+    final counts =
+        ref.watch(outboxCountsProvider).value ??
+        const OutboxCounts(pending: 0, rejected: 0);
     return SettingsCard(
       title: title,
       trailing: const StatusPill('Verbunden', ok: true),
@@ -260,6 +269,8 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
         _Body(
           main: register == null ? who : '$who als $register',
           sub: 'Zuletzt abgeglichen ${lastSyncText(sync.lastPullAt, now)}',
+          pending: counts.pending > 0 ? 'Wartet noch: ${counts.pending}' : null,
+          rejected: counts.rejected > 0 ? _rejectedText(counts.rejected) : null,
           warn: failed
               ? 'Der letzte Abgleich hat nicht geklappt. '
                     'Die Kassa versucht es von selbst wieder.'
@@ -279,10 +290,23 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.main, this.sub, this.warn, this.button});
+  const _Body({
+    required this.main,
+    this.sub,
+    this.pending,
+    this.rejected,
+    this.warn,
+    this.button,
+  });
 
   final String main;
   final String? sub;
+
+  /// "Wartet noch: n", gleiche Schrift wie [sub], Zahlen in gleicher Breite.
+  final String? pending;
+
+  /// Abgelehnte Einträge, in ruhiger Warnfarbe; bricht um, wird nie gekürzt.
+  final String? rejected;
   final String? warn;
   final Widget? button;
 
@@ -313,6 +337,23 @@ class _Body extends StatelessWidget {
                 color: c.ink2,
               ),
             ),
+          ],
+          if (pending != null) ...[
+            const SizedBox(height: KassaTokens.spaceXxs),
+            Text(
+              pending!,
+              style: text.bodyMedium!.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 1.3,
+                color: c.ink2,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+          if (rejected != null) ...[
+            const SizedBox(height: KassaTokens.spaceXl),
+            WarnBox(rejected!),
           ],
           if (warn != null) ...[
             const SizedBox(height: KassaTokens.spaceXl),

@@ -55,6 +55,16 @@ class PairQuestion extends StatelessWidget {
               height: 1.3,
             ),
           ),
+          const SizedBox(height: KassaTokens.spaceSm),
+          Text(
+            'Preise, Favoriten und "Im Verkauf" von diesem Tablet werden '
+            'durch den Stand des Servers ersetzt.',
+            style: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              height: 1.3,
+            ),
+          ),
           const SizedBox(height: KassaTokens.spaceXl),
           Row(
             children: [

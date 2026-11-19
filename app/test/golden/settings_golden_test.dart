@@ -1,5 +1,8 @@
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/data/outbox_repository.dart';
+import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
@@ -174,6 +177,8 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('server-pair')));
       await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const Key('confirm-pair-question')));
+      await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('confirm-pair-question')));
       await t.pumpAndSettle();
       await tapKeys(t, FakeServer.code.split('').join(' '));
@@ -184,6 +189,79 @@ void main() {
       await expectLater(
         find.byType(KassaApp),
         matchesGoldenFile('goldens/koppeln_kein_chef_am_server_$name.png'),
+      );
+    });
+  }
+
+  // Karte "Server" mit wartenden und abgelehnten Einträgen, auch bei größter
+  // Schrift. Zusätzlich die Rückfrage vor dem Koppeln.
+  Override counts(int pending, int rejected) =>
+      outboxCountsProvider.overrideWith(
+        (ref) =>
+            Stream.value(OutboxCounts(pending: pending, rejected: rejected)),
+      );
+  final waiting = <(String, int, int)>[
+    ('wartend', 3, 0),
+    ('abgelehnt_1', 0, 1),
+    ('abgelehnt_2', 0, 2),
+    ('wartend_und_abgelehnt', 3, 2),
+  ];
+  for (final (state, pending, rejected) in waiting) {
+    for (final (name, brightness, scale) in [
+      ('hell', Brightness.light, 1.0),
+      ('dunkel', Brightness.dark, 1.0),
+      ('hell_gross', Brightness.light, 1.3),
+      ('dunkel_gross', Brightness.dark, 1.3),
+    ]) {
+      testWidgets('Einstellungen, Karte Server, $state ($name)', (t) async {
+        await pumpPaired(
+          t,
+          brightness: brightness,
+          textScale: scale,
+          extra: [counts(pending, rejected)],
+        );
+        await t.dragUntilVisible(
+          find.text('Server'),
+          find.byType(SingleChildScrollView).first,
+          const Offset(0, -200),
+        );
+        await t.pumpAndSettle();
+        expect(t.takeException(), isNull);
+        await expectLater(
+          find.byType(KassaApp),
+          matchesGoldenFile('goldens/einstellungen_server_${state}_$name.png'),
+        );
+      });
+    }
+  }
+
+  for (final (name, brightness, scale) in [
+    ('hell', Brightness.light, 1.0),
+    ('dunkel', Brightness.dark, 1.0),
+    ('hell_gross', Brightness.light, 1.3),
+    ('dunkel_gross', Brightness.dark, 1.3),
+  ]) {
+    testWidgets('Einstellungen, Rückfrage vor dem Koppeln ($name)', (t) async {
+      await pumpSettings(
+        t,
+        brightness: brightness,
+        textScale: scale,
+        extra: serverOverrides(FakeServer.beispiel()),
+      );
+      await t.ensureVisible(find.byKey(const Key('server-pair')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('server-pair')));
+      await t.pumpAndSettle();
+      await t.dragUntilVisible(
+        find.byKey(const Key('confirm-pair-question')),
+        find.byType(SingleChildScrollView).first,
+        const Offset(0, -200),
+      );
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile('goldens/einstellungen_server_rueckfrage_$name.png'),
       );
     });
   }

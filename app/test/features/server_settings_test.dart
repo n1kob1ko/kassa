@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
+import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
@@ -22,6 +24,9 @@ const _questionText =
     'Die Speisekarte und die Mitarbeiter kommen danach vom Server. '
     'Die Bons auf diesem Tablet bleiben. Ein offener Bon wird geleert, '
     'und du meldest dich neu an.';
+const _priceSentence =
+    'Preise, Favoriten und "Im Verkauf" von diesem Tablet werden durch den '
+    'Stand des Servers ersetzt.';
 const _failedLine =
     'Der letzte Abgleich hat nicht geklappt. '
     'Die Kassa versucht es von selbst wieder.';
@@ -49,7 +54,63 @@ Future<void> _enterCode(WidgetTester t) async {
   await t.pumpAndSettle();
 }
 
+Override _counts(int pending, int rejected) =>
+    outboxCountsProvider.overrideWith(
+      (ref) => Stream.value(OutboxCounts(pending: pending, rejected: rejected)),
+    );
+
 void main() {
+  testWidgets('Karte ohne wartende und abgelehnte Einträge: keine der Zeilen', (
+    t,
+  ) async {
+    await pumpPaired(t, extra: [_counts(0, 0)]);
+    expect(find.textContaining('Wartet noch'), findsNothing);
+    expect(find.textContaining('abgelehnt'), findsNothing);
+  });
+
+  testWidgets('Karte während der Zähler lädt: keine der Zeilen', (t) async {
+    await pumpPaired(
+      t,
+      extra: [
+        outboxCountsProvider.overrideWith(
+          (ref) => const Stream<OutboxCounts>.empty(),
+        ),
+      ],
+    );
+    expect(find.textContaining('Wartet noch'), findsNothing);
+    expect(find.textContaining('abgelehnt'), findsNothing);
+  });
+
+  testWidgets('3 wartende Einträge: "Wartet noch: 3"', (t) async {
+    await pumpPaired(t, extra: [_counts(3, 0)]);
+    expect(find.text('Wartet noch: 3'), findsOneWidget);
+    expect(find.textContaining('abgelehnt'), findsNothing);
+  });
+
+  testWidgets('1 abgelehnter Eintrag: Satz in der Einzahl', (t) async {
+    await pumpPaired(t, extra: [_counts(0, 1)]);
+    expect(
+      find.text('1 Eintrag wurde vom Server abgelehnt. Niko weiß Bescheid.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Wartet noch'), findsNothing);
+  });
+
+  testWidgets('2 abgelehnte Einträge: Satz in der Mehrzahl', (t) async {
+    await pumpPaired(t, extra: [_counts(0, 2)]);
+    expect(
+      find.text('2 Einträge wurden vom Server abgelehnt. Niko weiß Bescheid.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Rückfrage nennt Preise, Favoriten und "Im Verkauf"', (t) async {
+    await pumpUnpaired(t);
+    await _tapAndSettle(t, 'server-pair');
+    expect(find.text(_questionText), findsOneWidget);
+    expect(find.text(_priceSentence), findsOneWidget);
+  });
+
   testWidgets(
     'nicht gekoppelt: Taste da, Rückfrage erscheint, "Abbrechen" ändert nichts',
     (t) async {

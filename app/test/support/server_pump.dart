@@ -49,9 +49,16 @@ Future<FakeServer> pumpPaired(
   FakeServer? server,
   bool load = true,
   Brightness brightness = Brightness.light,
+  double textScale = 1.0,
+  List<Override> extra = const [],
 }) async {
   final s = server ?? FakeServer.beispiel();
-  await pumpSettings(t, brightness: brightness, extra: serverOverrides(s));
+  await pumpSettings(
+    t,
+    brightness: brightness,
+    textScale: textScale,
+    extra: [...serverOverrides(s), ...extra],
+  );
   final service = containerOf(t).read(pairingServiceProvider);
   await service.pair(FakeServer.code);
   if (load) {
