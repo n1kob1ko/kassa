@@ -1,0 +1,193 @@
+/* Blatt eines Tages: Kopfzeile, Zahlen untereinander (rechtsbündig), Bewegungen. */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-huge);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.meta {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-xl);
+}
+
+.openText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.figures {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.figure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xxl);
+  min-height: 48px;
+  padding: var(--space-md) 0;
+  font-size: 15px;
+}
+
+.figure + .figure {
+  border-top: 1px solid var(--line);
+}
+
+.figure dt {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.figure dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.strong dt {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.note {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Differenz: mit Vorzeichen; nicht 0 auf warnBg in warnInk. In der Liste steht das Wort davor. */
+.difference {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.difference[data-warn],
+.differenceValue[data-warn] {
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.differenceValue[data-warn] {
+  padding: 4px 10px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink2);
+}
+
+.movements {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.movement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xxl);
+  padding: var(--space-lg) 0;
+}
+
+.movement + .movement {
+  border-top: 1px solid var(--line);
+}
+
+.movementText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.movementName {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.movementAmount {
+  flex: none;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.problem {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.problemBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xl);
+}
+
+.bone {
+  display: block;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.bone:first-of-type {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+    background: var(--fill);
+  }
+}

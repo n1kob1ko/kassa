@@ -1,5 +1,20 @@
 import { expect, test } from 'vitest';
-import { ago, codeGroups, comparison, count, countdown, dateText, megabytes, money, share } from './format';
+import {
+  ago,
+  codeGroups,
+  comparison,
+  count,
+  countdown,
+  dateInputValue,
+  dateText,
+  dayHeading,
+  dayKey,
+  megabytes,
+  money,
+  share,
+  signedMoney,
+  timeText,
+} from './format';
 
 const NOW = new Date('2026-11-18T12:00:00.000Z');
 const before = (ms: number) => new Date(NOW.getTime() - ms);
@@ -104,4 +119,39 @@ test('share: ganze Prozent halb auf, 0 ohne Summe', () => {
   expect(share(965, 3215)).toBe(30);
   expect(share(1, 3)).toBe(33);
   expect(share(0, 0)).toBe(0);
+});
+
+test('timeText: Stunde und Minute in Wiener Zeit, auch über die Zeitumstellung', () => {
+  expect(timeText(new Date('2026-11-19T08:05:00.000Z'))).toBe('09:05');
+  expect(timeText(new Date('2026-11-18T23:30:00.000Z'))).toBe('00:30');
+  expect(timeText(new Date('2026-07-01T10:00:00.000Z'))).toBe('12:00');
+});
+
+test('dayKey: Kalendertag in Wiener Zeit', () => {
+  expect(dayKey(new Date('2026-11-18T22:59:00.000Z'))).toBe('2026-11-18');
+  expect(dayKey(new Date('2026-11-18T23:00:00.000Z'))).toBe('2026-11-19');
+});
+
+test('dayHeading: Heute, Gestern, sonst Wochentag und Datum, ein anderes Jahr mit Jahr', () => {
+  const now = new Date('2026-11-19T10:00:00.000Z');
+  expect(dayHeading(new Date('2026-11-19T06:00:00.000Z'), now)).toBe('Heute');
+  // Kurz nach Mitternacht in Wien ist es in UTC noch der Vortag.
+  expect(dayHeading(new Date('2026-11-18T23:10:00.000Z'), now)).toBe('Heute');
+  expect(dayHeading(new Date('2026-11-18T12:00:00.000Z'), now)).toBe('Gestern');
+  expect(dayHeading(new Date('2026-11-17T12:00:00.000Z'), now)).toBe('Di., 17.11.');
+  expect(dayHeading(new Date('2026-11-05T12:00:00.000Z'), now)).toBe('Do., 05.11.');
+  expect(dayHeading(new Date('2025-12-31T12:00:00.000Z'), now)).toBe('Mi., 31.12.2025');
+  // Gestern über den Monatswechsel.
+  expect(dayHeading(new Date('2026-11-30T12:00:00.000Z'), new Date('2026-12-01T09:00:00.000Z'))).toBe('Gestern');
+});
+
+test('signedMoney: Vorzeichen immer, echtes Minus, 0 ohne Vorzeichen', () => {
+  expect(signedMoney(200)).toBe('+2,00\u00a0€');
+  expect(signedMoney(-150)).toBe('\u22121,50\u00a0€');
+  expect(signedMoney(0)).toBe('0,00\u00a0€');
+});
+
+test('dateInputValue: das Datum des Browsers für ein Datumsfeld', () => {
+  expect(dateInputValue(new Date(2026, 10, 9, 23, 59))).toBe('2026-11-09');
+  expect(dateInputValue(new Date(2026, 0, 1, 0, 0))).toBe('2026-01-01');
 });

@@ -4,7 +4,22 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { expect, signInAsProvider, test } from './support/fixtures';
 import { E2E_RELEASE_TOKEN } from './support/server';
-import { createSite, line, MENU as ITEMS, pushEntries, saleReceipt, startOfLocalDay, type Entry } from './support/seed';
+import {
+  cashMovement,
+  closeDay,
+  createSite,
+  line,
+  MENU as ITEMS,
+  openDay,
+  pushEntries,
+  saleReceipt,
+  signature,
+  signatureChain,
+  specialReceipt,
+  startOfLocalDay,
+  voidReceipt,
+  type Entry,
+} from './support/seed';
 
 /**
  * Bildschirmfotos zum Ansehen, nur mit KASSA_SHOTS_DIR=<Ordner>, etwa:
@@ -116,11 +131,70 @@ async function overviewScene(page: Page): Promise<string> {
   return site.businessId;
 }
 
-async function shoot(page: Page, name: string) {
+/**
+ * Ein Betrieb mit fünf Tagen an zwei Kassen: abgeschlossene Tage (einer stimmt, einer mit Differenz in jede
+ * Richtung), heute ein offener Tag, Bons mit Optionen, Karte, Storno, Startbeleg und Signatur. Wird wiederverwendet.
+ */
+async function receiptsScene(page: Page): Promise<{ businessId: string; sale: string; day: string }> {
+  const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
+  const known = list.businesses.find((b) => b.name === 'Imbiss an der Ecke');
+  const site = known ? null : await createSite(page, { name: 'Imbiss an der Ecke', registerName: 'Theke' });
+  const businessId = known?.id ?? site!.businessId;
+  if (site) {
+    const today = startOfLocalDay(new Date()).getTime();
+    const now = Date.now();
+    const H = 60 * 60_000;
+    const entries: Entry[] = [{ kind: 'rksv_chain', chain: signatureChain({ chain: 1, mode: 'live' }) }];
+    const later: Entry[] = [];
+    let position = 0;
+    const big = (n: number) => line(ITEMS.huhnBowl, n, [{ groupName: 'Größe', optionName: 'Groß', surchargeCents: 150 }]);
+    for (let back = 4; back >= 0; back--) {
+      const start = today - back * 24 * H;
+      const opened = Math.min(start + 9 * H, now - 3 * H);
+      const day = openDay({ openedAt: new Date(opened), openingFloatCents: 15_000 });
+      entries.push({ kind: 'day', day });
+      let cash = 0;
+      const plan = [
+        { at: 0.5, lines: [big(1), line(ITEMS.cola, 2)], payment: 'cash' as const, given: 2000 },
+        { at: 1.2, lines: [line(ITEMS.teigtaschen, 2)], payment: 'card' as const },
+        { at: 1.9, lines: [line(ITEMS.huhnBowl)], payment: 'cash' as const, given: 1000 },
+        { at: 2.4, lines: [line(ITEMS.cola, 3), line(ITEMS.teigtaschen)], payment: 'card' as const },
+        { at: 2.8, lines: [big(2)], payment: 'cash' as const, given: 5000 },
+      ];
+      for (const [i, p] of plan.entries()) {
+        const at = new Date(Math.min(opened + p.at * H, now - (plan.length - i) * 60_000));
+        const receipt = saleReceipt({ createdAt: at, lines: p.lines, payment: p.payment, givenCents: p.given, businessDayId: day.id, test: false, rksv: signature({ position: ++position }) });
+        entries.push({ kind: 'receipt', receipt });
+        if (p.payment === 'cash') cash += receipt.totalCents;
+        if (i === 2 && back === 0) {
+          const storno = voidReceipt(receipt, { createdAt: new Date(at.getTime() + 90_000) });
+          entries.push({ kind: 'receipt', receipt: storno });
+          cash -= receipt.totalCents;
+        }
+      }
+      entries.push({ kind: 'cash_movement', movement: cashMovement(day, { kind: 'withdrawal', amountCents: 2000, reason: 'purchase', createdAt: new Date(opened + 1.5 * H) }) });
+      if (back === 4) entries.push({ kind: 'receipt', receipt: specialReceipt('start', { createdAt: new Date(opened - 60_000), test: false }) });
+      if (back > 0) {
+        const expected = 15_000 + cash - 2000;
+        const counted = expected + [0, -150, 200, 0][back - 1]!;
+        later.push({ kind: 'day', day: closeDay(day, { closedAt: new Date(opened + 9 * H), expectedCents: expected, countedCents: counted, leftInDrawerCents: 15_000 }) });
+      }
+    }
+    await pushEntries(page, site, entries);
+    await pushEntries(page, site, later);
+  }
+  const receipts = (await (await page.request.get(`/api/admin/businesses/${businessId}/receipts`)).json()) as { receipts: { id: string; kind: string; paymentKind: string; voided: boolean }[] };
+  const sale = receipts.receipts.find((r) => r.kind === 'sale' && r.paymentKind === 'cash' && !r.voided)!.id;
+  const days = (await (await page.request.get(`/api/admin/businesses/${businessId}/days`)).json()) as { days: { id: string; differenceCents: number | null }[] };
+  const day = days.days.find((d) => d.differenceCents !== null && d.differenceCents !== 0)!.id;
+  return { businessId, sale, day };
+}
+
+async function shoot(page: Page, name: string, fullPage = true) {
   await page.evaluate(() => document.fonts.ready);
   // Dialog und Hinweis laufen 220 ms ein: erst danach fotografieren.
   await page.waitForTimeout(400);
-  await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${dir}/${name}.png`, fullPage });
 }
 
 for (const size of sizes) {
@@ -335,6 +409,62 @@ for (const size of sizes) {
         await shoot(page, `umsaetze-laden-${suffix}`);
         await expect(page.getByRole('button', { name: 'Nochmal versuchen' })).toBeVisible();
         await shoot(page, `umsaetze-fehler-${suffix}`);
+      });
+
+      test('bons und tage', async ({ page }) => {
+        await signInAsProvider(page);
+        const { businessId, sale, day } = await receiptsScene(page);
+        await page.goto(`/b/${businessId}/bons`);
+        await expect(page.getByRole('main').getByRole('link', { name: /^Bon \d+/ }).first()).toBeVisible();
+        await shoot(page, `bons-${suffix}`);
+        await page.goto(`/b/${businessId}/bons?zahlung=bar&stornos=1`);
+        await expect(page.getByRole('main').getByRole('link', { name: /^Bon \d+/ })).toHaveCount(2);
+        await shoot(page, `bons-filter-${suffix}`);
+        await page.goto(`/b/${businessId}/bons?zahlung=karte&stornos=1`);
+        await expect(page.getByText('Kein Bon passt zu diesem Filter.')).toBeVisible();
+        await shoot(page, `bons-leer-${suffix}`);
+
+        await page.goto(`/b/${businessId}/bons/${sale}`);
+        await expect(page.getByRole('dialog').getByTestId('total')).toBeVisible();
+        await shoot(page, `bon-detail-${suffix}`, false);
+        const storno = page.getByRole('main').locator('a', { hasText: 'Storno' });
+        await page.keyboard.press('Escape');
+        await storno.first().click();
+        await expect(page.getByRole('dialog').getByRole('link', { name: /Zum stornierten Bon/ })).toBeVisible();
+        await shoot(page, `bon-detail-storno-${suffix}`, false);
+
+        await page.route(`**/api/admin/businesses/${businessId}/receipts?*`, async (route) => {
+          await new Promise((r) => setTimeout(r, 1500));
+          // Nach dem Foto ist die Seite schon weiter: dann gibt es nichts mehr zu beantworten.
+          await route.continue().catch(() => undefined);
+        });
+        await page.goto(`/b/${businessId}/bons?zahlung=bar`);
+        await expect(page.getByRole('status').filter({ hasText: 'Bons werden geladen' })).toBeVisible();
+        await shoot(page, `bons-laden-${suffix}`);
+        await page.unroute(`**/api/admin/businesses/${businessId}/receipts?*`);
+
+        await page.goto(`/b/${businessId}/tage`);
+        await expect(page.getByRole('main').getByRole('link').first()).toBeVisible();
+        await shoot(page, `tage-${suffix}`);
+        await page.goto(`/b/${businessId}/tage/${day}`);
+        await expect(page.getByRole('dialog').getByTestId('difference')).toBeVisible();
+        await shoot(page, `tag-detail-${suffix}`, false);
+        await page.keyboard.press('Escape');
+        await page.getByRole('main').getByRole('link').first().click();
+        await expect(page.getByRole('dialog').getByText('offen')).toBeVisible();
+        await shoot(page, `tag-detail-offen-${suffix}`, false);
+      });
+
+      test('leiste mehr', async ({ page }) => {
+        await signInAsProvider(page);
+        const { businessId } = await receiptsScene(page);
+        await page.goto(`/b/${businessId}/kassen`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Kassen' })).toBeVisible();
+        if (size.width < 1024) {
+          await page.getByRole('navigation', { name: 'Bereiche' }).filter({ visible: true }).getByRole('button', { name: 'Mehr' }).click();
+          await expect(page.getByRole('dialog', { name: 'Mehr' })).toBeVisible();
+        }
+        await shoot(page, `leiste-mehr-${suffix}`, false);
       });
 
       test('installationsdateien', async ({ page }) => {

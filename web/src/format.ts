@@ -83,3 +83,50 @@ export function comparison(range: OverviewRange, cents: number, previousCents: n
   if (percent === 0) return `Gleich viel wie ${base}`;
   return `${percent} % ${cents > previousCents ? 'mehr' : 'weniger'} als ${base}`;
 }
+
+const ZONE = 'Europe/Vienna';
+const TIME = new Intl.DateTimeFormat('de-AT', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: ZONE });
+const DAY_PARTS = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: ZONE });
+const WEEKDAY_SHORT = new Intl.DateTimeFormat('de-AT', { weekday: 'short', timeZone: ZONE });
+
+/** Uhrzeit als "09:05" in Wiener Zeit (der Zeit des Betriebs). */
+export function timeText(date: Date): string {
+  return TIME.format(date);
+}
+
+/** Kalendertag in Wiener Zeit als "2026-11-19": zum Gruppieren und Vergleichen. */
+export function dayKey(date: Date): string {
+  return DAY_PARTS.format(date);
+}
+
+/** Der Tag vor einem Tag "2026-11-19", ohne Zeitzone gerechnet. */
+function previousDay(key: string): string {
+  const d = new Date(`${key}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Überschrift eines Tages in einer Liste: "Heute", "Gestern", sonst "Mi., 18.11." und in einem anderen Jahr
+ * "Mi., 31.12.2025". Alles in Wiener Zeit.
+ */
+export function dayHeading(date: Date, now: Date): string {
+  const key = dayKey(date);
+  const today = dayKey(now);
+  if (key === today) return 'Heute';
+  if (key === previousDay(today)) return 'Gestern';
+  const [year, month, day] = key.split('-');
+  const weekday = WEEKDAY_SHORT.format(date).replace(/\.?$/, '.');
+  return `${weekday}, ${day}.${month}.${year === today.slice(0, 4) ? '' : year}`;
+}
+
+/** Betrag mit Vorzeichen: "+2,00 €", "−1,50 €", ohne Vorzeichen nur bei 0. Für Differenzen. */
+export function signedMoney(cents: number): string {
+  return `${cents > 0 ? '+' : ''}${money(cents)}`;
+}
+
+/** Das heutige Datum des Browsers als Wert eines Datumsfelds: "2026-11-19". */
+export function dateInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

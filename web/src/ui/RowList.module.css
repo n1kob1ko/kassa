@@ -1,0 +1,166 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Ruhig: kleiner als ein Titel, ink2, mit Luft nach oben zur Karte davor. */
+.heading {
+  padding: 0 var(--space-xs);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink2);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.item + .item {
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 60px;
+  padding: var(--space-xl) var(--space-xl) var(--space-xl) var(--space-xxl);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--duration-color) linear;
+  touch-action: manipulation;
+}
+
+.row:hover {
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: var(--fill);
+  }
+}
+
+.row:active {
+  background: var(--fill);
+}
+
+/* Die Karte schneidet den Rand ab: der Fokusring liegt innen und folgt an der ersten und letzten Zeile der Rundung. */
+.row:focus-visible {
+  outline-offset: -3px;
+}
+
+.item:first-child .row {
+  border-top-left-radius: calc(var(--radius-card) - 1px);
+  border-top-right-radius: calc(var(--radius-card) - 1px);
+}
+
+.item:last-child .row {
+  border-bottom-left-radius: calc(var(--radius-card) - 1px);
+  border-bottom-right-radius: calc(var(--radius-card) - 1px);
+}
+
+.selected,
+.selected:hover {
+  background: var(--accent-soft);
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chevron {
+  flex: none;
+  color: var(--ink2);
+}
+
+@media (min-width: 640px) {
+  .row {
+    padding: var(--space-xl) var(--space-xxl) var(--space-xl) var(--space-huge);
+  }
+}
+
+/* Platzhalter. */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.boneRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xxl);
+  min-height: 60px;
+  padding: var(--space-xl) var(--space-huge) var(--space-xl) var(--space-xxl);
+}
+
+.boneRow + .boneRow {
+  border-top: 1px solid var(--line);
+}
+
+.boneText {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.bone {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.boneHeading {
+  width: 64px;
+  margin: 0 var(--space-xs);
+}
+
+.boneTitle {
+  width: min(160px, 60%);
+  height: 16px;
+}
+
+.boneMeta {
+  width: min(220px, 80%);
+}
+
+.boneAmount {
+  flex: none;
+  width: 64px;
+  height: 16px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+    background: var(--fill);
+  }
+}

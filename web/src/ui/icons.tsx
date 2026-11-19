@@ -169,3 +169,32 @@ export const ArrowDownIcon = icon(
     <path d="m19 12-7 7-7-7" />
   </>,
 );
+
+export const ChevronLeftIcon = icon(<path d="m15 18-6-6 6-6" />);
+
+/** Beleg mit Zeilen, in der Strichstärke der anderen Bereiche: Bons. */
+export const ReceiptLinesIcon = icon(
+  <>
+    <path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5-2 1.5-2.5-1.5L5 21z" />
+    <path d="M9 8h6M9 12h6M9 16h3" />
+  </>,
+);
+
+/** Kalender mit Haken: Tagesabschlüsse. */
+export const CalendarCheckIcon = icon(
+  <>
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+    <path d="m9 16 2 2 4-4" />
+  </>,
+);
+
+/** Vier Kacheln: weitere Bereiche ("Mehr"). */
+export const GridIcon = icon(
+  <>
+    <rect width="7" height="7" x="3" y="3" rx="1.5" />
+    <rect width="7" height="7" x="14" y="3" rx="1.5" />
+    <rect width="7" height="7" x="3" y="14" rx="1.5" />
+    <rect width="7" height="7" x="14" y="14" rx="1.5" />
+  </>,
+);

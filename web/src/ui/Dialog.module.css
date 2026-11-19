@@ -119,3 +119,102 @@
     }
   }
 }
+
+/*
+ * Blatt von rechts (`variant="side"`): ab 640 px am rechten Rand, so hoch wie das Fenster, über der abgedunkelten
+ * Seite. Der Kopf bleibt beim Scrollen stehen. Darunter füllt es das Fenster wie eine eigene Seite mit "Zurück".
+ */
+.back {
+  display: none;
+}
+
+.side {
+  width: min(480px, 100vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  border-width: 0 0 0 1px;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+}
+
+.side[open] {
+  animation: slide var(--duration-enter) var(--ease);
+}
+
+.side .panel {
+  gap: 0;
+  min-height: 100%;
+  padding: 0;
+}
+
+.side .head {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  align-items: center;
+  padding: var(--space-xxl) var(--space-huge);
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+.side .title {
+  padding-top: 0;
+}
+
+.side .body {
+  padding: var(--space-huge);
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 639.98px) {
+  .side {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+  }
+
+  .side .head {
+    justify-content: flex-start;
+    gap: var(--space-md);
+    min-height: calc(var(--top-bar-height) + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) var(--space-page) 0 var(--space-xs);
+  }
+
+  .side .close {
+    display: none;
+  }
+
+  .side .back {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    min-width: 44px;
+    height: 44px;
+    padding: 0 var(--space-md) 0 var(--space-xs);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--accent-ink);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .side .back:active {
+    background: var(--fill);
+  }
+
+  .side .body {
+    padding: 20px var(--space-page) calc(var(--space-huge) + env(safe-area-inset-bottom));
+  }
+}

@@ -20,6 +20,8 @@ type DayRow = {
 
 const COLUMNS = `d.id, coalesce(g.name, '') as register_name, d.opened_at, d.closed_at, d.expected_cents, d.counted_cents,
   d.difference_cents, d.closed_by_name, d.opening_float_cents, d.left_in_drawer_cents`;
+/** Was zum Umsatz eines Tages zählt: Verkäufe und Stornos (mit negativem Betrag), keine Sonderbelege. */
+const REVENUE_KINDS = `kind in ('sale', 'voided')`;
 const FROM = `from business_days d left join registers g on g.business_id = d.business_id and g.id = d.register_id`;
 
 function head(r: DayRow) {
@@ -43,10 +45,18 @@ export function installDayRoutes(app: FastifyInstance): void {
     await requireBusinessAccess(req, req.params.b);
     const businessId = req.params.b.toLowerCase();
     return withBusiness(db, businessId, async (c) => {
+      // Umsatz je Tag in einer Abfrage, gerechnet wie im Detail (REVENUE_KINDS).
       const rows = (
-        await c.query<DayRow>(`select ${COLUMNS} ${FROM} order by d.opened_at desc, d.id desc limit $1`, [MAX_DAYS])
+        await c.query<DayRow & { revenue_cents: number }>(
+          `select ${COLUMNS}, coalesce(t.revenue, 0)::int as revenue_cents ${FROM}
+             left join (select business_id, business_day_id, sum(total_cents) as revenue
+                          from receipts where ${REVENUE_KINDS} group by business_id, business_day_id) t
+               on t.business_id = d.business_id and t.business_day_id = d.id
+            order by d.opened_at desc, d.id desc limit $1`,
+          [MAX_DAYS],
+        )
       ).rows;
-      return { days: rows.map(head) };
+      return { days: rows.map((r) => ({ ...head(r), revenueCents: r.revenue_cents })) };
     });
   });
 
@@ -70,7 +80,7 @@ export function installDayRoutes(app: FastifyInstance): void {
         await c.query<{ count: number; revenue: number }>(
           `select coalesce(sum(case when kind = 'voided' then -1 else 1 end), 0)::int as count,
                   coalesce(sum(total_cents), 0)::int as revenue
-             from receipts where business_day_id = $1 and kind in ('sale', 'voided')`,
+             from receipts where business_day_id = $1 and ${REVENUE_KINDS}`,
           [id],
         )
       ).rows[0]!;

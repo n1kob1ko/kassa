@@ -32,7 +32,7 @@ describe('Tage', () => {
     const res = await list(s);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
-      days: [{ id: day.id, registerName: 'Kassa 1', openedAt: '2026-11-19T08:00:00.000Z', closedAt: null, expectedCents: null, countedCents: null, differenceCents: null, closedByName: null }],
+      days: [{ id: day.id, registerName: 'Kassa 1', openedAt: '2026-11-19T08:00:00.000Z', closedAt: null, expectedCents: null, countedCents: null, differenceCents: null, closedByName: null, revenueCents: 0 }],
     });
     expect((await detail(s, day.id)).json()).toMatchObject({
       id: day.id, closedAt: null, openingFloatCents: 10000, leftInDrawerCents: null, movements: [], receiptCount: 0, revenueCents: 0,
@@ -53,13 +53,34 @@ describe('Tage', () => {
     await send(a, s, [['day', closed]]);
     const days = (await list(s)).json().days;
     expect(days).toHaveLength(1);
-    expect(days[0]).toMatchObject({ closedAt: '2026-11-19T17:00:00.000Z', expectedCents: 18500, countedCents: 18000, differenceCents: -500, closedByName: 'Chefin' });
+    expect(days[0]).toMatchObject({ closedAt: '2026-11-19T17:00:00.000Z', expectedCents: 18500, countedCents: 18000, differenceCents: -500, closedByName: 'Chefin', revenueCents: 400 });
     const d = (await detail(s, open.id)).json();
     expect(d).toMatchObject({ openingFloatCents: 10000, leftInDrawerCents: 10000, receiptCount: 1, revenueCents: 400 });
     expect(d.movements).toEqual([
       { kind: 'withdrawal', amountCents: 2000, reason: 'bank', createdAt: '2026-11-19T10:00:00.000Z', staffName: 'Chefin' },
       { kind: 'deposit', amountCents: 500, reason: 'Wechselgeld', createdAt: '2026-11-19T12:00:00.000Z', staffName: 'Chefin' },
     ]);
+  });
+
+  test('Umsatz in der Liste wie im Detail: je Tag, Stornos ziehen ab, Sonderbelege und andere Betriebe zählen nicht', async () => {
+    const s = await siteFor(a, provider, 'Umsatz');
+    const other = await siteFor(a, provider, 'Fremd');
+    const monday = sampleDay({ openedAt: '2026-11-16T08:00:00.000Z' });
+    const tuesday = sampleDay({ openedAt: '2026-11-17T08:00:00.000Z' });
+    const quiet = sampleDay({ openedAt: '2026-11-18T08:00:00.000Z' });
+    const sale = sampleReceipt({ businessDayId: monday.id, number: 1 });
+    const storno = sampleReceipt({ businessDayId: monday.id, number: 2, kind: 'voided', voidsReceiptId: sale.id, totalCents: -990, goodsCents: -990 });
+    const card = sampleReceipt({ businessDayId: monday.id, number: 3, totalCents: 1250, goodsCents: 1250 });
+    const big = sampleReceipt({ businessDayId: tuesday.id, number: 4, totalCents: 3075, goodsCents: 3050, depositCents: 25 });
+    const zero = sampleReceipt({ businessDayId: null, number: 5, kind: 'zero', totalCents: 0, goodsCents: 0, lines: [], payment: null });
+    // Derselbe Tag in einem anderen Betrieb: sein Umsatz darf nicht mitzählen.
+    const foreign = sampleReceipt({ businessDayId: tuesday.id, number: 1, totalCents: 99_900, goodsCents: 99_900 });
+    await send(a, s, [['day', monday], ['day', tuesday], ['day', quiet], ['receipt', sale], ['receipt', storno], ['receipt', card], ['receipt', big], ['receipt', zero]]);
+    await send(a, other, [['receipt', foreign]]);
+
+    const days = (await list(s)).json().days as { id: string; revenueCents: number }[];
+    expect(days.map((d) => [d.id, d.revenueCents])).toEqual([[quiet.id, 0], [tuesday.id, 3075], [monday.id, 1250]]);
+    for (const d of days) expect((await detail(s, d.id)).json().revenueCents).toBe(d.revenueCents);
   });
 
   test('neueste zuerst, unbekannter Tag: 404', async () => {

@@ -132,6 +132,10 @@
 
 .bottomLink {
   flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
   flex-direction: column;
   justify-content: center;
   gap: var(--space-xxs);
@@ -153,6 +157,77 @@
   height: 28px;
   width: 48px;
   transition: background-color var(--duration-color) linear;
+}
+
+/* Blatt "Mehr": die übrigen Bereiche als große Zeilen. */
+.moreList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  margin: 0 calc(-1 * var(--space-md));
+  padding: 0;
+  list-style: none;
+}
+
+.moreLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  min-height: 56px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-color) linear,
+    color var(--duration-color) linear;
+}
+
+.moreLink:hover {
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .moreLink:hover {
+    background: var(--fill);
+  }
+}
+
+.moreLink:active {
+  background: var(--fill);
+}
+
+.moreLink.active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.moreIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--fill);
+  color: var(--ink2);
+}
+
+.moreLink.active .moreIcon {
+  background: transparent;
+  color: var(--accent-ink);
+}
+
+.moreLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.moreChevron {
+  flex: none;
+  color: var(--ink2);
 }
 
 @media (min-width: 1024px) {

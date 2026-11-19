@@ -1,0 +1,25 @@
+import { expect, test } from 'vitest';
+import { filterFromParams, filterToParams, type ReceiptFilter } from './receipts';
+
+const none: ReceiptFilter = { day: null, payment: null, voidedOnly: false };
+
+test('filterFromParams: deutsche Parameter der Adresse, Unlesbares gilt als nicht gesetzt', () => {
+  expect(filterFromParams(new URLSearchParams(''))).toEqual(none);
+  expect(filterFromParams(new URLSearchParams('tag=2026-11-19&zahlung=karte&stornos=1'))).toEqual({
+    day: '2026-11-19',
+    payment: 'card',
+    voidedOnly: true,
+  });
+  expect(filterFromParams(new URLSearchParams('zahlung=bar'))).toEqual({ ...none, payment: 'cash' });
+  expect(filterFromParams(new URLSearchParams('tag=gestern&zahlung=scheck&stornos=ja'))).toEqual(none);
+});
+
+test('filterToParams: Vorgaben stehen nicht in der Adresse, andere Parameter bleiben', () => {
+  expect(filterToParams(none, new URLSearchParams('')).toString()).toBe('');
+  expect(filterToParams({ day: '2026-11-19', payment: 'card', voidedOnly: true }, new URLSearchParams('')).toString()).toBe(
+    'tag=2026-11-19&zahlung=karte&stornos=1',
+  );
+  expect(filterToParams({ ...none, payment: 'cash' }, new URLSearchParams('tag=2026-11-01&x=1')).toString()).toBe(
+    'x=1&zahlung=bar',
+  );
+});

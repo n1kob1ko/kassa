@@ -158,6 +158,10 @@ export function saleReceipt(opts: {
   businessDayId?: string;
   test?: boolean;
   number?: number;
+  /** Bar: gegebener Betrag (Rückgeld ist der Rest). Ohne: passend gegeben. */
+  givenCents?: number;
+  /** Eintrag im Protokoll der Signatur (`signature(...)`), ohne: `null`. */
+  rksv?: ReturnType<typeof signature> | null;
 }) {
   const goodsCents = opts.lines.reduce((s, l) => s + l.unitPriceCents * l.quantity, 0);
   const depositCents = opts.lines.reduce((s, l) => s + l.unitDepositCents * l.quantity, 0);
@@ -172,7 +176,7 @@ export function saleReceipt(opts: {
     staffName: opts.staffName ?? 'Chefin',
     businessDayId: opts.businessDayId ?? randomUUID(),
     kind: 'sale',
-    voidsReceiptId: null,
+    voidsReceiptId: null as string | null,
     goodsCents,
     depositCents,
     totalCents,
@@ -180,8 +184,131 @@ export function saleReceipt(opts: {
     lines: opts.lines.map((l, position) => ({ position, ...l })),
     payment: card
       ? { kind: 'card', amountCents: totalCents, givenCents: 0, changeCents: 0, provider: 'sumup', providerTxCode: `T${receiptNumber}`, cardScheme: 'VISA', cardLast4: '4242' }
-      : { kind: 'cash', amountCents: totalCents, givenCents: totalCents, changeCents: 0, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null },
+      : {
+          kind: 'cash',
+          amountCents: totalCents,
+          givenCents: opts.givenCents ?? totalCents,
+          changeCents: (opts.givenCents ?? totalCents) - totalCents,
+          provider: null,
+          providerTxCode: null,
+          cardScheme: null,
+          cardLast4: null,
+        },
+    rksv: opts.rksv ?? null,
+  };
+}
+
+export type Receipt = ReturnType<typeof saleReceipt>;
+
+/**
+ * Ein Eintrag im Protokoll der Signatur für `saleReceipt({ rksv })`. Ohne Kette am Server (`rksv_chain`) gilt er als
+ * Probe; `damaged: true` heißt "Signatur ausgefallen". Die JWS ist ein Platzhalter, die Verwaltung zeigt sie nie.
+ */
+export function signature(opts: { chain?: number; position: number; damaged?: boolean }) {
+  return { chain: opts.chain ?? 1, position: opts.position, jws: 'eyJhbGciOiJFUzI1NiJ9.e30.platzhalter', damaged: opts.damaged ?? false, certSerial: '1a2b' };
+}
+
+/** Der Storno-Bon zu einem Verkauf, so wie die App ihn schreibt: Mengen und Beträge negativ, gleiche Zahlungsart. */
+export function voidReceipt(sale: Receipt, opts: { createdAt?: Date; number?: number; staffName?: string } = {}): Receipt {
+  const negate = (gross: Record<string, number>) => Object.fromEntries(Object.entries(gross).map(([k, v]) => [k, -v])) as typeof sale.lines[number]['gross'];
+  return {
+    ...sale,
+    id: randomUUID(),
+    number: opts.number ?? ++receiptNumber,
+    createdAt: (opts.createdAt ?? new Date(Date.parse(sale.createdAt) + 30_000)).toISOString(),
+    staffName: opts.staffName ?? sale.staffName,
+    kind: 'voided',
+    voidsReceiptId: sale.id,
+    goodsCents: -sale.goodsCents,
+    depositCents: -sale.depositCents,
+    totalCents: -sale.totalCents,
+    lines: sale.lines.map((l) => ({ ...l, quantity: -l.quantity, gross: negate(l.gross) })),
+    payment: { ...sale.payment, amountCents: -sale.totalCents, givenCents: 0, changeCents: 0 },
     rksv: null,
+  };
+}
+
+export type SpecialKind = 'start' | 'month' | 'year' | 'zero' | 'collective' | 'closing';
+
+/** Ein Sonderbeleg (Startbeleg, Nullbeleg …): Betrag 0, ohne Zeilen, ohne Zahlung, ohne Tag. */
+export function specialReceipt(kind: SpecialKind, opts: { createdAt?: Date; number?: number; test?: boolean } = {}) {
+  return {
+    v: 1,
+    id: randomUUID(),
+    number: opts.number ?? ++receiptNumber,
+    createdAt: (opts.createdAt ?? new Date(Date.now() - 60_000)).toISOString(),
+    staffId: 'chefin',
+    staffName: 'Chefin',
+    businessDayId: null,
+    kind,
+    voidsReceiptId: null,
+    goodsCents: 0,
+    depositCents: 0,
+    totalCents: 0,
+    test: opts.test ?? true,
+    lines: [],
+    payment: null,
+    rksv: null,
+  };
+}
+
+export type Day = {
+  id: string;
+  openedAt: string;
+  closedAt: string | null;
+  openingFloatCents: number;
+  countedCents: number | null;
+  leftInDrawerCents: number | null;
+  expectedCents: number | null;
+  differenceCents: number | null;
+  closedByName: string | null;
+};
+
+/** Ein offener Tag (Eintrag `{ kind: 'day', day }`), Wechselgeld 100 Euro, wenn nichts anderes gesagt ist. */
+export function openDay(opts: { openedAt?: Date; openingFloatCents?: number } = {}): Day {
+  return {
+    id: randomUUID(),
+    openedAt: (opts.openedAt ?? new Date(Date.now() - 60 * 60_000)).toISOString(),
+    closedAt: null,
+    openingFloatCents: opts.openingFloatCents ?? 10_000,
+    countedCents: null,
+    leftInDrawerCents: null,
+    expectedCents: null,
+    differenceCents: null,
+    closedByName: null,
+  };
+}
+
+/** Derselbe Tag abgeschlossen: die Differenz ist gezählt minus erwartet. Nochmal senden, wie das Tablet es tut. */
+export function closeDay(
+  day: Day,
+  opts: { closedAt?: Date; expectedCents: number; countedCents: number; leftInDrawerCents?: number; closedByName?: string },
+): Day {
+  return {
+    ...day,
+    closedAt: (opts.closedAt ?? new Date(Date.now() - 60_000)).toISOString(),
+    expectedCents: opts.expectedCents,
+    countedCents: opts.countedCents,
+    differenceCents: opts.countedCents - opts.expectedCents,
+    leftInDrawerCents: opts.leftInDrawerCents ?? day.openingFloatCents,
+    closedByName: opts.closedByName ?? 'Chefin',
+  };
+}
+
+/** Eine Bargeld-Bewegung (`{ kind: 'cash_movement', movement }`): Grund `bank`, `purchase`, `change` oder `other`. */
+export function cashMovement(
+  day: Pick<Day, 'id'>,
+  opts: { kind: 'deposit' | 'withdrawal'; amountCents: number; reason?: string; createdAt?: Date; staffName?: string },
+) {
+  return {
+    id: randomUUID(),
+    businessDayId: day.id,
+    kind: opts.kind,
+    amountCents: opts.amountCents,
+    reason: opts.reason ?? 'bank',
+    createdAt: (opts.createdAt ?? new Date(Date.now() - 30 * 60_000)).toISOString(),
+    staffId: 'chefin',
+    staffName: opts.staffName ?? 'Chefin',
   };
 }
 
@@ -204,4 +331,17 @@ export function startOfLocalDay(at: Date, zone = 'Europe/Vienna'): Date {
 export function earlierToday(count: number, now = new Date()): Date[] {
   const dayStart = startOfLocalDay(now).getTime();
   return Array.from({ length: count }, (_, i) => new Date(Math.max(now.getTime() - (count - i) * 60_000, dayStart + i + 1)));
+}
+
+/** Die Kette der Signatur (`{ kind: 'rksv_chain', chain }`): `live` heißt echt signiert, `probe` Probe. */
+export function signatureChain(opts: { chain?: number; mode: 'probe' | 'live'; startedAt?: Date }) {
+  return {
+    chain: opts.chain ?? 1,
+    mode: opts.mode,
+    cashBoxId: 'KASSA1',
+    zdaId: 'AT0',
+    certSerial: '1a2b',
+    startedAt: (opts.startedAt ?? new Date(Date.now() - 24 * 60 * 60_000)).toISOString(),
+    endedAt: null,
+  };
 }
