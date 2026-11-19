@@ -1,6 +1,6 @@
 # Kassa Teil C, Stufe 2: Abgleich, Fotos, Umsätze
 
-Stand: 19.11.2026. Entwurf von Claude, Freigabe durch Niko steht aus.
+Stand: 19.11.2026. Entwurf von Claude, von Niko am 19.11.2026 freigegeben ("Passt, so bauen").
 
 Dieses Dokument ergänzt den Entwurf für Teil C (`2026-11-18-teil-c-server-und-verwaltung-design.md`, dort vor allem 5.5 bis 5.8, 5.10, 5.13 und 5.14) und den Entwurf zur Signatur (`2026-11-18-rksv-signatur-design.md`, dort 6.11 und Punkt 6a in Abschnitt 9). Wo sich die Dokumente widersprechen, gilt für Stufe 2 dieses. Alles, was hier nicht steht, gilt weiter wie dort, in `PRODUCT.md`, `DESIGN.md` und `docs/design-regeln.md`.
 
