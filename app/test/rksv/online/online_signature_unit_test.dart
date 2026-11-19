@@ -187,36 +187,11 @@ void main() {
   });
 
   test('anderer Fehler: Die Signatur von A-Trust ist gescheitert.', () async {
-    // Ein Zertifikat, das sich nicht lesen lässt (bis Task 5 war der Auslöser
-    // ein Text mit Umlaut; der wird jetzt als UTF-8 signiert).
-    final broken = OnlineSignatureUnit(
-      client: AtrustClient(rig.fake.client, AtrustSystem.test),
-      keeper: rig.keeper,
-      zdaId: 'AT1',
-      certificateDer: Uint8List.fromList([1, 2, 3]),
-    );
-    await expectLater(
-      broken.sign(_text),
-      throwsA(
-        isA<SignatureFailure>().having(
-          (f) => f.reason,
-          'reason',
-          'Die Signatur von A-Trust ist gescheitert.',
-        ),
-      ),
+    expect(
+      await rig.failure('Käsekrainer'),
+      'Die Signatur von A-Trust ist gescheitert.',
     );
     expect(rig.fake.requests, isEmpty);
-  });
-
-  test('Text mit Umlaut: signiert wird der SHA-256 seiner UTF-8-Bytes '
-      '(für "Verbindung prüfen")', () async {
-    await rig.unit.sign('Käsekrainer');
-    expect(
-      jsonDecode(rig.fake.signBodies.single)['hash'],
-      base64.encode(
-        SHA256Digest().process(Uint8List.fromList(utf8.encode('Käsekrainer'))),
-      ),
-    );
   });
 
   group('Review Focus 1: späte Antwort', () {

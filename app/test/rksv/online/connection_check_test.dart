@@ -97,7 +97,7 @@ void _expectWaiting(ConnectionCheckState s, List<ConnectionRow> rows) {
 void main() {
   test('vier Haken mit FakeAtrust: Sätze mit Dauer, Fakten gesetzt, genau '
       'vier Anfragen, signiert wird der SHA-256 von "Kassa Verbindung '
-      'prüfen"', () async {
+      'pruefen"', () async {
     final s = _Setup();
     final result = await s.check.run(chefTapped: false);
 
@@ -143,7 +143,7 @@ void main() {
       body['hash'],
       base64.encode(
         SHA256Digest().process(
-          Uint8List.fromList(utf8.encode('Kassa Verbindung prüfen')),
+          Uint8List.fromList(ascii.encode('Kassa Verbindung pruefen')),
         ),
       ),
     );

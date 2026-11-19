@@ -66,8 +66,9 @@ class ConnectionCheck {
   /// Je Zeile, auch für das Laden oder Aufheben von "abgelehnt" vorher.
   static const timeLimit = Duration(seconds: 20);
 
-  /// Zeile 4 signiert den SHA-256 dieses Textes (UTF-8).
-  static const signingInput = 'Kassa Verbindung prüfen';
+  /// Zeile 4 signiert den SHA-256 dieses Textes. Nur ASCII, wie jede
+  /// Eingabe einer [SignatureUnit].
+  static const signingInput = 'Kassa Verbindung pruefen';
 
   final AtrustClient _client;
   final AtrustSessionKeeper _keeper;
