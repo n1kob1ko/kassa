@@ -250,8 +250,9 @@ create trigger rksv_chains_immutable before update or delete on rksv_chains
 
 -- Berichte aller Betriebe für den Anbieter. Läuft mit den Rechten des Besitzers,
 -- weil die Sperre sonst jede Zeile verbirgt. Neueste zuerst nach Eingang am Server
--- (die Uhr eines Tablets kann falsch gehen); `before` ist die Grenze für die nächste Seite.
-create function list_reports(lim int, before timestamptz)
+-- (die Uhr eines Tablets kann falsch gehen). Berichte eines Pakets teilen sich received_at,
+-- darum ist die Grenze für die nächste Seite das Paar (before_at, before_id) des letzten Eintrags.
+create function list_reports(lim int, before_at timestamptz, before_id uuid)
 returns table (
   id uuid,
   business_id uuid,
@@ -278,13 +279,14 @@ as $$
     from public.reports r
     join public.businesses b on b.id = r.business_id
     left join public.registers g on g.business_id = r.business_id and g.id = r.register_id
-   where list_reports.before is null or r.received_at < list_reports.before
-   order by r.received_at desc, r.id
+   where (list_reports.before_at is null and list_reports.before_id is null)
+      or (r.received_at, r.id) < (list_reports.before_at, list_reports.before_id)
+   order by r.received_at desc, r.id desc
    limit list_reports.lim
 $$;
 
-revoke all on function list_reports(int, timestamptz) from public;
-grant execute on function list_reports(int, timestamptz) to kassa_app;
+revoke all on function list_reports(int, timestamptz, uuid) from public;
+grant execute on function list_reports(int, timestamptz, uuid) to kassa_app;
 
 -- Rechte für den Dienst
 grant select, insert on

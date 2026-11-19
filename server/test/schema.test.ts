@@ -186,7 +186,8 @@ for (const table of Object.keys(SYNC_ROWS)) {
     expect(noBusiness.rowCount).toBe(0);
     const foreign = await withBusiness(t.db, b, (c) => c.query(`select 1 from ${table}`));
     expect(foreign.rowCount).toBe(0);
-    await expect(withBusiness(t.db, b, (c) => insertSample(c, table, a))).rejects.toThrow(/row-level security/);
+    // Der Elternbon (receipts) liegt schon bei a; so prüft der Versuch von b die Sperre der Tabelle selbst.
+    await expect(withBusiness(t.db, b, (c) => c.query(SYNC_ROWS[table]!, [a]))).rejects.toThrow(/row-level security/);
   });
 }
 
@@ -276,7 +277,7 @@ test('list_reports liefert Berichte aller Betriebe, ein direktes select keinen',
   const direct = await t.db.pool.query('select 1 from reports');
   expect(direct.rowCount).toBe(0);
 
-  const all = await t.db.pool.query(`select * from list_reports(10, null)`);
+  const all = await t.db.pool.query(`select * from list_reports(10, null, null)`);
   const mine = all.rows.filter((r) => [a, b].includes(r.business_id));
   expect(mine.map((r) => [r.business_name, r.register_name])).toEqual([
     ['Imbiss Eins', 'Kassa A'],
@@ -284,9 +285,9 @@ test('list_reports liefert Berichte aller Betriebe, ein direktes select keinen',
     ['Imbiss Eins', 'Kassa A'],
   ]);
 
-  const older = await t.db.pool.query(`select * from list_reports(10, $1)`, ['2026-11-19T10:00:00Z']);
+  const older = await t.db.pool.query(`select * from list_reports(10, $1, null)`, ['2026-11-19T10:00:00Z']);
   expect(older.rows.filter((r) => [a, b].includes(r.business_id))).toHaveLength(2);
-  const limited = await t.db.pool.query(`select * from list_reports(1, null)`);
+  const limited = await t.db.pool.query(`select * from list_reports(1, null, null)`);
   expect(limited.rowCount).toBe(1);
 });
 
@@ -297,4 +298,32 @@ test('backups ist ohne Betrieb schreib- und lesbar, aber nicht löschbar', async
   const r = await withSystem(t.db, (c) => c.query(`update backups set ok = false where day = '2026-11-19'`));
   expect(r.rowCount).toBeGreaterThan(0);
   await expect(withSystem(t.db, (c) => c.query('delete from backups'))).rejects.toThrow(/permission denied/);
+});
+
+test('list_reports blättert über Berichte mit gleichem Eingangszeitpunkt, ohne einen zu verlieren', async () => {
+  const biz = await newBusiness('Blättern');
+  const ids = Array.from({ length: 7 }, (_, i) => `00000000-0000-4000-8000-00000000c${i}00`);
+  // Eine Anfrage legt alle Berichte in einer Transaktion an: gleicher received_at (now()).
+  await withBusiness(t.db, biz, async (c) => {
+    for (const id of ids) {
+      await c.query(
+        `insert into reports (business_id, id, register_id, source, kind, at, content)
+         values ($1, $2, $2, 'device', 'error', now(), '{}')`,
+        [biz, id],
+      );
+    }
+  });
+  const seen: string[] = [];
+  // received_at hat Mikrosekunden: als Text weitergeben, ein JS-Date würde sie abschneiden.
+  let before: { at: string; id: string } | undefined;
+  for (let page = 0; page < 200; page++) {
+    const r = await t.db.pool.query(`select *, received_at::text as received_text from list_reports(3, $1, $2)`, [before?.at ?? null, before?.id ?? null]);
+    const mine = r.rows.filter((row) => row.business_id === biz);
+    // Fremde Berichte aus anderen Tests dürfen dazwischen liegen; die Seite endet am letzten Eintrag.
+    seen.push(...mine.map((row) => row.id));
+    if (r.rowCount === 0) break;
+    const last = r.rows[r.rows.length - 1]!;
+    before = { at: last.received_text, id: last.id };
+  }
+  expect([...seen].sort()).toEqual([...ids].sort());
 });
