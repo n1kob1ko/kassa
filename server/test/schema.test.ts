@@ -327,3 +327,12 @@ test('list_reports blättert über Berichte mit gleichem Eingangszeitpunkt, ohne
   }
   expect([...seen].sort()).toEqual([...ids].sort());
 });
+
+test('Index für Stornos: voids_receipt_id ist pro Betrieb nachschlagbar', async () => {
+  const r = await withSystem(t.db, (c) =>
+    c.query<{ indexdef: string }>(`select indexdef from pg_indexes where tablename = 'receipts' and indexname = 'receipts_business_voids'`),
+  );
+  expect(r.rows).toHaveLength(1);
+  expect(r.rows[0]!.indexdef).toMatch(/\(business_id, voids_receipt_id\)/);
+  expect(r.rows[0]!.indexdef).toMatch(/WHERE \(voids_receipt_id IS NOT NULL\)/);
+});

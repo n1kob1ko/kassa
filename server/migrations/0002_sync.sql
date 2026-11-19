@@ -65,6 +65,8 @@ create table receipts (
 );
 create index receipts_business_created on receipts (business_id, created_at desc);
 create index receipts_business_register_number on receipts (business_id, register_id, number);
+-- Für "wurde dieser Bon storniert" in der Verwaltung.
+create index receipts_business_voids on receipts (business_id, voids_receipt_id) where voids_receipt_id is not null;
 
 create table receipt_lines (
   business_id uuid not null references businesses (id),

@@ -63,7 +63,16 @@ describe('Bons', () => {
 
   test('before kaputt: 422', async () => {
     const s = await siteFor(a, provider);
-    for (const before of ['abc', '!!!', Buffer.from('{"t":1}').toString('base64url'), Buffer.from('kein json').toString('base64url')]) {
+    const forged = (t: string) => Buffer.from(JSON.stringify({ t, i: randomUUID() })).toString('base64url');
+    for (const before of [
+      'abc',
+      '!!!',
+      Buffer.from('{"t":1}').toString('base64url'),
+      Buffer.from('kein json').toString('base64url'),
+      forged('2026-13-19T08:00:00.123456Z'),
+      forged('2026-02-30T08:00:00.123456Z'),
+      forged('2026-11-19T25:00:00.123456Z'),
+    ]) {
       const res = await list(s, `?before=${before}`);
       expect(res.statusCode, before).toBe(422);
       expect(res.json().error.code).toBe('before_invalid');
@@ -83,6 +92,11 @@ describe('Bons', () => {
     expect(await ids('?day=2026-11-18')).toEqual([a1.id]);
     expect((await list(s, '?day=2026-13-40')).statusCode).toBe(422);
     expect((await list(s, '?day=gestern')).statusCode).toBe(422);
+    for (const day of ['0000-01-01', '2026-02-30', '1800-01-01', '10000-01-01']) {
+      const res = await list(s, `?day=${day}`);
+      expect(res.statusCode, day).toBe(422);
+      expect(res.json().error.code).toBe('day_invalid');
+    }
   });
 
   test('Filter: Zahlungsart und nur Stornos', async () => {
@@ -94,7 +108,8 @@ describe('Bons', () => {
     const ids = async (q: string) => (await list(s, q)).json().receipts.map((r: { id: string }) => r.id);
     expect(await ids('?payment=card')).toEqual([kartenbon.id]);
     expect(await ids('?payment=cash')).toEqual([storno.id, cash.id]);
-    expect(await ids('?voided=1')).toEqual([storno.id]);
+    // Beide Hälften des Paars, der Kartenbon ohne Storno nicht.
+    expect(await ids('?voided=1')).toEqual([storno.id, cash.id]);
     expect(await ids('?voided=1&payment=card')).toEqual([]);
     expect((await list(s, '?payment=bitcoin')).statusCode).toBe(422);
   });
@@ -127,9 +142,17 @@ describe('Bons', () => {
         position: 0, itemId: 'huhn-bowl', name: 'Huhn Bowl', info: null, unitPriceCents: 990, quantity: 1, unitDepositCents: 0,
         options: [{ groupName: 'Größe', optionName: 'Normal', surchargeCents: 0 }],
       }],
-      payment: { kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, provider: null, cardScheme: null, cardLast4: null },
+      payment: { kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null },
       voidsReceiptId: null, voidedByReceiptId: null, rksv: null,
     });
+  });
+
+  test('Detail: Zahlung mit Kennung des Zahlungsanbieters', async () => {
+    const s = await siteFor(a, provider);
+    const r = bon('2026-11-19T08:00:00.000Z', { payment: card });
+    await send(a, s, [['receipt', r]]);
+    const body = (await get(`/api/admin/businesses/${s.businessId}/receipts/${r.id}`)).json();
+    expect(body.payment).toMatchObject({ kind: 'card', provider: 'sumup', providerTxCode: 'T1', cardScheme: 'VISA', cardLast4: '1234' });
   });
 
   test('Signatur: Kassen-Kennung, beschädigt, Probe; nie die Signatur selbst', async () => {

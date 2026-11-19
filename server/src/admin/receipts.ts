@@ -29,6 +29,9 @@ function decodeMarker(raw: string): { t: string; i: string } {
   }
   const r = marker.safeParse(json);
   if (!r.success) throw bad();
+  // Die Form stimmt, der Zeitpunkt muss es auch: Monat 13 oder der 30. Februar gibt es nicht.
+  const ms = new Date(r.data.t.replace(/\.\d{6}Z$/, '.000Z'));
+  if (Number.isNaN(ms.getTime()) || !ms.toISOString().startsWith(r.data.t.slice(0, 19))) throw bad();
   return r.data;
 }
 
@@ -42,13 +45,15 @@ const listQuery = z.object({
 function isCalendarDay(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
+  const year = d.getUTCFullYear();
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s) && year >= 2000 && year <= 2100;
 }
 
+const VOIDED = `exists (select 1 from receipts v where v.business_id = r.business_id and v.voids_receipt_id = r.id and v.kind = 'voided')`;
 const HEAD = `
   r.id, r.number, coalesce(g.name, '') as register_name, r.created_at, r.kind,
   r.payload->>'staffName' as staff_name, r.total_cents, r.payment_kind, r.is_test,
-  exists (select 1 from receipts v where v.business_id = r.business_id and v.voids_receipt_id = r.id and v.kind = 'voided') as voided,
+  ${VOIDED} as voided,
   to_char(r.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_micros`;
 const FROM = `from receipts r left join registers g on g.business_id = r.business_id and g.id = r.register_id`;
 
@@ -106,7 +111,8 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         where.push(`r.created_at < ((${d}::date + 1)::timestamp at time zone ${z})`);
       }
       if (q.payment) where.push(`r.payment_kind = ${add(q.payment)}`);
-      if (q.voided) where.push(`r.kind = 'voided'`);
+      // Beide Hälften eines Paars: der Storno-Bon und der Verkauf, auf den er sich bezieht.
+      if (q.voided) where.push(`(r.kind = 'voided' or ${VOIDED})`);
       if (before) {
         where.push(`(r.created_at, r.id) < (${add(before.t)}::timestamptz, ${add(before.i)}::uuid)`);
       }
@@ -203,6 +209,7 @@ export function installReceiptRoutes(app: FastifyInstance): void {
               givenCents: p.givenCents,
               changeCents: p.changeCents,
               provider: p.provider,
+              providerTxCode: p.providerTxCode ?? null,
               cardScheme: p.cardScheme,
               cardLast4: p.cardLast4,
             }
