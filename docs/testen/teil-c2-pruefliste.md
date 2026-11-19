@@ -101,11 +101,11 @@ Mach diesen Punkt vor dem Tagesabschluss, dann steht die Bewegung beim selben Ta
 
 - [ ] Am Tablet in den Einstellungen in der Karte "Anzeige" nachsehen, ob "Artikel mit Bildern" aus ist. Wenn es an ist: ausschalten.
   Der Schalter ist aus. Die Kassa zeigt die Artikel als Tasten ohne Foto.
-- [ ] Im Browser auf "Speisekarte" beim Foto-Feld eines Artikels klicken, das Foto wählen und "Speichern" klicken.
+- [ ] Im Browser auf "Speisekarte" auf das Kamera-Symbol (oder das Foto) beim Artikel klicken, das Foto wählen und "Speichern" klicken.
   Erst siehst du eine Vorschau, dann einen Balken beim Hochladen. Danach steht das Foto in der Zeile des Artikels.
 - [ ] Am Tablet "Jetzt abgleichen" tippen und kurz warten. Dann zur Kassa gehen.
   Der Schalter "Artikel mit Bildern" hat sich ein Mal von selbst eingeschaltet. Die Taste des Artikels zeigt das Foto. Es ist scharf und nicht verzerrt.
-- [ ] Im Browser das Foto ersetzen (wieder auf das Foto-Feld klicken, ein anderes Bild wählen, "Speichern"), am Tablet "Jetzt abgleichen".
+- [ ] Im Browser das Foto ersetzen (wieder auf das Kamera-Symbol oder das Foto beim Artikel klicken, ein anderes Bild wählen, "Speichern"), am Tablet "Jetzt abgleichen".
   Am Tablet ist das neue Foto zu sehen. Es gibt nie ein halbes oder kaputtes Bild, bis dahin bleibt das alte.
 - [ ] Wenn du möchtest: "Artikel mit Bildern" am Tablet wieder ausschalten und noch ein Foto hochladen.
   Der Schalter bleibt jetzt aus. Er schaltet sich nur beim allerersten Foto von selbst ein.

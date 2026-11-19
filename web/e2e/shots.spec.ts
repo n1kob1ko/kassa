@@ -138,7 +138,7 @@ async function overviewScene(page: Page): Promise<string> {
  * Ein Betrieb mit fünf Tagen an zwei Kassen: abgeschlossene Tage (einer stimmt, einer mit Differenz in jede
  * Richtung), heute ein offener Tag, Bons mit Optionen, Karte, Storno, Startbeleg und Signatur. Wird wiederverwendet.
  */
-async function receiptsScene(page: Page): Promise<{ businessId: string; sale: string; day: string }> {
+async function receiptsScene(page: Page): Promise<{ businessId: string; sale: string; card: string; day: string }> {
   const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
   const known = list.businesses.find((b) => b.name === 'Imbiss an der Ecke');
   const site = known ? null : await createSite(page, { name: 'Imbiss an der Ecke', registerName: 'Theke' });
@@ -188,9 +188,10 @@ async function receiptsScene(page: Page): Promise<{ businessId: string; sale: st
   }
   const receipts = (await (await page.request.get(`/api/admin/businesses/${businessId}/receipts`)).json()) as { receipts: { id: string; kind: string; paymentKind: string; voided: boolean }[] };
   const sale = receipts.receipts.find((r) => r.kind === 'sale' && r.paymentKind === 'cash' && !r.voided)!.id;
+  const card = receipts.receipts.find((r) => r.kind === 'sale' && r.paymentKind === 'card' && !r.voided)!.id;
   const days = (await (await page.request.get(`/api/admin/businesses/${businessId}/days`)).json()) as { days: { id: string; differenceCents: number | null }[] };
   const day = days.days.find((d) => d.differenceCents !== null && d.differenceCents !== 0)!.id;
-  return { businessId, sale, day };
+  return { businessId, sale, card, day };
 }
 
 const PHOTO = fileURLToPath(new URL('./support/photo.jpg', import.meta.url));
@@ -629,7 +630,7 @@ for (const size of sizes) {
 
       test('bons und tage', async ({ page }) => {
         await signInAsProvider(page);
-        const { businessId, sale, day } = await receiptsScene(page);
+        const { businessId, sale, card, day } = await receiptsScene(page);
         await page.goto(`/b/${businessId}/bons`);
         await expect(page.getByRole('main').getByRole('link', { name: /^Bon \d+/ }).first()).toBeVisible();
         await shoot(page, `bons-${suffix}`);
@@ -652,6 +653,10 @@ for (const size of sizes) {
         await storno.first().click();
         await expect(page.getByRole('dialog').getByRole('link', { name: /Zum stornierten Bon/ })).toBeVisible();
         await shoot(page, `bon-detail-storno-${suffix}`, false);
+
+        await page.goto(`/b/${businessId}/bons/${card}`);
+        await expect(page.getByRole('dialog').getByTestId('provider-tx')).toBeVisible();
+        await shoot(page, `bon-detail-karte-${suffix}`, false);
 
         await page.route(`**/api/admin/businesses/${businessId}/receipts?*`, async (route) => {
           await new Promise((r) => setTimeout(r, 1500));
