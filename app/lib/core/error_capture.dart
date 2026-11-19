@@ -29,6 +29,14 @@ void installErrorCapture(ReportRepository Function() reports) {
     }
   }
 
+  _capture = capture;
+  // Was die Zone vor dem Einhängen aufgefangen hat, geht jetzt hinaus.
+  final early = List.of(_early);
+  _early.clear();
+  for (final e in early) {
+    capture(e.$1, e.$2);
+  }
+
   final previous = FlutterError.onError;
   FlutterError.onError = (details) {
     try {
@@ -43,4 +51,45 @@ void installErrorCapture(ReportRepository Function() reports) {
     capture(error, stack);
     return true;
   };
+}
+
+void Function(Object, StackTrace?)? _capture;
+final _early = <(Object, StackTrace?)>[];
+
+/// Nur für Tests: vergisst das Eingehängte und die gemerkten Fehler.
+@visibleForTesting
+void resetErrorCapture() {
+  _capture = null;
+  _early.clear();
+}
+
+/// Führt [body] in einer Zone aus, die Fehler aus Futures und Hintergrund-
+/// Aufgaben an das Abfangen gibt. Kommt ein Fehler, bevor
+/// [installErrorCapture] gelaufen ist, merkt sich die Zone ihn (höchstens
+/// zehn) und gibt ihn beim Einhängen weiter. Der Handler wirft nie.
+Future<void> runGuarded(Future<void> Function() body) {
+  final done = Completer<void>();
+  runZonedGuarded(
+    () async {
+      try {
+        await body();
+      } finally {
+        if (!done.isCompleted) done.complete();
+      }
+    },
+    (error, stack) {
+      try {
+        final capture = _capture;
+        if (capture != null) {
+          capture(error, stack);
+        } else if (_early.length < 10) {
+          _early.add((error, stack));
+        }
+      } catch (_) {
+        // Das Abfangen wirft nie.
+      }
+      if (!done.isCompleted) done.complete();
+    },
+  );
+  return done.future;
 }

@@ -57,12 +57,65 @@ void main() {
 
   test('TimeoutException: message ist da und höchstens 500 Zeichen', () async {
     await reports.addError(
-      TimeoutException('x' * 900, const Duration(seconds: 5)),
+      TimeoutException('Cola ' * 300, const Duration(seconds: 10)),
       stackOf('t'),
     );
-    final message = content((await rows()).single)['message'] as String;
-    expect(message, startsWith('TimeoutException'));
-    expect(message.length, 500);
+    final r = (await rows()).single;
+    final message = content(r)['message'] as String;
+    expect(message, '0:00:10.000000');
+    expect(message.length, lessThanOrEqualTo(500));
+    expect(r.content, isNot(contains('Cola')));
+  });
+
+  test('TimeoutException ohne Dauer: message ist null', () async {
+    await reports.addError(TimeoutException('Cola'), stackOf('t'));
+    final r = (await rows()).single;
+    expect(content(r)['message'], isNull);
+    expect(r.content, isNot(contains('Cola')));
+  });
+
+  test(
+    'NoSuchMethodError auf einem String mit Namen: nichts davon im Bericht',
+    () async {
+      dynamic json = 'Chefin Maria';
+      Object? caught;
+      StackTrace? trace;
+      try {
+        json.foo();
+      } catch (e, s) {
+        caught = e;
+        trace = s;
+      }
+      expect(caught.toString(), contains('Maria'));
+      await reports.addError(caught!, trace);
+      final r = (await rows()).single;
+      expect(content(r)['type'], 'NoSuchMethodError');
+      expect(content(r)['message'], isNull);
+      expect(r.content, isNot(contains('Maria')));
+    },
+  );
+
+  test('RangeError mit Text: message ist null', () async {
+    await reports.addError(RangeError('Cola'), stackOf('r'));
+    final r = (await rows()).single;
+    expect(content(r)['type'], 'RangeError');
+    expect(content(r)['message'], isNull);
+    expect(r.content, isNot(contains('Cola')));
+  });
+
+  test('TypeError behält seine Meldung', () async {
+    dynamic x = 'text';
+    Object? caught;
+    try {
+      // ignore: unused_local_variable
+      final int n = x;
+    } catch (e) {
+      caught = e;
+    }
+    await reports.addError(caught!, stackOf('ty'));
+    final m = content((await rows()).single)['message'] as String;
+    expect(m, contains('String'));
+    expect(m, contains('int'));
   });
 
   test('PlatformException: nur der Code geht als message hinaus', () async {

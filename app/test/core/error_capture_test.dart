@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
@@ -62,15 +63,45 @@ void main() {
       FlutterError.onError = (_) {};
       installErrorCapture(repo);
 
-      final handled = PlatformDispatcher.instance.onError!(
-        StateError('Huhn Bowl'),
-        StackTrace.fromString('#0 later (package:kassa/f.dart:1:1)'),
-      );
+      await runGuarded(() async {
+        unawaited(Future<void>.error(StateError('Huhn'), StackTrace.current));
+      });
 
-      expect(handled, isTrue);
-      final all = await waitForRows(1);
-      expect(all.single.content, contains('StateError'));
+      await waitForRows(1);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final all = await db.select(db.reportRows).get();
+      expect(all.length, 1);
+      expect(all.single.content, contains('"type":"StateError"'));
+      expect(all.single.content, contains('"message":null'));
       expect(all.single.content, isNot(contains('Huhn')));
+    },
+  );
+
+  test('Fehler in der Zone vor installErrorCapture geht nicht verloren und wirft nicht', () async {
+    FlutterError.onError = (_) {};
+    resetErrorCapture();
+    await runGuarded(() async {
+      unawaited(Future<void>.error(StateError('früh'), StackTrace.current));
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(await db.select(db.reportRows).get(), isEmpty);
+
+    installErrorCapture(repo);
+    final all = await waitForRows(1);
+    expect(all.single.content, contains('StateError'));
+  });
+
+  test(
+    'PlatformDispatcher.onError nimmt den Fehler an und gibt true zurück',
+    () async {
+      FlutterError.onError = (_) {};
+      installErrorCapture(repo);
+      final handled = PlatformDispatcher.instance.onError!(
+        StateError('x'),
+        StackTrace.current,
+      );
+      expect(handled, isTrue);
+      expect((await waitForRows(1)).length, 1);
     },
   );
 

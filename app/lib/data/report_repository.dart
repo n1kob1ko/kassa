@@ -139,19 +139,24 @@ class ReportRepository {
     return row != null;
   }
 
-  /// Die Meldung nur für Fehlerarten, die keine Daten tragen.
+  /// Die Meldung nur dort, wo sie keine Daten tragen kann. Alles andere
+  /// (auch `NoSuchMethodError` mit dem Wert des Empfängers, `RangeError`,
+  /// `AssertionError`, `UnsupportedError`, `UnimplementedError`) hat `null`:
+  /// ihr Text kann Namen oder Beträge enthalten.
   static String? _message(Object error) {
+    // Nur der Code, nie der Text des Geräts.
     if (error is PlatformException) return _cut(error.code, maxMessageLength);
-    final keep =
-        error is TimeoutException ||
-        error is RangeError ||
-        error is TypeError ||
-        error is NoSuchMethodError ||
-        error is AssertionError ||
-        error is UnsupportedError ||
-        error is UnimplementedError ||
-        error is MissingPluginException;
-    return keep ? _cut(error.toString(), maxMessageLength) : null;
+    // Die Dauer ist eine Zahl; der Text des Aufrufers bleibt draußen.
+    if (error is TimeoutException) {
+      return error.duration?.toString();
+    }
+    // Die Laufzeit baut die Meldung aus Namen von Typen.
+    if (error is TypeError) return _cut(error.toString(), maxMessageLength);
+    // Methoden- und Kanalname des Plug-ins, keine Daten.
+    if (error is MissingPluginException) {
+      return _cut(error.toString(), maxMessageLength);
+    }
+    return null;
   }
 
   static String _cut(String s, int max) =>
