@@ -77,11 +77,15 @@ class ServerChanges {
   /// passt: das Tablet wurde inzwischen neu gekoppelt (andere Kassa, oder das
   /// erste Laden steht noch aus) oder ein anderer Lauf hat den Cursor schon
   /// bewegt.
+  ///
+  /// [markPulled] `false`: `lastPullAt` ("Zuletzt abgeglichen") bleibt, weil
+  /// der Lauf nicht als Ganzes geklappt hat (das Senden blieb unvollständig).
   Future<bool> applyPage(
     PullResponse page, {
     required DateTime at,
     required int since,
     required String registerId,
+    bool markPulled = true,
   }) async {
     return _db.transaction(() async {
       final state = await (_db.select(
@@ -102,7 +106,7 @@ class ServerChanges {
             SyncStateRowsCompanion(
               id: const Value(1),
               pullCursor: Value(page.next),
-              lastPullAt: Value(at),
+              lastPullAt: markPulled ? Value(at) : const Value.absent(),
             ),
           );
       return true;

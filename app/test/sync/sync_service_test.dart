@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/widgets.dart' show WidgetsFlutterBinding, debugPrint;
@@ -10,11 +10,13 @@ import 'package:kassa/app_sync_providers.dart';
 import 'package:kassa/core/app_info.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/devices/internet.dart';
 import 'package:kassa/sync/pairing_service.dart';
 import 'package:kassa/sync/server_api.dart';
+import 'package:kassa/sync/push_wire.dart';
 import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/sync_service.dart';
 import 'package:kassa/sync/token_store.dart';
@@ -39,6 +41,7 @@ class Harness {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     db = KassaDatabase(NativeDatabase.memory());
     sync = SyncStateRepository(db);
+    outbox = OutboxRepository(db);
     server = FakeServer.beispiel(pageSize: 2);
     run(tokens.write(FakeServer.token));
     run(
@@ -60,6 +63,8 @@ class Harness {
       tokens: tokens,
       syncState: sync,
       changes: ServerChanges(db),
+      outbox: outbox,
+      payloads: PushPayloads(db),
       clock: _FakeClock(async),
       internet: internet.stream,
       resumed: resumed.stream,
@@ -70,6 +75,7 @@ class Harness {
   final FakeAsync async;
   late final KassaDatabase db;
   late final SyncStateRepository sync;
+  late final OutboxRepository outbox;
   late final FakeServer server;
   late final SyncService service;
   final tokens = MemoryTokenStore();
@@ -102,6 +108,41 @@ class Harness {
   SyncState state() => run(sync.current());
 
   int get pulls => server.pullRequests.length;
+
+  /// Ein Tag in der Datenbank; die Trigger stellen ihn in die Liste.
+  void addDay(String id, {bool open = false, int? openingFloat}) => run(
+    db
+        .into(db.businessDayRows)
+        .insert(
+          BusinessDayRowsCompanion.insert(
+            id: id,
+            openedAt: start,
+            closedAt: Value(open ? null : start),
+            openingFloatCents: Value(openingFloat),
+          ),
+        ),
+  );
+
+  /// Ändert den Tag und hebt damit `rev` seines Eintrags.
+  Future<void> setFloat(String id, int cents) =>
+      (db.update(db.businessDayRows)..where((t) => t.id.equals(id))).write(
+        BusinessDayRowsCompanion(openingFloatCents: Value(cents)),
+      );
+
+  OutboxCounts counts() => run(outbox.watchCounts().first);
+
+  /// Die Kennungen der Tage je Anfrage an `push`.
+  List<List<String>> pushedDays() => [
+    for (final request in server.pushRequests)
+      [for (final e in request) (e['day']! as Map)['id']! as String],
+  ];
+
+  String? rejectedReason() => run(
+    db
+        .customSelect("SELECT reason FROM outbox WHERE state = 'rejected'")
+        .getSingleOrNull()
+        .then((r) => r?.read<String>('reason')),
+  );
 
   void close() {
     service.dispose();
@@ -404,6 +445,290 @@ void main() {
       async.elapse(const Duration(minutes: 4, seconds: 59));
       expect(h.pulls, pulls, reason: 'kein schnelles Wiederholen');
       h.close();
+    });
+  });
+
+  group('senden', () {
+    test('250 Einträge gehen in drei Paketen in Reihenfolge hinauf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        final ids = [
+          for (var i = 0; i < 250; i++) 'd${i.toString().padLeft(3, '0')}',
+        ];
+        for (final id in ids) {
+          h.addDay(id);
+        }
+
+        h.run(h.service.syncNow());
+
+        expect(h.server.pushRequests.map((r) => r.length), [100, 100, 50]);
+        expect(h.pushedDays().expand((d) => d).toList(), ids);
+        final seqs = [
+          for (final r in h.server.pushRequests) ...[
+            for (final e in r) e['seq']! as int,
+          ],
+        ];
+        expect(seqs, [...seqs]..sort());
+        expect(h.server.received, hasLength(250));
+        expect(h.counts().pending, 0);
+        expect(h.state().lastError, isNull);
+        expect(h.pulls, greaterThan(0));
+        h.close();
+      });
+    });
+
+    test('Antwort geht verloren: beim nächsten Lauf kommt alles noch einmal, danach ist die Liste leer', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        for (final id in ['a', 'b', 'c']) {
+          h.addDay(id);
+        }
+        h.server.loseNextPushAnswer = true;
+
+        h.run(h.service.syncNow());
+
+        expect(h.state().lastError, 'offline');
+        expect(h.counts().pending, 3, reason: 'nichts gelöscht');
+        expect(h.server.received, hasLength(3));
+
+        h.run(h.service.syncNow());
+
+        expect(h.pushedDays(), [
+          ['a', 'b', 'c'],
+          ['a', 'b', 'c'],
+        ]);
+        expect(h.server.received, hasLength(3), reason: 'nichts doppelt');
+        expect(h.counts().pending, 0);
+        expect(h.state().lastError, isNull);
+        h.close();
+      });
+    });
+
+    test('Tag ändert sich zwischen Bauen und Antwort: Eintrag bleibt und geht im nächsten Lauf mit dem neuen Stand hinauf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        h.addDay('a', open: true);
+        h.server.beforePushAnswer = () => h.setFloat('a', 5000);
+
+        h.run(h.service.syncNow());
+
+        expect(h.counts().pending, 1, reason: 'der Eintrag bleibt');
+        expect(h.server.pushRequests, hasLength(1));
+
+        h.run(h.service.syncNow());
+
+        expect(h.server.pushRequests, hasLength(2));
+        final day = h.server.pushRequests.last.single['day']! as Map;
+        expect(day['openingFloatCents'], 5000);
+        expect(h.counts().pending, 0);
+        h.close();
+      });
+    });
+
+    test('abgelehnter Eintrag hält die anderen nicht auf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        for (final id in ['a', 'b', 'c']) {
+          h.addDay(id);
+        }
+        h.server.pushStatuses[2] = 'rejected';
+
+        h.run(h.service.syncNow());
+
+        expect(h.server.received, hasLength(2));
+        final counts = h.counts();
+        expect((counts.pending, counts.rejected), (0, 1));
+        expect(h.rejectedReason(), isNotNull);
+        expect(h.pulls, greaterThan(0), reason: 'Holen läuft trotzdem');
+        expect(h.state().lastError, isNull);
+
+        // Der abgelehnte wird nicht noch einmal gesendet.
+        h.run(h.service.syncNow());
+        expect(h.server.pushRequests, hasLength(1));
+        h.close();
+      });
+    });
+
+    test('Paket scheitert mit 422: einzeln senden, der kaputte wird abgelehnt, der Rest kommt an', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        for (final id in ['a', 'bad', 'c']) {
+          h.addDay(id);
+        }
+        h.server.rejectWholeIf = (e) => (e['day']! as Map)['id'] == 'bad';
+
+        h.run(h.service.syncNow());
+
+        expect(h.pushedDays(), [
+          ['a', 'bad', 'c'],
+          ['a'],
+          ['bad'],
+          ['c'],
+        ]);
+        expect(h.server.received, hasLength(2));
+        final counts = h.counts();
+        expect((counts.pending, counts.rejected), (0, 1));
+        expect(h.rejectedReason(), 'invalid');
+        expect(h.state().lastError, isNull);
+        expect(h.pulls, greaterThan(0));
+        h.close();
+      });
+    });
+
+    test('error: Eintrag bleibt, Holen läuft trotzdem, nächster Lauf nach 30 Sekunden', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        h.addDay('a');
+        h.addDay('b');
+        async.elapse(const Duration(minutes: 1));
+        final lastPullAt = h.state().lastPullAt;
+        h.server.pushStatuses[2] = 'error';
+        h.service.start();
+        h.run(Future<void>.value());
+
+        expect(
+          h.server.pushRequests,
+          hasLength(1),
+          reason: 'nicht noch einmal',
+        );
+        expect(h.pulls, greaterThan(0), reason: 'Holen läuft trotzdem');
+        expect(h.counts().pending, 1);
+        expect(h.state().lastPullAt, lastPullAt, reason: 'nicht abgeglichen');
+        final pulls = h.pulls;
+
+        async.elapse(const Duration(seconds: 29));
+        expect(h.server.pushRequests, hasLength(1));
+        h.server.pushStatuses.clear();
+        async.elapse(const Duration(seconds: 1));
+
+        expect(h.pushedDays(), [
+          ['a', 'b'],
+          ['b'],
+        ]);
+        expect(h.pulls, greaterThan(pulls));
+        expect(h.counts().pending, 0);
+        expect(h.state().lastError, isNull);
+        h.close();
+      });
+    });
+
+    test('ohne Internet: nichts gelöscht, Zuletzt abgeglichen rückt nicht', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        h.addDay('a');
+        async.elapse(const Duration(minutes: 1));
+        final lastPullAt = h.state().lastPullAt;
+        h.server.mode = FakeMode.offline;
+
+        h.run(h.service.syncNow());
+
+        expect(h.server.pushRequests, hasLength(1));
+        expect(h.counts().pending, 1);
+        expect(h.state().lastError, 'offline');
+        expect(h.state().lastPullAt, lastPullAt);
+        h.close();
+      });
+    });
+
+    test('gesperrt: kein Holen, Liste bleibt', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        h.addDay('a');
+        h.server.mode = FakeMode.blocked;
+
+        h.run(h.service.syncNow());
+
+        expect(h.server.pushRequests, hasLength(1));
+        expect(h.pulls, 0);
+        expect(h.counts().pending, 1);
+        expect(h.state().blocked, isTrue);
+        h.close();
+      });
+    });
+
+    test(
+      'poke: fünf Aufrufe in einer Sekunde ergeben einen Lauf nach 2 Sekunden',
+      () {
+        fakeAsync((async) {
+          final h = Harness(async);
+          h.addDay('a');
+          for (var i = 0; i < 5; i++) {
+            h.service.poke();
+            async.elapse(const Duration(milliseconds: 250));
+          }
+          // Der letzte Aufruf liegt jetzt 1999 Millisekunden zurück.
+          async.elapse(const Duration(milliseconds: 1749));
+          h.run(Future<void>.value());
+          expect(h.server.pushRequests, isEmpty);
+
+          async.elapse(const Duration(milliseconds: 1));
+          h.run(Future<void>.value());
+
+          expect(h.server.pushRequests, hasLength(1));
+          expect(h.pulls, greaterThan(0));
+          async.elapse(const Duration(seconds: 10));
+          expect(h.server.pushRequests, hasLength(1), reason: 'nur ein Lauf');
+          h.close();
+        });
+      },
+    );
+
+    test(
+      'poke während eines Laufs: kein zweiter Lauf zugleich, einer danach',
+      () {
+        fakeAsync((async) {
+          final h = Harness(async);
+          h.addDay('a');
+          final gate = Completer<void>();
+          h.server.beforePushAnswer = () => gate.future;
+          final first = h.service.syncNow();
+          async.elapse(Duration.zero);
+          expect(h.server.pushRequests, hasLength(1));
+
+          h.addDay('b');
+          h.service.poke();
+          async.elapse(const Duration(seconds: 5));
+          expect(h.server.pushRequests, hasLength(1), reason: 'nicht parallel');
+          expect(h.pulls, 0);
+
+          gate.complete();
+          h.run(first);
+          expect(h.pulls, 1, reason: 'ein Lauf');
+          async.elapse(const Duration(seconds: 1));
+          expect(h.pulls, 1, reason: 'erst nach 2 Sekunden Ruhe');
+          async.elapse(const Duration(seconds: 1));
+          h.run(Future<void>.value());
+
+          expect(h.pulls, 2, reason: 'danach ein weiterer Lauf');
+          expect(h.pushedDays(), [
+            ['a'],
+            ['b'],
+          ]);
+          h.close();
+        });
+      },
+    );
+
+    test('nicht gekoppelt: senden tut nichts', () {
+      fakeAsync((async) {
+        final h = Harness(async, paired: false);
+        h.addDay('a');
+
+        h.service.poke();
+        async.elapse(const Duration(seconds: 10));
+        h.run(h.service.syncNow());
+
+        expect(h.server.pushRequests, isEmpty);
+        expect(h.counts().pending, 1);
+
+        final off = Harness(async, enabled: false);
+        off.addDay('a');
+        off.service.poke();
+        async.elapse(const Duration(seconds: 10));
+        expect(off.server.pushRequests, isEmpty);
+        off.close();
+        h.close();
+      });
     });
   });
 

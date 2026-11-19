@@ -1,4 +1,5 @@
-// Holt im Hintergrund die Änderungen vom Server. Kein Bildschirm wartet
+// Gleicht im Hintergrund mit dem Server ab: erst senden, was in der Liste
+// "noch zu senden" steht, dann die Änderungen holen. Kein Bildschirm wartet
 // darauf: die Kassa arbeitet mit dem, was sie hat, und der Ausgang des
 // letzten Versuchs steht im `SyncState`.
 
@@ -8,7 +9,9 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../core/clock.dart';
+import '../data/outbox_repository.dart';
 import '../data/sync_state_repository.dart';
+import 'push_wire.dart';
 import 'server_api.dart';
 import 'server_changes.dart';
 import 'token_store.dart';
@@ -36,6 +39,8 @@ class SyncService {
     required this._tokens,
     required this._syncState,
     required this._changes,
+    required this._outbox,
+    required this._payloads,
     required this._clock,
     this._internet = const Stream.empty(),
     this._resumed = const Stream.empty(),
@@ -47,6 +52,12 @@ class SyncService {
 
   /// Abstand der regelmäßigen Läufe.
   static const interval = Duration(minutes: 5);
+
+  /// So lange wartet [poke] auf weitere Einträge, bevor ein Lauf beginnt.
+  static const pokeDelay = Duration(seconds: 2);
+
+  /// Höchstens so viele Einträge gehen in einem Paket hinauf.
+  static const _packetSize = 100;
 
   /// Abstände nach Fehlern in Folge, danach bleibt es beim letzten.
   static const retryDelays = [
@@ -62,6 +73,8 @@ class SyncService {
   final TokenStore _tokens;
   final SyncStateRepository _syncState;
   final ServerChanges _changes;
+  final OutboxRepository _outbox;
+  final PushPayloads _payloads;
   final Clock _clock;
   final Stream<bool> _internet;
   final Stream<void> _resumed;
@@ -74,6 +87,8 @@ class SyncService {
   final _subscriptions = <StreamSubscription<Object?>>[];
   Future<void>? _current;
   Timer? _timer;
+  Timer? _pokeTimer;
+  bool _pokeAgain = false;
   int _failures = 0;
   bool? _online;
   bool _started = false;
@@ -85,8 +100,39 @@ class SyncService {
   /// Holt alle Änderungen seit dem Cursor. Ohne Kassa, vor dem ersten Laden
   /// oder ohne Adresse des Servers tut es nichts. Läuft schon ein Lauf,
   /// wartet der Aufruf auf diesen. Wirft nie.
-  Future<void> syncNow() =>
-      _current ??= _runAndSchedule().whenComplete(() => _current = null);
+  Future<void> syncNow() => _current ??= _runAndSchedule().whenComplete(() {
+    _current = null;
+    // Während des Laufs kam ein neuer Eintrag: noch einmal, nach Ruhe.
+    if (_pokeAgain) {
+      _pokeAgain = false;
+      poke();
+    }
+  });
+
+  /// Ein neuer Eintrag steht in der Liste: ein Lauf, [pokeDelay] nach dem
+  /// letzten Aufruf. Viele Aufrufe kurz hintereinander ergeben einen Lauf. Ein
+  /// Lauf, der gerade läuft, wird nicht doppelt gestartet; danach folgt einer.
+  /// Ohne Kassa oder ohne Adresse des Servers tut es nichts.
+  void poke() {
+    if (!_enabled || _disposed) return;
+    _pokeTimer?.cancel();
+    _pokeTimer = Timer(pokeDelay, _pokeFired);
+  }
+
+  Future<void> _pokeFired() async {
+    if (_disposed) return;
+    if (_current != null) {
+      _pokeAgain = true;
+      return;
+    }
+    try {
+      if (!(await _syncState.current()).paired) return;
+    } catch (_) {
+      return;
+    }
+    if (_disposed) return;
+    unawaited(syncNow());
+  }
 
   /// Ein Lauf sofort, dann alle 5 Minuten, nach Fehlern früher. Außerdem ein
   /// Lauf, wenn die App nach vorn kommt und wenn das Internet zurückkommt.
@@ -108,6 +154,7 @@ class SyncService {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    _pokeTimer?.cancel();
     for (final s in _subscriptions) {
       s.cancel();
     }
@@ -144,22 +191,135 @@ class SyncService {
     if (!state.paired) return _Outcome.wait;
     _setRunning(true);
     try {
-      return await _pull(state.pullCursor, state.registerId!);
+      final String? token;
+      try {
+        token = await _tokens.read();
+      } catch (e) {
+        return await _recordLocal(e);
+      }
+      // Daten wiederhergestellt, geschützter Speicher leer: wie ein
+      // ungültiger Schlüssel.
+      if (token == null) return await _record(ServerFailure.unauthorized.name);
+      // Erst senden, dann holen: der Stand des Servers soll die eigenen
+      // Änderungen schon kennen.
+      final bool complete;
+      try {
+        complete = await _send(token);
+      } on ServerException catch (e) {
+        return await _record(e.failure.name);
+      } catch (e) {
+        return await _recordLocal(e);
+      }
+      return await _pull(
+        state.pullCursor,
+        state.registerId!,
+        token,
+        sendComplete: complete,
+      );
     } finally {
       _setRunning(false);
     }
   }
 
-  Future<_Outcome> _pull(int cursor, String registerId) async {
-    final String? token;
-    try {
-      token = await _tokens.read();
-    } catch (e) {
-      return _recordLocal(e);
+  /// Schickt die Liste "noch zu senden" in Paketen hinauf, bis nichts mehr
+  /// wartet. `true`, wenn alles erledigt ist; `false`, wenn Einträge stehen
+  /// bleiben, weil der Server für sie `error` sagte oder nichts. Ein Eintrag,
+  /// der in diesem Lauf stehen blieb, kommt in diesem Lauf nicht noch einmal
+  /// dran: so endet die Schleife immer. Netzfehler werfen [ServerException].
+  Future<bool> _send(String token) async {
+    final deviceId = await _syncState.deviceId();
+    final seen = <int>{};
+    var incomplete = false;
+    var sent = false;
+    while (true) {
+      final batch = [
+        for (final e in await _outbox.nextBatch(
+          limit: _packetSize + seen.length,
+        ))
+          if (!seen.contains(e.id)) e,
+      ].take(_packetSize).toList();
+      if (batch.isEmpty) break;
+
+      final packet = <(OutboxEntry, Map<String, Object?>)>[];
+      for (final entry in batch) {
+        final body = await _payloads.build(entry);
+        if (body == null) {
+          // Die Sache gibt es nicht mehr: nichts zu senden.
+          await _outbox.remove(entry.id, rev: entry.rev);
+        } else {
+          packet.add((entry, body));
+        }
+      }
+      if (packet.isEmpty) continue;
+
+      sent = true;
+      List<PushResult> results;
+      try {
+        results = await _api.push(
+          token: token,
+          deviceId: deviceId,
+          entries: [for (final (_, body) in packet) body],
+        );
+      } on ServerException catch (e) {
+        if (e.failure != ServerFailure.rejected) rethrow;
+        // Das ganze Paket ist abgelehnt: jeder Eintrag einzeln, damit ein
+        // kaputter die anderen nicht aufhält.
+        results = [];
+        for (final (entry, body) in packet) {
+          try {
+            results.addAll(
+              await _api.push(
+                token: token,
+                deviceId: deviceId,
+                entries: [body],
+              ),
+            );
+          } on ServerException catch (e) {
+            if (e.failure != ServerFailure.rejected) rethrow;
+            results.add(
+              PushResult(
+                seq: entry.id,
+                status: PushStatus.rejected,
+                reason: 'invalid',
+              ),
+            );
+          }
+        }
+      }
+
+      final bySeq = {for (final r in results) r.seq: r};
+      for (final (entry, _) in packet) {
+        seen.add(entry.id);
+        switch (bySeq[entry.id]?.status) {
+          case PushStatus.accepted || PushStatus.duplicate:
+            // Hat sich der Eintrag währenddessen geändert (`rev`), bleibt er
+            // und geht im nächsten Lauf mit dem neuen Stand noch einmal.
+            await _outbox.remove(entry.id, rev: entry.rev);
+          case PushStatus.rejected:
+            await _outbox.markRejected(
+              entry.id,
+              bySeq[entry.id]?.reason ?? 'invalid',
+            );
+          case PushStatus.error || null:
+            incomplete = true;
+        }
+      }
     }
-    // Daten wiederhergestellt, geschützter Speicher leer: wie ein
-    // ungültiger Schlüssel.
-    if (token == null) return _record(ServerFailure.unauthorized.name);
+    if (sent) await _syncState.setPushed(_clock.now());
+    if (incomplete) return false;
+    // Ein Eintrag, der sich während des Sendens änderte, wartet noch.
+    return (await _outbox.nextBatch(limit: 1)).isEmpty;
+  }
+
+  /// Holt die Änderungen. War das Senden nicht vollständig ([sendComplete]
+  /// `false`), ist der Lauf danach trotzdem ein Fehler: bald nochmal, und
+  /// "Zuletzt abgeglichen" rückt nicht weiter.
+  Future<_Outcome> _pull(
+    int cursor,
+    String registerId,
+    String token, {
+    required bool sendComplete,
+  }) async {
     var changed = false;
     try {
       var since = cursor;
@@ -174,6 +334,7 @@ class SyncService {
           at: _clock.now(),
           since: since,
           registerId: registerId,
+          markPulled: sendComplete,
         );
         // Inzwischen neu gekoppelt oder ein anderer Lauf war schneller: die
         // Seite gehört nicht mehr hierher. Kein Fehler, nichts festhalten.
@@ -181,6 +342,14 @@ class SyncService {
         changed = changed || _hasRows(page);
         if (!page.more) break;
         since = page.next;
+      }
+      if (!sendComplete) {
+        await _syncState.setResult(
+          at: _clock.now(),
+          error: ServerFailure.server.name,
+          blocked: false,
+        );
+        return _Outcome.retry;
       }
       await _syncState.setResult(at: _clock.now(), blocked: false);
       return _Outcome.done;

@@ -13,6 +13,7 @@ import 'devices/internet.dart';
 import 'features/kassa/cart_controller.dart';
 import 'features/login/session.dart';
 import 'sync/pairing_service.dart';
+import 'sync/push_wire.dart';
 import 'sync/sync_service.dart';
 
 /// Ob die App eine Adresse des Servers hat. Tests setzen `true` ein.
@@ -49,6 +50,8 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     tokens: ref.watch(tokenStoreProvider),
     syncState: ref.watch(syncStateRepositoryProvider),
     changes: ref.watch(serverChangesProvider),
+    outbox: ref.watch(outboxRepositoryProvider),
+    payloads: PushPayloads(ref.watch(databaseProvider)),
     clock: ref.watch(clockProvider),
     internet: internet.stream,
     resumed: resumed.stream,
@@ -66,6 +69,13 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     final online = next.value;
     if (online != null) internet.add(online);
   }, fireImmediately: true);
+  // Ein neuer Eintrag in der Liste "noch zu senden": bald ein Lauf. Sinkt die
+  // Zahl (nach dem Senden), gibt es nichts zu tun.
+  ref.listen(outboxCountsProvider, (previous, next) {
+    final before = previous?.value?.pending;
+    final now = next.value?.pending;
+    if (before != null && now != null && now > before) service.poke();
+  });
   final lifecycle = AppLifecycleListener(onResume: () => resumed.add(null));
   ref.onDispose(lifecycle.dispose);
   service.start();

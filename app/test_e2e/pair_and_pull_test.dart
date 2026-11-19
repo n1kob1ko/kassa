@@ -18,9 +18,11 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/sync/pairing_service.dart';
+import 'package:kassa/sync/push_wire.dart';
 import 'package:kassa/sync/server_api.dart';
 import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/sync_service.dart';
@@ -167,6 +169,8 @@ void main() {
       tokens: tokens,
       syncState: syncState,
       changes: changes,
+      outbox: OutboxRepository(db),
+      payloads: PushPayloads(db),
       clock: clock,
     );
     addTearDown(sync.dispose);

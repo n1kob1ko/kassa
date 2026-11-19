@@ -77,6 +77,26 @@ class FakeServer extends http.BaseClient {
   /// `since` jeder Anfrage an `pull`, auch der gescheiterten.
   final pullRequests = <int>[];
 
+  /// Die Einträge jeder Anfrage an `push`, auch der gescheiterten.
+  final pushRequests = <List<Map<String, Object?>>>[];
+
+  /// Was der Server angenommen hat: Inhalt ohne `seq`, je Inhalt einmal.
+  final received = <String, Map<String, Object?>>{};
+
+  /// Antwort für einzelne `seq`: `rejected` (Grund `invalid`) oder `error`.
+  /// Solche Einträge nimmt der Server nicht an.
+  final pushStatuses = <int, String>{};
+
+  /// Antwortet die ganze Anfrage mit 422, wenn ein Eintrag dazu passt.
+  bool Function(Map<String, Object?> entry)? rejectWholeIf;
+
+  /// Der Server nimmt die nächste Anfrage an, aber die Antwort geht verloren.
+  bool loseNextPushAnswer = false;
+
+  /// Läuft einmal, nachdem die nächste Anfrage angenommen ist und bevor die
+  /// Antwort hinausgeht.
+  Future<void> Function()? beforePushAnswer;
+
   int _pagesServed = 0;
   int _seq = 0;
   final _rows = <String, _Row>{};
@@ -171,6 +191,14 @@ class FakeServer extends http.BaseClient {
     final path = request.url.path;
     if (path == '/api/device/sync/pull') {
       pullRequests.add(int.parse(request.url.queryParameters['since']!));
+    } else if (path == '/api/device/sync/push') {
+      pushRequests.add([
+        for (final e
+            in (jsonDecode((request as http.Request).body)
+                    as Map<String, dynamic>)['entries']
+                as List<dynamic>)
+          e as Map<String, Object?>,
+      ]);
     } else if (path == '/api/device/pair') {
       pairRequests.add(
         jsonDecode((request as http.Request).body) as Map<String, dynamic>,
@@ -188,6 +216,7 @@ class FakeServer extends http.BaseClient {
       case FakeMode.online:
     }
     if (path == '/api/device/pair') return _pair();
+    if (path == '/api/device/sync/push') return _push(request);
     if (path == '/api/device/sync/pull') {
       if (request.headers['Authorization'] != 'Bearer $token') {
         return _error(401, 'unauthorized');
@@ -204,6 +233,40 @@ class FakeServer extends http.BaseClient {
       return _respond(200, body);
     }
     return _error(404, 'not_found');
+  }
+
+  Future<http.StreamedResponse> _push(http.BaseRequest request) async {
+    if (request.headers['Authorization'] != 'Bearer $token') {
+      return _error(401, 'unauthorized');
+    }
+    final entries = pushRequests.last;
+    if (entries.any((e) => rejectWholeIf?.call(e) ?? false)) {
+      return _error(422, 'push_invalid');
+    }
+    final results = <Map<String, Object?>>[];
+    for (final e in entries) {
+      final seq = e['seq']! as int;
+      final forced = pushStatuses[seq];
+      if (forced == 'rejected') {
+        results.add({'seq': seq, 'status': 'rejected', 'reason': 'invalid'});
+      } else if (forced == 'error') {
+        results.add({'seq': seq, 'status': 'error'});
+      } else {
+        final body = {...e}..remove('seq');
+        final key = jsonEncode(body);
+        final known = received.containsKey(key);
+        received[key] = body;
+        results.add({'seq': seq, 'status': known ? 'duplicate' : 'accepted'});
+      }
+    }
+    final hook = beforePushAnswer;
+    beforePushAnswer = null;
+    if (hook != null) await hook();
+    if (loseNextPushAnswer) {
+      loseNextPushAnswer = false;
+      throw const SocketException('Antwort verloren');
+    }
+    return _respond(200, jsonEncode({'results': results}));
   }
 
   http.StreamedResponse _pair() {

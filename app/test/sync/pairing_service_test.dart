@@ -6,6 +6,7 @@ import 'package:kassa/app_sync_providers.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
@@ -14,6 +15,7 @@ import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/sync/pairing_service.dart';
+import 'package:kassa/sync/push_wire.dart';
 import 'package:kassa/sync/server_api.dart';
 import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/sync_service.dart';
@@ -90,6 +92,8 @@ class Tablet {
     tokens: tokens,
     syncState: SyncStateRepository(db),
     changes: ServerChanges(db),
+    outbox: OutboxRepository(db),
+    payloads: PushPayloads(db),
     clock: FixedClock(now),
   );
 
