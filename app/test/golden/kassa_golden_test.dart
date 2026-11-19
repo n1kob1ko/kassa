@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/fake_atrust.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart' show memoryOverrides;
 import '../support/signature_pump.dart';
@@ -90,6 +92,26 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/kassa_ausfall_hell.png'),
+    );
+  });
+
+  testWidgets('Kassa mit Grund des Ausfalls der Online-Probe (hell)', (
+    t,
+  ) async {
+    await _threeLines(
+      t,
+      overrides: [...await memoryOverrides(), ...onlineOverrides(FakeAtrust())],
+    );
+    await seedProbe(
+      t,
+      unit: RksvUnit.atrustTest,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: 'Kein Internet.',
+    );
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/kassa_ausfall_grund_hell.png'),
     );
   });
 }

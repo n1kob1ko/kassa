@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/cart.dart';
@@ -6,14 +7,19 @@ import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/kassa_screen.dart';
 import 'package:kassa/features/login/session.dart';
+import 'package:kassa/rksv/online/online_providers.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
+import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/fake_atrust.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
+import '../support/signature_pump.dart';
 
 Finder _text(String s) => find.text(s);
 
@@ -46,6 +52,29 @@ Future<void> _addBowl(
   await t.tap(find.byKey(const Key('add-to-cart')));
   await t.pump();
 }
+
+const _login = 'PUT /Session/u123456789';
+
+/// Die App geht in den Hintergrund und kommt wieder nach vorn.
+Future<void> _resume(WidgetTester t) async {
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  await t.pumpAndSettle();
+}
+
+/// Signatur-Attrappen und [fake] als A-Trust; [onRead] zählt, wie oft die
+/// Verbindung zu A-Trust gebaut wird.
+List<Override> _online(
+  FakeAtrust fake,
+  MemoryRksvSecrets secrets, [
+  void Function()? onRead,
+]) => [
+  ...signatureOverrides(secrets: secrets),
+  atrustHttpClientProvider.overrideWith((ref) {
+    onRead?.call();
+    return fake.client;
+  }),
+];
 
 void main() {
   testWidgets('Tipp auf Artikel legt ihn auf den Bon, Pfand steht getrennt', (
@@ -616,5 +645,150 @@ void main() {
     await _addBowl(t);
     expect(t.takeException(), isNull);
     expect(_text('XXL, Reis'), findsOneWidget);
+  });
+
+  group('Anmelden im Voraus', () {
+    testWidgets('Start der Kassa mit Online-Probe: eine Anmeldung', (t) async {
+      final fake = FakeAtrust();
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ..._online(fake, MemoryRksvSecrets()),
+        ],
+      );
+      expect(fake.requests, isEmpty);
+      await seedProbe(t, unit: RksvUnit.atrustTest);
+      // Wechselt der Stand bei offener Kassa, meldet sie sich nicht an.
+      expect(fake.requests, isEmpty);
+
+      await pumpKassa(t, sameDatabase: true);
+      expect(fake.requests, [_login]);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('zurück nach vorn mit Online-Probe: eine Anmeldung, danach '
+        'keine, solange die Sitzung gilt', (t) async {
+      final fake = FakeAtrust();
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ..._online(fake, MemoryRksvSecrets()),
+        ],
+      );
+      await seedProbe(t, unit: RksvUnit.atrustTest);
+      expect(fake.requests, isEmpty);
+
+      await _resume(t);
+      expect(fake.requests, [_login]);
+      await _resume(t);
+      expect(fake.requests, [_login]);
+    });
+
+    testWidgets('ohne Online-Probe: keine Anfrage, keine Verbindung', (
+      t,
+    ) async {
+      final fake = FakeAtrust();
+      var reads = 0;
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ..._online(fake, MemoryRksvSecrets(), () => reads++),
+        ],
+      );
+      await _resume(t);
+      await seedProbe(t);
+      await _resume(t);
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(fake.requests, isEmpty);
+      expect(reads, 0);
+    });
+
+    testWidgets('beendete Online-Probe: keine Anfrage, keine Verbindung', (
+      t,
+    ) async {
+      final fake = FakeAtrust();
+      var reads = 0;
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ..._online(fake, MemoryRksvSecrets(), () => reads++),
+        ],
+      );
+      await seedProbe(t, unit: RksvUnit.atrustTest, ended: true);
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(fake.requests, isEmpty);
+      expect(reads, 0);
+    });
+
+    testWidgets('abgelehnt: weder beim Start noch beim Zurückkommen eine '
+        'Anfrage', (t) async {
+      final fake = FakeAtrust();
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustRejected(true);
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedProbe(t, unit: RksvUnit.atrustTest);
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(fake.requests, isEmpty);
+    });
+
+    testWidgets('lehnt A-Trust beim Zurückkommen ab: der Hinweis sagt es '
+        'sofort, danach keine Anfrage mehr', (t) async {
+      final fake = FakeAtrust()..loginStatus = 403;
+      final secrets = MemoryRksvSecrets();
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedProbe(
+        t,
+        unit: RksvUnit.atrustTest,
+        outageSince: DateTime(2026, 11, 17, 13, 5),
+        outageReason: 'Kein Internet.',
+      );
+      expect(find.byKey(const Key('rksv-retry')), findsOneWidget);
+
+      await _resume(t);
+      expect(fake.requests, [_login]);
+      expect(
+        find.text(
+          'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('rksv-retry')), findsNothing);
+      expect(await secrets.atrustRejected(), isTrue);
+
+      await _resume(t);
+      await pumpKassa(t, sameDatabase: true);
+      expect(fake.requests, [_login]);
+    });
+
+    testWidgets('geschützter Speicher nicht lesbar: kein Fehler, kein Satz, '
+        'keine Anfrage', (t) async {
+      final fake = FakeAtrust();
+      final secrets = MemoryRksvSecrets();
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedProbe(t, unit: RksvUnit.atrustTest);
+      secrets.failReads = true;
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(t.takeException(), isNull);
+      expect(fake.requests, isEmpty);
+      expect(find.textContaining('Speicher'), findsNothing);
+      expect(find.byKey(const Key('rksv-outage')), findsNothing);
+    });
   });
 }

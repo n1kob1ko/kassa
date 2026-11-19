@@ -355,7 +355,8 @@ class _Body extends StatelessWidget {
 }
 
 /// Unter der Zahlung: links der QR-Code (180 dp), rechts die Kassen-ID und
-/// klein, was der Code ist, bzw. dass die Signatur ausgefallen war.
+/// klein, was der Code ist, bzw. dass die Signatur ausgefallen war (beim
+/// Testbon mit "Testbon" darüber).
 class _SignatureBlock extends StatelessWidget {
   const _SignatureBlock(this.stamp);
 
@@ -391,9 +392,11 @@ class _SignatureBlock extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: KassaTokens.spaceXs),
-                if (stamp.damaged)
-                  Text('Sicherheitseinrichtung ausgefallen', style: small)
-                else if (stamp.probe) ...[
+                if (stamp.damaged) ...[
+                  // Ein Testbon bleibt ein Testbon, auch mit Ausfall-Vermerk.
+                  if (stamp.probe) Text('Testbon', style: small),
+                  Text('Sicherheitseinrichtung ausgefallen', style: small),
+                ] else if (stamp.probe) ...[
                   Text('Testbon mit Probe-Signatur.', style: small),
                   Text(
                     'Der QR-Code steht auch am gedruckten Bon.',
