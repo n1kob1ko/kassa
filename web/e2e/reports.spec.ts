@@ -82,7 +82,8 @@ test('Anbieter sieht die Berichte zweier Betriebe und klappt sie auf', async ({ 
   await nav.getByRole('link', { name: 'Fehlerberichte' }).click();
   await expect(page).toHaveURL(/\/fehlerberichte$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Fehlerberichte' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: 'Heute' })).toBeVisible();
+  // Keine Überschriften nach Tagen: jede Zeile nennt Tag und Uhrzeit selbst.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Sicherung']);
 
   const mine = reportRows(page, t);
   await expect(mine).toHaveCount(3);
@@ -97,7 +98,7 @@ test('Anbieter sieht die Berichte zweier Betriebe und klappt sie auf', async ({ 
   await expect(error).toContainText('1.5.0');
   await expect(error).toContainText('×3');
   await expect(error).toHaveAccessibleName(/3 Mal/);
-  await expect(error).toContainText(/\b\d{2}:\d{2}\b/);
+  await expect(error).toContainText(/Heute, \d{2}:\d{2}/);
   // Ohne Wiederholung kein Zähler.
   await expect(mine.nth(1)).not.toContainText('×');
   for (let i = 0; i < 3; i++) await expect(mine.nth(i)).toHaveAttribute('aria-expanded', 'false');
@@ -211,11 +212,36 @@ test('Sicherung: noch keine, heute, älter als 36 Stunden mit letztem Fehler', a
   await expect(backupCard(page)).toContainText('Noch keine Sicherung.');
   await expect(backupCard(page)).not.toContainText('Letzter Fehler');
 
+  await expect(backupCard(page).getByTestId('backup-warning')).toHaveCount(0);
+
+  // Noch keine Sicherung, aber ein Fehler: Warnung mit Symbol und Satz.
+  await page.unroute('**/api/admin/backups/latest');
+  await backupAnswer(page, { latest: null, lastError: { at: at(4 * HOUR), error: 'pg_dump: Verbindung abgelehnt' } });
+  await page.reload();
+  const warning = backupCard(page).getByTestId('backup-warning');
+  await expect(warning).toContainText('Noch keine Sicherung.');
+  await expect(warning.getByText('Letzter Fehler: heute, 04:00')).toBeVisible();
+  await expect(warning.getByText('pg_dump: Verbindung abgelehnt')).toBeVisible();
+  await expect(warning.locator('svg')).toHaveCount(1);
+  await expect(warning).not.toContainText('36 Stunden');
+
   await page.unroute('**/api/admin/backups/latest');
   await backupAnswer(page, { latest: { day: 'x', finishedAt: at(3 * HOUR + 12 * 60_000), size: 25_270_000 }, lastError: null });
   await page.reload();
   await expect(backupCard(page).getByText('Letzte Sicherung: heute, 03:12')).toBeVisible();
   await expect(backupCard(page)).toContainText('24,1 MB');
+  await expect(backupCard(page)).not.toContainText('36 Stunden');
+  await expect(backupCard(page).getByTestId('backup-warning')).toHaveCount(0);
+
+  // Frische Sicherung, danach ein Fehler: die Zeile bleibt, die Karte warnt.
+  await page.unroute('**/api/admin/backups/latest');
+  await backupAnswer(page, {
+    latest: { day: 'x', finishedAt: at(3 * HOUR + 12 * 60_000), size: 25_270_000 },
+    lastError: { at: at(4 * HOUR), error: 'pg_dump: Platte voll' },
+  });
+  await page.reload();
+  await expect(backupCard(page).getByTestId('backup-warning').getByText('Letzte Sicherung: heute, 03:12')).toBeVisible();
+  await expect(backupCard(page).getByTestId('backup-warning').getByText('Letzter Fehler: heute, 04:00')).toBeVisible();
   await expect(backupCard(page)).not.toContainText('36 Stunden');
 
   await page.unroute('**/api/admin/backups/latest');
@@ -225,7 +251,7 @@ test('Sicherung: noch keine, heute, älter als 36 Stunden mit letztem Fehler', a
   });
   await page.reload();
   await expect(backupCard(page).getByText(/^Letzte Sicherung: \w{2}\., \d{2}\.\d{2}\., 03:12$/)).toBeVisible();
-  await expect(backupCard(page).getByText('Die letzte Sicherung ist älter als 36 Stunden.')).toBeVisible();
+  await expect(backupCard(page).getByTestId('backup-warning').getByText('Die letzte Sicherung ist älter als 36 Stunden.')).toBeVisible();
   await expect(backupCard(page).getByText('Letzter Fehler: heute, 04:00')).toBeVisible();
   await expect(backupCard(page).getByText('pg_dump: Verbindung abgelehnt <b>fett</b>')).toBeVisible();
   await expect(backupCard(page).locator('b')).toHaveCount(0);
@@ -320,7 +346,7 @@ test('360 px: kein waagrechtes Scrollen, Ziele mindestens 44 px', async ({ page 
   expect(row).toBe(true);
 });
 
-test('ein spät gesendeter Bericht von gestern steht nach Eingang, mit eigener Überschrift', async ({ page }) => {
+test('ein spät gesendeter Bericht von gestern steht, wo der Server ihn hinstellt, mit seinem Tag in der Zeile', async ({ page }) => {
   const report = (id: string, at: Date) => ({
     id,
     businessName: 'Imbiss Spät',
@@ -334,6 +360,8 @@ test('ein spät gesendeter Bericht von gestern steht nach Eingang, mit eigener �
     content: { error: { type: 'StateError', message: null, stack: '#0 main' }, devices: null },
   });
   const today = startOfLocalDay(new Date()).getTime();
+  const time = (ms: number) =>
+    new Intl.DateTimeFormat('de-AT', { timeZone: 'Europe/Vienna', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms));
   await page.route('**/api/admin/reports', (route) =>
     route.fulfill({
       json: {
@@ -347,9 +375,75 @@ test('ein spät gesendeter Bericht von gestern steht nach Eingang, mit eigener �
     }),
   );
   await page.goto('/fehlerberichte');
-  await expect(page.getByRole('heading', { level: 2 }).filter({ hasNotText: 'Sicherung' })).toHaveText(['Heute', 'Gestern', 'Heute']);
+  await expect(reportRows(page)).toHaveCount(3);
+  // Keine Überschrift nach Tagen; die Reihenfolge bleibt die des Servers.
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText(['Sicherung']);
+  await expect(reportRows(page).nth(0)).toContainText(`Heute, ${time(today + 60_000)}`);
+  await expect(reportRows(page).nth(1)).toContainText(`Gestern, ${time(today - 2 * HOUR)}`);
+  await expect(reportRows(page).nth(2)).toContainText(`Heute, ${time(today + 30_000)}`);
   await expect(reportRows(page).first()).toContainText('Imbiss Spät · ohne Kassa');
   // Ohne Meldung keine Zeile "Meldung".
   await reportRows(page).first().click();
   await expect(await contentOf(page, reportRows(page).first())).not.toContainText('Meldung');
+});
+
+test('ein Bericht von vorgestern nennt Wochentag und Datum, die Zeile bleibt bei 360 px ordentlich', async ({ page }) => {
+  const at = new Date(startOfLocalDay(new Date()).getTime() - 2 * 24 * HOUR + 19 * HOUR + 39 * 60_000);
+  await page.route('**/api/admin/reports', (route) =>
+    route.fulfill({
+      json: {
+        reports: [
+          {
+            id: '00000000-0000-4000-8000-000000000009',
+            businessName: 'Gasthaus zur langen Bezeichnung am Hauptplatz',
+            registerName: 'Schank im Gastgarten',
+            source: 'device',
+            kind: 'device_test',
+            at: at.toISOString(),
+            appVersion: '1.15.10',
+            deviceModel: null,
+            count: 12,
+            content: { error: null, devices: [] },
+          },
+        ],
+        next: null,
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto('/fehlerberichte');
+  const row = reportRows(page).first();
+  await expect(row).toContainText(/\b\w{2}\., \d{2}\.\d{2}\., 19:39\b/);
+  await noHorizontalScroll(page, 'lange Zeile');
+  const inside = await row.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return [...el.querySelectorAll('*')].every((c) => {
+      const b = c.getBoundingClientRect();
+      return b.width === 0 || (b.left >= r.left - 0.5 && b.right <= r.right + 0.5);
+    });
+  });
+  expect(inside).toBe(true);
+  // Zeit, Art und Zähler überlappen nicht.
+  const boxes = await row.evaluate((el) =>
+    ['time', 'kind', 'count', 'version', 'where'].map((k) => {
+      const b = el.querySelector(`[data-part="${k}"]`)!.getBoundingClientRect();
+      return { k, left: b.left, right: b.right, top: b.top, bottom: b.bottom };
+    }),
+  );
+  for (const a of boxes) {
+    for (const b of boxes) {
+      if (a.k >= b.k) continue;
+      const overlap = a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      expect(overlap, `${a.k} und ${b.k}: ${JSON.stringify(boxes)}`).toBe(false);
+    }
+  }
+
+  // Am Rechner passt der längste Zeitpunkt in seine Spalte.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const fits = await row.evaluate((el) => {
+    const time = el.querySelector('[data-part="time"]')!.getBoundingClientRect();
+    const where = el.querySelector('[data-part="where"]')!.getBoundingClientRect();
+    return time.right <= where.left;
+  });
+  expect(fits).toBe(true);
 });

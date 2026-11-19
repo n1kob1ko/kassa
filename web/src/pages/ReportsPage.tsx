@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { kindLabel, useReports, type Report } from '../api/reports';
-import { byDay, dayHeading, timeText } from '../format';
+import { dayHeading, timeText } from '../format';
 import { LoadError } from '../ui/DataList';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadMore } from '../ui/LoadMore';
@@ -11,37 +11,45 @@ import { BackupCard } from './BackupCard';
 import { ReportContent } from './ReportContent';
 import styles from './ReportsPage.module.css';
 
-/** Eine Zeile: Uhrzeit, Betrieb und Kassa, Art, App-Version und, wenn öfter gesehen, der Zähler. */
-function Summary({ report }: { report: Report }) {
+/** Eine Zeile: Tag und Uhrzeit, Betrieb und Kassa, Art, App-Version und, wenn öfter gesehen, der Zähler. */
+function Summary({ report, now }: { report: Report; now: Date }) {
+  const at = new Date(report.at);
   return (
     <>
-      {/* Leerzeichen zwischen den Teilen: der Name des Knopfs liest sich "08:11 Imbiss · Theke Fehler Version 1.5.0 3 Mal". */}
-      <span className={styles.time}>{timeText(new Date(report.at))}</span>{' '}
-      <span className={styles.where}>
-        {report.businessName} · {report.registerName ?? 'ohne Kassa'}
+      {/* Zwei Zeilen am Handy, ab 640 px lösen sich beide auf (display: contents) in die Spalten einer Tabelle.
+          Leerzeichen zwischen den Teilen: der Name liest sich "Heute, 08:11 Fehler 3 Mal Imbiss · Theke Version 1.5.0". */}
+      <span className={styles.head}>
+        <span className={styles.time} data-part="time">
+          {dayHeading(at, now)}, {timeText(at)}
+        </span>{' '}
+        <span className={styles.kind} data-part="kind">
+          <StatusChip tone="neutral">{kindLabel(report)}</StatusChip>
+        </span>{' '}
+        {report.count > 1 && (
+          <span className={styles.count} data-part="count">
+            <span aria-hidden="true">×{report.count}</span>
+            <span className="visually-hidden">{report.count} Mal</span>
+          </span>
+        )}
       </span>{' '}
-      <span className={styles.kind}>
-        <StatusChip tone="neutral">{kindLabel(report)}</StatusChip>
-      </span>{' '}
-      {report.appVersion && (
-        <span className={styles.version}>
-          <span className="visually-hidden">Version </span>
-          {report.appVersion}
-        </span>
-      )}{' '}
-      {report.count > 1 && (
-        <span className={styles.count}>
-          <span aria-hidden="true">×{report.count}</span>
-          <span className="visually-hidden">{report.count} Mal</span>
-        </span>
-      )}
+      <span className={styles.sub}>
+        <span className={styles.where} data-part="where">
+          {report.businessName} · {report.registerName ?? 'ohne Kassa'}
+        </span>{' '}
+        {report.appVersion && (
+          <span className={styles.version} data-part="version">
+            <span className="visually-hidden">Version </span>
+            {report.appVersion}
+          </span>
+        )}
+      </span>
     </>
   );
 }
 
 /**
  * Fehlerberichte (nur Anbieter): oben der Stand der Sicherung, darunter die Berichte aller Betriebe, die neuesten
- * zuerst, nach Tagen gruppiert. Eine Zeile klappt ihren Inhalt an Ort und Stelle auf, mehrere zugleich.
+ * zuerst, so wie der Server sie liefert. Eine Zeile klappt ihren Inhalt an Ort und Stelle auf, mehrere zugleich.
  */
 export function ReportsPage() {
   const query = useReports();
@@ -68,22 +76,21 @@ export function ReportsPage() {
   } else if (query.data) {
     body = (
       <div className={styles.list}>
-        {/* Die Liste kommt nach Eingang beim Server; ein spät gesendeter Bericht kann einen Tag ein zweites Mal öffnen. */}
-        {byDay(reports, (r) => new Date(r.at)).map((g, i) => (
-          <RowGroup key={`${i}-${g.key}`} label={`Berichte ${dayHeading(g.first, now)}`} heading={dayHeading(g.first, now)}>
-            {g.items.map((r) => (
-              <RowDisclosure
-                key={r.id}
-                open={open.has(r.id)}
-                onToggle={() => toggle(r.id)}
-                className={styles.row}
-                summary={<Summary report={r} />}
-              >
-                <ReportContent report={r} />
-              </RowDisclosure>
-            ))}
-          </RowGroup>
-        ))}
+        {/* In der Reihenfolge des Servers (nach Eingang): ein spät gesendeter Bericht steht, wo er ankam, darum keine
+            Überschriften nach Tagen; jede Zeile nennt ihren Tag selbst. */}
+        <RowGroup label="Berichte">
+          {reports.map((r) => (
+            <RowDisclosure
+              key={r.id}
+              open={open.has(r.id)}
+              onToggle={() => toggle(r.id)}
+              className={styles.row}
+              summary={<Summary report={r} now={now} />}
+            >
+              <ReportContent report={r} />
+            </RowDisclosure>
+          ))}
+        </RowGroup>
         {(query.hasNextPage || query.isFetchNextPageError) && (
           <LoadMore
             busy={query.isFetchingNextPage}
@@ -97,7 +104,7 @@ export function ReportsPage() {
   } else if (query.isError) {
     body = <LoadError message={query.error.message} onRetry={() => void query.refetch()} />;
   } else {
-    body = <RowListSkeleton rows={8} label="Berichte werden geladen" headings />;
+    body = <RowListSkeleton rows={8} label="Berichte werden geladen" />;
   }
 
   return (

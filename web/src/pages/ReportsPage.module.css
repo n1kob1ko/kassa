@@ -1,6 +1,6 @@
 /*
- * Fehlerberichte. Eine Zeile am Handy: oben Uhrzeit, Art und Zähler, rechts die Version; darunter Betrieb und Kassa.
- * Ab 640 px eine Zeile wie eine Tabelle: Uhrzeit, Betrieb und Kassa, Art, Version, Zähler.
+ * Fehlerberichte. Eine Zeile am Handy: oben Tag und Uhrzeit, Art und Zähler; darunter Betrieb und Kassa, rechts die
+ * Version. Ab 640 px eine Zeile wie eine Tabelle: Tag und Uhrzeit, Betrieb und Kassa, Art, Version, Zähler.
  */
 
 .list {
@@ -10,17 +10,20 @@
 }
 
 .row {
-  display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr);
-  grid-template-areas:
-    'time kind count version'
-    'where where where where';
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.head,
+.sub {
+  display: flex;
   align-items: center;
-  gap: var(--space-xs) var(--space-md);
+  gap: var(--space-md);
+  min-width: 0;
 }
 
 .time {
-  grid-area: time;
   font-size: 15px;
   font-weight: 800;
   line-height: 1.25;
@@ -28,7 +31,7 @@
 }
 
 .where {
-  grid-area: where;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   font-size: 14px;
@@ -40,14 +43,13 @@
 }
 
 .kind {
-  grid-area: kind;
   display: flex;
+  flex: none;
 }
 
 .version {
-  grid-area: version;
-  justify-self: end;
-  min-width: 0;
+  flex: none;
+  max-width: 40%;
   overflow: hidden;
   font-size: 14px;
   font-weight: 600;
@@ -57,7 +59,7 @@
 }
 
 .count {
-  grid-area: count;
+  flex: none;
   font-size: 14px;
   font-weight: 800;
   color: var(--ink);
@@ -66,21 +68,39 @@
 
 @media (min-width: 640px) {
   .row {
-    grid-template-columns: 48px minmax(0, 1fr) 104px 72px 40px;
+    display: grid;
+    grid-template-columns: 152px minmax(0, 1fr) 104px 72px 40px;
     grid-template-areas: 'time where kind version count';
+    align-items: center;
     gap: var(--space-xl);
   }
 
+  .head,
+  .sub {
+    display: contents;
+  }
+
+  .time {
+    grid-area: time;
+  }
+
   .where {
+    grid-area: where;
     font-size: 15px;
     color: var(--ink);
   }
 
   .kind {
-    justify-content: flex-start;
+    grid-area: kind;
+  }
+
+  .version {
+    grid-area: version;
+    max-width: none;
   }
 
   .count {
+    grid-area: count;
     justify-self: end;
   }
 }

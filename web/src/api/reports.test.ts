@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { backupStale, deviceName, kindLabel, serverKindText } from './reports';
+import { backupStale, backupView, deviceName, kindLabel, serverKindText } from './reports';
 
 const NOW = new Date('2026-11-19T10:00:00.000Z');
 const HOUR = 60 * 60_000;
@@ -34,4 +34,17 @@ test('deviceName: Geräte des Geräte-Tests in Worten', () => {
   expect(deviceName('drawer')).toBe('Geldlade');
   expect(deviceName('card')).toBe('Kartenleser');
   expect(deviceName('waage')).toBe('waage');
+});
+
+test('backupView: ein letzter Fehler warnt immer, eine alte Sicherung auch', () => {
+  const fresh = { day: '2026-11-19', finishedAt: new Date(NOW.getTime() - 7 * HOUR).toISOString(), size: 1 };
+  const old = { day: '2026-11-17', finishedAt: new Date(NOW.getTime() - 55 * HOUR).toISOString(), size: 1 };
+  const lastError = { at: new Date(NOW.getTime() - 6 * HOUR).toISOString(), error: 'pg_dump: Fehler' };
+  expect(backupView({ latest: null, lastError: null }, NOW)).toEqual({ tone: 'none', stale: false });
+  expect(backupView({ latest: null, lastError }, NOW)).toEqual({ tone: 'warn', stale: false });
+  expect(backupView({ latest: fresh, lastError: null }, NOW)).toEqual({ tone: 'ok', stale: false });
+  expect(backupView({ latest: fresh, lastError }, NOW)).toEqual({ tone: 'warn', stale: false });
+  expect(backupView({ latest: old, lastError }, NOW)).toEqual({ tone: 'warn', stale: true });
+  // Ohne Fehler, aber zu alt: ebenfalls Warnung (wie bisher).
+  expect(backupView({ latest: old, lastError: null }, NOW)).toEqual({ tone: 'warn', stale: true });
 });

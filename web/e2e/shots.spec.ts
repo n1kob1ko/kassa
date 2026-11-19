@@ -751,6 +751,7 @@ for (const size of sizes) {
         const at = (ms: number) => new Date(today + ms).toISOString();
         const states: [string, object][] = [
           ['keine', { latest: null, lastError: null }],
+          ['keine-fehler', { latest: null, lastError: { at: at(4 * 60 * 60_000), error: 'pg_dump: error: connection to server failed: Connection refused.' } }],
           ['heute', { latest: { day: 'x', finishedAt: at(3 * 60 * 60_000 + 12 * 60_000), size: 25_270_000 }, lastError: null }],
           [
             'alt',

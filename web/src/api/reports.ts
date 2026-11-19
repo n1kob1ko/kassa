@@ -59,6 +59,16 @@ export function backupStale(finishedAt: string, now: Date): boolean {
   return now.getTime() - Date.parse(finishedAt) > STALE_MS;
 }
 
+/**
+ * Wie die Karte der Sicherung steht: `none` ohne Sicherung und ohne Fehler, `ok` mit frischer Sicherung, `warn` bei
+ * jedem letzten Fehler und bei einer Sicherung älter als 36 Stunden. `stale` sagt, ob der Satz dazu gehört.
+ */
+export function backupView(b: Backup, now: Date): { tone: 'none' | 'ok' | 'warn'; stale: boolean } {
+  const stale = b.latest !== null && backupStale(b.latest.finishedAt, now);
+  if (b.lastError !== null || stale) return { tone: 'warn', stale };
+  return { tone: b.latest === null ? 'none' : 'ok', stale: false };
+}
+
 /** Die Art eines Berichts in einem Wort, wie in der Liste. */
 export function kindLabel(r: Pick<Report, 'source' | 'kind'>): string {
   if (r.source === 'server') return 'Server';
