@@ -63,7 +63,7 @@ Die großen Entscheidungen (eigener schlanker Abgleich, ein Dienst, Trennung der
 
 | Weg | Abwägung |
 |---|---|
-| **Eine eigene Liste am Tablet. Jeder Eintrag entsteht im selben Schritt wie die Sache selbst.** | **Gewählt**, so steht es in Teil C 5.6. Trägt auch Dinge ohne Nummer (Artikel-Änderung, Bericht), hält fest, was abgelehnt wurde, und übersteht neues Koppeln. Preis: jede Stelle, die etwas schreibt, muss den Eintrag mitschreiben. Ein Test prüft das für jede Art. |
+| **Eine eigene Liste am Tablet. Jeder Eintrag entsteht im selben Schritt wie die Sache selbst.** | **Gewählt**, so steht es in Teil C 5.6. Trägt auch Dinge ohne Nummer (Artikel-Änderung, Bericht), hält fest, was abgelehnt wurde, und übersteht neues Koppeln. Die Einträge schreibt die Datenbank am Tablet selbst (Trigger), sobald ein Bon, ein Tag, eine Bewegung, eine Kette oder ein Zertifikat entsteht oder sich ändert. So kann keine Stelle im Code es vergessen, auch keine, die später mit der Signatur dazukommt. Ein Test prüft es für jede Art. |
 | Ohne Liste: "alle Bons mit Nummer größer als die zuletzt gesendete" | Weniger Code für Bons, aber für Tage (ändern sich), Artikel-Änderungen und Berichte bräuchte es doch eine Liste. Zwei Wege statt einem. |
 
 **Wie der Server Bons hält**
@@ -96,18 +96,18 @@ Die großen Entscheidungen (eigener schlanker Abgleich, ein Dienst, Trennung der
 
 - Neue Tabelle am Tablet. Ein Eintrag hat: laufende Nummer, Art, Kennung der Sache, bei Artikel-Änderungen Feld, Wert und Zeitpunkt, Zustand (wartet, abgelehnt), bei Ablehnung den Grund.
 - **Arten:** Tag, Bargeld-Bewegung, Bon, Artikel-Änderung, Bericht, Zertifikat der Signatur, Kette der Signatur.
-- Ein Eintrag entsteht in derselben Transaktion wie die Sache: Bon speichern (Verkauf bar und Karte, Storno, Sonderbeleg), Tag öffnen, Wechselgeld setzen, Tag abschließen, Bargeld-Bewegung, Artikel ändern, Kette beginnen oder beenden, Zertifikat ablegen, Bericht ablegen. Das gilt auch auf einem Tablet ohne Kopplung; die Liste wartet dann einfach. Einzige Ausnahme sind Artikel-Änderungen: sie entstehen nur an einem gekoppelten Tablet (siehe 5.4).
+- Ein Eintrag entsteht in derselben Transaktion wie die Sache, geschrieben von der Datenbank selbst: Bon speichern (Verkauf bar und Karte, Storno, Sonderbeleg), Tag öffnen, Wechselgeld setzen, Tag abschließen, Bargeld-Bewegung, Artikel ändern, Kette beginnen oder beenden, Zertifikat ablegen, Bericht ablegen. Das gilt auch auf einem Tablet ohne Kopplung; die Liste wartet dann einfach. Einzige Ausnahme sind Artikel-Änderungen: sie entstehen nur an einem gekoppelten Tablet (siehe 5.4).
 - Der Inhalt eines Bons, einer Bewegung, eines Zertifikats steht nicht in der Liste. Er wird beim Senden aus den Tabellen gelesen, die sich nicht ändern lassen. Bei Tag und Kette wird der Stand zum Zeitpunkt des Sendens gelesen.
 - Ein Bon nimmt seinen Eintrag im Protokoll der Signatur mit (Kette, Stelle, JWS, Ausfall, Zertifikat), falls er einen hat.
 - **Reihenfolge:** nach laufender Nummer. Dadurch kommt der Tag vor seinen Bons, der Bon vor seinem Storno, Zertifikat und Kette vor dem ersten Eintrag.
 - **Migration auf Version 5:** stellt alles Vorhandene einmal in die Liste, in dieser Reihenfolge: Zertifikate, Ketten, Tage, Bargeld-Bewegungen, Bons nach Nummer. Der Schritt "beim Koppeln alles einstellen" aus Teil C 5.6 entfällt damit: es steht schon dort.
 - **Ist das Tablet bei der Migration schon gekoppelt,** stellt sie zusätzlich für jeden Artikel die fünf am Tablet änderbaren Felder als Artikel-Änderung ein, mit dem Zeitpunkt der Migration. Grund: Seit Stufe 1 lassen sich diese Felder am gekoppelten Tablet ändern, ohne dass der Server davon erfährt. Ohne diesen Schritt würde die erste Änderung im Browser (etwa ein Foto) den Preis vom Tablet still zurückdrehen. So gewinnt ein Mal der Stand, mit dem an der Theke verkauft wird.
-- **Geräte-Kennung:** Die Migration erzeugt eine zufällige Kennung für diese Installation der App. Sie bleibt, solange die App-Daten bleiben, auch über neues Koppeln hinweg, und geht mit jedem Paket mit.
+- **Geräte-Kennung:** Die App erzeugt vor dem ersten Senden eine zufällige Kennung für diese Installation. Sie bleibt, solange die App-Daten bleiben, auch über neues Koppeln hinweg, und geht mit jedem Paket mit.
 - Angenommene und schon vorhandene Einträge werden gelöscht. Abgelehnte bleiben mit Grund stehen und werden nicht mehr gesendet.
 
 ### 5.2 Senden
 
-- Neue Adresse `POST /api/device/sync/push`. Ein Paket hat höchstens 100 Einträge und 2 MB. Die Antwort nennt pro Eintrag: `accepted`, `duplicate` oder `rejected` mit Grund (`conflict`, `invalid`, `unknown_item`).
+- Neue Adresse `POST /api/device/sync/push`. Ein Paket hat höchstens 100 Einträge und 2 MB. Die Antwort nennt pro Eintrag: `accepted`, `duplicate`, `rejected` mit Grund (`conflict`, `invalid`, `unknown_item`) oder `error`.
 - **Der Server lehnt so wenig wie möglich ab** (Postels Gesetz): einen Bon nur, wenn er nicht lesbar ist oder dieselbe Kennung schon mit anderem Inhalt da ist. Ein Bon, dessen Tag der Server nicht kennt, wird trotzdem angenommen. Stimmen die Summen eines Bons nicht mit seinen Zeilen überein, wird er angenommen und der Server schreibt einen Bericht.
 - **Derselbe Bon nie zweimal:** Der Server bildet eine Prüfsumme über den Inhalt. Sie umfasst genau die Felder der ersten Fassung der Nachricht; kommt später ein Feld dazu, zählt es nur mit, wenn die Nachricht eine neue Fassung nennt. So wird ein alter Bon nach einem Update der App nicht zum Widerspruch.
 - Gleiche Kennung, gleicher Inhalt: `duplicate`, egal über welche Kassa des Betriebs er zuerst kam. Gleiche Kennung, anderer Inhalt: `rejected/conflict`, der Server behält seine Fassung und schreibt einen Bericht.
@@ -115,6 +115,7 @@ Die großen Entscheidungen (eigener schlanker Abgleich, ein Dienst, Trennung der
 - **Kette der Signatur:** wie ein Tag, endgültig ab ihrem Ende. **Zertifikat, Bargeld-Bewegung, Bericht:** nur anlegen.
 - **Ein Paket, das als Ganzes scheitert** (Antwort 4xx, aber nicht "nicht gekoppelt" oder "gesperrt"): Das Tablet sendet die Einträge dieses Pakets einzeln. Ein Eintrag, der auch einzeln scheitert, gilt als abgelehnt. So hält ein kaputter Eintrag die Liste nie auf.
 - Kein Internet, Zeitüberschreitung, Fehler am Server: später wieder, mit den wachsenden Abständen aus Stufe 1.
+- Scheitert am Server ein einzelner Eintrag an etwas Unerwartetem, antwortet er für diesen Eintrag mit `error`. Das Tablet lässt ihn stehen, sendet die anderen weiter und versucht ihn beim nächsten Lauf wieder.
 - **Testbon:** Das Tablet sendet pro Bon, ob er echt ist. Echt ist ein Bon nur, wenn er einen Eintrag in einer Kette im echten Betrieb hat. In Stufe 2 ist das keiner. Abweichung von Teil C 5.5: Die App bekommt dafür kein eigenes Feld, weil die Signatur es inzwischen hergibt.
 
 ### 5.3 Ein Lauf des Abgleichs
