@@ -345,3 +345,42 @@ export function signatureChain(opts: { chain?: number; mode: 'probe' | 'live'; s
     endedAt: null,
   };
 }
+
+/** Ein Fehlerbericht des Tablets (`{ kind: 'report', report }`), wie die App ihn schreibt. */
+export function errorReport(opts: { type?: string; message?: string | null; stack?: string; count?: number; at?: Date; appVersion?: string } = {}) {
+  return {
+    id: randomUUID(),
+    kind: 'error',
+    at: (opts.at ?? new Date(Date.now() - 5 * 60_000)).toISOString(),
+    appVersion: opts.appVersion ?? '1.5.0',
+    androidVersion: '14',
+    deviceModel: 'Redmi Pad Pro',
+    count: opts.count ?? 1,
+    error: {
+      type: opts.type ?? 'RangeError',
+      message: opts.message === undefined ? 'Index außerhalb der Liste' : opts.message,
+      stack: opts.stack ?? '#0      List.[] (dart:core-patch/growable_array.dart:264:36)\n#1      BonView.build (package:kassa/features/bons/bon_view.dart:88:21)',
+    },
+    devices: null,
+  };
+}
+
+/** Ein Bericht des Geräte-Tests: je Gerät (`printer`, `drawer`, `card`) in Ordnung oder nicht, mit dem Text der App. */
+export function deviceTestReport(devices: { device: string; ok: boolean; text: string }[], opts: { at?: Date } = {}) {
+  return {
+    id: randomUUID(),
+    kind: 'device_test',
+    at: (opts.at ?? new Date(Date.now() - 5 * 60_000)).toISOString(),
+    appVersion: '1.5.0',
+    androidVersion: '14',
+    deviceModel: 'Redmi Pad Pro',
+    count: 1,
+    error: null,
+    devices,
+  };
+}
+
+/** Das Zertifikat der Signatur (`{ kind: 'rksv_certificate', certificate }`) zur Seriennummer von `signature(...)`. */
+export function signatureCertificate() {
+  return { serialHex: '1a2b', certificate: 'AAAA', issuers: [] as string[] };
+}

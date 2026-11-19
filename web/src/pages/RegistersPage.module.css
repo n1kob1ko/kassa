@@ -49,3 +49,71 @@
   font-weight: 600;
   color: var(--ink2);
 }
+
+/* Die Ketten der Signatur unter einer Kassa: eine ruhige Überschrift, je Kette eine Zeile mit dem Download. */
+.chains {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.chainsTitle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink2);
+}
+
+.chainList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chain {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+}
+
+.chain + .chain {
+  border-top: 1px solid var(--line);
+}
+
+.chainText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  min-width: 0;
+}
+
+.chainName {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* Die Merkmale bleiben beieinander: lieber zusammen in die nächste Zeile als eins allein. */
+.chainMarks {
+  display: inline-flex;
+  gap: var(--space-xs);
+}
+
+@media (min-width: 640px) {
+  .chain {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-huge);
+  }
+
+  .chainDownload {
+    flex: none;
+  }
+}

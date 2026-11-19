@@ -267,17 +267,3 @@
     justify-content: flex-end;
   }
 }
-
-.more {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.moreError {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink2);
-  text-align: center;
-}

@@ -24,9 +24,11 @@ export type DataRowProps = {
   actions?: ReactNode;
   /** Stillgelegt: ruhigere Fläche und Schrift. Der Zustand steht zusätzlich als Zeichen in `chips`. */
   muted?: boolean;
+  /** Mehr zum Eintrag unter Text und Knöpfen, über die ganze Breite, mit einer feinen Linie davor. */
+  extra?: ReactNode;
 };
 
-export function DataRow({ title, chips, meta = [], actions, muted = false }: DataRowProps) {
+export function DataRow({ title, chips, meta = [], actions, muted = false, extra }: DataRowProps) {
   return (
     <li className={[styles.row, muted ? styles.muted : ''].filter(Boolean).join(' ')}>
       <div className={styles.main}>
@@ -43,6 +45,7 @@ export function DataRow({ title, chips, meta = [], actions, muted = false }: Dat
         )}
       </div>
       {actions && <div className={styles.actions}>{actions}</div>}
+      {extra && <div className={styles.extra}>{extra}</div>}
     </li>
   );
 }

@@ -2,6 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './client';
 import { BUSINESSES_KEY } from './businesses';
 
+/** Eine Kette der Signatur des Geräts dieser Kassa (Kassen mit demselben Gerät zeigen dieselben Ketten). */
+export type SignatureChain = {
+  chain: number;
+  mode: 'probe' | 'live';
+  cashBoxId: string;
+  startedAt: string;
+  endedAt: string | null;
+  /** Zahl der Einträge im Protokoll dieser Kette. */
+  entries: number;
+};
+
 export type Register = {
   id: string;
   name: string;
@@ -10,11 +21,22 @@ export type Register = {
   appVersion: string | null;
   deviceModel: string | null;
   blocked: boolean;
+  /** Der neueste Bon dieser Kassa, `null` ohne Bon. */
+  lastReceiptAt: string | null;
+  chains: SignatureChain[];
 };
+
+/** Die Antwort auf Sperren und Aufheben: die Kassa ohne letzten Bon und Ketten. */
+export type RegisterHead = Omit<Register, 'lastReceiptAt' | 'chains'>;
 
 export type PairingCode = { code: string; expiresAt: string };
 
 export const registersKey = (b: string) => ['registers', b] as const;
+
+/** Die Protokoll-Datei einer Kette als Download (der Server schickt sie mit `Content-Disposition: attachment`). */
+export function depUrl(b: string, registerId: string, chain: number): string {
+  return `/api/admin/businesses/${encodeURIComponent(b)}/registers/${encodeURIComponent(registerId)}/dep?chain=${chain}`;
+}
 
 /** Solange `pollMs` gesetzt ist (Kopplungsdialog offen), lädt die Liste in diesem Takt neu. */
 export function useRegisters(b: string, pollMs?: number) {
@@ -35,10 +57,10 @@ export function useCreatePairingCode(b: string) {
 /** Sperren und Sperre aufheben: sofort in der Liste, bei Fehler zurück. */
 export function useSetBlocked(b: string) {
   const queryClient = useQueryClient();
-  return useMutation<Register, ApiError, { id: string; blocked: boolean }, { before?: Register[] }>({
+  return useMutation<RegisterHead, ApiError, { id: string; blocked: boolean }, { before?: Register[] }>({
     mutationFn: async ({ id, blocked }) =>
       (
-        await api.post<{ register: Register }>(
+        await api.post<{ register: RegisterHead }>(
           `/api/admin/businesses/${encodeURIComponent(b)}/registers/${id}/${blocked ? 'block' : 'unblock'}`,
         )
       ).register,

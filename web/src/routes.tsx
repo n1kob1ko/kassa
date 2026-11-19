@@ -11,17 +11,19 @@ import { MenuPage } from './pages/MenuPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { RegistersPage } from './pages/RegistersPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { ReleasesPage } from './pages/ReleasesPage';
 import { SetupPage } from './pages/SetupPage';
 import { StaffPage } from './pages/StaffPage';
 import { AppShell, type NavItem } from './ui/AppShell';
-import { BookIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
+import { BookIcon, BugIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
 import { Skeleton } from './ui/Skeleton';
 
 /** Bereiche des Anbieters außerhalb eines Betriebs. */
 export const providerNav: NavItem[] = [
   { to: '/betriebe', label: 'Betriebe', icon: <StoreIcon size={22} /> },
   { to: '/installationsdateien', label: 'Installationsdateien', icon: <DownloadIcon size={22} /> },
+  { to: '/fehlerberichte', label: 'Fehlerberichte', icon: <BugIcon size={22} /> },
 ];
 
 /**
@@ -115,6 +117,14 @@ export const router = createBrowserRouter([
         element: (
           <ProviderOnly>
             <ReleasesPage />
+          </ProviderOnly>
+        ),
+      },
+      {
+        path: '/fehlerberichte',
+        element: (
+          <ProviderOnly>
+            <ReportsPage />
           </ProviderOnly>
         ),
       },

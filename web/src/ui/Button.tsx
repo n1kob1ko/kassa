@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from 'react';
 import { Link, type LinkProps } from 'react-router';
 import styles from './Button.module.css';
 
@@ -38,5 +38,22 @@ export function ButtonLink({ variant, className, children, ...rest }: LinkProps 
     <Link className={[styles.button, styles[variant], className].filter(Boolean).join(' ')} {...rest}>
       <span className={styles.label}>{children}</span>
     </Link>
+  );
+}
+
+/**
+ * Ein gewöhnlicher Download-Link, der wie ein Knopf aussieht (`<a href download>`): der Browser lädt und speichert
+ * die Datei selbst, mit dem Cookie der Sitzung.
+ */
+export function DownloadLink({
+  variant,
+  className,
+  children,
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; variant: 'primary' | 'secondary' }) {
+  return (
+    <a download className={[styles.button, styles[variant], className].filter(Boolean).join(' ')} {...rest}>
+      <span className={styles.label}>{children}</span>
+    </a>
   );
 }

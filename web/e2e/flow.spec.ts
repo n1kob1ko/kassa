@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 import { expect, signInAsProvider, test } from './support/fixtures';
 import { E2E_RELEASE_TOKEN } from './support/server';
+import { createSite, line, MENU, pushEntries, saleReceipt, signature, signatureCertificate, signatureChain } from './support/seed';
 
 const INPUTS = fileURLToPath(new URL('../../shared/fixtures/menu/inputs/', import.meta.url));
 const MENU_FILE = `${INPUTS}beispiel-imbiss.json`;
@@ -279,6 +280,53 @@ test('sperren zeigt "Gesperrt", aufheben zeigt wieder "Verbunden"', async ({ pag
   const list = await page.request.get(`/api/admin/businesses/${b.id}/registers`);
   const { registers } = (await list.json()) as { registers: { blocked: boolean }[] };
   expect(registers[0]?.blocked).toBe(false);
+});
+
+test('Kassa mit Kette: Kassen-ID, Einträge, Merkmale und das Protokoll als Datei', async ({ page }) => {
+  const site = await createSite(page, { registerName: 'Theke' });
+  // Kette 1 war die Probe und ist beendet, Kette 2 läuft echt.
+  const probe = { ...signatureChain({ chain: 1, mode: 'probe' }), endedAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString() };
+  const live = signatureChain({ chain: 2, mode: 'live', startedAt: new Date(Date.now() - 60 * 60_000) });
+  const receipts = [1, 2, 3].map((position) => saleReceipt({ lines: [line(MENU.cola)], rksv: signature({ chain: 1, position }), createdAt: new Date(Date.now() - (5 - position) * 60_000) }));
+  receipts.push(saleReceipt({ lines: [line(MENU.huhnBowl)], rksv: signature({ chain: 2, position: 1 }), createdAt: new Date(Date.now() - 60_000) }));
+  await pushEntries(page, site, [
+    { kind: 'rksv_certificate', certificate: signatureCertificate() },
+    { kind: 'rksv_chain', chain: probe },
+    { kind: 'rksv_chain', chain: live },
+    ...receipts.map((receipt) => ({ kind: 'receipt', receipt })),
+  ]);
+  // Eine zweite Kassa ohne Bon und ohne Kette.
+  await pairRegister(page, site.businessId, 'Gastgarten');
+
+  await page.goto(`/b/${site.businessId}/kassen`);
+  const theke = row(page, 'Theke');
+  await expect(theke).toContainText(/Letzter Bon (gerade eben|vor \d+ Minuten?)/);
+  const chains = theke.getByRole('list', { name: 'Ketten der Signatur: Theke' }).getByRole('listitem');
+  // Neueste zuerst.
+  await expect(chains).toHaveCount(2);
+  await expect(chains.nth(0)).toContainText('Kassen-ID KASSA1 · 1 Eintrag');
+  await expect(chains.nth(0)).not.toContainText('Probe');
+  await expect(chains.nth(0)).not.toContainText('Beendet');
+  await expect(chains.nth(1)).toContainText('Kassen-ID KASSA1 · 3 Einträge');
+  await expect(chains.nth(1)).toContainText('Probe');
+  await expect(chains.nth(1)).toContainText('Beendet');
+
+  const garden = row(page, 'Gastgarten');
+  await expect(garden).toContainText('Noch kein Bon');
+  await expect(garden).not.toContainText('Kassen-ID');
+  await expect(garden.getByRole('list')).toHaveCount(0);
+
+  // Ein gewöhnlicher Link: der Browser lädt die Datei selbst, mit dem Cookie der Sitzung.
+  const link = chains.nth(1).getByRole('link', { name: 'Protokoll herunterladen, Kassen-ID KASSA1, Kette 1' });
+  await expect(link).toHaveAttribute('download', '');
+  await expect(link).toHaveAttribute('href', `/api/admin/businesses/${site.businessId}/registers/${site.registerId}/dep?chain=1`);
+  const box = (await link.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+  expect(download.suggestedFilename()).toBe('kassa-protokoll-KASSA1-kette-1.json');
+  const file = JSON.parse(readFileSync((await download.path())!, 'utf8')) as Record<string, { 'Belege-kompakt': string[] }[]>;
+  expect(Object.keys(file)).toEqual(['Belege-Gruppe']);
+  expect(file['Belege-Gruppe']![0]!['Belege-kompakt']).toHaveLength(3);
 });
 
 test('Speisekarte: Zahlen, Kategorien und neu einspielen', async ({ page }) => {

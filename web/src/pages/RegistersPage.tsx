@@ -1,16 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCreatePairingCode, useRegisters, useSetBlocked, type PairingCode, type Register } from '../api/registers';
+import { depUrl, useCreatePairingCode, useRegisters, useSetBlocked, type PairingCode, type Register } from '../api/registers';
 import { staffKey, useStaff } from '../api/staff';
 import { ApiError } from '../api/client';
-import { ago } from '../format';
-import { Button, ButtonLink } from '../ui/Button';
+import { ago, count } from '../format';
+import { Button, ButtonLink, DownloadLink } from '../ui/Button';
 import { CodeDisplay, useRemaining } from '../ui/CodeDisplay';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { DataList, DataRow, ListSkeleton, LoadError } from '../ui/DataList';
 import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
-import { PlusIcon } from '../ui/icons';
+import { DownloadIcon, PlusIcon } from '../ui/icons';
 import { PageHeader } from '../ui/PageHeader';
 import { StatusChip } from '../ui/StatusChip';
 import { TextField } from '../ui/TextField';
@@ -162,6 +162,52 @@ function lastSeen(r: Register, now: Date): string {
   return r.lastSeenAt ? `zuletzt gesehen ${ago(new Date(r.lastSeenAt), now)}` : 'zuletzt gesehen: noch nie';
 }
 
+function lastReceipt(r: Register, now: Date): string {
+  return r.lastReceiptAt ? `Letzter Bon ${ago(new Date(r.lastReceiptAt), now)}` : 'Noch kein Bon';
+}
+
+/**
+ * Die Ketten der Signatur dieser Kassa, die neueste zuerst, je mit dem Protokoll als Datei. Ohne Kette steht
+ * hier nichts, auch keine Überschrift.
+ */
+function Chains({ business, register }: { business: string; register: Register }) {
+  if (register.chains.length === 0) return null;
+  const chains = [...register.chains].sort((a, b) => b.chain - a.chain);
+  return (
+    <section className={styles.chains} aria-labelledby={`ketten-${register.id}`}>
+      <h3 id={`ketten-${register.id}`} className={styles.chainsTitle}>
+        Protokoll der Signatur
+      </h3>
+      <ul className={styles.chainList} aria-label={`Ketten der Signatur: ${register.name}`}>
+        {chains.map((c) => (
+          <li key={c.chain} className={styles.chain}>
+            <div className={styles.chainText}>
+              <span className={styles.chainName}>
+                Kassen-ID {c.cashBoxId} · {count(c.entries, 'Eintrag', 'Einträge')}
+              </span>
+              {(c.mode === 'probe' || c.endedAt) && (
+                <span className={styles.chainMarks}>
+                  {c.mode === 'probe' && <StatusChip tone="neutral">Probe</StatusChip>}
+                  {c.endedAt && <StatusChip tone="neutral">Beendet</StatusChip>}
+                </span>
+              )}
+            </div>
+            <DownloadLink
+              variant="secondary"
+              className={styles.chainDownload}
+              href={depUrl(business, register.id, c.chain)}
+              aria-label={`Protokoll herunterladen, Kassen-ID ${c.cashBoxId}, Kette ${c.chain}`}
+            >
+              <DownloadIcon size={18} />
+              Protokoll herunterladen
+            </DownloadLink>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function RegistersPage() {
   const { detail } = useBusinessContext();
   const b = detail.business;
@@ -220,7 +266,8 @@ export function RegistersPage() {
               key={r.id}
               title={r.name}
               chips={r.blocked ? <StatusChip tone="off">Gesperrt</StatusChip> : <StatusChip tone="ok">Verbunden</StatusChip>}
-              meta={[lastSeen(r, now), r.appVersion ? `Version ${r.appVersion}` : 'Version unbekannt']}
+              meta={[lastSeen(r, now), lastReceipt(r, now), r.appVersion ? `Version ${r.appVersion}` : 'Version unbekannt']}
+              extra={r.chains.length > 0 ? <Chains business={b.id} register={r} /> : undefined}
               actions={
                 r.blocked ? (
                   <Button variant="secondary" aria-label={`Sperre aufheben: ${r.name}`} onClick={() => block(r, false)}>

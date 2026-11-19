@@ -11,6 +11,7 @@ import {
   dayKey,
   keepUnits,
   megabytes,
+  moment,
   money,
   share,
   signedMoney,
@@ -165,4 +166,13 @@ test('keepUnits: Zahl und Einheit bleiben zusammen, sonst nichts geändert', () 
   expect(keepUnits('Bier 33 cl')).toBe(`Bier 33${NBSP}cl`);
   expect(keepUnits('Wasser 1 lang')).toBe('Wasser 1 lang');
   expect(keepUnits('Huhn Bowl')).toBe('Huhn Bowl');
+});
+
+test('moment: heute, gestern oder Datum, dazu die Uhrzeit (Wiener Zeit)', () => {
+  const now = new Date('2026-11-19T10:00:00.000Z');
+  expect(moment(new Date('2026-11-19T02:12:00.000Z'), now)).toBe('heute, 03:12');
+  expect(moment(new Date('2026-11-18T02:12:00.000Z'), now)).toBe('gestern, 03:12');
+  expect(moment(new Date('2026-11-18T23:10:00.000Z'), now)).toBe('heute, 00:10');
+  expect(moment(new Date('2026-11-17T02:12:00.000Z'), now)).toBe('Di., 17.11., 03:12');
+  expect(moment(new Date('2025-12-31T02:12:00.000Z'), now)).toBe('Mi., 31.12.2025, 03:12');
 });

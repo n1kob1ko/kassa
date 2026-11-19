@@ -1,0 +1,168 @@
+/*
+ * Der aufgeklappte Inhalt eines Berichts. Aufrufliste und Inhalt stehen in einem Kasten in fester Schrift, der
+ * höchstens 320 px hoch ist und in sich scrollt, auch seitlich; die Seite selbst scrollt nie seitlich.
+ */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+  min-width: 0;
+  padding-top: var(--space-xs);
+}
+
+.lead {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.fact dt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink2);
+}
+
+.fact dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .fact {
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--space-xl);
+  }
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.blockTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink2);
+}
+
+/* Bis an die Kante des Knopfs: die Beschriftung steht bündig rechts mit dem Kasten. */
+.copy {
+  margin-right: calc(-1 * var(--space-md));
+  padding: 0 var(--space-md);
+}
+
+.code {
+  max-height: 320px;
+  margin: 0;
+  padding: var(--space-xl) var(--space-xxl);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--fill);
+  color: var(--ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 2;
+  scrollbar-color: var(--fill2) transparent;
+}
+
+.code:focus-visible {
+  outline-offset: -2px;
+}
+
+.devices {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-lg) 0;
+}
+
+.device + .device {
+  border-top: 1px solid var(--line);
+}
+
+.device:first-child {
+  padding-top: 0;
+}
+
+.deviceHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-xl);
+}
+
+.deviceName {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ok {
+  color: var(--green);
+}
+
+.notOk {
+  color: var(--warn-ink);
+}
+
+.deviceText {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink2);
+  overflow-wrap: anywhere;
+}
+
+.model {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}

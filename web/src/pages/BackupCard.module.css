@@ -1,0 +1,135 @@
+/*
+ * Die Karte "Sicherung": Titel, darunter eine Zeile mit dem Stand. Zu alt: die Zeile auf warnBg mit Symbol und Satz.
+ * Ein letzter Fehler steht darunter mit Zeitpunkt und dem Text des Servers in einem ruhigen Kasten.
+ */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-huge);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.none {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+}
+
+.icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.ok {
+  color: var(--green);
+}
+
+.statusText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xxs) var(--space-lg);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* "Di., 17.11., 03:12" bricht nicht mitten im Zeitpunkt um. */
+.moment {
+  white-space: nowrap;
+}
+
+.size {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Zu alt: in Warnfarbe, wie "Kein Internet" in der App. */
+.stale {
+  padding: var(--space-xl) var(--space-xxl);
+  border-radius: var(--radius-lg);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+.stale .size {
+  color: inherit;
+}
+
+.sentence {
+  text-wrap: pretty;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.lastError {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.errorWhen {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.errorText {
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--fill);
+  color: var(--ink2);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-xxl);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.boneLine {
+  width: min(280px, 80%);
+  height: 18px;
+}
+
+.boneShort {
+  width: 64px;
+  height: 14px;
+}

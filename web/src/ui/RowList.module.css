@@ -67,7 +67,7 @@
   border-top-right-radius: calc(var(--radius-card) - 1px);
 }
 
-.item:last-child .row {
+.item:last-child > .row:last-child {
   border-bottom-left-radius: calc(var(--radius-card) - 1px);
   border-bottom-right-radius: calc(var(--radius-card) - 1px);
 }
@@ -90,6 +90,43 @@
 @media (min-width: 640px) {
   .row {
     padding: var(--space-xl) var(--space-xxl) var(--space-xl) var(--space-huge);
+  }
+}
+
+/* Aufklappen an Ort und Stelle: die Zeile ist ein Knopf, der Inhalt steht direkt darunter in derselben Karte. */
+.toggle {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.turn {
+  transition: transform var(--duration-toggle) var(--ease);
+}
+
+.toggle[aria-expanded='true'] .turn {
+  transform: rotate(180deg);
+}
+
+.panel {
+  padding: 0 var(--space-xxl) var(--space-xxl);
+  opacity: 1;
+  transition: opacity var(--duration-enter) var(--ease);
+}
+
+@starting-style {
+  .panel {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .panel {
+    padding: 0 var(--space-huge) var(--space-huge);
   }
 }
 

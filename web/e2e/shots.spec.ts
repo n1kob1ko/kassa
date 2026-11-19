@@ -8,12 +8,15 @@ import {
   cashMovement,
   closeDay,
   createSite,
+  deviceTestReport,
+  errorReport,
   line,
   MENU as ITEMS,
   openDay,
   pushEntries,
   saleReceipt,
   signature,
+  signatureCertificate,
   signatureChain,
   specialReceipt,
   startOfLocalDay,
@@ -246,6 +249,82 @@ async function menuScene(page: Page): Promise<string> {
     expect(res.ok(), await res.text()).toBe(true);
   }
   return b;
+}
+
+/**
+ * Ein Betrieb mit zwei Kassen und Ketten der Signatur: an der Theke eine beendete Probe und eine echte Kette, der
+ * Gastgarten ohne Bon und ohne Kette. Wird wiederverwendet.
+ */
+async function chainsScene(page: Page): Promise<string> {
+  const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
+  const known = list.businesses.find((b) => b.name === 'Imbiss mit Signatur');
+  if (known) return known.id;
+  const site = await createSite(page, { name: 'Imbiss mit Signatur', registerName: 'Theke' });
+  const now = Date.now();
+  const probe = { ...signatureChain({ chain: 1, mode: 'probe', startedAt: new Date(now - 3 * 24 * 60 * 60_000) }), endedAt: new Date(now - 2 * 24 * 60 * 60_000).toISOString() };
+  const live = { ...signatureChain({ chain: 2, mode: 'live', startedAt: new Date(now - 2 * 24 * 60 * 60_000) }), cashBoxId: 'IMBISS-THEKE-1' };
+  const receipts: Entry[] = [];
+  for (let i = 1; i <= 12; i++) {
+    receipts.push({ kind: 'receipt', receipt: saleReceipt({ lines: [line(ITEMS.cola)], rksv: signature({ chain: 1, position: i }), createdAt: new Date(now - 2 * 24 * 60 * 60_000 - (20 - i) * 60_000) }) });
+  }
+  for (let i = 1; i <= 248; i++) {
+    receipts.push({ kind: 'receipt', receipt: saleReceipt({ lines: [line(ITEMS.huhnBowl)], rksv: signature({ chain: 2, position: i }), createdAt: new Date(now - (260 - i) * 5 * 60_000) }) });
+  }
+  await pushEntries(page, site, [
+    { kind: 'rksv_certificate', certificate: signatureCertificate() },
+    { kind: 'rksv_chain', chain: probe },
+    { kind: 'rksv_chain', chain: live },
+  ]);
+  for (let i = 0; i < receipts.length; i += 100) await pushEntries(page, site, receipts.slice(i, i + 100));
+  await pair(page, site.businessId, 'Gastgarten', '1.5.0');
+  return site.businessId;
+}
+
+const SHOT_STACK = [
+  'RangeError (index): Invalid value: Not in inclusive range 0..3: 4',
+  '#0      List.[] (dart:core-patch/growable_array.dart:264:36)',
+  '#1      BonView._lineAt (package:kassa/features/bons/bon_view.dart:88:21)',
+  '#2      BonView.build.<anonymous closure> (package:kassa/features/bons/bon_view.dart:61:18)',
+  '#3      SliverChildBuilderDelegate.build (package:flutter/src/widgets/scroll_delegate.dart:479:22)',
+  '#4      SliverMultiBoxAdaptorElement._build (package:flutter/src/widgets/sliver.dart:944:28)',
+  '#5      SliverMultiBoxAdaptorElement.createChild.<anonymous closure> (package:flutter/src/widgets/sliver.dart:958:55)',
+  '#6      BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:2869:19)',
+  '#7      SliverMultiBoxAdaptorElement.createChild (package:flutter/src/widgets/sliver.dart:950:12)',
+  '#8      RenderSliverMultiBoxAdaptor._createOrObtainChild (package:flutter/src/rendering/sliver_multi_box_adaptor.dart:349:5)',
+  '#9      RenderSliverList.performLayout (package:flutter/src/rendering/sliver_list.dart:90:31)',
+  '#10     RenderObject.layout (package:flutter/src/rendering/object.dart:2615:7)',
+  '#11     RenderViewportBase.layoutChildSequence (package:flutter/src/rendering/viewport.dart:601:13)',
+  '#12     RenderViewport._attemptLayout (package:flutter/src/rendering/viewport.dart:1554:12)',
+  '#13     RenderViewport.performLayout (package:flutter/src/rendering/viewport.dart:1463:20)',
+  '#14     PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1065:18)',
+  '#15     RendererBinding.drawFrame (package:flutter/src/rendering/binding.dart:582:23)',
+].join('\n');
+
+/** Berichte aus zwei Betrieben (ein Fehler dreimal, ein Geräte-Test, ein Bericht des Servers). Wird wiederverwendet. */
+async function reportsScene(page: Page): Promise<void> {
+  const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
+  if (list.businesses.some((b) => b.name === 'Imbiss Lindengasse')) return;
+  const linden = await createSite(page, { name: 'Imbiss Lindengasse', registerName: 'Theke' });
+  const cafe = await createSite(page, { name: 'Café am Platz', registerName: 'Gastgarten' });
+  const minutes = (n: number) => new Date(Date.now() - n * 60_000);
+  // Ältere zuerst senden: die Liste steht nach Eingang beim Server.
+  await pushEntries(page, cafe, [{ kind: 'report', report: errorReport({ type: 'SocketException', message: 'Connection timed out', stack: '#0      _NativeSocket.connect (dart:io-patch/socket_patch.dart:723:35)', at: minutes(52), appVersion: '1.4.0' }) }]);
+  await pushEntries(page, linden, [{ kind: 'report', report: errorReport({ count: 3, stack: SHOT_STACK, message: 'Invalid value: Not in inclusive range 0..3: 4', at: minutes(31) }) }]);
+  await pushEntries(page, cafe, [
+    {
+      kind: 'report',
+      report: deviceTestReport(
+        [
+          { device: 'printer', ok: true, text: 'Testbon gedruckt.' },
+          { device: 'drawer', ok: false, text: 'Die Lade hat sich nicht geöffnet. Prüf das Kabel am Drucker.' },
+          { device: 'card', ok: true, text: 'SumUp Air verbunden.' },
+        ],
+        { at: minutes(18) },
+      ),
+    },
+  ]);
+  const broken = saleReceipt({ lines: [line(ITEMS.huhnBowl), line(ITEMS.cola)], createdAt: minutes(9) });
+  await pushEntries(page, linden, [{ kind: 'receipt', receipt: { ...broken, totalCents: broken.totalCents + 100 } }]);
 }
 
 /** Wartet, bis jedes Bild in der Seite geladen und eingeblendet ist. */
@@ -606,6 +685,89 @@ for (const size of sizes) {
           await expect(page.getByRole('dialog', { name: 'Mehr' })).toBeVisible();
         }
         await shoot(page, `leiste-mehr-${suffix}`, false);
+      });
+
+      test('kassen ketten', async ({ page }) => {
+        await signInAsProvider(page);
+        const b = await chainsScene(page);
+        await page.goto(`/b/${b}/kassen`);
+        await expect(page.getByRole('list', { name: 'Ketten der Signatur: Theke' })).toBeVisible();
+        await shoot(page, `kassen-ketten-${suffix}`);
+      });
+
+      test('fehlerberichte', async ({ page }) => {
+        await signInAsProvider(page);
+        await reportsScene(page);
+        const today = startOfLocalDay(new Date()).getTime();
+        const fresh = { latest: { day: 'x', finishedAt: new Date(today + 3 * 60 * 60_000 + 12 * 60_000).toISOString(), size: 25_270_000 }, lastError: null };
+        await page.route('**/api/admin/backups/latest', (route) => route.fulfill({ json: fresh }));
+        await page.goto('/fehlerberichte');
+        const rows = page.getByRole('main').locator('button[aria-expanded]');
+        await expect(rows.filter({ hasText: 'Imbiss Lindengasse' }).first()).toBeVisible();
+        await shoot(page, `fehlerberichte-${suffix}`, false);
+
+        // Ein Fehler offen, mit der Aufrufliste im eigenen Kasten.
+        const error = rows.filter({ hasText: 'Imbiss Lindengasse' }).filter({ hasText: 'Fehler' });
+        await error.click();
+        await expect(page.getByRole('region', { name: 'Aufrufliste' })).toBeVisible();
+        await shoot(page, `fehlerberichte-offen-${suffix}`);
+        await error.click();
+
+        const deviceTest = rows.filter({ hasText: 'Geräte-Test' }).first();
+        await deviceTest.click();
+        await expect(page.getByRole('list', { name: 'Geräte' })).toBeVisible();
+        await shoot(page, `fehlerberichte-geraete-test-${suffix}`);
+        await rows.filter({ hasText: 'Server' }).first().click();
+        await shoot(page, `fehlerberichte-server-${suffix}`);
+
+        await page.route('**/api/admin/reports', (route) => route.fulfill({ json: { reports: [], next: null } }));
+        await page.goto('/fehlerberichte');
+        await expect(page.getByText('Keine Berichte. Das ist gut.')).toBeVisible();
+        await shoot(page, `fehlerberichte-leer-${suffix}`);
+
+        // Laden: beide Antworten gehalten, bis das Bild gemacht ist.
+        let release: () => void = () => undefined;
+        const held = new Promise<void>((r) => (release = r));
+        await page.unroute('**/api/admin/reports');
+        await page.unroute('**/api/admin/backups/latest');
+        await page.route('**/api/admin/reports', async (route) => {
+          await held;
+          await route.fallback().catch(() => undefined);
+        });
+        await page.route('**/api/admin/backups/latest', async (route) => {
+          await held;
+          await route.fulfill({ json: fresh }).catch(() => undefined);
+        });
+        await page.goto('/fehlerberichte');
+        await expect(page.getByRole('status').filter({ hasText: 'Berichte werden geladen' })).toBeVisible();
+        await shoot(page, `fehlerberichte-laden-${suffix}`, false);
+        release();
+      });
+
+      test('sicherung', async ({ page }) => {
+        await signInAsProvider(page);
+        await reportsScene(page);
+        const today = startOfLocalDay(new Date()).getTime();
+        const at = (ms: number) => new Date(today + ms).toISOString();
+        const states: [string, object][] = [
+          ['keine', { latest: null, lastError: null }],
+          ['heute', { latest: { day: 'x', finishedAt: at(3 * 60 * 60_000 + 12 * 60_000), size: 25_270_000 }, lastError: null }],
+          [
+            'alt',
+            {
+              latest: { day: 'x', finishedAt: at(-2 * 24 * 60 * 60_000 + 3 * 60 * 60_000 + 12 * 60_000), size: 24_870_000 },
+              lastError: { at: at(4 * 60 * 60_000), error: 'pg_dump: error: connection to server failed: Connection refused. Is the server running and accepting TCP/IP connections?' },
+            },
+          ],
+        ];
+        for (const [name, body] of states) {
+          await page.route('**/api/admin/backups/latest', (route) => route.fulfill({ json: body }));
+          await page.goto('/fehlerberichte');
+          await expect(page.getByRole('region', { name: 'Sicherung' }).getByRole('status')).toHaveCount(0);
+          await expect(page.getByRole('main').locator('button[aria-expanded]').first()).toBeVisible();
+          await shoot(page, `sicherung-${name}-${suffix}`, false);
+          await page.unroute('**/api/admin/backups/latest');
+        }
       });
 
       test('installationsdateien', async ({ page }) => {

@@ -9,9 +9,10 @@ import {
   type ReceiptFilter,
   type ReceiptHead,
 } from '../api/receipts';
-import { dateInputValue, dayHeading, dayKey, money, timeText } from '../format';
+import { byDay, dateInputValue, dayHeading, money, timeText } from '../format';
 import { Button } from '../ui/Button';
 import { LoadError } from '../ui/DataList';
+import { LoadMore } from '../ui/LoadMore';
 import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
 import { CloseIcon } from '../ui/icons';
@@ -97,19 +98,6 @@ function Filters({ filter, onChange }: { filter: ReceiptFilter; onChange: (f: Re
   );
 }
 
-/** Bons nach Tag gruppiert (in Wiener Zeit), in der Reihenfolge der Liste. */
-function byDay(receipts: ReceiptHead[]): { key: string; first: Date; receipts: ReceiptHead[] }[] {
-  const groups: { key: string; first: Date; receipts: ReceiptHead[] }[] = [];
-  for (const r of receipts) {
-    const at = new Date(r.createdAt);
-    const key = dayKey(at);
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) last.receipts.push(r);
-    else groups.push({ key, first: at, receipts: [r] });
-  }
-  return groups;
-}
-
 export function ReceiptsPage() {
   const { detail } = useBusinessContext();
   const b = detail.business;
@@ -154,7 +142,7 @@ export function ReceiptsPage() {
     );
   } else if (query.data) {
     // Mit einem Tag im Filter steht das Datum schon oben; sonst trägt jede Gruppe ihren Tag als Überschrift.
-    const groups = byDay(receipts);
+    const groups = byDay(receipts, (r) => new Date(r.createdAt));
     body = (
       <div className={styles.list} aria-busy={query.isPlaceholderData || undefined}>
         {groups.map((g) => (
@@ -163,7 +151,7 @@ export function ReceiptsPage() {
             label={filter.day ? 'Bons' : `Bons ${dayHeading(g.first, now)}`}
             heading={filter.day ? undefined : dayHeading(g.first, now)}
           >
-            {g.receipts.map((r) => (
+            {g.items.map((r) => (
               <RowLink
                 key={r.id}
                 rowId={r.id}
@@ -187,17 +175,12 @@ export function ReceiptsPage() {
           </RowGroup>
         ))}
         {(query.hasNextPage || query.isFetchNextPageError) && (
-          // Ein Knopf an derselben Stelle: nach einem Fehler heißt er "Nochmal versuchen", der Fokus bleibt auf ihm.
-          <div className={styles.more}>
-            {query.isFetchNextPageError && (
-              <p className={styles.moreError} role="alert">
-                Weitere Bons konnten nicht geladen werden.
-              </p>
-            )}
-            <Button variant="secondary" busy={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
-              {query.isFetchNextPageError ? 'Nochmal versuchen' : 'Mehr laden'}
-            </Button>
-          </div>
+          <LoadMore
+            busy={query.isFetchingNextPage}
+            failed={query.isFetchNextPageError}
+            failedText="Weitere Bons konnten nicht geladen werden."
+            onLoad={() => void query.fetchNextPage()}
+          />
         )}
       </div>
     );

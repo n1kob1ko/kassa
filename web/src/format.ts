@@ -99,6 +99,19 @@ export function dayKey(date: Date): string {
   return DAY_PARTS.format(date);
 }
 
+/** Einträge nach Kalendertag (Wiener Zeit) gruppiert, in der Reihenfolge der Liste: für Listen mit Tages-Überschriften. */
+export function byDay<T>(items: T[], at: (item: T) => Date): { key: string; first: Date; items: T[] }[] {
+  const groups: { key: string; first: Date; items: T[] }[] = [];
+  for (const item of items) {
+    const when = at(item);
+    const key = dayKey(when);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.items.push(item);
+    else groups.push({ key, first: when, items: [item] });
+  }
+  return groups;
+}
+
 /** Der Tag vor einem Tag "2026-11-19", ohne Zeitzone gerechnet. */
 function previousDay(key: string): string {
   const d = new Date(`${key}T12:00:00Z`);
@@ -118,6 +131,12 @@ export function dayHeading(date: Date, now: Date): string {
   const [year, month, day] = key.split('-');
   const weekday = WEEKDAY_SHORT.format(date).replace(/\.?$/, '.');
   return `${weekday}, ${day}.${month}.${year === today.slice(0, 4) ? '' : year}`;
+}
+
+/** Zeitpunkt in einem Satz: "heute, 03:12", "gestern, 03:12", sonst "Mi., 18.11., 03:12" (Wiener Zeit). */
+export function moment(date: Date, now: Date): string {
+  const day = dayHeading(date, now);
+  return `${day === 'Heute' || day === 'Gestern' ? day.toLowerCase() : day}, ${timeText(date)}`;
 }
 
 /** Betrag mit Vorzeichen: "+2,00 €", "−1,50 €", ohne Vorzeichen nur bei 0. Für Differenzen. */

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Link, type LinkProps } from 'react-router';
-import { ChevronRightIcon } from './icons';
+import { ChevronDownIcon, ChevronRightIcon } from './icons';
 import styles from './RowList.module.css';
 
 export type RowGroupProps = {
@@ -43,6 +43,44 @@ export function RowLink({ selected = false, rowId, className, children, ...link 
         <span className={[styles.content, className].filter(Boolean).join(' ')}>{children}</span>
         <ChevronRightIcon size={18} className={styles.chevron} />
       </Link>
+    </li>
+  );
+}
+
+export type RowDisclosureProps = {
+  open: boolean;
+  onToggle: () => void;
+  /** Die Zeile selbst; ihr Text ist zugleich der Name des Knopfs und des aufgeklappten Bereichs. */
+  summary: ReactNode;
+  /** Der Inhalt, der unter der Zeile aufklappt (nur, solange sie offen ist). */
+  children: ReactNode;
+  className?: string;
+};
+
+/**
+ * Eine Zeile, die als Ganzes ein Knopf ist und ihren Inhalt an Ort und Stelle aufklappt (mindestens 60 px hoch),
+ * mit Pfeil nach unten, der sich beim Öffnen dreht. Mehrere Zeilen können zugleich offen sein.
+ */
+export function RowDisclosure({ open, onToggle, summary, children, className }: RowDisclosureProps) {
+  const id = useId();
+  return (
+    <li className={styles.item}>
+      <button
+        type="button"
+        id={`${id}-zeile`}
+        className={[styles.row, styles.toggle].join(' ')}
+        aria-expanded={open}
+        aria-controls={`${id}-inhalt`}
+        onClick={onToggle}
+      >
+        <span className={[styles.content, className].filter(Boolean).join(' ')}>{summary}</span>
+        <ChevronDownIcon size={18} className={[styles.chevron, styles.turn].join(' ')} />
+      </button>
+      {open && (
+        <div id={`${id}-inhalt`} role="region" aria-labelledby={`${id}-zeile`} className={styles.panel}>
+          {children}
+        </div>
+      )}
     </li>
   );
 }
