@@ -23,6 +23,18 @@ const maxReportsPerDay = 50;
 const maxMessageLength = 500;
 const maxStackLength = 8000;
 
+/// Ein Eintrag der Liste "noch zu senden" ließ sich nicht bauen. Trägt nur
+/// die Art des Eintrags und die Art des Fehlers, nie einen Inhalt.
+class OutboxBuildError implements Exception {
+  const OutboxBuildError(this.entryKind, this.errorType);
+
+  final String entryKind;
+  final String errorType;
+
+  @override
+  String toString() => 'Eintrag $entryKind: $errorType';
+}
+
 class ReportRepository {
   ReportRepository(
     this._db,
@@ -152,6 +164,10 @@ class ReportRepository {
     }
     // Die Laufzeit baut die Meldung aus Namen von Typen.
     if (error is TypeError) return _cut(error.toString(), maxMessageLength);
+    // Art des Eintrags und Art des Fehlers, beides Namen aus dem Code.
+    if (error is OutboxBuildError) {
+      return _cut(error.toString(), maxMessageLength);
+    }
     // Methoden- und Kanalname des Plug-ins, keine Daten.
     if (error is MissingPluginException) {
       return _cut(error.toString(), maxMessageLength);

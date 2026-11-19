@@ -19,14 +19,28 @@ import 'settings_rows.dart';
 ///
 /// [calm] ist ein Stand ohne Alarm ("Nicht eingerichtet."): ruhige Fläche, kein
 /// grüner Punkt.
+///
+/// [report] ist der Text für den Bericht an den Server, wenn er anders sein
+/// muss als [message] (ein Bericht nennt nie einen Namen).
 class DeviceTestResult {
-  const DeviceTestResult.ok(this.message) : ok = true, calm = false;
-  const DeviceTestResult.problem(this.message) : ok = false, calm = false;
-  const DeviceTestResult.calm(this.message) : ok = false, calm = true;
+  const DeviceTestResult.ok(this.message, {this._report})
+    : ok = true,
+      calm = false;
+  const DeviceTestResult.problem(this.message)
+    : ok = false,
+      calm = false,
+      _report = null;
+  const DeviceTestResult.calm(this.message)
+    : ok = false,
+      calm = true,
+      _report = null;
 
   final String message;
   final bool ok;
   final bool calm;
+  final String? _report;
+
+  String get report => _report ?? message;
 }
 
 /// Die eigene Seite "Geräte testen" im Bereich Einstellungen: je Gerät eine
@@ -66,10 +80,11 @@ class DeviceTestScreen extends ConsumerWidget {
         final who = name == null || name.isEmpty
             ? 'Angemeldet'
             : 'Angemeldet als $name';
-        return DeviceTestResult.ok(
-          '$who. Für einen echten Test 1,00 € mit Karte bonieren und danach '
-          'stornieren.',
-        );
+        const hint =
+            'Für einen echten Test 1,00 € mit Karte bonieren und danach '
+            'stornieren.';
+        // Der Name bei SumUp steht nur auf dem Bildschirm.
+        return DeviceTestResult.ok('$who. $hint', report: 'Angemeldet. $hint');
     }
   }
 
@@ -194,8 +209,8 @@ class DeviceTestRow extends StatefulWidget {
   final Future<DeviceTestResult> Function()? run;
   final String? offLabel;
 
-  /// Bekommt nach jedem Lauf die Zeile, wie der Bildschirm sie zeigt (für den
-  /// Bericht an den Server). Darf nichts werfen.
+  /// Bekommt nach jedem Lauf die Zeile für den Bericht an den Server (wie der
+  /// Bildschirm sie zeigt, nur ohne Namen). Darf nichts werfen.
   final Future<void> Function(List<({String device, bool ok, String text})>)?
   onFinished;
 
@@ -224,7 +239,7 @@ class _DeviceTestRowState extends State<DeviceTestRow> {
     }
     unawaited(
       widget.onFinished?.call([
-        (device: widget.id, ok: result.ok, text: result.message),
+        (device: widget.id, ok: result.ok, text: result.report),
       ]),
     );
     if (!mounted) return;

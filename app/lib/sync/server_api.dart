@@ -41,6 +41,7 @@ class ServerApi {
     required this._client,
     required this._appVersion,
     this._timeout = const Duration(seconds: 10),
+    this._pushTimeout = const Duration(seconds: 30),
   }) : _base = baseUrl.endsWith('/')
            ? baseUrl.substring(0, baseUrl.length - 1)
            : baseUrl;
@@ -57,6 +58,10 @@ class ServerApi {
   final http.Client _client;
   final String _appVersion;
   final Duration _timeout;
+
+  /// Ein Paket mit bis zu 100 Einträgen braucht auf einer langsamen Leitung
+  /// länger als eine Seite beim Holen.
+  final Duration _pushTimeout;
 
   Future<PairResponse> pair({
     required String code,
@@ -90,7 +95,8 @@ class ServerApi {
 
   /// Schickt [entries] an den Server. Die Antwort nennt je Eintrag, was
   /// daraus wurde. Nimmt der Server die ganze Anfrage nicht an (400, 413,
-  /// 422), kommt [ServerFailure.rejected].
+  /// 422), kommt [ServerFailure.rejected]. Die Antwort darf 30 Sekunden auf
+  /// sich warten lassen.
   Future<List<PushResult>> push({
     required String token,
     required String deviceId,
@@ -107,6 +113,7 @@ class ServerApi {
         body: jsonEncode({'deviceId': deviceId, 'entries': entries}),
       ),
       rejectedStatuses: const {400, 413, 422},
+      timeout: _pushTimeout,
     );
     return _parse(body, (json) {
       final results = json['results'];
@@ -184,11 +191,12 @@ class ServerApi {
   Future<Object?> _send(
     Future<http.Response> Function(Map<String, String> headers) request, {
     Set<int> rejectedStatuses = const {},
+    Duration? timeout,
   }) async {
     final http.Response response;
     try {
       response = await request({'X-Kassa-App-Version': _appVersion})
-          .timeout(_timeout);
+          .timeout(timeout ?? _timeout);
     } on TimeoutException {
       throw const ServerException(ServerFailure.timeout);
     } on IOException {

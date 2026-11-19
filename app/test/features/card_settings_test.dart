@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/ui/tokens.dart';
 
 import '../support/fake_devices.dart';
+import '../support/kassa_pump.dart' show containerOf;
 import '../support/pump.dart';
 import '../support/settings_pump.dart';
 
@@ -182,6 +184,23 @@ void main() {
         _text(t, 'result-card'),
         'Angemeldet als MH12345. Für einen echten Test 1,00 € mit Karte '
         'bonieren und danach stornieren.',
+      );
+    });
+
+    testWidgets('Angemeldet: der Bildschirm nennt den Namen bei SumUp, der '
+        'Bericht nicht', (t) async {
+      await _settings(t, status: _ready);
+      await _openTest(t);
+      await _check(t);
+      expect(_text(t, 'result-card'), startsWith('Angemeldet als MH12345.'));
+      final db = containerOf(t).read(databaseProvider);
+      final rows = await t.runAsync(() => db.select(db.reportRows).get());
+      expect(rows!.single.kind, 'device_test');
+      expect(rows.single.content, isNot(contains('MH12345')));
+      expect(
+        rows.single.content,
+        '[{"device":"card","ok":true,"text":"Angemeldet. Für einen echten '
+        'Test 1,00 € mit Karte bonieren und danach stornieren."}]',
       );
     });
 

@@ -13,7 +13,8 @@
 // mit eigenem Zertifikat und ihren Einträgen im Protokoll. Die ersten zehn
 // Verkäufe liegen vor der ersten Kette und haben keinen Eintrag. Die Kassa
 // ist gekoppelt, und am Tablet wurden Preise geändert (Huhn Bowl 1090,
-// Cola 320, Teigtaschen nicht im Verkauf).
+// Cola 320, Teigtaschen nicht im Verkauf). Ein Artikel ist stillgelegt
+// (Kürbissuppe, nur am Tablet angelegt, der Server kennt ihn nicht).
 //
 // Trigger und Indizes von Version 5 sind die von Version 4
 // (`fixture_guards.dart`); Version 5 fügte nur die Spalte `unit` hinzu.
@@ -190,6 +191,13 @@ Future<void> main() async {
       "${item.id == 'teigtaschen' ? 0 : 1}, $i)",
     );
   }
+  // Stillgelegt und nur am Tablet: bekommt beim Update keine Artikel-Änderung.
+  await run(
+    'INSERT INTO items (id, name, price_cents, category_id, tax_percent, '
+    'deposit_cents, tags, template_id, favorite, in_sale, archived, position) '
+    "VALUES ('kuerbissuppe', 'Kürbissuppe', 590, 'snacks', 10, 0, '', NULL, "
+    '0, 1, 1, ${_items.length})',
+  );
   for (final c in _chains) {
     // Erfundene Bytes, kein echtes Zertifikat.
     final issuers = c.unit == 'atrustTest' ? '["dGVzdA=="]' : '[]';

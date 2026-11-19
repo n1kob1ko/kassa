@@ -103,6 +103,10 @@ class FakeServer extends http.BaseClient {
   /// Antwort hinausgeht.
   Future<void> Function()? beforePushAnswer;
 
+  /// So lange braucht die Antwort auf `push` bei so vielen Einträgen (eine
+  /// langsame Leitung). Angenommen ist das Paket trotzdem.
+  Duration Function(int entries)? pushDelay;
+
   /// Die Dateien des Servers, je Kennung. Eine fehlende Kennung ist 404.
   final files = <String, Uint8List>{};
 
@@ -322,6 +326,8 @@ class FakeServer extends http.BaseClient {
     final hook = beforePushAnswer;
     beforePushAnswer = null;
     if (hook != null) await hook();
+    final delay = pushDelay?.call(entries.length);
+    if (delay != null) await Future<void>.delayed(delay);
     if (loseNextPushAnswer) {
       loseNextPushAnswer = false;
       throw const SocketException('Antwort verloren');

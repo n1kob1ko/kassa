@@ -80,6 +80,7 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     enabled: enabled,
     // Betriebsname, Mitarbeiter und "Einrichtung fertig" hängen daran.
     onChanged: () => ref.invalidate(catalogProvider),
+    reportError: (e, s) => ref.read(reportRepositoryProvider).addError(e, s),
   );
   ref.onDispose(() {
     service.dispose();

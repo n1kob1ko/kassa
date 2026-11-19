@@ -357,7 +357,9 @@ class SyncStateRows extends Table {
   /// Wann zuletzt etwas an den Server gesendet wurde.
   DateTimeColumn get lastPushAt => dateTime().nullable()();
 
-  /// Fotos von selbst laden, nicht nur auf Knopfdruck.
+  /// Ob "Bilder anzeigen" schon einmal von selbst eingeschaltet wurde (beim
+  /// ersten Foto vom Server, siehe `FileSync`). Das geschieht nur ein Mal;
+  /// danach gilt, was am Tablet eingestellt wird.
   BoolColumn get photosAutoEnabled =>
       boolean().withDefault(const Constant(false))();
 
@@ -673,28 +675,39 @@ class KassaDatabase extends _$KassaDatabase {
         // Ganz oder gar nicht: drift setzt die Version erst nach allen
         // Schritten, ein halber Schritt würde beim nächsten Start an den
         // schon vorhandenen Spalten scheitern. Was hier angelegt wird, hat
-        // die Form von Version 6.
-        await transaction(() async {
-          await m.addColumn(itemRows, itemRows.photoFileId);
-          await m.addColumn(itemRows, itemRows.photoColor);
-          await m.addColumn(businessRows, businessRows.logoFileId);
-          await m.addColumn(businessRows, businessRows.logoPath);
-          await m.addColumn(businessRows, businessRows.logoColor);
-          await m.addColumn(syncStateRows, syncStateRows.deviceId);
-          await m.addColumn(syncStateRows, syncStateRows.lastPushAt);
-          await m.addColumn(syncStateRows, syncStateRows.photosAutoEnabled);
-          await m.createTable(outboxRows);
-          await m.createTable(reportRows);
-          await _createOutboxIndex();
-          await _createOutboxTriggers();
-          await _fillOutboxWithExisting();
-        });
+        // die Form von Version 6. Drift schreibt user_version danach und ohne
+        // Transaktion darum: Wurde die App dazwischen beendet, ist der Schritt
+        // schon ganz da (die Liste gibt es nur dann), und er läuft nicht noch
+        // einmal.
+        final done = await customSelect(
+          "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'outbox'",
+        ).get();
+        if (done.isEmpty) await _stepTo6(m);
       }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Schritt 6 in einer Transaktion.
+  Future<void> _stepTo6(Migrator m) async {
+    await transaction(() async {
+      await m.addColumn(itemRows, itemRows.photoFileId);
+      await m.addColumn(itemRows, itemRows.photoColor);
+      await m.addColumn(businessRows, businessRows.logoFileId);
+      await m.addColumn(businessRows, businessRows.logoPath);
+      await m.addColumn(businessRows, businessRows.logoColor);
+      await m.addColumn(syncStateRows, syncStateRows.deviceId);
+      await m.addColumn(syncStateRows, syncStateRows.lastPushAt);
+      await m.addColumn(syncStateRows, syncStateRows.photosAutoEnabled);
+      await m.createTable(outboxRows);
+      await m.createTable(reportRows);
+      await _createOutboxIndex();
+      await _createOutboxTriggers();
+      await _fillOutboxWithExisting();
+    });
+  }
 
   /// `rksv_chains`, wie Version 4 sie angelegt hat (ohne `unit`).
   static const _rksvChainsV4 =
@@ -783,7 +796,10 @@ class KassaDatabase extends _$KassaDatabase {
     ) => customStatement(
       'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
       'AFTER $event ON $table BEGIN '
-      "UPDATE outbox SET rev = rev + 1 WHERE kind = '$kind' AND ref = $ref; "
+      // `kind <> 'item_change'` lässt das UPDATE den Teilindex outbox_entity
+      // nehmen, sonst liest es die ganze Liste.
+      'UPDATE outbox SET rev = rev + 1 '
+      "WHERE kind = '$kind' AND kind <> 'item_change' AND ref = $ref; "
       "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
     );
     await trigger('receipts', 'INSERT', 'receipt', 'NEW.id');
@@ -827,7 +843,14 @@ class KassaDatabase extends _$KassaDatabase {
     ).get();
     if (paired.isEmpty) return;
     final now = DateTime.now();
-    for (final item in await select(itemRows).get()) {
+    // Liest und schreibt mit den heutigen Tabellenklassen (itemRows,
+    // outboxRows). Ändert ein späterer Schritt `items` oder `outbox`, passen
+    // sie nicht mehr zur Datei von Version 5: dann muss das hier auf rohes SQL
+    // umziehen (oder einen Test 4 -> 7 bekommen).
+    // Stillgelegte Artikel nicht: die kennt der Server oft nicht, sie kämen
+    // als unknown_item zurück.
+    final items = select(itemRows)..where((t) => t.archived.equals(false));
+    for (final item in await items.get()) {
       final values = <String, Object>{
         'priceCents': item.priceCents,
         'inSale': item.inSale,

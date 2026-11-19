@@ -228,6 +228,26 @@ void main() {
     expect(r.names(), ['$photoA.webp']);
   });
 
+  test('Foto ersetzt, das neue kommt abgeschnitten an (RIFF-Länge passt '
+      'nicht): das alte Bild bleibt', () async {
+    final r = await Rig.create();
+    r.putPhoto('huhn-bowl', photoA);
+    await r.pull();
+    await r.run();
+    // Kopf richtig, aber hinten fehlen 40 Bytes.
+    r.putPhoto(
+      'huhn-bowl',
+      photoB,
+      Uint8List.fromList(photoWebp.sublist(0, photoWebp.length - 40)),
+    );
+    await r.pull();
+
+    expect(await r.run(), isFalse);
+
+    expect((await r.item('huhn-bowl')).photoPath, r.path(photoA));
+    expect(r.names(), ['$photoA.webp']);
+  });
+
   test('Foto entfernt: Pfad leer, Datei weg', () async {
     final r = await Rig.create();
     r.putPhoto('huhn-bowl', photoA);

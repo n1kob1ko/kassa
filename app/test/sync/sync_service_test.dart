@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Directory;
 
 import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
@@ -13,6 +14,7 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/report_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/devices/internet.dart';
 import 'package:kassa/sync/file_sync.dart';
@@ -80,6 +82,11 @@ class Harness {
       internet: internet.stream,
       resumed: resumed.stream,
       enabled: enabled,
+      reportError: ReportRepository(
+        db,
+        _FakeClock(async),
+        appVersion: '1.6.0',
+      ).addError,
     );
   }
 
@@ -673,6 +680,100 @@ void main() {
         expect(h.rejectedReason(), 'invalid');
         expect(h.state().lastError, isNull);
         expect(h.pulls, greaterThan(0));
+        h.close();
+      });
+    });
+
+    test(
+      'ein Eintrag lässt sich nicht bauen: abgelehnt mit Grund local, ein '
+      'Bericht mit Art des Eintrags und des Fehlers, die anderen gehen hinauf',
+      () {
+        fakeAsync((async) {
+          final h = Harness(async);
+          h.addDay('a');
+          // Ein Wert, der kein JSON ist: das Bauen wirft.
+          h.run(
+            h.db.customStatement(
+              'INSERT INTO outbox (kind, ref, field, value, changed_at) '
+              "VALUES ('item_change', 'cola', 'priceCents', 'kaputt{', 0)",
+            ),
+          );
+          h.addDay('b');
+
+          h.run(h.service.syncNow());
+
+          // Der Bericht entsteht während des Laufs und geht gleich mit hinauf.
+          expect(
+            [
+              for (final r in h.server.pushRequests)
+                [for (final e in r) e['kind']],
+            ],
+            [
+              ['day', 'day'],
+              ['report'],
+            ],
+          );
+          expect(
+            [
+              for (final e in h.server.pushRequests.first)
+                (e['day']! as Map)['id'],
+            ],
+            ['a', 'b'],
+          );
+          final counts = h.counts();
+          expect((counts.pending, counts.rejected), (0, 1));
+          expect(h.rejectedReason(), 'local');
+          final reports = h.run(h.db.select(h.db.reportRows).get());
+          expect(reports, hasLength(1));
+          expect(jsonDecode(reports.single.content), {
+            'type': 'OutboxBuildError',
+            'message': 'Eintrag item_change: FormatException',
+            'stack': '',
+          });
+          expect(reports.single.content, isNot(contains('kaputt')));
+
+          // Der abgelehnte geht nicht noch einmal.
+          h.run(h.service.syncNow());
+          expect(h.server.pushRequests, hasLength(2));
+          h.close();
+        });
+      },
+    );
+
+    test('Zeitüberschreitung beim Senden: das nächste Paket ist kleiner '
+        '(100, 25, 5), nach einem, das durchging, wieder 100', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        for (var i = 0; i < 40; i++) {
+          h.addDay('d${i.toString().padLeft(2, '0')}');
+        }
+        // 1,5 Sekunden je Eintrag: erst 5 Einträge gehen in 30 Sekunden.
+        h.server.pushDelay = (n) => Duration(milliseconds: 1500 * n);
+        h.service.start();
+        async.elapse(const Duration(seconds: 31));
+        expect(h.state().lastError, 'timeout');
+
+        async.elapse(const Duration(minutes: 10));
+        expect(h.server.pushRequests.map((r) => r.length).take(4), [
+          40,
+          25,
+          5,
+          35,
+        ]);
+        h.close();
+      });
+    });
+
+    test('ein Paket darf 30 Sekunden auf die Antwort warten', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        h.addDay('a');
+        h.server.pushDelay = (_) => const Duration(seconds: 25);
+        h.service.syncNow();
+        async.elapse(const Duration(seconds: 40));
+        expect(h.server.pushRequests, hasLength(1));
+        expect(h.counts().pending, 0);
+        expect(h.state().lastError, isNull);
         h.close();
       });
     });

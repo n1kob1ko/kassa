@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
@@ -157,6 +159,12 @@ void main() {
     expect(byKey['cola/favorite'], 'true');
     expect(byKey['teigtaschen/inSale'], 'false');
     expect(byKey['tofu-bowl/tags'], '["vegan"]');
+    // Der stillgelegte Artikel bekommt keine Änderung (der Server kennt ihn
+    // nicht, sie käme als unknown_item zurück).
+    expect(
+      changes.map((r) => r.read<String>('ref')),
+      isNot(contains('kuerbissuppe')),
+    );
     final at = DateTime.fromMillisecondsSinceEpoch(
       changes.first.read<int>('changed_at') * 1000,
     );
@@ -175,6 +183,7 @@ void main() {
       ('pommes', 390, true),
       ('cola', 320, true),
       ('limonade', 290, true),
+      ('kuerbissuppe', 590, true),
     ]);
 
     // Trigger der Liste und der Unveränderlichkeit stehen.
@@ -297,6 +306,88 @@ void main() {
     expect(await outboxTriggers(db), triggers);
     expect(await count(db, 'rksv_entries'), 5);
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+  });
+
+  // Schritt 6 ist eine Transaktion, aber drift schreibt user_version erst
+  // danach und ohne Transaktion darum. Wurde die App genau dazwischen
+  // beendet, ist Schritt 6 fertig und die Datei steht noch auf der alten
+  // Version. Der nächste Start darf ihn nicht noch einmal versuchen.
+  Future<void> rewindVersion(File file, int version) async {
+    final raw = sqlite.sqlite3.open(file.path);
+    raw.execute('PRAGMA user_version = $version');
+    raw.close();
+  }
+
+  for (final (fixture, version) in const [
+    ('kassa_v5.sqlite', 5),
+    ('kassa_v4.sqlite', 4),
+  ]) {
+    test('Schritt 6 fertig, Version noch $version ($fixture): die Kassa '
+        'öffnet auf Version 6, die Liste ist nicht doppelt', () async {
+      final file = await copyFixture(fixture);
+      final first = KassaDatabase(NativeDatabase(file));
+      expect(await userVersion(first), 6);
+      final listed = await count(first, 'outbox');
+      final receipts = await count(first, 'receipts');
+      await first.close();
+      await rewindVersion(file, version);
+
+      final db = KassaDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      expect(await db.select(db.syncStateRows).get(), isNotNull);
+      expect(await userVersion(db), 6);
+      expect(await count(db, 'outbox'), listed);
+      expect(await count(db, 'receipts'), receipts);
+      expect(await outboxTriggers(db), triggers);
+      expect(listed, greaterThan(0));
+    });
+  }
+
+  /// Der Plan des UPDATE jedes Triggers der Liste, wie er in der Datei steht
+  /// (`NEW.<Spalte>` durch einen festen Wert ersetzt).
+  Future<Map<String, String>> updatePlans(KassaDatabase db) async {
+    final plans = <String, String>{};
+    for (final r
+        in await db
+            .customSelect(
+              "SELECT name, sql FROM sqlite_master WHERE type = 'trigger' "
+              "AND name LIKE 'outbox_%'",
+            )
+            .get()) {
+      final sql = r.read<String>('sql');
+      final update = RegExp(r'UPDATE outbox [^;]*').firstMatch(sql)!.group(0)!;
+      final plan = await db
+          .customSelect(
+            'EXPLAIN QUERY PLAN '
+            "${update.replaceAll(RegExp(r'NEW\.\w+'), "'x'")}",
+          )
+          .get();
+      plans[r.read<String>('name')] = plan
+          .map((p) => p.read<String>('detail'))
+          .join('; ');
+    }
+    return plans;
+  }
+
+  test('das UPDATE der Trigger nimmt den Index outbox_entity, neu und nach '
+      'dem Update von 1.5.0', () async {
+    final fresh = KassaDatabase(NativeDatabase.memory());
+    addTearDown(fresh.close);
+    final migrated = KassaDatabase(
+      NativeDatabase(await copyFixture('kassa_v5.sqlite')),
+    );
+    addTearDown(migrated.close);
+    for (final db in [fresh, migrated]) {
+      final plans = await updatePlans(db);
+      expect(plans.keys.toSet(), triggers.toSet());
+      for (final MapEntry(:key, :value) in plans.entries) {
+        expect(
+          value,
+          contains('SEARCH outbox USING INDEX outbox_entity'),
+          reason: key,
+        );
+      }
+    }
   });
 
   test('neue Datenbank: Version 6 mit Liste, Index und Triggern', () async {

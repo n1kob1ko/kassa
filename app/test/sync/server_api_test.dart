@@ -17,11 +17,13 @@ const base = 'https://kassa.example';
 ServerApi apiWith(
   MockClientHandler handler, {
   Duration timeout = const Duration(seconds: 10),
+  Duration pushTimeout = const Duration(seconds: 30),
 }) => ServerApi(
   baseUrl: base,
   client: MockClient(handler),
   appVersion: '1.2.0',
   timeout: timeout,
+  pushTimeout: pushTimeout,
 );
 
 http.Response json(int status, Object body) => http.Response(
@@ -293,7 +295,7 @@ void main() {
     test('Zeitgrenze ergibt timeout, fehlende Verbindung offline', () async {
       final slow = apiWith(
         (_) => Completer<http.Response>().future,
-        timeout: const Duration(milliseconds: 20),
+        pushTimeout: const Duration(milliseconds: 20),
       );
       expect(
         await failureOf(slow.push(token: 't', deviceId: 'd', entries: [])),
@@ -303,6 +305,22 @@ void main() {
       expect(
         await failureOf(offline.push(token: 't', deviceId: 'd', entries: [])),
         ServerFailure.offline,
+      );
+    });
+
+    test('senden hat eine eigene, längere Zeitgrenze als holen', () async {
+      final api = apiWith(
+        (_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          return json(200, {'results': <Object>[]});
+        },
+        timeout: const Duration(milliseconds: 20),
+        pushTimeout: const Duration(seconds: 5),
+      );
+      expect(await api.push(token: 't', deviceId: 'd', entries: []), isEmpty);
+      expect(
+        await failureOf(api.pull(token: 't', since: 0)),
+        ServerFailure.timeout,
       );
     });
 

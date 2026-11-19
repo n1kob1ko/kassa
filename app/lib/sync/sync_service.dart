@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/clock.dart';
 import '../data/outbox_repository.dart';
+import '../data/report_repository.dart' show OutboxBuildError;
 import '../data/sync_state_repository.dart';
 import 'file_sync.dart';
 import 'push_wire.dart';
@@ -48,9 +49,11 @@ class SyncService {
     this._resumed = const Stream.empty(),
     this._enabled = true,
     this._onChanged = _nothing,
+    this._reportError = _noReport,
   });
 
   static void _nothing() {}
+  static Future<void> _noReport(Object error, StackTrace? stack) async {}
 
   /// Abstand der regelmäßigen Läufe.
   static const interval = Duration(minutes: 5);
@@ -58,8 +61,11 @@ class SyncService {
   /// So lange wartet [poke] auf weitere Einträge, bevor ein Lauf beginnt.
   static const pokeDelay = Duration(seconds: 2);
 
-  /// Höchstens so viele Einträge gehen in einem Paket hinauf.
-  static const _packetSize = 100;
+  /// Höchstens so viele Einträge gehen in einem Paket hinauf. Nach einer
+  /// Zeitüberschreitung beim Senden nimmt der nächste Versuch die nächste
+  /// Größe (eine langsame Leitung schafft das erste Paket sonst nie), nach
+  /// einem Paket, das durchging, wieder die erste.
+  static const packetSizes = [100, 25, 5];
 
   /// Abstände nach Fehlern in Folge, danach bleibt es beim letzten.
   static const retryDelays = [
@@ -87,6 +93,13 @@ class SyncService {
 
   /// Nach einem Lauf, der Daten am Tablet geändert hat.
   final void Function() _onChanged;
+
+  /// Schreibt einen Bericht über einen Fehler am Tablet (der Bericht selbst
+  /// nimmt nur feste Felder).
+  final Future<void> Function(Object error, StackTrace? stack) _reportError;
+
+  /// Stelle in [packetSizes] für das nächste Paket.
+  int _packetStep = 0;
 
   final _running = StreamController<bool>.broadcast();
   final _subscriptions = <StreamSubscription<Object?>>[];
@@ -244,17 +257,36 @@ class SyncService {
     var incomplete = false;
     var sent = false;
     while (true) {
+      final size = packetSizes[_packetStep];
       final batch = [
-        for (final e in await _outbox.nextBatch(
-          limit: _packetSize + seen.length,
-        ))
+        for (final e in await _outbox.nextBatch(limit: size + seen.length))
           if (!seen.contains(e.id)) e,
-      ].take(_packetSize).toList();
+      ].take(size).toList();
       if (batch.isEmpty) break;
 
       final packet = <(OutboxEntry, Map<String, Object?>)>[];
       for (final entry in batch) {
-        final body = await _payloads.build(entry);
+        final Map<String, Object?>? body;
+        try {
+          body = await _payloads.build(entry);
+        } catch (e) {
+          // Ein Eintrag, der sich nicht bauen lässt, hält die anderen nicht
+          // auf: abgelehnt am Tablet, dazu ein Bericht mit der Art des
+          // Eintrags und des Fehlers. Ein Bericht über einen Bericht nicht.
+          seen.add(entry.id);
+          await _outbox.markRejected(entry.id, localError);
+          if (entry.kind != 'report') {
+            try {
+              await _reportError(
+                OutboxBuildError(entry.kind, e.runtimeType.toString()),
+                null,
+              );
+            } catch (_) {
+              // Der Bericht darf das Senden nicht aufhalten.
+            }
+          }
+          continue;
+        }
         if (body == null) {
           // Die Sache gibt es nicht mehr: nichts zu senden.
           await _outbox.remove(entry.id, rev: entry.rev);
@@ -273,6 +305,9 @@ class SyncService {
           entries: [for (final (_, body) in packet) body],
         );
       } on ServerException catch (e) {
+        if (e.failure == ServerFailure.timeout) {
+          _packetStep = min(_packetStep + 1, packetSizes.length - 1);
+        }
         if (e.failure != ServerFailure.rejected) rethrow;
         // Das ganze Paket ist abgelehnt: jeder Eintrag einzeln, damit ein
         // kaputter die anderen nicht aufhält.
@@ -299,6 +334,7 @@ class SyncService {
         }
       }
 
+      _packetStep = 0;
       final bySeq = {for (final r in results) r.seq: r};
       for (final (entry, _) in packet) {
         seen.add(entry.id);

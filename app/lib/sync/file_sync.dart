@@ -218,9 +218,12 @@ class _Loader {
     }
   }
 
-  /// Eine WebP-Datei beginnt mit `RIFF`, vier Bytes Länge und `WEBP`.
+  /// Eine WebP-Datei beginnt mit `RIFF`, vier Bytes Länge (little endian, die
+  /// Bytes nach diesen acht) und `WEBP`. Passt die Länge nicht zur Datei, ist
+  /// sie abgeschnitten oder hat etwas angehängt und ersetzt kein gutes Bild.
   static bool _isWebp(List<int> b) =>
       b.length > 12 &&
       String.fromCharCodes(b.sublist(0, 4)) == 'RIFF' &&
-      String.fromCharCodes(b.sublist(8, 12)) == 'WEBP';
+      String.fromCharCodes(b.sublist(8, 12)) == 'WEBP' &&
+      (b[4] | b[5] << 8 | b[6] << 16 | b[7] << 24) + 8 == b.length;
 }
