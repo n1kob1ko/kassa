@@ -86,12 +86,42 @@ export function installRegisterRoutes(app: FastifyInstance): void {
 
   app.get<{ Params: { b: string } }>('/api/admin/businesses/:b/registers', async (req) => {
     await requireBusinessAccess(req, req.params.b);
-    const rows = await withBusiness(
-      db,
-      req.params.b.toLowerCase(),
-      async (c) => (await c.query<RegisterRow>(`select ${COLUMNS} from registers order by paired_at desc, id`)).rows,
-    );
-    return { registers: rows.map(toWire) };
+    return withBusiness(db, req.params.b.toLowerCase(), async (c) => {
+      // Zwei Abfragen für alle Kassen: den letzten Bon je Kassa und die Ketten je Gerät samt Zahl der Einträge.
+      const rows = (
+        await c.query<RegisterRow & { device_id: string | null; last_receipt_at: Date | null }>(
+          `select g.id, g.name, g.paired_at, g.last_seen_at, g.app_version, g.device_model, g.blocked_at, g.device_id, l.last_receipt_at
+             from registers g
+             left join (select register_id, max(created_at) as last_receipt_at from receipts group by register_id) l on l.register_id = g.id
+            order by g.paired_at desc, g.id`,
+        )
+      ).rows;
+      const chains = (
+        await c.query<{ device_id: string; chain: number; mode: string; cash_box_id: string; started_at: Date; ended_at: Date | null; entries: number }>(
+          `select ch.device_id, ch.chain, ch.mode, ch.cash_box_id, ch.started_at, ch.ended_at, coalesce(n.entries, 0)::int as entries
+             from rksv_chains ch
+             left join (select device_id, chain, count(*) as entries from rksv_entries group by device_id, chain) n
+               on n.device_id = ch.device_id and n.chain = ch.chain
+            order by ch.chain`,
+        )
+      ).rows;
+      return {
+        registers: rows.map((r) => ({
+          ...toWire(r),
+          lastReceiptAt: r.last_receipt_at ? r.last_receipt_at.toISOString() : null,
+          chains: chains
+            .filter((ch) => r.device_id !== null && ch.device_id === r.device_id)
+            .map((ch) => ({
+              chain: ch.chain,
+              mode: ch.mode,
+              cashBoxId: ch.cash_box_id,
+              startedAt: ch.started_at.toISOString(),
+              endedAt: ch.ended_at ? ch.ended_at.toISOString() : null,
+              entries: ch.entries,
+            })),
+        })),
+      };
+    });
   });
 
   for (const what of ['block', 'unblock'] as const) {

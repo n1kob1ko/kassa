@@ -74,6 +74,8 @@ test('richtiger Code: Antwort wie pair_response.json, Kassa steht in der Liste',
     appVersion: '1.2.0',
     deviceModel: 'Redmi Pad Pro',
     blocked: false,
+    lastReceiptAt: null,
+    chains: [],
   });
   const entries = (await auditRows('register.pair')).filter((r) => r.detail.registerId === body.registerId);
   expect(entries).toHaveLength(1);

@@ -3,6 +3,8 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { sha256 } from '../src/auth/secrets.js';
 import { withBusiness, withSystem } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
+import { send, siteFor } from './support/admin_data.js';
+import { sampleReceipt } from './support/push.js';
 import { insertRegister, insertStaff } from './support/registers.js';
 import { insertBusiness, authed, createChef, createProvider, type TestUser } from './support/users.js';
 
@@ -201,8 +203,13 @@ test('Liste zeigt keine Geräte-Schlüssel, neueste zuerst', async () => {
         appVersion: '1.2.0',
         deviceModel: 'Redmi Pad Pro',
         blocked: true,
+        lastReceiptAt: null,
+        chains: [],
       },
-      { id: older, name: 'Alt', pairedAt: '2026-11-01T10:00:00.000Z', lastSeenAt: null, appVersion: null, deviceModel: null, blocked: false },
+      {
+        id: older, name: 'Alt', pairedAt: '2026-11-01T10:00:00.000Z', lastSeenAt: null, appVersion: null, deviceModel: null, blocked: false,
+        lastReceiptAt: null, chains: [],
+      },
     ],
   });
   expect(res.body).not.toMatch(/token/i);
@@ -296,4 +303,73 @@ test('ohne Anmeldung 401, unbekannter Betrieb, unbekannte Kasse oder keine uuid 
   expect((await pair(missing, { name: 'K' })).statusCode).toBe(404);
   expect((await block(b, missing)).statusCode).toBe(404);
   expect((await block(b, 'abc')).statusCode).toBe(404);
+});
+
+const chainOf = (n: number, o: Record<string, unknown> = {}) => ({
+  chain: n, mode: 'probe', cashBoxId: `KASSA${n}`, zdaId: 'AT0', certSerial: '1a2b',
+  startedAt: '2026-11-19T07:59:00.000Z', endedAt: null, ...o,
+});
+const rksv = (chain: number, position: number) => ({ chain, position, jws: `a.b.${chain}-${position}`, damaged: false, certSerial: '1a2b' });
+const sale = (number: number, createdAt: string, r: object | null) =>
+  sampleReceipt({ number, createdAt, test: r === null, rksv: r });
+
+test('lastReceiptAt und chains nach einem Paket', async () => {
+  const s = await siteFor(a, provider);
+  await send(a, s, [
+    ['rksv_certificate', { serialHex: '1a2b', certificate: 'AQID', issuers: [] }],
+    ['rksv_chain', chainOf(1, { endedAt: '2026-11-19T09:30:00.000Z' })],
+    ['rksv_chain', chainOf(2, { mode: 'live', startedAt: '2026-11-19T09:31:00.000Z' })],
+    ['receipt', sale(1, '2026-11-19T08:05:00.000Z', rksv(1, 1))],
+    ['receipt', sale(2, '2026-11-19T08:06:00.000Z', rksv(1, 2))],
+    ['receipt', sale(3, '2026-11-19T10:15:30.250Z', rksv(2, 1))],
+    ['receipt', sale(4, '2026-11-19T10:00:00.000Z', null)],
+  ]);
+  const res = await list(s.businessId);
+  expect(res.statusCode).toBe(200);
+  const [reg] = res.json().registers;
+  expect(reg).toMatchObject({ id: s.registerId, lastReceiptAt: '2026-11-19T10:15:30.250Z' });
+  expect(reg.chains).toEqual([
+    { chain: 1, mode: 'probe', cashBoxId: 'KASSA1', startedAt: '2026-11-19T07:59:00.000Z', endedAt: '2026-11-19T09:30:00.000Z', entries: 2 },
+    { chain: 2, mode: 'live', cashBoxId: 'KASSA2', startedAt: '2026-11-19T09:31:00.000Z', endedAt: null, entries: 1 },
+  ]);
+  expect(res.body).not.toMatch(/jws|a\.b\.|certificate|serial|zda/i);
+});
+
+test('Kette ohne Einträge zeigt entries 0; Kassa ohne Bon zeigt lastReceiptAt null', async () => {
+  const s = await siteFor(a, provider);
+  await send(a, s, [['rksv_chain', chainOf(1)]]);
+  const [reg] = (await list(s.businessId)).json().registers;
+  expect(reg.lastReceiptAt).toBeNull();
+  expect(reg.chains).toEqual([{ chain: 1, mode: 'probe', cashBoxId: 'KASSA1', startedAt: '2026-11-19T07:59:00.000Z', endedAt: null, entries: 0 }]);
+});
+
+test('zwei Kassen mit derselben Geräte-Kennung zeigen dieselben Ketten, jede ihren letzten Bon', async () => {
+  const s = await siteFor(a, provider);
+  await send(a, s, [
+    ['rksv_certificate', { serialHex: '1a2b', certificate: 'AQID', issuers: [] }],
+    ['rksv_chain', chainOf(1)],
+    ['receipt', sale(1, '2026-11-19T08:05:00.000Z', rksv(1, 1))],
+  ]);
+  const second = await insertRegister(a.db, s.businessId, { name: 'Kassa 2', pairedAt: new Date('2026-11-19T12:00:00Z') });
+  await withBusiness(a.db, s.businessId, (c) =>
+    c.query('update registers set device_id = (select device_id from registers where id = $1) where id = $2', [s.registerId, second]),
+  );
+  const regs = (await list(s.businessId)).json().registers as { id: string; lastReceiptAt: string | null; chains: object[] }[];
+  expect(regs).toHaveLength(2);
+  const one = regs.find((r) => r.id === s.registerId)!;
+  const two = regs.find((r) => r.id === second)!;
+  expect(two.chains).toEqual(one.chains);
+  expect(one.chains).toHaveLength(1);
+  expect((one.chains[0] as { entries: number }).entries).toBe(1);
+  expect(one.lastReceiptAt).toBe('2026-11-19T08:05:00.000Z');
+  expect(two.lastReceiptAt).toBeNull();
+});
+
+test('Ketten eines anderen Betriebs erscheinen nicht', async () => {
+  const s1 = await siteFor(a, provider, 'Eins');
+  const s2 = await siteFor(a, provider, 'Zwei');
+  await send(a, s1, [['rksv_chain', chainOf(1)]]);
+  await send(a, s2, [['rksv_chain', chainOf(7, { cashBoxId: 'FREMD' })]]);
+  expect((await list(s1.businessId)).json().registers[0].chains.map((c: { cashBoxId: string }) => c.cashBoxId)).toEqual(['KASSA1']);
+  expect((await list(s2.businessId)).json().registers[0].chains.map((c: { cashBoxId: string }) => c.cashBoxId)).toEqual(['FREMD']);
 });
