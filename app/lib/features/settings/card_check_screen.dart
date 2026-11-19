@@ -135,9 +135,11 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
 
     final rows = <Widget>[
       for (final row in CheckRow.values)
-        _CheckRowView(
+        CheckRowView(
           key: Key('card-check-row-${row.name}'),
-          row: row,
+          signKey: Key('card-check-sign-${row.name}'),
+          number: row.index + 1,
+          title: _titles[row]!,
           result: state.rows[row]!,
           trailing: row == CheckRow.signature && showPin
               ? KeyedSubtree(
@@ -175,7 +177,7 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
 
     final checks = Container(
       padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceHuge),
-      decoration: _cardDecoration(c),
+      decoration: checkCardDecoration(c),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -199,7 +201,7 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
 
     final about = Container(
       padding: const EdgeInsets.all(KassaTokens.spaceHuge),
-      decoration: _cardDecoration(c),
+      decoration: checkCardDecoration(c),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -335,28 +337,35 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
       ],
     );
   }
-
-  static BoxDecoration _cardDecoration(KassaColors c) => BoxDecoration(
-    color: c.card,
-    borderRadius: BorderRadius.circular(KassaTokens.radiusCard),
-    border: Border.all(color: c.line, width: KassaTokens.borderThin),
-    boxShadow: c.cardShadow,
-  );
 }
 
-/// Eine Zeile: Zeichen für den Zustand, Titel, `message` und `hint` wie sie
-/// kommen. Bei einem Fehler stehen beide in der Warnfläche. [trailing] steht
-/// rechts (PIN eingeben), [below] unter dem Text (Zähler ist wieder voll).
-class _CheckRowView extends StatelessWidget {
-  const _CheckRowView({
+/// Fläche der beiden Karten von "Karte prüfen" und "Verbindung prüfen".
+BoxDecoration checkCardDecoration(KassaColors c) => BoxDecoration(
+  color: c.card,
+  borderRadius: BorderRadius.circular(KassaTokens.radiusCard),
+  border: Border.all(color: c.line, width: KassaTokens.borderThin),
+  boxShadow: c.cardShadow,
+);
+
+/// Eine Zeile eines Prüflaufs ("Karte prüfen", "Verbindung prüfen"): Zeichen
+/// für den Zustand (mit [signKey], wartend die [number]), [title], `message`
+/// und `hint` wie sie kommen. Bei einem Fehler stehen beide in der
+/// Warnfläche. [trailing] steht rechts (PIN eingeben), [below] unter dem Text
+/// (Zähler ist wieder voll).
+class CheckRowView extends StatelessWidget {
+  const CheckRowView({
     super.key,
-    required this.row,
+    required this.signKey,
+    required this.number,
+    required this.title,
     required this.result,
     this.trailing,
     this.below,
   });
 
-  final CheckRow row;
+  final Key signKey;
+  final int number;
+  final String title;
   final RowResult result;
   final Widget? trailing;
   final Widget? below;
@@ -434,11 +443,7 @@ class _CheckRowView extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _RowSign(
-            key: Key('card-check-sign-${row.name}'),
-            number: row.index + 1,
-            state: state,
-          ),
+          _RowSign(key: signKey, number: number, state: state),
           const SizedBox(width: 18),
           Expanded(
             child: Column(
@@ -451,7 +456,7 @@ class _CheckRowView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _titles[row]!,
+                            title,
                             style: text.titleMedium!.copyWith(
                               fontSize: 16.5,
                               fontWeight: FontWeight.w800,

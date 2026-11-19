@@ -3,11 +3,12 @@ import 'package:material_ui/material_ui.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 
-/// Welche Rückfrage: Probe-Signatur einschalten oder beenden.
-enum ProbeQuestion { enable, disable }
+/// Welche Rückfrage: Probe-Signatur einschalten oder beenden, oder mit A-Trust
+/// ausprobieren (Online-Probe).
+enum ProbeQuestion { enable, disable, online }
 
 /// Fragt vor dem Einschalten oder Beenden der Probe-Signatur nach. true bei
-/// "Einschalten" bzw. "Beenden" (`rksv-question-confirm`), false bei
+/// "Einschalten", "Beenden" bzw. "Weiter" (`rksv-question-confirm`), false bei
 /// "Abbrechen" (`rksv-question-cancel`) oder "Zurück". Die Antwort zählt nur
 /// einmal: Ein zweites Antippen, während das Blatt schon geht, tut nichts.
 Future<bool> showProbeQuestion(
@@ -122,17 +123,32 @@ class _ProbeQuestionState extends State<_ProbeQuestion> {
 
   @override
   Widget build(BuildContext context) {
-    final enable = widget.question == ProbeQuestion.enable;
+    final (title, message, confirm) = switch (widget.question) {
+      ProbeQuestion.enable => (
+        'Probe-Signatur einschalten?',
+        'Jeder Bon bekommt dann einen QR-Code und wird ins Protokoll '
+            'geschrieben, so wie später im echten Betrieb. Die Bons bleiben '
+            'Testbons. Ältere Bons kannst du danach nicht mehr stornieren.',
+        'Einschalten',
+      ),
+      ProbeQuestion.disable => (
+        'Probe-Signatur beenden?',
+        'Die Kassa erstellt einen Schlussbeleg. Danach haben neue Bons '
+            'keinen QR-Code mehr.',
+        'Beenden',
+      ),
+      ProbeQuestion.online => (
+        'Mit A-Trust ausprobieren?',
+        'Jeder Bon wird dann über das Internet vom Testsystem von A-Trust '
+            'signiert. Die Bons bleiben Testbons. Ältere Bons kannst du '
+            'danach nicht mehr stornieren.',
+        'Weiter',
+      ),
+    };
     return SettingsSheet(
       key: const Key('rksv-question'),
-      title: enable ? 'Probe-Signatur einschalten?' : 'Probe-Signatur beenden?',
-      message: enable
-          ? 'Jeder Bon bekommt dann einen QR-Code und wird ins Protokoll '
-                'geschrieben, so wie später im echten Betrieb. Die Bons '
-                'bleiben Testbons. Ältere Bons kannst du danach nicht mehr '
-                'stornieren.'
-          : 'Die Kassa erstellt einen Schlussbeleg. Danach haben neue Bons '
-                'keinen QR-Code mehr.',
+      title: title,
+      message: message,
       children: [
         Row(
           children: [
@@ -150,7 +166,7 @@ class _ProbeQuestionState extends State<_ProbeQuestion> {
             Expanded(
               child: PrimaryButton(
                 key: const Key('rksv-question-confirm'),
-                label: enable ? 'Einschalten' : 'Beenden',
+                label: confirm,
                 height: 64,
                 onPressed: () => _close(true),
               ),

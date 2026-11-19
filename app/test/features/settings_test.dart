@@ -104,6 +104,8 @@ void main() {
     t,
   ) async {
     await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(find.text(_question), findsOneWidget);
@@ -120,6 +122,8 @@ void main() {
 
   testWidgets('abgebrochene Dateiwahl ändert nichts', (t) async {
     await pumpSettings(t);
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(find.text(_question), findsNothing);
@@ -132,6 +136,8 @@ void main() {
   ) async {
     final picker = BrokenPicker(demoOhneTeigtaschen());
     await pumpSettings(t, picker: picker);
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(
@@ -142,6 +148,8 @@ void main() {
     );
     expect(t.takeException(), isNull);
     picker.broken = false;
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(picker.calls, 2);
@@ -158,6 +166,8 @@ void main() {
     t,
   ) async {
     await pumpSettings(t, pickedFile: '\uFFFD\uFFFD\u0000JFIF');
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
@@ -181,6 +191,8 @@ void main() {
         }),
       ],
     );
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(find.text('Die Datei passt noch nicht'), findsOneWidget);
@@ -203,6 +215,8 @@ void main() {
         }),
       ],
     );
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('cancel-reimport')));
@@ -227,6 +241,8 @@ void main() {
         }),
       ],
     );
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('confirm-reimport')));
@@ -240,6 +256,8 @@ void main() {
     const one =
         '{"betrieb":"X","kategorien":[{"id":"k","name":"E"}],"artikel":[{"id":"a","name":"B","kategorie":"k","preis_cent":250,"mwst":10}]}';
     await pumpSettings(t, pickedFile: one);
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('confirm-reimport')));
@@ -343,6 +361,8 @@ void main() {
       );
       expect(t.takeException(), isNull);
       await t.ensureVisible(find.byKey(const Key('reimport')));
+      await t.ensureVisible(find.byKey(const Key('reimport')));
+      await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('reimport')));
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);

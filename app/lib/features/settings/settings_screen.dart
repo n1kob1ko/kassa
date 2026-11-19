@@ -11,6 +11,7 @@ import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
 import 'card_check_screen.dart';
 import 'card_panel.dart';
+import 'connection_check_screen.dart';
 import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
@@ -29,6 +30,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onTestingDevices,
     required this.checkingCard,
     required this.onCheckingCard,
+    required this.checkingConnection,
+    required this.onCheckingConnection,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -40,6 +43,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
   /// Die Seite "Karte prüfen" ersetzt die Karten wie "Geräte testen".
   final bool checkingCard;
   final ValueChanged<bool> onCheckingCard;
+
+  /// Die Seite "Verbindung prüfen" ersetzt die Karten wie "Karte prüfen",
+  /// geöffnet wie angegeben; `null` zeigt die Karten.
+  final ConnectionCheckOpening? checkingConnection;
+  final ValueChanged<ConnectionCheckOpening?> onCheckingConnection;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -72,6 +80,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return CardCheckScreen(
         key: const Key('card-check'),
         onBack: () => widget.onCheckingCard(false),
+      );
+    }
+    if (widget.checkingConnection case final opening?) {
+      return ConnectionCheckScreen(
+        key: const Key('connection-check-screen'),
+        opening: opening,
+        onBack: () => widget.onCheckingConnection(null),
       );
     }
     final c = KassaColors.of(context);
@@ -195,6 +210,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     SignaturePanel(
                       onOpenCardCheck: () => widget.onCheckingCard(true),
+                      onOpenConnectionCheck: widget.onCheckingConnection,
                     ),
                     gap,
                     register,

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/providers.dart';
 import '../../domain/receipt.dart';
 import '../../rksv/dep_export.dart';
+import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_service.dart';
 import '../../rksv/rksv_state.dart';
@@ -23,8 +24,26 @@ import 'settings_rows.dart';
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 const _notSaved = 'Die Datei konnte nicht gespeichert werden.';
 
+/// Der Satz zu einem StateError des Dienstes: Der Stand hat sich geändert,
+/// während die Karte noch den alten zeigte.
+const staleSettingsSentence =
+    'Das geht gerade nicht. Bitte die Einstellungen neu öffnen.';
+
+/// Wie der Bildschirm "Verbindung prüfen" geöffnet wird: [enable] nach
+/// "Weiter" im Blatt "Mit A-Trust ausprobieren?" (mit "Online-Probe
+/// starten"), [check] aus der Zeile "Verbindung prüfen", [relogin] aus
+/// "Erneut anmelden". Nur [relogin] zählt als Antippen des Chefs.
+enum ConnectionCheckOpening { enable, check, relogin }
+
+/// Druckt einen Start-, Null- oder Schlussbeleg über denselben Weg wie
+/// "Nochmal drucken". Wartet nicht und meldet nichts: Der Beleg steht, ob
+/// der Druck gelingt oder nicht.
+void printRksvReceipt(SaleService sales, Receipt receipt) {
+  unawaited(sales.reprint(receipt).then<void>((_) {}, onError: (Object _) {}));
+}
+
 /// Welche Zeile eine Rückmeldung bekommt.
-enum _Action { enable, zero, export, disable, other }
+enum _Action { enable, zero, export, disable, connection, other }
 
 /// Art der Rückmeldung: geschafft (Haken), nur zur Kenntnis (Info) oder ein
 /// Problem (Warnzeichen). Das Wort sagt es immer, das Zeichen ergänzt es.
@@ -35,15 +54,23 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 /// Die Karte "Signatur" der Einstellungen (`signature-card`): der Stand der
 /// Signatur der Bons als Pille, ein Hinweis mit "Verstanden", die offenen
 /// Aufgaben und für den Chef die Tasten der Probe-Signatur (Einschalten,
-/// Nullbeleg, Protokoll ausgeben, Beenden). Dazu die Zeile "Karte prüfen"
-/// (`open-card-check`), die [onOpenCardCheck] ruft. Während eine Aktion läuft,
-/// sind alle Tasten gesperrt. Start-, Null- und Schlussbeleg werden danach
-/// gedruckt wie "Nochmal drucken"; ohne Drucker geschieht nichts, und ein
-/// Druckfehler ändert am Beleg nichts.
+/// Nullbeleg, Protokoll ausgeben, Beenden). Für die Online-Probe dazu "Mit
+/// A-Trust ausprobieren" (aus), "Verbindung prüfen" und bei abgelehnten
+/// Zugangsdaten "Erneut anmelden"; alle drei rufen [onOpenConnectionCheck].
+/// Dazu die Zeile "Karte prüfen" (`open-card-check`), die [onOpenCardCheck]
+/// ruft. Ein Ausfall zeigt seinen Grund unter dem Zustand. Während eine
+/// Aktion läuft, sind alle Tasten gesperrt. Start-, Null- und Schlussbeleg
+/// werden danach gedruckt wie "Nochmal drucken"; ohne Drucker geschieht
+/// nichts, und ein Druckfehler ändert am Beleg nichts.
 class SignaturePanel extends ConsumerStatefulWidget {
-  const SignaturePanel({super.key, required this.onOpenCardCheck});
+  const SignaturePanel({
+    super.key,
+    required this.onOpenCardCheck,
+    required this.onOpenConnectionCheck,
+  });
 
   final VoidCallback onOpenCardCheck;
+  final ValueChanged<ConnectionCheckOpening> onOpenConnectionCheck;
 
   @override
   ConsumerState<SignaturePanel> createState() => _SignaturePanelState();
@@ -74,8 +101,13 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     } on RksvProblem catch (e) {
       message = (action: action, text: e.message, tone: _Tone.problem);
     } on StateError {
-      // Der Stand hat sich schon geändert (etwa die Probe läuft schon); die
-      // Karte folgt dem Strom des Stands.
+      // Der Stand hat sich schon geändert (etwa die Probe läuft schon). Die
+      // Zeile der Aktion ist dann vielleicht schon weg, darum unten.
+      message = (
+        action: _Action.other,
+        text: staleSettingsSentence,
+        tone: _Tone.problem,
+      );
     } catch (_) {
       message = (action: action, text: _unexpected, tone: _Tone.problem);
     }
@@ -100,16 +132,8 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     }
   }
 
-  /// Druckt [receipt] über denselben Weg wie "Nochmal drucken". Wartet nicht
-  /// und meldet nichts: Der Beleg steht, ob der Druck gelingt oder nicht.
-  void _print(Receipt receipt) {
-    unawaited(
-      ref
-          .read(saleServiceProvider)
-          .reprint(receipt)
-          .then<void>((_) {}, onError: (Object _) {}),
-    );
-  }
+  void _print(Receipt receipt) =>
+      printRksvReceipt(ref.read(saleServiceProvider), receipt);
 
   Future<void> _enable() async {
     if (_busy) return;
@@ -123,6 +147,17 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
       _print(await ref.read(rksvServiceProvider).enableProbe(staff: staff));
       return null;
     });
+  }
+
+  /// "Mit A-Trust ausprobieren": einmal nachfragen, dann "Verbindung prüfen"
+  /// mit "Online-Probe starten".
+  Future<void> _tryOnline() async {
+    if (_busy) return;
+    final yes = await _ask(
+      () => showProbeQuestion(context, ProbeQuestion.online),
+    );
+    if (!yes || !mounted) return;
+    widget.onOpenConnectionCheck(ConnectionCheckOpening.enable);
   }
 
   Future<void> _disable() async {
@@ -193,19 +228,24 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final isChef = ref.watch(sessionProvider)?.isChef ?? false;
     final ended = ref.watch(rksvHasEndedChainProvider).value ?? false;
     final probe = state.mode == RksvMode.probe;
+    final online = probe && state.unit == RksvUnit.atrustTest;
     final notice = state.notice;
 
     final String help;
     final Widget pill;
     switch (state.mode) {
       case RksvMode.probe:
+        final what = online
+            ? 'Signatur vom Testsystem von A-Trust, nicht für den echten '
+                  'Betrieb.'
+            : 'Probe-Signatur, nicht für den echten Betrieb.';
         help = state.cashBoxId == null
-            ? 'Probe-Signatur, nicht für den echten Betrieb.'
-            : 'Probe-Signatur, nicht für den echten Betrieb. '
-                  'Kassen-ID ${state.cashBoxId}.';
+            ? what
+            : '$what Kassen-ID ${state.cashBoxId}.';
+        final word = online ? 'Online-Probe' : 'Probe';
         pill = state.outage
-            ? const WarnPill('Probe, Signatur ausgefallen')
-            : const _AccentPill('Probe');
+            ? WarnPill('$word, Signatur ausgefallen')
+            : _AccentPill(word);
       case RksvMode.live:
         help = state.cashBoxId == null
             ? 'Für die Registrierkassen-Pflicht.'
@@ -217,16 +257,29 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         pill = const NeutralPill('Nicht eingerichtet');
     }
 
-    return SettingsCard(
+    Widget card(bool rejected) => SettingsCard(
       key: const Key('signature-card'),
       title: 'Signatur',
       rows: [
-        SettingsRow(title: 'Signatur der Bons', help: help, control: pill),
+        SettingsRow(
+          title: 'Signatur der Bons',
+          help: help,
+          note: state.outage ? state.outageReason : null,
+          control: pill,
+        ),
         if (notice != null)
           _NoticeRow(
             text: notice,
             onOk: isChef && !_busy ? _clearNotice : null,
             showButton: isChef,
+          ),
+        if (rejected)
+          _RejectedRow(
+            onRelogin: _busy
+                ? null
+                : () => widget.onOpenConnectionCheck(
+                    ConnectionCheckOpening.relogin,
+                  ),
           ),
         if (state.tasks.isNotEmpty)
           RksvTaskBlock(
@@ -245,6 +298,27 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
                 'später im echten Betrieb. Sie bleiben Testbons.',
             label: 'Einschalten',
             onPressed: _enable,
+          ),
+        if (isChef && state.mode == RksvMode.off)
+          _action(
+            _Action.connection,
+            key: 'rksv-online-probe-on',
+            title: 'Mit A-Trust ausprobieren',
+            help:
+                'Die Bons werden über das Testsystem von A-Trust signiert. '
+                'Braucht Internet. Sie bleiben Testbons.',
+            label: 'Ausprobieren',
+            onPressed: _tryOnline,
+          ),
+        if (isChef && online)
+          _action(
+            _Action.connection,
+            key: 'rksv-connection-check',
+            title: 'Verbindung prüfen',
+            help: 'Internet und A-Trust ausprobieren.',
+            label: 'Prüfen',
+            onPressed: () =>
+                widget.onOpenConnectionCheck(ConnectionCheckOpening.check),
           ),
         if (isChef && probe)
           _action(
@@ -277,7 +351,8 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             label: 'Beenden',
             onPressed: _disable,
           ),
-        // Ein Problem beim Erledigen einer Aufgabe oder beim Hinweis.
+        // Ein Problem beim Erledigen einer Aufgabe oder beim Hinweis, oder
+        // ein Stand, der sich inzwischen geändert hat.
         if (_message case final m? when m.action == _Action.other)
           Padding(
             padding: const EdgeInsets.only(top: 14),
@@ -294,6 +369,14 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
           ),
         ),
       ],
+    );
+
+    // Das Kennzeichen "abgelehnt" liegt im Sitzungshalter (P1), nicht im
+    // Stand. Nur der Chef kann es aufheben, und nur in der Online-Probe.
+    if (!isChef || !online) return card(false);
+    return ValueListenableBuilder<bool>(
+      valueListenable: ref.watch(atrustTestKeeperProvider).rejected,
+      builder: (context, rejected, _) => card(rejected),
     );
   }
 
@@ -428,7 +511,55 @@ class _NoticeRow extends StatelessWidget {
   }
 }
 
-/// Pille im Akzent ("Probe"): `accentSoft` mit `accentInk`.
+/// A-Trust hat die Zugangsdaten abgelehnt (`rksv-rejected`): der Satz in der
+/// Warnfläche und "Erneut anmelden" (`rksv-relogin`), das "Verbindung
+/// prüfen" als Antippen des Chefs öffnet.
+class _RejectedRow extends StatelessWidget {
+  const _RejectedRow({required this.onRelogin});
+
+  final VoidCallback? onRelogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    return Padding(
+      key: const Key('rksv-rejected'),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: c.warnBg,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'A-Trust hat die Zugangsdaten abgelehnt.',
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                  color: c.warnInk,
+                ),
+              ),
+            ),
+            const SizedBox(width: KassaTokens.spaceXl),
+            PrimaryButton(
+              key: const Key('rksv-relogin'),
+              label: 'Erneut anmelden',
+              filled: false,
+              height: 56,
+              onPressed: onRelogin,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pille im Akzent ("Probe", "Online-Probe"): `accentSoft` mit `accentInk`.
 class _AccentPill extends StatelessWidget {
   const _AccentPill(this.label);
 
