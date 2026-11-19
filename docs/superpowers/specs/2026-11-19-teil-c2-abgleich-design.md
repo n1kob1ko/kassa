@@ -287,3 +287,45 @@ Nach dem Gegenlesen durch einen zweiten Prüfer am 19.11.2026 dazugekommen:
 - Beim Koppeln verfallen wartende Artikel-Änderungen. An einem Tablet ohne Kopplung entstehen keine.
 - Protokoll der Signatur und Tage hängen am Gerät (eine Kennung pro Installation der App), nicht am Eintrag "Kassa". So bleibt eine Kette nach erneutem Koppeln ein Stück.
 - Zur Übergabe wird der Server bei Railway neu ausgerollt und Version 1.5.0 über den geheimen Link bereitgestellt.
+
+## 9. Abweichungen beim Bau der Stufe 2 (2026-11-19)
+
+Beim Bau von Stufe 2 sind folgende Entscheidungen dazugekommen, wo dieser Entwurf schweigt oder etwas anderes sagt. Zu jeder steht, was vorher galt, was gebaut wurde und warum.
+
+**Tablet**
+
+- **Version 1.6.0 (Build 8), Datenbank Version 6** statt 1.5.0 (Build 7) und Version 5 (5.11). Version 1.5.0 mit Datenbank Version 5 kam inzwischen vom Thread der Signatur und liegt schon auf Nikos Tablet. Darum bleibt deren Version 5, wie sie ist, und der Schritt des Abgleichs (Liste "noch zu senden", Berichte, neue Spalten, Auslöser, Nachtragen des Vorhandenen) ist Version 6. Geprüft wird das Update von 1.4.0 (Version 4) und von 1.5.0 (Version 5).
+- **Die Art der Signatur-Einheit einer Kette** (`rksv_chains.unit`, neu mit 1.5.0) geht in Stufe 2 nicht zum Server. Die Nachricht für eine Kette bleibt, wie sie in 5.2 festgelegt war. Für die Übernahme auf ein Ersatz-Tablet ist das ein offener Punkt.
+- **Meldung im Fehlerbericht** (5.7): Die Meldung geht nur bei `TypeError` und `MissingPluginException` mit (dort steht nur Text der Laufzeit), bei `TimeoutException` nur die Dauer, bei `PlatformException` nur der Code. Bei allen anderen Arten, auch `RangeError` oder `NoSuchMethodError`, ist sie leer. Die Liste im Plan war zu weit: In diesen Meldungen kann Text aus Daten stehen, etwa ein Name. Art und Aufrufliste bleiben.
+- **Zeitpunkte am Tablet** stehen auf die ganze Sekunde genau in der Datenbank, auch der Zeitpunkt einer Artikel-Änderung. Ändert jemand am Tablet ein Feld in derselben Sekunde, in der es im Browser geändert wurde, gilt die Änderung vom Tablet als älter und der Browser gewinnt. An der Theke kommt das praktisch nicht vor. Die Prüfung im Zusammenspiel wartet darum zwischen beiden Änderungen bis zur nächsten Sekunde.
+
+**Server**
+
+- **Undurchsichtige Marke `before` bei den Berichten:** Die nächste Seite von `/api/admin/reports` beginnt nach einer Marke aus Zeit und Kennung ("<Zeit als Text>_<Kennung>"), nicht nach einer reinen ISO-Zeit. Berichte aus einem Schritt teilen denselben Zeitpunkt, und eine reine Zeit würde dann Berichte überspringen. Die Verwaltung reicht die Marke nur weiter.
+- **`pg_dump` bekommt die Zugangsdaten über die Variablen `PG…`**, nie über die Befehlszeile. Die Befehlszeile ist in der Liste der Prozesse und in Fehlermeldungen sichtbar.
+- **Zeilen der Sicherungen bleiben** (5.8 sagt nur "behält die letzten 14 gelungenen"). Beim Aufräumen löscht der Server nur die Datei in der Ablage und vermerkt das an der Zeile. Die Zeilen bleiben als Verlauf, und die Sperre gegen Löschen in der Datenbank bleibt bestehen. Das sind etwa 365 kleine Zeilen im Jahr.
+- **Zeitgrenzen für Anfragen** (5.12): Kopfzeilen binnen 30 Sekunden, eine Verbindung ohne Daten höchstens 60 Sekunden, eine ganze Anfrage höchstens 5 Minuten. Der Plan sah 30 Sekunden für den ganzen Inhalt vor. Ein Foto mit 10 MB oder eine Installationsdatei braucht auf einer langsamen Leitung länger. Eine sehr langsame Verbindung belegt so bis zu 5 Minuten einen Platz. Auch das Hochladen einer Installationsdatei muss in diesen 5 Minuten fertig sein.
+- **Obergrenze für falsche Kopplungscodes über alle Adressen** (5.12): 200 falsche Codes in 15 Minuten. Danach nimmt der Server für den Rest dieser Zeit auch einen richtigen Code nicht an, bei allen Betrieben.
+- **Stornos in der Liste der Bons:** Der Filter "Nur Stornos" liefert beide Hälften eines Paars, den Storno-Bon und den stornierten Verkauf. Die Seite soll das Paar zeigen.
+- **Ein Index für die Suche nach Stornos** (Betrieb und stornierter Bon) steht in der ersten Migration von Stufe 2 selbst. Sie war noch nirgends ausgerollt, eine eigene Migration war nicht nötig.
+- **Zahlen eines Tages** (Zahl der Bons, Umsatz im Tag-Detail) zählen alle Bons des Tages, auch Testbons. Der Tag ist die Sicht der Geldlade, wie am Tablet beim Abschluss, nicht die Auswertung.
+- **Kartenzahlung im Bon-Detail** nennt auch die Kennung der Zahlung beim Anbieter. Damit findet der Chef die Zahlung bei SumUp.
+- **`hasReceipts` in den Umsätzen:** Der Server sagt zusätzlich, ob es überhaupt schon einen Bon gibt. Der leere Zustand "Noch kein Bon." erscheint nur ohne jeden Bon. Sonst zeigt die Seite jeden Morgen vor dem ersten Bon die normale Seite mit 0,00 €, statt so zu tun, als gäbe es noch nie einen Bon.
+- **`business.logo` im Betrieb:** `GET /api/admin/businesses/:b` nennt auch das Logo (Kennung und Farbe, oder leer), in derselben Form wie beim Holen am Tablet. Ohne das Feld könnte der Browser ein vorhandenes Logo nach dem Neuladen nicht zeigen.
+
+**Verwaltung im Browser**
+
+- **Vergleich bei "Heute":** Die Umsätze vergleichen mit demselben Wochentag der Vorwoche bis zur selben Uhrzeit, wie am Tablet. Darum heißt es "… als letzten <Wochentag>", nicht "als gestern".
+- **30 Balken am Handy:** Die ganze Grafik ist das Ziel für den Finger (es gilt der Balken unter dem Finger), nicht jeder Balken mit 44 Pixeln. Sonst passen 30 Balken nicht auf 360 Pixel. Mit der Tastatur erreicht man weiter jeden Balken.
+- **`wideActions`:** Unter 640 Pixel Breite stehen die Tasten im Kopf einer Seite über die volle Breite, aber nur, wenn die Seite das einschaltet. Das tun nur die Umsätze, die anderen Seiten bleiben, wie sie waren.
+- **Navigation am Handy mit "Mehr":** Die Leiste unten fasst höchstens fünf Ziele, ein Betrieb hat aber sieben bis acht Bereiche. Am Handy stehen die ersten vier und "Mehr". "Mehr" öffnet ein Blatt mit dem Rest und ist markiert, wenn die offene Seite dort liegt. Reihenfolge nach Häufigkeit: Umsätze, Bons, Tagesabschlüsse, Speisekarte, dann Kassen, Mitarbeiter, Betrieb. "Alle Betriebe" steht für den Anbieter am Rechner zuerst, am Handy unter "Mehr". Nach dem Neuladen ist das Blatt zu. `DESIGN.md` beschreibt das.
+- **Leerer Zustand der Seite Bons:** "Sobald an der Kassa boniert wird, erscheinen die Bons hier." statt des Satzes von den Umsätzen ("… erscheinen die Umsätze hier.").
+- **Fehlerberichte ohne Tages-Überschriften:** Die Berichte kommen in der Reihenfolge, in der sie beim Server eintreffen. Ein spät gesendeter Bericht hätte eine Tages-Überschrift wiederholt. Darum nennt jede Zeile Tag und Uhrzeit selbst ("Heute, 19:39", "Mi., 18.11., 19:39").
+- **Die Karte "Sicherung" warnt bei einem letzten Fehler** immer (Warnfarbe, Zeichen und Satz), auch wenn es noch gar keine Sicherung gibt. Ein Fehler ohne Warnung wird übersehen.
+
+**Bau und Tests**
+
+- Die gemeinsamen Beispiele für Artikel-Änderung und Bericht kamen mit den Aufgaben dazu, die diese Nachrichten bauen, nicht mit der ersten Aufgabe zum Senden.
+- Das gemeinsame Beispiel der Umsätze rechnet in der Zeitzone UTC. Der Test der App, der es liest, braucht dafür ein Gerät in UTC und überspringt sich sonst mit einer Meldung. GitHub und die Bau-Umgebung laufen in UTC.
+- Der Helfer zum Einspielen von Bons für die Prüfungen im Browser liegt in `web/e2e/support/`.
+- Zwei Prüfungen der Signatur fragten nach dem Zusammenführen noch fest nach Datenbank Version 5. Sie prüfen jetzt, dass ein Update auf der aktuellen Version endet; dass Version 4 zu genau 5 wird, bleibt eigens geprüft.

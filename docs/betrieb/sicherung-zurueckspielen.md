@@ -10,6 +10,7 @@ In dieser Anleitung stehen nur Platzhalter in spitzen Klammern, zum Beispiel `<D
 - Eine Datei pro Tag: `backups/kassa-<Jahr>-<Monat>-<Tag>.dump`, zum Beispiel `backups/kassa-2026-11-19.dump`. Der Tag ist der Wiener Tag.
 - Die Dateien der letzten 14 gelungenen Sicherungen bleiben, ältere Dateien löscht der Server. Die Zeilen in der Tabelle `backups` bleiben als Verlauf.
 - Die Sicherung enthält die Datenbank (Betriebe, Bons, Tage, Berichte, Dateien-Liste). Die Fotos und Logos selbst sind nicht dabei: Sie liegen in der Ablage unter `businesses/` und sind nicht Teil der Sicherung. Die Installationsdateien (`releases/`) auch nicht.
+- Die Sicherung enthält die Prüfwerte (Hashes) der Passwörter und PINs. Halte sie privat: Sie kommt nie ins Repository, und Du schickst sie nicht herum (keine E-Mail, kein Chat, kein geteilter Ordner).
 
 Ob die letzte Sicherung gelungen ist, siehst Du in der Verwaltung beim Anbieter, oder über die Adresse `/api/admin/backups/latest` (Tag, Zeit, Größe, und der letzte Fehler, wenn danach keine gelungen ist).
 
