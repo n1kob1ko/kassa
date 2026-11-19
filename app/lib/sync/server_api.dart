@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'push_wire.dart';
 import 'wire.dart';
 
 enum ServerFailure {
@@ -18,6 +19,9 @@ enum ServerFailure {
   otherBusiness,
   unauthorized,
   blocked,
+
+  /// Der Server nimmt die ganze Anfrage nicht an (400, 413, 422).
+  rejected,
   server,
 }
 
@@ -83,9 +87,37 @@ class ServerApi {
     return _parse(body, PullResponse.fromJson);
   }
 
+  /// Schickt [entries] an den Server. Die Antwort nennt je Eintrag, was
+  /// daraus wurde. Nimmt der Server die ganze Anfrage nicht an (400, 413,
+  /// 422), kommt [ServerFailure.rejected].
+  Future<List<PushResult>> push({
+    required String token,
+    required String deviceId,
+    required List<Map<String, Object?>> entries,
+  }) async {
+    final body = await _send(
+      (headers) => _client.post(
+        Uri.parse('$_base/api/device/sync/push'),
+        headers: {
+          ...headers,
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'deviceId': deviceId, 'entries': entries}),
+      ),
+      rejectedStatuses: const {400, 413, 422},
+    );
+    return _parse(body, (json) {
+      final results = json['results'];
+      if (results is! List) throw const FormatException('Feld fehlt: results');
+      return [for (final r in results) PushResult.fromJson(r)];
+    });
+  }
+
   Future<Object?> _send(
-    Future<http.Response> Function(Map<String, String> headers) request,
-  ) async {
+    Future<http.Response> Function(Map<String, String> headers) request, {
+    Set<int> rejectedStatuses = const {},
+  }) async {
     final http.Response response;
     try {
       response = await request({'X-Kassa-App-Version': _appVersion})
@@ -105,12 +137,17 @@ class ServerApi {
       throw const ServerException(ServerFailure.server);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ServerException(_failureOf(body));
+      throw ServerException(
+        _failureOf(
+          body,
+          rejected: rejectedStatuses.contains(response.statusCode),
+        ),
+      );
     }
     return body;
   }
 
-  static ServerFailure _failureOf(Object? body) {
+  static ServerFailure _failureOf(Object? body, {bool rejected = false}) {
     if (body is Map<String, dynamic>) {
       final error = body['error'];
       if (error is Map<String, dynamic>) {
@@ -118,7 +155,7 @@ class ServerApi {
         if (failure != null) return failure;
       }
     }
-    return ServerFailure.server;
+    return rejected ? ServerFailure.rejected : ServerFailure.server;
   }
 
   static T _parse<T>(Object? body, T Function(Map<String, dynamic>) read) {

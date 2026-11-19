@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:kassa/sync/push_wire.dart';
 import 'package:kassa/sync/server_api.dart';
 
 Map<String, dynamic> fixture(String name) =>
@@ -198,5 +199,119 @@ void main() {
     expect(seen.headers['Authorization'], 'Bearer tok-1');
     expect(seen.headers['X-Kassa-App-Version'], '1.2.0');
     expect(r.next, 11);
+  });
+
+  group('push', () {
+    final request = fixture('push_request');
+    final entries = (request['entries'] as List).cast<Map<String, Object?>>();
+
+    test(
+      'push sendet Schlüssel und Körper, liest push_response.json',
+      () async {
+        late http.Request seen;
+        final api = apiWith((req) async {
+          seen = req;
+          return json(200, fixture('push_response'));
+        });
+        final results = await api.push(
+          token: 'tok-1',
+          deviceId: request['deviceId'] as String,
+          entries: entries,
+        );
+        expect(seen.method, 'POST');
+        expect(seen.url.toString(), '$base/api/device/sync/push');
+        expect(seen.headers['Authorization'], 'Bearer tok-1');
+        expect(seen.headers['X-Kassa-App-Version'], '1.2.0');
+        expect(seen.headers['content-type'], contains('application/json'));
+        expect(jsonDecode(seen.body), request);
+        expect(results.map((r) => (r.seq, r.status, r.reason)), [
+          for (var i = 1; i <= 7; i++) (i, PushStatus.accepted, null),
+        ]);
+      },
+    );
+
+    test('alle Zustände und der Grund werden gelesen', () async {
+      final api = apiWith(
+        (_) async => json(200, {
+          'results': [
+            {'seq': 1, 'status': 'accepted'},
+            {'seq': 5, 'status': 'duplicate'},
+            {'seq': 6, 'status': 'rejected', 'reason': 'unknown_item'},
+            {'seq': 7, 'status': 'error'},
+          ],
+        }),
+      );
+      final results = await api.push(token: 't', deviceId: 'd', entries: []);
+      expect(results.map((r) => (r.seq, r.status, r.reason)), [
+        (1, PushStatus.accepted, null),
+        (5, PushStatus.duplicate, null),
+        (6, PushStatus.rejected, 'unknown_item'),
+        (7, PushStatus.error, null),
+      ]);
+    });
+
+    test('422, 413 und 400 der ganzen Anfrage ergeben rejected', () async {
+      for (final (status, code) in [
+        (422, 'push_invalid'),
+        (413, 'payload_too_large'),
+        (400, 'bad_request'),
+      ]) {
+        final api = apiWith(
+          (_) async => json(status, {
+            'error': {'code': code, 'message': 'x'},
+          }),
+        );
+        expect(
+          await failureOf(api.push(token: 't', deviceId: 'd', entries: [])),
+          ServerFailure.rejected,
+          reason: '$status',
+        );
+      }
+    });
+
+    test('401 ergibt unauthorized, 403 blocked, 500 server', () async {
+      final errors = fixture('errors');
+      for (final (key, failure) in [
+        ('unauthorized', ServerFailure.unauthorized),
+        ('register_blocked', ServerFailure.blocked),
+      ]) {
+        final e = errors[key] as Map<String, dynamic>;
+        final api = apiWith((_) async => json(e['status'] as int, e['body']!));
+        expect(
+          await failureOf(api.push(token: 't', deviceId: 'd', entries: [])),
+          failure,
+          reason: key,
+        );
+      }
+      final broken = apiWith((_) async => json(500, {'x': 1}));
+      expect(
+        await failureOf(broken.push(token: 't', deviceId: 'd', entries: [])),
+        ServerFailure.server,
+      );
+    });
+
+    test('Zeitgrenze ergibt timeout, fehlende Verbindung offline', () async {
+      final slow = apiWith(
+        (_) => Completer<http.Response>().future,
+        timeout: const Duration(milliseconds: 20),
+      );
+      expect(
+        await failureOf(slow.push(token: 't', deviceId: 'd', entries: [])),
+        ServerFailure.timeout,
+      );
+      final offline = apiWith((_) async => throw const SocketException('weg'));
+      expect(
+        await failureOf(offline.push(token: 't', deviceId: 'd', entries: [])),
+        ServerFailure.offline,
+      );
+    });
+
+    test('Antwort 200 ohne results ergibt server', () async {
+      final api = apiWith((_) async => json(200, {'foo': 1}));
+      expect(
+        await failureOf(api.push(token: 't', deviceId: 'd', entries: [])),
+        ServerFailure.server,
+      );
+    });
   });
 }

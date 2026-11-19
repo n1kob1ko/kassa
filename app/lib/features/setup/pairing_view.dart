@@ -30,6 +30,7 @@ String pairingFailureText(ServerFailure f) => switch (f) {
     'Dieses Tablet gehört zu einem anderen Betrieb.',
   ServerFailure.unauthorized ||
   ServerFailure.blocked ||
+  ServerFailure.rejected ||
   ServerFailure.server => 'Das hat nicht geklappt. Bitte nochmal versuchen.',
 };
 

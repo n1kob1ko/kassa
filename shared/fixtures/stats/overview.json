@@ -1,0 +1,1225 @@
+{
+  "now": "2026-11-19T15:00:00.000Z",
+  "timeZone": "UTC",
+  "categories": [
+    {
+      "id": "bowls",
+      "name": "Bowls",
+      "position": 0
+    },
+    {
+      "id": "snacks",
+      "name": "Snacks",
+      "position": 1
+    },
+    {
+      "id": "suesses",
+      "name": "Süßes",
+      "position": 2
+    },
+    {
+      "id": "getraenke",
+      "name": "Getränke",
+      "position": 3
+    }
+  ],
+  "items": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "priceCents": 990,
+      "categoryId": "bowls",
+      "taxPercent": 10,
+      "depositCents": 0
+    },
+    {
+      "id": "teigtaschen",
+      "name": "Teigtaschen",
+      "priceCents": 650,
+      "categoryId": "snacks",
+      "taxPercent": 10,
+      "depositCents": 0
+    },
+    {
+      "id": "cola",
+      "name": "Cola 0,33 l",
+      "priceCents": 290,
+      "categoryId": "getraenke",
+      "taxPercent": 20,
+      "depositCents": 25
+    }
+  ],
+  "receipts": [
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000001",
+      "number": 1,
+      "createdAt": "2026-10-11T10:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000001",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 1770,
+      "depositCents": 50,
+      "totalCents": 1820,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "huhn-bowl",
+          "name": "Huhn Bowl",
+          "info": null,
+          "unitPriceCents": 1190,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 1190,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": [
+            {
+              "groupName": "Größe",
+              "optionName": "XXL",
+              "surchargeCents": 200
+            },
+            {
+              "groupName": "Basis",
+              "optionName": "Nudeln",
+              "surchargeCents": 0
+            }
+          ]
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 1820,
+        "givenCents": 5000,
+        "changeCents": 3180,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000002",
+      "number": 2,
+      "createdAt": "2026-10-25T12:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000002",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 940,
+      "depositCents": 25,
+      "totalCents": 965,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "teigtaschen",
+          "name": "Teigtaschen",
+          "info": "5 Stück",
+          "unitPriceCents": 650,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 650,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 1,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 290,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "card",
+        "amountCents": 965,
+        "givenCents": 0,
+        "changeCents": 0,
+        "provider": "sumup",
+        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000002",
+        "cardScheme": "VISA",
+        "cardLast4": "4242"
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000003",
+      "number": 3,
+      "createdAt": "2026-10-30T18:30:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000003",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 850,
+      "depositCents": 0,
+      "totalCents": 850,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "tagesgericht",
+          "name": "Tagesgericht",
+          "info": null,
+          "unitPriceCents": 850,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 850,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 850,
+        "givenCents": 5000,
+        "changeCents": 4150,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000004",
+      "number": 4,
+      "createdAt": "2026-11-08T11:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000004",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 580,
+      "depositCents": 50,
+      "totalCents": 630,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 630,
+        "givenCents": 5000,
+        "changeCents": 4370,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000005",
+      "number": 5,
+      "createdAt": "2026-11-12T12:30:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000005",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 940,
+      "depositCents": 25,
+      "totalCents": 965,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "teigtaschen",
+          "name": "Teigtaschen",
+          "info": "5 Stück",
+          "unitPriceCents": 650,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 650,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 1,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 290,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "card",
+        "amountCents": 965,
+        "givenCents": 0,
+        "changeCents": 0,
+        "provider": "sumup",
+        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000005",
+        "cardScheme": "VISA",
+        "cardLast4": "4242"
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000006",
+      "number": 6,
+      "createdAt": "2026-11-13T09:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000006",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 990,
+      "depositCents": 0,
+      "totalCents": 990,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "huhn-bowl",
+          "name": "Huhn Bowl",
+          "info": null,
+          "unitPriceCents": 990,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 990,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": [
+            {
+              "groupName": "Größe",
+              "optionName": "Normal",
+              "surchargeCents": 0
+            },
+            {
+              "groupName": "Basis",
+              "optionName": "Reis",
+              "surchargeCents": 0
+            }
+          ]
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 990,
+        "givenCents": 5000,
+        "changeCents": 4010,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000007",
+      "number": 7,
+      "createdAt": "2026-11-13T09:30:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000006",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 580,
+      "depositCents": 50,
+      "totalCents": 630,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 630,
+        "givenCents": 5000,
+        "changeCents": 4370,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000008",
+      "number": 8,
+      "createdAt": "2026-11-15T10:00:00.000Z",
+      "staffId": "chefin",
+      "staffName": "Chefin",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000007",
+      "kind": "voided",
+      "voidsReceiptId": "eeeeeeee-0000-4000-8000-000000000007",
+      "goodsCents": -580,
+      "depositCents": -50,
+      "totalCents": -630,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": -2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": -580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": -630,
+        "givenCents": 0,
+        "changeCents": 0,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000009",
+      "number": 9,
+      "createdAt": "2026-11-17T13:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000008",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 1770,
+      "depositCents": 50,
+      "totalCents": 1820,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "huhn-bowl",
+          "name": "Huhn Bowl",
+          "info": null,
+          "unitPriceCents": 1190,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 1190,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": [
+            {
+              "groupName": "Größe",
+              "optionName": "XXL",
+              "surchargeCents": 200
+            },
+            {
+              "groupName": "Basis",
+              "optionName": "Nudeln",
+              "surchargeCents": 0
+            }
+          ]
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 1820,
+        "givenCents": 5000,
+        "changeCents": 3180,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000010",
+      "number": 10,
+      "createdAt": "2026-11-18T23:59:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000009",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 990,
+      "depositCents": 0,
+      "totalCents": 990,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "huhn-bowl",
+          "name": "Huhn Bowl",
+          "info": null,
+          "unitPriceCents": 990,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 990,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": [
+            {
+              "groupName": "Größe",
+              "optionName": "Normal",
+              "surchargeCents": 0
+            },
+            {
+              "groupName": "Basis",
+              "optionName": "Reis",
+              "surchargeCents": 0
+            }
+          ]
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 990,
+        "givenCents": 5000,
+        "changeCents": 4010,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000011",
+      "number": 11,
+      "createdAt": "2026-11-19T00:01:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000010",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 940,
+      "depositCents": 25,
+      "totalCents": 965,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "teigtaschen",
+          "name": "Teigtaschen",
+          "info": "5 Stück",
+          "unitPriceCents": 650,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 650,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 1,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 290,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "card",
+        "amountCents": 965,
+        "givenCents": 0,
+        "changeCents": 0,
+        "provider": "sumup",
+        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000011",
+        "cardScheme": "VISA",
+        "cardLast4": "4242"
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000013",
+      "number": 12,
+      "createdAt": "2026-11-19T08:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": null,
+      "kind": "zero",
+      "voidsReceiptId": null,
+      "goodsCents": 0,
+      "depositCents": 0,
+      "totalCents": 0,
+      "test": true,
+      "lines": [],
+      "payment": null,
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000012",
+      "number": 13,
+      "createdAt": "2026-11-19T09:15:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000010",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 580,
+      "depositCents": 50,
+      "totalCents": 630,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 630,
+        "givenCents": 5000,
+        "changeCents": 4370,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    },
+    {
+      "v": 1,
+      "id": "eeeeeeee-0000-4000-8000-000000000014",
+      "number": 14,
+      "createdAt": "2026-11-19T11:00:00.000Z",
+      "staffId": "anna",
+      "staffName": "Anna",
+      "businessDayId": "dddddddd-0000-4000-8000-000000000010",
+      "kind": "sale",
+      "voidsReceiptId": null,
+      "goodsCents": 1770,
+      "depositCents": 50,
+      "totalCents": 1820,
+      "test": true,
+      "lines": [
+        {
+          "position": 0,
+          "itemId": "cola",
+          "name": "Cola 0,33 l",
+          "info": null,
+          "unitPriceCents": 290,
+          "quantity": 2,
+          "unitDepositCents": 25,
+          "gross": {
+            "20": 580,
+            "10": 0,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": []
+        },
+        {
+          "position": 1,
+          "itemId": "huhn-bowl",
+          "name": "Huhn Bowl",
+          "info": null,
+          "unitPriceCents": 1190,
+          "quantity": 1,
+          "unitDepositCents": 0,
+          "gross": {
+            "20": 0,
+            "10": 1190,
+            "13": 0,
+            "0": 0,
+            "19": 0
+          },
+          "options": [
+            {
+              "groupName": "Größe",
+              "optionName": "XXL",
+              "surchargeCents": 200
+            },
+            {
+              "groupName": "Basis",
+              "optionName": "Nudeln",
+              "surchargeCents": 0
+            }
+          ]
+        }
+      ],
+      "payment": {
+        "kind": "cash",
+        "amountCents": 1820,
+        "givenCents": 5000,
+        "changeCents": 3180,
+        "provider": null,
+        "providerTxCode": null,
+        "cardScheme": null,
+        "cardLast4": null
+      },
+      "rksv": null
+    }
+  ],
+  "expected": {
+    "today": {
+      "revenueCents": 3415,
+      "previousRevenueCents": 965,
+      "receiptCount": 3,
+      "voidCount": 0,
+      "buckets": [
+        {
+          "label": "0",
+          "start": "2026-11-19T00:00:00.000Z",
+          "cents": 965
+        },
+        {
+          "label": "1",
+          "start": "2026-11-19T01:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "2",
+          "start": "2026-11-19T02:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "3",
+          "start": "2026-11-19T03:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "4",
+          "start": "2026-11-19T04:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "5",
+          "start": "2026-11-19T05:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "6",
+          "start": "2026-11-19T06:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "7",
+          "start": "2026-11-19T07:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "8",
+          "start": "2026-11-19T08:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "9",
+          "start": "2026-11-19T09:00:00.000Z",
+          "cents": 630
+        },
+        {
+          "label": "10",
+          "start": "2026-11-19T10:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "11",
+          "start": "2026-11-19T11:00:00.000Z",
+          "cents": 1820
+        },
+        {
+          "label": "12",
+          "start": "2026-11-19T12:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "13",
+          "start": "2026-11-19T13:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "14",
+          "start": "2026-11-19T14:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "15",
+          "start": "2026-11-19T15:00:00.000Z",
+          "cents": 0
+        }
+      ],
+      "cashCents": 2450,
+      "cardCents": 965,
+      "topItems": [
+        {
+          "name": "Cola 0,33 l",
+          "quantity": 5,
+          "cents": 1450
+        },
+        {
+          "name": "Huhn Bowl",
+          "quantity": 1,
+          "cents": 1190
+        },
+        {
+          "name": "Teigtaschen",
+          "quantity": 1,
+          "cents": 650
+        }
+      ],
+      "byCategory": [
+        {
+          "name": "Getränke",
+          "cents": 1450
+        },
+        {
+          "name": "Bowls",
+          "cents": 1190
+        },
+        {
+          "name": "Snacks",
+          "cents": 650
+        },
+        {
+          "name": "Pfand",
+          "cents": 125
+        }
+      ]
+    },
+    "days7": {
+      "revenueCents": 7215,
+      "previousRevenueCents": 1595,
+      "receiptCount": 6,
+      "voidCount": 1,
+      "buckets": [
+        {
+          "label": "13.11.",
+          "start": "2026-11-13T00:00:00.000Z",
+          "cents": 1620
+        },
+        {
+          "label": "14.11.",
+          "start": "2026-11-14T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "15.11.",
+          "start": "2026-11-15T00:00:00.000Z",
+          "cents": -630
+        },
+        {
+          "label": "16.11.",
+          "start": "2026-11-16T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "17.11.",
+          "start": "2026-11-17T00:00:00.000Z",
+          "cents": 1820
+        },
+        {
+          "label": "18.11.",
+          "start": "2026-11-18T00:00:00.000Z",
+          "cents": 990
+        },
+        {
+          "label": "19.11.",
+          "start": "2026-11-19T00:00:00.000Z",
+          "cents": 3415
+        }
+      ],
+      "cashCents": 6250,
+      "cardCents": 965,
+      "topItems": [
+        {
+          "name": "Cola 0,33 l",
+          "quantity": 7,
+          "cents": 2030
+        },
+        {
+          "name": "Huhn Bowl",
+          "quantity": 4,
+          "cents": 4360
+        },
+        {
+          "name": "Teigtaschen",
+          "quantity": 1,
+          "cents": 650
+        }
+      ],
+      "byCategory": [
+        {
+          "name": "Bowls",
+          "cents": 4360
+        },
+        {
+          "name": "Getränke",
+          "cents": 2030
+        },
+        {
+          "name": "Snacks",
+          "cents": 650
+        },
+        {
+          "name": "Pfand",
+          "cents": 175
+        }
+      ]
+    },
+    "days30": {
+      "revenueCents": 10625,
+      "previousRevenueCents": 1820,
+      "receiptCount": 10,
+      "voidCount": 1,
+      "buckets": [
+        {
+          "label": "21.10.",
+          "start": "2026-10-21T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "22.10.",
+          "start": "2026-10-22T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "23.10.",
+          "start": "2026-10-23T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "24.10.",
+          "start": "2026-10-24T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "25.10.",
+          "start": "2026-10-25T00:00:00.000Z",
+          "cents": 965
+        },
+        {
+          "label": "26.10.",
+          "start": "2026-10-26T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "27.10.",
+          "start": "2026-10-27T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "28.10.",
+          "start": "2026-10-28T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "29.10.",
+          "start": "2026-10-29T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "30.10.",
+          "start": "2026-10-30T00:00:00.000Z",
+          "cents": 850
+        },
+        {
+          "label": "31.10.",
+          "start": "2026-10-31T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "1.11.",
+          "start": "2026-11-01T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "2.11.",
+          "start": "2026-11-02T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "3.11.",
+          "start": "2026-11-03T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "4.11.",
+          "start": "2026-11-04T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "5.11.",
+          "start": "2026-11-05T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "6.11.",
+          "start": "2026-11-06T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "7.11.",
+          "start": "2026-11-07T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "8.11.",
+          "start": "2026-11-08T00:00:00.000Z",
+          "cents": 630
+        },
+        {
+          "label": "9.11.",
+          "start": "2026-11-09T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "10.11.",
+          "start": "2026-11-10T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "11.11.",
+          "start": "2026-11-11T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "12.11.",
+          "start": "2026-11-12T00:00:00.000Z",
+          "cents": 965
+        },
+        {
+          "label": "13.11.",
+          "start": "2026-11-13T00:00:00.000Z",
+          "cents": 1620
+        },
+        {
+          "label": "14.11.",
+          "start": "2026-11-14T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "15.11.",
+          "start": "2026-11-15T00:00:00.000Z",
+          "cents": -630
+        },
+        {
+          "label": "16.11.",
+          "start": "2026-11-16T00:00:00.000Z",
+          "cents": 0
+        },
+        {
+          "label": "17.11.",
+          "start": "2026-11-17T00:00:00.000Z",
+          "cents": 1820
+        },
+        {
+          "label": "18.11.",
+          "start": "2026-11-18T00:00:00.000Z",
+          "cents": 990
+        },
+        {
+          "label": "19.11.",
+          "start": "2026-11-19T00:00:00.000Z",
+          "cents": 3415
+        }
+      ],
+      "cashCents": 7730,
+      "cardCents": 2895,
+      "topItems": [
+        {
+          "name": "Cola 0,33 l",
+          "quantity": 11,
+          "cents": 3190
+        },
+        {
+          "name": "Huhn Bowl",
+          "quantity": 4,
+          "cents": 4360
+        },
+        {
+          "name": "Teigtaschen",
+          "quantity": 3,
+          "cents": 1950
+        },
+        {
+          "name": "Tagesgericht",
+          "quantity": 1,
+          "cents": 850
+        }
+      ],
+      "byCategory": [
+        {
+          "name": "Bowls",
+          "cents": 4360
+        },
+        {
+          "name": "Getränke",
+          "cents": 3190
+        },
+        {
+          "name": "Snacks",
+          "cents": 1950
+        },
+        {
+          "name": "Sonstiges",
+          "cents": 850
+        },
+        {
+          "name": "Pfand",
+          "cents": 275
+        }
+      ]
+    }
+  }
+}
