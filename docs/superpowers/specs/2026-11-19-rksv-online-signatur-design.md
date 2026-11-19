@@ -299,21 +299,22 @@ Gefunden mit dem GitHub-Lauf `atrust-testsystem`. Diese Antworten gelten vor dem
 
 | Nr. | Entscheidung | Warum | Preis |
 |---|---|---|---|
-| R1 | `connectionCheckProvider` liegt in `online_providers.dart`. | keiner angegeben | Keiner. |
+| R1 | `connectionCheckProvider` liegt in `online_providers.dart`. | Der Bildschirm aus Task 6 braucht den Provider, und der Plan hat ihn nicht genannt. | Wäre es falsch, hätte Task 6 ihn selbst gebaut. |
 | R2, R6 | `AtrustSessionKeeper.restore()` ist wiederholbar. Der Bauer der Einheit im Journal wartet nicht darauf. Der Halter liest das gespeicherte Kennzeichen "abgelehnt" selbst und schickt nichts, solange es unbekannt ist. | Ein Fehler beim Bauen der Einheit würde die Probe abschalten, statt einen Ausfall zu verzeichnen. | Keiner. |
 | R3 | Am Testsystem ist ein abgelaufenes Zertifikat kein Problem. | Siehe 11.3. Weicht von 6.6 ab. | Die Prüfung "gültig" gilt erst für das echte System. |
 | R4 | Der Weg "401, neu anmelden" wird am Testsystem von A-Trust mit einer erfundenen Sitzung getestet. | Eine abgemeldete Sitzung signiert dort weiter. | Der Test nutzt eine erfundene Sitzung statt einer abgelaufenen. |
-| R5 | Der frühe Lauf des Prüfwerkzeugs von Hand entfällt. | keiner angegeben | Task 8 beantwortete die Frage. |
+| R5 | Der frühe Lauf des Prüfwerkzeugs von Hand entfällt. | Aus der Umgebung des Baus war keine Signatur vom Testsystem von A-Trust zu bekommen. | Task 8 beantwortete die Frage. |
 | R7 | Bei abgelehnten Zugangsdaten schickt "Verbindung prüfen" ohne Antippen des Chefs gar keine Anfrage. | Schutz des Kontos. Strenger als 6.3. | Keiner. |
 | R8 | Die Probe-Unterschrift in "Verbindung prüfen" signiert den ASCII-Text `Kassa Verbindung pruefen`. | Die Einheit signiert nur ASCII (der Plan hatte einen Umlaut). | Keiner. |
 | R9 | Der Satz zu abgelehnten Zugangsdaten erscheint in der Kassa nur, solange eine Online-Probe läuft. | Das Kennzeichen kann eine beendete Probe überdauern. | Keiner. |
 | R10 | Im Hinweis der Kassa steht der Grund in einer eigenen Zeile. | Die Zeichnungen hatten einen einzigen Absatz. | Keiner. |
-| R11 | "Geht noch nicht." verschwindet, wenn sich der Ausfall oder sein Grund ändert, nicht bei jedem Verkauf. | keiner angegeben | Keiner. |
-| R12 | Der Test gegen das Testsystem von A-Trust hat einen Probelauf gegen den Nachbau, der überall läuft. | keiner angegeben | Keiner. |
+| R11 | "Geht noch nicht." verschwindet, wenn sich der Ausfall oder sein Grund ändert, nicht bei jedem Verkauf. | Ausfall und Grund sind gleich geblieben, also stimmt das Ergebnis "Geht noch nicht." noch. | Wäre es falsch, kostet es eine Zeile. |
+| R12 | Der Test gegen das Testsystem von A-Trust hat einen Probelauf gegen den Nachbau, der überall läuft. | Der echte Lauf geht nur auf GitHub. Fehler im Testcode hätten Läufe gegen das Testsystem von A-Trust gekostet. | Wäre es falsch, kostet es ein paar Sekunden Testzeit am Rechner. |
 
 Weitere Entscheidungen beim Bau:
 
 - Die Migration von Datenbankversion 3 auf 4 legt die Tabelle der Ketten mit festem SQL an, weil die erzeugte Tabelle schon die neue Spalte enthält. Geprüft sind alle Wege 1 nach 5, 2 nach 5, 3 nach 5 und 4 nach 5. Sie ergeben dasselbe Schema wie eine neue Datenbank. Nach einer Migration steht die Spalte `unit` zuletzt.
+- Die Zeile zum Ausfall in der Karte "Signatur" zeigt nur den Grund, etwa "Kein Internet.". Die Zeichnung s2a-08 zeigt "Seit 13:05. Kein Internet.". Die Uhrzeit steht im Hinweis der Kassa.
 - Die Karte "Signatur" zeigt den Grund eines Ausfalls auch bei der einfachen Probe. Der Satz für einen `StateError` gilt für jede Aktion der Karte. Die Frage "Speisekarte neu einspielen" scrollt ins Bild, weil die neue Zeile sie sonst unter den Rand schob.
 
 ### 11.5 Ergebnis der Läufe
@@ -328,7 +329,7 @@ Weitere Entscheidungen beim Bau:
 
 **Prüfwerkzeug des Finanzministeriums** (`tool/rksv/pruefen_datei.sh`) über genau diese Kette (7 Belege vom 18.11.2019 bis 02.12.2019, Ausstellerkennzeichen AT1, Zertifikat 2159b9f6): alle 30 Ergebnisdateien PASS. Das Werkzeug nimmt das Test-Zertifikat an, solange die Belege innerhalb von dessen Gültigkeit liegen.
 
-Für den Bau von S2b: Das Ergebnis gilt für Belege mit einem Datum innerhalb der Gültigkeit des Test-Zertifikats von A-Trust (2016 bis 2020). Belege, die heute am Tablet entstehen, liegen außerhalb davon. Ein Protokoll, das aus Nikos Tablet während der Online-Probe ausgegeben wird, kann das Prüfwerkzeug darum allein deswegen ablehnen.
+Für den Bau von S2b: Das Ergebnis gilt für Belege mit einem Datum innerhalb der Gültigkeit des Test-Zertifikats von A-Trust (2016 bis 2020). Belege, die heute am Tablet entstehen, liegen außerhalb davon. Ein Protokoll, das aus dem Tablet während der Online-Probe ausgegeben wird, kann das Prüfwerkzeug darum allein deswegen ablehnen.
 
 ### 11.6 Bekannte kleine Punkte
 
@@ -341,3 +342,37 @@ Nicht in S2a behoben, außer die Schlussprüfung entscheidet anders.
 - Der Bildschirm "Verbindung prüfen" wiederholt den Rahmen von "Karte prüfen", statt ihn zu teilen.
 - Die Einheit einer Kette ließe sich in der Datenbank ändern, solange die Kette läuft. Kein Code tut es, kein Trigger verbietet es.
 - Im ersten Ausfall kann ein Verkauf ein Mal bis zu 5 Sekunden auf die Signatur warten (dazu die übliche Zeit, in der Prüfliste "bis zu 6 Sekunden"). Danach wartet er etwa 1 Sekunde.
+
+### 11.7 Schlussprüfung
+
+Die Prüfung des ganzen Zweigs vor der Übergabe an das Tablet hat diese Punkte geändert:
+
+- A1: Eine Anmeldung bei A-Trust wartet höchstens 20 Sekunden (`AtrustSessionKeeper.loginLimit`). Danach bekommen alle Wartenden "Kein Internet.", und der nächste Bon meldet neu an. Eine späte Antwort zählt trotzdem: 401 oder 403 setzt "abgelehnt", eine Sitzung gilt nur, wenn der Halter keine hat. Der Aufbau einer Verbindung darf 10 Sekunden dauern.
+- A2: Der Bericht von "Verbindung prüfen" nennt bei einer gescheiterten Zeile die Fehlerart: den Typ des Fehlers und den Fehlertext des Betriebssystems, bei TLS auch den festen Text der TLS-Bibliothek. Am Bildschirm steht weiter nur der Satz. Eine Zeile mit Haken nennt ihre Dauer im Bericht nur noch ein Mal.
+- A3: Der Client folgt keiner Weiterleitung mehr.
+- A4: Schritt 5 der Migration ist wiederholbar. Wurde die App zwischen dem Anlegen der Spalte `unit` und dem Schreiben der Version beendet, startet sie trotzdem.
+
+Entscheidungen dazu:
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| F1 | Die Anmeldung wartet 20 Sekunden. Eine späte erfolgreiche Anmeldung gilt nur, wenn der Halter keine Sitzung hat. | Eine Länge für "A-Trust hat nicht geantwortet" überall. Eine zweite Sitzung würde nur weggeworfen. | Wäre es falsch, kostet es eine Konstante. |
+| F2 | Die Fehlerart im Bericht ist der Typ und der Fehlertext des Betriebssystems, nie Text oder Adresse aus der HTTP-Bibliothek. | Die können die Sitzung enthalten. | Ein Bericht, der weniger sagt, als er könnte. |
+| F3 | Wie lange eine offene Verbindung ungenutzt bleibt, bleibt bei der Vorgabe (15 Sekunden). Die Prüfliste verspricht dafür weniger. | Eine länger gehaltene Verbindung, die A-Trust schon geschlossen hat, könnte aus einem Verkauf einen Ausfall machen. | Verkäufe bleiben ein paar Zehntelsekunden langsamer, als sie sein könnten. |
+
+Bekannte Punkte, die in S2a bleiben:
+
+- Auch an einer Kette der Online-Probe steht an einigen Stellen "Probe-Signatur": `receipt_detail.dart:400`, `probe_question.dart:135`, `void_question.dart:13`, `rksv_journal.dart:96`, `rksv_service.dart:35`.
+- Ein unterbrochener Aufbau der TLS-Verbindung zeigt "Das Tablet vertraut dem Zertifikat von A-Trust nicht.".
+- Scheitert der Schritt vor Zeile 1 (das Laden oder Aufheben von "abgelehnt"), gibt es kein "Bericht teilen".
+- Wartende Zeilen zeigen Nummern, kein Schloss.
+- Scheitert das Schreiben des Kennzeichens "abgelehnt", wird der Fehler verschluckt. Nach einem Neustart geht dann eine Anmeldung mehr hinaus.
+
+Für den Bau von S2b:
+
+1. Im echten Betrieb lässt ein Fehler beim Bauen der Einheit den Verkauf scheitern: `receipt_repository.dart:531` und `:611` werfen außerhalb der Probe weiter, und `rksv_providers.dart:51` wirft "Noch nicht gebaut.". Entwurf 6.3 will dort einen Ausfall.
+2. Das Kennzeichen "abgelehnt" ist ein einziger Schlüssel (`rksv_secrets.dart:54`) für Testsystem und echtes System. Es sollte je System gelten oder gelöscht werden, wenn Zugangsdaten eingegeben werden.
+3. Die Zugangsdaten des Halters sind feste Felder des Konstruktors, und der Provider ist nach dem Testsystem benannt. Zugangsdaten aus dem geschützten Speicher einplanen.
+4. 403 auf `Sign/Hash` gilt als abgelaufene Sitzung (`atrust_client.dart`, `signHash`). Auf einem echten Konto kann es etwas anderes heißen und würde zwei Anmeldungen je Bon auslösen.
+5. Das verschluckte Schreiben des Kennzeichens "abgelehnt" und der Wartesatz von Zeile 1 bei "abgelehnt" werden erreichbar, sobald ein Chef ein falsches Passwort tippen kann.
+6. Mit der Grenze für die Anmeldung kann ein hängendes Netz alle 20 Sekunden eine Anmeldung losschicken, bis die erste Antwort kommt. Mit falschen Zugangsdaten auf einem echten Konto zählt das für die Sperrgrenze von A-Trust.

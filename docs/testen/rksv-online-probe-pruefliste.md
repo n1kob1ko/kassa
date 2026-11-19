@@ -53,6 +53,8 @@ Bei der Zeile "Zertifikat" steht, dass das Test-Zertifikat von A-Trust abgelaufe
 
 Hat eine Zeile ein Kreuz statt eines Hakens: Foto machen, aufschreiben, welche Zeile es war, und unten auf "Bericht teilen" tippen (wie in Schritt 10). Die Online-Probe fängt dann gar nicht erst an. Danach ist der Test für heute zu Ende.
 
+Wenn du irgendwann den Satz "A-Trust hat die Zugangsdaten abgelehnt." liest, egal wo: Mach ein Foto davon, schreib mir und tippe nichts weiter an.
+
 ## 4. Online-Probe starten
 
 - [ ] Unten rechts auf "Online-Probe starten" tippen.
@@ -85,7 +87,7 @@ Wenn der QR-Code fehlt, nur aus Zeichen besteht oder unlesbar ist: Schalter "QR-
 - [ ] Noch drei Verkäufe mit "Bar" abschließen und darauf achten, wie lange es nach dem Antippen dauert, bis der Bon da ist.
 - [ ] Aufschreiben: War es so schnell wie in der Version vorher, ein bisschen langsamer oder deutlich langsamer? Wie lange ungefähr?
 
-Das solltest du sehen: Der Verkauf geht fast so schnell wie immer. Eine Signatur von A-Trust dauert nur etwa eine Zehntelsekunde.
+Das solltest du sehen: Der Verkauf dauert ein bisschen länger als vorher. Meistens ist es deutlich weniger als eine Sekunde mehr.
 
 ## 7. WLAN aus: Verkauf ohne Signatur
 
@@ -136,7 +138,7 @@ Das solltest du sehen: Der Verkauf geht wie vorher, der Bon hat einen QR-Code, u
 Das solltest du sehen: Die Seite "Verbindung prüfen" mit vier Haken, wie in Schritt 3.
 
 - [ ] Unten auf "Bericht teilen" tippen.
-- [ ] Im Fenster von Android eine App wählen und den Text an mich schicken, hier im Chat an mich oder per Mail an dich selbst und dann hier einfügen.
+- [ ] Im Fenster von Android eine App wählen und mir den Text schicken: direkt hier in den Chat, oder per Mail an dich selbst und dann hier einfügen.
 
 Das solltest du sehen: Der Bericht geht ab. Er enthält die Zeilen, die Zeiten und das Zertifikat von A-Trust, aber kein Passwort. Steht "Teilen geht auf diesem Tablet nicht.", schreib das auf.
 
