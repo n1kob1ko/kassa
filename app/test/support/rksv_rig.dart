@@ -11,6 +11,7 @@ import 'package:drift/drift.dart'
     show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
@@ -86,8 +87,8 @@ class RksvRig {
   /// Der nachgebaute A-Trust aus `open(atrust: …)`, sonst null.
   final FakeAtrust? atrust;
 
-  /// Der Sitzungshalter am Testsystem über [atrust] (mit [secrets] und
-  /// [clock]), sonst null.
+  /// Der Sitzungshalter am Testsystem über [atrust] oder `atrustClient`
+  /// (mit [secrets] und [clock]), sonst null.
   final AtrustSessionKeeper? keeper;
 
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
@@ -106,12 +107,18 @@ class RksvRig {
   /// Mit [atrust] signiert das Journal wie in der App ([signatureUnitOf]):
   /// Probe-Ketten mit der Probe-Signatur, Ketten `atrustTest` mit einer
   /// [OnlineSignatureUnit] am Testsystem über [atrust] und [keeper].
+  ///
+  /// [atrustClient] statt [atrust]: dasselbe über diesen Client, etwa den
+  /// echten gegen das Testsystem (`atrust_testsystem_test.dart`).
   static Future<RksvRig> open({
     bool probeUnit = false,
     SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
     FakeAtrust? atrust,
+    http.Client? atrustClient,
   }) async {
-    assert(unitOf == null || atrust == null);
+    assert(atrust == null || atrustClient == null);
+    final online = atrustClient ?? atrust?.client;
+    assert(unitOf == null || online == null);
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 18, 13, 5, 9));
@@ -138,10 +145,10 @@ class RksvRig {
             certificate: info.certificateDer,
           ),
         );
-    final keeper = atrust == null
+    final keeper = online == null
         ? null
         : AtrustSessionKeeper(
-            client: AtrustClient(atrust.client, AtrustSystem.test),
+            client: AtrustClient(online, AtrustSystem.test),
             user: atrustTestUser,
             password: atrustTestPassword,
             secrets: secrets,
@@ -152,12 +159,12 @@ class RksvRig {
       secrets,
       unitOf != null
           ? unitOf(db, secrets)
-          : atrust != null
+          : online != null
           ? signatureUnitOf(
               db,
               secrets,
               online: (chain, cert) async => OnlineSignatureUnit(
-                client: AtrustClient(atrust.client, AtrustSystem.test),
+                client: AtrustClient(online, AtrustSystem.test),
                 keeper: keeper!,
                 zdaId: chain.zdaId,
                 certificateDer: cert.certificate,
