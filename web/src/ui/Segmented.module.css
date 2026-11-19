@@ -1,0 +1,67 @@
+/* Regler: fill2, 3 px Innenabstand, 2 px Abstand. Knopf 44 px, Rundung md, 14 px 700. Gewählt: card, ink, Schatten. */
+.group {
+  display: inline-flex;
+  gap: var(--space-xxs);
+  padding: 3px;
+  border-radius: calc(var(--radius-md) + 3px);
+  background: var(--fill2);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  color: var(--ink2);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease),
+    background-color var(--duration-color) linear,
+    color var(--duration-color) linear,
+    box-shadow var(--duration-color) linear;
+}
+
+/* Der Auswahlknopf liegt unsichtbar über dem ganzen Segment: die ganze Fläche ist die Tippfläche. */
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.option:has(.input:checked) {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.option:has(.input:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .option:hover:not(:has(.input:checked)) {
+    color: var(--ink);
+  }
+}
+
+.option:active {
+  transform: scale(0.97);
+}
+
+.text {
+  position: relative;
+  pointer-events: none;
+}

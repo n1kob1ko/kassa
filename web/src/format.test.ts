@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { ago, codeGroups, count, countdown, dateText, megabytes } from './format';
+import { ago, codeGroups, comparison, count, countdown, dateText, megabytes, money, share } from './format';
 
 const NOW = new Date('2026-11-18T12:00:00.000Z');
 const before = (ms: number) => new Date(NOW.getTime() - ms);
@@ -50,4 +50,58 @@ test('count: Einzahl und Mehrzahl', () => {
   expect(count(1, 'Kassa', 'Kassen')).toBe('1 Kassa');
   expect(count(0, 'Kassa', 'Kassen')).toBe('0 Kassen');
   expect(count(3, 'Artikel')).toBe('3 Artikel');
+});
+
+const NBSP = ' ';
+
+test('money: deutsch mit Tausenderpunkt, Komma, zwei Stellen und geschütztem Leerzeichen vor dem Euro', () => {
+  expect(money(0)).toBe(`0,00${NBSP}€`);
+  expect(money(5)).toBe(`0,05${NBSP}€`);
+  expect(money(1290)).toBe(`12,90${NBSP}€`);
+  expect(money(123456789)).toBe(`1.234.567,89${NBSP}€`);
+  expect(money(100000)).toBe(`1.000,00${NBSP}€`);
+});
+
+test('money: negativ mit echtem Minuszeichen davor', () => {
+  expect(money(-1290)).toBe(`−12,90${NBSP}€`);
+  expect(money(-123456789)).toBe(`−1.234.567,89${NBSP}€`);
+  expect(money(-0)).toBe(`0,00${NBSP}€`);
+});
+
+// 2026-11-19 ist ein Donnerstag, auch in Wien kurz vor Mitternacht UTC.
+const THURSDAY = new Date('2026-11-19T22:30:00.000Z');
+const WEDNESDAY_LATE_UTC = new Date('2026-11-18T23:30:00.000Z');
+
+test('comparison: mehr und weniger, ganze Prozent halb auf', () => {
+  expect(comparison('days7', 1120, 1000, THURSDAY)).toBe('12 % mehr als in den 7 Tagen davor');
+  expect(comparison('days30', 880, 1000, THURSDAY)).toBe('12 % weniger als in den 30 Tagen davor');
+  expect(comparison('days7', 1125, 1000, THURSDAY)).toBe('13 % mehr als in den 7 Tagen davor');
+  expect(comparison('days7', 1124, 1000, THURSDAY)).toBe('12 % mehr als in den 7 Tagen davor');
+  expect(comparison('days7', 0, 965, THURSDAY)).toBe('100 % weniger als in den 7 Tagen davor');
+  expect(comparison('days7', 3415, 965, THURSDAY)).toBe('254 % mehr als in den 7 Tagen davor');
+});
+
+test('comparison: heute vergleicht mit demselben Wochentag der Vorwoche, in Wiener Zeit', () => {
+  expect(comparison('today', 1120, 1000, THURSDAY)).toBe('12 % mehr als letzten Donnerstag');
+  // 23:30 UTC ist in Wien schon Donnerstag.
+  expect(comparison('today', 880, 1000, WEDNESDAY_LATE_UTC)).toBe('12 % weniger als letzten Donnerstag');
+  expect(comparison('today', 1000, 1000, new Date('2026-11-16T10:00:00.000Z'))).toBe('Gleich viel wie letzten Montag');
+});
+
+test('comparison: gleich viel, auch wenn es auf 0 % rundet, nie "0 % mehr"', () => {
+  expect(comparison('days7', 1000, 1000, THURSDAY)).toBe('Gleich viel wie in den 7 Tagen davor');
+  expect(comparison('days30', 100_004, 100_000, THURSDAY)).toBe('Gleich viel wie in den 30 Tagen davor');
+  expect(comparison('days30', 99_996, 100_000, THURSDAY)).toBe('Gleich viel wie in den 30 Tagen davor');
+});
+
+test('comparison: nichts, wenn der Zeitraum davor 0 ist', () => {
+  expect(comparison('days7', 1000, 0, THURSDAY)).toBeNull();
+  expect(comparison('today', 0, 0, THURSDAY)).toBeNull();
+});
+
+test('share: ganze Prozent halb auf, 0 ohne Summe', () => {
+  expect(share(2250, 3215)).toBe(70);
+  expect(share(965, 3215)).toBe(30);
+  expect(share(1, 3)).toBe(33);
+  expect(share(0, 0)).toBe(0);
 });

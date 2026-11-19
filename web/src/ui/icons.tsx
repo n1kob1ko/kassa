@@ -145,3 +145,27 @@ export const BookIcon = icon(
     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
   </>,
 );
+
+/** Säulen auf einer Achse: Umsätze. */
+export const ChartIcon = icon(
+  <>
+    <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+    <path d="M18 17V9" />
+    <path d="M13 17V5" />
+    <path d="M8 17v-3" />
+  </>,
+);
+
+export const ArrowUpIcon = icon(
+  <>
+    <path d="m5 12 7-7 7 7" />
+    <path d="M12 19V5" />
+  </>,
+);
+
+export const ArrowDownIcon = icon(
+  <>
+    <path d="M12 5v14" />
+    <path d="m19 12-7 7-7-7" />
+  </>,
+);

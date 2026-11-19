@@ -6,12 +6,13 @@ import { BusinessesPage } from './pages/BusinessesPage';
 import { BusinessIndex, BusinessLayout } from './pages/BusinessLayout';
 import { LoginPage } from './pages/LoginPage';
 import { MenuPage } from './pages/MenuPage';
+import { OverviewPage } from './pages/OverviewPage';
 import { RegistersPage } from './pages/RegistersPage';
 import { ReleasesPage } from './pages/ReleasesPage';
 import { SetupPage } from './pages/SetupPage';
 import { StaffPage } from './pages/StaffPage';
 import { AppShell, type NavItem } from './ui/AppShell';
-import { BookIcon, DownloadIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
+import { BookIcon, ChartIcon, DownloadIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
 import { Skeleton } from './ui/Skeleton';
 
 /** Bereiche des Anbieters außerhalb eines Betriebs. */
@@ -20,9 +21,10 @@ export const providerNav: NavItem[] = [
   { to: '/installationsdateien', label: 'Installationsdateien', icon: <DownloadIcon size={22} /> },
 ];
 
-/** Bereiche eines Betriebs. Der Anbieter hat davor den Weg zurück zu allen Betrieben. */
+/** Bereiche eines Betriebs, Umsätze zuerst. Der Anbieter hat davor den Weg zurück zu allen Betrieben. */
 export function businessNav(businessId: string, provider: boolean): NavItem[] {
   const own: NavItem[] = [
+    { to: `/b/${businessId}/umsaetze`, label: 'Umsätze', icon: <ChartIcon size={22} /> },
     { to: `/b/${businessId}/kassen`, label: 'Kassen', icon: <TabletIcon size={22} /> },
     { to: `/b/${businessId}/mitarbeiter`, label: 'Mitarbeiter', icon: <UsersIcon size={22} /> },
     { to: `/b/${businessId}/speisekarte`, label: 'Speisekarte', icon: <BookIcon size={22} /> },
@@ -65,11 +67,11 @@ function AdminLayout() {
   );
 }
 
-/** Seiten nur für den Anbieter: ein Chef geht zu den Kassen seines Betriebs. Der Server sperrt sie ohnehin. */
+/** Seiten nur für den Anbieter: ein Chef geht zu den Umsätzen seines Betriebs. Der Server sperrt sie ohnehin. */
 function ProviderOnly({ children }: { children: ReactNode }) {
   const me = useMe();
   if (me.data?.role === 'chef') {
-    return me.data.businessId ? <Navigate to={`/b/${me.data.businessId}/kassen`} replace /> : <Navigate to="/anmelden" replace />;
+    return me.data.businessId ? <Navigate to={`/b/${me.data.businessId}/umsaetze`} replace /> : <Navigate to="/anmelden" replace />;
   }
   return children;
 }
@@ -110,6 +112,7 @@ export const router = createBrowserRouter([
         element: <BusinessLayout />,
         children: [
           { index: true, element: <BusinessIndex /> },
+          { path: 'umsaetze', element: <OverviewPage /> },
           { path: 'kassen', element: <RegistersPage /> },
           { path: 'mitarbeiter', element: <StaffPage /> },
           { path: 'speisekarte', element: <MenuPage /> },

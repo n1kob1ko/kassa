@@ -464,7 +464,7 @@ test('ein Chef sieht nur seinen Betrieb, keine Betriebe und keine Installationsd
     route.fulfill({ json: { user: { id: '11111111-1111-4111-8111-111111111111', email: 'chef@example.com', role: 'chef', businessId: b.id } } }),
   );
   await page.goto('/betriebe');
-  await expect(page).toHaveURL(new RegExp(`/b/${b.id}/kassen$`));
+  await expect(page).toHaveURL(new RegExp(`/b/${b.id}/umsaetze$`));
   const nav = page.getByRole('navigation', { name: 'Bereiche' }).first();
   await expect(nav.getByRole('link', { name: 'Kassen' })).toBeVisible();
   await expect(nav.getByRole('link', { name: 'Speisekarte' })).toBeVisible();
@@ -473,7 +473,7 @@ test('ein Chef sieht nur seinen Betrieb, keine Betriebe und keine Installationsd
   await expect(page.getByRole('button', { name: 'Speisekarte neu einspielen' })).toHaveCount(0);
 
   await page.goto('/installationsdateien');
-  await expect(page).toHaveURL(new RegExp(`/b/${b.id}/kassen$`));
+  await expect(page).toHaveURL(new RegExp(`/b/${b.id}/umsaetze$`));
 });
 
 test('abgelaufene Sitzung führt zur Anmeldung, unbekannter Betrieb zeigt "Diesen Betrieb gibt es nicht."', async ({ page }) => {

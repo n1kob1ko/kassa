@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { expect, signInAsProvider, test } from './support/fixtures';
 import { E2E_RELEASE_TOKEN } from './support/server';
+import { createSite, line, MENU as ITEMS, pushEntries, saleReceipt, startOfLocalDay, type Entry } from './support/seed';
 
 /**
  * Bildschirmfotos zum Ansehen, nur mit KASSA_SHOTS_DIR=<Ordner>, etwa:
@@ -82,6 +83,37 @@ async function theScene(page: Page): Promise<string> {
     }
   }
   return full;
+}
+
+/**
+ * Ein Betrieb mit Bons über 30 Tage (immer gleich verteilt) und mehreren Stunden heute, für die Umsätze.
+ * Gibt es ihn schon, wird er wiederverwendet.
+ */
+async function overviewScene(page: Page): Promise<string> {
+  const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
+  const known = list.businesses.find((b) => b.name === 'Imbiss am Markt');
+  if (known) return known.id;
+
+  const site = await createSite(page, { name: 'Imbiss am Markt' });
+  let state = 7;
+  const random = () => (state = (state * 48271) % 2147483647) / 2147483647;
+  const now = Date.now();
+  const today = startOfLocalDay(new Date(now)).getTime();
+  const receipts: Entry[] = [];
+  for (let day = 29; day >= 0; day--) {
+    const start = today - day * 24 * 60 * 60_000;
+    const count = day === 0 ? 14 : 3 + Math.floor(random() * 9);
+    for (let i = 0; i < count; i++) {
+      const at = start + (10 + random() * 11) * 60 * 60_000;
+      if (at >= now - 60_000) continue;
+      const lines = [line(ITEMS.huhnBowl, 1 + Math.floor(random() * 2))];
+      if (random() > 0.4) lines.push(line(ITEMS.cola, 1 + Math.floor(random() * 3)));
+      if (random() > 0.6) lines.push(line(ITEMS.teigtaschen));
+      receipts.push({ kind: 'receipt', receipt: saleReceipt({ createdAt: new Date(at), payment: random() > 0.65 ? 'card' : 'cash', lines }) });
+    }
+  }
+  for (let i = 0; i < receipts.length; i += 100) await pushEntries(page, site, receipts.slice(i, i + 100));
+  return site.businessId;
 }
 
 async function shoot(page: Page, name: string) {
@@ -259,6 +291,41 @@ for (const size of sizes) {
         await page.clock.fastForward('15:05');
         await expect(page.getByText('Der Code ist abgelaufen.')).toBeVisible();
         await shoot(page, `kassen-koppeln-abgelaufen-${suffix}`);
+      });
+
+      test('umsaetze', async ({ page }) => {
+        await signInAsProvider(page);
+        const full = await overviewScene(page);
+        await page.goto(`/b/${full}/umsaetze`);
+        await expect(page.getByTestId('revenue')).toBeVisible();
+        await shoot(page, `umsaetze-${suffix}`);
+        await page.goto(`/b/${full}/umsaetze?zeit=7`);
+        await expect(page.getByRole('group', { name: 'Umsatz pro Tag' }).getByRole('button')).toHaveCount(7);
+        await shoot(page, `umsaetze-7-${suffix}`);
+        await page.goto(`/b/${full}/umsaetze?zeit=30`);
+        await expect(page.getByRole('group', { name: 'Umsatz pro Tag' }).getByRole('button')).toHaveCount(30);
+        await shoot(page, `umsaetze-30-${suffix}`);
+
+        // Ein Balken mit der Tastatur gewählt.
+        await page.getByRole('group', { name: 'Umsatz pro Tag' }).getByRole('button').first().focus();
+        await page.keyboard.press('End');
+        await page.keyboard.press('ArrowLeft');
+        await shoot(page, `umsaetze-30-balken-${suffix}`);
+
+        const empty = await freshBusiness(page);
+        await page.goto(`/b/${empty}/umsaetze`);
+        await expect(page.getByText('Noch kein Bon.')).toBeVisible();
+        await shoot(page, `umsaetze-leer-${suffix}`);
+
+        await page.route(`**/api/admin/businesses/${full}/overview?*`, async (route) => {
+          await new Promise((r) => setTimeout(r, 1500));
+          await route.fulfill({ status: 409, json: { error: { code: 'conflict', message: 'Das hat nicht geklappt. Bitte nochmal versuchen.' } } });
+        });
+        await page.goto(`/b/${full}/umsaetze`);
+        await expect(page.getByRole('status').filter({ hasText: 'Umsätze werden geladen' })).toBeVisible();
+        await shoot(page, `umsaetze-laden-${suffix}`);
+        await expect(page.getByRole('button', { name: 'Nochmal versuchen' })).toBeVisible();
+        await shoot(page, `umsaetze-fehler-${suffix}`);
       });
 
       test('installationsdateien', async ({ page }) => {

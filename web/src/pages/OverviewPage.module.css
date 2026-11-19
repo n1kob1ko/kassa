@@ -1,0 +1,393 @@
+/*
+ * Umsätze: am Handy eine Spalte (Umsatz mit Säulen, Bar und Karte, Meistverkauft, Kategorien), ab 640 px die kleinen
+ * Karten paarweise, ab 1024 px wie in der App links der Umsatz, rechts eine feste Spalte von 376 px.
+ */
+
+@media (max-width: 639.98px) {
+  .switch {
+    display: flex;
+    width: 100%;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+  transition: opacity var(--duration-color) linear;
+}
+
+/* Während ein anderer Zeitraum lädt, bleiben die alten Zahlen gedämpft stehen. Erst nach 200 ms, damit nichts flackert. */
+.content[aria-busy='true'] {
+  opacity: 0.55;
+  transition-delay: 200ms;
+}
+
+.testMode {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--control-height);
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.testMode > svg {
+  flex: none;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'main' 'pay' 'top' 'cat';
+  gap: var(--space-xxl);
+  align-items: start;
+}
+
+.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-huge);
+}
+
+.payments {
+  grid-area: pay;
+}
+
+.top {
+  grid-area: top;
+}
+
+.categories {
+  grid-area: cat;
+}
+
+@media (min-width: 640px) {
+  .layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: 'main main' 'pay pay' 'top cat';
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 376px;
+    grid-template-areas: 'main pay' 'main top' 'cat top';
+    /* Jede Karte so hoch wie ihr Inhalt: keine leeren Flächen in der rechten Spalte. */
+    align-items: start;
+  }
+}
+
+/* Umsatz: die große Zahl ist der Held, daneben Bons und Stornos. */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-xxl) var(--space-huge);
+}
+
+.revenue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.revenueLabel {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* DESIGN.md: die Umsatzzahl hat als einzige normale (nicht gleich breite) Ziffern. */
+.hero {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .hero {
+    font-size: 56px;
+  }
+}
+
+.compare {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 30px;
+  padding: var(--space-xs) var(--space-xl);
+  border-radius: var(--radius-pill);
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.compare[data-tone='up'] {
+  background: var(--vegan-bg);
+  color: var(--vegan-fg);
+}
+
+.compare > svg {
+  flex: none;
+}
+
+.figures {
+  display: flex;
+  gap: var(--space-huge);
+  margin: 0;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.figure dt {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.figure dd {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 640px) {
+  .figure {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
+
+/* Karten rechts und unten. */
+.cardTitle {
+  margin-bottom: var(--space-xxl);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.muted {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Bar und Karte: ein dünner geteilter Balken, darunter zwei Zahlen mit Anteil. */
+.split {
+  display: flex;
+  gap: var(--space-xxs);
+  height: 8px;
+  margin-bottom: var(--space-xxl);
+  border-radius: var(--radius-pill);
+  background: var(--fill2);
+  overflow: hidden;
+}
+
+.splitPart {
+  flex: var(--part) 1 0;
+  min-width: 4px;
+  border-radius: var(--radius-pill);
+}
+
+.cash {
+  background: var(--accent);
+}
+
+.cardPay {
+  background: var(--solid);
+}
+
+.payFigures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xxl);
+  margin: 0;
+}
+
+.payFigure {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.payLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+}
+
+.payAmount {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.payShare {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Listen: Name links, Zahlen rechtsbündig in Tabellenziffern. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--space-xl);
+  padding: var(--space-lg) 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.row:first-child,
+.categoryRow:first-child {
+  padding-top: 0;
+}
+
+.row:last-child,
+.categoryRow:last-child {
+  padding-bottom: 0;
+}
+
+.rowName {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.rowQuantity {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rowAmount {
+  min-width: 72px;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.categoryRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-sm) var(--space-xl);
+  padding: var(--space-md) 0;
+}
+
+/* Anteil an der größten Kategorie, ohne Spur dahinter: nur zum schnellen Vergleichen. */
+.categoryBar {
+  grid-column: 1 / -1;
+  display: block;
+  width: calc(var(--share) * 100%);
+  min-width: 4px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 320ms var(--ease);
+}
+
+/* Platzhalter beim ersten Laden. */
+.bone {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.boneLabel {
+  width: 96px;
+  height: 16px;
+  margin-bottom: var(--space-xl);
+}
+
+.boneHero {
+  width: min(260px, 70%);
+  height: 44px;
+}
+
+.boneChart {
+  height: 180px;
+  border-radius: var(--radius-lg);
+}
+
+.boneLine {
+  height: 16px;
+}
+
+.boneLine + .boneLine {
+  width: 60%;
+  margin-top: var(--space-xl);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+    background: var(--fill);
+  }
+
+  .categoryBar {
+    transition: none;
+  }
+}

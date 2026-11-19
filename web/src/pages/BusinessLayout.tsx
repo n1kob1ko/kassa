@@ -33,7 +33,7 @@ export function BusinessLayout() {
   return <Outlet context={{ detail: query.data, isProvider } satisfies BusinessContext} />;
 }
 
-/** `/b/:b` ohne Bereich führt zu den Kassen. */
+/** `/b/:b` ohne Bereich führt zu den Umsätzen. */
 export function BusinessIndex() {
-  return <Navigate to="kassen" replace />;
+  return <Navigate to="umsaetze" replace />;
 }

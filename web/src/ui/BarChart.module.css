@@ -1,0 +1,201 @@
+/*
+ * Säulen nach dataviz: höchstens 24 px breit, oben 4 bis 5 px rund, unten gerade auf der Grundlinie, 2 px Luft
+ * zwischen Nachbarn. Gitter und Achse sind feine Linien in `line`, Beschriftung in `ink2`. Eine Reihe in `accent`,
+ * die gewählte Säule in `accentInk` (DESIGN.md).
+ */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  min-width: 0;
+  margin: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-xl);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.readoutName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.readoutValue {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.plot {
+  --plot-height: 160px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: var(--plot-height) auto;
+  column-gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .plot {
+    --plot-height: 200px;
+  }
+}
+
+/* Drei Beschriftungen ohne Höhe, genau auf der oberen, der mittleren und der Grundlinie. */
+.ticks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.ticks > span {
+  display: flex;
+  align-items: center;
+  height: 0;
+}
+
+.area {
+  position: relative;
+  min-width: 0;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.grid > span {
+  display: block;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Die Grundlinie liegt über den Säulen, damit sie unten gerade abschließen. */
+.grid > span:last-child {
+  position: relative;
+  z-index: 1;
+  background: var(--fill2);
+}
+
+.bars {
+  position: relative;
+  display: flex;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slot:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 0;
+}
+
+.bar,
+.empty {
+  --bar-radius: var(--radius-xs);
+  display: block;
+  width: min(24px, calc(100% - 2px));
+  height: 100%;
+}
+
+.bar {
+  background: var(--accent);
+  /* Wächst von der Grundlinie, nie unter 2 px, damit ein kleiner Betrag sichtbar bleibt. */
+  clip-path: inset(max(0px, min(calc(100% - 2px), calc((1 - var(--v)) * 100%))) 0 0 0 round var(--bar-radius) var(--bar-radius) 0 0);
+  transition:
+    clip-path 320ms var(--ease),
+    background-color var(--duration-color) linear;
+}
+
+@starting-style {
+  .bar {
+    clip-path: inset(100% 0 0 0 round var(--bar-radius) var(--bar-radius) 0 0);
+  }
+}
+
+.slot[data-active] .bar {
+  background: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}
+
+.axis {
+  grid-column: 2;
+  display: flex;
+  padding-top: var(--space-sm);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink2);
+}
+
+.axisSlot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 15px;
+}
+
+.axisLabel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.axisLabel.start {
+  left: 0;
+  transform: none;
+}
+
+.axisLabel.end {
+  left: auto;
+  right: 0;
+  transform: none;
+}
