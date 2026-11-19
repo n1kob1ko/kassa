@@ -299,17 +299,17 @@ Gefunden mit dem GitHub-Lauf `atrust-testsystem`. Diese Antworten gelten vor dem
 
 | Nr. | Entscheidung | Warum | Preis |
 |---|---|---|---|
-| R1 | `connectionCheckProvider` liegt in `online_providers.dart`. | Alles zur Online-Einheit steht an einem Ort. | Keiner. |
+| R1 | `connectionCheckProvider` liegt in `online_providers.dart`. | keiner angegeben | Keiner. |
 | R2, R6 | `AtrustSessionKeeper.restore()` ist wiederholbar. Der Bauer der Einheit im Journal wartet nicht darauf. Der Halter liest das gespeicherte Kennzeichen "abgelehnt" selbst und schickt nichts, solange es unbekannt ist. | Ein Fehler beim Bauen der Einheit würde die Probe abschalten, statt einen Ausfall zu verzeichnen. | Keiner. |
 | R3 | Am Testsystem ist ein abgelaufenes Zertifikat kein Problem. | Siehe 11.3. Weicht von 6.6 ab. | Die Prüfung "gültig" gilt erst für das echte System. |
-| R4 | Der Weg "401, neu anmelden" wird am echten System mit einer erfundenen Sitzung getestet. | Eine abgemeldete Sitzung signiert dort weiter. | Der Test nutzt eine erfundene Sitzung statt einer abgelaufenen. |
-| R5 | Der frühe Lauf des Prüfwerkzeugs von Hand entfällt. | Von der Entwicklungsumgebung aus ist das Testsystem gesperrt. | Die Frage klärte der Lauf in Task 8. |
+| R4 | Der Weg "401, neu anmelden" wird am Testsystem von A-Trust mit einer erfundenen Sitzung getestet. | Eine abgemeldete Sitzung signiert dort weiter. | Der Test nutzt eine erfundene Sitzung statt einer abgelaufenen. |
+| R5 | Der frühe Lauf des Prüfwerkzeugs von Hand entfällt. | keiner angegeben | Task 8 beantwortete die Frage. |
 | R7 | Bei abgelehnten Zugangsdaten schickt "Verbindung prüfen" ohne Antippen des Chefs gar keine Anfrage. | Schutz des Kontos. Strenger als 6.3. | Keiner. |
 | R8 | Die Probe-Unterschrift in "Verbindung prüfen" signiert den ASCII-Text `Kassa Verbindung pruefen`. | Die Einheit signiert nur ASCII (der Plan hatte einen Umlaut). | Keiner. |
 | R9 | Der Satz zu abgelehnten Zugangsdaten erscheint in der Kassa nur, solange eine Online-Probe läuft. | Das Kennzeichen kann eine beendete Probe überdauern. | Keiner. |
 | R10 | Im Hinweis der Kassa steht der Grund in einer eigenen Zeile. | Die Zeichnungen hatten einen einzigen Absatz. | Keiner. |
-| R11 | "Geht noch nicht." verschwindet, wenn sich der Ausfall oder sein Grund ändert, nicht bei jedem Verkauf. | Ein altes Ergebnis soll nicht stehen bleiben. | Keiner. |
-| R12 | Der Test gegen das echte System hat einen Probelauf gegen den Nachbau, der überall läuft. | Der Weg ist so auch ohne Internet geprüft. | Keiner. |
+| R11 | "Geht noch nicht." verschwindet, wenn sich der Ausfall oder sein Grund ändert, nicht bei jedem Verkauf. | keiner angegeben | Keiner. |
+| R12 | Der Test gegen das Testsystem von A-Trust hat einen Probelauf gegen den Nachbau, der überall läuft. | keiner angegeben | Keiner. |
 
 Weitere Entscheidungen beim Bau:
 
@@ -327,6 +327,8 @@ Weitere Entscheidungen beim Bau:
 - Eine Kette aus Startbeleg, Verkauf, Storno, Monatsbeleg, Verkauf über 1.234,56 Euro, Nullbeleg und Schlussbeleg wurde von A-Trust signiert und ist in sich stimmig.
 
 **Prüfwerkzeug des Finanzministeriums** (`tool/rksv/pruefen_datei.sh`) über genau diese Kette (7 Belege vom 18.11.2019 bis 02.12.2019, Ausstellerkennzeichen AT1, Zertifikat 2159b9f6): alle 30 Ergebnisdateien PASS. Das Werkzeug nimmt das Test-Zertifikat an, solange die Belege innerhalb von dessen Gültigkeit liegen.
+
+Für den Bau von S2b: Das Ergebnis gilt für Belege mit einem Datum innerhalb der Gültigkeit des Test-Zertifikats von A-Trust (2016 bis 2020). Belege, die heute am Tablet entstehen, liegen außerhalb davon. Ein Protokoll, das aus Nikos Tablet während der Online-Probe ausgegeben wird, kann das Prüfwerkzeug darum allein deswegen ablehnen.
 
 ### 11.6 Bekannte kleine Punkte
 

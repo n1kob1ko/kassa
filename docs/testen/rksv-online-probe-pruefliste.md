@@ -30,6 +30,8 @@ Das solltest du sehen: Alles liegt bereit, die Kassa startet wie immer, und die 
 
 Steht dort "Nicht eingerichtet": weiter mit Schritt 3.
 
+Steht dort "In Betrieb": Stopp, mach den Test nicht. Schreib mir, was dort steht.
+
 Steht dort "Probe" oder "Online-Probe": Du musst die Probe zuerst beenden.
 
 - [ ] In der Karte "Signatur" bei "Probe beenden" auf "Beenden" tippen.
@@ -59,7 +61,7 @@ Das solltest du sehen: Die Seite schließt sich, du bist wieder in den Einstellu
 
 - [ ] Den Startbeleg in die Hand nehmen und ansehen.
 
-Das solltest du sehen: Oben steht "TESTBON", unten ein quadratischer QR-Code.
+Das solltest du sehen: Am Ende des Belegs steht ein quadratischer QR-Code und darunter, ganz zum Schluss, "TESTBON" und "Keine gültige Rechnung".
 
 Die Karte zeigt jetzt auch "Verbindung prüfen", "Nullbeleg drucken", "Protokoll ausgeben" und "Probe beenden".
 
@@ -68,7 +70,7 @@ Die Karte zeigt jetzt auch "Verbindung prüfen", "Nullbeleg drucken", "Protokoll
 - [ ] Einen Verkauf mit "Bar" abschließen und den Bon drucken lassen.
 - [ ] Den Bon in der Hand halten.
 
-Das solltest du sehen: Der Bon hat oben "TESTBON" und unten einen quadratischen QR-Code.
+Das solltest du sehen: Am Ende des Bons steht ein quadratischer QR-Code und darunter, ganz zum Schluss, "TESTBON" und "Keine gültige Rechnung".
 
 - [ ] In der Kassa oben auf "Bons" tippen und den Bon antippen.
 
@@ -102,7 +104,7 @@ Das solltest du sehen: Beide Verkäufe gehen durch, der Bon wird gedruckt. In de
 
 - [ ] Den gedruckten Bon ansehen.
 
-Das solltest du sehen: Auf dem Bon steht "TESTBON" und "Sicherheitseinrichtung ausgefallen". Die Unterschrift von A-Trust fehlt, darum der Vermerk.
+Das solltest du sehen: Unter dem QR-Code steht "Sicherheitseinrichtung ausgefallen", und ganz zum Schluss steht "TESTBON". Die Unterschrift von A-Trust fehlt, darum der Vermerk.
 
 - [ ] Einstellungen öffnen und in der Karte "Signatur" ansehen, ob die Pille jetzt "Online-Probe, Signatur ausgefallen" heißt und der Grund darunter steht.
 
@@ -134,7 +136,7 @@ Das solltest du sehen: Der Verkauf geht wie vorher, der Bon hat einen QR-Code, u
 Das solltest du sehen: Die Seite "Verbindung prüfen" mit vier Haken, wie in Schritt 3.
 
 - [ ] Unten auf "Bericht teilen" tippen.
-- [ ] Im Fenster von Android die Nachricht in unseren Chat-Faden senden, in dem du diese Liste bekommen hast. Mail oder Messenger geht auch, wenn der Chat nicht angezeigt wird.
+- [ ] Im Fenster von Android eine App wählen und den Text an mich schicken, hier im Chat an mich oder per Mail an dich selbst und dann hier einfügen.
 
 Das solltest du sehen: Der Bericht geht ab. Er enthält die Zeilen, die Zeiten und das Zertifikat von A-Trust, aber kein Passwort. Steht "Teilen geht auf diesem Tablet nicht.", schreib das auf.
 
@@ -150,7 +152,7 @@ Das Protokoll ist eine Datei mit allen signierten Bons.
 
 Das solltest du sehen: Unter der Zeile steht "Gespeichert."
 
-- [ ] Die gespeicherte Datei in den Chat-Faden schicken, in dem du diese Liste bekommen hast.
+- [ ] Die gespeicherte Datei an mich schicken: hier im Chat als Anhang an eine Nachricht, am Tablet oder nachdem du sie auf das Handy oder den Computer kopiert hast.
 
 Die Datei enthält nur die Bons und ihre Unterschriften. Kein Passwort, keine PIN und keinen geheimen Schlüssel.
 
@@ -165,7 +167,7 @@ Das solltest du sehen: Die Kassa druckt einen Schlussbeleg. Neue Bons haben dann
 
 ## Was du mir schickst
 
-In den Chat-Faden, nicht per Mail:
+Hier im Chat:
 
 - [ ] Den Text aus "Bericht teilen" (Schritt 10).
 - [ ] Die Protokoll-Datei aus "Protokoll ausgeben" (Schritt 11).
