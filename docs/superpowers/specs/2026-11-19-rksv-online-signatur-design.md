@@ -359,6 +359,7 @@ Entscheidungen dazu:
 | F1 | Die Anmeldung wartet 20 Sekunden. Eine späte erfolgreiche Anmeldung gilt nur, wenn der Halter keine Sitzung hat. | Eine Länge für "A-Trust hat nicht geantwortet" überall. Eine zweite Sitzung würde nur weggeworfen. | Wäre es falsch, kostet es eine Konstante. |
 | F2 | Die Fehlerart im Bericht ist der Typ und der Fehlertext des Betriebssystems, nie Text oder Adresse aus der HTTP-Bibliothek. | Die können die Sitzung enthalten. | Ein Bericht, der weniger sagt, als er könnte. |
 | F3 | Wie lange eine offene Verbindung ungenutzt bleibt, bleibt bei der Vorgabe (15 Sekunden). Die Prüfliste verspricht dafür weniger. | Eine länger gehaltene Verbindung, die A-Trust schon geschlossen hat, könnte aus einem Verkauf einen Ausfall machen. | Verkäufe bleiben ein paar Zehntelsekunden langsamer, als sie sein könnten. |
+| F5 | Der Punkt 7 unten bleibt in Version 1.5.0 und wird in S2b als Erstes behoben. | Er braucht zwei überlappende Anmeldungen desselben Benutzers, die A-Trust verschieden beantwortet. Es geht dabei keine Anmeldung hinaus, also zählt nichts für eine Sperre, und das Konto ist der öffentliche Test-Benutzer. | Am Testsystem ein paar Signaturen, während "abgelehnt" gilt. Vor einem echten Konto muss es zu sein. |
 
 Bekannte Punkte, die in S2a bleiben:
 
@@ -376,3 +377,4 @@ Für den Bau von S2b:
 4. 403 auf `Sign/Hash` gilt als abgelaufene Sitzung (`atrust_client.dart`, `signHash`). Auf einem echten Konto kann es etwas anderes heißen und würde zwei Anmeldungen je Bon auslösen.
 5. Das verschluckte Schreiben des Kennzeichens "abgelehnt" und der Wartesatz von Zeile 1 bei "abgelehnt" werden erreichbar, sobald ein Chef ein falsches Passwort tippen kann.
 6. Mit der Grenze für die Anmeldung kann ein hängendes Netz alle 20 Sekunden eine Anmeldung losschicken, bis die erste Antwort kommt. Mit falschen Zugangsdaten auf einem echten Konto zählt das für die Sperrgrenze von A-Trust.
+7. Gefunden beim Gegenlesen von A1: Antwortet eine aufgegebene Anmeldung spät mit 401 oder 403, während schon eine neue läuft, und antwortet die neue danach mit 200, dann behält der Halter deren Sitzung, obwohl "abgelehnt" gilt (`atrust_session_keeper.dart`, `_answer`). Wer auf die neue Anmeldung gewartet hat, schickt dann je eine Signatur los, und Zeile 3 von "Verbindung prüfen" zeigt nach dem Tippen des Chefs "Angemeldet", ohne neu anzumelden. Abhilfe: gleich nach der Antwort der Anmeldung prüfen, ob "abgelehnt" gilt, und dann mit "abgelehnt" enden.
