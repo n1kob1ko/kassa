@@ -15,6 +15,12 @@ abstract interface class RksvSecrets {
   /// Privater Schlüssel der Probe-Signatur, 32 Bytes.
   Future<Uint8List?> probeKey(int chain);
   Future<void> writeProbeKey(int chain, Uint8List key);
+
+  /// Hat A-Trust die Zugangsdaten abgelehnt (401 oder 403 beim Anmelden)?
+  /// Ohne Eintrag false. Kein Geheimnis, liegt aber hier und nicht in der
+  /// Datenbank (Plan P1).
+  Future<bool> atrustRejected();
+  Future<void> writeAtrustRejected(bool rejected);
 }
 
 class SecureRksvSecrets implements RksvSecrets {
@@ -44,6 +50,17 @@ class SecureRksvSecrets implements RksvSecrets {
   @override
   Future<void> writeProbeKey(int chain, Uint8List key) =>
       _write('rksv_probe_key_$chain', key);
+
+  static const _rejected = 'rksv_atrust_rejected';
+
+  @override
+  Future<bool> atrustRejected() async =>
+      await _storage.read(key: _rejected) == 'true';
+
+  @override
+  Future<void> writeAtrustRejected(bool rejected) => rejected
+      ? _storage.write(key: _rejected, value: 'true')
+      : _storage.delete(key: _rejected);
 }
 
 /// Für Tests. Mit [failReads] schlagen alle Lesezugriffe fehl, mit
@@ -80,4 +97,19 @@ class MemoryRksvSecrets implements RksvSecrets {
   @override
   Future<void> writeProbeKey(int chain, Uint8List key) =>
       _write('rksv_probe_key_$chain', key);
+
+  bool _atrustRejected = false;
+
+  @override
+  Future<bool> atrustRejected() async {
+    if (hangReads) await Completer<void>().future;
+    if (failReads) throw StateError('Der sichere Speicher ist nicht lesbar.');
+    return _atrustRejected;
+  }
+
+  @override
+  Future<void> writeAtrustRejected(bool rejected) async {
+    if (hangWrites) await Completer<void>().future;
+    _atrustRejected = rejected;
+  }
 }
