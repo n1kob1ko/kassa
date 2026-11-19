@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
@@ -304,6 +305,155 @@ void main() {
       rig.keeper.warmUp();
       await pumpEventQueue();
       expect(rig.fake.requests, [_login]);
+    });
+  });
+
+  group('Anmeldung ohne Antwort', () {
+    const hang = Duration(minutes: 10);
+
+    /// session() in fake_async: das Ergebnis oder der Fehler, sobald da.
+    (List<AtrustSession>, List<Object>) start(AtrustSessionKeeper k) {
+      final sessions = <AtrustSession>[];
+      final errors = <Object>[];
+      k.session().then(sessions.add, onError: errors.add);
+      return (sessions, errors);
+    }
+
+    test('loginLimit ist 20 Sekunden wie ConnectionCheck.timeLimit', () {
+      expect(AtrustSessionKeeper.loginLimit, const Duration(seconds: 20));
+    });
+
+    test('nach loginLimit gibt eine neue session() ein zweites PUT und '
+        'bekommt eine Sitzung, sobald A-Trust wieder antwortet', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        final (firstOk, firstErrors) = start(rig.keeper);
+        async.elapse(
+          AtrustSessionKeeper.loginLimit - const Duration(milliseconds: 1),
+        );
+        expect(firstErrors, isEmpty);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(firstOk, isEmpty);
+        expect(firstErrors, hasLength(1));
+        expect(
+          (firstErrors.single as AtrustException).problem,
+          AtrustProblem.noInternet,
+        );
+        expect(rig.fake.requests, [_login]);
+
+        rig.fake.delay = Duration.zero;
+        final (secondOk, secondErrors) = start(rig.keeper);
+        async.flushMicrotasks();
+        expect(secondErrors, isEmpty);
+        expect(secondOk, hasLength(1));
+        expect(rig.fake.requests, [_login, _login]);
+        expect(rig.keeper.rejected.value, isFalse);
+      });
+    });
+
+    test('die späte 401 der aufgegebenen Anmeldung setzt rejected, danach '
+        'keine Anfrage mehr', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        rig.fake.loginStatus = 401;
+        final (_, errors) = start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        expect(
+          (errors.single as AtrustException).problem,
+          AtrustProblem.noInternet,
+        );
+        expect(rig.keeper.rejected.value, isFalse);
+
+        async.elapse(hang);
+        expect(rig.keeper.rejected.value, isTrue);
+        bool? stored;
+        rig.secrets.atrustRejected().then((v) => stored = v);
+        async.flushMicrotasks();
+        expect(stored, isTrue);
+
+        rig.fake.delay = Duration.zero;
+        rig.fake.loginStatus = 200;
+        final (ok, later) = start(rig.keeper);
+        rig.keeper.warmUp();
+        async.flushMicrotasks();
+        expect(ok, isEmpty);
+        expect(
+          (later.single as AtrustException).problem,
+          AtrustProblem.rejected,
+        );
+        expect(rig.fake.requests, [_login]);
+      });
+    });
+
+    test('die späte 200 gilt, wenn der Halter keine Sitzung hat', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        async.elapse(hang);
+
+        rig.fake.delay = Duration.zero;
+        final (ok, errors) = start(rig.keeper);
+        async.flushMicrotasks();
+        expect(errors, isEmpty);
+        expect(ok, hasLength(1));
+        expect(rig.fake.requests, [_login]);
+      });
+    });
+
+    test('die späte 200 fällt weg, wenn der Halter schon eine Sitzung hat', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+
+        rig.fake.delay = Duration.zero;
+        final (second, _) = start(rig.keeper);
+        async.flushMicrotasks();
+        expect(second, hasLength(1));
+
+        async.elapse(hang); // die erste Anmeldung antwortet jetzt
+        final (third, _) = start(rig.keeper);
+        async.flushMicrotasks();
+        expect(identical(third.single, second.single), isTrue);
+        expect(rig.fake.requests, [_login, _login]);
+      });
+    });
+
+    test('ein später anderer Fehler ändert nichts', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        rig.fake.loginStatus = 500;
+        start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        async.elapse(hang);
+        expect(rig.keeper.rejected.value, isFalse);
+
+        rig.fake.delay = Duration.zero;
+        rig.fake.loginStatus = 200;
+        final (ok, errors) = start(rig.keeper);
+        async.flushMicrotasks();
+        expect(errors, isEmpty);
+        expect(ok, hasLength(1));
+        expect(rig.fake.requests, [_login, _login]);
+      });
+    });
+
+    test('zwei Aufrufer während einer hängenden Anmeldung: genau eine '
+        'Anfrage, beide bekommen den Fehler', () {
+      fakeAsync((async) {
+        rig.fake.delay = hang;
+        final (_, a) = start(rig.keeper);
+        async.elapse(const Duration(seconds: 5));
+        final (_, b) = start(rig.keeper);
+        rig.keeper.warmUp();
+        async.elapse(const Duration(seconds: 5));
+        expect(rig.fake.requests, [_login]);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        expect(a, hasLength(1));
+        expect(b, hasLength(1));
+        expect(rig.fake.requests, [_login]);
+      });
     });
   });
 

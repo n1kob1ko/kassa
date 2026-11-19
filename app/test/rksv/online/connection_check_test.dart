@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/providers.dart';
@@ -36,6 +37,14 @@ const _sendReport = 'Bitte den Bericht schicken.';
 class _HangingSecrets extends MemoryRksvSecrets {
   @override
   Future<void> writeAtrustRejected(bool rejected) => Completer<void>().future;
+}
+
+/// Ein Client, dessen erste Anfrage mit einem fremden Fehler scheitert.
+class _BrokenClient extends AtrustClient {
+  _BrokenClient() : super(FakeAtrust().client, AtrustSystem.test);
+
+  @override
+  Future<String> zdaId(String user) async => throw StateError('geheim');
 }
 
 /// `TT.MM.JJJJ` in Ortszeit, wie die Prüfung Daten schreibt.
@@ -456,14 +465,14 @@ void main() {
       allOf([
         contains('Verbindung prüfen am 19.11.2026 10:15:30'),
         contains('Adresse: https://hs-abnahme.a-trust.at/asignrkonline/v2'),
+        contains('A-Trust: gut. A-Trust erreicht (0,2 Sekunden).\n'),
         contains(
-          'A-Trust: gut. A-Trust erreicht (0,2 Sekunden). Dauer 0,2 Sekunden.',
+          'Zertifikat: gut. Zertifikat geladen: Nummer 2159b9f6. Test-Zertifikat',
         ),
-        contains('Zertifikat: gut. Zertifikat geladen: Nummer 2159b9f6.'),
         contains('Anmeldung: gut. Angemeldet. Dauer 0,2 Sekunden.'),
         contains(
           'Probe-Unterschrift: gut. Probe-Unterschrift erstellt und geprüft '
-          '(0,2 Sekunden). Dauer 0,2 Sekunden.',
+          '(0,2 Sekunden).\n',
         ),
         contains('ZDA: AT1'),
         contains(
@@ -472,6 +481,10 @@ void main() {
         for (final i in s.atrust.issuersDer)
           contains('Aussteller (Base64): ${base64.encode(i)}'),
       ]),
+    );
+    expect(
+      'Dauer 0,2 Sekunden.'.allMatches(report),
+      hasLength(2), // Zertifikat und Anmeldung; die anderen nennen sie im Satz
     );
     expect(report, isNot(contains(atrustTestPassword)));
     expect(report.toLowerCase(), isNot(contains('passwort')));
@@ -492,6 +505,114 @@ void main() {
         contains('Probe-Unterschrift: offen.'),
       ]),
     );
+  });
+
+  test('report(): Zeile 1 mit untrusted nennt Typ und Fehler des '
+      'Betriebssystems, die Zeile am Bildschirm nicht', () async {
+    final s = _Setup();
+    final check = ConnectionCheck(
+      client: AtrustClient(
+        MockClient(
+          (_) async => throw const HandshakeException(
+            'Handshake error in client',
+            OSError('CERTIFICATE_VERIFY_FAILED: unable to get issuer', 1),
+          ),
+        ),
+        AtrustSystem.test,
+      ),
+      keeper: s.keeper,
+      user: atrustTestUser,
+      clock: s.clock,
+    );
+    final result = await check.run(chefTapped: false);
+    expect(_row(result, ConnectionRow.reach), (
+      RowState.problem,
+      'Das Tablet vertraut dem Zertifikat von A-Trust nicht.',
+      _sendReport,
+    ));
+    expect(
+      check.report(),
+      contains(
+        'A-Trust: Fehler. Das Tablet vertraut dem Zertifikat von A-Trust '
+        'nicht. $_sendReport Dauer 0,0 Sekunden. Fehlerart: '
+        'HandshakeException, Handshake error in client, Betriebssystem: '
+        'CERTIFICATE_VERIFY_FAILED: unable to get issuer (1).',
+      ),
+    );
+  });
+
+  test('report(): unerwarteter Fehler nennt nur seinen Typ', () async {
+    final s = _Setup();
+    final check = ConnectionCheck(
+      client: _BrokenClient(),
+      keeper: s.keeper,
+      user: atrustTestUser,
+      clock: s.clock,
+    );
+    final result = await check.run(chefTapped: false);
+    expect(_row(result, ConnectionRow.reach), (
+      RowState.problem,
+      'Die Prüfung ist gescheitert.',
+      _sendReport,
+    ));
+    final report = check.report();
+    expect(
+      report,
+      contains(
+        'A-Trust: Fehler. Die Prüfung ist gescheitert. $_sendReport '
+        'Dauer 0,0 Sekunden. Fehlerart: StateError.',
+      ),
+    );
+    expect(report, isNot(contains('geheim')));
+  });
+
+  test('report(): Benutzer, Passwort und Sitzung aus einer Ausnahme stehen '
+      'nicht im Bericht', () async {
+    const user = 'beispiel-benutzer';
+    const password = 'beispiel-passwort';
+    const sid = 'beispiel-sitzung-4711';
+    final atrust = FakeAtrust();
+    final client = AtrustClient(
+      MockClient((r) async {
+        if (r.method == 'PUT') {
+          throw http.ClientException(
+            '$user $password $sid',
+            Uri.parse('${r.url}?p=$password&s=$sid'),
+          );
+        }
+        final copy = http.Request(r.method, r.url)
+          ..headers.addAll(r.headers)
+          ..bodyBytes = r.bodyBytes;
+        return http.Response.fromStream(await atrust.client.send(copy));
+      }),
+      AtrustSystem.test,
+    );
+    final secrets = MemoryRksvSecrets();
+    final clock = FixedClock(DateTime(2026, 11, 19, 10));
+    final check = ConnectionCheck(
+      client: client,
+      keeper: AtrustSessionKeeper(
+        client: client,
+        user: user,
+        password: password,
+        secrets: secrets,
+        clock: clock,
+      ),
+      user: user,
+      clock: clock,
+    );
+    final result = await check.run(chefTapped: false);
+    expect(
+      result.rows[ConnectionRow.login]!.state,
+      RowState.problem,
+      reason: check.report(),
+    );
+    final report = check.report();
+    expect(report, contains('Anmeldung: Fehler. Kein Internet.'));
+    expect(report, contains('Fehlerart: ClientException.'));
+    for (final secret in [user, password, sid]) {
+      expect(report, isNot(contains(secret)));
+    }
   });
 
   test('report() vor dem ersten Lauf: Zeilen offen, Zeit "-"', () {

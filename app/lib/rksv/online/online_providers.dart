@@ -3,8 +3,11 @@
 // schickt beim Erzeugen eine Anfrage; das tut erst eine Kette mit einer
 // Online-Einheit oder ein Lauf von "Verbindung prüfen".
 
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 import '../../data/providers.dart';
 import '../rksv_providers.dart';
@@ -12,9 +15,13 @@ import 'atrust_client.dart';
 import 'atrust_session_keeper.dart';
 import 'connection_check.dart';
 
-/// Die Verbindung zu A-Trust. Tests setzen `FakeAtrust.client` ein.
+/// Die Verbindung zu A-Trust. Tests setzen `FakeAtrust.client` ein. Der
+/// Aufbau einer Verbindung darf 10 Sekunden dauern; die Zeit, die eine
+/// offene Verbindung ungenutzt bleibt, ist die Vorgabe von [HttpClient].
 final atrustHttpClientProvider = Provider<http.Client>((ref) {
-  final client = http.Client();
+  final client = IOClient(
+    HttpClient()..connectionTimeout = const Duration(seconds: 10),
+  );
   ref.onDispose(client.close);
   return client;
 });

@@ -45,14 +45,15 @@ final class ConnectionCheckState {
   final ConnectionFacts? facts;
 }
 
-/// Eine Zeile ist gescheitert: Satz, Rat und, wenn es einen gibt, der
-/// Statuscode von A-Trust.
+/// Eine Zeile ist gescheitert: Satz, Rat und, wenn es sie gibt, der
+/// Statuscode von A-Trust und die Art des Fehlers (nur für den Bericht).
 final class _RowFailure implements Exception {
-  const _RowFailure(this.message, this.hint, [this.status]);
+  const _RowFailure(this.message, this.hint, [this.status, this.detail]);
 
   final String message;
   final String? hint;
   final int? status;
+  final String? detail;
 }
 
 class ConnectionCheck {
@@ -85,6 +86,7 @@ class ConnectionCheck {
   DateTime? _startedAt;
   final Map<ConnectionRow, Duration> _durations = {};
   final Map<ConnectionRow, int> _statuses = {};
+  final Map<ConnectionRow, String> _details = {};
   String? _zdaId;
   AtrustCertificate? _certificate;
 
@@ -104,6 +106,7 @@ class ConnectionCheck {
     _startedAt = _clock.now();
     _durations.clear();
     _statuses.clear();
+    _details.clear();
     _zdaId = null;
     _certificate = null;
     _rows = _initialRows;
@@ -236,10 +239,17 @@ class ConnectionCheck {
       e.sentence,
       _T.rejectedHint,
       e.status,
+      e.detail,
     ),
-    AtrustException() => _RowFailure(e.sentence, _hintOf(e.problem), e.status),
+    AtrustException() => _RowFailure(
+      e.sentence,
+      _hintOf(e.problem),
+      e.status,
+      e.detail,
+    ),
     SignatureFailure() => _RowFailure(e.reason, _hintOfSentence(e.reason)),
-    _ => const _RowFailure(_T.failed, _T.report),
+    // Nur der Typ: der Text eines fremden Fehlers kann Geheimnisse enthalten.
+    _ => _RowFailure(_T.failed, _T.report, null, '${e.runtimeType}'),
   };
 
   static String _hintOf(AtrustProblem problem) => switch (problem) {
@@ -271,6 +281,8 @@ class ConnectionCheck {
   ConnectionCheckState _fail(ConnectionRow row, _RowFailure f) {
     final status = f.status;
     if (status != null) _statuses[row] = status;
+    final detail = f.detail;
+    if (detail != null) _details[row] = detail;
     _rows = Map.unmodifiable({
       ..._rows,
       row: RowResult(RowState.problem, f.message, f.hint),
@@ -289,8 +301,8 @@ class ConnectionCheck {
   void _publish({required bool running}) =>
       _state.value = ConnectionCheckState(rows: _rows, running: running);
 
-  /// Zeilen, Dauern, Statuscodes, Zertifikat (Base64), nie Passwort oder
-  /// Sitzungsschlüssel.
+  /// Zeilen, Dauern, Statuscodes, Art des Fehlers, Zertifikat (Base64), nie
+  /// Passwort oder Sitzungsschlüssel.
   String report() {
     final started = _startedAt;
     final certificate = _certificate;
@@ -305,11 +317,16 @@ class ConnectionCheck {
       final hint = r.hint;
       final duration = _durations[row];
       final status = _statuses[row];
+      final detail = _details[row];
+      // Zeilen 1 und 4 nennen die Dauer schon im Satz.
+      final ownDuration =
+          duration != null && !r.message.contains(_seconds(duration));
       out.writeln(
         '${_titles[row]}: ${_word(r.state)}. ${r.message}'
         '${hint == null ? '' : ' $hint'}'
-        '${duration == null ? '' : ' Dauer ${_seconds(duration)}.'}'
-        '${status == null ? '' : ' Status $status.'}',
+        '${ownDuration ? ' Dauer ${_seconds(duration)}.' : ''}'
+        '${status == null ? '' : ' Status $status.'}'
+        '${detail == null ? '' : ' Fehlerart: $detail.'}',
       );
     }
     out

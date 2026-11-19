@@ -5,8 +5,9 @@ import '../rksv_secrets.dart';
 import 'atrust_client.dart';
 
 /// Hält die Sitzung bei A-Trust: meldet sich im Voraus an, nie zwei Mal
-/// zugleich, und nach einer Ablehnung (401 oder 403 beim Anmelden) nie mehr
-/// von selbst, bis der Chef [allowOneLogin] antippt (Plan, Schutz des Kontos).
+/// zugleich (eine nach [loginLimit] aufgegebene Anmeldung zählt nicht mehr
+/// mit), und nach einer Ablehnung (401 oder 403 beim Anmelden) nie mehr von
+/// selbst, bis der Chef [allowOneLogin] antippt (Plan, Schutz des Kontos).
 ///
 /// Eine Sitzung gilt als abgelaufen 55 Minuten nach der letzten Benutzung oder
 /// an einem neuen Kalendertag nach der Ortszeit von [Clock] (P7).
@@ -20,6 +21,10 @@ class AtrustSessionKeeper {
   });
 
   static const _maxIdle = Duration(minutes: 55);
+
+  /// So lange wartet eine Anmeldung auf A-Trust, so lange wie eine Zeile von
+  /// "Verbindung prüfen".
+  static const loginLimit = Duration(seconds: 20);
 
   final AtrustClient _client;
   final String _user;
@@ -55,8 +60,11 @@ class AtrustSessionKeeper {
   /// Wahr nach 401 oder 403 auf eine Anmeldung, bis [allowOneLogin].
   ValueListenable<bool> get rejected => _rejected;
 
-  /// Gültige Sitzung, sonst anmelden. Nie zwei Anmeldungen zugleich.
-  /// Wirft AtrustException; bei [rejected] sofort, ohne Netz.
+  /// Gültige Sitzung, sonst anmelden. Läuft schon eine Anmeldung, wartet der
+  /// Aufruf auf dieselbe; nie zwei zugleich, solange eine auf Antwort wartet.
+  /// Wirft AtrustException: bei [rejected] sofort, ohne Netz; antwortet
+  /// A-Trust nicht binnen [loginLimit], `noInternet`, und der nächste Aufruf
+  /// meldet neu an.
   Future<AtrustSession> session() async {
     // Nach dem Laden ohne await: kein Umweg über eine fertige Future aus einer
     // anderen Zone (fake_async).
@@ -77,17 +85,36 @@ class AtrustSessionKeeper {
         now.day == login.day;
   }
 
-  Future<AtrustSession> _startLogin() async {
+  /// Die geteilte Anmeldung. Antwortet A-Trust nicht binnen [loginLimit],
+  /// bekommen alle Wartenden `noInternet`, und der nächste Aufruf von
+  /// [session] meldet neu an. Die späte Antwort zählt trotzdem: 401 oder 403
+  /// setzt [rejected], eine Sitzung gilt nur, wenn der Halter keine hat, ein
+  /// anderer Fehler fällt weg.
+  Future<AtrustSession> _startLogin() {
+    late final Future<AtrustSession> shared;
+    shared = _answer()
+        .timeout(
+          loginLimit,
+          onTimeout: () =>
+              throw const AtrustException(AtrustProblem.noInternet),
+        )
+        .whenComplete(() {
+          if (identical(_login, shared)) _login = null;
+        });
+    return shared;
+  }
+
+  Future<AtrustSession> _answer() async {
     try {
       final s = await _client.login(_user, _password);
-      _session = s;
-      _loginAt = _lastUse = _clock.now();
+      if (_session == null) {
+        _session = s;
+        _loginAt = _lastUse = _clock.now();
+      }
       return s;
     } on AtrustException catch (e) {
       if (e.problem == AtrustProblem.rejected) _reject();
       rethrow;
-    } finally {
-      _login = null;
     }
   }
 

@@ -60,10 +60,16 @@ enum AtrustProblem {
 /// [sentence] ist ein deutscher Satz ohne Geheimnisse. toString nennt nur
 /// problem (und den Status).
 final class AtrustException implements Exception {
-  const AtrustException(this.problem, {this.status});
+  const AtrustException(this.problem, {this.status, this.detail});
 
   final AtrustProblem problem;
   final int? status;
+
+  /// Nur für den Bericht von "Verbindung prüfen" (ConnectionCheck.report):
+  /// die Art des Fehlers darunter, etwa der Typ und der Fehlertext des
+  /// Betriebssystems. Nie im Satz, in toString, am Bildschirm, in der
+  /// Datenbank oder in einem Protokoll.
+  final String? detail;
 
   String get sentence => switch (problem) {
     AtrustProblem.noInternet => 'Kein Internet.',
@@ -170,19 +176,18 @@ class AtrustClient {
     AtrustProblem? authFailure,
   }) async {
     final request = http.Request(method, Uri.parse('${system.base}/$path'))
+      ..followRedirects = false
       ..headers['Content-Type'] = 'application/json';
     if (body != null) request.body = jsonEncode(body);
     final http.Response response;
     try {
       response = await http.Response.fromStream(await _client.send(request));
-    } on TlsException {
-      throw const AtrustException(AtrustProblem.untrusted);
-    } on SocketException {
-      throw const AtrustException(AtrustProblem.noInternet);
-    } on http.ClientException {
-      throw const AtrustException(AtrustProblem.noInternet);
-    } catch (_) {
-      throw const AtrustException(AtrustProblem.server);
+    } catch (e) {
+      throw AtrustException(switch (e) {
+        TlsException() => AtrustProblem.untrusted,
+        SocketException() || http.ClientException() => AtrustProblem.noInternet,
+        _ => AtrustProblem.server,
+      }, detail: _detail(e));
     }
     final status = response.statusCode;
     if (status == 200) return response;
@@ -190,6 +195,23 @@ class AtrustClient {
       throw AtrustException(authFailure, status: status);
     }
     throw AtrustException(AtrustProblem.server, status: status);
+  }
+
+  /// Die Art eines Fehlers für den Bericht: der Typ, bei TLS dazu der feste
+  /// Text der TLS-Bibliothek, bei TLS und Socket der Fehler des
+  /// Betriebssystems. Nie Text, Adresse oder Port der Ausnahme sonst: Pfad
+  /// und Körper der Anfrage enthalten Sitzung und Passwort.
+  static String _detail(Object e) {
+    final (String? tls, OSError? os) = switch (e) {
+      TlsException() => (e.message, e.osError),
+      SocketException() => (null, e.osError),
+      _ => (null, null),
+    };
+    return [
+      '${e.runtimeType}',
+      if (tls != null && tls.isNotEmpty) tls,
+      if (os != null) 'Betriebssystem: ${os.message} (${os.errorCode})',
+    ].join(', ');
   }
 
   static Map<String, Object?> _object(http.Response response) {

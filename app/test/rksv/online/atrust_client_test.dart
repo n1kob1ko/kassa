@@ -236,7 +236,28 @@ void main() {
 
     test('fremde Ausnahme wird zu AtrustException', () async {
       final c = _throwing(StateError('irgendwas'));
-      expect(await _problem(c.zdaId('u')), isA<AtrustProblem>());
+      expect(await _problem(c.zdaId('u')), AtrustProblem.server);
+    });
+
+    test('keine Anfrage folgt einer Weiterleitung', () async {
+      final sent = <http.Request>[];
+      final c = _client((r) async {
+        sent.add(r);
+        return _html(500);
+      });
+      for (final call in [
+        c.zdaId('u'),
+        c.certificate('u'),
+        c.login('u', 'p'),
+        c.signHash(session, hash),
+        c.logout(session),
+      ]) {
+        await _problem(call);
+      }
+      expect(sent, hasLength(5));
+      for (final r in sent) {
+        expect(r.followRedirects, isFalse, reason: r.method);
+      }
     });
 
     for (final status in [401, 403]) {
@@ -425,6 +446,104 @@ void main() {
         AtrustSystem.live.base,
         'https://rksv.a-trust.at/asignrkonline/v2',
       );
+    });
+  });
+  group('detail für den Bericht', () {
+    Future<AtrustException> caught(Future<Object?> call) async {
+      try {
+        await call;
+      } on AtrustException catch (e) {
+        return e;
+      }
+      fail('keine AtrustException');
+    }
+
+    test('HandshakeException: Typ, Text der TLS-Bibliothek, Fehler des '
+        'Betriebssystems; nicht im Satz und nicht in toString', () async {
+      final e = await caught(
+        _throwing(
+          const HandshakeException(
+            'Handshake error in client',
+            OSError('CERTIFICATE_VERIFY_FAILED: unable to get issuer', 1),
+          ),
+        ).zdaId('u'),
+      );
+      expect(e.problem, AtrustProblem.untrusted);
+      expect(
+        e.detail,
+        allOf([
+          contains('HandshakeException'),
+          contains('Handshake error in client'),
+          contains('CERTIFICATE_VERIFY_FAILED: unable to get issuer'),
+          contains('1'),
+        ]),
+      );
+      expect(e.sentence, isNot(contains('CERTIFICATE_VERIFY_FAILED')));
+      expect(e.toString(), isNot(contains('CERTIFICATE_VERIFY_FAILED')));
+      expect(e.toString(), isNot(contains('HandshakeException')));
+    });
+
+    test('SocketException: Typ und Fehler des Betriebssystems', () async {
+      final e = await caught(
+        _throwing(
+          const SocketException(
+            'geheim',
+            osError: OSError('Network is unreachable', 101),
+          ),
+        ).zdaId('u'),
+      );
+      expect(e.problem, AtrustProblem.noInternet);
+      expect(
+        e.detail,
+        allOf([
+          contains('SocketException'),
+          contains('Network is unreachable'),
+          contains('101'),
+        ]),
+      );
+      expect(e.detail, isNot(contains('geheim')));
+    });
+
+    test('fremde Ausnahme: nur der Typ', () async {
+      final e = await caught(_throwing(StateError('geheim')).zdaId('u'));
+      expect(e.detail, 'StateError');
+    });
+
+    // Der Text einer TlsException ist ein fester Text der TLS-Bibliothek und
+    // steht im Bericht; der Text anderer Ausnahmen kann Pfad oder Körper der
+    // Anfrage enthalten.
+    test('Benutzer, Passwort und Sitzung aus Text, Adresse und Port der '
+        'Ausnahme stehen nie in detail oder toString', () async {
+      const user = 'beispiel-benutzer';
+      const password = 'beispiel-passwort';
+      const sid = 'beispiel-sitzung-4711';
+      final secrets = [user, password, sid];
+      final uri = Uri.parse(
+        '$_base/Session/$sid/Sign/Hash?u=$user&p=$password',
+      );
+      final errors = <Object>[
+        http.ClientException('$user $password $sid', uri),
+        SocketException(
+          '$user $password $sid',
+          address: InternetAddress('10.4.7.11'),
+          port: 4711,
+        ),
+        StateError('$user $password $sid $uri'),
+        ArgumentError('$user $password $sid'),
+      ];
+      for (final error in errors) {
+        for (final call in [
+          (AtrustClient c) => c.login(user, password),
+          (AtrustClient c) => c.signHash(AtrustSession(sid, 'k'), hash),
+        ]) {
+          final e = await caught(call(_throwing(error)));
+          final detail = e.detail ?? '';
+          for (final secret in [...secrets, '10.4.7.11', '4711']) {
+            expect(detail, isNot(contains(secret)), reason: '$error');
+            expect(e.toString(), isNot(contains(secret)), reason: '$error');
+          }
+        }
+      }
     });
   });
 }

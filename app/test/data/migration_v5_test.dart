@@ -96,6 +96,48 @@ void main() {
     await db.close();
   });
 
+  // Drift schreibt user_version nach onUpgrade ohne Transaktion darum. Wird
+  // die App zwischen ADD COLUMN und diesem Schreiben beendet, hat die Datei
+  // die Spalte schon und steht noch auf Version 4.
+  test('Datei von Version 4, die die Spalte unit schon hat: öffnet, endet '
+      'auf Version 5, Ketten und Einträge bleiben', () async {
+    final file = await copyFixture('kassa_v4.sqlite');
+    final db = KassaDatabase(
+      NativeDatabase(
+        file,
+        setup: (raw) {
+          if (raw.userVersion == 4) {
+            raw.execute(
+              'ALTER TABLE rksv_chains ADD COLUMN '
+              "unit TEXT NOT NULL DEFAULT 'probe'",
+            );
+          }
+        },
+      ),
+    );
+    addTearDown(db.close);
+
+    final chains = await (db.select(
+      db.rksvChainRows,
+    )..orderBy([(t) => OrderingTerm.asc(t.chain)])).get();
+    expect(chains.map((c) => (c.chain, c.mode, c.unit, c.endedAt)), [
+      (1, 'probe', 'probe', DateTime(2026, 11, 18, 14)),
+      (2, 'probe', 'probe', null),
+    ]);
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      5,
+    );
+    expect(await count(db, 'rksv_entries'), 5);
+    expect(await count(db, 'rksv_certificates'), 2);
+    expect(await count(db, 'receipts'), 5);
+    final state = await db.select(db.rksvStateRows).getSingle();
+    expect((state.mode, state.chain, state.counterCents), ('probe', 2, 1820));
+    expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+  });
+
   test(
     'neue Datenbank: eine Kette ohne Angabe hat die Einheit probe',
     () async {

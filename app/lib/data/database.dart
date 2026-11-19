@@ -567,8 +567,14 @@ class KassaDatabase extends _$KassaDatabase {
       }
       if (from < 5 && to >= 5) {
         // Vorhandene Ketten signiert die Probe-Signatur. ADD COLUMN lässt die
-        // Trigger der Tabelle stehen.
-        await m.addColumn(rksvChainRows, rksvChainRows.unit);
+        // Trigger der Tabelle stehen. Drift schreibt user_version erst danach
+        // und ohne Transaktion darum: Wurde die App dazwischen beendet, ist
+        // die Spalte schon da, und der Schritt fügt sie nicht noch einmal ein.
+        final columns = await customSelect('PRAGMA table_info(rksv_chains)')
+            .get();
+        if (!columns.any((c) => c.read<String>('name') == 'unit')) {
+          await m.addColumn(rksvChainRows, rksvChainRows.unit);
+        }
       }
     },
     beforeOpen: (details) async {
