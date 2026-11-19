@@ -59,6 +59,39 @@ class $BusinessRowsTable extends BusinessRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _logoFileIdMeta = const VerificationMeta(
+    'logoFileId',
+  );
+  @override
+  late final GeneratedColumn<String> logoFileId = GeneratedColumn<String>(
+    'logo_file_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _logoPathMeta = const VerificationMeta(
+    'logoPath',
+  );
+  @override
+  late final GeneratedColumn<String> logoPath = GeneratedColumn<String>(
+    'logo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _logoColorMeta = const VerificationMeta(
+    'logoColor',
+  );
+  @override
+  late final GeneratedColumn<String> logoColor = GeneratedColumn<String>(
+    'logo_color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -66,6 +99,9 @@ class $BusinessRowsTable extends BusinessRows
     addressLines,
     vatId,
     receiptFooter,
+    logoFileId,
+    logoPath,
+    logoColor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -114,6 +150,27 @@ class $BusinessRowsTable extends BusinessRows
         ),
       );
     }
+    if (data.containsKey('logo_file_id')) {
+      context.handle(
+        _logoFileIdMeta,
+        logoFileId.isAcceptableOrUnknown(
+          data['logo_file_id']!,
+          _logoFileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('logo_path')) {
+      context.handle(
+        _logoPathMeta,
+        logoPath.isAcceptableOrUnknown(data['logo_path']!, _logoPathMeta),
+      );
+    }
+    if (data.containsKey('logo_color')) {
+      context.handle(
+        _logoColorMeta,
+        logoColor.isAcceptableOrUnknown(data['logo_color']!, _logoColorMeta),
+      );
+    }
     return context;
   }
 
@@ -143,6 +200,18 @@ class $BusinessRowsTable extends BusinessRows
         DriftSqlType.string,
         data['${effectivePrefix}receipt_footer'],
       ),
+      logoFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_file_id'],
+      ),
+      logoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_path'],
+      ),
+      logoColor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}logo_color'],
+      ),
     );
   }
 
@@ -160,12 +229,21 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
   final String addressLines;
   final String? vatId;
   final String? receiptFooter;
+
+  /// Das Logo vom Server: Kennung der Datei, Pfad auf dem Tablet und die
+  /// Farbe als Platzhalter.
+  final String? logoFileId;
+  final String? logoPath;
+  final String? logoColor;
   const BusinessRow({
     required this.id,
     required this.name,
     required this.addressLines,
     this.vatId,
     this.receiptFooter,
+    this.logoFileId,
+    this.logoPath,
+    this.logoColor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -178,6 +256,15 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
     }
     if (!nullToAbsent || receiptFooter != null) {
       map['receipt_footer'] = Variable<String>(receiptFooter);
+    }
+    if (!nullToAbsent || logoFileId != null) {
+      map['logo_file_id'] = Variable<String>(logoFileId);
+    }
+    if (!nullToAbsent || logoPath != null) {
+      map['logo_path'] = Variable<String>(logoPath);
+    }
+    if (!nullToAbsent || logoColor != null) {
+      map['logo_color'] = Variable<String>(logoColor);
     }
     return map;
   }
@@ -193,6 +280,15 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
       receiptFooter: receiptFooter == null && nullToAbsent
           ? const Value.absent()
           : Value(receiptFooter),
+      logoFileId: logoFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoFileId),
+      logoPath: logoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoPath),
+      logoColor: logoColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(logoColor),
     );
   }
 
@@ -207,6 +303,9 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
       addressLines: serializer.fromJson<String>(json['addressLines']),
       vatId: serializer.fromJson<String?>(json['vatId']),
       receiptFooter: serializer.fromJson<String?>(json['receiptFooter']),
+      logoFileId: serializer.fromJson<String?>(json['logoFileId']),
+      logoPath: serializer.fromJson<String?>(json['logoPath']),
+      logoColor: serializer.fromJson<String?>(json['logoColor']),
     );
   }
   @override
@@ -218,6 +317,9 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
       'addressLines': serializer.toJson<String>(addressLines),
       'vatId': serializer.toJson<String?>(vatId),
       'receiptFooter': serializer.toJson<String?>(receiptFooter),
+      'logoFileId': serializer.toJson<String?>(logoFileId),
+      'logoPath': serializer.toJson<String?>(logoPath),
+      'logoColor': serializer.toJson<String?>(logoColor),
     };
   }
 
@@ -227,6 +329,9 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
     String? addressLines,
     Value<String?> vatId = const Value.absent(),
     Value<String?> receiptFooter = const Value.absent(),
+    Value<String?> logoFileId = const Value.absent(),
+    Value<String?> logoPath = const Value.absent(),
+    Value<String?> logoColor = const Value.absent(),
   }) => BusinessRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -235,6 +340,9 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
     receiptFooter: receiptFooter.present
         ? receiptFooter.value
         : this.receiptFooter,
+    logoFileId: logoFileId.present ? logoFileId.value : this.logoFileId,
+    logoPath: logoPath.present ? logoPath.value : this.logoPath,
+    logoColor: logoColor.present ? logoColor.value : this.logoColor,
   );
   BusinessRow copyWithCompanion(BusinessRowsCompanion data) {
     return BusinessRow(
@@ -247,6 +355,11 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
       receiptFooter: data.receiptFooter.present
           ? data.receiptFooter.value
           : this.receiptFooter,
+      logoFileId: data.logoFileId.present
+          ? data.logoFileId.value
+          : this.logoFileId,
+      logoPath: data.logoPath.present ? data.logoPath.value : this.logoPath,
+      logoColor: data.logoColor.present ? data.logoColor.value : this.logoColor,
     );
   }
 
@@ -257,13 +370,25 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
           ..write('name: $name, ')
           ..write('addressLines: $addressLines, ')
           ..write('vatId: $vatId, ')
-          ..write('receiptFooter: $receiptFooter')
+          ..write('receiptFooter: $receiptFooter, ')
+          ..write('logoFileId: $logoFileId, ')
+          ..write('logoPath: $logoPath, ')
+          ..write('logoColor: $logoColor')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, addressLines, vatId, receiptFooter);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    addressLines,
+    vatId,
+    receiptFooter,
+    logoFileId,
+    logoPath,
+    logoColor,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -272,7 +397,10 @@ class BusinessRow extends DataClass implements Insertable<BusinessRow> {
           other.name == this.name &&
           other.addressLines == this.addressLines &&
           other.vatId == this.vatId &&
-          other.receiptFooter == this.receiptFooter);
+          other.receiptFooter == this.receiptFooter &&
+          other.logoFileId == this.logoFileId &&
+          other.logoPath == this.logoPath &&
+          other.logoColor == this.logoColor);
 }
 
 class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
@@ -281,12 +409,18 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
   final Value<String> addressLines;
   final Value<String?> vatId;
   final Value<String?> receiptFooter;
+  final Value<String?> logoFileId;
+  final Value<String?> logoPath;
+  final Value<String?> logoColor;
   const BusinessRowsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.addressLines = const Value.absent(),
     this.vatId = const Value.absent(),
     this.receiptFooter = const Value.absent(),
+    this.logoFileId = const Value.absent(),
+    this.logoPath = const Value.absent(),
+    this.logoColor = const Value.absent(),
   });
   BusinessRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -294,6 +428,9 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
     this.addressLines = const Value.absent(),
     this.vatId = const Value.absent(),
     this.receiptFooter = const Value.absent(),
+    this.logoFileId = const Value.absent(),
+    this.logoPath = const Value.absent(),
+    this.logoColor = const Value.absent(),
   }) : name = Value(name);
   static Insertable<BusinessRow> custom({
     Expression<int>? id,
@@ -301,6 +438,9 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
     Expression<String>? addressLines,
     Expression<String>? vatId,
     Expression<String>? receiptFooter,
+    Expression<String>? logoFileId,
+    Expression<String>? logoPath,
+    Expression<String>? logoColor,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -308,6 +448,9 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
       if (addressLines != null) 'address_lines': addressLines,
       if (vatId != null) 'vat_id': vatId,
       if (receiptFooter != null) 'receipt_footer': receiptFooter,
+      if (logoFileId != null) 'logo_file_id': logoFileId,
+      if (logoPath != null) 'logo_path': logoPath,
+      if (logoColor != null) 'logo_color': logoColor,
     });
   }
 
@@ -317,6 +460,9 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
     Value<String>? addressLines,
     Value<String?>? vatId,
     Value<String?>? receiptFooter,
+    Value<String?>? logoFileId,
+    Value<String?>? logoPath,
+    Value<String?>? logoColor,
   }) {
     return BusinessRowsCompanion(
       id: id ?? this.id,
@@ -324,6 +470,9 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
       addressLines: addressLines ?? this.addressLines,
       vatId: vatId ?? this.vatId,
       receiptFooter: receiptFooter ?? this.receiptFooter,
+      logoFileId: logoFileId ?? this.logoFileId,
+      logoPath: logoPath ?? this.logoPath,
+      logoColor: logoColor ?? this.logoColor,
     );
   }
 
@@ -345,6 +494,15 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
     if (receiptFooter.present) {
       map['receipt_footer'] = Variable<String>(receiptFooter.value);
     }
+    if (logoFileId.present) {
+      map['logo_file_id'] = Variable<String>(logoFileId.value);
+    }
+    if (logoPath.present) {
+      map['logo_path'] = Variable<String>(logoPath.value);
+    }
+    if (logoColor.present) {
+      map['logo_color'] = Variable<String>(logoColor.value);
+    }
     return map;
   }
 
@@ -355,7 +513,10 @@ class BusinessRowsCompanion extends UpdateCompanion<BusinessRow> {
           ..write('name: $name, ')
           ..write('addressLines: $addressLines, ')
           ..write('vatId: $vatId, ')
-          ..write('receiptFooter: $receiptFooter')
+          ..write('receiptFooter: $receiptFooter, ')
+          ..write('logoFileId: $logoFileId, ')
+          ..write('logoPath: $logoPath, ')
+          ..write('logoColor: $logoColor')
           ..write(')'))
         .toString();
   }
@@ -810,6 +971,28 @@ class $ItemRowsTable extends ItemRows with TableInfo<$ItemRowsTable, ItemRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _photoFileIdMeta = const VerificationMeta(
+    'photoFileId',
+  );
+  @override
+  late final GeneratedColumn<String> photoFileId = GeneratedColumn<String>(
+    'photo_file_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoColorMeta = const VerificationMeta(
+    'photoColor',
+  );
+  @override
+  late final GeneratedColumn<String> photoColor = GeneratedColumn<String>(
+    'photo_color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _positionMeta = const VerificationMeta(
     'position',
   );
@@ -850,6 +1033,8 @@ class $ItemRowsTable extends ItemRows with TableInfo<$ItemRowsTable, ItemRow> {
     favorite,
     inSale,
     photoPath,
+    photoFileId,
+    photoColor,
     position,
     archived,
   ];
@@ -947,6 +1132,21 @@ class $ItemRowsTable extends ItemRows with TableInfo<$ItemRowsTable, ItemRow> {
         photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
       );
     }
+    if (data.containsKey('photo_file_id')) {
+      context.handle(
+        _photoFileIdMeta,
+        photoFileId.isAcceptableOrUnknown(
+          data['photo_file_id']!,
+          _photoFileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photo_color')) {
+      context.handle(
+        _photoColorMeta,
+        photoColor.isAcceptableOrUnknown(data['photo_color']!, _photoColorMeta),
+      );
+    }
     if (data.containsKey('position')) {
       context.handle(
         _positionMeta,
@@ -1018,6 +1218,14 @@ class $ItemRowsTable extends ItemRows with TableInfo<$ItemRowsTable, ItemRow> {
         DriftSqlType.string,
         data['${effectivePrefix}photo_path'],
       ),
+      photoFileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_file_id'],
+      ),
+      photoColor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_color'],
+      ),
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}position'],
@@ -1053,6 +1261,10 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final bool favorite;
   final bool inSale;
   final String? photoPath;
+
+  /// Das Foto vom Server: Kennung der Datei und Farbe als Platzhalter.
+  final String? photoFileId;
+  final String? photoColor;
   final int position;
   final bool archived;
   const ItemRow({
@@ -1068,6 +1280,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     required this.favorite,
     required this.inSale,
     this.photoPath,
+    this.photoFileId,
+    this.photoColor,
     required this.position,
     required this.archived,
   });
@@ -1092,6 +1306,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     if (!nullToAbsent || photoPath != null) {
       map['photo_path'] = Variable<String>(photoPath);
     }
+    if (!nullToAbsent || photoFileId != null) {
+      map['photo_file_id'] = Variable<String>(photoFileId);
+    }
+    if (!nullToAbsent || photoColor != null) {
+      map['photo_color'] = Variable<String>(photoColor);
+    }
     map['position'] = Variable<int>(position);
     map['archived'] = Variable<bool>(archived);
     return map;
@@ -1115,6 +1335,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       photoPath: photoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(photoPath),
+      photoFileId: photoFileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoFileId),
+      photoColor: photoColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoColor),
       position: Value(position),
       archived: Value(archived),
     );
@@ -1138,6 +1364,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       favorite: serializer.fromJson<bool>(json['favorite']),
       inSale: serializer.fromJson<bool>(json['inSale']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
+      photoFileId: serializer.fromJson<String?>(json['photoFileId']),
+      photoColor: serializer.fromJson<String?>(json['photoColor']),
       position: serializer.fromJson<int>(json['position']),
       archived: serializer.fromJson<bool>(json['archived']),
     );
@@ -1158,6 +1386,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'favorite': serializer.toJson<bool>(favorite),
       'inSale': serializer.toJson<bool>(inSale),
       'photoPath': serializer.toJson<String?>(photoPath),
+      'photoFileId': serializer.toJson<String?>(photoFileId),
+      'photoColor': serializer.toJson<String?>(photoColor),
       'position': serializer.toJson<int>(position),
       'archived': serializer.toJson<bool>(archived),
     };
@@ -1176,6 +1406,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     bool? favorite,
     bool? inSale,
     Value<String?> photoPath = const Value.absent(),
+    Value<String?> photoFileId = const Value.absent(),
+    Value<String?> photoColor = const Value.absent(),
     int? position,
     bool? archived,
   }) => ItemRow(
@@ -1191,6 +1423,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     favorite: favorite ?? this.favorite,
     inSale: inSale ?? this.inSale,
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    photoFileId: photoFileId.present ? photoFileId.value : this.photoFileId,
+    photoColor: photoColor.present ? photoColor.value : this.photoColor,
     position: position ?? this.position,
     archived: archived ?? this.archived,
   );
@@ -1218,6 +1452,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       favorite: data.favorite.present ? data.favorite.value : this.favorite,
       inSale: data.inSale.present ? data.inSale.value : this.inSale,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      photoFileId: data.photoFileId.present
+          ? data.photoFileId.value
+          : this.photoFileId,
+      photoColor: data.photoColor.present
+          ? data.photoColor.value
+          : this.photoColor,
       position: data.position.present ? data.position.value : this.position,
       archived: data.archived.present ? data.archived.value : this.archived,
     );
@@ -1238,6 +1478,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('favorite: $favorite, ')
           ..write('inSale: $inSale, ')
           ..write('photoPath: $photoPath, ')
+          ..write('photoFileId: $photoFileId, ')
+          ..write('photoColor: $photoColor, ')
           ..write('position: $position, ')
           ..write('archived: $archived')
           ..write(')'))
@@ -1258,6 +1500,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     favorite,
     inSale,
     photoPath,
+    photoFileId,
+    photoColor,
     position,
     archived,
   );
@@ -1277,6 +1521,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.favorite == this.favorite &&
           other.inSale == this.inSale &&
           other.photoPath == this.photoPath &&
+          other.photoFileId == this.photoFileId &&
+          other.photoColor == this.photoColor &&
           other.position == this.position &&
           other.archived == this.archived);
 }
@@ -1294,6 +1540,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
   final Value<bool> favorite;
   final Value<bool> inSale;
   final Value<String?> photoPath;
+  final Value<String?> photoFileId;
+  final Value<String?> photoColor;
   final Value<int> position;
   final Value<bool> archived;
   final Value<int> rowid;
@@ -1310,6 +1558,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
     this.favorite = const Value.absent(),
     this.inSale = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.photoFileId = const Value.absent(),
+    this.photoColor = const Value.absent(),
     this.position = const Value.absent(),
     this.archived = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1327,6 +1577,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
     this.favorite = const Value.absent(),
     this.inSale = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.photoFileId = const Value.absent(),
+    this.photoColor = const Value.absent(),
     required int position,
     this.archived = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1349,6 +1601,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
     Expression<bool>? favorite,
     Expression<bool>? inSale,
     Expression<String>? photoPath,
+    Expression<String>? photoFileId,
+    Expression<String>? photoColor,
     Expression<int>? position,
     Expression<bool>? archived,
     Expression<int>? rowid,
@@ -1366,6 +1620,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
       if (favorite != null) 'favorite': favorite,
       if (inSale != null) 'in_sale': inSale,
       if (photoPath != null) 'photo_path': photoPath,
+      if (photoFileId != null) 'photo_file_id': photoFileId,
+      if (photoColor != null) 'photo_color': photoColor,
       if (position != null) 'position': position,
       if (archived != null) 'archived': archived,
       if (rowid != null) 'rowid': rowid,
@@ -1385,6 +1641,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
     Value<bool>? favorite,
     Value<bool>? inSale,
     Value<String?>? photoPath,
+    Value<String?>? photoFileId,
+    Value<String?>? photoColor,
     Value<int>? position,
     Value<bool>? archived,
     Value<int>? rowid,
@@ -1402,6 +1660,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
       favorite: favorite ?? this.favorite,
       inSale: inSale ?? this.inSale,
       photoPath: photoPath ?? this.photoPath,
+      photoFileId: photoFileId ?? this.photoFileId,
+      photoColor: photoColor ?? this.photoColor,
       position: position ?? this.position,
       archived: archived ?? this.archived,
       rowid: rowid ?? this.rowid,
@@ -1447,6 +1707,12 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
     }
+    if (photoFileId.present) {
+      map['photo_file_id'] = Variable<String>(photoFileId.value);
+    }
+    if (photoColor.present) {
+      map['photo_color'] = Variable<String>(photoColor.value);
+    }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
@@ -1474,6 +1740,8 @@ class ItemRowsCompanion extends UpdateCompanion<ItemRow> {
           ..write('favorite: $favorite, ')
           ..write('inSale: $inSale, ')
           ..write('photoPath: $photoPath, ')
+          ..write('photoFileId: $photoFileId, ')
+          ..write('photoColor: $photoColor, ')
           ..write('position: $position, ')
           ..write('archived: $archived, ')
           ..write('rowid: $rowid')
@@ -7952,6 +8220,43 @@ class $SyncStateRowsTable extends SyncStateRows
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastPushAtMeta = const VerificationMeta(
+    'lastPushAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastPushAt = GeneratedColumn<DateTime>(
+    'last_push_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photosAutoEnabledMeta = const VerificationMeta(
+    'photosAutoEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> photosAutoEnabled = GeneratedColumn<bool>(
+    'photos_auto_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("photos_auto_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7963,6 +8268,9 @@ class $SyncStateRowsTable extends SyncStateRows
     lastPullAt,
     lastError,
     blocked,
+    deviceId,
+    lastPushAt,
+    photosAutoEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8036,6 +8344,30 @@ class $SyncStateRowsTable extends SyncStateRows
         blocked.isAcceptableOrUnknown(data['blocked']!, _blockedMeta),
       );
     }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    }
+    if (data.containsKey('last_push_at')) {
+      context.handle(
+        _lastPushAtMeta,
+        lastPushAt.isAcceptableOrUnknown(
+          data['last_push_at']!,
+          _lastPushAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photos_auto_enabled')) {
+      context.handle(
+        _photosAutoEnabledMeta,
+        photosAutoEnabled.isAcceptableOrUnknown(
+          data['photos_auto_enabled']!,
+          _photosAutoEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -8081,6 +8413,18 @@ class $SyncStateRowsTable extends SyncStateRows
         DriftSqlType.bool,
         data['${effectivePrefix}blocked'],
       )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      ),
+      lastPushAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_push_at'],
+      ),
+      photosAutoEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}photos_auto_enabled'],
+      )!,
     );
   }
 
@@ -8106,6 +8450,15 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
   final DateTime? lastPullAt;
   final String? lastError;
   final bool blocked;
+
+  /// Zufällige Kennung dieser Installation, entsteht beim ersten Gebrauch.
+  final String? deviceId;
+
+  /// Wann zuletzt etwas an den Server gesendet wurde.
+  final DateTime? lastPushAt;
+
+  /// Fotos von selbst laden, nicht nur auf Knopfdruck.
+  final bool photosAutoEnabled;
   const SyncStateRow({
     required this.id,
     this.registerId,
@@ -8116,6 +8469,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     this.lastPullAt,
     this.lastError,
     required this.blocked,
+    this.deviceId,
+    this.lastPushAt,
+    required this.photosAutoEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8139,6 +8495,13 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       map['last_error'] = Variable<String>(lastError);
     }
     map['blocked'] = Variable<bool>(blocked);
+    if (!nullToAbsent || deviceId != null) {
+      map['device_id'] = Variable<String>(deviceId);
+    }
+    if (!nullToAbsent || lastPushAt != null) {
+      map['last_push_at'] = Variable<DateTime>(lastPushAt);
+    }
+    map['photos_auto_enabled'] = Variable<bool>(photosAutoEnabled);
     return map;
   }
 
@@ -8163,6 +8526,13 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           ? const Value.absent()
           : Value(lastError),
       blocked: Value(blocked),
+      deviceId: deviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceId),
+      lastPushAt: lastPushAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastPushAt),
+      photosAutoEnabled: Value(photosAutoEnabled),
     );
   }
 
@@ -8181,6 +8551,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       lastPullAt: serializer.fromJson<DateTime?>(json['lastPullAt']),
       lastError: serializer.fromJson<String?>(json['lastError']),
       blocked: serializer.fromJson<bool>(json['blocked']),
+      deviceId: serializer.fromJson<String?>(json['deviceId']),
+      lastPushAt: serializer.fromJson<DateTime?>(json['lastPushAt']),
+      photosAutoEnabled: serializer.fromJson<bool>(json['photosAutoEnabled']),
     );
   }
   @override
@@ -8196,6 +8569,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
       'lastError': serializer.toJson<String?>(lastError),
       'blocked': serializer.toJson<bool>(blocked),
+      'deviceId': serializer.toJson<String?>(deviceId),
+      'lastPushAt': serializer.toJson<DateTime?>(lastPushAt),
+      'photosAutoEnabled': serializer.toJson<bool>(photosAutoEnabled),
     };
   }
 
@@ -8209,6 +8585,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     Value<DateTime?> lastPullAt = const Value.absent(),
     Value<String?> lastError = const Value.absent(),
     bool? blocked,
+    Value<String?> deviceId = const Value.absent(),
+    Value<DateTime?> lastPushAt = const Value.absent(),
+    bool? photosAutoEnabled,
   }) => SyncStateRow(
     id: id ?? this.id,
     registerId: registerId.present ? registerId.value : this.registerId,
@@ -8219,6 +8598,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     lastPullAt: lastPullAt.present ? lastPullAt.value : this.lastPullAt,
     lastError: lastError.present ? lastError.value : this.lastError,
     blocked: blocked ?? this.blocked,
+    deviceId: deviceId.present ? deviceId.value : this.deviceId,
+    lastPushAt: lastPushAt.present ? lastPushAt.value : this.lastPushAt,
+    photosAutoEnabled: photosAutoEnabled ?? this.photosAutoEnabled,
   );
   SyncStateRow copyWithCompanion(SyncStateRowsCompanion data) {
     return SyncStateRow(
@@ -8243,6 +8625,13 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           : this.lastPullAt,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
       blocked: data.blocked.present ? data.blocked.value : this.blocked,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      lastPushAt: data.lastPushAt.present
+          ? data.lastPushAt.value
+          : this.lastPushAt,
+      photosAutoEnabled: data.photosAutoEnabled.present
+          ? data.photosAutoEnabled.value
+          : this.photosAutoEnabled,
     );
   }
 
@@ -8257,7 +8646,10 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           ..write('initialPullDone: $initialPullDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('lastError: $lastError, ')
-          ..write('blocked: $blocked')
+          ..write('blocked: $blocked, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastPushAt: $lastPushAt, ')
+          ..write('photosAutoEnabled: $photosAutoEnabled')
           ..write(')'))
         .toString();
   }
@@ -8273,6 +8665,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     lastPullAt,
     lastError,
     blocked,
+    deviceId,
+    lastPushAt,
+    photosAutoEnabled,
   );
   @override
   bool operator ==(Object other) =>
@@ -8286,7 +8681,10 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           other.initialPullDone == this.initialPullDone &&
           other.lastPullAt == this.lastPullAt &&
           other.lastError == this.lastError &&
-          other.blocked == this.blocked);
+          other.blocked == this.blocked &&
+          other.deviceId == this.deviceId &&
+          other.lastPushAt == this.lastPushAt &&
+          other.photosAutoEnabled == this.photosAutoEnabled);
 }
 
 class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
@@ -8299,6 +8697,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
   final Value<DateTime?> lastPullAt;
   final Value<String?> lastError;
   final Value<bool> blocked;
+  final Value<String?> deviceId;
+  final Value<DateTime?> lastPushAt;
+  final Value<bool> photosAutoEnabled;
   const SyncStateRowsCompanion({
     this.id = const Value.absent(),
     this.registerId = const Value.absent(),
@@ -8309,6 +8710,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     this.lastPullAt = const Value.absent(),
     this.lastError = const Value.absent(),
     this.blocked = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.lastPushAt = const Value.absent(),
+    this.photosAutoEnabled = const Value.absent(),
   });
   SyncStateRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -8320,6 +8724,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     this.lastPullAt = const Value.absent(),
     this.lastError = const Value.absent(),
     this.blocked = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.lastPushAt = const Value.absent(),
+    this.photosAutoEnabled = const Value.absent(),
   });
   static Insertable<SyncStateRow> custom({
     Expression<int>? id,
@@ -8331,6 +8738,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     Expression<DateTime>? lastPullAt,
     Expression<String>? lastError,
     Expression<bool>? blocked,
+    Expression<String>? deviceId,
+    Expression<DateTime>? lastPushAt,
+    Expression<bool>? photosAutoEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -8342,6 +8752,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
       if (lastPullAt != null) 'last_pull_at': lastPullAt,
       if (lastError != null) 'last_error': lastError,
       if (blocked != null) 'blocked': blocked,
+      if (deviceId != null) 'device_id': deviceId,
+      if (lastPushAt != null) 'last_push_at': lastPushAt,
+      if (photosAutoEnabled != null) 'photos_auto_enabled': photosAutoEnabled,
     });
   }
 
@@ -8355,6 +8768,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     Value<DateTime?>? lastPullAt,
     Value<String?>? lastError,
     Value<bool>? blocked,
+    Value<String?>? deviceId,
+    Value<DateTime?>? lastPushAt,
+    Value<bool>? photosAutoEnabled,
   }) {
     return SyncStateRowsCompanion(
       id: id ?? this.id,
@@ -8366,6 +8782,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
       lastPullAt: lastPullAt ?? this.lastPullAt,
       lastError: lastError ?? this.lastError,
       blocked: blocked ?? this.blocked,
+      deviceId: deviceId ?? this.deviceId,
+      lastPushAt: lastPushAt ?? this.lastPushAt,
+      photosAutoEnabled: photosAutoEnabled ?? this.photosAutoEnabled,
     );
   }
 
@@ -8399,6 +8818,15 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     if (blocked.present) {
       map['blocked'] = Variable<bool>(blocked.value);
     }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (lastPushAt.present) {
+      map['last_push_at'] = Variable<DateTime>(lastPushAt.value);
+    }
+    if (photosAutoEnabled.present) {
+      map['photos_auto_enabled'] = Variable<bool>(photosAutoEnabled.value);
+    }
     return map;
   }
 
@@ -8413,7 +8841,10 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
           ..write('initialPullDone: $initialPullDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('lastError: $lastError, ')
-          ..write('blocked: $blocked')
+          ..write('blocked: $blocked, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('lastPushAt: $lastPushAt, ')
+          ..write('photosAutoEnabled: $photosAutoEnabled')
           ..write(')'))
         .toString();
   }
@@ -10093,6 +10524,1115 @@ class RksvStateRowsCompanion extends UpdateCompanion<RksvStateRow> {
   }
 }
 
+class $OutboxRowsTable extends OutboxRows
+    with TableInfo<$OutboxRowsTable, OutboxRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutboxRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _refMeta = const VerificationMeta('ref');
+  @override
+  late final GeneratedColumn<String> ref = GeneratedColumn<String>(
+    'ref',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fieldMeta = const VerificationMeta('field');
+  @override
+  late final GeneratedColumn<String> field = GeneratedColumn<String>(
+    'field',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _changedAtMeta = const VerificationMeta(
+    'changedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> changedAt = GeneratedColumn<DateTime>(
+    'changed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revMeta = const VerificationMeta('rev');
+  @override
+  late final GeneratedColumn<int> rev = GeneratedColumn<int>(
+    'rev',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    ref,
+    field,
+    value,
+    changedAt,
+    rev,
+    state,
+    reason,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outbox';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutboxRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('ref')) {
+      context.handle(
+        _refMeta,
+        ref.isAcceptableOrUnknown(data['ref']!, _refMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_refMeta);
+    }
+    if (data.containsKey('field')) {
+      context.handle(
+        _fieldMeta,
+        field.isAcceptableOrUnknown(data['field']!, _fieldMeta),
+      );
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    }
+    if (data.containsKey('changed_at')) {
+      context.handle(
+        _changedAtMeta,
+        changedAt.isAcceptableOrUnknown(data['changed_at']!, _changedAtMeta),
+      );
+    }
+    if (data.containsKey('rev')) {
+      context.handle(
+        _revMeta,
+        rev.isAcceptableOrUnknown(data['rev']!, _revMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OutboxRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutboxRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      ref: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ref'],
+      )!,
+      field: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field'],
+      ),
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      ),
+      changedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}changed_at'],
+      ),
+      rev: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rev'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+    );
+  }
+
+  @override
+  $OutboxRowsTable createAlias(String alias) {
+    return $OutboxRowsTable(attachedDatabase, alias);
+  }
+}
+
+class OutboxRow extends DataClass implements Insertable<OutboxRow> {
+  final int id;
+
+  /// `receipt`, `day`, `cash_movement`, `item_change`, `report`,
+  /// `rksv_certificate` oder `rksv_chain`.
+  final String kind;
+
+  /// Kennung der Sache (bei Artikel-Änderungen die Artikel-Kennung).
+  final String ref;
+
+  /// Nur bei Artikel-Änderungen: Feld, Wert als JSON und Zeitpunkt.
+  final String? field;
+  final String? value;
+  final DateTime? changedAt;
+
+  /// Zählt hoch, wenn sich die Sache ändert, solange der Eintrag wartet.
+  final int rev;
+
+  /// `pending` oder `rejected`.
+  final String state;
+  final String? reason;
+  const OutboxRow({
+    required this.id,
+    required this.kind,
+    required this.ref,
+    this.field,
+    this.value,
+    this.changedAt,
+    required this.rev,
+    required this.state,
+    this.reason,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['kind'] = Variable<String>(kind);
+    map['ref'] = Variable<String>(ref);
+    if (!nullToAbsent || field != null) {
+      map['field'] = Variable<String>(field);
+    }
+    if (!nullToAbsent || value != null) {
+      map['value'] = Variable<String>(value);
+    }
+    if (!nullToAbsent || changedAt != null) {
+      map['changed_at'] = Variable<DateTime>(changedAt);
+    }
+    map['rev'] = Variable<int>(rev);
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    return map;
+  }
+
+  OutboxRowsCompanion toCompanion(bool nullToAbsent) {
+    return OutboxRowsCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      ref: Value(ref),
+      field: field == null && nullToAbsent
+          ? const Value.absent()
+          : Value(field),
+      value: value == null && nullToAbsent
+          ? const Value.absent()
+          : Value(value),
+      changedAt: changedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(changedAt),
+      rev: Value(rev),
+      state: Value(state),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+    );
+  }
+
+  factory OutboxRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutboxRow(
+      id: serializer.fromJson<int>(json['id']),
+      kind: serializer.fromJson<String>(json['kind']),
+      ref: serializer.fromJson<String>(json['ref']),
+      field: serializer.fromJson<String?>(json['field']),
+      value: serializer.fromJson<String?>(json['value']),
+      changedAt: serializer.fromJson<DateTime?>(json['changedAt']),
+      rev: serializer.fromJson<int>(json['rev']),
+      state: serializer.fromJson<String>(json['state']),
+      reason: serializer.fromJson<String?>(json['reason']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'kind': serializer.toJson<String>(kind),
+      'ref': serializer.toJson<String>(ref),
+      'field': serializer.toJson<String?>(field),
+      'value': serializer.toJson<String?>(value),
+      'changedAt': serializer.toJson<DateTime?>(changedAt),
+      'rev': serializer.toJson<int>(rev),
+      'state': serializer.toJson<String>(state),
+      'reason': serializer.toJson<String?>(reason),
+    };
+  }
+
+  OutboxRow copyWith({
+    int? id,
+    String? kind,
+    String? ref,
+    Value<String?> field = const Value.absent(),
+    Value<String?> value = const Value.absent(),
+    Value<DateTime?> changedAt = const Value.absent(),
+    int? rev,
+    String? state,
+    Value<String?> reason = const Value.absent(),
+  }) => OutboxRow(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    ref: ref ?? this.ref,
+    field: field.present ? field.value : this.field,
+    value: value.present ? value.value : this.value,
+    changedAt: changedAt.present ? changedAt.value : this.changedAt,
+    rev: rev ?? this.rev,
+    state: state ?? this.state,
+    reason: reason.present ? reason.value : this.reason,
+  );
+  OutboxRow copyWithCompanion(OutboxRowsCompanion data) {
+    return OutboxRow(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      ref: data.ref.present ? data.ref.value : this.ref,
+      field: data.field.present ? data.field.value : this.field,
+      value: data.value.present ? data.value.value : this.value,
+      changedAt: data.changedAt.present ? data.changedAt.value : this.changedAt,
+      rev: data.rev.present ? data.rev.value : this.rev,
+      state: data.state.present ? data.state.value : this.state,
+      reason: data.reason.present ? data.reason.value : this.reason,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxRow(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('ref: $ref, ')
+          ..write('field: $field, ')
+          ..write('value: $value, ')
+          ..write('changedAt: $changedAt, ')
+          ..write('rev: $rev, ')
+          ..write('state: $state, ')
+          ..write('reason: $reason')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, kind, ref, field, value, changedAt, rev, state, reason);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutboxRow &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.ref == this.ref &&
+          other.field == this.field &&
+          other.value == this.value &&
+          other.changedAt == this.changedAt &&
+          other.rev == this.rev &&
+          other.state == this.state &&
+          other.reason == this.reason);
+}
+
+class OutboxRowsCompanion extends UpdateCompanion<OutboxRow> {
+  final Value<int> id;
+  final Value<String> kind;
+  final Value<String> ref;
+  final Value<String?> field;
+  final Value<String?> value;
+  final Value<DateTime?> changedAt;
+  final Value<int> rev;
+  final Value<String> state;
+  final Value<String?> reason;
+  const OutboxRowsCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.ref = const Value.absent(),
+    this.field = const Value.absent(),
+    this.value = const Value.absent(),
+    this.changedAt = const Value.absent(),
+    this.rev = const Value.absent(),
+    this.state = const Value.absent(),
+    this.reason = const Value.absent(),
+  });
+  OutboxRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String kind,
+    required String ref,
+    this.field = const Value.absent(),
+    this.value = const Value.absent(),
+    this.changedAt = const Value.absent(),
+    this.rev = const Value.absent(),
+    this.state = const Value.absent(),
+    this.reason = const Value.absent(),
+  }) : kind = Value(kind),
+       ref = Value(ref);
+  static Insertable<OutboxRow> custom({
+    Expression<int>? id,
+    Expression<String>? kind,
+    Expression<String>? ref,
+    Expression<String>? field,
+    Expression<String>? value,
+    Expression<DateTime>? changedAt,
+    Expression<int>? rev,
+    Expression<String>? state,
+    Expression<String>? reason,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (ref != null) 'ref': ref,
+      if (field != null) 'field': field,
+      if (value != null) 'value': value,
+      if (changedAt != null) 'changed_at': changedAt,
+      if (rev != null) 'rev': rev,
+      if (state != null) 'state': state,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  OutboxRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? kind,
+    Value<String>? ref,
+    Value<String?>? field,
+    Value<String?>? value,
+    Value<DateTime?>? changedAt,
+    Value<int>? rev,
+    Value<String>? state,
+    Value<String?>? reason,
+  }) {
+    return OutboxRowsCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      ref: ref ?? this.ref,
+      field: field ?? this.field,
+      value: value ?? this.value,
+      changedAt: changedAt ?? this.changedAt,
+      rev: rev ?? this.rev,
+      state: state ?? this.state,
+      reason: reason ?? this.reason,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (ref.present) {
+      map['ref'] = Variable<String>(ref.value);
+    }
+    if (field.present) {
+      map['field'] = Variable<String>(field.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (changedAt.present) {
+      map['changed_at'] = Variable<DateTime>(changedAt.value);
+    }
+    if (rev.present) {
+      map['rev'] = Variable<int>(rev.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('ref: $ref, ')
+          ..write('field: $field, ')
+          ..write('value: $value, ')
+          ..write('changedAt: $changedAt, ')
+          ..write('rev: $rev, ')
+          ..write('state: $state, ')
+          ..write('reason: $reason')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReportRowsTable extends ReportRows
+    with TableInfo<$ReportRowsTable, ReportRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReportRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<DateTime> at = GeneratedColumn<DateTime>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appVersionMeta = const VerificationMeta(
+    'appVersion',
+  );
+  @override
+  late final GeneratedColumn<String> appVersion = GeneratedColumn<String>(
+    'app_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _androidVersionMeta = const VerificationMeta(
+    'androidVersion',
+  );
+  @override
+  late final GeneratedColumn<String> androidVersion = GeneratedColumn<String>(
+    'android_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceModelMeta = const VerificationMeta(
+    'deviceModel',
+  );
+  @override
+  late final GeneratedColumn<String> deviceModel = GeneratedColumn<String>(
+    'device_model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countMeta = const VerificationMeta('count');
+  @override
+  late final GeneratedColumn<int> count = GeneratedColumn<int>(
+    'count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _signatureMeta = const VerificationMeta(
+    'signature',
+  );
+  @override
+  late final GeneratedColumn<String> signature = GeneratedColumn<String>(
+    'signature',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    at,
+    appVersion,
+    androidVersion,
+    deviceModel,
+    count,
+    signature,
+    content,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reports';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReportRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('app_version')) {
+      context.handle(
+        _appVersionMeta,
+        appVersion.isAcceptableOrUnknown(data['app_version']!, _appVersionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_appVersionMeta);
+    }
+    if (data.containsKey('android_version')) {
+      context.handle(
+        _androidVersionMeta,
+        androidVersion.isAcceptableOrUnknown(
+          data['android_version']!,
+          _androidVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('device_model')) {
+      context.handle(
+        _deviceModelMeta,
+        deviceModel.isAcceptableOrUnknown(
+          data['device_model']!,
+          _deviceModelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('count')) {
+      context.handle(
+        _countMeta,
+        count.isAcceptableOrUnknown(data['count']!, _countMeta),
+      );
+    }
+    if (data.containsKey('signature')) {
+      context.handle(
+        _signatureMeta,
+        signature.isAcceptableOrUnknown(data['signature']!, _signatureMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_signatureMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReportRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReportRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}at'],
+      )!,
+      appVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}app_version'],
+      )!,
+      androidVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}android_version'],
+      ),
+      deviceModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_model'],
+      ),
+      count: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}count'],
+      )!,
+      signature: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+    );
+  }
+
+  @override
+  $ReportRowsTable createAlias(String alias) {
+    return $ReportRowsTable(attachedDatabase, alias);
+  }
+}
+
+class ReportRow extends DataClass implements Insertable<ReportRow> {
+  final String id;
+
+  /// `error` oder `device_test`.
+  final String kind;
+  final DateTime at;
+  final String appVersion;
+  final String? androidVersion;
+  final String? deviceModel;
+
+  /// Wie oft derselbe Fehler (gleiche `signature`) aufgetreten ist.
+  final int count;
+  final String signature;
+
+  /// Inhalt als JSON.
+  final String content;
+  const ReportRow({
+    required this.id,
+    required this.kind,
+    required this.at,
+    required this.appVersion,
+    this.androidVersion,
+    this.deviceModel,
+    required this.count,
+    required this.signature,
+    required this.content,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['kind'] = Variable<String>(kind);
+    map['at'] = Variable<DateTime>(at);
+    map['app_version'] = Variable<String>(appVersion);
+    if (!nullToAbsent || androidVersion != null) {
+      map['android_version'] = Variable<String>(androidVersion);
+    }
+    if (!nullToAbsent || deviceModel != null) {
+      map['device_model'] = Variable<String>(deviceModel);
+    }
+    map['count'] = Variable<int>(count);
+    map['signature'] = Variable<String>(signature);
+    map['content'] = Variable<String>(content);
+    return map;
+  }
+
+  ReportRowsCompanion toCompanion(bool nullToAbsent) {
+    return ReportRowsCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      at: Value(at),
+      appVersion: Value(appVersion),
+      androidVersion: androidVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(androidVersion),
+      deviceModel: deviceModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deviceModel),
+      count: Value(count),
+      signature: Value(signature),
+      content: Value(content),
+    );
+  }
+
+  factory ReportRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReportRow(
+      id: serializer.fromJson<String>(json['id']),
+      kind: serializer.fromJson<String>(json['kind']),
+      at: serializer.fromJson<DateTime>(json['at']),
+      appVersion: serializer.fromJson<String>(json['appVersion']),
+      androidVersion: serializer.fromJson<String?>(json['androidVersion']),
+      deviceModel: serializer.fromJson<String?>(json['deviceModel']),
+      count: serializer.fromJson<int>(json['count']),
+      signature: serializer.fromJson<String>(json['signature']),
+      content: serializer.fromJson<String>(json['content']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kind': serializer.toJson<String>(kind),
+      'at': serializer.toJson<DateTime>(at),
+      'appVersion': serializer.toJson<String>(appVersion),
+      'androidVersion': serializer.toJson<String?>(androidVersion),
+      'deviceModel': serializer.toJson<String?>(deviceModel),
+      'count': serializer.toJson<int>(count),
+      'signature': serializer.toJson<String>(signature),
+      'content': serializer.toJson<String>(content),
+    };
+  }
+
+  ReportRow copyWith({
+    String? id,
+    String? kind,
+    DateTime? at,
+    String? appVersion,
+    Value<String?> androidVersion = const Value.absent(),
+    Value<String?> deviceModel = const Value.absent(),
+    int? count,
+    String? signature,
+    String? content,
+  }) => ReportRow(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    at: at ?? this.at,
+    appVersion: appVersion ?? this.appVersion,
+    androidVersion: androidVersion.present
+        ? androidVersion.value
+        : this.androidVersion,
+    deviceModel: deviceModel.present ? deviceModel.value : this.deviceModel,
+    count: count ?? this.count,
+    signature: signature ?? this.signature,
+    content: content ?? this.content,
+  );
+  ReportRow copyWithCompanion(ReportRowsCompanion data) {
+    return ReportRow(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      at: data.at.present ? data.at.value : this.at,
+      appVersion: data.appVersion.present
+          ? data.appVersion.value
+          : this.appVersion,
+      androidVersion: data.androidVersion.present
+          ? data.androidVersion.value
+          : this.androidVersion,
+      deviceModel: data.deviceModel.present
+          ? data.deviceModel.value
+          : this.deviceModel,
+      count: data.count.present ? data.count.value : this.count,
+      signature: data.signature.present ? data.signature.value : this.signature,
+      content: data.content.present ? data.content.value : this.content,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReportRow(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('at: $at, ')
+          ..write('appVersion: $appVersion, ')
+          ..write('androidVersion: $androidVersion, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('count: $count, ')
+          ..write('signature: $signature, ')
+          ..write('content: $content')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    at,
+    appVersion,
+    androidVersion,
+    deviceModel,
+    count,
+    signature,
+    content,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReportRow &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.at == this.at &&
+          other.appVersion == this.appVersion &&
+          other.androidVersion == this.androidVersion &&
+          other.deviceModel == this.deviceModel &&
+          other.count == this.count &&
+          other.signature == this.signature &&
+          other.content == this.content);
+}
+
+class ReportRowsCompanion extends UpdateCompanion<ReportRow> {
+  final Value<String> id;
+  final Value<String> kind;
+  final Value<DateTime> at;
+  final Value<String> appVersion;
+  final Value<String?> androidVersion;
+  final Value<String?> deviceModel;
+  final Value<int> count;
+  final Value<String> signature;
+  final Value<String> content;
+  final Value<int> rowid;
+  const ReportRowsCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.at = const Value.absent(),
+    this.appVersion = const Value.absent(),
+    this.androidVersion = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.count = const Value.absent(),
+    this.signature = const Value.absent(),
+    this.content = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReportRowsCompanion.insert({
+    required String id,
+    required String kind,
+    required DateTime at,
+    required String appVersion,
+    this.androidVersion = const Value.absent(),
+    this.deviceModel = const Value.absent(),
+    this.count = const Value.absent(),
+    required String signature,
+    required String content,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       kind = Value(kind),
+       at = Value(at),
+       appVersion = Value(appVersion),
+       signature = Value(signature),
+       content = Value(content);
+  static Insertable<ReportRow> custom({
+    Expression<String>? id,
+    Expression<String>? kind,
+    Expression<DateTime>? at,
+    Expression<String>? appVersion,
+    Expression<String>? androidVersion,
+    Expression<String>? deviceModel,
+    Expression<int>? count,
+    Expression<String>? signature,
+    Expression<String>? content,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (at != null) 'at': at,
+      if (appVersion != null) 'app_version': appVersion,
+      if (androidVersion != null) 'android_version': androidVersion,
+      if (deviceModel != null) 'device_model': deviceModel,
+      if (count != null) 'count': count,
+      if (signature != null) 'signature': signature,
+      if (content != null) 'content': content,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReportRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? kind,
+    Value<DateTime>? at,
+    Value<String>? appVersion,
+    Value<String?>? androidVersion,
+    Value<String?>? deviceModel,
+    Value<int>? count,
+    Value<String>? signature,
+    Value<String>? content,
+    Value<int>? rowid,
+  }) {
+    return ReportRowsCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      at: at ?? this.at,
+      appVersion: appVersion ?? this.appVersion,
+      androidVersion: androidVersion ?? this.androidVersion,
+      deviceModel: deviceModel ?? this.deviceModel,
+      count: count ?? this.count,
+      signature: signature ?? this.signature,
+      content: content ?? this.content,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<DateTime>(at.value);
+    }
+    if (appVersion.present) {
+      map['app_version'] = Variable<String>(appVersion.value);
+    }
+    if (androidVersion.present) {
+      map['android_version'] = Variable<String>(androidVersion.value);
+    }
+    if (deviceModel.present) {
+      map['device_model'] = Variable<String>(deviceModel.value);
+    }
+    if (count.present) {
+      map['count'] = Variable<int>(count.value);
+    }
+    if (signature.present) {
+      map['signature'] = Variable<String>(signature.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReportRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('at: $at, ')
+          ..write('appVersion: $appVersion, ')
+          ..write('androidVersion: $androidVersion, ')
+          ..write('deviceModel: $deviceModel, ')
+          ..write('count: $count, ')
+          ..write('signature: $signature, ')
+          ..write('content: $content, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KassaDatabase extends GeneratedDatabase {
   _$KassaDatabase(QueryExecutor e) : super(e);
   $KassaDatabaseManager get managers => $KassaDatabaseManager(this);
@@ -10128,6 +11668,8 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
   late final $RksvChainRowsTable rksvChainRows = $RksvChainRowsTable(this);
   late final $RksvEntryRowsTable rksvEntryRows = $RksvEntryRowsTable(this);
   late final $RksvStateRowsTable rksvStateRows = $RksvStateRowsTable(this);
+  late final $OutboxRowsTable outboxRows = $OutboxRowsTable(this);
+  late final $ReportRowsTable reportRows = $ReportRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10153,6 +11695,8 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
     rksvChainRows,
     rksvEntryRows,
     rksvStateRows,
+    outboxRows,
+    reportRows,
   ];
 }
 
@@ -10163,6 +11707,9 @@ typedef $$BusinessRowsTableCreateCompanionBuilder =
       Value<String> addressLines,
       Value<String?> vatId,
       Value<String?> receiptFooter,
+      Value<String?> logoFileId,
+      Value<String?> logoPath,
+      Value<String?> logoColor,
     });
 typedef $$BusinessRowsTableUpdateCompanionBuilder =
     BusinessRowsCompanion Function({
@@ -10171,6 +11718,9 @@ typedef $$BusinessRowsTableUpdateCompanionBuilder =
       Value<String> addressLines,
       Value<String?> vatId,
       Value<String?> receiptFooter,
+      Value<String?> logoFileId,
+      Value<String?> logoPath,
+      Value<String?> logoColor,
     });
 
 class $$BusinessRowsTableFilterComposer
@@ -10204,6 +11754,21 @@ class $$BusinessRowsTableFilterComposer
 
   ColumnFilters<String> get receiptFooter => $composableBuilder(
     column: $table.receiptFooter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoFileId => $composableBuilder(
+    column: $table.logoFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoPath => $composableBuilder(
+    column: $table.logoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logoColor => $composableBuilder(
+    column: $table.logoColor,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10241,6 +11806,21 @@ class $$BusinessRowsTableOrderingComposer
     column: $table.receiptFooter,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get logoFileId => $composableBuilder(
+    column: $table.logoFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoPath => $composableBuilder(
+    column: $table.logoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logoColor => $composableBuilder(
+    column: $table.logoColor,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$BusinessRowsTableAnnotationComposer
@@ -10270,6 +11850,17 @@ class $$BusinessRowsTableAnnotationComposer
     column: $table.receiptFooter,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get logoFileId => $composableBuilder(
+    column: $table.logoFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get logoPath =>
+      $composableBuilder(column: $table.logoPath, builder: (column) => column);
+
+  GeneratedColumn<String> get logoColor =>
+      $composableBuilder(column: $table.logoColor, builder: (column) => column);
 }
 
 class $$BusinessRowsTableTableManager
@@ -10308,12 +11899,18 @@ class $$BusinessRowsTableTableManager
                 Value<String> addressLines = const Value.absent(),
                 Value<String?> vatId = const Value.absent(),
                 Value<String?> receiptFooter = const Value.absent(),
+                Value<String?> logoFileId = const Value.absent(),
+                Value<String?> logoPath = const Value.absent(),
+                Value<String?> logoColor = const Value.absent(),
               }) => BusinessRowsCompanion(
                 id: id,
                 name: name,
                 addressLines: addressLines,
                 vatId: vatId,
                 receiptFooter: receiptFooter,
+                logoFileId: logoFileId,
+                logoPath: logoPath,
+                logoColor: logoColor,
               ),
           createCompanionCallback:
               ({
@@ -10322,12 +11919,18 @@ class $$BusinessRowsTableTableManager
                 Value<String> addressLines = const Value.absent(),
                 Value<String?> vatId = const Value.absent(),
                 Value<String?> receiptFooter = const Value.absent(),
+                Value<String?> logoFileId = const Value.absent(),
+                Value<String?> logoPath = const Value.absent(),
+                Value<String?> logoColor = const Value.absent(),
               }) => BusinessRowsCompanion.insert(
                 id: id,
                 name: name,
                 addressLines: addressLines,
                 vatId: vatId,
                 receiptFooter: receiptFooter,
+                logoFileId: logoFileId,
+                logoPath: logoPath,
+                logoColor: logoColor,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -10660,6 +12263,8 @@ typedef $$ItemRowsTableCreateCompanionBuilder = ItemRowsCompanion Function({
   Value<bool> favorite,
   Value<bool> inSale,
   Value<String?> photoPath,
+  Value<String?> photoFileId,
+  Value<String?> photoColor,
   required int position,
   Value<bool> archived,
   Value<int> rowid,
@@ -10677,6 +12282,8 @@ typedef $$ItemRowsTableUpdateCompanionBuilder = ItemRowsCompanion Function({
   Value<bool> favorite,
   Value<bool> inSale,
   Value<String?> photoPath,
+  Value<String?> photoFileId,
+  Value<String?> photoColor,
   Value<int> position,
   Value<bool> archived,
   Value<int> rowid,
@@ -10765,6 +12372,16 @@ class $$ItemRowsTableFilterComposer
 
   ColumnFilters<String> get photoPath => $composableBuilder(
     column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoFileId => $composableBuilder(
+    column: $table.photoFileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoColor => $composableBuilder(
+    column: $table.photoColor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10866,6 +12483,16 @@ class $$ItemRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get photoFileId => $composableBuilder(
+    column: $table.photoFileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoColor => $composableBuilder(
+    column: $table.photoColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get position => $composableBuilder(
     column: $table.position,
     builder: (column) => ColumnOrderings(column),
@@ -10950,6 +12577,16 @@ class $$ItemRowsTableAnnotationComposer
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
 
+  GeneratedColumn<String> get photoFileId => $composableBuilder(
+    column: $table.photoFileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoColor => $composableBuilder(
+    column: $table.photoColor,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
 
@@ -11020,6 +12657,8 @@ class $$ItemRowsTableTableManager
                 Value<bool> favorite = const Value.absent(),
                 Value<bool> inSale = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<String?> photoFileId = const Value.absent(),
+                Value<String?> photoColor = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11036,6 +12675,8 @@ class $$ItemRowsTableTableManager
                 favorite: favorite,
                 inSale: inSale,
                 photoPath: photoPath,
+                photoFileId: photoFileId,
+                photoColor: photoColor,
                 position: position,
                 archived: archived,
                 rowid: rowid,
@@ -11054,6 +12695,8 @@ class $$ItemRowsTableTableManager
                 Value<bool> favorite = const Value.absent(),
                 Value<bool> inSale = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<String?> photoFileId = const Value.absent(),
+                Value<String?> photoColor = const Value.absent(),
                 required int position,
                 Value<bool> archived = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -11070,6 +12713,8 @@ class $$ItemRowsTableTableManager
                 favorite: favorite,
                 inSale: inSale,
                 photoPath: photoPath,
+                photoFileId: photoFileId,
+                photoColor: photoColor,
                 position: position,
                 archived: archived,
                 rowid: rowid,
@@ -15929,6 +17574,9 @@ typedef $$SyncStateRowsTableCreateCompanionBuilder =
       Value<DateTime?> lastPullAt,
       Value<String?> lastError,
       Value<bool> blocked,
+      Value<String?> deviceId,
+      Value<DateTime?> lastPushAt,
+      Value<bool> photosAutoEnabled,
     });
 typedef $$SyncStateRowsTableUpdateCompanionBuilder =
     SyncStateRowsCompanion Function({
@@ -15941,6 +17589,9 @@ typedef $$SyncStateRowsTableUpdateCompanionBuilder =
       Value<DateTime?> lastPullAt,
       Value<String?> lastError,
       Value<bool> blocked,
+      Value<String?> deviceId,
+      Value<DateTime?> lastPushAt,
+      Value<bool> photosAutoEnabled,
     });
 
 class $$SyncStateRowsTableFilterComposer
@@ -15994,6 +17645,21 @@ class $$SyncStateRowsTableFilterComposer
 
   ColumnFilters<bool> get blocked => $composableBuilder(
     column: $table.blocked,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastPushAt => $composableBuilder(
+    column: $table.lastPushAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get photosAutoEnabled => $composableBuilder(
+    column: $table.photosAutoEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -16051,6 +17717,21 @@ class $$SyncStateRowsTableOrderingComposer
     column: $table.blocked,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastPushAt => $composableBuilder(
+    column: $table.lastPushAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get photosAutoEnabled => $composableBuilder(
+    column: $table.photosAutoEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncStateRowsTableAnnotationComposer
@@ -16100,6 +17781,19 @@ class $$SyncStateRowsTableAnnotationComposer
 
   GeneratedColumn<bool> get blocked =>
       $composableBuilder(column: $table.blocked, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastPushAt => $composableBuilder(
+    column: $table.lastPushAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get photosAutoEnabled => $composableBuilder(
+    column: $table.photosAutoEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$SyncStateRowsTableTableManager
@@ -16144,6 +17838,9 @@ class $$SyncStateRowsTableTableManager
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
                 Value<bool> blocked = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
+                Value<DateTime?> lastPushAt = const Value.absent(),
+                Value<bool> photosAutoEnabled = const Value.absent(),
               }) => SyncStateRowsCompanion(
                 id: id,
                 registerId: registerId,
@@ -16154,6 +17851,9 @@ class $$SyncStateRowsTableTableManager
                 lastPullAt: lastPullAt,
                 lastError: lastError,
                 blocked: blocked,
+                deviceId: deviceId,
+                lastPushAt: lastPushAt,
+                photosAutoEnabled: photosAutoEnabled,
               ),
           createCompanionCallback:
               ({
@@ -16166,6 +17866,9 @@ class $$SyncStateRowsTableTableManager
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
                 Value<bool> blocked = const Value.absent(),
+                Value<String?> deviceId = const Value.absent(),
+                Value<DateTime?> lastPushAt = const Value.absent(),
+                Value<bool> photosAutoEnabled = const Value.absent(),
               }) => SyncStateRowsCompanion.insert(
                 id: id,
                 registerId: registerId,
@@ -16176,6 +17879,9 @@ class $$SyncStateRowsTableTableManager
                 lastPullAt: lastPullAt,
                 lastError: lastError,
                 blocked: blocked,
+                deviceId: deviceId,
+                lastPushAt: lastPushAt,
+                photosAutoEnabled: photosAutoEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -17642,6 +19348,566 @@ typedef $$RksvStateRowsTableProcessedTableManager =
       RksvStateRow,
       PrefetchHooks Function()
     >;
+typedef $$OutboxRowsTableCreateCompanionBuilder = OutboxRowsCompanion Function({
+  Value<int> id,
+  required String kind,
+  required String ref,
+  Value<String?> field,
+  Value<String?> value,
+  Value<DateTime?> changedAt,
+  Value<int> rev,
+  Value<String> state,
+  Value<String?> reason,
+});
+typedef $$OutboxRowsTableUpdateCompanionBuilder = OutboxRowsCompanion Function({
+  Value<int> id,
+  Value<String> kind,
+  Value<String> ref,
+  Value<String?> field,
+  Value<String?> value,
+  Value<DateTime?> changedAt,
+  Value<int> rev,
+  Value<String> state,
+  Value<String?> reason,
+});
+
+class $$OutboxRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $OutboxRowsTable> {
+  $$OutboxRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get changedAt => $composableBuilder(
+    column: $table.changedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rev => $composableBuilder(
+    column: $table.rev,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutboxRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $OutboxRowsTable> {
+  $$OutboxRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get changedAt => $composableBuilder(
+    column: $table.changedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rev => $composableBuilder(
+    column: $table.rev,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutboxRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $OutboxRowsTable> {
+  $$OutboxRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get ref =>
+      $composableBuilder(column: $table.ref, builder: (column) => column);
+
+  GeneratedColumn<String> get field =>
+      $composableBuilder(column: $table.field, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get changedAt =>
+      $composableBuilder(column: $table.changedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get rev =>
+      $composableBuilder(column: $table.rev, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+}
+
+class $$OutboxRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $OutboxRowsTable,
+          OutboxRow,
+          $$OutboxRowsTableFilterComposer,
+          $$OutboxRowsTableOrderingComposer,
+          $$OutboxRowsTableAnnotationComposer,
+          $$OutboxRowsTableCreateCompanionBuilder,
+          $$OutboxRowsTableUpdateCompanionBuilder,
+          (
+            OutboxRow,
+            BaseReferences<_$KassaDatabase, $OutboxRowsTable, OutboxRow>,
+          ),
+          OutboxRow,
+          PrefetchHooks Function()
+        > {
+  $$OutboxRowsTableTableManager(_$KassaDatabase db, $OutboxRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutboxRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OutboxRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OutboxRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> ref = const Value.absent(),
+                Value<String?> field = const Value.absent(),
+                Value<String?> value = const Value.absent(),
+                Value<DateTime?> changedAt = const Value.absent(),
+                Value<int> rev = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+              }) => OutboxRowsCompanion(
+                id: id,
+                kind: kind,
+                ref: ref,
+                field: field,
+                value: value,
+                changedAt: changedAt,
+                rev: rev,
+                state: state,
+                reason: reason,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String kind,
+                required String ref,
+                Value<String?> field = const Value.absent(),
+                Value<String?> value = const Value.absent(),
+                Value<DateTime?> changedAt = const Value.absent(),
+                Value<int> rev = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+              }) => OutboxRowsCompanion.insert(
+                id: id,
+                kind: kind,
+                ref: ref,
+                field: field,
+                value: value,
+                changedAt: changedAt,
+                rev: rev,
+                state: state,
+                reason: reason,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$OutboxRowsTable, OutboxRow>(table),
+                  BaseReferences<_$KassaDatabase, $OutboxRowsTable, OutboxRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutboxRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $OutboxRowsTable,
+      OutboxRow,
+      $$OutboxRowsTableFilterComposer,
+      $$OutboxRowsTableOrderingComposer,
+      $$OutboxRowsTableAnnotationComposer,
+      $$OutboxRowsTableCreateCompanionBuilder,
+      $$OutboxRowsTableUpdateCompanionBuilder,
+      (OutboxRow, BaseReferences<_$KassaDatabase, $OutboxRowsTable, OutboxRow>),
+      OutboxRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ReportRowsTableCreateCompanionBuilder = ReportRowsCompanion Function({
+  required String id,
+  required String kind,
+  required DateTime at,
+  required String appVersion,
+  Value<String?> androidVersion,
+  Value<String?> deviceModel,
+  Value<int> count,
+  required String signature,
+  required String content,
+  Value<int> rowid,
+});
+typedef $$ReportRowsTableUpdateCompanionBuilder = ReportRowsCompanion Function({
+  Value<String> id,
+  Value<String> kind,
+  Value<DateTime> at,
+  Value<String> appVersion,
+  Value<String?> androidVersion,
+  Value<String?> deviceModel,
+  Value<int> count,
+  Value<String> signature,
+  Value<String> content,
+  Value<int> rowid,
+});
+
+class $$ReportRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $ReportRowsTable> {
+  $$ReportRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get appVersion => $composableBuilder(
+    column: $table.appVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get androidVersion => $composableBuilder(
+    column: $table.androidVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get count => $composableBuilder(
+    column: $table.count,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReportRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $ReportRowsTable> {
+  $$ReportRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get appVersion => $composableBuilder(
+    column: $table.appVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get androidVersion => $composableBuilder(
+    column: $table.androidVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get count => $composableBuilder(
+    column: $table.count,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReportRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $ReportRowsTable> {
+  $$ReportRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<String> get appVersion => $composableBuilder(
+    column: $table.appVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get androidVersion => $composableBuilder(
+    column: $table.androidVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceModel => $composableBuilder(
+    column: $table.deviceModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get count =>
+      $composableBuilder(column: $table.count, builder: (column) => column);
+
+  GeneratedColumn<String> get signature =>
+      $composableBuilder(column: $table.signature, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+}
+
+class $$ReportRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $ReportRowsTable,
+          ReportRow,
+          $$ReportRowsTableFilterComposer,
+          $$ReportRowsTableOrderingComposer,
+          $$ReportRowsTableAnnotationComposer,
+          $$ReportRowsTableCreateCompanionBuilder,
+          $$ReportRowsTableUpdateCompanionBuilder,
+          (
+            ReportRow,
+            BaseReferences<_$KassaDatabase, $ReportRowsTable, ReportRow>,
+          ),
+          ReportRow,
+          PrefetchHooks Function()
+        > {
+  $$ReportRowsTableTableManager(_$KassaDatabase db, $ReportRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReportRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReportRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReportRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<DateTime> at = const Value.absent(),
+                Value<String> appVersion = const Value.absent(),
+                Value<String?> androidVersion = const Value.absent(),
+                Value<String?> deviceModel = const Value.absent(),
+                Value<int> count = const Value.absent(),
+                Value<String> signature = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReportRowsCompanion(
+                id: id,
+                kind: kind,
+                at: at,
+                appVersion: appVersion,
+                androidVersion: androidVersion,
+                deviceModel: deviceModel,
+                count: count,
+                signature: signature,
+                content: content,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String kind,
+                required DateTime at,
+                required String appVersion,
+                Value<String?> androidVersion = const Value.absent(),
+                Value<String?> deviceModel = const Value.absent(),
+                Value<int> count = const Value.absent(),
+                required String signature,
+                required String content,
+                Value<int> rowid = const Value.absent(),
+              }) => ReportRowsCompanion.insert(
+                id: id,
+                kind: kind,
+                at: at,
+                appVersion: appVersion,
+                androidVersion: androidVersion,
+                deviceModel: deviceModel,
+                count: count,
+                signature: signature,
+                content: content,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReportRowsTable, ReportRow>(table),
+                  BaseReferences<_$KassaDatabase, $ReportRowsTable, ReportRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReportRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $ReportRowsTable,
+      ReportRow,
+      $$ReportRowsTableFilterComposer,
+      $$ReportRowsTableOrderingComposer,
+      $$ReportRowsTableAnnotationComposer,
+      $$ReportRowsTableCreateCompanionBuilder,
+      $$ReportRowsTableUpdateCompanionBuilder,
+      (ReportRow, BaseReferences<_$KassaDatabase, $ReportRowsTable, ReportRow>),
+      ReportRow,
+      PrefetchHooks Function()
+    >;
 
 class $KassaDatabaseManager {
   final _$KassaDatabase _db;
@@ -17689,4 +19955,8 @@ class $KassaDatabaseManager {
       $$RksvEntryRowsTableTableManager(_db, _db.rksvEntryRows);
   $$RksvStateRowsTableTableManager get rksvStateRows =>
       $$RksvStateRowsTableTableManager(_db, _db.rksvStateRows);
+  $$OutboxRowsTableTableManager get outboxRows =>
+      $$OutboxRowsTableTableManager(_db, _db.outboxRows);
+  $$ReportRowsTableTableManager get reportRows =>
+      $$ReportRowsTableTableManager(_db, _db.reportRows);
 }

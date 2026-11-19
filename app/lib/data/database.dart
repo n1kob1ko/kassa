@@ -1,6 +1,8 @@
 // SQLite-Datenbank der Kassa (drift). Enthält Katalog, Mitarbeiter und
 // Einstellungen, Bons und Geschäftstage und das Protokoll der Signatur (RKSV).
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 part 'database.g.dart';
@@ -17,6 +19,12 @@ class BusinessRows extends Table {
   TextColumn get addressLines => text().withDefault(const Constant(''))();
   TextColumn get vatId => text().nullable()();
   TextColumn get receiptFooter => text().nullable()();
+
+  /// Das Logo vom Server: Kennung der Datei, Pfad auf dem Tablet und die
+  /// Farbe als Platzhalter.
+  TextColumn get logoFileId => text().nullable()();
+  TextColumn get logoPath => text().nullable()();
+  TextColumn get logoColor => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -56,6 +64,10 @@ class ItemRows extends Table {
   BoolColumn get favorite => boolean().withDefault(const Constant(false))();
   BoolColumn get inSale => boolean().withDefault(const Constant(true))();
   TextColumn get photoPath => text().nullable()();
+
+  /// Das Foto vom Server: Kennung der Datei und Farbe als Platzhalter.
+  TextColumn get photoFileId => text().nullable()();
+  TextColumn get photoColor => text().nullable()();
   IntColumn get position => integer()();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
 
@@ -339,6 +351,16 @@ class SyncStateRows extends Table {
   TextColumn get lastError => text().nullable()();
   BoolColumn get blocked => boolean().withDefault(const Constant(false))();
 
+  /// Zufällige Kennung dieser Installation, entsteht beim ersten Gebrauch.
+  TextColumn get deviceId => text().nullable()();
+
+  /// Wann zuletzt etwas an den Server gesendet wurde.
+  DateTimeColumn get lastPushAt => dateTime().nullable()();
+
+  /// Fotos von selbst laden, nicht nur auf Knopfdruck.
+  BoolColumn get photosAutoEnabled =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -429,6 +451,61 @@ class RksvStateRows extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Was noch an den Server gesendet werden muss. Bons, Tage, Bewegungen und die
+/// Signatur trägt die Datenbank selbst ein (Trigger in
+/// `_createOutboxTriggers`), Artikel-Änderungen der `OutboxRepository`. Der
+/// Inhalt steht nicht hier, er wird beim Senden aus den Tabellen gelesen.
+class OutboxRows extends Table {
+  @override
+  String get tableName => 'outbox';
+
+  IntColumn get id => integer().autoIncrement()();
+
+  /// `receipt`, `day`, `cash_movement`, `item_change`, `report`,
+  /// `rksv_certificate` oder `rksv_chain`.
+  TextColumn get kind => text()();
+
+  /// Kennung der Sache (bei Artikel-Änderungen die Artikel-Kennung).
+  TextColumn get ref => text()();
+
+  /// Nur bei Artikel-Änderungen: Feld, Wert als JSON und Zeitpunkt.
+  TextColumn get field => text().nullable()();
+  TextColumn get value => text().nullable()();
+  DateTimeColumn get changedAt => dateTime().nullable()();
+
+  /// Zählt hoch, wenn sich die Sache ändert, solange der Eintrag wartet.
+  IntColumn get rev => integer().withDefault(const Constant(0))();
+
+  /// `pending` oder `rejected`.
+  TextColumn get state => text().withDefault(const Constant('pending'))();
+  TextColumn get reason => text().nullable()();
+}
+
+/// Berichte (Fehler, Ergebnis von "Geräte testen"), die an den Server gehen.
+class ReportRows extends Table {
+  @override
+  String get tableName => 'reports';
+
+  TextColumn get id => text()();
+
+  /// `error` oder `device_test`.
+  TextColumn get kind => text()();
+  DateTimeColumn get at => dateTime()();
+  TextColumn get appVersion => text()();
+  TextColumn get androidVersion => text().nullable()();
+  TextColumn get deviceModel => text().nullable()();
+
+  /// Wie oft derselbe Fehler (gleiche `signature`) aufgetreten ist.
+  IntColumn get count => integer().withDefault(const Constant(1))();
+  TextColumn get signature => text()();
+
+  /// Inhalt als JSON.
+  TextColumn get content => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     BusinessRows,
@@ -451,13 +528,15 @@ class RksvStateRows extends Table {
     RksvCertificateRows,
     RksvEntryRows,
     RksvStateRows,
+    OutboxRows,
+    ReportRows,
   ],
 )
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -497,6 +576,8 @@ class KassaDatabase extends _$KassaDatabase {
       }
       await _createRksvGuards();
       await _insertRksvState();
+      await _createOutboxIndex();
+      await _createOutboxTriggers();
     },
     // Jeder Schritt prüft auch [to], damit die Tests der älteren Schritte
     // genau bis zu ihrer Version migrieren.
@@ -516,7 +597,19 @@ class KassaDatabase extends _$KassaDatabase {
         await m.createTable(pendingCardPaymentRows);
       }
       if (from < 3 && to >= 3) {
-        await m.createTable(syncStateRows);
+        // Mit dem Stand von Version 3 anlegen, nicht mit dem heutigen: die
+        // Spalten von Version 5 kommen unten dazu.
+        await customStatement(
+          'CREATE TABLE IF NOT EXISTS "sync_state" ("id" INTEGER NOT NULL, '
+          '"register_id" TEXT NULL, "register_name" TEXT NULL, '
+          '"business_id" TEXT NULL, '
+          '"pull_cursor" INTEGER NOT NULL DEFAULT 0, '
+          '"initial_pull_done" INTEGER NOT NULL DEFAULT 0 '
+          'CHECK ("initial_pull_done" IN (0, 1)), '
+          '"last_pull_at" INTEGER NULL, "last_error" TEXT NULL, '
+          '"blocked" INTEGER NOT NULL DEFAULT 0 '
+          'CHECK ("blocked" IN (0, 1)), PRIMARY KEY ("id"))',
+        );
       }
       if (from < 4 && to >= 4) {
         // Neu aufbauen, damit business_day_id leer sein darf. Ohne
@@ -558,6 +651,21 @@ class KassaDatabase extends _$KassaDatabase {
           }
         });
         await customStatement('PRAGMA foreign_keys = ON');
+      }
+      if (from < 5 && to >= 5) {
+        await m.addColumn(itemRows, itemRows.photoFileId);
+        await m.addColumn(itemRows, itemRows.photoColor);
+        await m.addColumn(businessRows, businessRows.logoFileId);
+        await m.addColumn(businessRows, businessRows.logoPath);
+        await m.addColumn(businessRows, businessRows.logoColor);
+        await m.addColumn(syncStateRows, syncStateRows.deviceId);
+        await m.addColumn(syncStateRows, syncStateRows.lastPushAt);
+        await m.addColumn(syncStateRows, syncStateRows.photosAutoEnabled);
+        await m.createTable(outboxRows);
+        await m.createTable(reportRows);
+        await _createOutboxIndex();
+        await _createOutboxTriggers();
+        await _fillOutboxWithExisting();
       }
     },
     beforeOpen: (details) async {
@@ -621,6 +729,95 @@ class KassaDatabase extends _$KassaDatabase {
       'BEFORE DELETE ON rksv_chains BEGIN '
       "SELECT RAISE(ABORT, 'Ketten können nicht gelöscht werden'); END",
     );
+  }
+
+  /// Eine Zeile je Sache; nur Artikel-Änderungen dürfen mehrfach vorkommen.
+  Future<void> _createOutboxIndex() => customStatement(
+    'CREATE UNIQUE INDEX outbox_entity ON outbox (kind, ref) '
+    "WHERE kind <> 'item_change'",
+  );
+
+  /// Jede Zeile, die gesendet werden muss, stellt sich selbst in die Liste,
+  /// in derselben Transaktion: zuerst `rev` einer wartenden (oder abgelehnten)
+  /// Zeile anheben, sonst eine neue anlegen. So geht eine Änderung nicht
+  /// verloren, die während des Sendens geschieht, und kein Schreiber im Code
+  /// kann es vergessen. Ein Bon nimmt seinen Eintrag im Protokoll mit.
+  Future<void> _createOutboxTriggers() async {
+    Future<void> trigger(
+      String table,
+      String event,
+      String kind,
+      String ref,
+    ) => customStatement(
+      'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
+      'AFTER $event ON $table BEGIN '
+      "UPDATE outbox SET rev = rev + 1 WHERE kind = '$kind' AND ref = $ref; "
+      "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
+    );
+    await trigger('receipts', 'INSERT', 'receipt', 'NEW.id');
+    await trigger('rksv_entries', 'INSERT', 'receipt', 'NEW.receipt_id');
+    await trigger('business_days', 'INSERT', 'day', 'NEW.id');
+    await trigger('business_days', 'UPDATE', 'day', 'NEW.id');
+    await trigger('cash_movements', 'INSERT', 'cash_movement', 'NEW.id');
+    await trigger(
+      'rksv_certificates',
+      'INSERT',
+      'rksv_certificate',
+      'NEW.serial_hex',
+    );
+    await trigger('rksv_chains', 'INSERT', 'rksv_chain', 'NEW.chain');
+    await trigger('rksv_chains', 'UPDATE', 'rksv_chain', 'NEW.chain');
+    await trigger('reports', 'INSERT', 'report', 'NEW.id');
+    await trigger('reports', 'UPDATE', 'report', 'NEW.id');
+  }
+
+  /// Migration auf Version 5: alles Vorhandene einmal in die Liste, in der
+  /// Reihenfolge, in der der Server es braucht (Zertifikat und Kette vor den
+  /// Bons, der Tag vor seinen Bons). Ist die Kassa schon gekoppelt, kommen die
+  /// fünf Felder jedes Artikels als Änderung dazu: seit Stufe 1 lassen sie sich
+  /// am Tablet ändern, ohne dass der Server davon erfuhr, und der Stand der
+  /// Theke soll gewinnen.
+  Future<void> _fillOutboxWithExisting() async {
+    for (final sql in const [
+      "SELECT 'rksv_certificate', serial_hex FROM rksv_certificates "
+          'ORDER BY rowid',
+      "SELECT 'rksv_chain', CAST(chain AS TEXT) FROM rksv_chains "
+          'ORDER BY chain',
+      "SELECT 'day', id FROM business_days ORDER BY opened_at, rowid",
+      "SELECT 'cash_movement', id FROM cash_movements "
+          'ORDER BY created_at, rowid',
+      "SELECT 'receipt', id FROM receipts ORDER BY number",
+    ]) {
+      await customStatement('INSERT OR IGNORE INTO outbox (kind, ref) $sql');
+    }
+    final paired = await customSelect(
+      'SELECT 1 FROM sync_state WHERE id = 1 AND register_id IS NOT NULL',
+    ).get();
+    if (paired.isEmpty) return;
+    final now = DateTime.now();
+    for (final item in await select(itemRows).get()) {
+      final values = <String, Object>{
+        'priceCents': item.priceCents,
+        'inSale': item.inSale,
+        'favorite': item.favorite,
+        'depositCents': item.depositCents,
+        'tags': [
+          for (final tag in item.tags.split(','))
+            if (tag.isNotEmpty) tag,
+        ],
+      };
+      for (final MapEntry(:key, :value) in values.entries) {
+        await into(outboxRows).insert(
+          OutboxRowsCompanion.insert(
+            kind: 'item_change',
+            ref: item.id,
+            field: Value(key),
+            value: Value(jsonEncode(value)),
+            changedAt: Value(now),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _insertRksvState() =>

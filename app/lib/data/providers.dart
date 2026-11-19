@@ -19,6 +19,7 @@ import 'card_payment_repository.dart';
 import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
+import 'outbox_repository.dart';
 import 'receipt_repository.dart';
 import 'rksv_repository.dart';
 import 'settings_repository.dart';
@@ -80,6 +81,15 @@ final syncStateRepositoryProvider = Provider(
 /// Stand des Abgleichs mit dem Server als Strom.
 final syncStateProvider = StreamProvider<SyncState>(
   (ref) => ref.watch(syncStateRepositoryProvider).watch(),
+);
+
+final outboxRepositoryProvider = Provider(
+  (ref) => OutboxRepository(ref.watch(databaseProvider)),
+);
+
+/// Wie viele Einträge noch zu senden sind und wie viele abgelehnt wurden.
+final outboxCountsProvider = StreamProvider<OutboxCounts>(
+  (ref) => ref.watch(outboxRepositoryProvider).watchCounts(),
 );
 
 final rksvRepositoryProvider = Provider(

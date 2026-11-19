@@ -230,7 +230,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      4,
+      5,
     );
     final receipts = await (db.select(
       db.receiptRows,
@@ -391,6 +391,201 @@ void main() {
       });
     });
   }
+
+  test('Schema: Version 4 wird zu Version 5', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final connection = await verifier.startAt(4);
+    final db = KassaDatabase(connection);
+    await verifier.migrateAndValidate(db, 5);
+    await db.close();
+  });
+
+  test('4 → 5: Schema stimmt, alle Daten da', () async {
+    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    expect(
+      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      5,
+    );
+    expect(await count(db, 'business_days'), 2);
+    expect(await count(db, 'cash_movements'), 1);
+    expect(await count(db, 'receipts'), 4);
+    expect(await count(db, 'receipt_lines'), 3);
+    expect(await count(db, 'payments'), 3);
+    expect(await count(db, 'rksv_entries'), 3);
+    expect(await count(db, 'rksv_chains'), 1);
+    expect(await count(db, 'rksv_certificates'), 1);
+    expect(await count(db, 'items'), 3);
+    expect(await count(db, 'reports'), 0);
+    final sync = await SyncStateRepository(db).current();
+    expect(sync.registerId, 'test-register');
+    expect(sync.pullCursor, 12);
+    expect(sync.lastPushAt, isNull);
+    final row = await db.select(db.syncStateRows).getSingle();
+    expect((row.deviceId, row.photosAutoEnabled), (null, false));
+    final item = await (db.select(
+      db.itemRows,
+    )..where((t) => t.id.equals('cola'))).getSingle();
+    expect((item.photoFileId, item.photoColor), (null, null));
+    final business = await db.select(db.businessRows).getSingle();
+    expect(
+      (business.logoFileId, business.logoPath, business.logoColor),
+      (null, null, null),
+    );
+    final state = await db.select(db.rksvStateRows).getSingle();
+    expect((state.mode, state.chain, state.counterCents), ('probe', 1, 1480));
+    expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    final index = await db
+        .customSelect(
+          "SELECT sql FROM sqlite_master WHERE name = 'outbox_entity'",
+        )
+        .getSingle();
+    expect(index.read<String>('sql'), contains("kind <> 'item_change'"));
+    await db.close();
+  });
+
+  Future<List<(String, String)>> outboxList(KassaDatabase db) async => [
+    for (final r
+        in await db
+            .customSelect(
+              "SELECT kind, ref FROM outbox WHERE kind <> 'item_change' "
+              'ORDER BY id',
+            )
+            .get())
+      (r.read<String>('kind'), r.read<String>('ref')),
+  ];
+
+  test('4 → 5: Vorhandenes steht in der Liste, in der Reihenfolge Zertifikat, '
+      'Kette, Tage, Bewegung, Bons nach Nummer', () async {
+    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    expect(await outboxList(db), [
+      ('rksv_certificate', '0a1b2c'),
+      ('rksv_chain', '1'),
+      ('day', 'day-1'),
+      ('day', 'day-2'),
+      ('cash_movement', 'move-1'),
+      ('receipt', 'v4-bar'),
+      ('receipt', 'v4-start'),
+      ('receipt', 'v4-karte'),
+      ('receipt', 'v4-storno'),
+    ]);
+    final states = await db
+        .customSelect('SELECT DISTINCT state, rev FROM outbox')
+        .get();
+    expect(states.map((r) => (r.read<String>('state'), r.read<int>('rev'))), [
+      ('pending', 0),
+    ]);
+    await db.close();
+  });
+
+  test('4 → 5 gekoppelt: 3 Artikel ergeben 15 Artikel-Änderungen', () async {
+    final before = DateTime.now().subtract(const Duration(seconds: 2));
+    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    final rows = await db
+        .customSelect(
+          "SELECT ref, field, value, changed_at FROM outbox "
+          "WHERE kind = 'item_change' ORDER BY id",
+        )
+        .get();
+    expect(rows, hasLength(15));
+    final byKey = {
+      for (final r in rows)
+        '${r.read<String>('ref')}/${r.read<String>('field')}': r.read<String>(
+          'value',
+        ),
+    };
+    expect(byKey, {
+      'huhn-bowl/priceCents': '990',
+      'huhn-bowl/inSale': 'true',
+      'huhn-bowl/favorite': 'false',
+      'huhn-bowl/depositCents': '0',
+      'huhn-bowl/tags': '["spicy"]',
+      'teigtaschen/priceCents': '650',
+      'teigtaschen/inSale': 'false',
+      'teigtaschen/favorite': 'false',
+      'teigtaschen/depositCents': '0',
+      'teigtaschen/tags': '[]',
+      'cola/priceCents': '290',
+      'cola/inSale': 'true',
+      'cola/favorite': 'true',
+      'cola/depositCents': '25',
+      'cola/tags': '["vegan","spicy"]',
+    });
+    final at = await db
+        .customSelect(
+          "SELECT MIN(changed_at) lo FROM outbox WHERE kind = 'item_change'",
+        )
+        .getSingle();
+    final changedAt = DateTime.fromMillisecondsSinceEpoch(
+      at.read<int>('lo') * 1000,
+    );
+    expect(changedAt.isAfter(before), isTrue);
+    // Die Liste der Artikel kommt nach den Bons.
+    final last = await db
+        .customSelect('SELECT kind FROM outbox ORDER BY id DESC LIMIT 1')
+        .getSingle();
+    expect(last.read<String>('kind'), 'item_change');
+    await db.close();
+  });
+
+  test('4 → 5 nicht gekoppelt: keine Artikel-Änderung', () async {
+    final file = await copyFixture('kassa_v4.sqlite');
+    final db = KassaDatabase(
+      NativeDatabase(
+        file,
+        setup: (raw) => raw.execute('UPDATE sync_state SET register_id = NULL'),
+      ),
+    );
+    expect(await count(db, 'outbox'), 9);
+    expect(
+      await db
+          .customSelect(
+            "SELECT COUNT(*) c FROM outbox WHERE kind = 'item_change'",
+          )
+          .getSingle()
+          .then((r) => r.read<int>('c')),
+      0,
+    );
+    await db.close();
+  });
+
+  test('4 → 5: Trigger der Unveränderlichkeit greifen weiter', () async {
+    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    await db.select(db.syncStateRows).get(); // löst die Migration aus
+    for (final sql in const [
+      'UPDATE receipts SET total_cents = 1',
+      'DELETE FROM receipts',
+      'UPDATE receipt_lines SET quantity = 9',
+      'DELETE FROM payments',
+      'UPDATE cash_movements SET amount_cents = 1',
+      'DELETE FROM cash_movements',
+      "UPDATE business_days SET opening_float_cents = 1 WHERE id = 'day-1'",
+      'DELETE FROM business_days',
+      "UPDATE rksv_entries SET jws = 'x'",
+      'DELETE FROM rksv_entries',
+      "UPDATE rksv_certificates SET issuers = '[\"x\"]'",
+      'DELETE FROM rksv_certificates',
+      'DELETE FROM rksv_chains',
+    ]) {
+      await expectLater(
+        db.customStatement(sql),
+        throwsA(isA<SqliteException>()),
+        reason: sql,
+      );
+    }
+    // Der offene Tag lässt sich noch ändern, und das stellt ihn neu ein.
+    await db.customStatement(
+      "UPDATE business_days SET opening_float_cents = 5 WHERE id = 'day-2'",
+    );
+    final rev = await db
+        .customSelect(
+          "SELECT rev FROM outbox WHERE kind = 'day' AND ref = 'day-2'",
+        )
+        .getSingle();
+    expect(rev.read<int>('rev'), 1);
+    await db.close();
+  });
 
   test('unbekannter gespeicherter Wert fällt auf die Vorgabe zurück', () async {
     final db = KassaDatabase(NativeDatabase.memory());

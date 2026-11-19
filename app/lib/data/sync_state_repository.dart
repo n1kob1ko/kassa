@@ -3,6 +3,7 @@
 // hierher, er liegt im `TokenStore`.
 
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'database.dart';
 
@@ -16,6 +17,7 @@ class SyncState {
     this.lastPullAt,
     this.lastError,
     this.blocked = false,
+    this.lastPushAt,
   });
 
   final String? registerId;
@@ -28,6 +30,9 @@ class SyncState {
   final DateTime? lastPullAt;
   final String? lastError;
   final bool blocked;
+
+  /// Wann zuletzt etwas an den Server gesendet wurde.
+  final DateTime? lastPushAt;
 
   /// Die Kassa hat einen Platz beim Server.
   bool get hasRegister => registerId != null;
@@ -89,6 +94,27 @@ class SyncStateRepository {
         ),
       );
 
+  /// Die Kennung dieser Installation: beim ersten Aufruf zufällig erzeugt und
+  /// gespeichert, danach immer dieselbe, auch nach neuem Koppeln.
+  Future<String> deviceId() => _db.transaction(() async {
+    final existing = (await _row())?.deviceId;
+    if (existing != null) return existing;
+    final id = const Uuid().v4();
+    await _db
+        .into(_db.syncStateRows)
+        .insertOnConflictUpdate(
+          SyncStateRowsCompanion(id: const Value(1), deviceId: Value(id)),
+        );
+    return id;
+  });
+
+  /// Hält fest, dass zuletzt um [at] etwas gesendet wurde.
+  Future<void> setPushed(DateTime at) => _db
+      .into(_db.syncStateRows)
+      .insertOnConflictUpdate(
+        SyncStateRowsCompanion(id: const Value(1), lastPushAt: Value(at)),
+      );
+
   Future<SyncStateRow?> _row() => (_db.select(
     _db.syncStateRows,
   )..where((t) => t.id.equals(1))).getSingleOrNull();
@@ -104,5 +130,6 @@ class SyncStateRepository {
           lastPullAt: r.lastPullAt,
           lastError: r.lastError,
           blocked: r.blocked,
+          lastPushAt: r.lastPushAt,
         );
 }
