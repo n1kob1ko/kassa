@@ -194,7 +194,12 @@ void main() {
   testWidgets('Mitarbeiter ohne Chef-Rolle sieht keine der Tasten', (t) async {
     await pumpApp(
       t,
-      SingleChildScrollView(child: SignaturePanel(onOpenCardCheck: () {})),
+      SingleChildScrollView(
+        child: SignaturePanel(
+          onOpenCardCheck: () {},
+          onOpenConnectionCheck: (_) {},
+        ),
+      ),
       overrides: [...await memoryOverrides(), ...signatureOverrides()],
     );
     final c = ProviderScope.containerOf(t.element(find.byType(SignaturePanel)));

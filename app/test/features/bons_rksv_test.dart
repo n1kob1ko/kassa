@@ -75,14 +75,26 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('Ausfall-Eintrag: "Sicherheitseinrichtung ausgefallen" statt '
-      'der zwei Sätze', (t) async {
+  testWidgets('Testbon mit Ausfall-Eintrag: "Testbon" und "Sicherheits'
+      'einrichtung ausgefallen" statt der zwei Sätze', (t) async {
     await _stamped(t, damaged: true);
     expect(_inDetail(find.byType(QrView)), findsOneWidget);
+    expect(_inDetail(find.text('Testbon')), findsOneWidget);
     expect(
       _inDetail(find.text('Sicherheitseinrichtung ausgefallen')),
       findsOneWidget,
     );
+    // Beide rechts neben dem Code, unter der Kassen-ID.
+    for (final line in ['Testbon', 'Sicherheitseinrichtung ausgefallen']) {
+      expect(
+        t.getTopLeft(find.text(line)).dx,
+        greaterThan(t.getTopRight(find.byType(QrView)).dx),
+      );
+      expect(
+        t.getTopLeft(find.text(line)).dy,
+        greaterThan(t.getBottomLeft(find.text('Kassen-ID $fixedCashBoxId')).dy),
+      );
+    }
     expect(find.text('Testbon mit Probe-Signatur.'), findsNothing);
     expect(
       find.text('Der QR-Code steht auch am gedruckten Bon.'),

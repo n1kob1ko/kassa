@@ -2,16 +2,23 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
+import 'package:kassa/rksv/online/atrust_session_keeper.dart';
+import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/rksv/signature_unit.dart';
 
+import '../support/fake_atrust.dart';
 import '../support/fake_signature_unit.dart';
 import '../support/rksv_rig.dart';
 import '../support/sales.dart' show cart;
 
 const _silent = 'Die Signatur hat nicht geantwortet.';
-const _error = 'Die Signatur hat einen Fehler gemeldet.';
+
+/// Der Satz, mit dem die Attrappe bei [FakeMode.error] scheitert: Er wird
+/// der Grund des Ausfalls (P2).
+const _error = 'Die Attrappe signiert nicht.';
 const _ms = Duration(milliseconds: 1);
 
 /// Wartet in gedachter Zeit auf [f], ohne die Zeit weiterzudrehen.
@@ -81,6 +88,78 @@ void main() {
         expect(_await(async, rig.stateRow()).counterCents, 1820);
         expect(rig.fake.signCalls - before, 1);
         _await(async, rig.verifyChain(1));
+      });
+    });
+
+    test('Review Focus 1: A-Trust antwortet erst nach der Frist (echte '
+        'OnlineSignatureUnit, FakeAtrust.delay 6 Sekunden): der Bon steht '
+        'nach 5 Sekunden mit Ausfall-Vermerk und genau einem Eintrag; die '
+        'späte Antwort schreibt nichts und hinterlässt keinen Fehler', () {
+      fakeAsync((async) {
+        final atrust = FakeAtrust()..delay = const Duration(seconds: 6);
+        late final AtrustSessionKeeper keeper;
+        final rig = _await(
+          async,
+          RksvRig.open(
+            unitOf: (db, secrets) => signatureUnitOf(
+              db,
+              secrets,
+              online: (chain, cert) async => OnlineSignatureUnit(
+                client: AtrustClient(atrust.client, AtrustSystem.test),
+                keeper: keeper,
+                zdaId: chain.zdaId,
+                certificateDer: cert.certificate,
+              ),
+            ),
+          ),
+        );
+        keeper = AtrustSessionKeeper(
+          client: AtrustClient(atrust.client, AtrustSystem.test),
+          user: atrustTestUser,
+          password: atrustTestPassword,
+          secrets: rig.secrets,
+          clock: rig.clock,
+        );
+        try {
+          _await(async, rig.startAtrustTest(atrust));
+          Receipt? sold;
+          rig.sell('s1', cart).then((r) => sold = r);
+          async.elapse(RksvJournal.signLimit - _ms);
+          expect(sold, isNull);
+          async.elapse(_ms);
+          expect(sold, isNotNull);
+          expect(sold!.rksv!.damaged, isTrue);
+          expect(atrust.requests, ['PUT /Session/u123456789']);
+
+          final entry = _await(async, rig.entryOf('s1'))!;
+          expect((entry.chain, entry.position, entry.damaged), (1, 1, true));
+          expect(isDamagedJws(entry.jws), isTrue);
+          expect(_await(async, rig.count('rksv_entries')), 1);
+          final state = _await(async, rig.stateRow());
+          expect(
+            (state.outageSince, state.outageReason),
+            (rig.clock.now(), _silent),
+          );
+          expect((state.mode, state.chain, state.notice), ('probe', 1, null));
+
+          // Anmeldung nach 6, Signatur nach 12 Sekunden: Beides kommt an und
+          // wird verworfen.
+          async.elapse(const Duration(seconds: 20));
+          expect(atrust.requests, hasLength(2));
+          expect(atrust.requests.last, endsWith('/Sign/Hash'));
+          expect(async.pendingTimers, isEmpty);
+          expect(_await(async, rig.entryOf('s1'))!.jws, entry.jws);
+          expect(_await(async, rig.count('rksv_entries')), 1);
+          expect(_await(async, rig.count('receipts')), 1);
+          final after = _await(async, rig.stateRow());
+          expect(
+            (after.outageSince, after.outageReason, after.counterCents),
+            (state.outageSince, _silent, 1820),
+          );
+          _await(async, rig.verifyChain(1));
+        } finally {
+          _await(async, rig.close());
+        }
       });
     });
 
@@ -248,6 +327,26 @@ void main() {
       await rig.service.enableProbe(staff: rig.chef);
     });
     tearDown(() => rig.close());
+
+    test('Grund des Ausfalls ist der Satz der Einheit: '
+        'SignatureFailure("Kein Internet.") steht in outage_reason', () async {
+      rig.fake
+        ..mode = FakeMode.error
+        ..failure = 'Kein Internet.';
+      final r = await rig.sell('s1', cart);
+      expect(r.rksv!.damaged, isTrue);
+      final state = await rig.stateRow();
+      expect(
+        (state.outageSince, state.outageReason),
+        (rig.clock.now(), 'Kein Internet.'),
+      );
+      // Ein anderer Satz beim nächsten Bon ändert den Grund nicht: Er gehört
+      // zum Beginn des Ausfalls.
+      rig.fake.failure = 'A-Trust meldet einen Fehler.';
+      await rig.sell('s2', cart);
+      expect((await rig.stateRow()).outageReason, 'Kein Internet.');
+      await rig.verifyChain(1);
+    });
 
     test('Ausfall: FakeMode.error → Bon gespeichert, Eintrag damaged, Ausfall '
         'seit jetzt, Grund gesetzt; Kette besteht', () async {

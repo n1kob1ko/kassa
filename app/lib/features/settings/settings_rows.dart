@@ -63,7 +63,8 @@ class SettingsCard extends StatelessWidget {
   }
 }
 
-/// Eine Zeile: Titel (16 dp 700) mit Hilfezeile (14 dp, `ink2`), rechts das
+/// Eine Zeile: Titel (16 dp 700) mit Hilfezeile (14 dp, `ink2`), darunter auf
+/// Wunsch [note] kräftig (zum Beispiel der Grund eines Ausfalls), rechts das
 /// Bedienelement [control]. Mindestens 76 dp hoch. Mit [below] steht unter dem
 /// Text ein breites Bedienelement (Regler), mit [panel] ersetzt die Zeile ihren
 /// Inhalt ganz (offene Rückfrage).
@@ -72,12 +73,14 @@ class SettingsRow extends StatelessWidget {
     super.key,
     required this.title,
     required this.help,
+    this.note,
     this.control,
     this.below,
   });
 
   final String title;
   final String help;
+  final String? note;
   final Widget? control;
   final Widget? below;
 
@@ -114,6 +117,18 @@ class SettingsRow extends StatelessWidget {
                         color: c.ink2,
                       ),
                     ),
+                    if (note case final note?) ...[
+                      const SizedBox(height: KassaTokens.spaceXxs),
+                      Text(
+                        note,
+                        style: text.bodyMedium!.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                          color: c.ink,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

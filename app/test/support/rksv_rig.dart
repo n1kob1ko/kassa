@@ -11,6 +11,7 @@ import 'package:drift/drift.dart'
     show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
@@ -24,6 +25,9 @@ import 'package:kassa/domain/staff.dart';
 import 'package:kassa/rksv/card/certificate.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/dep_export.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
+import 'package:kassa/rksv/online/atrust_session_keeper.dart';
+import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
@@ -31,6 +35,7 @@ import 'package:kassa/rksv/rksv_state.dart';
 import 'package:pointycastle/digests/sha256.dart';
 
 import 'demo_fixtures.dart';
+import 'fake_atrust.dart';
 import 'fake_signature_unit.dart';
 
 /// Speichert ausgegebene Protokolle im Speicher. Mit [accept] false bricht
@@ -63,6 +68,8 @@ class RksvRig {
     this.anna,
     this.chef,
     this.saver,
+    this.atrust,
+    this.keeper,
   );
 
   final KassaDatabase db;
@@ -77,6 +84,13 @@ class RksvRig {
   final Staff chef;
   final RecordingProtocolSaver saver;
 
+  /// Der nachgebaute A-Trust aus `open(atrust: …)`, sonst null.
+  final FakeAtrust? atrust;
+
+  /// Der Sitzungshalter am Testsystem über [atrust] oder `atrustClient`
+  /// (mit [secrets] und [clock]), sonst null.
+  final AtrustSessionKeeper? keeper;
+
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
   /// Probe-Signatur wie in der App ([probeSignatureUnitOf]).
@@ -86,7 +100,25 @@ class RksvRig {
   /// Ausfall-Eintrag ohne Frage an die Signatur (`trySign: false`) bekommt
   /// deshalb die Seriennummer der Kette und im Protokoll eine eigene Gruppe.
   /// In der App ist beides dasselbe Zertifikat.
-  static Future<RksvRig> open({bool probeUnit = false}) async {
+  ///
+  /// Mit [unitOf] baut das Journal seine Einheiten damit (etwa
+  /// [signatureUnitOf] mit einer Online-Einheit an [FakeAtrust]).
+  ///
+  /// Mit [atrust] signiert das Journal wie in der App ([signatureUnitOf]):
+  /// Probe-Ketten mit der Probe-Signatur, Ketten `atrustTest` mit einer
+  /// [OnlineSignatureUnit] am Testsystem über [atrust] und [keeper].
+  ///
+  /// [atrustClient] statt [atrust]: dasselbe über diesen Client, etwa den
+  /// echten gegen das Testsystem (`atrust_testsystem_test.dart`).
+  static Future<RksvRig> open({
+    bool probeUnit = false,
+    SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
+    FakeAtrust? atrust,
+    http.Client? atrustClient,
+  }) async {
+    assert(atrust == null || atrustClient == null);
+    final online = atrustClient ?? atrust?.client;
+    assert(unitOf == null || online == null);
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 18, 13, 5, 9));
@@ -113,10 +145,37 @@ class RksvRig {
             certificate: info.certificateDer,
           ),
         );
+    final keeper = online == null
+        ? null
+        : AtrustSessionKeeper(
+            client: AtrustClient(online, AtrustSystem.test),
+            user: atrustTestUser,
+            password: atrustTestPassword,
+            secrets: secrets,
+            clock: clock,
+          );
     final journal = RksvJournal(
       db,
       secrets,
-      probeUnit ? probeSignatureUnitOf(db, secrets) : (_) async => fake,
+      unitOf != null
+          ? unitOf(db, secrets)
+          : online != null
+          ? signatureUnitOf(
+              db,
+              secrets,
+              online: (chain, cert) async => OnlineSignatureUnit(
+                client: AtrustClient(online, AtrustSystem.test),
+                keeper: keeper!,
+                zdaId: chain.zdaId,
+                certificateDer: cert.certificate,
+                issuerCertificatesDer: [
+                  for (final i in issuersBase64(cert)) base64.decode(i),
+                ],
+              ),
+            )
+          : probeUnit
+          ? probeSignatureUnitOf(db, secrets)
+          : (_) async => fake,
       clock,
     );
     final receipts = ReceiptRepository(
@@ -139,6 +198,8 @@ class RksvRig {
       anna,
       chef,
       saver,
+      atrust,
+      keeper,
     );
   }
 
@@ -234,6 +295,45 @@ class RksvRig {
     );
   }
 
+  /// Setzt eine laufende Online-Probe direkt in die Datenbank (den Weg der
+  /// App dorthin baut erst ein späterer Schritt): das Zertifikat von [atrust]
+  /// mit seinen Ausstellern, Kette 1 mit der Einheit `atrustTest`, dem Modus
+  /// `probe`, der Kennung `AT1` und der Kassen-Kennung `ONLINETEST`, dazu
+  /// der AES-Schlüssel aus den Bytes 0 bis 31. Ohne Startbeleg.
+  Future<void> startAtrustTest(FakeAtrust atrust) async {
+    await secrets.writeAesKey(
+      1,
+      Uint8List.fromList(List.generate(32, (i) => i)),
+    );
+    await db
+        .into(db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: '2159b9f6',
+            certificate: atrust.certificateDer,
+            issuers: Value(
+              jsonEncode([for (final i in atrust.issuersDer) base64.encode(i)]),
+            ),
+          ),
+        );
+    await db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: const Value(1),
+            mode: 'probe',
+            unit: const Value('atrustTest'),
+            cashBoxId: 'ONLINETEST',
+            zdaId: 'AT1',
+            certSerial: '2159b9f6',
+            startedAt: clock.now(),
+          ),
+        );
+    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
+      const RksvStateRowsCompanion(mode: Value('probe'), chain: Value(1)),
+    );
+  }
+
   /// Rechnet die Kette [chain] nach, ohne das Journal zu fragen: Positionen
   /// 1 bis n, Felder des Codes gegen den Bon, jeder Kettenwert, jede Signatur
   /// gegen ihr Zertifikat (oder der Ausfall-Text), jeder Zähler gegen die
@@ -259,7 +359,7 @@ class RksvRig {
       final f = text.split('_');
       expect(f, hasLength(13), reason: '$at: $text');
       expect(f[0], '', reason: at);
-      expect(f[1], 'R1-AT100', reason: at);
+      expect(f[1], 'R1-${chainRow.zdaId}', reason: at);
       expect(f[2], chainRow.cashBoxId, reason: at);
       expect(f[3], '${receipt.number}', reason: at);
       expect(DateTime.parse(f[4]), receipt.createdAt, reason: at);

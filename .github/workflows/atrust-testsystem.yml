@@ -1,0 +1,29 @@
+name: atrust-testsystem
+
+# Lauf gegen das öffentliche Testsystem von A-Trust (a.sign RK HSM).
+# Getrennt vom Lauf "app", damit ein Ausfall bei A-Trust "app" nicht rot macht.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'app/lib/rksv/online/**'
+      - 'app/test/rksv/online/**'
+      - '.github/workflows/atrust-testsystem.yml'
+  workflow_dispatch:
+
+jobs:
+  testsystem:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: app/.flutter-version
+          cache: true
+      - run: flutter pub get
+      - run: flutter test test/rksv/online/atrust_testsystem_test.dart
+        env:
+          KASSA_ATRUST_TEST: '1'

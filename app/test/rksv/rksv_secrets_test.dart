@@ -32,4 +32,32 @@ void main() {
     expect(raw.keys.toSet(), {'rksv_aes_3', 'rksv_probe_key_3'});
     expect(raw['rksv_aes_3'], 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=');
   });
+
+  test('MemoryRksvSecrets: Kennzeichen abgelehnt', () async {
+    final s = MemoryRksvSecrets();
+    expect(await s.atrustRejected(), isFalse);
+    await s.writeAtrustRejected(true);
+    expect(await s.atrustRejected(), isTrue);
+    await s.writeAtrustRejected(false);
+    expect(await s.atrustRejected(), isFalse);
+    s.failReads = true;
+    await expectLater(s.atrustRejected(), throwsA(anything));
+  });
+
+  test(
+    'SecureRksvSecrets: Kennzeichen abgelehnt unter rksv_atrust_rejected',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final s = SecureRksvSecrets();
+      expect(await s.atrustRejected(), isFalse);
+      await s.writeAtrustRejected(true);
+      expect(await s.atrustRejected(), isTrue);
+      expect(await const FlutterSecureStorage().readAll(), {
+        'rksv_atrust_rejected': 'true',
+      });
+      await s.writeAtrustRejected(false);
+      expect(await s.atrustRejected(), isFalse);
+      expect(await const FlutterSecureStorage().readAll(), isEmpty);
+    },
+  );
 }

@@ -149,7 +149,7 @@ void main() {
     expect((await app.stateRow()).mode, 'probe');
     expect(
       (await app.stateRow()).outageReason,
-      'Die Signatur hat einen Fehler gemeldet.',
+      'Die Probe-Signatur konnte nicht erstellt werden.',
     );
   });
 

@@ -10,6 +10,8 @@ import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
+import '../../rksv/online/online_providers.dart';
+import '../../rksv/rksv_state.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import '../login/session.dart';
@@ -81,6 +83,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     WidgetsBinding.instance.addObserver(this);
     _prepareTerminal();
     _preparePrinter();
+    _warmUpSignature();
   }
 
   @override
@@ -91,7 +94,29 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _preparePrinter();
+    if (state == AppLifecycleState.resumed) {
+      _preparePrinter();
+      _warmUpSignature();
+    }
+  }
+
+  /// Meldet die Kassa in der Online-Probe im Voraus bei A-Trust an, damit der
+  /// nächste Bon nicht auf die Anmeldung wartet. Ohne laufende Online-Probe
+  /// entsteht weder Sitzungshalter noch Verbindung; nach einer Ablehnung
+  /// schickt der Halter selbst nichts. Fehler gehen still unter.
+  Future<void> _warmUpSignature() async {
+    try {
+      final state = await ref.read(rksvStateProvider.future);
+      if (!mounted || state.unit != RksvUnit.atrustTest) return;
+      final keeper = ref.read(atrustTestKeeperProvider);
+      try {
+        await keeper.restore();
+      } catch (_) {
+        // Der Halter schickt nichts, solange er das Kennzeichen nicht kennt.
+      }
+      if (!mounted) return;
+      keeper.warmUp();
+    } catch (_) {}
   }
 
   /// Eine Frage nach der Erlaubnis für den Drucker läuft gerade.

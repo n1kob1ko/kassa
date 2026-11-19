@@ -7,6 +7,11 @@ import 'dart:convert';
 /// `live`: in Betrieb mit Chipkarte.
 enum RksvMode { off, probe, live }
 
+/// Wer eine Kette signiert (`rksv_chains.unit`): `probe` die Probe-Signatur
+/// auf dem Tablet, `atrustTest` das Testsystem von A-Trust (immer im Modus
+/// probe), `atrust` das echte System von A-Trust.
+enum RksvUnit { probe, atrustTest, atrust }
+
 enum RksvTaskKind {
   checkStart,
   checkYear,
@@ -85,6 +90,7 @@ final class RksvState {
     this.mode = RksvMode.off,
     this.chain,
     this.cashBoxId,
+    this.unit,
     this.counterCents = 0,
     this.outageSince,
     this.outageReason,
@@ -99,6 +105,10 @@ final class RksvState {
 
   /// Kassen-Kennung der laufenden Kette, `null` ohne Kette.
   final String? cashBoxId;
+
+  /// Einheit der laufenden Kette, `null` ohne Kette (und bei einem Wert,
+  /// den diese Version nicht kennt).
+  final RksvUnit? unit;
   final int counterCents;
   final DateTime? outageSince;
   final String? outageReason;

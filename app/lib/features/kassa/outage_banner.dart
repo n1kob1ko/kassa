@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/pressable.dart';
@@ -15,6 +16,9 @@ import '../login/session.dart';
 const outageBackStay = Duration(seconds: 4);
 
 const _notYet = 'Geht noch nicht.';
+
+const _rejectedText =
+    'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.';
 
 /// "Signatur ausgefallen seit 13:05", an einem anderen Tag
 /// "seit 16.11. 18:30".
@@ -31,11 +35,17 @@ String outageSinceText(DateTime since, DateTime now) {
 }
 
 /// Ruhiger Hinweis über dem Bon, solange die Signatur ausgefallen ist
-/// (`rksv-outage`): seit wann, dass weiterverkauft werden kann, und die Taste
+/// (`rksv-outage`): seit wann, der Grund in einem Satz (`rksv-outage-reason`,
+/// wie gespeichert), dass weiterverkauft werden kann, und die Taste
 /// "Nochmal prüfen" (`rksv-retry`, 56 dp). Ihr Ergebnis steht im Hinweis,
-/// nie in einem Dialog. Geht die Signatur wieder, bleibt der Hinweis noch
-/// [outageBackStay] mit "Die Signatur geht wieder." stehen. Ohne Ausfall ist
-/// er nicht da.
+/// nie in einem Dialog, und verschwindet, sobald sich der Ausfall ändert.
+/// Geht die Signatur wieder, bleibt der Hinweis noch [outageBackStay] mit
+/// "Die Signatur geht wieder." stehen. Ohne Ausfall ist er nicht da.
+///
+/// In der Online-Probe mit abgelehnten Zugangsdaten steht statt des Grunds,
+/// dass der Chef kommen soll, und die Taste fehlt: Nur seine Einstellungen
+/// heben das auf. Den Sitzungshalter liest der Hinweis nur in der
+/// Online-Probe; sonst entsteht keine Verbindung zu A-Trust.
 class OutageBanner extends ConsumerStatefulWidget {
   const OutageBanner({super.key});
 
@@ -56,6 +66,12 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     _backTimer?.cancel();
     super.dispose();
   }
+
+  /// Was am Ausfall zählt: Ändert sich davon etwas, gilt ein altes
+  /// "Geht noch nicht." nicht mehr.
+  static Object? _outageKey(RksvState? s) => s == null
+      ? null
+      : (s.mode, s.chain, s.unit, s.outageSince, s.outageReason);
 
   Future<void> _retry() async {
     if (_busy) return;
@@ -88,21 +104,55 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(rksvStateProvider, (previous, next) {
+      if (_result != null &&
+          _outageKey(previous?.value) != _outageKey(next.value)) {
+        setState(() => _result = null);
+      }
+    });
     final state = ref.watch(rksvStateProvider).value ?? const RksvState();
     final since = state.outageSince;
     if (_back) return const _BackNotice();
     if (since == null || state.mode == RksvMode.off) {
       return const SizedBox.shrink();
     }
+    // Das Kennzeichen kann eine beendete Online-Probe überdauern; es zählt
+    // nur, solange eine läuft (R9).
+    if (state.unit != RksvUnit.atrustTest) {
+      return _banner(context, state, since, rejected: false);
+    }
+    return ValueListenableBuilder<bool>(
+      valueListenable: ref.watch(atrustTestKeeperProvider).rejected,
+      builder: (context, rejected, _) =>
+          _banner(context, state, since, rejected: rejected),
+    );
+  }
+
+  Widget _banner(
+    BuildContext context,
+    RksvState state,
+    DateTime since, {
+    required bool rejected,
+  }) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final now = ref.read(clockProvider).now();
     final ink = text.bodyMedium!.copyWith(color: c.warnInk);
+    final line = ink.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      height: 1.3,
+    );
+    final reason = rejected ? _rejectedText : state.outageReason ?? '';
+    // Abgelehnt gilt ein altes Ergebnis nicht mehr, auch nicht, wenn der Chef
+    // das Kennzeichen später aufhebt. Kein setState: Dieses Bild zeigt es
+    // ohnehin nicht.
+    if (rejected) _result = null;
     final result = _result;
     return Container(
       key: const Key('rksv-outage'),
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      padding: EdgeInsets.fromLTRB(16, 14, rejected ? 16 : 12, 14),
       decoration: BoxDecoration(
         color: c.warnBg,
         borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
@@ -123,14 +173,13 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
                   ),
                 ),
                 const SizedBox(height: KassaTokens.spaceXs),
-                Text(
-                  'Du kannst normal weiterverkaufen.',
-                  style: ink.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    height: 1.3,
+                if (reason.isNotEmpty)
+                  Text(
+                    reason,
+                    key: const Key('rksv-outage-reason'),
+                    style: line,
                   ),
-                ),
+                Text('Du kannst normal weiterverkaufen.', style: line),
                 if (result != null) ...[
                   const SizedBox(height: KassaTokens.spaceXs),
                   Text(
@@ -146,8 +195,10 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
               ],
             ),
           ),
-          const SizedBox(width: KassaTokens.spaceXl),
-          _RetryButton(onTap: _busy ? null : _retry),
+          if (!rejected) ...[
+            const SizedBox(width: KassaTokens.spaceXl),
+            _RetryButton(onTap: _busy ? null : _retry),
+          ],
         ],
       ),
     );

@@ -15,6 +15,7 @@ import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
 import '../settings/settings_screen.dart';
+import '../settings/signature_panel.dart' show ConnectionCheckOpening;
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -37,8 +38,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// Die Seite "Karte prüfen" ersetzt die Karten der Einstellungen.
   bool _checkingCard = false;
 
+  /// Die Seite "Verbindung prüfen" ersetzt die Karten der Einstellungen, wie
+  /// sie geöffnet wurde; `null` ohne.
+  ConnectionCheckOpening? _checkingConnection;
+
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
-  /// testen" oder "Karte prüfen", dann die Einstellungen. An der Kassa tut es nichts, die App
+  /// testen", "Karte prüfen" oder "Verbindung prüfen", dann die Einstellungen. An der Kassa tut es nichts, die App
   /// verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -49,6 +54,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _testingDevices = false);
     } else if (_checkingCard) {
       setState(() => _checkingCard = false);
+    } else if (_checkingConnection != null) {
+      setState(() => _checkingConnection = null);
     } else if (_settingsOpen) {
       setState(() => _settingsOpen = false);
     }
@@ -89,6 +96,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _settingsOpen = false;
                           _testingDevices = false;
                           _checkingCard = false;
+                          _checkingConnection = null;
                         });
                       },
                       staffName: staff.name,
@@ -103,6 +111,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _settingsOpen = !_settingsOpen;
                           _testingDevices = false;
                           _checkingCard = false;
+                          _checkingConnection = null;
                         });
                       },
                       businessName: ref
@@ -121,6 +130,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                             _settingsOpen = false;
                             _testingDevices = false;
                             _checkingCard = false;
+                            _checkingConnection = null;
                           });
                         },
                       ),
@@ -135,6 +145,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                                 checkingCard: _checkingCard,
                                 onCheckingCard: (v) =>
                                     setState(() => _checkingCard = v),
+                                checkingConnection: _checkingConnection,
+                                onCheckingConnection: (v) =>
+                                    setState(() => _checkingConnection = v),
                               ),
                             )
                           : _areaWidget(

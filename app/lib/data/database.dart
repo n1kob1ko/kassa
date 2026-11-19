@@ -375,6 +375,10 @@ class RksvChainRows extends Table {
 
   /// `probe` oder `live`.
   TextColumn get mode => text()();
+
+  /// Wer die Kette signiert: `probe` (Probe-Signatur auf dem Tablet),
+  /// `atrustTest` (Testsystem von A-Trust) oder `atrust`. Siehe `RksvUnit`.
+  TextColumn get unit => text().withDefault(const Constant('probe'))();
   TextColumn get cashBoxId => text()();
   TextColumn get zdaId => text()();
 
@@ -536,7 +540,7 @@ class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -598,7 +602,7 @@ class KassaDatabase extends _$KassaDatabase {
       }
       if (from < 3 && to >= 3) {
         // Mit dem Stand von Version 3 anlegen, nicht mit dem heutigen: die
-        // Spalten von Version 5 kommen unten dazu.
+        // Spalten von Version 6 kommen unten dazu.
         await customStatement(
           'CREATE TABLE IF NOT EXISTS "sync_state" ("id" INTEGER NOT NULL, '
           '"register_id" TEXT NULL, "register_name" TEXT NULL, '
@@ -632,7 +636,9 @@ class KassaDatabase extends _$KassaDatabase {
           await _createReceiptGuards('receipts');
 
           await m.addColumn(settingsRows, settingsRows.printerQrAsImage);
-          await m.createTable(rksvChainRows);
+          // In der Form von Version 4: createTable legte die heutige Form an,
+          // und Schritt 5 fände seine Spalte schon vor.
+          await customStatement(_rksvChainsV4);
           await m.createTable(rksvCertificateRows);
           await m.createTable(rksvEntryRows);
           await m.createTable(rksvStateRows);
@@ -653,9 +659,21 @@ class KassaDatabase extends _$KassaDatabase {
         await customStatement('PRAGMA foreign_keys = ON');
       }
       if (from < 5 && to >= 5) {
+        // Vorhandene Ketten signiert die Probe-Signatur. ADD COLUMN lässt die
+        // Trigger der Tabelle stehen. Drift schreibt user_version erst danach
+        // und ohne Transaktion darum: Wurde die App dazwischen beendet, ist
+        // die Spalte schon da, und der Schritt fügt sie nicht noch einmal ein.
+        final columns = await customSelect('PRAGMA table_info(rksv_chains)')
+            .get();
+        if (!columns.any((c) => c.read<String>('name') == 'unit')) {
+          await m.addColumn(rksvChainRows, rksvChainRows.unit);
+        }
+      }
+      if (from < 6 && to >= 6) {
         // Ganz oder gar nicht: drift setzt die Version erst nach allen
         // Schritten, ein halber Schritt würde beim nächsten Start an den
-        // schon vorhandenen Spalten scheitern.
+        // schon vorhandenen Spalten scheitern. Was hier angelegt wird, hat
+        // die Form von Version 6.
         await transaction(() async {
           await m.addColumn(itemRows, itemRows.photoFileId);
           await m.addColumn(itemRows, itemRows.photoColor);
@@ -677,6 +695,15 @@ class KassaDatabase extends _$KassaDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// `rksv_chains`, wie Version 4 sie angelegt hat (ohne `unit`).
+  static const _rksvChainsV4 =
+      'CREATE TABLE "rksv_chains" ("chain" INTEGER NOT NULL, '
+      '"mode" TEXT NOT NULL, "cash_box_id" TEXT NOT NULL, '
+      '"zda_id" TEXT NOT NULL, "cert_serial" TEXT NOT NULL '
+      'REFERENCES rksv_certificates(serial_hex), '
+      '"started_at" INTEGER NOT NULL, "ended_at" INTEGER NULL, '
+      'PRIMARY KEY(chain))';
 
   /// Zahl der kaputten Verweise je Tabelle, Zieltabelle und Fremdschlüssel.
   /// Gezählt statt nach rowid verglichen, weil der Neuaufbau einer Tabelle
@@ -776,7 +803,7 @@ class KassaDatabase extends _$KassaDatabase {
     await trigger('reports', 'UPDATE', 'report', 'NEW.id');
   }
 
-  /// Migration auf Version 5: alles Vorhandene einmal in die Liste, in der
+  /// Migration auf Version 6: alles Vorhandene einmal in die Liste, in der
   /// Reihenfolge, in der der Server es braucht (Zertifikat und Kette vor den
   /// Bons, der Tag vor seinen Bons). Ist die Kassa schon gekoppelt, kommen die
   /// fünf Felder jedes Artikels als Änderung dazu: seit Stufe 1 lassen sie sich

@@ -2,7 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/domain/day.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
+import 'package:kassa/rksv/online/connection_check.dart';
+import 'package:kassa/sync/push_wire.dart';
 
+import '../support/fake_atrust.dart';
 import '../support/rksv_rig.dart';
 import '../support/sales.dart' show cart;
 
@@ -162,6 +166,69 @@ void main() {
       expect(await rig.count('outbox'), 2);
     },
   );
+
+  test('Online-Probe (atrustTest): Zertifikat, Kette, Startbeleg, Verkauf und '
+      'Schlussbeleg stehen in der Liste wie bei der Probe; unit geht nicht '
+      'mit', () async {
+    final atrust = FakeAtrust();
+    final online = await RksvRig.open(atrust: atrust);
+    addTearDown(online.close);
+    await online.db.customStatement('DELETE FROM outbox');
+    final facts = (await ConnectionCheck(
+      client: AtrustClient(atrust.client, AtrustSystem.test),
+      keeper: online.keeper!,
+      user: atrustTestUser,
+      clock: online.clock,
+    ).run(chefTapped: false)).facts!;
+
+    final start = await online.service.enableOnlineProbe(
+      staff: online.chef,
+      facts: facts,
+    );
+    final sale = await online.sell('o1', cart);
+    final closing = await online.service.disableProbe(staff: online.chef);
+
+    final chain = await online.chainRow(1);
+    expect(chain.unit, 'atrustTest');
+    expect(await online.entries(1), hasLength(3));
+    final rows = await online.db
+        .customSelect('SELECT kind, ref, rev FROM outbox ORDER BY id')
+        .get();
+    final dayId = await _dayId(online);
+    expect(rows.map((r) => (r.read<String>('kind'), r.read<String>('ref'))), [
+      ('rksv_certificate', chain.certSerial),
+      ('rksv_chain', '1'),
+      ('receipt', start.id),
+      ('day', dayId),
+      ('receipt', sale.id),
+      ('receipt', closing.id),
+    ]);
+    // Das Ende der Kette hebt rev ihres Eintrags an, statt einen zweiten
+    // anzulegen; jeder Bon nimmt seinen Eintrag im Protokoll mit.
+    expect(rows[1].read<int>('rev'), 1);
+    for (final i in [2, 4, 5]) {
+      expect(rows[i].read<int>('rev'), 1, reason: rows[i].read<String>('ref'));
+    }
+
+    final batch = await OutboxRepository(online.db).nextBatch();
+    final payloads = PushPayloads(online.db);
+    final chainMessage = await payloads.build(batch[1]);
+    expect((chainMessage!['chain'] as Map).keys, [
+      'chain',
+      'mode',
+      'cashBoxId',
+      'zdaId',
+      'certSerial',
+      'startedAt',
+      'endedAt',
+    ]);
+    expect((chainMessage['chain'] as Map)['mode'], 'probe');
+    final saleMessage = await payloads.build(batch[4]);
+    final receipt = saleMessage!['receipt'] as Map;
+    expect(receipt['test'], isTrue);
+    expect((receipt['rksv'] as Map)['chain'], 1);
+    expect((receipt['rksv'] as Map)['certSerial'], chain.certSerial);
+  });
 }
 
 Future<String> _dayId(RksvRig rig) => rig.db

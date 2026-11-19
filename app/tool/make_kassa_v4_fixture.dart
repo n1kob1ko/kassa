@@ -1,5 +1,5 @@
-// Erzeugt test/data/fixtures/kassa_v4.sqlite: eine Datenbank im Stand von
-// Version 4 (das Schema kommt aus dem Abzug schema_v4.dart, nicht aus dem
+// Erzeugt test/data/fixtures/kassa_v4_outbox.sqlite: eine Datenbank im Stand
+// von Version 4 (das Schema kommt aus dem Abzug schema_v4.dart, nicht aus dem
 // heutigen Code), gefüllt mit erfundenen Daten. Aufruf aus `app/`:
 //
 //   dart run tool/make_kassa_v4_fixture.dart
@@ -10,15 +10,22 @@
 // gekoppelt. Keine echten Namen, keine Adresse, kein Schlüssel.
 //
 // Trigger und Indizes von Version 4 entstehen in `KassaDatabase.onCreate`,
-// nicht im Abzug; sie stehen hier noch einmal so, wie sie in Version 4 waren.
+// nicht im Abzug; sie stehen in `fixture_guards.dart` noch einmal so, wie sie
+// in Version 4 waren.
+//
+// Daneben liegt `kassa_v4.sqlite` aus dem Signatur-Thread (zwei Probe-Ketten
+// mit echten Signaturen, ohne Skript im Repository). Die Tests der Liste
+// "noch zu senden" brauchen die Kopplung, die Bewegung und die zwei Tage, die
+// nur diese Datei hat.
 
 import 'dart:io';
 
 import 'package:drift/native.dart';
 
 import '../test/data/generated_migrations/schema_v4.dart';
+import 'fixture_guards.dart';
 
-const _target = 'test/data/fixtures/kassa_v4.sqlite';
+const _target = 'test/data/fixtures/kassa_v4_outbox.sqlite';
 
 /// 2026-11-16 08:00:00 UTC in Sekunden, die Grundlage aller Zeiten.
 const _t0 = 1794816000;
@@ -33,58 +40,7 @@ Future<void> main() async {
   // Löst onCreate des Abzugs aus: alle Tabellen von Version 4.
   await run('SELECT 1');
 
-  await run(
-    'CREATE UNIQUE INDEX receipts_voids_receipt_id ON receipts (voids_receipt_id)',
-  );
-  await run(
-    'CREATE UNIQUE INDEX business_days_one_open '
-    'ON business_days ((closed_at IS NULL)) WHERE closed_at IS NULL',
-  );
-  for (final action in const ['UPDATE', 'DELETE']) {
-    final a = action.toLowerCase();
-    await run(
-      'CREATE TRIGGER cash_movements_no_$a BEFORE $action ON cash_movements '
-      "BEGIN SELECT RAISE(ABORT, 'Bargeld-Bewegungen sind unveränderlich'); END",
-    );
-    for (final table in const [
-      'receipts',
-      'receipt_lines',
-      'receipt_line_options',
-      'payments',
-    ]) {
-      await run(
-        'CREATE TRIGGER ${table}_no_$a BEFORE $action ON $table '
-        "BEGIN SELECT RAISE(ABORT, 'Bons sind unveränderlich'); END",
-      );
-    }
-    await run(
-      'CREATE TRIGGER rksv_entries_no_$a BEFORE $action ON rksv_entries '
-      "BEGIN SELECT RAISE(ABORT, 'Das Protokoll ist unveränderlich'); END",
-    );
-    await run(
-      'CREATE TRIGGER rksv_certificates_no_$a '
-      'BEFORE $action ON rksv_certificates '
-      "BEGIN SELECT RAISE(ABORT, 'Zertifikate sind unveränderlich'); END",
-    );
-  }
-  await run(
-    'CREATE TRIGGER business_days_no_update_closed '
-    'BEFORE UPDATE ON business_days WHEN OLD.closed_at IS NOT NULL BEGIN '
-    "SELECT RAISE(ABORT, 'Abgeschlossene Tage sind unveränderlich'); END",
-  );
-  await run(
-    'CREATE TRIGGER business_days_no_delete BEFORE DELETE ON business_days '
-    "BEGIN SELECT RAISE(ABORT, 'Tage können nicht gelöscht werden'); END",
-  );
-  await run(
-    'CREATE TRIGGER rksv_chains_no_update_ended '
-    'BEFORE UPDATE ON rksv_chains WHEN OLD.ended_at IS NOT NULL BEGIN '
-    "SELECT RAISE(ABORT, 'Beendete Ketten sind unveränderlich'); END",
-  );
-  await run(
-    'CREATE TRIGGER rksv_chains_no_delete BEFORE DELETE ON rksv_chains '
-    "BEGIN SELECT RAISE(ABORT, 'Ketten können nicht gelöscht werden'); END",
-  );
+  await createV4Guards(run);
 
   await run(
     "INSERT INTO business (id, name, address_lines) "

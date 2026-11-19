@@ -114,6 +114,41 @@ void main() {
     },
   );
 
+  test('Einheit der laufenden Kette: null ohne Kette, sonst ihr Wert; ein '
+      'unbekannter Wert ergibt null, watch() läuft weiter', () async {
+    expect((await repo.current()).unit, isNull);
+    await db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: const Value(1),
+            mode: 'probe',
+            cashBoxId: 'ABCDEFGHJK',
+            zdaId: 'AT1',
+            certSerial: '0a1b',
+            startedAt: _created,
+            unit: const Value('atrustTest'),
+          ),
+        );
+    await writeState(
+      const RksvStateRowsCompanion(mode: Value('probe'), chain: Value(1)),
+    );
+    expect((await repo.current()).unit, RksvUnit.atrustTest);
+
+    final seen = <RksvUnit?>[];
+    final sub = repo.watch().listen((s) => seen.add(s.unit));
+    addTearDown(sub.cancel);
+    await pumpEventQueue();
+    Future<void> setUnit(String unit) => db
+        .update(db.rksvChainRows)
+        .write(RksvChainRowsCompanion(unit: Value(unit)));
+    await setUnit('neu');
+    await pumpEventQueue();
+    await setUnit('probe');
+    await pumpEventQueue();
+    expect(seen, [RksvUnit.atrustTest, null, RksvUnit.probe]);
+  });
+
   test('unbekannter Zustand gilt als off', () async {
     await writeState(const RksvStateRowsCompanion(mode: Value('neu')));
     expect((await repo.current()).mode, RksvMode.off);

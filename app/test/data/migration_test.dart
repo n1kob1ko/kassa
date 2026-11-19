@@ -211,53 +211,58 @@ void main() {
     await db.close();
   });
 
-  test('echte Datei von Version 3 mit einem alten kaputten Verweis: die App '
-      'öffnet in Version 4, Bons bleiben, die alte Zeile auch', () async {
-    final file = await copyFixture('kassa_v3.sqlite');
-    // Ein Artikel zeigt auf eine Kategorie, die es nicht gibt. Ohne
-    // PRAGMA foreign_keys prüft SQLite das beim Einfügen nicht.
-    final broken = NativeDatabase(
-      file,
-      setup: (raw) => raw.execute(
-        'INSERT INTO items (id, name, price_cents, category_id, tax_percent, '
-        "position) VALUES ('verwaist', 'Verwaist', 100, 'gibt-es-nicht', 10, "
-        '99)',
-      ),
-    );
-    await broken.ensureOpen(_NoUser());
-    await broken.close();
+  test(
+    'echte Datei von Version 3 mit einem alten kaputten Verweis: die App '
+    'öffnet in der aktuellen Version, Bons bleiben, die alte Zeile auch',
+    () async {
+      final file = await copyFixture('kassa_v3.sqlite');
+      // Ein Artikel zeigt auf eine Kategorie, die es nicht gibt. Ohne
+      // PRAGMA foreign_keys prüft SQLite das beim Einfügen nicht.
+      final broken = NativeDatabase(
+        file,
+        setup: (raw) => raw.execute(
+          'INSERT INTO items (id, name, price_cents, category_id, tax_percent, '
+          "position) VALUES ('verwaist', 'Verwaist', 100, 'gibt-es-nicht', 10, "
+          '99)',
+        ),
+      );
+      await broken.ensureOpen(_NoUser());
+      await broken.close();
 
-    final db = KassaDatabase(NativeDatabase(file));
-    expect(
-      (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
-        'user_version',
-      ),
-      5,
-    );
-    final receipts = await (db.select(
-      db.receiptRows,
-    )..orderBy([(t) => OrderingTerm.asc(t.number)])).get();
-    expect(
-      receipts.map(
-        (r) => (r.number, r.kind, r.totalCents, r.businessDayId != null),
-      ),
-      [
-        (1, 'sale', 1820, true),
-        (2, 'sale', 965, true),
-        (3, 'voided', -965, true),
-      ],
-    );
-    expect(receipts[2].voidsReceiptId, 'v3-karte');
-    expect(await count(db, 'receipt_lines'), 6);
-    expect(await count(db, 'payments'), 3);
-    final orphan = await db
-        .customSelect("SELECT category_id FROM items WHERE id = 'verwaist'")
-        .getSingle();
-    expect(orphan.read<String>('category_id'), 'gibt-es-nicht');
-    final violations = await db.customSelect('PRAGMA foreign_key_check').get();
-    expect(violations.map((r) => r.data['table']), ['items']);
-    await db.close();
-  });
+      final db = KassaDatabase(NativeDatabase(file));
+      expect(
+        (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+          'user_version',
+        ),
+        db.schemaVersion,
+      );
+      final receipts = await (db.select(
+        db.receiptRows,
+      )..orderBy([(t) => OrderingTerm.asc(t.number)])).get();
+      expect(
+        receipts.map(
+          (r) => (r.number, r.kind, r.totalCents, r.businessDayId != null),
+        ),
+        [
+          (1, 'sale', 1820, true),
+          (2, 'sale', 965, true),
+          (3, 'voided', -965, true),
+        ],
+      );
+      expect(receipts[2].voidsReceiptId, 'v3-karte');
+      expect(await count(db, 'receipt_lines'), 6);
+      expect(await count(db, 'payments'), 3);
+      final orphan = await db
+          .customSelect("SELECT category_id FROM items WHERE id = 'verwaist'")
+          .getSingle();
+      expect(orphan.read<String>('category_id'), 'gibt-es-nicht');
+      final violations = await db
+          .customSelect('PRAGMA foreign_key_check')
+          .get();
+      expect(violations.map((r) => r.data['table']), ['items']);
+      await db.close();
+    },
+  );
 
   for (final (name, open) in [
     ('neue Datenbank', () async => KassaDatabase(NativeDatabase.memory())),
@@ -394,21 +399,17 @@ void main() {
     });
   }
 
-  test('Schema: Version 4 wird zu Version 5', () async {
-    final verifier = SchemaVerifier(GeneratedHelper());
-    final connection = await verifier.startAt(4);
-    final db = KassaDatabase(connection);
-    await verifier.migrateAndValidate(db, 5);
-    await db.close();
-  });
-
-  test('4 → 5: Schema stimmt, alle Daten da', () async {
-    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+  // Datei von 1.4.0 mit Kopplung, Bewegung und zwei Tagen
+  // (`tool/make_kassa_v4_fixture.dart`): Schritt 5 und Schritt 6 laufen.
+  test('4 → 6: Schema stimmt, alle Daten da', () async {
+    final db = KassaDatabase(
+      NativeDatabase(await copyFixture('kassa_v4_outbox.sqlite')),
+    );
     expect(
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      5,
+      6,
     );
     expect(await count(db, 'business_days'), 2);
     expect(await count(db, 'cash_movements'), 1);
@@ -437,6 +438,8 @@ void main() {
     );
     final state = await db.select(db.rksvStateRows).getSingle();
     expect((state.mode, state.chain, state.counterCents), ('probe', 1, 1480));
+    final chain = await db.select(db.rksvChainRows).getSingle();
+    expect((chain.chain, chain.mode, chain.unit), (1, 'probe', 'probe'));
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
     final index = await db
         .customSelect(
@@ -458,9 +461,11 @@ void main() {
       (r.read<String>('kind'), r.read<String>('ref')),
   ];
 
-  test('4 → 5: Vorhandenes steht in der Liste, in der Reihenfolge Zertifikat, '
+  test('4 → 6: Vorhandenes steht in der Liste, in der Reihenfolge Zertifikat, '
       'Kette, Tage, Bewegung, Bons nach Nummer', () async {
-    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    final db = KassaDatabase(
+      NativeDatabase(await copyFixture('kassa_v4_outbox.sqlite')),
+    );
     expect(await outboxList(db), [
       ('rksv_certificate', '0a1b2c'),
       ('rksv_chain', '1'),
@@ -481,9 +486,11 @@ void main() {
     await db.close();
   });
 
-  test('4 → 5 gekoppelt: 3 Artikel ergeben 15 Artikel-Änderungen', () async {
+  test('4 → 6 gekoppelt: 3 Artikel ergeben 15 Artikel-Änderungen', () async {
     final before = DateTime.now().subtract(const Duration(seconds: 2));
-    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+    final db = KassaDatabase(
+      NativeDatabase(await copyFixture('kassa_v4_outbox.sqlite')),
+    );
     final rows = await db
         .customSelect(
           "SELECT ref, field, value, changed_at FROM outbox "
@@ -531,8 +538,8 @@ void main() {
     await db.close();
   });
 
-  test('4 → 5 nicht gekoppelt: keine Artikel-Änderung', () async {
-    final file = await copyFixture('kassa_v4.sqlite');
+  test('4 → 6 nicht gekoppelt: keine Artikel-Änderung', () async {
+    final file = await copyFixture('kassa_v4_outbox.sqlite');
     final db = KassaDatabase(
       NativeDatabase(
         file,
@@ -552,8 +559,10 @@ void main() {
     await db.close();
   });
 
-  test('4 → 5: Trigger der Unveränderlichkeit greifen weiter', () async {
-    final db = KassaDatabase(NativeDatabase(await copyFixture('kassa_v4.sqlite')));
+  test('4 → 6: Trigger der Unveränderlichkeit greifen weiter', () async {
+    final db = KassaDatabase(
+      NativeDatabase(await copyFixture('kassa_v4_outbox.sqlite')),
+    );
     await db.select(db.syncStateRows).get(); // löst die Migration aus
     for (final sql in const [
       'UPDATE receipts SET total_cents = 1',
@@ -589,9 +598,9 @@ void main() {
     await db.close();
   });
 
-  test('4 → 5 ist ganz oder gar nicht: scheitert ein später Schritt, bleibt '
+  test('4 → 6 ist ganz oder gar nicht: scheitert ein später Schritt, bleibt '
       'die Datei auf Version 4 und die Migration läuft danach durch', () async {
-    final file = await copyFixture('kassa_v4.sqlite');
+    final file = await copyFixture('kassa_v4_outbox.sqlite');
     // Ein Trigger gleichen Namens lässt einen der letzten Schritte scheitern.
     final broken = NativeDatabase(
       file,
@@ -601,7 +610,10 @@ void main() {
       ),
     );
     final first = KassaDatabase(broken);
-    await expectLater(first.select(first.syncStateRows).get(), throwsA(anything));
+    await expectLater(
+      first.select(first.syncStateRows).get(),
+      throwsA(anything),
+    );
     await first.close();
 
     final raw = sqlite.sqlite3.open(file.path);
@@ -610,6 +622,12 @@ void main() {
       for (final r in raw.select('PRAGMA table_info(items)')) r['name'],
     ];
     expect(itemColumns, isNot(contains('photo_file_id')));
+    // Schritt 5 (Spalte unit) läuft ohne Transaktion und darf bleiben: er
+    // ist wiederholbar.
+    final chainColumns = [
+      for (final r in raw.select('PRAGMA table_info(rksv_chains)')) r['name'],
+    ];
+    expect(chainColumns, contains('unit'));
     expect(
       raw.select("SELECT name FROM sqlite_master WHERE name = 'outbox'"),
       isEmpty,
@@ -624,7 +642,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      5,
+      6,
     );
     await db.close();
   });

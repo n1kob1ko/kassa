@@ -64,10 +64,14 @@ class RksvRepository {
   RksvState _toState(TypedResult? result) {
     if (result == null) return const RksvState();
     final r = result.readTable(_db.rksvStateRows);
+    final chain = result.readTableOrNull(_db.rksvChainRows);
     return RksvState(
       mode: enumByNameOr(RksvMode.values, r.mode, RksvMode.off),
       chain: r.chain,
-      cashBoxId: result.readTableOrNull(_db.rksvChainRows)?.cashBoxId,
+      cashBoxId: chain?.cashBoxId,
+      // Ein unbekannter Wert darf das Beobachten nicht abbrechen; signieren
+      // lässt sich damit nicht (signatureUnitOf wirft).
+      unit: chain == null ? null : RksvUnit.values.asNameMap()[chain.unit],
       counterCents: r.counterCents,
       outageSince: r.outageSince,
       outageReason: r.outageReason,

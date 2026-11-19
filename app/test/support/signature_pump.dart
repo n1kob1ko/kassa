@@ -11,11 +11,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
+import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 
+import 'fake_atrust.dart';
 import 'fake_signature_unit.dart';
 import 'kassa_pump.dart' show containerOf;
 import 'rksv_rig.dart' show RecordingProtocolSaver;
@@ -32,17 +34,30 @@ List<Override> signatureOverrides({
   protocolSaverProvider.overrideWithValue(saver ?? RecordingProtocolSaver()),
 ];
 
+/// Wie [signatureOverrides], dazu [fake] statt der Verbindung zu A-Trust.
+List<Override> onlineOverrides(
+  FakeAtrust fake, {
+  MemoryRksvSecrets? secrets,
+  RecordingProtocolSaver? saver,
+}) => [
+  ...signatureOverrides(secrets: secrets, saver: saver),
+  atrustHttpClientProvider.overrideWithValue(fake.client),
+];
+
 /// Die Kassen-ID der Bildvergleiche.
 const fixedCashBoxId = 'K7QM2XB4HN';
 
 /// Schreibt eine laufende Probe (Kette 1, [fixedCashBoxId]) mit [tasks],
-/// auf Wunsch mit Ausfall seit [outageSince] und einem Hinweis, ohne einen
-/// Bon zu signieren. Mit [ended] ist die Kette beendet und die Signatur aus.
+/// auf Wunsch mit Ausfall seit [outageSince] (Grund [outageReason]) und einem
+/// Hinweis, ohne einen Bon zu signieren. Mit [ended] ist die Kette beendet und
+/// die Signatur aus. [unit] signiert die Kette (`atrustTest`: Online-Probe).
 /// Ohne [container] gilt der der laufenden App.
 Future<void> seedProbe(
   WidgetTester t, {
   List<RksvTask> tasks = const [],
   DateTime? outageSince,
+  String outageReason = 'Die Signatur hat nicht geantwortet.',
+  RksvUnit unit = RksvUnit.probe,
   String? notice,
   bool ended = false,
   ProviderContainer? container,
@@ -62,6 +77,7 @@ Future<void> seedProbe(
         RksvChainRowsCompanion.insert(
           chain: const Value(1),
           mode: RksvMode.probe.name,
+          unit: Value(unit.name),
           cashBoxId: fixedCashBoxId,
           zdaId: 'AT100',
           certSerial: '01',
@@ -74,9 +90,7 @@ Future<void> seedProbe(
       mode: Value((ended ? RksvMode.off : RksvMode.probe).name),
       chain: Value(ended ? null : 1),
       outageSince: Value(outageSince),
-      outageReason: Value(
-        outageSince == null ? null : 'Die Signatur hat nicht geantwortet.',
-      ),
+      outageReason: Value(outageSince == null ? null : outageReason),
       tasks: Value(encodeRksvTasks(tasks)),
       notice: Value(notice),
     ),

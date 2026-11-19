@@ -64,36 +64,6 @@
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "logo_file_id",
-            "getter_name": "logoFileId",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "logo_path",
-            "getter_name": "logoPath",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "logo_color",
-            "getter_name": "logoColor",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -312,26 +282,6 @@
           {
             "name": "photo_path",
             "getter_name": "photoPath",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "photo_file_id",
-            "getter_name": "photoFileId",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "photo_color",
-            "getter_name": "photoColor",
             "moor_type": "string",
             "nullable": true,
             "customConstraints": null,
@@ -1798,40 +1748,6 @@
             "default_dart": "const CustomExpression('0')",
             "default_client_dart": null,
             "dsl_features": []
-          },
-          {
-            "name": "device_id",
-            "getter_name": "deviceId",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "last_push_at",
-            "getter_name": "lastPushAt",
-            "moor_type": "dateTime",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "photos_auto_enabled",
-            "getter_name": "photosAutoEnabled",
-            "moor_type": "bool",
-            "nullable": false,
-            "customConstraints": null,
-            "defaultConstraints": "CHECK (\"photos_auto_enabled\" IN (0, 1))",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "CHECK (\"photos_auto_enabled\" IN (0, 1))"
-            },
-            "default_dart": "const CustomExpression('0')",
-            "default_client_dart": null,
-            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -1916,6 +1832,16 @@
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "unit",
+            "getter_name": "unit",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'probe\\'')",
             "default_client_dart": null,
             "dsl_features": []
           },
@@ -2208,223 +2134,6 @@
           "id"
         ]
       }
-    },
-    {
-      "id": 20,
-      "references": [],
-      "type": "table",
-      "data": {
-        "name": "outbox",
-        "was_declared_in_moor": false,
-        "columns": [
-          {
-            "name": "id",
-            "getter_name": "id",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "defaultConstraints": "PRIMARY KEY AUTOINCREMENT",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "PRIMARY KEY AUTOINCREMENT"
-            },
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": [
-              "auto-increment"
-            ]
-          },
-          {
-            "name": "kind",
-            "getter_name": "kind",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "ref",
-            "getter_name": "ref",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "field",
-            "getter_name": "field",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "value",
-            "getter_name": "value",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "changed_at",
-            "getter_name": "changedAt",
-            "moor_type": "dateTime",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "rev",
-            "getter_name": "rev",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('0')",
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "state",
-            "getter_name": "state",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('\\'pending\\'')",
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "reason",
-            "getter_name": "reason",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          }
-        ],
-        "is_virtual": false,
-        "without_rowid": false,
-        "constraints": []
-      }
-    },
-    {
-      "id": 21,
-      "references": [],
-      "type": "table",
-      "data": {
-        "name": "reports",
-        "was_declared_in_moor": false,
-        "columns": [
-          {
-            "name": "id",
-            "getter_name": "id",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "kind",
-            "getter_name": "kind",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "at",
-            "getter_name": "at",
-            "moor_type": "dateTime",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "app_version",
-            "getter_name": "appVersion",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "android_version",
-            "getter_name": "androidVersion",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "device_model",
-            "getter_name": "deviceModel",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "count",
-            "getter_name": "count",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": "const CustomExpression('1')",
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "signature",
-            "getter_name": "signature",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "content",
-            "getter_name": "content",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          }
-        ],
-        "is_virtual": false,
-        "without_rowid": false,
-        "constraints": [],
-        "explicit_pk": [
-          "id"
-        ]
-      }
     }
   ],
   "fixed_sql": [
@@ -2433,7 +2142,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"business\" (\"id\" INTEGER NOT NULL, \"name\" TEXT NOT NULL, \"address_lines\" TEXT NOT NULL DEFAULT '', \"vat_id\" TEXT NULL, \"receipt_footer\" TEXT NULL, \"logo_file_id\" TEXT NULL, \"logo_path\" TEXT NULL, \"logo_color\" TEXT NULL, PRIMARY KEY (\"id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"business\" (\"id\" INTEGER NOT NULL, \"name\" TEXT NOT NULL, \"address_lines\" TEXT NOT NULL DEFAULT '', \"vat_id\" TEXT NULL, \"receipt_footer\" TEXT NULL, PRIMARY KEY (\"id\"));"
         }
       ]
     },
@@ -2451,7 +2160,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"items\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"price_cents\" INTEGER NOT NULL, \"category_id\" TEXT NOT NULL REFERENCES categories (id), \"tax_percent\" INTEGER NOT NULL, \"deposit_cents\" INTEGER NOT NULL DEFAULT 0, \"tags\" TEXT NOT NULL DEFAULT '', \"info\" TEXT NULL, \"template_id\" TEXT NULL, \"favorite\" INTEGER NOT NULL DEFAULT 0 CHECK (\"favorite\" IN (0, 1)), \"in_sale\" INTEGER NOT NULL DEFAULT 1 CHECK (\"in_sale\" IN (0, 1)), \"photo_path\" TEXT NULL, \"photo_file_id\" TEXT NULL, \"photo_color\" TEXT NULL, \"position\" INTEGER NOT NULL, \"archived\" INTEGER NOT NULL DEFAULT 0 CHECK (\"archived\" IN (0, 1)), PRIMARY KEY (\"id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"items\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"price_cents\" INTEGER NOT NULL, \"category_id\" TEXT NOT NULL REFERENCES categories (id), \"tax_percent\" INTEGER NOT NULL, \"deposit_cents\" INTEGER NOT NULL DEFAULT 0, \"tags\" TEXT NOT NULL DEFAULT '', \"info\" TEXT NULL, \"template_id\" TEXT NULL, \"favorite\" INTEGER NOT NULL DEFAULT 0 CHECK (\"favorite\" IN (0, 1)), \"in_sale\" INTEGER NOT NULL DEFAULT 1 CHECK (\"in_sale\" IN (0, 1)), \"photo_path\" TEXT NULL, \"position\" INTEGER NOT NULL, \"archived\" INTEGER NOT NULL DEFAULT 0 CHECK (\"archived\" IN (0, 1)), PRIMARY KEY (\"id\"));"
         }
       ]
     },
@@ -2568,7 +2277,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sync_state\" (\"id\" INTEGER NOT NULL, \"register_id\" TEXT NULL, \"register_name\" TEXT NULL, \"business_id\" TEXT NULL, \"pull_cursor\" INTEGER NOT NULL DEFAULT 0, \"initial_pull_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"initial_pull_done\" IN (0, 1)), \"last_pull_at\" INTEGER NULL, \"last_error\" TEXT NULL, \"blocked\" INTEGER NOT NULL DEFAULT 0 CHECK (\"blocked\" IN (0, 1)), \"device_id\" TEXT NULL, \"last_push_at\" INTEGER NULL, \"photos_auto_enabled\" INTEGER NOT NULL DEFAULT 0 CHECK (\"photos_auto_enabled\" IN (0, 1)), PRIMARY KEY (\"id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sync_state\" (\"id\" INTEGER NOT NULL, \"register_id\" TEXT NULL, \"register_name\" TEXT NULL, \"business_id\" TEXT NULL, \"pull_cursor\" INTEGER NOT NULL DEFAULT 0, \"initial_pull_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"initial_pull_done\" IN (0, 1)), \"last_pull_at\" INTEGER NULL, \"last_error\" TEXT NULL, \"blocked\" INTEGER NOT NULL DEFAULT 0 CHECK (\"blocked\" IN (0, 1)), PRIMARY KEY (\"id\"));"
         }
       ]
     },
@@ -2586,7 +2295,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"rksv_chains\" (\"chain\" INTEGER NOT NULL, \"mode\" TEXT NOT NULL, \"cash_box_id\" TEXT NOT NULL, \"zda_id\" TEXT NOT NULL, \"cert_serial\" TEXT NOT NULL REFERENCES rksv_certificates (serial_hex), \"started_at\" INTEGER NOT NULL, \"ended_at\" INTEGER NULL, PRIMARY KEY (\"chain\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"rksv_chains\" (\"chain\" INTEGER NOT NULL, \"mode\" TEXT NOT NULL, \"unit\" TEXT NOT NULL DEFAULT 'probe', \"cash_box_id\" TEXT NOT NULL, \"zda_id\" TEXT NOT NULL, \"cert_serial\" TEXT NOT NULL REFERENCES rksv_certificates (serial_hex), \"started_at\" INTEGER NOT NULL, \"ended_at\" INTEGER NULL, PRIMARY KEY (\"chain\"));"
         }
       ]
     },
@@ -2605,24 +2314,6 @@
         {
           "dialect": "sqlite",
           "sql": "CREATE TABLE IF NOT EXISTS \"rksv_state\" (\"id\" INTEGER NOT NULL, \"mode\" TEXT NOT NULL DEFAULT 'off', \"chain\" INTEGER NULL, \"counter_cents\" INTEGER NOT NULL DEFAULT 0, \"outage_since\" INTEGER NULL, \"outage_reason\" TEXT NULL, \"tasks\" TEXT NOT NULL DEFAULT '[]', \"notice\" TEXT NULL, PRIMARY KEY (\"id\"));"
-        }
-      ]
-    },
-    {
-      "name": "outbox",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"outbox\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"kind\" TEXT NOT NULL, \"ref\" TEXT NOT NULL, \"field\" TEXT NULL, \"value\" TEXT NULL, \"changed_at\" INTEGER NULL, \"rev\" INTEGER NOT NULL DEFAULT 0, \"state\" TEXT NOT NULL DEFAULT 'pending', \"reason\" TEXT NULL);"
-        }
-      ]
-    },
-    {
-      "name": "reports",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"reports\" (\"id\" TEXT NOT NULL, \"kind\" TEXT NOT NULL, \"at\" INTEGER NOT NULL, \"app_version\" TEXT NOT NULL, \"android_version\" TEXT NULL, \"device_model\" TEXT NULL, \"count\" INTEGER NOT NULL DEFAULT 1, \"signature\" TEXT NOT NULL, \"content\" TEXT NOT NULL, PRIMARY KEY (\"id\"));"
         }
       ]
     }
