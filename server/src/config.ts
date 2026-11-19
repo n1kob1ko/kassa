@@ -22,6 +22,10 @@ export type Config = {
   /** Kopfzeile mit der Adresse des Clients, klein geschrieben. Nur hinter einem Proxy setzen, der sie überschreibt. */
   clientIpHeader?: string;
   passwordCost: number;
+  /** Das Programm `pg_dump` für die nächtliche Sicherung (Pfad oder Name). Vorgabe `pg_dump`. */
+  pgDumpPath?: string;
+  /** `BACKUP_DISABLED=1`: keine nächtliche Sicherung (zum Beispiel in der Entwicklung). */
+  backupDisabled?: boolean;
 };
 
 /** Mindestlänge der Schlüssel aus den Einstellungen. Der Einrichtungs-Schlüssel setzt das Passwort des Anbieters neu. */
@@ -140,6 +144,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     webDir: present(env, 'WEB_DIR'),
     clientIpHeader,
     passwordCost: 131072,
+    pgDumpPath: present(env, 'PG_DUMP_PATH') ?? 'pg_dump',
+    backupDisabled: present(env, 'BACKUP_DISABLED') === '1',
   };
 }
 

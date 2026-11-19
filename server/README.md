@@ -17,3 +17,14 @@ Die Rolle aus `DATABASE_URL` muss Superuser sein oder BYPASSRLS haben (der Benut
 `FILE_DIR` oder die `S3_`-Variablen (genau eines davon) bestimmen, wo die Installationsdateien liegen. Für einen Bucket: `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, dazu optional `S3_URL_STYLE` mit `virtual` (Vorgabe, der Bucket steht im Hostnamen, so arbeiten die Buckets bei Railway) oder `path` (der Bucket steht im Pfad, etwa für eine lokale Nachbildung). Jeder andere Wert bricht den Start ab.
 
 `SETUP_TOKEN` und `RELEASE_TOKEN` (beide optional) müssen mindestens 32 Zeichen lang sein, sonst bricht der Start ab. `PUBLIC_URL` wird auf die Herkunft gekürzt (Schema, Host, Port), ein Pfad oder ein Schrägstrich am Ende stört also nicht. Ist `PUBLIC_URL` eine https-Adresse und `CLIENT_IP_HEADER` nicht gesetzt, schreibt der Server beim Start eine Warnung: Hinter einem Proxy teilen sich dann alle Geräte einen Zähler für Fehlversuche.
+
+## Sicherung
+
+Der Server sichert die Datenbank jede Nacht (nach 3 Uhr Wiener Zeit) mit `pg_dump` in die Ablage, unter `backups/kassa-<Tag>.dump`. Die letzten 14 gelungenen Sicherungen bleiben. Beim Start prüft der Server, ob `pg_dump` mindestens so neu ist wie die Datenbank (sonst steht ein Hinweis im Protokoll); nach einer Minute und dann jede Stunde schaut er, ob eine Sicherung fällig ist.
+
+- `PG_DUMP_PATH` (optional): Pfad zu `pg_dump`. Vorgabe `pg_dump`. Die Hauptversion muss mindestens die der Datenbank sein.
+- `BACKUP_DISABLED=1` (optional): schaltet die nächtliche Sicherung ab, etwa in der Entwicklung.
+- `DATABASE_URL` muss die Besitzer-Rolle der Datenbank sein (Superuser oder `BYPASSRLS`): Die Tabellen haben Zeilensperren, mit einer anderen Rolle würden die Sicherungen leer sein. `pg_dump` bekommt die Zugangsdaten über `PG…`-Variablen, nie in der Befehlszeile.
+- Fotos und Installationsdateien liegen in der Ablage und gehören nicht zur Sicherung.
+
+Zurückspielen: `docs/betrieb/sicherung-zurueckspielen.md`. Der Anbieter sieht den Stand unter `GET /api/admin/backups/latest`.

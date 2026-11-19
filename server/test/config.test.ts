@@ -54,6 +54,18 @@ describe('loadConfig', () => {
     });
   });
 
+  test('PG_DUMP_PATH: Vorgabe pg_dump, sonst der Wert', () => {
+    expect(loadConfig(base).pgDumpPath).toBe('pg_dump');
+    expect(loadConfig({ ...base, PG_DUMP_PATH: '/opt/pg/bin/pg_dump' }).pgDumpPath).toBe('/opt/pg/bin/pg_dump');
+  });
+
+  test('BACKUP_DISABLED=1 schaltet die Sicherung ab, sonst ist sie an', () => {
+    expect(loadConfig(base).backupDisabled).toBe(false);
+    expect(loadConfig({ ...base, BACKUP_DISABLED: '1' }).backupDisabled).toBe(true);
+    expect(loadConfig({ ...base, BACKUP_DISABLED: '0' }).backupDisabled).toBe(false);
+    expect(loadConfig({ ...base, BACKUP_DISABLED: '' }).backupDisabled).toBe(false);
+  });
+
   test('CLIENT_IP_HEADER: ohne Angabe keiner, sonst klein geschrieben, kein gültiger Name ist ein Fehler', () => {
     expect(loadConfig(base).clientIpHeader).toBeUndefined();
     expect(loadConfig({ ...base, CLIENT_IP_HEADER: 'X-Real-IP' }).clientIpHeader).toBe('x-real-ip');

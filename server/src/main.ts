@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { buildApp, loggerOptions } from './app.js';
+import { checkPgDump, runBackupIfDue } from './backup/backup.js';
 import { startPruning } from './auth/prune.js';
 import { configWarnings, loadConfig } from './config.js';
 import { closeDb, openDb } from './db/db.js';
@@ -29,7 +30,29 @@ const stopPruning = startPruning(db, () => new Date(), (err) =>
   app?.log.error({ message: (err as Error).message }, 'Aufräumen fehlgeschlagen'),
 );
 
+// Nächtliche Sicherung: nach dem Start prüfen, nach einer Minute zum ersten Mal, danach jede Stunde.
+// Die Zeitgeber halten den Prozess beim Beenden nicht fest.
+const timers: NodeJS.Timeout[] = [];
+if (!config.backupDisabled) {
+  const deps = app.deps;
+  const log = app.log;
+  const problem = await checkPgDump(deps);
+  if (problem) log.warn(problem);
+  const tick = () => void runBackupIfDue(deps, { log });
+  const first = setTimeout(() => {
+    tick();
+    const hourly = setInterval(tick, 60 * 60 * 1000);
+    hourly.unref();
+    timers.push(hourly);
+  }, 60 * 1000);
+  first.unref();
+  timers.push(first);
+} else {
+  app.log.warn('BACKUP_DISABLED=1: Es gibt keine nächtliche Sicherung.');
+}
+
 const stop = async () => {
+  for (const t of timers) clearTimeout(t);
   stopPruning();
   await app?.close();
   await closeDb(db);
