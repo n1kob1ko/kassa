@@ -132,6 +132,41 @@ describe('Annahme', () => {
     expect(await reports(businessId, 'day_conflict')).toHaveLength(1);
   });
 
+  test('gleiche Kennung mit anderer Zeit: Bon, abgeschlossener Tag, beendete Kette und Bewegung sind rejected/conflict', async () => {
+    const dev = randomUUID();
+    const r = sampleReceipt();
+    expect(statuses(await send([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    expect(statuses(await send([entry(1, 'receipt', { ...r, createdAt: '2026-11-19T08:06:00.000Z' })]))).toEqual(['rejected/conflict']);
+    expect(statuses(await send([entry(1, 'receipt', { ...r, createdAt: '2026-11-19T08:05:00Z' })]))).toEqual(['duplicate']);
+
+    const closed = sampleDay({ closedAt: '2026-11-19T18:00:00.000Z', countedCents: 1, leftInDrawerCents: 1, expectedCents: 1, differenceCents: 0, closedByName: 'C' });
+    expect(statuses(await send([entry(1, 'day', closed)]))).toEqual(['accepted']);
+    const before = (await reports(businessId, 'day_conflict')).length;
+    expect(statuses(await send([entry(1, 'day', { ...closed, closedAt: '2026-11-19T18:30:00.000Z' })]))).toEqual(['rejected/conflict']);
+    expect(await reports(businessId, 'day_conflict')).toHaveLength(before + 1);
+    expect(statuses(await send([entry(1, 'day', { ...closed, openedAt: '2026-11-19T07:00:00.000Z' })]))).toEqual(['rejected/conflict']);
+
+    const chain = { chain: 5, mode: 'live', cashBoxId: 'K', zdaId: 'AT0', certSerial: 'ff', startedAt: '2026-11-19T07:00:00.000Z', endedAt: '2026-11-19T20:00:00.000Z' };
+    expect(statuses(await send([entry(1, 'rksv_chain', chain)], token, dev))).toEqual(['accepted']);
+    expect(statuses(await send([entry(1, 'rksv_chain', { ...chain, endedAt: '2026-11-19T21:00:00.000Z' })], token, dev))).toEqual(['rejected/conflict']);
+
+    const mv = { id: randomUUID(), businessDayId: randomUUID(), kind: 'deposit', amountCents: 500, reason: null, createdAt: '2026-11-19T09:00:00.000Z', staffId: 's', staffName: 'S' };
+    expect(statuses(await send([entry(1, 'cash_movement', mv)]))).toEqual(['accepted']);
+    expect(statuses(await send([entry(1, 'cash_movement', { ...mv, createdAt: '2026-11-19T09:01:00.000Z' })]))).toEqual(['rejected/conflict']);
+  });
+
+  test('offener Tag und offene Kette wandern mit der neuen Kassa', async () => {
+    const dev = randomUUID();
+    const second = await pairDevice(f.app, provider.cookie, businessId);
+    const day = sampleDay();
+    const chain = { chain: 6, mode: 'probe', cashBoxId: 'K', zdaId: 'AT0', certSerial: 'aa', startedAt: '2026-11-19T07:00:00.000Z', endedAt: null };
+    await send([entry(1, 'day', day), entry(2, 'rksv_chain', chain)], token, dev);
+    expect((await rows(businessId, 'select register_id from business_days where id = $1', [day.id]))[0].register_id).toBe(registerId);
+    await send([entry(1, 'day', day), entry(2, 'rksv_chain', chain)], second.token, dev);
+    expect((await rows(businessId, 'select register_id from business_days where id = $1', [day.id]))[0].register_id).toBe(second.registerId);
+    expect((await rows(businessId, 'select register_id from rksv_chains where device_id = $1', [dev]))[0].register_id).toBe(second.registerId);
+  });
+
   test('Kette: offen wird überschrieben, beendet ist endgültig; Zertifikat und Bewegung nur anlegen', async () => {
     const dev = randomUUID();
     const chain = { chain: 1, mode: 'live', cashBoxId: 'K', zdaId: 'AT0', certSerial: 'ff', startedAt: '2026-11-19T07:00:00.000Z', endedAt: null };

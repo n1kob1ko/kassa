@@ -76,9 +76,9 @@ async function handleChain(c: pg.PoolClient, ctx: EntryContext, body: unknown): 
   if (row.ended_at === null) {
     await c.query(
       `update rksv_chains set mode = $3, cash_box_id = $4, zda_id = $5, cert_serial = $6, started_at = $7, ended_at = $8,
-              content_hash = $9, received_at = $10
+              content_hash = $9, received_at = $10, register_id = $11
         where device_id = $1 and chain = $2`,
-      [ctx.deviceId, v.chain, v.mode, v.cashBoxId, v.zdaId, v.certSerial, v.startedAt, v.endedAt, hash, ctx.at],
+      [ctx.deviceId, v.chain, v.mode, v.cashBoxId, v.zdaId, v.certSerial, v.startedAt, v.endedAt, hash, ctx.at, ctx.register.id],
     );
     return ACCEPTED;
   }
@@ -111,10 +111,10 @@ async function handleDay(c: pg.PoolClient, ctx: EntryContext, body: unknown): Pr
     await c.query(
       `update business_days set opened_at = $2, closed_at = $3, opening_float_cents = $4, counted_cents = $5,
               left_in_drawer_cents = $6, expected_cents = $7, difference_cents = $8, closed_by_name = $9,
-              content_hash = $10, received_at = $11
+              content_hash = $10, received_at = $11, register_id = $12
         where id = $1`,
       [v.id, v.openedAt, v.closedAt, v.openingFloatCents, v.countedCents, v.leftInDrawerCents, v.expectedCents,
-        v.differenceCents, v.closedByName, hash, ctx.at],
+        v.differenceCents, v.closedByName, hash, ctx.at, ctx.register.id],
     );
     return ACCEPTED;
   }
