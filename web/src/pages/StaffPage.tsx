@@ -12,7 +12,7 @@ import { toast } from '../ui/Toast';
 import { useDialogState } from '../ui/useDialogState';
 import { ApiError } from '../api/client';
 import { FormAlert } from './AuthLayout';
-import { useBusinessContext } from './BusinessLayout';
+import { BusinessName, useBusinessContext } from './BusinessLayout';
 import styles from './StaffPage.module.css';
 
 const ROLE_LABEL: Record<Role, string> = { chef: 'Chef', staff: 'Mitarbeiter' };
@@ -184,7 +184,7 @@ export function StaffPage() {
 
   return (
     <>
-      <PageHeader title="Mitarbeiter" subtitle={b.name} actions={list && list.length > 0 ? addButton : undefined} />
+      <PageHeader title="Mitarbeiter" subtitle={<BusinessName />} actions={list && list.length > 0 ? addButton : undefined} />
 
       {query.isPending && <ListSkeleton label="Mitarbeiter werden geladen" />}
       {query.isError && <LoadError message={query.error.message} onRetry={() => void query.refetch()} />}

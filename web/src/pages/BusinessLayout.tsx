@@ -1,14 +1,48 @@
+import type { CSSProperties } from 'react';
 import { Navigate, Outlet, useOutletContext, useParams } from 'react-router';
 import { useMe } from '../api/auth';
 import { useBusiness, type BusinessDetail } from '../api/businesses';
+import { fileUrl } from '../api/files';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadError, ListSkeleton } from '../ui/DataList';
+import styles from './BusinessLayout.module.css';
 
 export type BusinessContext = { detail: BusinessDetail; isProvider: boolean };
 
 /** Der Betrieb und die Rolle für die Seiten darunter. */
 export function useBusinessContext(): BusinessContext {
   return useOutletContext<BusinessContext>();
+}
+
+/**
+ * Der Name des Betriebs für die Zeile unter dem Seitentitel, mit dem Logo davor, sobald es eines gibt (32 px,
+ * Hauptfarbe als Platzhalter). Das Bild hat kein `alt`: der Name steht daneben.
+ */
+export function BusinessName() {
+  const { business } = useBusinessContext().detail;
+  const logo = business.logo;
+  return (
+    <span className={styles.name}>
+      {logo && (
+        <span className={styles.logo} style={{ '--placeholder': logo.color } as CSSProperties}>
+          <img
+            key={logo.id}
+            data-testid="business-logo"
+            className={styles.logoImage}
+            src={fileUrl(business.id, logo.id)}
+            alt=""
+            width={32}
+            height={32}
+            decoding="async"
+            onLoad={(e) => {
+              e.currentTarget.dataset.loaded = 'true';
+            }}
+          />
+        </span>
+      )}
+      <span className={styles.text}>{business.name}</span>
+    </span>
+  );
 }
 
 /** Lädt den Betrieb aus der Adresse. Gibt es ihn nicht (oder gehört er nicht zum Chef), steht das im Rahmen. */

@@ -198,3 +198,24 @@ export const GridIcon = icon(
     <rect width="7" height="7" x="14" y="14" rx="1.5" />
   </>,
 );
+
+/** Stern: Favorit (gefüllt, wenn an). */
+export const StarIcon = icon(
+  <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />,
+);
+
+/** Kamera: Foto-Feld ohne Foto. */
+export const CameraIcon = icon(
+  <>
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3" />
+  </>,
+);
+
+/** Regler: der Bereich "Betrieb" (Einstellungen des Betriebs). */
+export const SlidersIcon = icon(
+  <>
+    <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" />
+    <path d="M14 2v4M8 10v4M16 18v4" />
+  </>,
+);

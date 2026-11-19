@@ -3,32 +3,49 @@ import { ApiError } from '../api/client';
 import { count } from '../format';
 import { UploadIcon } from './icons';
 import { FormAlert } from '../pages/AuthLayout';
+import { imageProblem, IMAGE_TYPES } from '../pages/validate';
 import styles from './FileDrop.module.css';
 
 export type FileDropProps = {
-  /** Eine gewählte `.json`-Datei. Andere Dateien weist die Fläche selbst ab. */
+  /** Eine passende Datei. Andere weist die Fläche selbst ab und sagt es in einem Satz. */
   onFile: (file: File) => void;
   /** Name der zuletzt gewählten Datei. */
   fileName?: string;
   disabled?: boolean;
+  /** `menu` (Vorgabe): die Speisekarten-Datei (.json). `image`: ein Bild (JPEG, PNG, WebP, bis 10 MB). */
+  kind?: 'menu' | 'image';
+  /** Wird eine Datei abgewiesen (dann mit dem Satz) oder angenommen (dann `null`). */
+  onReject?: (problem: string | null) => void;
 };
 
-const WRONG_TYPE = 'Das ist keine .json-Datei. Wähle die Speisekarten-Datei aus.';
+const KINDS = {
+  menu: {
+    accept: '.json,application/json',
+    title: 'Speisekarten-Datei hierher ziehen oder auswählen',
+    hint: 'Nur .json, bis 1 MB',
+    problem: (file: File) => (file.name.toLowerCase().endsWith('.json') ? null : 'Das ist keine .json-Datei. Wähle die Speisekarten-Datei aus.'),
+  },
+  image: {
+    accept: IMAGE_TYPES.join(','),
+    title: 'Bild hierher ziehen oder auswählen',
+    hint: 'JPEG, PNG oder WebP, bis 10 MB',
+    problem: imageProblem,
+  },
+} as const;
 
-/** Fläche zum Hineinziehen oder Auswählen der Speisekarten-Datei. Mit Tastatur: Tab zur Fläche, Enter oder Leertaste. */
-export function FileDrop({ onFile, fileName, disabled = false }: FileDropProps) {
+/** Fläche zum Hineinziehen oder Auswählen einer Datei. Mit Tastatur: Tab zur Fläche, Enter oder Leertaste. */
+export function FileDrop({ onFile, fileName, disabled = false, kind = 'menu', onReject }: FileDropProps) {
   const inputId = useId();
   const [over, setOver] = useState(false);
-  const [rejected, setRejected] = useState(false);
+  const [rejected, setRejected] = useState<string | null>(null);
+  const config = KINDS[kind];
 
   const take = (file: File | undefined) => {
     if (!file || disabled) return;
-    if (!file.name.toLowerCase().endsWith('.json')) {
-      setRejected(true);
-      return;
-    }
-    setRejected(false);
-    onFile(file);
+    const problem = config.problem(file);
+    setRejected(problem);
+    onReject?.(problem);
+    if (!problem) onFile(file);
   };
 
   const onDrop = (e: DragEvent) => {
@@ -52,7 +69,7 @@ export function FileDrop({ onFile, fileName, disabled = false }: FileDropProps) 
         <input
           id={inputId}
           type="file"
-          accept=".json,application/json"
+          accept={config.accept}
           className={styles.input}
           disabled={disabled}
           onChange={(e) => {
@@ -62,10 +79,10 @@ export function FileDrop({ onFile, fileName, disabled = false }: FileDropProps) 
           }}
         />
         <UploadIcon size={28} className={styles.icon} />
-        <span className={styles.title}>Speisekarten-Datei hierher ziehen oder auswählen</span>
-        <span className={styles.hint}>{fileName ? fileName : 'Nur .json, bis 1 MB'}</span>
+        <span className={styles.title}>{config.title}</span>
+        <span className={styles.hint}>{fileName ? fileName : config.hint}</span>
       </label>
-      {rejected && <FormAlert>{WRONG_TYPE}</FormAlert>}
+      {rejected && <FormAlert>{rejected}</FormAlert>}
     </div>
   );
 }

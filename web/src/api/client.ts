@@ -73,6 +73,21 @@ async function toApiError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, code, message, { problems, retryAfterSeconds });
 }
 
+/**
+ * Der Fehler einer Antwort, die nicht über `api` kam (etwa ein Hochladen mit Fortschritt): dieselbe Form wie bei
+ * `api`, und bei 401 außerhalb der Anmeldeseiten dieselbe Weiterleitung.
+ */
+export async function errorOf(res: Response): Promise<ApiError> {
+  const err = await toApiError(res);
+  if (res.status === 401 && !onAuthPage()) onUnauthorized();
+  return err;
+}
+
+/** Der Fehler, wenn der Server gar nicht antwortet. */
+export function networkError(): ApiError {
+  return new ApiError(0, 'network', NETWORK_MESSAGE);
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { 'X-Kassa-Request': '1' };
   const init: RequestInit = { method, headers, credentials: 'same-origin' };
@@ -85,14 +100,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     res = await fetch(path, init);
   } catch {
-    throw new ApiError(0, 'network', NETWORK_MESSAGE);
+    throw networkError();
   }
 
-  if (!res.ok) {
-    const err = await toApiError(res);
-    if (res.status === 401 && !onAuthPage()) onUnauthorized();
-    throw err;
-  }
+  if (!res.ok) throw await errorOf(res);
   if (res.status === 204) return undefined as T;
   // Eine Antwort, die kein JSON ist (etwa eine Fehlerseite eines Proxys mit 200), ist für die Seite ein Fehler.
   try {

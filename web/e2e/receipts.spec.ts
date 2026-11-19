@@ -493,7 +493,7 @@ test.describe('Handy', () => {
 
     await more.click();
     const sheet = page.getByRole('dialog', { name: 'Mehr' });
-    await expect(sheet.getByRole('link')).toHaveText(['Kassen', 'Mitarbeiter', 'Alle Betriebe']);
+    await expect(sheet.getByRole('link')).toHaveText(['Kassen', 'Mitarbeiter', 'Betrieb', 'Alle Betriebe']);
     await sheet.getByRole('link', { name: 'Kassen' }).click();
     await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/kassen$`));
     await expect(page.getByRole('dialog')).toHaveCount(0);

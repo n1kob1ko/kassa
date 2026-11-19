@@ -142,6 +142,7 @@ test('Liste und Betrieb: Zahlen, sortiert nach Name, Kategorien mit Artikelzahl'
       addressLines: ['Musterstraße 1', '1010 Wien'],
       vatId: 'ATU12345678',
       receiptFooter: 'Danke und bis bald!',
+      logo: null,
       counts: { categories: 2, items: 3, templates: 1, staff: 0, registers: 0 },
     },
     categories: [

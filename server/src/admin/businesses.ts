@@ -88,7 +88,12 @@ export function installBusinessRoutes(app: FastifyInstance): void {
     const id = req.params.b.toLowerCase();
     return withBusiness(db, id, async (c) => {
       const biz = (
-        await c.query<Row>('select id, name, address_lines, vat_id, receipt_footer from businesses where id = $1', [id])
+        await c.query<Row>(
+          `select b.id, b.name, b.address_lines, b.vat_id, b.receipt_footer, f.id as logo_id, f.color as logo_color
+             from businesses b left join files f on f.id = b.logo_file_id
+            where b.id = $1`,
+          [id],
+        )
       ).rows[0];
       if (!biz) throw new ApiError(404, 'not_found', 'Das gibt es nicht.');
       const counts = (
@@ -114,6 +119,7 @@ export function installBusinessRoutes(app: FastifyInstance): void {
           addressLines: biz.address_lines,
           vatId: biz.vat_id,
           receiptFooter: biz.receipt_footer,
+          logo: biz.logo_id === null ? null : { id: biz.logo_id, color: biz.logo_color },
           counts,
         },
         categories,

@@ -7,7 +7,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { PageHeader } from '../ui/PageHeader';
 import { RowGroup, RowLink, RowListSkeleton } from '../ui/RowList';
 import { StatusChip } from '../ui/StatusChip';
-import { useBusinessContext } from './BusinessLayout';
+import { BusinessName, useBusinessContext } from './BusinessLayout';
 import { DayDetailView, Difference } from './DayDetail';
 import { useDetailRoute } from './useDetailRoute';
 import styles from './DaysPage.module.css';
@@ -83,7 +83,7 @@ export function DaysPage() {
 
   return (
     <>
-      <PageHeader title="Tagesabschlüsse" subtitle={b.name} />
+      <PageHeader title="Tagesabschlüsse" subtitle={<BusinessName />} />
       {body}
       <Dialog variant="side" title={title} open={route.id !== null} onClose={route.close} returnFocus={route.rowOf}>
         {route.id && <DayDetailView query={opened} />}

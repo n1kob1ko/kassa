@@ -1,0 +1,113 @@
+.layout {
+  display: grid;
+  gap: var(--space-xxl);
+  align-items: start;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logoText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.logoHint {
+  margin-bottom: var(--space-sm);
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+/* Der Satz für den Anbieter: ruhig, wie ein Hinweis am Feld, nicht wie ein Fehler. */
+.note {
+  margin-top: calc(-1 * var(--space-md));
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink2);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  gap: var(--space-xxs);
+  padding: var(--space-xl) 0;
+}
+
+.fact + .fact {
+  border-top: 1px solid var(--line);
+}
+
+.fact:first-child {
+  padding-top: 0;
+}
+
+.fact:last-child {
+  padding-bottom: 0;
+}
+
+.factLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink2);
+}
+
+.factValue {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.line {
+  display: block;
+}
+
+.missing {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+@media (min-width: 640px) {
+  .fact {
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: var(--space-xxl);
+    align-items: baseline;
+  }
+
+  .factLabel {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    max-width: 1080px;
+  }
+}

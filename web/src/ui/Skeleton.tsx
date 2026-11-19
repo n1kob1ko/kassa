@@ -18,3 +18,11 @@ export function Skeleton({ lines, label = 'Wird geladen' }: SkeletonProps) {
     </div>
   );
 }
+
+/**
+ * Ein einzelner schimmernder Platzhalter für Skeletons in der Form einer Seite. Größe und Rundung gibt die Seite
+ * über `className`; der Schimmer kommt von hier.
+ */
+export function Bone({ className }: { className?: string }) {
+  return <span className={[styles.bone, className].filter(Boolean).join(' ')} aria-hidden="true" />;
+}

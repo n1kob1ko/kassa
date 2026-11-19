@@ -19,7 +19,7 @@ import { PageHeader } from '../ui/PageHeader';
 import { RowGroup, RowLink, RowListSkeleton } from '../ui/RowList';
 import { Segmented } from '../ui/Segmented';
 import { Switch } from '../ui/Switch';
-import { useBusinessContext } from './BusinessLayout';
+import { BusinessName, useBusinessContext } from './BusinessLayout';
 import { ReceiptChips, ReceiptDetailView, SPECIAL_NAMES } from './ReceiptDetail';
 import { useDetailRoute } from './useDetailRoute';
 import styles from './ReceiptsPage.module.css';
@@ -214,7 +214,7 @@ export function ReceiptsPage() {
 
   return (
     <>
-      <PageHeader title="Bons" subtitle={b.name} />
+      <PageHeader title="Bons" subtitle={<BusinessName />} />
       {showFilters && <Filters filter={filter} onChange={change} />}
       {body}
       <Dialog

@@ -5,8 +5,12 @@
 }
 
 .line {
-  display: block;
   height: 16px;
+}
+
+.line,
+.bone {
+  display: block;
   border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
   animation: shimmer 1.4s linear infinite;
@@ -26,7 +30,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .line {
+  .line,
+  .bone {
     animation: none;
     background: var(--fill);
   }

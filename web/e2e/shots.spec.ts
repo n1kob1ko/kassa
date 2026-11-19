@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 import { expect, signInAsProvider, test } from './support/fixtures';
 import { E2E_RELEASE_TOKEN } from './support/server';
 import {
@@ -190,6 +190,69 @@ async function receiptsScene(page: Page): Promise<{ businessId: string; sale: st
   return { businessId, sale, day };
 }
 
+const PHOTO = fileURLToPath(new URL('./support/photo.jpg', import.meta.url));
+const PHOTO_2 = fileURLToPath(new URL('./support/photo-2.png', import.meta.url));
+const LOGO = fileURLToPath(new URL('./support/logo.png', import.meta.url));
+
+async function putImage(page: Page, url: string, path: string, type: string) {
+  const res = await page.request.put(url, { headers: { ...HEADERS, 'Content-Type': type }, data: readFileSync(path) });
+  expect(res.ok(), `${url}: ${res.status()} ${await res.text()}`).toBe(true);
+}
+
+/**
+ * Eine Speisekarte mit Fotos, Favoriten, einem Artikel außer Verkauf, einem langen Namen, einem stillgelegten
+ * Artikel und einer stillgelegten Kategorie, dazu ein Logo. Wird wiederverwendet.
+ */
+async function menuScene(page: Page): Promise<string> {
+  const list = (await (await page.request.get('/api/admin/businesses')).json()) as { businesses: { id: string; name: string }[] };
+  const known = list.businesses.find((b) => b.name === 'Imbiss im Lindenhof');
+  if (known) return known.id;
+  const base = JSON.parse(MENU) as Record<string, any>;
+  const menu = {
+    ...base,
+    betrieb: 'Imbiss im Lindenhof',
+    kategorien: [
+      { id: 'bowls', name: 'Bowls' },
+      { id: 'getraenke', name: 'Getränke' },
+      { id: 'desserts', name: 'Desserts' },
+    ],
+    artikel: [
+      base.artikel[0],
+      { id: 'tofu-bowl', name: 'Tofu Bowl', preis_cent: 890, kategorie: 'bowls', mwst: 10, kennzeichen: 'VEGAN' },
+      base.artikel[1],
+      { id: 'nudeln', name: 'Gebratene Nudeln mit knusprigem Hühnerfleisch und Gemüse der Saison', preis_cent: 1250, kategorie: 'bowls', mwst: 10 },
+      { id: 'linsen', name: 'Linsen Curry', preis_cent: 790, kategorie: 'bowls', mwst: 10 },
+      base.artikel[2],
+      { id: 'almdudler', name: 'Almdudler 0,35 l', preis_cent: 320, kategorie: 'getraenke', mwst: 20, pfand_cent: 25 },
+      { id: 'wasser', name: 'Mineralwasser', preis_cent: 250, kategorie: 'getraenke', mwst: 20 },
+      { id: 'schmarrn', name: 'Kaiserschmarrn', preis_cent: 690, kategorie: 'desserts', mwst: 10 },
+    ],
+  };
+  const b = (await post(page, '/api/admin/businesses', { menuFile: JSON.stringify(menu) })).business.id as string;
+  // Linsen Curry und die Desserts fallen beim neuen Einspielen weg: sie sind dann stillgelegt.
+  const later = { ...menu, kategorien: menu.kategorien.slice(0, 2), artikel: menu.artikel.filter((a) => a.id !== 'linsen' && a.id !== 'schmarrn') };
+  await post(page, `/api/admin/businesses/${b}/menu`, { menuFile: JSON.stringify(later) });
+  const items = `/api/admin/businesses/${b}/items`;
+  await putImage(page, `${items}/huhn-bowl/photo`, PHOTO, 'image/jpeg');
+  await putImage(page, `${items}/tofu-bowl/photo`, PHOTO_2, 'image/png');
+  await putImage(page, `${items}/linsen/photo`, PHOTO, 'image/jpeg');
+  await putImage(page, `/api/admin/businesses/${b}/logo`, LOGO, 'image/png');
+  for (const [id, change] of [
+    ['huhn-bowl', { favorite: true }],
+    ['cola', { favorite: true }],
+    ['almdudler', { inSale: false }],
+  ] as const) {
+    const res = await page.request.patch(`${items}/${id}`, { headers: HEADERS, data: change });
+    expect(res.ok(), await res.text()).toBe(true);
+  }
+  return b;
+}
+
+/** Wartet, bis jedes Bild in der Seite geladen und eingeblendet ist. */
+async function imagesLoaded(page: Page) {
+  await expect.poll(() => page.evaluate(() => [...document.images].every((i) => i.complete && i.naturalWidth > 0))).toBe(true);
+}
+
 async function shoot(page: Page, name: string, fullPage = true) {
   await page.evaluate(() => document.fonts.ready);
   // Dialog und Hinweis laufen 220 ms ein: erst danach fotografieren.
@@ -274,14 +337,88 @@ for (const size of sizes) {
         await signInAsProvider(page);
         const full = await theScene(page);
         await page.goto(`/b/${full}/speisekarte`);
-        await expect(page.getByRole('list', { name: 'Kategorien' })).toBeVisible();
-        await shoot(page, `speisekarte-${suffix}`);
+        await expect(page.getByRole('list', { name: 'Bowls' })).toBeVisible();
+        await shoot(page, `speisekarte-einfach-${suffix}`);
         await page.getByRole('button', { name: 'Speisekarte neu einspielen' }).click();
         await shoot(page, `speisekarte-dialog-${suffix}`);
         await page.getByRole('dialog').locator('input[type=file]').setInputFiles(INVALID_FILE);
         await page.getByRole('dialog').getByRole('button', { name: 'Neu einspielen' }).click();
         await expect(page.getByRole('alert')).toBeVisible();
         await shoot(page, `speisekarte-dialog-fehler-${suffix}`);
+      });
+
+      test('speisekarte mit preisen und fotos', async ({ page }) => {
+        await signInAsProvider(page);
+        const b = await menuScene(page);
+        await page.goto(`/b/${b}/speisekarte`);
+        await expect(page.getByRole('list', { name: 'Bowls' })).toBeVisible();
+        await imagesLoaded(page);
+        await shoot(page, `speisekarte-${suffix}`);
+
+        const field = page.getByRole('textbox', { name: 'Tofu Bowl: Preis' });
+        await field.fill('8,9,0');
+        await field.blur();
+        await expect(page.getByText('Gib einen Preis wie 9,90 ein.')).toBeVisible();
+        await field.scrollIntoViewIfNeeded();
+        await shoot(page, `speisekarte-fehler-${suffix}`, false);
+        await field.focus();
+        await page.keyboard.press('Escape');
+
+        // Das Fenster mit dem vorhandenen Foto.
+        await page.getByRole('button', { name: 'Huhn Bowl: Foto ändern' }).click();
+        const dialog = page.getByRole('dialog', { name: 'Foto für Huhn Bowl' });
+        await expect(dialog.getByRole('img', { name: 'Vorschau' })).toBeVisible();
+        await imagesLoaded(page);
+        await shoot(page, `foto-fenster-${suffix}`, false);
+
+        // Neue Datei, die Antwort bleibt aus: Vorschau und Fortschritt. Schließen bricht ab, am Server ändert sich nichts.
+        let held: Route | undefined;
+        await page.route('**/api/admin/businesses/*/items/*/photo', (route) => {
+          held = route;
+        });
+        await dialog.locator('input[type=file]').setInputFiles(PHOTO_2);
+        await dialog.getByRole('button', { name: 'Speichern' }).click();
+        await expect(dialog.getByRole('progressbar')).toBeVisible();
+        await shoot(page, `foto-fenster-hochladen-${suffix}`, false);
+        await page.keyboard.press('Escape');
+        // Die gehaltene Anfrage kommt so nie beim Server an, die Speisekarte für die Bilder bleibt gleich.
+        await held?.abort().catch(() => undefined);
+        await page.unroute('**/api/admin/businesses/*/items/*/photo');
+
+        // Ohne Foto, mit einer abgewiesenen Datei.
+        await page.getByRole('button', { name: 'Teigtaschen: Foto hinzufügen' }).click();
+        await page.getByRole('dialog').locator('input[type=file]').setInputFiles({ name: 'notiz.txt', mimeType: 'text/plain', buffer: Buffer.from('Notiz') });
+        await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+        await shoot(page, `foto-fenster-fehler-${suffix}`, false);
+        await page.keyboard.press('Escape');
+
+        await page.route(`**/api/admin/businesses/${b}/items`, async (route) => {
+          await new Promise((r) => setTimeout(r, 1500));
+          await route.continue().catch(() => undefined);
+        });
+        await page.goto(`/b/${b}/speisekarte`);
+        await expect(page.getByRole('status').filter({ hasText: 'Speisekarte wird geladen' })).toBeVisible();
+        await shoot(page, `speisekarte-laden-${suffix}`);
+        await page.unroute(`**/api/admin/businesses/${b}/items`);
+      });
+
+      test('betrieb', async ({ page }) => {
+        await signInAsProvider(page);
+        const b = await menuScene(page);
+        await page.goto(`/b/${b}/betrieb`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Betrieb' })).toBeVisible();
+        await imagesLoaded(page);
+        await shoot(page, `betrieb-${suffix}`);
+        await page.getByRole('button', { name: 'Logo ändern' }).click();
+        await expect(page.getByRole('dialog', { name: 'Logo' }).getByRole('img', { name: 'Vorschau' })).toBeVisible();
+        await imagesLoaded(page);
+        await shoot(page, `betrieb-logo-fenster-${suffix}`, false);
+        await page.keyboard.press('Escape');
+
+        const empty = await freshBusiness(page);
+        await page.goto(`/b/${empty}/betrieb`);
+        await expect(page.getByRole('button', { name: 'Logo hinzufügen' })).toBeVisible();
+        await shoot(page, `betrieb-ohne-logo-${suffix}`);
       });
 
       test('mitarbeiter', async ({ page }) => {

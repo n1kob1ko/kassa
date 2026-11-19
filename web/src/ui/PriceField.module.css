@@ -1,0 +1,76 @@
+/* Sieht aus wie ein Eingabefeld (44 px, Rand 1,5 px `line`), das Eurozeichen steht fest rechts außerhalb des Texts. */
+.box {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 14px 0 var(--space-xl);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--ink);
+  cursor: text;
+  transition: border-color var(--duration-color) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .box:hover {
+    border-color: var(--ink2);
+  }
+}
+
+.box:focus-within {
+  border-color: var(--accent);
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.invalid,
+.invalid:hover {
+  border-color: var(--red);
+}
+
+.input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px; /* ab 16 px zoomt Safari am Handy nicht beim Antippen */
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+}
+
+.input::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.suffix {
+  flex: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink2);
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--red);
+}
+
+.errorIcon {
+  flex: none;
+  margin-top: 1px;
+}

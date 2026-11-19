@@ -286,8 +286,10 @@ test('Speisekarte: Zahlen, Kategorien und neu einspielen', async ({ page }) => {
   await page.goto(`/b/${b.id}/speisekarte`);
   await expect(page.getByRole('heading', { level: 1, name: 'Speisekarte' })).toBeVisible();
   await expect(page.getByText(/^\d+ Artikel$/).first()).toBeVisible();
-  await expect(row(page, 'Bowls')).toContainText(/\d+ Artikel/);
-  await expect(row(page, 'Getränke')).toContainText(/\d+ Artikel/);
+  // Je Kategorie ein Kopf mit der Zahl der Artikel und eine Liste mit ihren Artikeln.
+  await expect(page.getByRole('region', { name: 'Bowls' })).toContainText(/\d+ Artikel/);
+  await expect(page.getByRole('region', { name: 'Getränke' })).toContainText(/\d+ Artikel/);
+  await expect(page.getByRole('list', { name: 'Bowls' }).getByRole('listitem')).toHaveCount(2);
 
   await page.getByRole('button', { name: 'Speisekarte neu einspielen' }).click();
   const dialog = page.getByRole('dialog');

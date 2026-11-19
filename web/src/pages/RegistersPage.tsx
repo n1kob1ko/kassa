@@ -17,7 +17,7 @@ import { TextField } from '../ui/TextField';
 import { toast } from '../ui/Toast';
 import { useDialogState } from '../ui/useDialogState';
 import { FormAlert } from './AuthLayout';
-import { useBusinessContext } from './BusinessLayout';
+import { BusinessName, useBusinessContext } from './BusinessLayout';
 import styles from './RegistersPage.module.css';
 
 /** Wie oft die Liste bei offenem Kopplungsdialog neu geladen wird. */
@@ -202,7 +202,7 @@ export function RegistersPage() {
 
   return (
     <>
-      <PageHeader title="Kassen" subtitle={b.name} actions={list && list.length > 0 ? headerAction : undefined} />
+      <PageHeader title="Kassen" subtitle={<BusinessName />} actions={list && list.length > 0 ? headerAction : undefined} />
 
       {query.isPending && <ListSkeleton label="Kassen werden geladen" />}
       {query.isError && !list && <LoadError message={query.error.message} onRetry={() => void query.refetch()} />}

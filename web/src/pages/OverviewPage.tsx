@@ -9,7 +9,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { AlertIcon, ArrowDownIcon, ArrowUpIcon } from '../ui/icons';
 import { PageHeader } from '../ui/PageHeader';
 import { Segmented } from '../ui/Segmented';
-import { useBusinessContext } from './BusinessLayout';
+import { BusinessName, useBusinessContext } from './BusinessLayout';
 import styles from './OverviewPage.module.css';
 
 /** Der Zeitraum steht in der Adresse (`?zeit=7`, `?zeit=30`), heute ohne. So bleibt er beim Neuladen und Zurück. */
@@ -258,7 +258,7 @@ export function OverviewPage() {
     <>
       <PageHeader
         title="Umsätze"
-        subtitle={b.name}
+        subtitle={<BusinessName />}
         wideActions
         actions={
           <Segmented

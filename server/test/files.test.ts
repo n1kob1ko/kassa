@@ -225,6 +225,29 @@ describe('Logo', () => {
     expect(actions.map((r) => r.action)).toEqual(['business.logo_set', 'business.logo_set', 'business.logo_removed']);
   });
 
+  test('der Betrieb in der Verwaltung nennt das Logo: null, nach dem Hochladen { id, color }, nach dem Entfernen null', async () => {
+    const detail = async (b = businessId, cookie = provider.cookie) => {
+      const res = await a.app.inject({ method: 'GET', url: `/api/admin/businesses/${b}`, headers: { cookie } });
+      expect(res.statusCode).toBe(200);
+      return res.json() as { business: Record<string, unknown> & { logo: { id: string; color: string } | null } };
+    };
+    expect((await detail()).business.logo).toBeNull();
+    const f = (await put(logoUrl(), JPEG)).json().file;
+    const after = await detail();
+    expect(after.business.logo).toEqual({ id: f.id, color: f.color });
+    expect((await detail(businessId, chef.cookie)).business.logo).toEqual({ id: f.id, color: f.color });
+    // Nur das Feld kommt dazu.
+    expect(Object.keys(after.business).sort()).toEqual(['addressLines', 'counts', 'id', 'logo', 'name', 'receiptFooter', 'vatId']);
+    // Der zweite Betrieb sieht davon nichts, auch nicht über die Adresse des ersten.
+    expect((await detail(otherBusinessId)).business.logo).toBeNull();
+    expect((await detail(otherBusinessId, otherChef.cookie)).business.logo).toBeNull();
+    const foreign = await a.app.inject({ method: 'GET', url: `/api/admin/businesses/${businessId}`, headers: { cookie: otherChef.cookie } });
+    expect(foreign.statusCode).toBe(404);
+    expect(foreign.body).not.toContain(f.id);
+    expect((await del(logoUrl())).statusCode).toBe(204);
+    expect((await detail()).business.logo).toBeNull();
+  });
+
   test('der Chef des Betriebs darf', async () => {
     const res = await put(logoUrl(), JPEG, { cookie: chef.cookie });
     expect(res.statusCode).toBe(200);

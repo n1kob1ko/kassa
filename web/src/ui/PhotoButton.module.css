@@ -1,0 +1,103 @@
+/* Die Fläche eines Bilds: Hauptfarbe als Platzhalter, ohne Bild `accentSoft` mit Kamera (wie der Foto-Platzhalter der App). */
+.frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--placeholder, var(--accent-soft));
+}
+
+.empty {
+  background: var(--accent-soft);
+}
+
+.camera {
+  color: var(--accent-ink);
+  opacity: 0.55;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--duration-enter) var(--ease);
+}
+
+.image.contain {
+  object-fit: contain;
+}
+
+.image[data-loaded='true'] {
+  opacity: 1;
+}
+
+/* Das Foto-Feld als Knopf: 56 × 56 (Logo 96 × 96), Druck wie jede Taste. */
+.button {
+  position: relative;
+  flex: none;
+  display: block;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease),
+    filter var(--duration-press) var(--ease);
+}
+
+.lg {
+  width: 96px;
+  height: 96px;
+}
+
+.lg .fill {
+  border-radius: var(--radius-xxl);
+}
+
+.fill {
+  width: 100%;
+  height: 100%;
+}
+
+/* Feine Linie innen: ein helles Foto verschwimmt sonst mit der weißen Karte. */
+.button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
+  pointer-events: none;
+  transition: box-shadow var(--duration-color) linear;
+}
+
+.lg::after {
+  border-radius: var(--radius-xxl);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover::after {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+  }
+}
+
+.button:active {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.lg:focus-visible {
+  border-radius: var(--radius-xxl);
+}
