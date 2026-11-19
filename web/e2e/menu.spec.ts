@@ -239,6 +239,119 @@ test('Server antwortet 500: der Wert springt zurück, die Meldung nennt den Grun
   pageProblems.splice(0, pageProblems.length, ...pageProblems.filter((p) => !expected.test(p)));
 });
 
+const isList = (r: Request) => r.method() === 'GET' && /\/items$/.test(new URL(r.url()).pathname);
+
+test('A scheitert, während B noch läuft: ist B durch, holt die Seite die Liste und zeigt, was der Server hat', async ({ page, pageProblems }) => {
+  const b = await createBusiness(page);
+  await page.goto(`/b/${b}/speisekarte`);
+  await expect(price(page, 'Cola 0,33 l')).toHaveValue('2,90');
+  const message = 'Das hat nicht geklappt. Bitte nochmal versuchen.';
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route('**/api/admin/businesses/*/items/*', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.continue();
+    if (route.request().url().endsWith('/teigtaschen')) return route.fulfill({ status: 500, json: { error: { code: 'internal', message } } });
+    await held;
+    await route.continue();
+  });
+
+  // B läuft (gehalten), A scheitert und springt zurück.
+  await favorite(page, 'Huhn Bowl').click();
+  await favorite(page, 'Teigtaschen').click();
+  await expect(toast(page).getByText(message)).toBeVisible();
+  await expect(favorite(page, 'Teigtaschen')).toHaveAttribute('aria-pressed', 'false');
+  // Ein anderer ändert inzwischen am Server: nur ein Neuladen der Liste bringt das auf die Seite.
+  const res = await page.request.patch(`/api/admin/businesses/${b}/items/cola`, { headers: HEADERS, data: { priceCents: 450 } });
+  expect(res.ok(), await res.text()).toBe(true);
+  const lists = countRequests(page, isList);
+  expect(lists.count()).toBe(0);
+
+  release();
+  await expect(favorite(page, 'Huhn Bowl')).toHaveAttribute('aria-pressed', 'true');
+  await expect(price(page, 'Cola 0,33 l')).toHaveValue('4,50');
+  expect(lists.count()).toBe(1);
+  // Die frühere Änderung glückte nach der gescheiterten späteren: der Hinweis kommt trotzdem.
+  await expect(toast(page).getByText(SYNC_HINT)).toBeVisible();
+  await page.unroute('**/api/admin/businesses/*/items/*');
+
+  const expected = /^Konsole \(error\): Failed to load resource: the server responded with a status of 500/;
+  expect(pageProblems.filter((p) => expected.test(p))).toHaveLength(1);
+  pageProblems.splice(0, pageProblems.length, ...pageProblems.filter((p) => !expected.test(p)));
+});
+
+test('ein Neuladen während des Speicherns bringt den alten Wert nicht zurück', async ({ page }) => {
+  const b = await createBusiness(page);
+  await page.clock.install();
+  await page.goto(`/b/${b}/speisekarte`);
+  const field = price(page, 'Huhn Bowl');
+  await expect(field).toHaveValue('9,90');
+
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route('**/api/admin/businesses/*/items/huhn-bowl', async (route) => {
+    await held;
+    await route.continue();
+  });
+  // Die ersten zwei Listen holt der Test sofort vom Server (sie kennen den neuen Preis noch nicht) und gibt sie
+  // erst zurück, wann er will; alle späteren gehen durch.
+  const lists: { route: Route; old: Awaited<ReturnType<Route['fetch']>> }[] = [];
+  await page.route('**/api/admin/businesses/*/items', async (route) => {
+    if (route.request().method() !== 'GET' || lists.length >= 2) return route.continue();
+    lists.push({ route, old: await route.fetch() });
+  });
+  // Die Seite holt die Liste neu, wenn das Fenster wieder sichtbar wird und die Daten alt sind.
+  const refetch = async () => {
+    await page.clock.fastForward(31_000);
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  };
+
+  await field.fill('11');
+  await page.keyboard.press('Enter');
+  await expect(field).toHaveValue('11,00');
+
+  // Die alte Liste kommt, während noch gespeichert wird: der neue Preis bleibt stehen.
+  await refetch();
+  await expect.poll(() => lists.length).toBe(1);
+  const first = page.waitForResponse((r) => r.request() === lists[0]!.route.request());
+  await lists[0]!.route.fulfill({ response: lists[0]!.old });
+  await first;
+  await expect(field).toHaveValue('11,00');
+
+  // Die alte Liste kommt erst nach der Antwort zum Speichern: sie zählt nicht, die Seite holt sie frisch.
+  await refetch();
+  await expect.poll(() => lists.length).toBe(2);
+  const saved = page.waitForResponse((r) => isPatch(r.request()));
+  const fresh = page.waitForResponse((r) => isList(r.request()) && r.request() !== lists[1]!.route.request());
+  release();
+  await saved;
+  await fresh;
+  await lists[1]!.route.fulfill({ response: lists[1]!.old }).catch(() => undefined);
+  await page.waitForLoadState('networkidle');
+  await expect(field).toHaveValue('11,00');
+  expect((await serverItem(page, b, 'huhn-bowl')).priceCents).toBe(1100);
+});
+
+test('Foto entfernen als erste Änderung eines Besuchs: der Hinweis zum Abgleich kommt mit', async ({ page }) => {
+  const b = await createBusiness(page);
+  const put = await page.request.put(`/api/admin/businesses/${b}/items/huhn-bowl/photo`, {
+    headers: { ...HEADERS, 'Content-Type': 'image/jpeg' },
+    data: readFileSync(PHOTO),
+  });
+  expect(put.ok(), await put.text()).toBe(true);
+  await page.goto(`/b/${b}/speisekarte`);
+  await photoField(page, 'Huhn Bowl').click();
+  const dialog = page.getByRole('dialog', { name: 'Foto für Huhn Bowl' });
+  await dialog.getByRole('button', { name: 'Foto entfernen' }).click();
+  await dialog.getByRole('button', { name: 'Ja, entfernen' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(toast(page).getByText(`Foto entfernt. ${SYNC_HINT}`)).toBeVisible();
+
+  // Die zweite Änderung des Besuchs meldet sich ohne den Hinweis.
+  await favorite(page, 'Huhn Bowl').click();
+  await expect.poll(async () => (await serverItem(page, b, 'huhn-bowl')).favorite).toBe(true);
+  await expect(toast(page).getByText(`Foto entfernt. ${SYNC_HINT}`)).toBeVisible();
+});
+
 test('Foto hochladen, ersetzen, entfernen mit Rückgängig, nach dem Neuladen mit Rückfrage', async ({ page }) => {
   const b = await createBusiness(page);
   await page.goto(`/b/${b}/speisekarte`);
@@ -424,6 +537,13 @@ test('stillgelegte Artikel und Kategorien stehen am Ende, gedämpft und ohne Bed
   await expect(drinks.getByRole('textbox')).toHaveCount(0);
   await expect(drinks.getByRole('switch')).toHaveCount(0);
   await expect(drinks.getByRole('button')).toHaveCount(0);
+
+  // Am Handy steht der Preis, wo er in den aktiven Zeilen steht: links unter dem Foto, gleich breit wie das Feld.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const field = (await price(page, 'Huhn Bowl').locator('xpath=..').boundingBox())!;
+  const text = (await archived.getByText(`6,50${NBSP}€`).boundingBox())!;
+  expect(Math.abs(text.x - field.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(text.x + text.width - (field.x + field.width))).toBeLessThanOrEqual(1);
 });
 
 test('Logo hochladen und entfernen: die Kopfzeile zeigt es neben dem Namen', async ({ page }) => {
@@ -517,11 +637,26 @@ test('360 px: kein waagrechtes Scrollen, Ziele mindestens 44 px, Beschriftungen 
   const long = 'Gebratene Nudeln mit knusprigem Hühnerfleisch und Gemüse der Saison';
   const b = await createBusiness(page, (menu) => {
     menu.artikel.push({ id: 'nudeln', name: long, preis_cent: 1_234_550, kategorie: 'bowls', mwst: 10 });
+    menu.artikel.push({ id: 'almdudler', name: 'Almdudler 0,35 l', preis_cent: 320, kategorie: 'getraenke', mwst: 20 });
+    menu.artikel.push({ id: 'nudeln-kurz', name: 'Gebratene Nudeln mit knusprigem Huhn', preis_cent: 1150, kategorie: 'bowls', mwst: 10 });
   });
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto(`/b/${b}/speisekarte`);
   await expect(price(page, long)).toHaveValue('12345,50');
   await noHorizontalScroll(page, 'Speisekarte bei 360');
+
+  // Der Name reicht bis zum Stern: kurze Namen in einer Zeile, die Einheit bricht nicht allein um.
+  const lines = (item: string) =>
+    page
+      .getByRole('listitem')
+      .filter({ has: price(page, item) })
+      .locator('p')
+      .evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+  expect(await lines('Almdudler 0,35 l')).toBe(1);
+  expect(await lines('Cola 0,33 l')).toBe(1);
+  expect(await lines('Gebratene Nudeln mit knusprigem Huhn')).toBeLessThanOrEqual(2);
+  // Ein Name von fast 70 Zeichen braucht bei 360 px mehr Zeilen, bleibt aber ganz lesbar.
+  expect(await lines(long)).toBeLessThanOrEqual(4);
 
   for (const item of ['Huhn Bowl', long]) {
     // Beim Preis ist die Tippfläche das ganze Feld um den Text (mit Eurozeichen und Rand).

@@ -5,11 +5,10 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { PageHeader } from '../ui/PageHeader';
 import { PhotoButton } from '../ui/PhotoButton';
-import { toast } from '../ui/Toast';
 import { useDialogState } from '../ui/useDialogState';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
-import { imageErrorText, PhotoDialog } from './PhotoDialog';
-import { useSyncHint, useUploadMemory } from './useSyncHint';
+import { PhotoDialog } from './PhotoDialog';
+import { removeWithUndo, useSyncHint, useUploadMemory } from './useSyncHint';
 import styles from './BusinessPage.module.css';
 
 const PROVIDER_NOTE = 'Ändern kommt mit der nächsten Stufe. Bis dahin: Speisekarte neu einspielen.';
@@ -42,27 +41,6 @@ export function BusinessPage() {
   const upload = async (file: File, options: UploadOptions) => {
     const saved = await setLogo.mutateAsync({ file, ...options });
     memory.remember(LOGO_KEY, saved.id, file);
-  };
-
-  const removeWithUndo = (file: File) => {
-    const removal = removeLogo.mutateAsync();
-    removal.catch((err: Error) => toast.show(err.message));
-    toast.show('Logo entfernt.', {
-      undo: () => {
-        void (async () => {
-          try {
-            await removal;
-          } catch {
-            return;
-          }
-          try {
-            await upload(file, {});
-          } catch (err) {
-            toast.show(imageErrorText(err));
-          }
-        })();
-      },
-    });
   };
 
   const address = business.addressLines.filter((l) => l.trim() !== '');
@@ -137,11 +115,16 @@ export function BusinessPage() {
         returnFocus={() => document.getElementById(LOGO_BUTTON)}
         onRemove={async () => {
           if (logoFile) {
-            removeWithUndo(logoFile);
+            removeWithUndo({
+              remove: () => removeLogo.mutateAsync(),
+              reupload: () => upload(logoFile, {}),
+              message: 'Logo entfernt.',
+              notify: hint,
+            });
             return;
           }
           await removeLogo.mutateAsync();
-          toast.show('Logo entfernt.');
+          hint('Logo entfernt.');
         }}
       />
     </>

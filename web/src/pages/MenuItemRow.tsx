@@ -1,6 +1,6 @@
 import { fileUrl } from '../api/files';
 import type { ItemChange, MenuItem } from '../api/items';
-import { money } from '../format';
+import { keepUnits, money } from '../format';
 import { StarIcon } from '../ui/icons';
 import { Photo, PhotoButton } from '../ui/PhotoButton';
 import { PriceField } from '../ui/PriceField';
@@ -30,7 +30,7 @@ export function MenuItemRow({ business, item, onChange, onPhoto }: MenuItemRowPr
         label={`${item.name}: Foto ${item.photo ? 'ändern' : 'hinzufügen'}`}
         onClick={onPhoto}
       />
-      <p className={styles.name}>{item.name}</p>
+      <p className={styles.name}>{keepUnits(item.name)}</p>
       <PriceField
         className={styles.price}
         errorClassName={styles.priceError}
@@ -65,7 +65,7 @@ export function ArchivedItemRow({ business, item, chip }: { business: string; it
     <li className={[styles.row, styles.archivedRow].join(' ')}>
       <Photo className={styles.photo} picture={item.photo} src={(id) => fileUrl(business, id)} />
       <p className={styles.name}>
-        <span>{item.name}</span>
+        <span>{keepUnits(item.name)}</span>
         {chip && <StatusChip tone="neutral">Stillgelegt</StatusChip>}
       </p>
       <span className={styles.archivedPrice}>{money(item.priceCents)}</span>

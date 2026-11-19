@@ -16,8 +16,8 @@ import { useDialogState } from '../ui/useDialogState';
 import { count } from '../format';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
 import { ArchivedItemRow, MenuItemRow } from './MenuItemRow';
-import { imageErrorText, PhotoDialog } from './PhotoDialog';
-import { useSyncHint, useUploadMemory } from './useSyncHint';
+import { PhotoDialog } from './PhotoDialog';
+import { removeWithUndo, useSyncHint, useUploadMemory } from './useSyncHint';
 import styles from './MenuPage.module.css';
 
 const WARNING = 'Die Datei gewinnt bei allem, was in ihr steht, auch bei Preisen. Favoriten, "Im Verkauf" und Fotos bleiben.';
@@ -146,42 +146,20 @@ export function MenuPage() {
   const { business } = detail;
   const b = business.id;
   const items = useItems(b);
-  const patch = usePatchItem(b);
+  const hint = useSyncHint();
+  const patch = usePatchItem(b, { onSaved: () => hint() });
   const setPhoto = useSetPhoto(b);
   const removePhoto = useRemovePhoto(b);
-  const hint = useSyncHint();
   const memory = useUploadMemory();
   const reimportDialog = useDialogState();
   const photoDialog = useDialogState<string>();
 
-  const change = (item: MenuItem, c: ItemChange) => patch.mutate({ id: item.id, change: c }, { onSuccess: hint });
+  const change = (item: MenuItem, c: ItemChange) => patch.mutate({ id: item.id, change: c });
 
   const upload = async (itemId: string, file: File, options: UploadOptions) => {
     const saved = await setPhoto.mutateAsync({ itemId, file, ...options });
     memory.remember(itemId, saved.id, file);
     return saved;
-  };
-
-  /** Sofort weg, "Rückgängig" lädt dieselbe Datei aus diesem Besuch noch einmal hoch. */
-  const removeWithUndo = (item: MenuItem, file: File) => {
-    const removal = removePhoto.mutateAsync(item.id);
-    removal.catch((err: Error) => toast.show(err.message));
-    toast.show('Foto entfernt.', {
-      undo: () => {
-        void (async () => {
-          try {
-            await removal;
-          } catch {
-            return;
-          }
-          try {
-            await upload(item.id, file, {});
-          } catch (err) {
-            toast.show(imageErrorText(err));
-          }
-        })();
-      },
-    });
   };
 
   const all = items.data?.categories.flatMap((c) => c.items) ?? [];
@@ -256,12 +234,18 @@ export function MenuPage() {
           }}
           undoable={photoFile !== undefined}
           onRemove={async () => {
+            const item = photoItem;
             if (photoFile) {
-              removeWithUndo(photoItem, photoFile);
+              removeWithUndo({
+                remove: () => removePhoto.mutateAsync(item.id),
+                reupload: () => upload(item.id, photoFile, {}),
+                message: 'Foto entfernt.',
+                notify: hint,
+              });
               return;
             }
-            await removePhoto.mutateAsync(photoItem.id);
-            toast.show('Foto entfernt.');
+            await removePhoto.mutateAsync(item.id);
+            hint('Foto entfernt.');
           }}
         />
       )}

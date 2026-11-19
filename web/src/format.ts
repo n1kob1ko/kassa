@@ -130,3 +130,8 @@ export function dateInputValue(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+/** Zahl und Einheit bleiben in einer Zeile: "0,35 l" bricht nicht vor dem "l". Nur zum Sehen; Namen für Screenreader bleiben, wie sie sind. */
+export function keepUnits(text: string): string {
+  return text.replace(/(\d) (?=(?:c?l|ml|g|kg|Stk\.?)(?!\p{L}))/gu, '$1\u00a0');
+}

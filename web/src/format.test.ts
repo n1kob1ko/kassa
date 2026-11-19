@@ -9,6 +9,7 @@ import {
   dateText,
   dayHeading,
   dayKey,
+  keepUnits,
   megabytes,
   money,
   share,
@@ -154,4 +155,14 @@ test('signedMoney: Vorzeichen immer, echtes Minus, 0 ohne Vorzeichen', () => {
 test('dateInputValue: das Datum des Browsers für ein Datumsfeld', () => {
   expect(dateInputValue(new Date(2026, 10, 9, 23, 59))).toBe('2026-11-09');
   expect(dateInputValue(new Date(2026, 0, 1, 0, 0))).toBe('2026-01-01');
+});
+
+test('keepUnits: Zahl und Einheit bleiben zusammen, sonst nichts geändert', () => {
+  const NBSP = '\u00a0';
+  expect(keepUnits('Almdudler 0,35 l')).toBe(`Almdudler 0,35${NBSP}l`);
+  expect(keepUnits('Cola 0,33 l')).toBe(`Cola 0,33${NBSP}l`);
+  expect(keepUnits('Brot 500 g, 2 kg Mehl')).toBe(`Brot 500${NBSP}g, 2${NBSP}kg Mehl`);
+  expect(keepUnits('Bier 33 cl')).toBe(`Bier 33${NBSP}cl`);
+  expect(keepUnits('Wasser 1 lang')).toBe('Wasser 1 lang');
+  expect(keepUnits('Huhn Bowl')).toBe('Huhn Bowl');
 });

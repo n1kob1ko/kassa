@@ -54,6 +54,16 @@ const inFlight = new Map<string, number>();
 const latest = new Map<string, number>();
 let nextToken = 1;
 
+/**
+ * Je Betrieb: wie viele Änderungen laufen, und ob die Liste danach neu geholt werden muss (nach einem Fehler, oder weil
+ * ein Neuladen abgebrochen wurde). Geholt wird erst, wenn nichts mehr läuft; dann hat der Server alles.
+ */
+const running = new Map<string, number>();
+const owed = new Set<string>();
+
+/** Die Werte, die im Browser schon stehen, deren Antwort aber noch fehlt: je Betrieb, Artikel und Feld. */
+const unconfirmed = new Map<string, Map<string, Map<Field, { token: number; value: unknown }>>>();
+
 function inOrder<T>(key: string, run: () => Promise<T>): Promise<T> {
   const next = (queues.get(key) ?? Promise.resolve()).then(run, run);
   queues.set(key, next);
@@ -67,16 +77,65 @@ function inOrder<T>(key: string, run: () => Promise<T>): Promise<T> {
 const fieldKey = (b: string, id: string, field: string) => `${b}/${id}/${field}`;
 const count = (key: string) => inFlight.get(key) ?? 0;
 
+function remember(b: string, id: string, change: ItemChange, token: number) {
+  const items = unconfirmed.get(b) ?? new Map<string, Map<Field, { token: number; value: unknown }>>();
+  const fields = items.get(id) ?? new Map<Field, { token: number; value: unknown }>();
+  for (const [f, value] of Object.entries(change) as [Field, unknown][]) fields.set(f, { token, value });
+  items.set(id, fields);
+  unconfirmed.set(b, items);
+}
+
+function forget(b: string, id: string, change: ItemChange, token: number) {
+  const fields = unconfirmed.get(b)?.get(id);
+  if (!fields) return;
+  for (const f of Object.keys(change) as Field[]) if (fields.get(f)?.token === token) fields.delete(f);
+  if (fields.size === 0) unconfirmed.get(b)!.delete(id);
+  if (unconfirmed.get(b)!.size === 0) unconfirmed.delete(b);
+}
+
+/**
+ * Kommt eine Liste vom Server, während Änderungen noch unterwegs sind, kennt sie diese noch nicht: die Werte aus dem
+ * Browser bleiben stehen, bis ihre Antwort da ist. Einmal je QueryClient.
+ */
+const watched = new WeakSet<QueryClient>();
+function keepUnconfirmed(queryClient: QueryClient) {
+  if (watched.has(queryClient)) return;
+  watched.add(queryClient);
+  queryClient.getQueryCache().subscribe((event) => {
+    if (event.type !== 'updated' || event.action.type !== 'success' || event.action.manual) return;
+    const [kind, b, ...rest] = event.query.queryKey as unknown[];
+    if (kind !== 'items' || typeof b !== 'string' || rest.length > 0) return;
+    const items = unconfirmed.get(b);
+    if (!items) return;
+    queryClient.setQueryData<Items>(itemsKey(b), (d) => {
+      let next = d;
+      for (const [id, fields] of items) {
+        const change = Object.fromEntries([...fields].map(([f, { value }]) => [f, value])) as ItemChange;
+        next = mapItem(next, id, (i) => ({ ...i, ...change }));
+      }
+      return next;
+    });
+  });
+}
+
+/** Läuft gerade ein Neuladen der Liste, wird es abgebrochen (es kennt die Änderung nicht) und danach nachgeholt. */
+async function stopRefetch(queryClient: QueryClient, b: string) {
+  if (queryClient.isFetching({ queryKey: itemsKey(b), exact: true }) > 0) owed.add(b);
+  await queryClient.cancelQueries({ queryKey: itemsKey(b), exact: true });
+}
+
 type PatchVars = { id: string; change: ItemChange };
 type PatchContext = { token: number; previous: ItemChange };
 
 /**
  * Preis, "Im Verkauf" oder Favorit ändern, optimistisch: der Wert steht sofort da. Scheitert es, springt er
- * zurück (nur wenn danach nichts Neueres kam), der Hinweis nennt den Grund, und die Liste wird neu geholt.
+ * zurück (nur wenn danach nichts Neueres kam), der Hinweis nennt den Grund, und sobald keine Änderung des Betriebs
+ * mehr läuft, wird die Liste neu geholt. `onSaved` kommt nach jeder geglückten Änderung.
  * Eine Änderung im Browser gewinnt am Server immer gegen das Tablet.
  */
-export function usePatchItem(b: string) {
+export function usePatchItem(b: string, { onSaved }: { onSaved?: () => void } = {}) {
   const queryClient = useQueryClient();
+  keepUnconfirmed(queryClient);
   const settle = (fields: Field[], id: string) => {
     for (const f of fields) {
       const key = fieldKey(b, id, f);
@@ -90,7 +149,7 @@ export function usePatchItem(b: string) {
     mutationKey: changeKey(b),
     mutationFn: ({ id, change }) => inOrder(`${b}/${id}`, () => api.patch<MenuItem>(itemPath(b, id), change)),
     onMutate: async ({ id, change }) => {
-      await queryClient.cancelQueries({ queryKey: itemsKey(b) });
+      running.set(b, (running.get(b) ?? 0) + 1);
       const token = nextToken++;
       const before = findItem(queryClient.getQueryData<Items>(itemsKey(b)), id);
       const previous: ItemChange = {};
@@ -100,10 +159,14 @@ export function usePatchItem(b: string) {
         inFlight.set(key, count(key) + 1);
         latest.set(key, token);
       }
+      remember(b, id, change, token);
+      await stopRefetch(queryClient, b);
       queryClient.setQueryData<Items>(itemsKey(b), (d) => mapItem(d, id, (i) => ({ ...i, ...change })));
       return { token, previous };
     },
-    onSuccess: (item, { id }) => {
+    onSuccess: async (item, { id }) => {
+      // Ein Neuladen, das vor dieser Antwort begann, brächte den alten Wert zurück.
+      await stopRefetch(queryClient, b);
       // Nur Felder übernehmen, an denen nicht schon eine neuere Änderung unterwegs ist.
       queryClient.setQueryData<Items>(itemsKey(b), (d) =>
         mapItem(d, id, (current) => {
@@ -114,8 +177,10 @@ export function usePatchItem(b: string) {
           return merged;
         }),
       );
+      onSaved?.();
     },
     onError: (err, { id, change }, context) => {
+      owed.add(b);
       if (context) {
         const back: ItemChange = {};
         for (const f of Object.keys(change) as Field[]) {
@@ -123,16 +188,22 @@ export function usePatchItem(b: string) {
             (back as Record<Field, unknown>)[f] = context.previous[f];
           }
         }
+        forget(b, id, change, context.token);
         queryClient.setQueryData<Items>(itemsKey(b), (d) => mapItem(d, id, (i) => ({ ...i, ...back })));
       }
       toast.show(err.message);
     },
-    onSettled: (_item, err, { id, change }) => {
+    onSettled: (_item, _err, { id, change }, context) => {
       settle(Object.keys(change) as Field[], id);
-      // Nach einem Fehler zeigt die Liste, was der Server wirklich hat, sobald nichts mehr unterwegs ist.
-      if (err && queryClient.isMutating({ mutationKey: changeKey(b) }) <= 1) {
-        void queryClient.invalidateQueries({ queryKey: itemsKey(b) });
+      if (context) forget(b, id, change, context.token);
+      const left = (running.get(b) ?? 1) - 1;
+      if (left > 0) {
+        running.set(b, left);
+        return;
       }
+      running.delete(b);
+      // Die Liste zeigt dann, was der Server wirklich hat.
+      if (owed.delete(b)) void queryClient.invalidateQueries({ queryKey: itemsKey(b), exact: true });
     },
   });
 }
