@@ -65,6 +65,13 @@ describe('Beispieldateien', () => {
     expect(res.json().more).toBe(false);
   });
 
+  test('jeder Artikel nennt photo und der Betrieb logo, ohne Bild null', async () => {
+    const body = (await pull(f.app, token, '?since=0')).json();
+    expect(body.items.length).toBeGreaterThan(0);
+    for (const item of body.items) expect(item).toHaveProperty('photo', null);
+    expect(body.business).toHaveProperty('logo', null);
+  });
+
   test('since=next liefert nichts: leere Listen, next unverändert, kein business', async () => {
     const { next } = (await pull(f.app, token, '?since=0')).json();
     const res = await pull(f.app, token, `?since=${next}`);

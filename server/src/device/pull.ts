@@ -77,15 +77,22 @@ export function installPullRoutes(app: FastifyInstance): void {
         const take = limit + 1;
         const out: Change[] = [];
         const business = await c.query(
-          `select name, address_lines, vat_id, receipt_footer, change_seq from businesses
-            where id = $1 and change_seq > $2`,
+          `select b.name, b.address_lines, b.vat_id, b.receipt_footer, b.change_seq, f.id as logo_id, f.color as logo_color
+             from businesses b left join files f on f.id = b.logo_file_id
+            where b.id = $1 and b.change_seq > $2`,
           [register.businessId, since],
         );
         for (const r of business.rows) {
           out.push({
             seq: seqOf(r),
             kind: 'business',
-            row: { name: r.name, addressLines: r.address_lines, vatId: r.vat_id, receiptFooter: r.receipt_footer },
+            row: {
+              name: r.name,
+              addressLines: r.address_lines,
+              vatId: r.vat_id,
+              receiptFooter: r.receipt_footer,
+              logo: r.logo_id === null ? null : { id: r.logo_id, color: r.logo_color },
+            },
           });
         }
         const categories = await c.query(
@@ -97,9 +104,11 @@ export function installPullRoutes(app: FastifyInstance): void {
           out.push({ seq: seqOf(r), kind: 'categories', row: { id: r.id, name: r.name, position: r.position, archived: r.archived } });
         }
         const items = await c.query(
-          `select id, name, price_cents, category_id, tax_percent, deposit_cents, tags, info, template_id,
-                  favorite, in_sale, position, archived, change_seq
-             from items where change_seq > $1 order by change_seq limit $2`,
+          `select i.id, i.name, i.price_cents, i.category_id, i.tax_percent, i.deposit_cents, i.tags, i.info,
+                  i.template_id, i.favorite, i.in_sale, i.position, i.archived, i.change_seq,
+                  f.id as photo_id, f.color as photo_color
+             from items i left join files f on f.id = i.photo_file_id
+            where i.change_seq > $1 order by i.change_seq limit $2`,
           [since, take],
         );
         for (const r of items.rows) {
@@ -120,6 +129,7 @@ export function installPullRoutes(app: FastifyInstance): void {
               inSale: r.in_sale,
               position: r.position,
               archived: r.archived,
+              photo: r.photo_id === null ? null : { id: r.photo_id, color: r.photo_color },
             },
           });
         }

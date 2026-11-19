@@ -8,7 +8,8 @@
       "1010 Wien"
     ],
     "vatId": "ATU12345678",
-    "receiptFooter": "Danke und bis bald!"
+    "receiptFooter": "Danke und bis bald!",
+    "logo": null
   },
   "categories": [
     {
@@ -40,7 +41,8 @@
       "favorite": false,
       "inSale": true,
       "position": 0,
-      "archived": false
+      "archived": false,
+      "photo": null
     },
     {
       "id": "teigtaschen",
@@ -57,7 +59,8 @@
       "favorite": false,
       "inSale": true,
       "position": 1,
-      "archived": false
+      "archived": false,
+      "photo": null
     },
     {
       "id": "cola",
@@ -72,7 +75,8 @@
       "favorite": false,
       "inSale": true,
       "position": 2,
-      "archived": false
+      "archived": false,
+      "photo": null
     }
   ],
   "templates": [
