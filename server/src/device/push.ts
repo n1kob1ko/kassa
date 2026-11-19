@@ -1,4 +1,4 @@
-import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { withBusiness, withBusinessWrite } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
@@ -12,6 +12,7 @@ import {
   chainEntry,
   dayEntry,
   envelopeSchema,
+  invalid,
   movementEntry,
   receiptEntry,
   type ParsedReceipt,
@@ -22,13 +23,15 @@ export const PUSH_BODY_LIMIT = 2 * 1024 * 1024;
 export type EntryContext = { register: Register; deviceId: string; at: Date; log?: Pick<FastifyBaseLogger, 'warn'> };
 export type EntryResult =
   | { status: 'accepted' | 'duplicate' }
-  | { status: 'rejected'; reason: 'conflict' | 'invalid' | 'unknown_item' };
-/** Nimmt einen ganzen Eintrag (mit `seq` und `kind`) in einer Transaktion des Betriebs. Unlesbar: rejected/invalid. */
+  | { status: 'rejected'; reason: 'conflict' | 'invalid' | 'unknown_item'; paths?: string[] };
+/**
+ * Nimmt einen ganzen Eintrag (mit `seq` und `kind`) in einer Transaktion des Betriebs. Unlesbar: rejected/invalid mit den
+ * Pfaden der Fehler in `paths` (die gehen nur in den Bericht, nicht in die Antwort).
+ */
 export type EntryHandler = (c: pg.PoolClient, ctx: EntryContext, body: unknown) => Promise<EntryResult>;
 
 const ACCEPTED: EntryResult = { status: 'accepted' };
 const DUPLICATE: EntryResult = { status: 'duplicate' };
-const INVALID: EntryResult = { status: 'rejected', reason: 'invalid' };
 const CONFLICT: EntryResult = { status: 'rejected', reason: 'conflict' };
 
 type Existing = { content_hash: Buffer };
@@ -39,7 +42,7 @@ function report(c: pg.PoolClient, ctx: EntryContext, kind: string, content: obje
 
 async function handleCertificate(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = certificateEntry.safeParse(body);
-  if (!parsed.success) return INVALID;
+  if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.certificate;
   const hash = contentHash(v);
   const inserted = await c.query(
@@ -59,7 +62,7 @@ async function handleCertificate(c: pg.PoolClient, ctx: EntryContext, body: unkn
 
 async function handleChain(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = chainEntry.safeParse(body);
-  if (!parsed.success) return INVALID;
+  if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.chain;
   const hash = contentHash(v);
   const existing = await c.query<Existing & { ended_at: Date | null }>(
@@ -91,7 +94,7 @@ async function handleChain(c: pg.PoolClient, ctx: EntryContext, body: unknown): 
 
 async function handleDay(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = dayEntry.safeParse(body);
-  if (!parsed.success) return INVALID;
+  if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.day;
   const hash = contentHash(v);
   const existing = await c.query<Existing & { closed_at: Date | null }>(
@@ -127,7 +130,7 @@ async function handleDay(c: pg.PoolClient, ctx: EntryContext, body: unknown): Pr
 
 async function handleMovement(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = movementEntry.safeParse(body);
-  if (!parsed.success) return INVALID;
+  if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.movement;
   const hash = contentHash(v);
   const inserted = await c.query(
@@ -165,11 +168,12 @@ async function writeRksvEntry(c: pg.PoolClient, ctx: EntryContext, receiptId: st
 
 async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = receiptEntry.safeParse(body);
-  if (!parsed.success) return INVALID;
+  if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.receipt;
   const { rksv, ...withoutRksv } = v;
   const hash = contentHash(withoutRksv);
-  const payload = JSON.stringify(v);
+  // Das Original ist der Bon, wie er kam (auch Felder, die der Server noch nicht kennt), der Prüfwert hängt an den gelesenen.
+  const payload = JSON.stringify((body as { receipt: unknown }).receipt);
   const inserted = await c.query(
     `insert into receipts (business_id, id, register_id, device_id, number, created_at, kind, staff_id, staff_name, business_day_id,
                            voids_receipt_id, goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload, received_at)
@@ -223,18 +227,71 @@ export const handlers: Record<string, EntryHandler> = {
 const WRITE_KINDS = new Set(['item_change']);
 
 type Result = { seq: number } & (EntryResult | { status: 'error' });
+type Entry = { seq: number; kind: string } & Record<string, unknown>;
+type Outcome = EntryResult | { status: 'error' };
+
+/** Fehler der Datenbank, die bei jedem neuen Versuch wieder kämen: Klasse 22 (Daten, etwa NUL im Text) und 23 (Bedingung). */
+function deterministic(err: unknown): string | null {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && /^2[23][0-9A-Z]{3}$/.test(code) ? code : null;
+}
 
 /** POST /api/device/sync/push: Einträge des Tablets annehmen. Jeder Eintrag läuft in einer eigenen Transaktion. */
 export function installPushRoutes(app: FastifyInstance): void {
   const { db, now } = app.deps;
+  const registers = new WeakMap<FastifyRequest, Register>();
 
-  app.post('/api/device/sync/push', { bodyLimit: PUSH_BODY_LIMIT }, async (req) => {
-    const register = await requireRegister(req);
+  /** Ein abgelehnter Eintrag (außer conflict, der hat seinen eigenen Bericht): Bericht push_rejected, nur feste Felder. */
+  async function noteRejected(ctx: EntryContext, entry: Entry, reason: 'invalid' | 'unknown_item', extra: object): Promise<void> {
+    const { businessId, id: registerId } = ctx.register;
+    // Ein Bericht des Tablets, der nicht lesbar ist, erzeugt keinen Bericht (keine Schleife), nur die Zeile im Protokoll.
+    if (entry.kind === 'report') {
+      ctx.log?.warn({ businessId, registerId, seq: entry.seq, kind: entry.kind, reason }, 'Eintrag abgelehnt');
+      return;
+    }
+    const content = { entryKind: entry.kind, seq: entry.seq, reason, ...extra };
+    try {
+      await withBusiness(db, businessId, (c) => report(c, ctx, 'push_rejected', content));
+    } catch (err) {
+      ctx.log?.warn({ err, businessId, registerId, ...content }, 'Eintrag abgelehnt, Bericht nicht geschrieben');
+    }
+  }
+
+  async function take(ctx: EntryContext, entry: Entry, log: FastifyBaseLogger): Promise<Outcome> {
+    const handler = Object.hasOwn(handlers, entry.kind) ? handlers[entry.kind]! : undefined;
+    if (!handler) {
+      await noteRejected(ctx, entry, 'invalid', { paths: [] });
+      return { status: 'rejected', reason: 'invalid' };
+    }
+    try {
+      const run = WRITE_KINDS.has(entry.kind) ? withBusinessWrite : withBusiness;
+      const result = await run(db, ctx.register.businessId, (c) => handler(c, ctx, entry));
+      if (result.status !== 'rejected' || result.reason === 'conflict') return result;
+      await noteRejected(ctx, entry, result.reason, result.reason === 'invalid' ? { paths: result.paths ?? [] } : {});
+      return { status: 'rejected', reason: result.reason };
+    } catch (err) {
+      // Nur die Art und der Fehler, nie der Inhalt des Eintrags.
+      log.error({ err, seq: entry.seq, kind: entry.kind }, 'Eintrag konnte nicht angenommen werden');
+      const sqlState = deterministic(err);
+      if (sqlState === null) return { status: 'error' };
+      await noteRejected(ctx, entry, 'invalid', { sqlState });
+      return { status: 'rejected', reason: 'invalid' };
+    }
+  }
+
+  // Erst der Geräte-Schlüssel, dann der Inhalt: ohne gültigen Schlüssel liest der Server keine 2 MB.
+  const authenticate = async (req: FastifyRequest) => {
+    registers.set(req, await requireRegister(req));
+  };
+
+  app.post('/api/device/sync/push', { bodyLimit: PUSH_BODY_LIMIT, onRequest: authenticate }, async (req) => {
+    const register = registers.get(req)!;
     const parsed = envelopeSchema.safeParse(req.body);
     if (!parsed.success) {
+      req.log.warn({ businessId: register.businessId, registerId: register.id }, 'Sendung abgelehnt');
       throw new ApiError(422, 'push_invalid', 'Die Sendung ist nicht lesbar: deviceId und höchstens 100 Einträge mit seq und kind.');
     }
-    const { deviceId, entries } = parsed.data as { deviceId: string; entries: ({ seq: number; kind: string } & Record<string, unknown>)[] };
+    const { deviceId, entries } = parsed.data as { deviceId: string; entries: Entry[] };
     const at = now();
     const ctx: EntryContext = { register, deviceId, at, log: req.log };
 
@@ -244,19 +301,7 @@ export function installPushRoutes(app: FastifyInstance): void {
 
     const results: Result[] = [];
     for (const entry of entries) {
-      const handler = Object.hasOwn(handlers, entry.kind) ? handlers[entry.kind]! : undefined;
-      if (!handler) {
-        results.push({ seq: entry.seq, ...INVALID });
-        continue;
-      }
-      try {
-        const run = WRITE_KINDS.has(entry.kind) ? withBusinessWrite : withBusiness;
-        results.push({ seq: entry.seq, ...(await run(db, register.businessId, (c) => handler(c, ctx, entry))) });
-      } catch (err) {
-        // Nur die Art und der Fehler, nie der Inhalt des Eintrags.
-        req.log.error({ err, seq: entry.seq, kind: entry.kind }, 'Eintrag konnte nicht angenommen werden');
-        results.push({ seq: entry.seq, status: 'error' });
-      }
+      results.push({ seq: entry.seq, ...(await take(ctx, entry, req.log)) });
     }
     return { results };
   });

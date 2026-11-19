@@ -49,12 +49,68 @@ describe('item_change', () => {
     expect(got.priceCents).toBe(1090);
   });
 
-  test('älterer Preis vom Tablet verliert, accepted, nichts ändert sich', async () => {
+  test('älterer Preis vom Tablet verliert, accepted, der Wert bleibt und kommt beim nächsten Holen zurück', async () => {
     await setPriceAt(businessId, 'cola', 250, '2026-11-19T09:00:00.000Z');
     const before = await item(businessId, 'cola');
+    f.now.value = new Date('2026-11-19T12:00:00.000Z');
     const res = await send(1, change('cola', 'priceCents', 300, '2026-11-19T08:00:00.000Z'));
     expect(res.results).toEqual([{ seq: 1, status: 'accepted' }]);
+    const after = await item(businessId, 'cola');
+    expect(after).toEqual({ ...before, change_seq: after.change_seq });
+    expect(Number(after.change_seq)).toBeGreaterThan(Number(before.change_seq));
+
+    // Das Tablet hat 300 und löscht seinen Eintrag: das Holen im selben Lauf bringt den Wert des Servers.
+    const pulled = await pull(f.app, token, `?since=${before.change_seq}`);
+    expect(pulled.json().items.find((i: { id: string }) => i.id === 'cola').priceCents).toBe(250);
+  });
+
+  test('älterer Preis mit demselben Wert: nichts ändert sich, auch die Änderungs-Nummer nicht', async () => {
+    await setPriceAt(businessId, 'cola', 250, '2026-11-19T09:00:00.000Z');
+    const before = await item(businessId, 'cola');
+    const res = await send(1, change('cola', 'priceCents', 250, '2026-11-19T08:00:00.000Z'));
+    expect(res.results).toEqual([{ seq: 1, status: 'accepted' }]);
     expect(await item(businessId, 'cola')).toEqual(before);
+  });
+
+  test('zwei Änderungen in derselben Sekunde: die spätere gewinnt, dieselbe noch einmal ändert nichts', async () => {
+    await setPriceAt(businessId, 'huhn-bowl', 990, '2026-11-19T08:00:00.000Z');
+    const start = await item(businessId, 'huhn-bowl');
+    f.now.value = new Date('2026-11-19T12:00:00.000Z');
+    const at = '2026-11-19T10:00:00.000Z';
+    const res = await pushEntries(f.app, token, deviceId, [
+      entry(1, 'item_change', change('huhn-bowl', 'priceCents', 1000, at)),
+      entry(2, 'item_change', change('huhn-bowl', 'priceCents', 1100, at)),
+    ]);
+    expect(res.results).toEqual([{ seq: 1, status: 'accepted' }, { seq: 2, status: 'accepted' }]);
+    const after = await item(businessId, 'huhn-bowl');
+    expect(after.price_cents).toBe(1100);
+    expect(after.price_changed_at.toISOString()).toBe(at);
+    const pulled = await pull(f.app, token, `?since=${start.change_seq}`);
+    expect(pulled.json().items.find((i: { id: string }) => i.id === 'huhn-bowl').priceCents).toBe(1100);
+
+    // Die Antwort ging verloren, das Tablet schickt B noch einmal: kein neuer Stand, keine neue Nummer.
+    const again = await send(2, change('huhn-bowl', 'priceCents', 1100, at));
+    expect(again.results).toEqual([{ seq: 2, status: 'accepted' }]);
+    expect(await item(businessId, 'huhn-bowl')).toEqual(after);
+
+    // Das ganze Paket noch einmal: am Ende steht wieder B.
+    const twice = await pushEntries(f.app, token, deviceId, [
+      entry(1, 'item_change', change('huhn-bowl', 'priceCents', 1000, at)),
+      entry(2, 'item_change', change('huhn-bowl', 'priceCents', 1100, at)),
+    ]);
+    expect(twice.results.map((r) => r.status)).toEqual(['accepted', 'accepted']);
+    expect(await item(businessId, 'huhn-bowl')).toMatchObject({ price_cents: 1100, price_changed_at: new Date(at) });
+  });
+
+  test('ältere Änderung mit anderem Wert: ein anderer Betrieb mit gleicher Kennung bekommt keine neue Nummer', async () => {
+    const other = (await createBusiness(f.app, provider.cookie, 'beispiel-imbiss')).id;
+    const otherBefore = await item(other, 'teigtaschen');
+    await setPriceAt(businessId, 'teigtaschen', 500, '2026-11-19T09:00:00.000Z');
+    f.now.value = new Date('2026-11-19T12:00:00.000Z');
+    const res = await send(1, change('teigtaschen', 'priceCents', 650, '2026-11-19T08:00:00.000Z'));
+    expect(res.results).toEqual([{ seq: 1, status: 'accepted' }]);
+    expect(await item(other, 'teigtaschen')).toEqual(otherBefore);
+    expect((await item(businessId, 'teigtaschen')).price_cents).toBe(500);
   });
 
   test('Uhr eine Woche in der Zukunft: gilt als jetzt, eine spätere Änderung im Browser gewinnt wieder', async () => {

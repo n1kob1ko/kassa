@@ -96,6 +96,26 @@ describe('Annahme', () => {
     expect(JSON.stringify(found[0].content)).not.toContain('Huhn');
   });
 
+  test('Bon mit einem unbekannten Feld: angenommen, das Original steht so da, wie es kam', async () => {
+    const r = sampleReceipt({
+      tip: { cents: 50, note: 'danke' },
+      payment: { ...sampleReceipt().payment, terminal: 'T1' },
+    });
+    expect(statuses(await send([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    const [row] = await rows(businessId, 'select payload from receipts where id = $1', [r.id]);
+    expect(row.payload.tip).toEqual({ cents: 50, note: 'danke' });
+    expect(row.payload.payment.terminal).toBe('T1');
+    expect(row.payload).toEqual(r);
+    // Noch einmal: duplicate, der Prüfwert hängt nur an den bekannten Feldern.
+    expect(statuses(await send([entry(1, 'receipt', r)]))).toEqual(['duplicate']);
+    expect(statuses(await send([entry(1, 'receipt', { ...r, tip: undefined })]))).toEqual(['duplicate']);
+    // Die Verwaltung zeigt den Bon wie jeden anderen.
+    const detail = await f.app.inject({ method: 'GET', url: `/api/admin/businesses/${businessId}/receipts/${r.id}`, headers: authed(provider.cookie) });
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json()).toMatchObject({ id: r.id, totalCents: 990, payment: { kind: 'cash', amountCents: 990 } });
+    expect(detail.json().payment.terminal).toBeUndefined();
+  });
+
   test('Bon mit unbekanntem Tag wird angenommen', async () => {
     expect(statuses(await send([entry(1, 'receipt', sampleReceipt({ businessDayId: randomUUID() }))]))).toEqual(['accepted']);
   });
@@ -285,6 +305,14 @@ describe('Anfrage', () => {
     const res = await post({ deviceId, entries: [{ seq: 1, kind: 'day', pad: 'x'.repeat(2 * 1024 * 1024) }] });
     expect(res.statusCode).toBe(413);
     expect(res.json().error.code).toBe('payload_too_large');
+  });
+
+  test('2 MB ohne Schlüssel: 401, bevor der Inhalt gelesen wird', async () => {
+    const big = { deviceId, entries: [{ seq: 1, kind: 'day', pad: 'x'.repeat(2 * 1024 * 1024) }] };
+    const res = await post(big, null);
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe('unauthorized');
+    expect((await post(big, 'Bearer ' + 'a'.repeat(43))).statusCode).toBe(401);
   });
 
   test('ohne Schlüssel 401, gesperrt 403', async () => {

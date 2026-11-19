@@ -106,4 +106,13 @@ describe('processImage', () => {
     const big = await sharp({ create: { width: 8000, height: 7000, channels: 3, background: '#ffffff' } }).png({ compressionLevel: 9 }).toBuffer();
     await rejects(big);
   });
+
+  test('nur JPEG, PNG und WebP: SVG, GIF und TIFF sind image_invalid, auch wenn sharp sie lesen könnte', async () => {
+    await rejects(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40"/></svg>'));
+    const base = sharp({ create: { width: 40, height: 40, channels: 3, background: '#336699' } });
+    await rejects(await base.clone().gif().toBuffer());
+    await rejects(await base.clone().tiff().toBuffer());
+    expect((await processImage(await base.clone().png().toBuffer())).width).toBe(40);
+    expect((await processImage(await base.clone().webp().toBuffer())).width).toBe(40);
+  });
 });

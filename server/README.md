@@ -36,7 +36,7 @@ Der Server sichert die Datenbank jede Nacht (nach 3 Uhr Wiener Zeit) mit `pg_dum
 
 - `PG_DUMP_PATH` (optional): Pfad zu `pg_dump`. Vorgabe `pg_dump`. Die Hauptversion muss mindestens die der Datenbank sein.
 - `BACKUP_DISABLED=1` (optional): schaltet die nächtliche Sicherung ab, etwa in der Entwicklung.
-- `DATABASE_URL` muss die Besitzer-Rolle der Datenbank sein (Superuser oder `BYPASSRLS`): Die Tabellen haben Zeilensperren, mit einer anderen Rolle würden die Sicherungen leer sein. `pg_dump` bekommt die Zugangsdaten über `PG…`-Variablen, nie in der Befehlszeile.
+- `DATABASE_URL` muss die Besitzer-Rolle der Datenbank sein (Superuser oder `BYPASSRLS`): Die Tabellen haben Zeilensperren, mit einer anderen Rolle bricht `pg_dump` mit einem Fehler zur Zeilensicherheit ab ("query would be affected by row-level security policy"), und es gibt keine Sicherung. `pg_dump` bekommt die Zugangsdaten über `PG…`-Variablen, nie in der Befehlszeile.
 - Fotos und Installationsdateien liegen in der Ablage und gehören nicht zur Sicherung.
 
 Zurückspielen: `docs/betrieb/sicherung-zurueckspielen.md`. Der Anbieter sieht den Stand unter `GET /api/admin/backups/latest`.

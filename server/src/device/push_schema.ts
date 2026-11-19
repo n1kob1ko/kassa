@@ -14,6 +14,20 @@ const nullableCents = cents.nullable();
 
 export const MAX_ENTRIES = 100;
 
+/** Höchstens so viele Pfade aus den Fehlern von zod gehen in einen Bericht, jeder höchstens 200 Zeichen. */
+const MAX_PATHS = 20;
+
+/** Die Pfade der Fehler (`receipt.totalCents`), ohne die Werte. Nur Namen aus dem Schema und Positionen in Listen. */
+export function issuePaths(error: z.ZodError): string[] {
+  const paths = error.issues.map((i) => i.path.map(String).join('.').slice(0, 200));
+  return [...new Set(paths)].slice(0, MAX_PATHS);
+}
+
+/** Ergebnis für einen unlesbaren Eintrag: rejected/invalid, dazu die Pfade für den Bericht (nicht für die Antwort). */
+export function invalid(error: z.ZodError): { status: 'rejected'; reason: 'invalid'; paths: string[] } {
+  return { status: 'rejected', reason: 'invalid', paths: issuePaths(error) };
+}
+
 /** Die Hülle: nur `deviceId` und eine Liste von Einträgen, jeder mit `seq` und `kind`. Der Rest eines Eintrags bleibt roh. */
 export const envelopeSchema = z.object({
   deviceId: uuid,

@@ -1,6 +1,7 @@
 import type pg from 'pg';
 import { z } from 'zod';
 import type { EntryContext, EntryResult } from './push.js';
+import { invalid } from './push_schema.js';
 
 /** Höchstens so viele Berichte pro Kassa und Kalendertag (UTC) werden gespeichert. */
 export const MAX_REPORTS_PER_DAY = 50;
@@ -30,7 +31,7 @@ const reportEntry = z.object({
 /** Ein Bericht des Tablets. Der Inhalt ist nur das, was die festen Felder erlauben; ins Protokoll geht kein Text daraus. */
 export async function handleReport(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = reportEntry.safeParse(body);
-  if (!parsed.success) return { status: 'rejected', reason: 'invalid' };
+  if (!parsed.success) return invalid(parsed.error);
   const r = parsed.data.report;
   const { businessId, id: registerId } = ctx.register;
 

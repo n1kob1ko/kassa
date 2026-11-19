@@ -281,6 +281,16 @@ describe('Eingaben und Rechte', () => {
     expect(await photoOf()).toBeNull();
   });
 
+  test('ein SVG als image/jpeg ergibt 422 image_invalid, nichts bleibt liegen', async () => {
+    const before = await keysOnDisk();
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="red"/></svg>');
+    const res = await put(itemUrl(), svg);
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('image_invalid');
+    expect(await keysOnDisk()).toEqual(before);
+    expect(await photoOf()).toBeNull();
+  });
+
   test('nicht angemeldet: 401', async () => {
     expect((await put(itemUrl(), JPEG, { cookie: null })).statusCode).toBe(401);
     expect((await del(itemUrl(), null)).statusCode).toBe(401);

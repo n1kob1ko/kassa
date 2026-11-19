@@ -10,16 +10,22 @@ const invalid = () =>
 
 export type ProcessedImage = { data: Buffer; width: number; height: number; color: string };
 
+/** Was sharp lesen darf. SVG, GIF, TIFF und andere kann sharp auch, aber die nimmt Kassa nicht. */
+const FORMATS = new Set(['jpeg', 'png', 'webp']);
+
 const hex = (n: number) => Math.min(255, Math.max(0, Math.round(n))).toString(16).padStart(2, '0');
 
 /**
  * Macht aus dem, was hochgeladen wurde, ein kleines WebP: nach EXIF aufgerichtet, höchstens 800 Pixel breit,
  * nie vergrößert, ohne Metadaten (auch ohne Ortsangabe). Was die Bytes wirklich sind, entscheidet allein sharp.
- * Alles, was sich nicht lesen lässt (Text, leer, abgeschnitten, zu groß), ist `image_invalid`.
+ * Alles, was sich nicht lesen lässt (Text, leer, abgeschnitten, zu groß) oder kein JPEG, PNG oder WebP ist, ist `image_invalid`.
  */
 export async function processImage(input: Buffer): Promise<ProcessedImage> {
   try {
-    const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'truncated' })
+    const source = sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'truncated' });
+    const { format } = await source.metadata();
+    if (format === undefined || !FORMATS.has(format)) throw invalid();
+    const { data, info } = await source
       .rotate()
       .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
       .webp({ quality: 80 })
