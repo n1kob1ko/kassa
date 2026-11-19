@@ -1,7 +1,8 @@
 // Zusammenspiel mit dem echten Server für Stufe 2: am Tablet über die echten
 // Repositories verkaufen, stornieren, Geld bewegen und den Tag abschließen,
 // abgleichen und in der Verwaltung nachsehen. Dazu Preise in beide
-// Richtungen, ein Foto, 250 Bons auf einmal, ein zweiter Lauf ohne Wirkung
+// Richtungen (auch zwei Änderungen in einer Sekunde und eine Uhr, die
+// nachgeht), ein Foto, 250 Bons auf einmal, ein zweiter Lauf ohne Wirkung
 // und die Probe-Signatur samt Protokoll-Datei. Echtes Netzwerk, Datenbank im
 // Speicher.
 //
@@ -119,6 +120,16 @@ class _Admin {
   }
 
   void close() => _client.close();
+}
+
+/// Eine Uhr, die immer [at] zeigt.
+class _FixedClock implements Clock {
+  const _FixedClock(this.at);
+
+  final DateTime at;
+
+  @override
+  DateTime now() => at;
 }
 
 void main() {
@@ -270,15 +281,65 @@ void main() {
 
       // Preis am Tablet: nach dem Abgleich im Browser.
       final tabletPrice = item.priceCents + 200;
-      // Das Tablet speichert Zeitpunkte auf die ganze Sekunde. Eine Änderung
-      // in derselben Sekunde wie die im Browser gälte als älter; an der Theke
-      // liegen zwischen beiden mehr als eine Sekunde.
+      // Das Tablet speichert Zeitpunkte auf die ganze Sekunde, der Browser auf
+      // die Millisekunde. Eine Änderung am Tablet in derselben Sekunde wie die
+      // im Browser wäre abgerundet früher und damit älter: der Server behielte
+      // den Wert aus dem Browser und brächte ihn im selben Abgleich zurück ans
+      // Tablet (siehe unten). An der Theke liegt mehr als eine Sekunde
+      // dazwischen, darum hier auch.
       await Future<void>.delayed(
         Duration(milliseconds: 1010 - DateTime.now().millisecond),
       );
       await catalogs.updateItem(item.id, priceCents: tabletPrice);
       await syncAndExpectNoError();
       expect((await admin.item(item.id))['priceCents'], tabletPrice);
+
+      // Zwei Änderungen am Tablet in derselben Sekunde, dazwischen ein
+      // Abgleich: die zweite gewinnt auch am Server.
+      await Future<void>.delayed(
+        Duration(milliseconds: 1010 - DateTime.now().millisecond),
+      );
+      final second = DateTime.now().millisecondsSinceEpoch ~/ 1000 * 1000;
+      final sameSecond = CatalogRepository(
+        db,
+        clock: _FixedClock(DateTime.fromMillisecondsSinceEpoch(second)),
+      );
+      await sameSecond.updateItem(item.id, priceCents: tabletPrice + 1);
+      await syncAndExpectNoError();
+      expect((await admin.item(item.id))['priceCents'], tabletPrice + 1);
+      await sameSecond.updateItem(item.id, priceCents: tabletPrice + 2);
+      await syncAndExpectNoError();
+      expect((await admin.item(item.id))['priceCents'], tabletPrice + 2);
+      expect(
+        (await catalogs.current())!.item(item.id).priceCents,
+        tabletPrice + 2,
+      );
+
+      // Eine Änderung am Tablet, die älter ist als die im Browser (die Uhr
+      // des Tablets geht nach): nach demselben Abgleich steht am Tablet
+      // wieder der Wert des Servers.
+      final browserAgain = tabletPrice + 3;
+      await admin.call(
+        'PATCH',
+        '/items/${item.id}',
+        json: {'priceCents': browserAgain},
+      );
+      await syncAndExpectNoError();
+      expect(
+        (await catalogs.current())!.item(item.id).priceCents,
+        browserAgain,
+      );
+      final behind = CatalogRepository(
+        db,
+        clock: _FixedClock(DateTime.now().subtract(const Duration(hours: 1))),
+      );
+      await behind.updateItem(item.id, priceCents: tabletPrice + 4);
+      await syncAndExpectNoError();
+      expect((await admin.item(item.id))['priceCents'], browserAgain);
+      expect(
+        (await catalogs.current())!.item(item.id).priceCents,
+        browserAgain,
+      );
 
       // Foto im Browser: nach dem Abgleich liegt die Datei am Tablet.
       final photo = await admin.call(
