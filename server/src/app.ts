@@ -1,6 +1,9 @@
 import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { installBusinessRoutes } from './admin/businesses.js';
+import { installDayRoutes } from './admin/days.js';
+import { installOverviewRoutes } from './admin/overview.js';
+import { installReceiptRoutes } from './admin/receipts.js';
 import { installReleaseRoutes } from './admin/releases.js';
 import { installRegisterRoutes } from './admin/registers.js';
 import { installStaffRoutes } from './admin/staff.js';
@@ -77,6 +80,9 @@ export async function buildApp(
   installBusinessRoutes(app);
   installStaffRoutes(app);
   installRegisterRoutes(app);
+  installOverviewRoutes(app);
+  installReceiptRoutes(app);
+  installDayRoutes(app);
   await installFileRoutes(app);
   // Adressen für das Tablet: Geräte-Schlüssel statt Sitzung, ohne den Schutz für den Browser.
   installPairRoutes(app);
