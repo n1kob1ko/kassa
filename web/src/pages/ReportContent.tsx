@@ -1,4 +1,4 @@
-import { deviceName, devicesOf, errorOf, serverKindText, type Report } from '../api/reports';
+import { deviceName, devicesOf, errorOf, pushRejectedFacts, serverKindText, type Report } from '../api/reports';
 import { Button } from '../ui/Button';
 import { AlertIcon, CheckCircleIcon, CopyIcon } from '../ui/icons';
 import { toast } from '../ui/Toast';
@@ -46,6 +46,19 @@ function Fact({ label, value }: { label: string; value: string }) {
  * Geräte-Test die Geräte, beim Server die Art in Worten und den Inhalt. Alles nur als Text.
  */
 export function ReportContent({ report }: { report: Report }) {
+  const rejected = report.source === 'server' && report.kind === 'push_rejected' ? pushRejectedFacts(report.content) : null;
+  if (rejected) {
+    return (
+      <div className={styles.content}>
+        <p className={styles.lead}>{serverKindText(report.kind)}</p>
+        <dl className={styles.facts}>
+          {rejected.map((f) => (
+            <Fact key={f.label} label={f.label} value={f.value} />
+          ))}
+        </dl>
+      </div>
+    );
+  }
   if (report.source === 'server') {
     return (
       <div className={styles.content}>

@@ -104,6 +104,15 @@ function Payment({ receipt }: { receipt: ReceiptDetail }) {
             <dd data-testid="card">{cardText}</dd>
           </div>
         )}
+        {/* Damit findet der Chef die Zahlung beim Anbieter. Zum Markieren und Kopieren. */}
+        {card && p.providerTxCode && (
+          <div className={styles.figure}>
+            <dt>{p.provider === 'sumup' ? 'Kennung bei SumUp' : 'Kennung der Zahlung'}</dt>
+            <dd data-testid="provider-tx" className={styles.txCode}>
+              {p.providerTxCode}
+            </dd>
+          </div>
+        )}
         {!card && receipt.kind === 'sale' && p.givenCents !== null && (
           <>
             <div className={styles.figure}>
@@ -143,7 +152,8 @@ export type ReceiptDetailViewProps = {
 
 /** Inhalt des Blatts eines Bons. Nichts daran ist änderbar. */
 export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailViewProps) {
-  if (query.isError) {
+  // Scheitert nur ein Neuladen, bleibt der Bon stehen.
+  if (query.isError && !query.data) {
     return query.error.status === 404 ? (
       <p className={styles.problem}>Diesen Bon gibt es nicht. Prüf die Adresse.</p>
     ) : (

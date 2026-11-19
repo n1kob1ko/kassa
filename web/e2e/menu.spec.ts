@@ -331,6 +331,105 @@ test('ein Neuladen während des Speicherns bringt den alten Wert nicht zurück',
   expect((await serverItem(page, b, 'huhn-bowl')).priceCents).toBe(1100);
 });
 
+test('neu einspielen mit anderem Preis und Namen: die Liste darunter zeigt es gleich', async ({ page }) => {
+  const b = await createBusiness(page);
+  await page.goto(`/b/${b}/speisekarte`);
+  await expect(price(page, 'Huhn Bowl')).toHaveValue('9,90');
+  const menu = structuredClone(MENU);
+  const huhn = (menu.artikel as { id: string; preis_cent: number; name: string }[]).find((a) => a.id === 'huhn-bowl')!;
+  huhn.preis_cent = 1190;
+  huhn.name = 'Huhn Bowl groß';
+
+  await page.getByRole('button', { name: 'Speisekarte neu einspielen' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'speisekarte.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(menu)),
+  });
+  await dialog.getByRole('button', { name: 'Neu einspielen' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(toast(page).getByText(/1 geändert/)).toBeVisible();
+  // Ohne Neuladen und ohne Fensterwechsel.
+  await expect(price(page, 'Huhn Bowl groß')).toHaveValue('11,90');
+  await expect(price(page, 'Huhn Bowl')).toHaveCount(0);
+});
+
+test('ein Neuladen der Liste scheitert: die Speisekarte bleibt stehen', async ({ page, pageProblems }) => {
+  const b = await createBusiness(page);
+  await page.clock.install();
+  await page.goto(`/b/${b}/speisekarte`);
+  await expect(price(page, 'Huhn Bowl')).toHaveValue('9,90');
+  const message = 'Das hat nicht geklappt. Bitte nochmal versuchen.';
+  let failed = 0;
+  await page.route('**/api/admin/businesses/*/items', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    failed++;
+    await route.fulfill({ status: 500, json: { error: { code: 'internal', message } } });
+  });
+  // Die Seite holt neu, wenn das Fenster wieder sichtbar wird und die Daten alt sind.
+  await page.clock.fastForward(31_000);
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  await expect.poll(() => failed).toBe(1);
+  await page.waitForLoadState('networkidle');
+  await expect(price(page, 'Huhn Bowl')).toHaveValue('9,90');
+  await expect(inSale(page, 'Cola 0,33 l')).toBeChecked();
+  await expect(page.getByText(message)).toHaveCount(0);
+  await page.unroute('**/api/admin/businesses/*/items');
+
+  const expected = /^Konsole \(error\): Failed to load resource: the server responded with a status of 500/;
+  expect(pageProblems.filter((p) => expected.test(p))).toHaveLength(1);
+  pageProblems.splice(0, pageProblems.length, ...pageProblems.filter((p) => !expected.test(p)));
+});
+
+test('Preis tippen, dann gleich den Schalter derselben Zeile: der Schalter springt nicht zurück, wenn der Preis antwortet', async ({ page }) => {
+  const b = await createBusiness(page);
+  await page.goto(`/b/${b}/speisekarte`);
+  await expect(inSale(page, 'Huhn Bowl')).toBeChecked();
+  let releaseFirst: () => void = () => {};
+  const first = new Promise<void>((r) => (releaseFirst = r));
+  let releaseSecond: () => void = () => {};
+  const second = new Promise<void>((r) => (releaseSecond = r));
+  let patches = 0;
+  await page.route('**/api/admin/businesses/*/items/huhn-bowl', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.continue();
+    patches++;
+    await (patches === 1 ? first : second);
+    await route.continue();
+  });
+
+  await price(page, 'Huhn Bowl').fill('11');
+  // Das Antippen des Schalters verlässt das Preisfeld: das speichert den Preis.
+  await inSale(page, 'Huhn Bowl').click();
+  await expect(inSale(page, 'Huhn Bowl')).not.toBeChecked();
+  await expect.poll(() => patches).toBe(1);
+  // Jeder Stand des Schalters, Bild für Bild.
+  await inSale(page, 'Huhn Bowl').evaluate((el: HTMLInputElement) => {
+    const seen: boolean[] = [el.checked];
+    (window as unknown as { seen: boolean[] }).seen = seen;
+    const tick = () => {
+      if (seen[seen.length - 1] !== el.checked) seen.push(el.checked);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+  // Die Antwort zum Preis kennt den Schalter noch nicht.
+  const priceSaved = page.waitForResponse((r) => isPatch(r.request()));
+  releaseFirst();
+  await priceSaved;
+  await expect.poll(() => patches).toBe(2);
+  await page.waitForTimeout(500);
+  await expect(price(page, 'Huhn Bowl')).toHaveValue('11,00');
+  expect(await page.evaluate(() => (window as unknown as { seen: boolean[] }).seen)).toEqual([false]);
+
+  releaseSecond();
+  await expect.poll(async () => (await serverItem(page, b, 'huhn-bowl')).inSale).toBe(false);
+  await page.waitForLoadState('networkidle');
+  expect(await page.evaluate(() => (window as unknown as { seen: boolean[] }).seen)).toEqual([false]);
+  expect((await serverItem(page, b, 'huhn-bowl')).priceCents).toBe(1100);
+});
+
 test('Foto entfernen als erste Änderung eines Besuchs: der Hinweis zum Abgleich kommt mit', async ({ page }) => {
   const b = await createBusiness(page);
   const put = await page.request.put(`/api/admin/businesses/${b}/items/huhn-bowl/photo`, {

@@ -130,7 +130,11 @@ export function ReceiptsPage() {
     body = filtered ? (
       <EmptyState
         title="Kein Bon passt zu diesem Filter."
-        text="Wähl einen anderen Tag oder eine andere Zahlungsart."
+        text={
+          filter.voidedOnly
+            ? 'Wähl einen anderen Tag oder eine andere Zahlungsart, oder schalte "Nur Stornos" aus.'
+            : 'Wähl einen anderen Tag oder eine andere Zahlungsart.'
+        }
         action={
           <Button variant="secondary" onClick={() => change({ day: null, payment: null, voidedOnly: false })}>
             Filter zurücksetzen

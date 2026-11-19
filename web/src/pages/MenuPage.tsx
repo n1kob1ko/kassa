@@ -169,7 +169,8 @@ export function MenuPage() {
   let content: ReactNode;
   if (items.isPending) {
     content = <MenuSkeleton />;
-  } else if (items.isError) {
+  } else if (items.isLoadingError) {
+    // Nur ohne Daten: scheitert ein Neuladen, bleibt die Speisekarte stehen.
     content = <LoadError message={items.error.message} onRetry={() => void items.refetch()} />;
   } else if (items.data.categories.length === 0) {
     content = (

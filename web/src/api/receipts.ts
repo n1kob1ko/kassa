@@ -1,5 +1,6 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, ApiError } from './client';
+import { OVERVIEW_REFRESH_MS } from './overview';
 
 export type ReceiptKind = 'sale' | 'voided' | 'start' | 'month' | 'year' | 'zero' | 'collective' | 'closing';
 
@@ -97,7 +98,8 @@ function listPath(b: string, f: ReceiptFilter, before: string | null): string {
 
 /**
  * Bons in Seiten zu 50, neueste zuerst. Beim Wechsel des Filters bleibt die alte Liste stehen, bis die neue da ist
- * (`isPlaceholderData`). Scheitert "Mehr laden", bleiben die geladenen Seiten (`isFetchNextPageError`).
+ * (`isPlaceholderData`). Scheitert "Mehr laden", bleiben die geladenen Seiten (`isFetchNextPageError`). Wie die
+ * Umsätze wird alle 60 Sekunden still nachgeladen, solange die Seite sichtbar ist; die geladenen Seiten bleiben.
  */
 export function useReceipts(b: string, f: ReceiptFilter) {
   return useInfiniteQuery<ReceiptPage, ApiError, { pages: ReceiptPage[] }, ReturnType<typeof receiptsKey>, string | null>({
@@ -106,6 +108,8 @@ export function useReceipts(b: string, f: ReceiptFilter) {
     initialPageParam: null,
     getNextPageParam: (last) => last.next ?? undefined,
     placeholderData: keepPreviousData,
+    refetchInterval: OVERVIEW_REFRESH_MS,
+    refetchIntervalInBackground: false,
   });
 }
 

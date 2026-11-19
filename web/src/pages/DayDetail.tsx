@@ -45,7 +45,8 @@ function DetailSkeleton() {
 
 /** Inhalt des Blatts eines Tages: Wechselgeld, Umsatz, Abschluss und Bewegungen. Nichts daran ist änderbar. */
 export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiError> }) {
-  if (query.isError) {
+  // Scheitert nur ein Neuladen, bleibt der Tag stehen.
+  if (query.isError && !query.data) {
     return query.error.status === 404 ? (
       <p className={styles.problem}>Diesen Tag gibt es nicht. Prüf die Adresse.</p>
     ) : (

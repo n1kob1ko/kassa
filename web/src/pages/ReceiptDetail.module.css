@@ -169,6 +169,12 @@
   overflow-wrap: anywhere;
 }
 
+.figure dd.txCode {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  user-select: text;
+}
+
 .signature {
   display: flex;
 }

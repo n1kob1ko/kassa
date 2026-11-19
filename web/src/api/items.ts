@@ -164,15 +164,17 @@ export function usePatchItem(b: string, { onSaved }: { onSaved?: () => void } = 
       queryClient.setQueryData<Items>(itemsKey(b), (d) => mapItem(d, id, (i) => ({ ...i, ...change })));
       return { token, previous };
     },
-    onSuccess: async (item, { id }) => {
+    onSuccess: async (item, { id, change }) => {
       // Ein Neuladen, das vor dieser Antwort begann, brächte den alten Wert zurück.
       await stopRefetch(queryClient, b);
-      // Nur Felder übernehmen, an denen nicht schon eine neuere Änderung unterwegs ist.
+      // Nur Felder übernehmen, an denen nicht noch eine Änderung unterwegs ist: an eigenen Feldern eine neuere (die
+      // eigene zählt mit), an anderen jede. Die Antwort kennt sie noch nicht.
       queryClient.setQueryData<Items>(itemsKey(b), (d) =>
         mapItem(d, id, (current) => {
           const merged = { ...current, ...item };
           for (const f of ['priceCents', 'inSale', 'favorite'] as Field[]) {
-            if (count(fieldKey(b, id, f)) > 1) (merged as Record<Field, unknown>)[f] = current[f];
+            const own = f in change ? 1 : 0;
+            if (count(fieldKey(b, id, f)) > own) (merged as Record<Field, unknown>)[f] = current[f];
           }
           return merged;
         }),

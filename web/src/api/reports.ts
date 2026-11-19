@@ -71,7 +71,7 @@ export function backupView(b: Backup, now: Date): { tone: 'none' | 'ok' | 'warn'
 
 /** Die Art eines Berichts in einem Wort, wie in der Liste. */
 export function kindLabel(r: Pick<Report, 'source' | 'kind'>): string {
-  if (r.source === 'server') return 'Server';
+  if (r.source === 'server') return r.kind === 'push_rejected' ? 'Eintrag abgelehnt' : 'Server';
   return r.kind === 'device_test' ? 'Geräte-Test' : 'Fehler';
 }
 
@@ -83,6 +83,7 @@ const SERVER_KINDS: Record<string, string> = {
   chain_conflict: 'Beendete Kette mit anderem Inhalt',
   day_conflict: 'Abgeschlossener Tag mit anderem Inhalt',
   movement_conflict: 'Bargeld-Bewegung mit anderem Inhalt unter derselben Kennung',
+  push_rejected: 'Der Server hat einen Eintrag vom Tablet nicht angenommen',
 };
 
 /** Was der Server bemerkt hat, in Worten. Eine neue Art, die die Seite noch nicht kennt, steht wie sie heißt. */
@@ -98,6 +99,36 @@ export function deviceName(device: string): string {
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+const ENTRY_KINDS: Record<string, string> = {
+  receipt: 'Bon',
+  day: 'Tag',
+  cash_movement: 'Bargeld-Bewegung',
+  item_change: 'Artikel-Änderung',
+  rksv_certificate: 'Zertifikat der Signatur',
+  rksv_chain: 'Kette der Signatur',
+  report: 'Bericht',
+};
+
+const REJECT_REASONS: Record<string, string> = {
+  invalid: 'nicht lesbar',
+  unknown_item: 'den Artikel gibt es am Server nicht',
+};
+
+/**
+ * Was in einem Bericht `push_rejected` steht, in Worten: Art des Eintrags, seine Nummer in der Sendung, der Grund,
+ * die Felder, die nicht passten, und bei einem Fehler der Datenbank ihr Code. `null`, wenn der Inhalt anders aussieht.
+ */
+export function pushRejectedFacts(content: unknown): { label: string; value: string }[] | null {
+  if (!isObject(content) || typeof content.entryKind !== 'string' || typeof content.reason !== 'string') return null;
+  const facts = [{ label: 'Art', value: ENTRY_KINDS[content.entryKind] ?? content.entryKind }];
+  if (typeof content.seq === 'number') facts.push({ label: 'Nummer in der Sendung', value: String(content.seq) });
+  facts.push({ label: 'Grund', value: REJECT_REASONS[content.reason] ?? content.reason });
+  const paths = Array.isArray(content.paths) ? content.paths.filter((p): p is string => typeof p === 'string' && p !== '') : [];
+  if (paths.length > 0) facts.push({ label: paths.length === 1 ? 'Feld' : 'Felder', value: paths.join(', ') });
+  if (typeof content.sqlState === 'string') facts.push({ label: 'Die Datenbank lehnte ab', value: `Code ${content.sqlState}` });
+  return facts;
+}
 
 /** Der Fehler aus dem Inhalt eines Berichts vom Tablet, wenn er die erwartete Form hat. */
 export function errorOf(content: unknown): ErrorContent | null {

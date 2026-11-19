@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './client';
 import { isAbort, uploadImage, type Picture, type UploadedFile, type UploadOptions } from './files';
+import { itemsKey } from './items';
 
 export type BusinessSummary = { id: string; name: string; counts: { items: number; staff: number; registers: number } };
 
@@ -55,6 +56,8 @@ export function useReimportMenu(id: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: businessKey(id) }),
         queryClient.invalidateQueries({ queryKey: BUSINESSES_KEY }),
+        // Die Liste der Speisekarte: Preise, Namen und "Stillgelegt" kommen aus der Datei.
+        queryClient.invalidateQueries({ queryKey: itemsKey(id), exact: true }),
       ]);
     },
   });

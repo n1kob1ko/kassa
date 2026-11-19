@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError } from './client';
+import { OVERVIEW_REFRESH_MS } from './overview';
 
 /** Eine Zeile von `GET /api/admin/businesses/:b/days` (höchstens 100, neueste zuerst). */
 export type DayHead = {
@@ -35,10 +36,13 @@ export type DayDetail = DayHead & {
 export const daysKey = (b: string) => ['days', b] as const;
 export const dayKey = (b: string, id: string) => ['day', b, id] as const;
 
+/** Die Tage. Wie die Umsätze wird alle 60 Sekunden still nachgeladen, solange die Seite sichtbar ist. */
 export function useDays(b: string) {
   return useQuery<DayHead[], ApiError>({
     queryKey: daysKey(b),
     queryFn: async () => (await api.get<{ days: DayHead[] }>(`/api/admin/businesses/${encodeURIComponent(b)}/days`)).days,
+    refetchInterval: OVERVIEW_REFRESH_MS,
+    refetchIntervalInBackground: false,
   });
 }
 

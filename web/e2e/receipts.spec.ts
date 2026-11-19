@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, Route } from '@playwright/test';
 import { expect, signInAsProvider, test } from './support/fixtures';
 import {
   cashMovement,
@@ -152,6 +152,8 @@ test('Filter Karte und Nur Stornos stehen in der Adresse und bleiben nach dem Ne
   await payment(page, 'Karte').check();
   await expect(page).toHaveURL(/zahlung=karte/);
   await expect(page.getByText('Kein Bon passt zu diesem Filter.')).toBeVisible();
+  // Der Satz nennt auch den Schalter, der hier mitfiltert.
+  await expect(page.getByText('Wähl einen anderen Tag oder eine andere Zahlungsart, oder schalte "Nur Stornos" aus.')).toBeVisible();
   await page.getByRole('button', { name: 'Filter zurücksetzen' }).click();
   await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/bons$`));
   await expect(receiptRows(page)).toHaveCount(5);
@@ -246,6 +248,61 @@ test('Storno und stornierter Bon verweisen aufeinander, Karte zeigt Kartenart un
   await expect(cardDetail.getByTestId('payment-kind')).toHaveText('Karte');
   await expect(cardDetail.getByTestId('card')).toHaveText('VISA, endet auf 4242');
   await expect(cardDetail.getByTestId('given')).toHaveCount(0);
+  // Damit findet der Chef die Zahlung bei SumUp.
+  expect(card.payment.providerTxCode).toMatch(/^T\d+$/);
+  await expect(cardDetail.getByText('Kennung bei SumUp')).toBeVisible();
+  await expect(cardDetail.getByTestId('provider-tx')).toHaveText(card.payment.providerTxCode!);
+  // Ein Barverkauf hat keine.
+  await page.goto(`/b/${site.businessId}/bons/${storno.id}`);
+  await expect(page.getByRole('dialog', { name: 'Bon 4' }).getByTestId('provider-tx')).toHaveCount(0);
+});
+
+test('ein Neuladen eines offenen Bons oder Tags scheitert: das Blatt bleibt stehen', async ({ page, pageProblems }) => {
+  const site = await createSite(page, { name: 'Imbiss mit schwachem Netz' });
+  const { card } = await seedReceipts(page, site);
+  const day = openDay({ openedAt: earlierToday(1)[0]! });
+  await pushEntries(page, site, [{ kind: 'day', day }]);
+  await page.clock.install();
+  const message = 'Das hat nicht geklappt. Bitte nochmal versuchen.';
+  const fail = (route: Route) => route.fulfill({ status: 500, json: { error: { code: 'internal', message } } });
+  // Die Seite holt neu, wenn das Fenster wieder sichtbar wird und die Daten alt sind.
+  const refocus = async () => {
+    await page.clock.fastForward(31_000);
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+  };
+
+  await page.goto(`/b/${site.businessId}/bons/${card.id}`);
+  const receipt = page.getByRole('dialog', { name: 'Bon 2' });
+  await expect(receipt.getByTestId('payment-kind')).toHaveText('Karte');
+  let failedReceipt = false;
+  await page.route(`**/api/admin/businesses/*/receipts/${card.id}`, (route) => {
+    failedReceipt = true;
+    return fail(route);
+  });
+  await refocus();
+  await expect.poll(() => failedReceipt).toBe(true);
+  await page.waitForLoadState('networkidle');
+  await expect(receipt.getByTestId('payment-kind')).toHaveText('Karte');
+  await expect(receipt.getByText(message)).toHaveCount(0);
+
+  await page.goto(`/b/${site.businessId}/tage/${day.id}`);
+  const detail = page.getByRole('dialog');
+  await expect(detail).toContainText('offen');
+  let failedDay = false;
+  await page.route(`**/api/admin/businesses/*/days/${day.id}`, (route) => {
+    failedDay = true;
+    return fail(route);
+  });
+  await refocus();
+  await expect.poll(() => failedDay).toBe(true);
+  await page.waitForLoadState('networkidle');
+  await expect(detail).toContainText('offen');
+  await expect(detail.getByText(message)).toHaveCount(0);
+
+  // Die 500 sind hier gewollt: der Browser meldet jede in der Konsole.
+  const expected = /^Konsole \(error\): Failed to load resource: the server responded with a status of 500/;
+  expect(pageProblems.filter((p) => expected.test(p)).length).toBeGreaterThanOrEqual(2);
+  pageProblems.splice(0, pageProblems.length, ...pageProblems.filter((p) => !expected.test(p)));
 });
 
 test('Signatur in Worten und Sonderbeleg mit Namen statt Betrag', async ({ page }) => {
@@ -332,6 +389,37 @@ test('Mehr laden hängt an, ein Fehler behält die Zeilen und bietet "Nochmal ve
   await expect(receiptRows(page)).toHaveCount(55);
   await expect(receiptRows(page).last()).toHaveAccessibleName(/^Bon 1\b/);
   await expect(page.getByRole('button', { name: 'Mehr laden' })).toHaveCount(0);
+});
+
+test('Bons und Tage laden alle 60 Sekunden von selbst nach, die geladenen Seiten bleiben', async ({ page }) => {
+  const site = await createSite(page, { name: 'Imbiss mit Nachladen' });
+  const times = earlierToday(55);
+  const first = openDay({ openedAt: times[0]! });
+  await pushEntries(page, site, [
+    { kind: 'day', day: first },
+    ...times.map((createdAt, i) => ({ kind: 'receipt', receipt: saleReceipt({ number: i + 1, createdAt, lines: [line(MENU.cola)] }) })),
+  ]);
+  await page.clock.install();
+  await page.goto(`/b/${site.businessId}/bons`);
+  await expect(receiptRows(page)).toHaveCount(50);
+  await page.getByRole('button', { name: 'Mehr laden' }).click();
+  await expect(receiptRows(page)).toHaveCount(55);
+
+  // An der Kassa kommt ein Bon dazu: nach einer Minute steht er oben, die zweite Seite bleibt.
+  await pushEntries(page, site, [{ kind: 'receipt', receipt: saleReceipt({ number: 56, createdAt: new Date(), lines: [line(MENU.cola)] }) }]);
+  await page.clock.fastForward(30_000);
+  await expect(receiptRows(page)).toHaveCount(55);
+  await page.clock.fastForward(31_000);
+  await expect(receiptRows(page).first()).toHaveAccessibleName(/^Bon 56\b/);
+  await expect(receiptRows(page)).toHaveCount(56);
+  await expect(receiptRows(page).last()).toHaveAccessibleName(/^Bon 1\b/);
+
+  await page.goto(`/b/${site.businessId}/tage`);
+  const rows = page.getByRole('main').getByRole('link');
+  await expect(rows).toHaveCount(1);
+  await pushEntries(page, site, [{ kind: 'day', day: openDay({ openedAt: new Date() }) }]);
+  await page.clock.fastForward(61_000);
+  await expect(rows).toHaveCount(2);
 });
 
 test('Betrieb ohne Bon: leerer Zustand ohne Filter', async ({ page }) => {
