@@ -21,6 +21,7 @@ import 'database.dart';
 import 'day_repository.dart';
 import 'outbox_repository.dart';
 import 'receipt_repository.dart';
+import 'report_repository.dart';
 import 'rksv_repository.dart';
 import 'settings_repository.dart';
 import 'staff_repository.dart';
@@ -85,6 +86,29 @@ final syncStateRepositoryProvider = Provider(
 final syncStateProvider = StreamProvider<SyncState>(
   (ref) => ref.watch(syncStateRepositoryProvider).watch(),
 );
+
+/// Android-Version und Gerätemodell dieses Tablets. `main` liest sie beim
+/// Start und setzt sie ein; ohne sie bleiben beide leer.
+class DeviceInfo {
+  const DeviceInfo({this.androidVersion, this.model});
+
+  final String? androidVersion;
+  final String? model;
+}
+
+final deviceInfoProvider = Provider<DeviceInfo>((ref) => const DeviceInfo());
+
+/// Schreibt Fehlerberichte und Berichte von "Geräte testen".
+final reportRepositoryProvider = Provider((ref) {
+  final info = ref.watch(deviceInfoProvider);
+  return ReportRepository(
+    ref.watch(databaseProvider),
+    ref.watch(clockProvider),
+    appVersion: appVersion,
+    androidVersion: info.androidVersion,
+    deviceModel: info.model,
+  );
+});
 
 final outboxRepositoryProvider = Provider(
   (ref) => OutboxRepository(ref.watch(databaseProvider)),

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/kassa_pump.dart' show containerOf;
 import '../support/pump.dart' show printerOf;
 import '../support/settings_pump.dart';
 
@@ -45,6 +47,23 @@ void main() {
     await t.pumpAndSettle();
     expect(printerOf(t).log, ['test']);
     expect(_text(t, 'result-printer'), 'Testdruck geschickt. Kommt Papier?');
+  });
+
+  testWidgets('Ein Lauf schreibt einen Bericht device_test mit der Zeile', (
+    t,
+  ) async {
+    await pumpSettings(t);
+    await _open(t);
+    await t.tap(find.byKey(const Key('test-printer')));
+    await t.pumpAndSettle();
+    final db = containerOf(t).read(databaseProvider);
+    final rows = await t.runAsync(() => db.select(db.reportRows).get());
+    expect(rows!.single.kind, 'device_test');
+    expect(
+      rows.single.content,
+      '[{"device":"printer","ok":true,'
+      '"text":"Testdruck geschickt. Kommt Papier?"}]',
+    );
   });
 
   testWidgets('Testdruck mit Problem zeigt die Druckmeldung', (t) async {

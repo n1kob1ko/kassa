@@ -68,8 +68,7 @@ class PushPayloads {
       'cash_movement' => await _movement(e.ref),
       'receipt' => await _receipt(e.ref),
       'item_change' => _itemChange(e),
-      // Kommt mit Task 10 (Berichte).
-      'report' => throw UnimplementedError('report: Task 10'),
+      'report' => await _report(e.ref),
       _ => throw ArgumentError.value(e.kind, 'kind', 'Unbekannte Art'),
     };
     if (body == null) return null;
@@ -88,6 +87,30 @@ class PushPayloads {
         'field': field,
         'value': jsonDecode(value),
         'changedAt': _iso(changedAt),
+      },
+    };
+  }
+
+  /// Der Server verlangt Android-Version und Gerätemodell als Text; fehlen sie
+  /// am Tablet, geht `unbekannt` hinaus.
+  Future<Map<String, Object?>?> _report(String id) async {
+    final row = await (_db.select(
+      _db.reportRows,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
+    final isError = row.kind == 'error';
+    final content = jsonDecode(row.content);
+    return {
+      'report': {
+        'id': row.id,
+        'kind': row.kind,
+        'at': _iso(row.at),
+        'appVersion': row.appVersion,
+        'androidVersion': row.androidVersion ?? 'unbekannt',
+        'deviceModel': row.deviceModel ?? 'unbekannt',
+        'count': row.count,
+        'error': isError ? content : null,
+        'devices': isError ? null : content,
       },
     };
   }

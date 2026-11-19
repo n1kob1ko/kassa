@@ -31,6 +31,7 @@ final pairingServiceProvider = Provider(
     syncState: ref.watch(syncStateRepositoryProvider),
     changes: ref.watch(serverChangesProvider),
     clock: ref.watch(clockProvider),
+    deviceModel: ref.watch(deviceInfoProvider).model,
     onCatalogReplaced: () {
       ref.read(sessionProvider.notifier).logout();
       // Nicht invalidate: käme der neue Katalog zuerst, schriebe der Bon

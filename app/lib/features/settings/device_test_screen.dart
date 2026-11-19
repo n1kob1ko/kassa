@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
@@ -78,6 +80,7 @@ class DeviceTestScreen extends ConsumerWidget {
     final s =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final printer = ref.watch(receiptPrinterProvider);
+    final reports = ref.read(reportRepositoryProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -125,6 +128,7 @@ class DeviceTestScreen extends ConsumerWidget {
               rows: [
                 DeviceTestRow(
                   id: 'printer',
+                  onFinished: reports.addDeviceTest,
                   title: 'Bondrucker',
                   help: 'Druckt einen kurzen Zettel zur Probe.',
                   action: 'Testdruck',
@@ -135,6 +139,7 @@ class DeviceTestScreen extends ConsumerWidget {
                 ),
                 DeviceTestRow(
                   id: 'drawer',
+                  onFinished: reports.addDeviceTest,
                   title: 'Geldlade',
                   help: 'Die Lade öffnet sich über den Bondrucker.',
                   action: 'Lade öffnen',
@@ -148,6 +153,7 @@ class DeviceTestScreen extends ConsumerWidget {
                 ),
                 DeviceTestRow(
                   id: 'card',
+                  onFinished: reports.addDeviceTest,
                   title: 'Kartenterminal',
                   help: 'Prüft die Anmeldung bei SumUp und das Internet.',
                   action: 'Prüfen',
@@ -178,6 +184,7 @@ class DeviceTestRow extends StatefulWidget {
     this.action,
     this.run,
     this.offLabel,
+    this.onFinished,
   });
 
   final String id;
@@ -186,6 +193,11 @@ class DeviceTestRow extends StatefulWidget {
   final String? action;
   final Future<DeviceTestResult> Function()? run;
   final String? offLabel;
+
+  /// Bekommt nach jedem Lauf die Zeile, wie der Bildschirm sie zeigt (für den
+  /// Bericht an den Server). Darf nichts werfen.
+  final Future<void> Function(List<({String device, bool ok, String text})>)?
+  onFinished;
 
   @override
   State<DeviceTestRow> createState() => _DeviceTestRowState();
@@ -210,6 +222,11 @@ class _DeviceTestRowState extends State<DeviceTestRow> {
         'Der Test hat nicht geklappt. Bitte nochmal versuchen.',
       );
     }
+    unawaited(
+      widget.onFinished?.call([
+        (device: widget.id, ok: result.ok, text: result.message),
+      ]),
+    );
     if (!mounted) return;
     setState(() {
       _running = false;

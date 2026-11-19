@@ -360,15 +360,39 @@ void main() {
     },
   );
 
-  test(
-    'Bericht ist noch nicht gebaut, wird aber nie still verschluckt',
-    () async {
-      await expectLater(
-        payloads.build(entry(1, 'report', 'x')),
-        throwsA(isA<UnimplementedError>()),
-      );
-    },
-  );
+  test('App baut den Bericht der Beispieldatei (seq 7)', () async {
+    final expected = entries.singleWhere((e) => e['kind'] == 'report');
+    final r = expected['report'] as Map<String, dynamic>;
+    final e = r['error'] as Map<String, dynamic>;
+    await db
+        .into(db.reportRows)
+        .insert(
+          ReportRowsCompanion.insert(
+            id: r['id'] as String,
+            kind: r['kind'] as String,
+            at: DateTime.parse(r['at'] as String),
+            appVersion: r['appVersion'] as String,
+            androidVersion: Value(r['androidVersion'] as String),
+            deviceModel: Value(r['deviceModel'] as String),
+            count: Value(r['count'] as int),
+            signature: 'sig',
+            content: jsonEncode(e),
+          ),
+        );
+    final built = await payloads.build(
+      OutboxEntry(
+        id: expected['seq'] as int,
+        kind: 'report',
+        ref: r['id'] as String,
+        rev: 0,
+      ),
+    );
+    expect(jsonDecode(jsonEncode(built)), expected);
+  });
+
+  test('Bericht, den es nicht mehr gibt, ergibt null', () async {
+    expect(await payloads.build(entry(1, 'report', 'gibt-es-nicht')), isNull);
+  });
 }
 
 String refOfDay() => '7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21';

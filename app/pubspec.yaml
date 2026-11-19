@@ -47,6 +47,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   pointycastle: ^4.0.0
   qr: ^4.0.1
+  device_info_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:
