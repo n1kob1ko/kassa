@@ -29,6 +29,25 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
   int _count = 0;
   bool _busy = false;
   bool _failed = false;
+  final _questionKey = GlobalKey();
+
+  /// Die Rückfrage steht in der Zeile und kann unten aus dem Bild ragen:
+  /// nach dem Aufbau so weit rollen, dass sie ganz zu sehen ist. Bei
+  /// reduzierter Bewegung ohne Animation.
+  void _showQuestion() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _questionKey.currentContext;
+      if (context == null || !context.mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : KassaTokens.motionSlow,
+        curve: KassaTokens.motionCurve,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
 
   Future<void> _pick() async {
     final String? text;
@@ -53,6 +72,7 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
         _step = _Step.confirm;
         _failed = false;
       });
+      _showQuestion();
     } on MenuImportException catch (e) {
       setState(() {
         _problems = e.problems;
@@ -174,6 +194,7 @@ class _ReimportPanelState extends ConsumerState<ReimportPanel> {
         );
       case _Step.confirm:
         below = Container(
+          key: _questionKey,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: c.card,

@@ -350,6 +350,30 @@ void main() {
     expect(find.byKey(const Key('settings')), findsNothing);
   });
 
+  testWidgets('Rückfrage "Speisekarte neu einspielen" rollt ganz ins Bild', (
+    t,
+  ) async {
+    await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
+    // Ohne Scrollen: Die Taste steht im Zustand "Nicht eingerichtet" unten im
+    // Bild.
+    await t.tap(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
+    final visible = t.getRect(
+      find
+          .ancestor(
+            of: find.byKey(const Key('confirm-reimport')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    for (final key in ['cancel-reimport', 'confirm-reimport']) {
+      final button = t.getRect(find.byKey(Key(key)));
+      expect(visible.top, lessThanOrEqualTo(button.top), reason: key);
+      expect(button.bottom, lessThanOrEqualTo(visible.bottom), reason: key);
+    }
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
     'kein Überlauf bei 960 x 600 mit Textskala 1,3, auch mit offener Rückfrage',
     (t) async {
@@ -360,7 +384,6 @@ void main() {
         pickedFile: demoOhneTeigtaschen(),
       );
       expect(t.takeException(), isNull);
-      await t.ensureVisible(find.byKey(const Key('reimport')));
       await t.ensureVisible(find.byKey(const Key('reimport')));
       await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('reimport')));
