@@ -34,6 +34,9 @@ class AtrustSessionKeeper {
   AtrustSession? _session;
   DateTime? _lastUse;
 
+  /// Der Kalendertag zählt ab der Anmeldung, nicht ab der letzten Benutzung.
+  DateTime? _loginAt;
+
   /// Lädt das gespeicherte Kennzeichen. Vor dem ersten Gebrauch aufrufen.
   /// Ein zweiter Aufruf tut nichts (R2). Scheitert das Lesen, wirft es, und
   /// der nächste Aufruf liest neu; bis dahin geht keine Anfrage hinaus.
@@ -66,19 +69,19 @@ class AtrustSessionKeeper {
   }
 
   bool _valid() {
-    final last = _lastUse!.toLocal();
     final now = _clock.now().toLocal();
-    return now.difference(last) < _maxIdle &&
-        now.year == last.year &&
-        now.month == last.month &&
-        now.day == last.day;
+    final login = _loginAt!.toLocal();
+    return now.difference(_lastUse!.toLocal()) < _maxIdle &&
+        now.year == login.year &&
+        now.month == login.month &&
+        now.day == login.day;
   }
 
   Future<AtrustSession> _startLogin() async {
     try {
       final s = await _client.login(_user, _password);
       _session = s;
-      _lastUse = _clock.now();
+      _loginAt = _lastUse = _clock.now();
       return s;
     } on AtrustException catch (e) {
       if (e.problem == AtrustProblem.rejected) _reject();
@@ -106,7 +109,7 @@ class AtrustSessionKeeper {
 
   /// Nach erfolgreichem Signieren: Die Sitzung gilt wieder 55 Minuten.
   void used(AtrustSession session) {
-    if (identical(session, _session)) _lastUse = _clock.now();
+    if (identical(session, _session) && _valid()) _lastUse = _clock.now();
   }
 
   /// Die Sitzung gilt nicht mehr (401 beim Signieren).

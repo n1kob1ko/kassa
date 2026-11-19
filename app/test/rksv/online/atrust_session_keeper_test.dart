@@ -96,6 +96,16 @@ void main() {
       expect(identical(first, second), isFalse);
     });
 
+    test('Sitzung von gestern: used nach Mitternacht hilft nicht', () async {
+      rig.clock.value = DateTime(2026, 11, 19, 23, 59);
+      final s = await rig.keeper.session();
+      rig.clock.value = DateTime(2026, 11, 20, 0, 0, 1);
+      rig.keeper.used(s);
+      final t = await rig.keeper.session();
+      expect(rig.logins, 2);
+      expect(identical(s, t), isFalse);
+    });
+
     test('neuer Kalendertag: neue Anmeldung, auch nach 15 Minuten', () async {
       rig.clock.value = DateTime(2026, 11, 19, 23, 50);
       await rig.keeper.session();
