@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,8 +8,11 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/login/session.dart';
+import 'package:kassa/ui/business_logo.dart';
+import 'package:kassa/ui/kassa_logo.dart';
 import 'package:kassa/ui/keypad.dart';
 
+import '../support/files_pump.dart';
 import '../support/pump.dart';
 
 /// Eine eingerichtete Kassa, niemand angemeldet: das Anmeldebild.
@@ -164,6 +169,49 @@ void main() {
     session.logout();
     expect(c.read(sessionProvider), isNull);
     expect(c.read(staffRepositoryProvider), isNotNull);
+  });
+
+  group('Logo des Betriebs', () {
+    final logo = find.byKey(const Key('business-logo'));
+
+    testWidgets('ohne Logo steht das Logo der Kassa da', (t) async {
+      await pumpLoggedOut(t);
+      expect(find.byType(BusinessLogo), findsOneWidget);
+      expect(logo, findsNothing);
+      expect(find.byType(KassaLogo), findsOneWidget);
+    });
+
+    testWidgets('mit Logo steht es am Anmeldebild, im Platz des Kassa-Logos', (
+      t,
+    ) async {
+      await pumpLoggedOut(t);
+      final before = t.getRect(find.byType(KassaLogo));
+      await putLogo(t);
+      await settleImages(t, until: () => logo.evaluate().isNotEmpty);
+      await settleImages(t);
+
+      expect(logo, findsOneWidget);
+      expect(find.byType(KassaLogo), findsNothing);
+      expect(t.getRect(logo), before);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('kaputte Logo-Datei: das Logo der Kassa, kein Fehler', (
+      t,
+    ) async {
+      await pumpLoggedOut(t);
+      await putLogo(t, bytes: Uint8List.fromList([9, 9, 9]));
+      await settleImages(
+        t,
+        until: () => find
+            .descendant(of: logo, matching: find.byType(KassaLogo))
+            .evaluate()
+            .isNotEmpty,
+      );
+
+      expect(find.byType(KassaLogo), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
   });
 }
 

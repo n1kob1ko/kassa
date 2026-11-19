@@ -314,4 +314,113 @@ void main() {
       );
     });
   });
+  group('downloadFile', () {
+    http.Response webp(List<int> bytes, {String type = 'image/webp'}) =>
+        http.Response.bytes(bytes, 200, headers: {'content-type': type});
+
+    test('sendet Authorization: Bearer an die Adresse der Datei', () async {
+      late http.Request seen;
+      final api = apiWith((r) async {
+        seen = r;
+        return webp([1, 2, 3]);
+      });
+      final bytes = await api.downloadFile(token: 'geheim', id: 'abc-123');
+      expect(bytes, [1, 2, 3]);
+      expect(seen.method, 'GET');
+      expect(seen.url.toString(), '$base/api/device/files/abc-123');
+      expect(seen.headers['Authorization'], 'Bearer geheim');
+    });
+
+    test('genau 2 MB gehen, ein Byte mehr ergibt server', () async {
+      const limit = 2 * 1024 * 1024;
+      final ok = apiWith((_) async => webp(List.filled(limit, 1)));
+      expect(await ok.downloadFile(token: 't', id: 'a'), hasLength(limit));
+      final big = apiWith((_) async => webp(List.filled(limit + 1, 1)));
+      expect(
+        await failureOf(big.downloadFile(token: 't', id: 'a')),
+        ServerFailure.server,
+      );
+    });
+
+    test('liest nicht weiter als 2 MB, auch ohne Content-Length', () async {
+      var chunks = 0;
+      Stream<List<int>> endless() async* {
+        while (true) {
+          chunks++;
+          yield List.filled(512 * 1024, 1);
+        }
+      }
+
+      final client = _StreamClient(endless());
+      final api = ServerApi(baseUrl: base, client: client, appVersion: '1');
+      expect(
+        await failureOf(api.downloadFile(token: 't', id: 'a')),
+        ServerFailure.server,
+      );
+      expect(chunks, lessThan(10));
+    });
+
+    test('kein image/webp ergibt server', () async {
+      final api = apiWith((_) async => webp([1], type: 'text/html'));
+      expect(
+        await failureOf(api.downloadFile(token: 't', id: 'a')),
+        ServerFailure.server,
+      );
+    });
+
+    test('404, 401 und 403 werden zu Fehlern der Anfrage', () async {
+      Future<ServerFailure> with_(int status, String code) => failureOf(
+        apiWith(
+          (_) async => json(status, {
+            'error': {'code': code, 'message': 'x'},
+          }),
+        ).downloadFile(token: 't', id: 'a'),
+      );
+      expect(await with_(404, 'not_found'), ServerFailure.server);
+      expect(await with_(401, 'unauthorized'), ServerFailure.unauthorized);
+      expect(await with_(403, 'register_blocked'), ServerFailure.blocked);
+    });
+
+    test('Verbindung reißt mitten in der Datei: offline', () async {
+      final client = _StreamClient(() async* {
+        yield [1, 2, 3];
+        throw const SocketException('weg');
+      }());
+      final api = ServerApi(baseUrl: base, client: client, appVersion: '1');
+      expect(
+        await failureOf(api.downloadFile(token: 't', id: 'a')),
+        ServerFailure.offline,
+      );
+    });
+
+    test('Stillstand mitten in der Datei: timeout', () async {
+      final stalled = StreamController<List<int>>()..add([1, 2, 3]);
+      final client = _StreamClient(stalled.stream);
+      final api = ServerApi(
+        baseUrl: base,
+        client: client,
+        appVersion: '1',
+        timeout: const Duration(milliseconds: 20),
+      );
+      expect(
+        await failureOf(api.downloadFile(token: 't', id: 'a')),
+        ServerFailure.timeout,
+      );
+    });
+  });
+}
+
+/// Antwortet auf jede Anfrage mit 200, `image/webp` und diesem Körper.
+class _StreamClient extends http.BaseClient {
+  _StreamClient(this._body);
+
+  final Stream<List<int>> _body;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async =>
+      http.StreamedResponse(
+        _body,
+        200,
+        headers: {'content-type': 'image/webp'},
+      );
 }

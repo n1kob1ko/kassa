@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +18,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/fake_server.dart';
+import '../support/files_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -514,6 +517,72 @@ void main() {
       expect(t.getSize(find.byKey(const Key('item-huhn-bowl'))).height, 90);
     },
   );
+
+  testWidgets('kaputte Bilddatei: Taste ohne Bild, kein Fehler', (t) async {
+    await pumpKassa(t);
+    await t.tap(find.byKey(const Key('segment-Mit Bildern')));
+    await t.pump();
+    // Eine Datei, die kein Bild ist, und ein Pfad, hinter dem nichts liegt.
+    await putPhoto(t, 'huhn-bowl', bytes: Uint8List.fromList([1, 2, 3, 4]));
+    final db = containerOf(t).read(databaseProvider);
+    await (db.update(db.itemRows)..where((r) => r.id.equals('cola'))).write(
+      const ItemRowsCompanion(photoPath: Value('/gibt/es/nicht.webp')),
+    );
+    final bowl = find.byKey(const Key('item-huhn-bowl'));
+    await settleImages(
+      t,
+      until: () => find
+          .descendant(of: bowl, matching: find.byIcon(LucideIcons.utensils))
+          .evaluate()
+          .isNotEmpty,
+    );
+
+    expect(t.takeException(), isNull);
+    // Beide Tasten stehen mit Platzhalter da, Name und Preis sind lesbar.
+    expect(find.byKey(const Key('item-huhn-bowl')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('item-huhn-bowl')),
+        matching: find.byIcon(LucideIcons.utensils),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Huhn Bowl'), findsWidgets);
+    // Die Kassa bleibt benutzbar.
+    await tapItem(t, 'cola');
+    expect(t.takeException(), isNull);
+    expect(find.byKey(const Key('cart-total')), findsOneWidget);
+  });
+
+  testWidgets('ganzes Foto: die Taste zeigt es, ohne den Platzhalter', (
+    t,
+  ) async {
+    await pumpKassa(t);
+    await t.tap(find.byKey(const Key('segment-Mit Bildern')));
+    await t.pump();
+    await putPhoto(t, 'huhn-bowl');
+    final raw = find.descendant(
+      of: find.byKey(const Key('item-huhn-bowl')),
+      matching: find.byType(RawImage),
+    );
+    // Gezeichnet ist es, sobald das Bild entschlüsselt ist.
+    await settleImages(
+      t,
+      until: () =>
+          raw.evaluate().isNotEmpty && t.widget<RawImage>(raw).image != null,
+    );
+    expect(t.widget<RawImage>(raw).image, isNotNull);
+
+    expect(t.takeException(), isNull);
+    expect(raw, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('item-huhn-bowl')),
+        matching: find.byIcon(LucideIcons.utensils),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets('Spalten: 4 bei 1280 x 800, weniger bei 960 x 600', (t) async {
     await pumpKassa(t);

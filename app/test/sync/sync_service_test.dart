@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Directory;
 
 import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
@@ -14,6 +15,7 @@ import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/devices/internet.dart';
+import 'package:kassa/sync/file_sync.dart';
 import 'package:kassa/sync/pairing_service.dart';
 import 'package:kassa/sync/server_api.dart';
 import 'package:kassa/sync/push_wire.dart';
@@ -37,7 +39,13 @@ class _FakeClock implements Clock {
 /// Ein gekoppeltes Tablet mit dem Beispiel-Imbiss, in der Zeit von
 /// [FakeAsync].
 class Harness {
-  Harness(this.async, {bool paired = true, bool enabled = true}) {
+  Harness(
+    this.async, {
+    bool paired = true,
+    bool enabled = true,
+    FileSync Function(KassaDatabase db, ServerApi api)? files,
+    void Function()? onChanged,
+  }) {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     db = KassaDatabase(NativeDatabase.memory());
     sync = SyncStateRepository(db);
@@ -54,12 +62,15 @@ class Harness {
     if (paired) {
       run(ServerChanges(db).replaceAll(server.pages(), at: start));
     }
+    final api = ServerApi(
+      baseUrl: 'https://kassa.example',
+      client: server,
+      appVersion: '1.2.0',
+    );
     service = SyncService(
-      api: ServerApi(
-        baseUrl: 'https://kassa.example',
-        client: server,
-        appVersion: '1.2.0',
-      ),
+      api: api,
+      files: files?.call(db, api),
+      onChanged: onChanged ?? () {},
       tokens: tokens,
       syncState: sync,
       changes: ServerChanges(db),
@@ -150,7 +161,98 @@ class Harness {
   }
 }
 
+/// Ein `FileSync`, das nichts lädt: es merkt sich nur, womit es gerufen wurde.
+class _StubFiles extends FileSync {
+  _StubFiles(KassaDatabase db, ServerApi api)
+    : super(db, api, () async => Directory.systemTemp);
+
+  final tokens = <String>[];
+  bool result = false;
+  Object? failure;
+
+  @override
+  Future<bool> run(String token) async {
+    tokens.add(token);
+    if (failure != null) throw failure!;
+    return result;
+  }
+}
+
 void main() {
+  group('Bilder', () {
+    test('nach dem Holen: die Bilder laden, mit dem Schlüssel, und der Katalog '
+        'wird neu gelesen, wenn etwas neu ist', () {
+      fakeAsync((async) {
+        late _StubFiles files;
+        var changed = 0;
+        final h = Harness(
+          async,
+          files: (db, api) => files = _StubFiles(db, api)..result = true,
+          onChanged: () => changed++,
+        );
+        h.run(h.service.syncNow());
+        expect(files.tokens, [FakeServer.token]);
+        // Nichts Neues geholt, aber ein Bild ist neu da.
+        expect(changed, 1);
+        files.result = false;
+        async.elapse(const Duration(minutes: 5));
+        h.run(h.service.syncNow());
+        expect(files.tokens, hasLength(2));
+        expect(changed, 1);
+        h.close();
+      });
+    });
+
+    test('ein Fehler beim Laden macht den Lauf nicht zum Fehler, '
+        '"Zuletzt abgeglichen" rückt trotzdem', () {
+      fakeAsync((async) {
+        late _StubFiles files;
+        final h = Harness(
+          async,
+          files: (db, api) =>
+              files = _StubFiles(db, api)..failure = StateError('Platte voll'),
+        );
+        async.elapse(const Duration(minutes: 3));
+        h.run(h.service.syncNow());
+        expect(files.tokens, hasLength(1));
+        final s = h.state();
+        expect(s.lastError, isNull);
+        expect(s.lastPullAt, start.add(const Duration(minutes: 3)));
+        h.close();
+      });
+    });
+
+    test('scheitert das Holen, wird nichts geladen', () {
+      fakeAsync((async) {
+        late _StubFiles files;
+        final h = Harness(
+          async,
+          files: (db, api) => files = _StubFiles(db, api),
+        );
+        h.server.mode = FakeMode.offline;
+        h.run(h.service.syncNow());
+        expect(files.tokens, isEmpty);
+        h.close();
+      });
+    });
+
+    test('Laden ohne neues Bild ändert "Zuletzt abgeglichen" nicht', () {
+      fakeAsync((async) {
+        late _StubFiles files;
+        final h = Harness(
+          async,
+          files: (db, api) => files = _StubFiles(db, api),
+        );
+        async.elapse(const Duration(minutes: 1));
+        h.run(h.service.syncNow());
+        final at = h.state().lastPullAt;
+        expect(at, start.add(const Duration(minutes: 1)));
+        expect(files.tokens, hasLength(1));
+        h.close();
+      });
+    });
+  });
+
   test('nicht gekoppelt: syncNow fragt den Server nicht', () {
     fakeAsync((async) {
       final h = Harness(async, paired: false);

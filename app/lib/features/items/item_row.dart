@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/catalog.dart';
 import '../../ui/app_toggle.dart';
+import '../../ui/hex_color.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -48,7 +49,9 @@ class ItemPhoto extends StatelessWidget {
       height: size,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: c.accentSoft,
+        color: path == null
+            ? c.accentSoft
+            : colorFromHex(item.photoColor) ?? c.accentSoft,
         borderRadius: BorderRadius.circular(radius),
       ),
       child: path == null

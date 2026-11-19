@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/catalog.dart';
+import '../../ui/hex_color.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -185,7 +186,10 @@ class _ImageBody extends StatelessWidget {
           height: 80,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: c.accentSoft,
+            // Bis das Foto gezeichnet ist, steht seine mittlere Farbe da.
+            color: path == null
+                ? c.accentSoft
+                : colorFromHex(item.photoColor) ?? c.accentSoft,
             borderRadius: BorderRadius.circular(11),
           ),
           child: path == null

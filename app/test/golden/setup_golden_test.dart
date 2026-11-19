@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/files_pump.dart';
 import '../support/pump.dart';
 
 // Bildvergleich der Einrichtung und Anmeldung gegen die freigegebenen
@@ -50,6 +51,23 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/chef_pin_festlegen.png'),
+    );
+  });
+
+  testWidgets('Anmeldung mit Logo des Betriebs (hell)', (t) async {
+    await _start(t, seeded: true);
+    await putLogo(t);
+    await settleImages(
+      t,
+      until: () => find.byKey(const Key('business-logo')).evaluate().isNotEmpty,
+    );
+    await settleImages(t);
+    await tapKeys(t, '1 2');
+    await t.pump(const Duration(milliseconds: 300));
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/anmeldung_logo.png'),
     );
   });
 

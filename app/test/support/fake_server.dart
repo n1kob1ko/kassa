@@ -4,8 +4,10 @@
 // Änderungs-Nummer ihrer letzten Änderung, eine Seite sind die nächsten
 // [FakeServer.pageSize] Zeilen nach `since`, nach Nummer aufsteigend.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -101,6 +103,22 @@ class FakeServer extends http.BaseClient {
   /// Antwort hinausgeht.
   Future<void> Function()? beforePushAnswer;
 
+  /// Die Dateien des Servers, je Kennung. Eine fehlende Kennung ist 404.
+  final files = <String, Uint8List>{};
+
+  /// Die Kennung jeder Anfrage an `files`, auch der gescheiterten.
+  final fileRequests = <String>[];
+
+  /// Die nächste Datei bricht nach so vielen Bytes ab (die Verbindung reißt).
+  int? breakNextFileAfter;
+
+  /// `Content-Type` der Dateien.
+  String fileContentType = 'image/webp';
+
+  /// Läuft einmal, nachdem die nächste Datei gefunden ist und bevor sie
+  /// hinausgeht.
+  Future<void> Function()? beforeNextFile;
+
   int _pagesServed = 0;
   int _seq = 0;
   final _rows = <String, _Row>{};
@@ -115,6 +133,10 @@ class FakeServer extends http.BaseClient {
     _rows.remove(key);
     _rows[key] = (seq: ++_seq, kind: kind, row: Map.of(row));
   }
+
+  /// Ändert einzelne Felder der Betriebsdaten, sie bekommen eine neue Nummer.
+  void changeBusiness(Map<String, Object?> fields) =>
+      putBusiness({..._rows['business']!.row, ...fields});
 
   void putBusiness(Map<String, Object?> row) {
     _rows.remove('business');
@@ -208,6 +230,10 @@ class FakeServer extends http.BaseClient {
         jsonDecode((request as http.Request).body) as Map<String, dynamic>,
       );
     }
+    final filePrefix = '/api/device/files/';
+    if (path.startsWith(filePrefix)) {
+      fileRequests.add(path.substring(filePrefix.length));
+    }
     switch (mode) {
       case FakeMode.offline:
         throw const SocketException('Kein Netz');
@@ -220,6 +246,7 @@ class FakeServer extends http.BaseClient {
       case FakeMode.online:
     }
     if (path == '/api/device/pair') return _pair();
+    if (path.startsWith(filePrefix)) return _file(request);
     if (path == '/api/device/sync/push') return _push(request);
     if (path == '/api/device/sync/pull') {
       if (request.headers['Authorization'] != 'Bearer $token') {
@@ -237,6 +264,35 @@ class FakeServer extends http.BaseClient {
       return _respond(200, body);
     }
     return _error(404, 'not_found');
+  }
+
+  Future<http.StreamedResponse> _file(http.BaseRequest request) async {
+    if (request.headers['Authorization'] != 'Bearer $token') {
+      return _error(401, 'unauthorized');
+    }
+    final bytes = files[fileRequests.last];
+    if (bytes == null) return _error(404, 'not_found');
+    final hook = beforeNextFile;
+    beforeNextFile = null;
+    if (hook != null) await hook();
+    final breakAfter = breakNextFileAfter;
+    breakNextFileAfter = null;
+    if (breakAfter == null) {
+      return http.StreamedResponse(
+        Stream.value(bytes),
+        200,
+        headers: {'content-type': fileContentType},
+      );
+    }
+    final controller = StreamController<List<int>>();
+    controller.add(bytes.sublist(0, breakAfter));
+    controller.addError(const SocketException('Verbindung abgebrochen'));
+    unawaited(controller.close());
+    return http.StreamedResponse(
+      controller.stream,
+      200,
+      headers: {'content-type': fileContentType},
+    );
   }
 
   Future<http.StreamedResponse> _push(http.BaseRequest request) async {

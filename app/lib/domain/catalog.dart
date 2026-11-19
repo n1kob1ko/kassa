@@ -54,6 +54,7 @@ class Item {
     this.favorite = false,
     this.inSale = true,
     this.photoPath,
+    this.photoColor,
     required this.position,
   });
 
@@ -69,6 +70,9 @@ class Item {
   final bool favorite;
   final bool inSale;
   final String? photoPath;
+
+  /// Mittlere Farbe des Fotos (`#rrggbb`), Hintergrund bis es gezeichnet ist.
+  final String? photoColor;
   final int position;
 
   /// Kopie mit geänderten Feldern. Ein Feld auf `null` zurückzusetzen geht
@@ -99,6 +103,7 @@ class Item {
     favorite: favorite ?? this.favorite,
     inSale: inSale ?? this.inSale,
     photoPath: photoPath ?? this.photoPath,
+    photoColor: photoColor,
     position: position ?? this.position,
   );
 }

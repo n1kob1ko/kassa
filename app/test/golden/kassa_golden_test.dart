@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/files_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart' show memoryOverrides;
 import '../support/signature_pump.dart';
@@ -90,6 +91,31 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/kassa_ausfall_hell.png'),
+    );
+  });
+
+  testWidgets('Kassa mit Foto und Logo des Betriebs (hell)', (t) async {
+    await _threeLines(t, images: true);
+    await t.tap(find.byKey(const Key('cat-bowls')));
+    await t.pump();
+    // Zwei Tasten mit Foto, zwei ohne: so liegen sie nebeneinander.
+    await putPhoto(t, 'huhn-bowl');
+    await putPhoto(t, 'gemuese-bowl', color: '#d9b36a');
+    await putLogo(t);
+    final raw = find.descendant(
+      of: find.byKey(const Key('item-huhn-bowl')),
+      matching: find.byType(RawImage),
+    );
+    await settleImages(
+      t,
+      until: () =>
+          raw.evaluate().isNotEmpty && t.widget<RawImage>(raw).image != null,
+    );
+    await settleImages(t);
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/kassa_foto_logo_hell.png'),
     );
   });
 }

@@ -292,10 +292,119 @@ void main() {
     Future<ItemRow> item(String id) =>
         (db.select(db.itemRows)..where((t) => t.id.equals(id))).getSingle();
 
+    group('Fotos und Logo', () {
+      Map<String, Object?> photo(String id) => {'id': id, 'color': '#a1b2c3'};
+
+      test(
+        'Kennung und Farbe werden geschrieben, der Pfad bleibt leer',
+        () async {
+          server.change('items', 'cola', {'photo': photo('f-1')});
+          await pullAll(at);
+          final row = await item('cola');
+          expect(row.photoFileId, 'f-1');
+          expect(row.photoColor, '#a1b2c3');
+          expect(row.photoPath, isNull);
+        },
+      );
+
+      test(
+        'wechselt die Kennung, bleibt der Pfad bis das neue Bild da ist',
+        () async {
+          server.change('items', 'cola', {'photo': photo('f-1')});
+          await pullAll(at);
+          await (db.update(
+            db.itemRows,
+          )..where((t) => t.id.equals('cola'))).write(
+            const ItemRowsCompanion(photoPath: Value('files/f-1.webp')),
+          );
+          server.change('items', 'cola', {'photo': photo('f-2')});
+          await pullAll(at);
+          final row = await item('cola');
+          expect(row.photoFileId, 'f-2');
+          expect(row.photoPath, 'files/f-1.webp');
+        },
+      );
+
+      test('wird die Kennung leer, wird auch der Pfad leer', () async {
+        server.change('items', 'cola', {'photo': photo('f-1')});
+        await pullAll(at);
+        await (db.update(db.itemRows)..where((t) => t.id.equals('cola'))).write(
+          const ItemRowsCompanion(photoPath: Value('files/f-1.webp')),
+        );
+        server.change('items', 'cola', {'photo': null});
+        await pullAll(at);
+        final row = await item('cola');
+        expect(row.photoFileId, isNull);
+        expect(row.photoColor, isNull);
+        expect(row.photoPath, isNull);
+      });
+
+      test('auch bei einem Artikel mit wartender Änderung', () async {
+        server.change('items', 'cola', {'photo': photo('f-1')});
+        await pullAll(at);
+        await (db.update(db.itemRows)..where((t) => t.id.equals('cola'))).write(
+          const ItemRowsCompanion(photoPath: Value('files/f-1.webp')),
+        );
+        await CatalogRepository(
+          db,
+          clock: FixedClock(at),
+        ).updateItem('cola', priceCents: 777);
+        server.change('items', 'cola', {'photo': photo('f-2')});
+        await pullAll(at);
+        var row = await item('cola');
+        expect(row.priceCents, 777, reason: 'der Preis wartet');
+        expect(row.photoFileId, 'f-2');
+        expect(row.photoPath, 'files/f-1.webp');
+
+        server.change('items', 'cola', {'photo': null});
+        await pullAll(at);
+        row = await item('cola');
+        expect(row.priceCents, 777);
+        expect(row.photoFileId, isNull);
+        expect(row.photoPath, isNull);
+      });
+
+      test(
+        'Logo: Kennung und Farbe, Pfad bleibt bei Wechsel, leer ohne Logo',
+        () async {
+          Future<BusinessRow> business() =>
+              db.select(db.businessRows).getSingle();
+          server.changeBusiness({'logo': photo('l-1')});
+          await pullAll(at);
+          expect((await business()).logoFileId, 'l-1');
+          expect((await business()).logoColor, '#a1b2c3');
+          expect((await business()).logoPath, isNull);
+
+          await db
+              .update(db.businessRows)
+              .write(
+                const BusinessRowsCompanion(logoPath: Value('files/l-1.webp')),
+              );
+          server.changeBusiness({'logo': photo('l-2')});
+          await pullAll(at);
+          expect((await business()).logoPath, 'files/l-1.webp');
+
+          server.changeBusiness({'logo': null});
+          await pullAll(at);
+          expect((await business()).logoFileId, isNull);
+          expect((await business()).logoPath, isNull);
+        },
+      );
+    });
+
     test('applyPage: Preis ändert sich, photoPath bleibt', () async {
-      await (db.update(db.itemRows)..where((t) => t.id.equals('huhn-bowl')))
-          .write(const ItemRowsCompanion(photoPath: Value('fotos/bowl.jpg')));
-      server.change('items', 'huhn-bowl', {'priceCents': 1090});
+      await (db.update(
+        db.itemRows,
+      )..where((t) => t.id.equals('huhn-bowl'))).write(
+        const ItemRowsCompanion(
+          photoFileId: Value('f-1'),
+          photoPath: Value('fotos/bowl.jpg'),
+        ),
+      );
+      server.change('items', 'huhn-bowl', {
+        'priceCents': 1090,
+        'photo': {'id': 'f-1', 'color': '#a1b2c3'},
+      });
       final later = at.add(const Duration(minutes: 5));
 
       final page = server.page((await sync.current()).pullCursor);

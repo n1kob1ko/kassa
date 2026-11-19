@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../core/clock.dart';
 import '../domain/catalog.dart';
+import '../domain/wire_file.dart';
 import 'database.dart';
 import 'outbox_repository.dart';
 
@@ -196,6 +197,13 @@ class CatalogRepository {
         ],
         vatId: business.vatId,
         receiptFooter: business.receiptFooter,
+        logo: business.logoFileId == null
+            ? null
+            : WireFile(
+                id: business.logoFileId!,
+                color: business.logoColor ?? '',
+              ),
+        logoPath: business.logoPath,
       ),
       categories: [
         for (final k in categories)
@@ -216,6 +224,7 @@ class CatalogRepository {
             favorite: r.favorite,
             inSale: r.inSale,
             photoPath: r.photoPath,
+            photoColor: r.photoColor,
             position: r.position,
           ),
       ],

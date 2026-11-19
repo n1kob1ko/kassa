@@ -3,6 +3,9 @@
 
 import '../domain/catalog.dart';
 import '../domain/staff.dart';
+import '../domain/wire_file.dart';
+
+export '../domain/wire_file.dart' show WireFile;
 
 // Lesen der Antworten des Servers. Jede Form, die nicht passt (Pflichtfeld
 // fehlt, falscher Typ, unbekanntes Kennzeichen, nicht erlaubter Steuersatz),
@@ -33,6 +36,14 @@ List<T> _list<T>(
   String key,
   T Function(Map<String, dynamic>) read,
 ) => [for (final e in _field<List<dynamic>>(json, key)) read(_object(e, key))];
+
+/// `photo` und `logo`: fehlt der Schlüssel (alter Server) oder ist er `null`,
+/// gibt es kein Bild.
+WireFile? _file(Map<String, dynamic> json, String key) {
+  final v = _optional<Map<String, dynamic>>(json, key);
+  if (v == null) return null;
+  return WireFile(id: _field(v, 'id'), color: _field(v, 'color'));
+}
 
 TaxRate _taxRate(int percent) {
   try {
@@ -78,6 +89,7 @@ class WireItem {
     required this.inSale,
     required this.position,
     required this.archived,
+    this.photo,
   });
 
   factory WireItem.fromJson(Map<String, dynamic> json) => WireItem(
@@ -100,6 +112,7 @@ class WireItem {
     inSale: _field(json, 'inSale'),
     position: _field(json, 'position'),
     archived: _field(json, 'archived'),
+    photo: _file(json, 'photo'),
   );
 
   final String id;
@@ -115,6 +128,9 @@ class WireItem {
   final bool inSale;
   final int position;
   final bool archived;
+
+  /// Das Foto des Artikels, oder `null`.
+  final WireFile? photo;
 }
 
 class WireTemplate {
@@ -222,6 +238,7 @@ class PullResponse {
               ],
               vatId: _optional(business, 'vatId'),
               receiptFooter: _optional(business, 'receiptFooter'),
+              logo: _file(business, 'logo'),
             ),
       categories: _list(json, 'categories', WireCategory.fromJson),
       items: _list(json, 'items', WireItem.fromJson),

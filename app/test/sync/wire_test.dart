@@ -58,6 +58,45 @@ void main() {
     expect(delta.staff, isEmpty);
   });
 
+  test('Seite ohne photo und Seite mit photo: null lesen beide', () {
+    final full = fixture('pull_full');
+    final items = full['items'] as List<dynamic>;
+    // Alter Server: der Schlüssel fehlt ganz.
+    for (final i in items) {
+      (i as Map<String, dynamic>).remove('photo');
+    }
+    (full['business'] as Map<String, dynamic>).remove('logo');
+    final old = PullResponse.fromJson(full);
+    expect(old.items.every((i) => i.photo == null), isTrue);
+    expect(old.business!.logo, isNull);
+    // Neuer Server, nichts hochgeladen: der Schlüssel ist null.
+    final current = PullResponse.fromJson(fixture('pull_full'));
+    expect(current.items.every((i) => i.photo == null), isTrue);
+    expect(current.business!.logo, isNull);
+  });
+
+  test('photo und logo werden gelesen', () {
+    final full = fixture('pull_full');
+    ((full['items'] as List<dynamic>).first as Map<String, dynamic>)['photo'] =
+        {'id': 'abc-123', 'color': '#a1b2c3'};
+    (full['business'] as Map<String, dynamic>)['logo'] = {
+      'id': 'def-456',
+      'color': '#ffffff',
+    };
+    final page = PullResponse.fromJson(full);
+    expect(page.items.first.photo!.id, 'abc-123');
+    expect(page.items.first.photo!.color, '#a1b2c3');
+    expect(page.business!.logo!.id, 'def-456');
+    expect(page.business!.logo!.color, '#ffffff');
+  });
+
+  test('photo mit falscher Art ist eine FormatException', () {
+    final full = fixture('pull_full');
+    ((full['items'] as List<dynamic>).first as Map<String, dynamic>)['photo'] =
+        {'id': 5, 'color': '#a1b2c3'};
+    expect(() => PullResponse.fromJson(full), throwsFormatException);
+  });
+
   test('pair_response.json wird gelesen', () {
     final r = PairResponse.fromJson(fixture('pair_response'));
     expect(r.registerId, '<uuid>');

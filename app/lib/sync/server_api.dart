@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -112,6 +113,72 @@ class ServerApi {
       if (results is! List) throw const FormatException('Feld fehlt: results');
       return [for (final r in results) PushResult.fromJson(r)];
     });
+  }
+
+  /// Mehr als so viele Bytes nimmt das Tablet für eine Datei nicht an. Der
+  /// Server liefert höchstens 800 Pixel Breite als WebP, das bleibt weit
+  /// darunter.
+  static const maxFileBytes = 2 * 1024 * 1024;
+
+  /// Lädt die Datei [id] (ein Bild im Format WebP). Mehr als [maxFileBytes]
+  /// oder eine andere Art als `image/webp` ergibt [ServerFailure.server].
+  /// Gelesen wird Stück für Stück und beim ersten Byte zu viel abgebrochen:
+  /// nichts davon liegt je ganz im Speicher. Reißt die Verbindung oder bleibt
+  /// sie stehen, kommt `offline` oder `timeout` und es gibt keine Teilantwort.
+  Future<Uint8List> downloadFile({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final request =
+          http.Request('GET', Uri.parse('$_base/api/device/files/$id'))
+            ..headers.addAll({
+              'X-Kassa-App-Version': _appVersion,
+              'Authorization': 'Bearer $token',
+            });
+      final response = await _client.send(request).timeout(_timeout);
+      // Jedes Stück darf nur so lange auf sich warten lassen wie eine Anfrage.
+      final stream = response.stream.timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = await _readLimited(stream, 64 * 1024);
+        Object? json;
+        try {
+          json = body == null ? null : jsonDecode(utf8.decode(body));
+        } on FormatException {
+          json = null;
+        }
+        throw ServerException(_failureOf(json));
+      }
+      final type = response.headers['content-type'] ?? '';
+      final length = response.contentLength;
+      if (!type.toLowerCase().startsWith('image/webp') ||
+          (length != null && length > maxFileBytes)) {
+        throw const ServerException(ServerFailure.server);
+      }
+      final bytes = await _readLimited(stream, maxFileBytes);
+      if (bytes == null) throw const ServerException(ServerFailure.server);
+      return bytes;
+    } on TimeoutException {
+      throw const ServerException(ServerFailure.timeout);
+    } on IOException {
+      throw const ServerException(ServerFailure.offline);
+    } on http.ClientException {
+      throw const ServerException(ServerFailure.offline);
+    }
+  }
+
+  /// Liest [stream] bis zum Ende, aber höchstens [limit] Bytes. `null`, wenn
+  /// mehr kommt: dann ist das Lesen schon beendet.
+  static Future<Uint8List?> _readLimited(
+    Stream<List<int>> stream,
+    int limit,
+  ) async {
+    final out = BytesBuilder(copy: false);
+    await for (final chunk in stream) {
+      if (out.length + chunk.length > limit) return null;
+      out.add(chunk);
+    }
+    return out.takeBytes();
   }
 
   Future<Object?> _send(

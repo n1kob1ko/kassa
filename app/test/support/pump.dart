@@ -20,6 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/app_sync_providers.dart';
+import 'package:kassa/sync/file_sync.dart';
+import 'package:kassa/sync/server_api.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
@@ -143,10 +146,25 @@ Future<List<Override>> memoryOverrides({
       clock ?? FixedClock(DateTime(2026, 11, 17, 11)),
     ),
     menuFilePickerProvider.overrideWithValue(picker ?? _FakePicker(pickedFile)),
+    // Dateien auf der Platte brauchen echte Zeit, die ein Widget-Test nicht
+    // abwartet: der Abgleich lädt in diesen Tests keine Bilder.
+    fileSyncProvider.overrideWith(
+      (ref) =>
+          _NoFiles(ref.watch(databaseProvider), ref.watch(serverApiProvider)),
+    ),
     demoMenuTextProvider.overrideWithValue(
       () async => File('assets/demo/beispiel-imbiss.json').readAsStringSync(),
     ),
   ];
+}
+
+/// Ein `FileSync`, das nichts lädt.
+class _NoFiles extends FileSync {
+  _NoFiles(KassaDatabase db, ServerApi api)
+    : super(db, api, () async => Directory.systemTemp);
+
+  @override
+  Future<bool> run(String token) async => false;
 }
 
 /// Der falsche Drucker der laufenden Oberfläche.

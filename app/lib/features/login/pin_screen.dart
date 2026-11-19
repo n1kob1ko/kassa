@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../ui/keypad.dart';
-import '../../ui/kassa_logo.dart';
+import '../../ui/business_logo.dart';
 import '../../ui/tokens.dart';
 import 'session.dart';
 
@@ -123,7 +123,7 @@ class PinCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const KassaLogo(size: 34),
+                  const BusinessLogo(size: 34),
                   const SizedBox(width: KassaTokens.spaceLg),
                   Text('Kassa', style: text.headlineMedium),
                   if (businessName != null) ...[

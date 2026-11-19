@@ -3,15 +3,18 @@
 // braucht.
 
 import 'dart:async';
+import 'dart:io' show Directory;
 
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'core/app_info.dart';
 import 'data/providers.dart';
 import 'devices/internet.dart';
 import 'features/kassa/cart_controller.dart';
 import 'features/login/session.dart';
+import 'sync/file_sync.dart';
 import 'sync/pairing_service.dart';
 import 'sync/push_wire.dart';
 import 'sync/sync_service.dart';
@@ -39,6 +42,23 @@ final pairingServiceProvider = Provider(
   ),
 );
 
+/// Der Ordner für Fotos und Logo: ein Unterordner des Ordners der App, den
+/// nur die App sieht. Tests setzen einen Ordner im Temp-Verzeichnis ein.
+final fileDirProvider = Provider<Future<Directory> Function()>(
+  (ref) =>
+      () async =>
+          Directory('${(await getApplicationSupportDirectory()).path}/files'),
+);
+
+/// Lädt Fotos und Logo vom Server, nach jedem Holen.
+final fileSyncProvider = Provider(
+  (ref) => FileSync(
+    ref.watch(databaseProvider),
+    ref.watch(serverApiProvider),
+    ref.watch(fileDirProvider),
+  ),
+);
+
 /// Der Abgleich im Hintergrund, schon gestartet. `KassaApp` liest ihn, sobald
 /// die Kassa gekoppelt ist. Ohne Adresse des Servers tut er nichts.
 final syncServiceProvider = Provider<SyncService>((ref) {
@@ -53,6 +73,7 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     outbox: ref.watch(outboxRepositoryProvider),
     payloads: PushPayloads(ref.watch(databaseProvider)),
     clock: ref.watch(clockProvider),
+    files: ref.watch(fileSyncProvider),
     internet: internet.stream,
     resumed: resumed.stream,
     enabled: enabled,

@@ -1,7 +1,7 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'kassa_logo.dart';
+import 'business_logo.dart';
 import 'pressable.dart';
 import 'tokens.dart';
 
@@ -70,7 +70,7 @@ class AppHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const KassaLogo(size: 34),
+          const BusinessLogo(size: 34),
           const SizedBox(width: KassaTokens.spaceXl),
           Text('Kassa', style: text.headlineMedium),
           if (businessName != null) ...[

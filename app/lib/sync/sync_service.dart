@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import '../core/clock.dart';
 import '../data/outbox_repository.dart';
 import '../data/sync_state_repository.dart';
+import 'file_sync.dart';
 import 'push_wire.dart';
 import 'server_api.dart';
 import 'server_changes.dart';
@@ -42,6 +43,7 @@ class SyncService {
     required this._outbox,
     required this._payloads,
     required this._clock,
+    this._files,
     this._internet = const Stream.empty(),
     this._resumed = const Stream.empty(),
     this._enabled = true,
@@ -76,6 +78,9 @@ class SyncService {
   final OutboxRepository _outbox;
   final PushPayloads _payloads;
   final Clock _clock;
+
+  /// Lädt nach dem Holen die Fotos und das Logo. Ohne: nichts davon.
+  final FileSync? _files;
   final Stream<bool> _internet;
   final Stream<void> _resumed;
   final bool _enabled;
@@ -93,6 +98,9 @@ class SyncService {
   bool? _online;
   bool _started = false;
   bool _disposed = false;
+
+  /// Das Holen des laufenden Laufs ist bis zum Ende gekommen.
+  bool _pulledAll = false;
 
   /// `true`, solange ein Lauf läuft.
   Stream<bool> get running => _running.stream;
@@ -210,12 +218,16 @@ class SyncService {
       } catch (e) {
         return await _recordLocal(e);
       }
-      return await _pull(
+      final outcome = await _pull(
         state.pullCursor,
         state.registerId!,
         token,
         sendComplete: complete,
       );
+      // Der dritte Schritt: Bilder. Er ändert weder den Ausgang des Laufs noch
+      // "Zuletzt abgeglichen", und was dabei schiefgeht, sieht die Kassa nicht.
+      if (_pulledAll) await _loadFiles(token);
+      return outcome;
     } finally {
       _setRunning(false);
     }
@@ -321,6 +333,7 @@ class SyncService {
     required bool sendComplete,
   }) async {
     var changed = false;
+    _pulledAll = false;
     try {
       var since = cursor;
       while (true) {
@@ -343,6 +356,7 @@ class SyncService {
         if (!page.more) break;
         since = page.next;
       }
+      _pulledAll = true;
       if (!sendComplete) {
         await _syncState.setResult(
           at: _clock.now(),
@@ -375,6 +389,18 @@ class SyncService {
       p.items.isNotEmpty ||
       p.templates.isNotEmpty ||
       p.staff.isNotEmpty;
+
+  /// Lädt fehlende Bilder. Ein neues Bild lässt die Kassa den Katalog neu
+  /// lesen.
+  Future<void> _loadFiles(String token) async {
+    final files = _files;
+    if (files == null || _disposed) return;
+    try {
+      if (await files.run(token) && !_disposed) _onChanged();
+    } catch (_) {
+      // Bilder sind nie der Grund, einen guten Lauf scheitern zu lassen.
+    }
+  }
 
   /// Ein Fehler am Tablet selbst. Nur die Art des Fehlers geht ins
   /// Protokoll, und nur beim Entwickeln: nie der Schlüssel oder eine Antwort.

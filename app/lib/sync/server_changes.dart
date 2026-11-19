@@ -172,6 +172,13 @@ class ServerChanges {
               addressLines: Value(business.addressLines.join('\n')),
               vatId: Value(business.vatId),
               receiptFooter: Value(business.receiptFooter),
+              logoFileId: Value(business.logo?.id),
+              logoColor: Value(business.logo?.color),
+              // Kein Logo mehr: auch der Pfad. Wechselt die Kennung, bleibt
+              // der Pfad, bis `FileSync` das neue Logo ganz geladen hat.
+              logoPath: business.logo == null
+                  ? const Value(null)
+                  : const Value.absent(),
             ),
           );
     }
@@ -202,7 +209,12 @@ class ServerChanges {
               r.read(_db.itemRows.id)!,
           };
     for (final i in c.items.values) {
-      // photoPath fehlt absichtlich: das Foto gehört dem Tablet.
+      // Das Foto gehört dem Tablet: `photoPath` setzt nur `FileSync`, und es
+      // leert ihn hier nur, wenn der Artikel kein Foto mehr hat. Wechselt die
+      // Kennung, bleibt der Pfad bis das neue Bild ganz geladen ist.
+      final photoPath = i.photo == null
+          ? const Value<String?>(null)
+          : const Value<String?>.absent();
       final held = known.contains(i.id) ? keep[i.id]! : const <String>{};
       if (held.isNotEmpty) {
         await (_db.update(_db.itemRows)..where((t) => t.id.equals(i.id))).write(
@@ -229,6 +241,9 @@ class ServerChanges {
                 : Value(i.inSale),
             position: Value(i.position),
             archived: Value(i.archived),
+            photoFileId: Value(i.photo?.id),
+            photoColor: Value(i.photo?.color),
+            photoPath: photoPath,
           ),
         );
         continue;
@@ -250,6 +265,9 @@ class ServerChanges {
               inSale: Value(i.inSale),
               position: i.position,
               archived: Value(i.archived),
+              photoFileId: Value(i.photo?.id),
+              photoColor: Value(i.photo?.color),
+              photoPath: photoPath,
             ),
           );
     }
