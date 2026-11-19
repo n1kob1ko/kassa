@@ -129,7 +129,7 @@ Das Kennzeichen im Code ist das, was A-Trust nennt, auch am Testsystem (vermutli
 | 401 beim Signieren | Sitzung neu, ein Mal (6.2) |
 | 401 oder 403 beim **Anmelden** | Die Zugangsdaten gelten als **abgelehnt**. Die Kassa meldet sich nicht mehr von selbst an. Ausfall läuft weiter. |
 
-Im Zustand "abgelehnt" spricht die Kassa nicht mehr mit A-Trust, auch nicht bei "Nochmal prüfen" in der Kassa. Der Hinweis sagt dann: "A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen." Nur der Chef hebt den Zustand in den Einstellungen auf, mit einem ausdrücklichen Antippen, und jedes Antippen ist genau ein Versuch. So kann die Kassa das Konto nicht sperren. Der Zustand überlebt einen Neustart.
+Im Zustand "abgelehnt" spricht die Kassa nicht mehr mit A-Trust, auch nicht bei "Nochmal prüfen" in der Kassa und auch nicht bei "Verbindung prüfen" ohne Antippen des Chefs (strenger als hier beschrieben, siehe 11). Der Hinweis sagt dann: "A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen." Nur der Chef hebt den Zustand in den Einstellungen auf, mit einem ausdrücklichen Antippen, und jedes Antippen ist genau ein Versuch. So kann die Kassa das Konto nicht sperren. Der Zustand überlebt einen Neustart.
 
 Im echten Betrieb gilt: Jeder Fehler der Signatureinheit, erwartet oder nicht, ist ein Ausfall. Der Bon wird mit Vermerk gespeichert. Nur wenn die Datenbank selbst nicht schreibt, scheitert der Verkauf. (Kern K9, das Abschalten bei einem unerwarteten Fehler, gilt weiter nur im Zustand Probe und dort nur für Fehler außerhalb der Signatureinheit, etwa einen nicht lesbaren AES-Schlüssel. Die Online-Einheit meldet jeden eigenen Fehler als Ausfall.)
 
@@ -153,7 +153,7 @@ Scheitert "Verbindung prüfen", beginnt keine Kette, und der Bildschirm zeigt, w
 Ein Bildschirm wie "Karte prüfen": Zeile für Zeile mit Haken oder Kreuz und einem Satz.
 
 1. A-Trust erreicht (mit Dauer).
-2. Zertifikat geladen: Aussteller, Seriennummer, gültig bis. Geprüft wird: Verfahren ES256, Kurve P-256, heute gültig.
+2. Zertifikat geladen: Aussteller, Seriennummer, gültig bis. Geprüft wird: Verfahren ES256, Kurve P-256, heute gültig (am Testsystem ist ein abgelaufenes Zertifikat kein Fehler, siehe 11).
 3. Angemeldet.
 4. Probe-Unterschrift erstellt und am Tablet gegen das Zertifikat geprüft (mit Dauer). Das verbraucht eine Signatur aus dem Paket.
 
@@ -194,7 +194,7 @@ Neue Version der Datenbank mit Migration und Test:
 
 - Die Kette bekommt ihre Einheit (Probe, A-Trust Test, A-Trust echt). Vorhandene Ketten sind Probe.
 - Zur Kette gehören auch die Aussteller-Zertifikate, damit sie im ausgegebenen Protokoll stehen.
-- Der Stand bekommt das Kennzeichen "Zugangsdaten abgelehnt".
+- Der Stand bekommt das Kennzeichen "Zugangsdaten abgelehnt". (Im Bau liegt es im geschützten Speicher, nicht im Stand, siehe 11.)
 - Im geschützten Speicher neu: Benutzername und Passwort von A-Trust.
 
 ### 6.10 Wie geprüft wird
@@ -246,7 +246,7 @@ Hingenommen bleibt, dass ein Verkauf ein Mal etwa 6 statt 5 Sekunden warten kann
 
 5. Ob Android und GitHub dem HTTPS-Zertifikat von A-Trust vertrauen. Vertraut GitHub ihm nicht, hält der Bau an dieser Stelle an, und Claude meldet sich bei Niko mit den Möglichkeiten. Die Kassa liefert in S2a kein eigenes Zertifikat von A-Trust mit (6.4). Vertraut das Tablet ihm nicht, sagt "Verbindung prüfen" das in Zeile 1 mit einem eigenen Satz, und Niko schickt den Bericht.
 6. Form der Antworten (Base64 oder Base64-URL, Text der Fehler), Kennzeichen des Ausstellers am Testsystem.
-7. Ob das Prüfwerkzeug das Zertifikat des Testsystems annimmt.
+7. Ob das Prüfwerkzeug das Zertifikat des Testsystems annimmt. (Beantwortet: ja, siehe 11.)
 
 ## 10. Dem Bau überlassen
 
@@ -254,4 +254,88 @@ Namen von Klassen, Tabellen und Spalten, Aufteilung in Dateien, Wortlaut der Sä
 
 ## 11. Abweichungen beim Bau
 
-(noch leer)
+Hier steht, was beim Bau von S2a anders entschieden wurde, als der Entwurf es oben beschreibt oder offenlässt, was A-Trusts Testsystem wirklich antwortet, und was es kostet. Der Stand gilt für die Version 1.5.0. Der Abschnitt ist für den, der S2b baut.
+
+### 11.1 Abweichungen von den Abschnitten 6 bis 9
+
+Das sind die Stellen, an denen der Bau von diesem Entwurf abweicht. Wo es zählt, steht dort oben ein Hinweis "siehe 11".
+
+| Stelle | Entwurf sagt | Der Bau tut | Grund |
+|---|---|---|---|
+| 6.9 (P1) | Der Stand bekommt das Kennzeichen "Zugangsdaten abgelehnt". | Das Kennzeichen liegt im geschützten Speicher (`RksvSecrets`). Die Oberfläche liest es über den Sitzungshalter. | Siehe P1. |
+| 6.6 (R3) | Zertifikat "heute gültig". | Am Testsystem ist ein abgelaufenes Zertifikat kein Problem. Die Prüfung bleibt für das echte System. | Das Test-Zertifikat von A-Trust ist seit 10.05.2020 abgelaufen. |
+| 6.3 (R7) | Im Zustand "abgelehnt" keine Anmeldung ohne Antippen des Chefs. | Strenger: "Verbindung prüfen" schickt dann gar keine Anfrage, nicht nur keine Anmeldung. | Ein Lauf ohne Antippen darf das Konto in keiner Weise belasten. |
+| 6.2 Schritt 4 (R4) | 401 beim Signieren heißt: Sitzung abgelaufen. | Gilt, aber der Test am Testsystem nimmt eine erfundene Sitzung, weil eine abgemeldete dort weiter signiert. | Siehe 11.3. |
+
+Der offene Punkt 7 aus Abschnitt 9 ist beantwortet: Das Prüfwerkzeug des Finanzministeriums nimmt eine Kette an, die mit dem Test-Zertifikat von A-Trust signiert ist, solange die Belege innerhalb der Gültigkeit des Zertifikats liegen (siehe 11.5).
+
+### 11.2 Entscheidungen im Plan
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| P1 | Das Kennzeichen "Zugangsdaten abgelehnt" liegt im geschützten Speicher, nicht in der Datenbank. | Signiert wird in der Transaktion des Bons. Eine Anmeldung im Hintergrund, die in die Datenbank schreiben will, müsste auf diese Transaktion warten. Der geschützte Speicher kennt keine Transaktionen. | Die Oberfläche liest es über den Sitzungshalter. Weicht von 6.9 ab. |
+| P2 | Die Online-Einheit wandelt jeden eigenen Fehler in einen Ausfall mit einem deutschen Satz. Das Journal übernimmt ihn als Grund. | Der Grund steht im Hinweis (Abschnitt 7). | Bei abgelaufener Frist bleibt der feste Satz des Journals "Die Signatur hat nicht geantwortet.". |
+| P3 | "Verbindung prüfen" läuft vor dem Einschalten und außerhalb jeder Transaktion. Der Startbeleg wird danach wie jeder Bon mit 5 Sekunden Frist signiert. | Kern K1 bleibt. | Fällt das Netz dazwischen aus, beginnt keine Kette, und der Chef tippt noch einmal. |
+| P4 | Kern K9 (Probe schaltet sich nach unerwartetem Fehler ab) gilt für beide Arten der Probe, nur für Fehler außerhalb der Einheit. | Die Kassa verkauft immer. | Keiner. |
+| P5 | Task 1 (Erkundung) läuft zuerst, seine Befunde stehen im Plan und hier in 11.3. | Die Form der Antworten ist im Handbuch nicht vollständig beschrieben. | Ein GitHub-Lauf vor dem Bau. |
+| P6 | Der öffentliche Test-Benutzer und der gesperrte Test-Benutzer von A-Trust stehen als Konstanten im Code. | Beide sind öffentlich. Die Online-Probe braucht kein Tippen. | Jeder kann damit signieren. Deshalb bleibt alles Testbon. |
+| P7 | Eine Sitzung gilt nach 55 Minuten ohne Benutzung oder bei neuem Kalendertag (Ortszeit des Tablets) als abgelaufen. | A-Trust sagt 60 Minuten und Mitternacht. | Liegt Mitternacht bei A-Trust anders, fängt "401, einmal neu anmelden" es auf. |
+| P8 | Kein eigenes Zertifikat von A-Trust in der App. | Offener Punkt 5. | Griff nicht: GitHub vertraut dem Zertifikat. |
+
+### 11.3 Befunde vom Testsystem
+
+Gefunden mit dem GitHub-Lauf `atrust-testsystem`. Diese Antworten gelten vor dem Handbuch.
+
+- `ZDA` liefert das Kennzeichen `AT1`. Das ist das Kennzeichen der Online-Probe.
+- `Certificate` liefert Zertifikat, zwei Aussteller-Zertifikate, die Seriennummer dezimal und hex (Großbuchstaben) und das Verfahren `ES256`. Die Seriennummer wird ohne Beachtung von Groß- und Kleinschreibung verglichen.
+- Das Test-Zertifikat ist abgelaufen (gültig 10.03.2016 bis 10.05.2020). Siehe R3.
+- Die Aussteller-Zertifikate haben RSA-Schlüssel. Sie werden nur gespeichert und ausgegeben, nie als Karten-Zertifikat gelesen.
+- `Sign/Hash` liefert die Signatur als Base64-URL ohne `=`, 64 Bytes. Der Client nimmt beide Alphabete an.
+- Fehler erkennt die Kassa nur am Statuscode: 401 für eine unbekannte Sitzung, 403 für den gesperrten Benutzer, 404 für eine unbekannte Adresse. Der Körper ist eine HTML-Seite und wird bei Status ungleich 200 nie gelesen.
+- Nach dem Abmelden signiert dieselbe Sitzung weiter. Auf das Abmelden ist kein Verlass.
+- Eine Signatur dauert etwa 0,13 Sekunden (von GitHub aus).
+
+### 11.4 Entscheidungen während des Baus
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| R1 | `connectionCheckProvider` liegt in `online_providers.dart`. | Alles zur Online-Einheit steht an einem Ort. | Keiner. |
+| R2, R6 | `AtrustSessionKeeper.restore()` ist wiederholbar. Der Bauer der Einheit im Journal wartet nicht darauf. Der Halter liest das gespeicherte Kennzeichen "abgelehnt" selbst und schickt nichts, solange es unbekannt ist. | Ein Fehler beim Bauen der Einheit würde die Probe abschalten, statt einen Ausfall zu verzeichnen. | Keiner. |
+| R3 | Am Testsystem ist ein abgelaufenes Zertifikat kein Problem. | Siehe 11.3. Weicht von 6.6 ab. | Die Prüfung "gültig" gilt erst für das echte System. |
+| R4 | Der Weg "401, neu anmelden" wird am echten System mit einer erfundenen Sitzung getestet. | Eine abgemeldete Sitzung signiert dort weiter. | Der Test nutzt eine erfundene Sitzung statt einer abgelaufenen. |
+| R5 | Der frühe Lauf des Prüfwerkzeugs von Hand entfällt. | Von der Entwicklungsumgebung aus ist das Testsystem gesperrt. | Die Frage klärte der Lauf in Task 8. |
+| R7 | Bei abgelehnten Zugangsdaten schickt "Verbindung prüfen" ohne Antippen des Chefs gar keine Anfrage. | Schutz des Kontos. Strenger als 6.3. | Keiner. |
+| R8 | Die Probe-Unterschrift in "Verbindung prüfen" signiert den ASCII-Text `Kassa Verbindung pruefen`. | Die Einheit signiert nur ASCII (der Plan hatte einen Umlaut). | Keiner. |
+| R9 | Der Satz zu abgelehnten Zugangsdaten erscheint in der Kassa nur, solange eine Online-Probe läuft. | Das Kennzeichen kann eine beendete Probe überdauern. | Keiner. |
+| R10 | Im Hinweis der Kassa steht der Grund in einer eigenen Zeile. | Die Zeichnungen hatten einen einzigen Absatz. | Keiner. |
+| R11 | "Geht noch nicht." verschwindet, wenn sich der Ausfall oder sein Grund ändert, nicht bei jedem Verkauf. | Ein altes Ergebnis soll nicht stehen bleiben. | Keiner. |
+| R12 | Der Test gegen das echte System hat einen Probelauf gegen den Nachbau, der überall läuft. | Der Weg ist so auch ohne Internet geprüft. | Keiner. |
+
+Weitere Entscheidungen beim Bau:
+
+- Die Migration von Datenbankversion 3 auf 4 legt die Tabelle der Ketten mit festem SQL an, weil die erzeugte Tabelle schon die neue Spalte enthält. Geprüft sind alle Wege 1 nach 5, 2 nach 5, 3 nach 5 und 4 nach 5. Sie ergeben dasselbe Schema wie eine neue Datenbank. Nach einer Migration steht die Spalte `unit` zuletzt.
+- Die Karte "Signatur" zeigt den Grund eines Ausfalls auch bei der einfachen Probe. Der Satz für einen `StateError` gilt für jede Aktion der Karte. Die Frage "Speisekarte neu einspielen" scrollt ins Bild, weil die neue Zeile sie sonst unter den Rand schob.
+
+### 11.5 Ergebnis der Läufe
+
+**Lauf gegen das Testsystem** (GitHub `atrust-testsystem`, Nummer 6, Commit 2a19820, 19.11.2026), bestanden:
+
+- "Verbindung prüfen" gibt vier Haken.
+- 20 Signaturen mit genau einer Anmeldung, jede am Zertifikat geprüft.
+- Eine erfundene Sitzung gibt "abgelaufen".
+- Der gesperrte Test-Benutzer wird abgewiesen, danach geht keine Anfrage mehr hinaus.
+- Eine Kette aus Startbeleg, Verkauf, Storno, Monatsbeleg, Verkauf über 1.234,56 Euro, Nullbeleg und Schlussbeleg wurde von A-Trust signiert und ist in sich stimmig.
+
+**Prüfwerkzeug des Finanzministeriums** (`tool/rksv/pruefen_datei.sh`) über genau diese Kette (7 Belege vom 18.11.2019 bis 02.12.2019, Ausstellerkennzeichen AT1, Zertifikat 2159b9f6): alle 30 Ergebnisdateien PASS. Das Werkzeug nimmt das Test-Zertifikat an, solange die Belege innerhalb von dessen Gültigkeit liegen.
+
+### 11.6 Bekannte kleine Punkte
+
+Nicht in S2a behoben, außer die Schlussprüfung entscheidet anders.
+
+- Solange das Tablet offline ist, löst jeder Bon zwei Anmeldeversuche aus (den des Bons und einen im Hintergrund). Das ist begrenzt, keine Schleife.
+- Scheitert das Schreiben des Kennzeichens "abgelehnt" in den geschützten Speicher, gilt es nur im Arbeitsspeicher. Nach einem Neustart ginge eine Anmeldung mehr hinaus.
+- Der Zweig der Prüfung "Schlüssel nicht P-256" ist nicht erreichbar, weil der Client ein solches Zertifikat schon als nicht lesbar meldet.
+- Der Hinweis unter einer gescheiterten Probe-Unterschrift wird durch den Vergleich von Sätzen gefunden.
+- Der Bildschirm "Verbindung prüfen" wiederholt den Rahmen von "Karte prüfen", statt ihn zu teilen.
+- Die Einheit einer Kette ließe sich in der Datenbank ändern, solange die Kette läuft. Kein Code tut es, kein Trigger verbietet es.
+- Im ersten Ausfall kann ein Verkauf ein Mal bis zu 5 Sekunden auf die Signatur warten (dazu die übliche Zeit, in der Prüfliste "bis zu 6 Sekunden"). Danach wartet er etwa 1 Sekunde.
