@@ -85,3 +85,44 @@ test('ein Passwort mit Anführungszeichen wird gesetzt, ohne dass SQL ausgeführ
   expect(tables.rowCount).toBe(0);
   await migrate(t.ownerUrl, { appPassword: TEST_APP_PASSWORD });
 });
+
+test('0002 läuft auf einer Datenbank mit Stand 0001 und lässt vorhandene Artikel stehen', async () => {
+  const suffix = randomBytes(6).toString('hex');
+  const database = `kassa_test_alt_${suffix}`;
+  await owner(`create database ${database}`);
+  try {
+    const url = withDatabase(t.ownerUrl, database);
+    const c = new pg.Client({ connectionString: url });
+    await c.connect();
+    try {
+      await c.query('create table schema_migrations (name text primary key, applied_at timestamptz not null default now())');
+      // Stand 0001: nur 0000 und 0001 anwenden, dann einen Artikel anlegen.
+      const { readFile } = await import('node:fs/promises');
+      for (const name of ['0000_roles.sql', '0001_init.sql']) {
+        const sql = await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8');
+        await c.query(sql);
+        await c.query('insert into schema_migrations (name) values ($1)', [name]);
+      }
+      const b = await c.query<{ id: string }>(
+        `insert into businesses (name, change_seq) values ('Alt', nextval('change_seq')) returning id`,
+      );
+      const biz = b.rows[0]!.id;
+      await c.query(`insert into categories (business_id, id, name, position, change_seq) values ($1, 'k', 'K', 0, 1)`, [biz]);
+      await c.query(
+        `insert into items (business_id, id, name, price_cents, category_id, tax_percent, position, change_seq)
+         values ($1, 'huhn-bowl', 'Huhn Bowl', 990, 'k', 10, 0, 1)`,
+        [biz],
+      );
+      const applied = await migrate(url, { appPassword: TEST_APP_PASSWORD });
+      expect(applied).toEqual(['0002_sync.sql']);
+      const item = await c.query('select name, price_cents, photo_file_id from items where id = $1', ['huhn-bowl']);
+      expect(item.rows).toEqual([{ name: 'Huhn Bowl', price_cents: 990, photo_file_id: null }]);
+      const biz2 = await c.query('select time_zone from businesses where id = $1', [biz]);
+      expect(biz2.rows[0]!.time_zone).toBe('Europe/Vienna');
+    } finally {
+      await c.end();
+    }
+  } finally {
+    await owner(`drop database if exists ${database} with (force)`);
+  }
+});

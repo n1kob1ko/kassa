@@ -70,7 +70,7 @@ test('erstes Einspielen: alles added, Nummern steigen in Datei-Reihenfolge', asy
     template_id: 'bowl',
     favorite: false,
     in_sale: true,
-    photo_file: null,
+    photo_file_id: null,
     archived: false,
   });
   expect(its[1]!.info).toBe('5 Stück');
@@ -200,11 +200,11 @@ test('Vorlage geändert: nur dieses Stück changed, Schlüsselreihenfolge im jso
   expect((await templates(b))[0]!.groups[0].options[1].surchargeCents).toBe(250);
 });
 
-test('favorite, in_sale und photo_file überleben das Einspielen', async () => {
+test('favorite, in_sale und photo_file_id überleben das Einspielen', async () => {
   const b = await fresh();
   await run(b, menu());
   await withBusinessWrite(t.db, b, (c) =>
-    c.query(`update items set favorite = true, in_sale = false, photo_file = 'cola.jpg' where id = 'cola'`),
+    c.query(`update items set favorite = true, in_sale = false, photo_file_id = '33333333-3333-4333-8333-333333333333' where id = 'cola'`),
   );
   await run(
     b,
@@ -212,7 +212,12 @@ test('favorite, in_sale und photo_file überleben das Einspielen', async () => {
     T1,
   );
   const cola = (await items(b)).find((r) => r.id === 'cola')!;
-  expect([cola.favorite, cola.in_sale, cola.photo_file, cola.price_cents]).toEqual([true, false, 'cola.jpg', 300]);
+  expect([cola.favorite, cola.in_sale, cola.photo_file_id, cola.price_cents]).toEqual([
+    true,
+    false,
+    '33333333-3333-4333-8333-333333333333',
+    300,
+  ]);
   expect([cola.favorite_changed_at, cola.in_sale_changed_at]).toEqual([T0, T0]);
 });
 

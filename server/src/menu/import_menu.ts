@@ -71,7 +71,7 @@ type TemplateRow = { id: string; name: string; groups: unknown; archived: boolea
 
 /**
  * Spielt eine geprüfte Speisekarte in einen Betrieb ein. Nur innerhalb von withBusinessWrite aufrufen.
- * Die Datei gewinnt bei allem, was in ihr steht. `favorite`, `in_sale` und `photo_file` bleiben.
+ * Die Datei gewinnt bei allem, was in ihr steht. `favorite`, `in_sale` und `photo_file_id` bleiben.
  * Was fehlt, wird stillgelegt, was wieder auftaucht, wieder in Betrieb genommen.
  * Nur Zeilen, die sich wirklich ändern, bekommen eine neue Änderungs-Nummer.
  * Mitarbeiter aus der Datei werden nie angelegt.
