@@ -119,13 +119,19 @@ describe.skipIf(!haveDump)('mit echtem pg_dump', () => {
     expect(files).toHaveLength(14);
     expect(files[0]).toBe('kassa-2026-12-03.dump');
     expect(files[13]).toBe('kassa-2026-12-16.dump');
-    const rows = await backups();
-    expect(rows.filter((r) => r.ok)).toHaveLength(14);
-    expect(rows.map((r) => r.day)).not.toContain('2026-12-02');
+    // Die Zeilen bleiben als Verlauf; bei den zwei ältesten ist der Schlüssel leer.
+    const ok = (await backups()).filter((r) => r.ok);
+    expect(ok).toHaveLength(16);
+    expect(ok.filter((r) => r.storage_key !== null)).toHaveLength(14);
+    expect(ok.slice(0, 2).map((r) => [r.day, r.storage_key])).toEqual([
+      ['2026-12-01', null],
+      ['2026-12-02', null],
+    ]);
   });
 
-  test('Fehlschläge zählen nicht mit und bleiben stehen; ein Fehler beim Löschen macht heute nicht failed', async () => {
+  test('ein Fehler beim Löschen einer alten Sicherung macht heute nicht failed und lässt den Schlüssel stehen', async () => {
     await clearBackups();
+    logs.length = 0;
     const failing = {
       ...a.app.deps,
       files: {
@@ -140,11 +146,18 @@ describe.skipIf(!haveDump)('mit echtem pg_dump', () => {
       at(`2027-01-${String(d).padStart(2, '0')}T08:00:00Z`);
       expect(await runBackupIfDue(failing, { pgDumpPath: PG_DUMP, log })).toBe('done');
     }
-    // Das Objekt ließ sich nicht löschen: die Zeile bleibt, damit der nächste Lauf es wieder versucht.
-    expect((await backups()).filter((r) => r.ok)).toHaveLength(15);
+    // Das Objekt ließ sich nicht löschen: der Schlüssel der ältesten Zeile bleibt, damit der nächste Lauf es wieder versucht.
+    let rows = (await backups()).filter((r) => r.ok);
+    expect(rows).toHaveLength(15);
+    expect(rows.every((r) => r.storage_key !== null)).toBe(true);
+    expect(await backupFiles()).toHaveLength(15);
+    expect(logs.some((l) => l.msg === 'alte Sicherung ließ sich nicht löschen')).toBe(true);
     at('2027-01-16T08:00:00Z');
     expect(await runBackupIfDue(a.app.deps, { pgDumpPath: PG_DUMP, log })).toBe('done');
-    expect((await backups()).filter((r) => r.ok)).toHaveLength(14);
+    rows = (await backups()).filter((r) => r.ok);
+    expect(rows).toHaveLength(16);
+    expect(rows.filter((r) => r.storage_key !== null)).toHaveLength(14);
+    expect(rows.slice(0, 2).every((r) => r.storage_key === null)).toBe(true);
     expect(await backupFiles()).toHaveLength(14);
   });
 

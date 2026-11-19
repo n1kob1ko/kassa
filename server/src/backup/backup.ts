@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { FastifyBaseLogger } from 'fastify';
-import pg from 'pg';
 import type { AppDeps } from '../app.js';
 import type { Db } from '../db/db.js';
 import { withSystem } from '../db/tenant.js';
@@ -80,44 +79,34 @@ function failureText(err: unknown): string {
   return typeof e.message === 'string' && e.message !== '' ? e.message : 'unbekannter Fehler';
 }
 
-/** Löscht alle gelungenen Sicherungen bis auf die jüngsten 14, erst das Objekt, dann die Zeile. Ein Fehler steht im Protokoll und bricht nichts ab. */
+/**
+ * Behält die Dateien der jüngsten 14 gelungenen Sicherungen. Von älteren wird das Objekt gelöscht und danach `storage_key`
+ * der Zeile geleert; die Zeilen bleiben als Verlauf. Scheitert ein Löschen, bleibt der Schlüssel stehen (der nächste Lauf
+ * versucht es wieder), der Fehler steht im Protokoll und bricht nichts ab.
+ */
 async function prune(deps: AppDeps, log: BackupLog | undefined): Promise<void> {
-  let old: { id: string; storage_key: string | null }[];
+  let old: { id: string; storage_key: string }[];
   try {
     old = await withSystem(deps.db, async (c) => {
-      const r = await c.query<{ id: string; storage_key: string | null }>(
-        `select id, storage_key from backups where ok order by day desc, id desc offset $1`,
+      const r = await c.query<{ id: string; storage_key: string }>(
+        `select id, storage_key from backups where ok and storage_key is not null order by day desc, id desc offset $1`,
         [KEEP],
       );
       return r.rows;
     });
   } catch (err) {
-    log?.error({ message: (err as Error).message }, 'alte Sicherungen: Liste nicht lesbar');
+    log?.error({ message: scrub((err as Error).message, deps.config.databaseUrl) }, 'alte Sicherungen: Liste nicht lesbar');
     return;
   }
-  if (old.length === 0) return;
-  // Löschen darf nur der Besitzer der Datenbank: kassa_app hat auf `backups` kein delete.
-  const owner = new pg.Client({ connectionString: deps.config.databaseUrl });
-  try {
-    await owner.connect();
-  } catch (err) {
-    log?.error({ message: scrub((err as Error).message, deps.config.databaseUrl) }, 'alte Sicherungen: keine Verbindung zum Löschen');
-    return;
-  }
-  try {
-    for (const row of old) {
-      try {
-        if (row.storage_key !== null) {
-          if (!row.storage_key.startsWith(PREFIX)) continue;
-          await deps.files.delete(row.storage_key);
-        }
-        await owner.query('delete from backups where id = $1 and ok', [row.id]);
-      } catch (err) {
-        log?.error({ id: row.id, key: row.storage_key, message: scrub((err as Error).message, deps.config.databaseUrl) }, 'alte Sicherung ließ sich nicht löschen');
-      }
+  for (const row of old) {
+    // Nie etwas außerhalb von backups/ anfassen.
+    if (!row.storage_key.startsWith(PREFIX)) continue;
+    try {
+      await deps.files.delete(row.storage_key);
+      await withSystem(deps.db, (c) => c.query('update backups set storage_key = null where id = $1', [row.id]));
+    } catch (err) {
+      log?.error({ id: row.id, key: row.storage_key, message: scrub((err as Error).message, deps.config.databaseUrl) }, 'alte Sicherung ließ sich nicht löschen');
     }
-  } finally {
-    await owner.end().catch(() => undefined);
   }
 }
 

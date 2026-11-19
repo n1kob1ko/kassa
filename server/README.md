@@ -20,7 +20,7 @@ Die Rolle aus `DATABASE_URL` muss Superuser sein oder BYPASSRLS haben (der Benut
 
 ## Sicherung
 
-Der Server sichert die Datenbank jede Nacht (nach 3 Uhr Wiener Zeit) mit `pg_dump` in die Ablage, unter `backups/kassa-<Tag>.dump`. Die letzten 14 gelungenen Sicherungen bleiben. Beim Start prüft der Server, ob `pg_dump` mindestens so neu ist wie die Datenbank (sonst steht ein Hinweis im Protokoll); nach einer Minute und dann jede Stunde schaut er, ob eine Sicherung fällig ist.
+Der Server sichert die Datenbank jede Nacht (nach 3 Uhr Wiener Zeit) mit `pg_dump` in die Ablage, unter `backups/kassa-<Tag>.dump`. Die Dateien der letzten 14 gelungenen Sicherungen bleiben; bei älteren löscht der Server die Datei, die Zeile in der Tabelle `backups` bleibt als Verlauf. Beim Start prüft der Server, ob `pg_dump` mindestens so neu ist wie die Datenbank (sonst steht ein Hinweis im Protokoll); nach einer Minute und dann jede Stunde schaut er, ob eine Sicherung fällig ist.
 
 - `PG_DUMP_PATH` (optional): Pfad zu `pg_dump`. Vorgabe `pg_dump`. Die Hauptversion muss mindestens die der Datenbank sein.
 - `BACKUP_DISABLED=1` (optional): schaltet die nächtliche Sicherung ab, etwa in der Entwicklung.
