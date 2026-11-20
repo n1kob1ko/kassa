@@ -21,8 +21,8 @@ import '../login/session.dart';
 import 'card_check_screen.dart' show checkCardDecoration;
 import 'go_live_question.dart';
 import 'settings_rows.dart';
-import 'signature_panel.dart'
-    show irreversibleStepProvider, printRksvReceipt, staleSettingsSentence;
+import '../shell/irreversible_step.dart';
+import 'signature_panel.dart' show printRksvReceipt, staleSettingsSentence;
 
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 

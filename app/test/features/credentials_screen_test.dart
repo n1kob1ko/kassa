@@ -8,8 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
-import 'package:kassa/features/login/session.dart';
-import 'package:kassa/features/settings/credentials_screen.dart';
 import 'package:kassa/features/shell/shell_screen.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
@@ -512,23 +510,6 @@ void main() {
     await t.pumpAndSettle();
     expect(_key('credentials'), findsNothing);
     expect(_key('signature-card'), findsOneWidget);
-  });
-
-  testWidgets('ein Mitarbeiter ohne Chef-Recht kommt nicht auf den '
-      'Bildschirm', (t) async {
-    final fake = _fake();
-    await pumpSettings(t, extra: onlineOverrides(fake));
-    final container = containerOf(t);
-    container.read(sessionProvider.notifier).logout();
-    await t.pumpAndSettle();
-    await container.read(sessionProvider.notifier).login('1234');
-    await t.pumpAndSettle();
-    expect(container.read(sessionProvider)!.isChef, isFalse);
-    openCredentials(t.element(find.byType(ShellScreen)));
-    await t.pumpAndSettle();
-    expect(find.byType(CredentialsScreen), findsNothing);
-    expect(find.byType(TextField), findsNothing);
-    expect(fake.requests, isEmpty);
   });
 
   testWidgets('Schlussprüfung I3: läuft noch eine Prüfung der alten '

@@ -16,8 +16,8 @@ import '../login/session.dart';
 import '../overview/overview_screen.dart';
 import '../settings/credentials_screen.dart' show CredentialsRoute;
 import '../settings/settings_screen.dart';
-import '../settings/signature_panel.dart'
-    show ConnectionCheckOpening, irreversibleStepProvider;
+import '../settings/signature_panel.dart' show ConnectionCheckOpening;
+import 'irreversible_step.dart';
 
 /// Öffnet in den Einstellungen "Zugangsdaten von A-Trust", mit [edit] gleich
 /// die Felder. Wie jede Seite der Einstellungen nur für den Chef: Für jemand
