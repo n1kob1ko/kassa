@@ -378,3 +378,84 @@ Für den Bau von S2b:
 5. Das verschluckte Schreiben des Kennzeichens "abgelehnt" und der Wartesatz von Zeile 1 bei "abgelehnt" werden erreichbar, sobald ein Chef ein falsches Passwort tippen kann.
 6. Mit der Grenze für die Anmeldung kann ein hängendes Netz alle 20 Sekunden eine Anmeldung losschicken, bis die erste Antwort kommt. Mit falschen Zugangsdaten auf einem echten Konto zählt das für die Sperrgrenze von A-Trust.
 7. Gefunden beim Gegenlesen von A1: Antwortet eine aufgegebene Anmeldung spät mit 401 oder 403, während schon eine neue läuft, und antwortet die neue danach mit 200, dann behält der Halter deren Sitzung, obwohl "abgelehnt" gilt (`atrust_session_keeper.dart`, `_answer`). Wer auf die neue Anmeldung gewartet hat, schickt dann je eine Signatur los, und Zeile 3 von "Verbindung prüfen" zeigt nach dem Tippen des Chefs "Angemeldet", ohne neu anzumelden. Abhilfe: gleich nach der Antwort der Anmeldung prüfen, ob "abgelehnt" gilt, und dann mit "abgelehnt" enden.
+
+## 12. Abweichungen beim Bau von S2b
+
+Hier steht, was beim Bau von S2b anders entschieden wurde, als der Entwurf es oben beschreibt oder offenlässt, was am Wortlaut der Verordnung geprüft wurde und was für die Steuerberatung offen bleibt. Der Stand gilt für die Version 1.7.0. Der Abschnitt ist für den, der nach S2b weiterbaut, und für die Steuerberatung.
+
+### 12.1 Entscheidungen im Plan
+
+Aus dem Plan `docs/superpowers/plans/2026-11-20-rksv-s2b-inbetriebnahme.md`, Abschnitt "Entscheidungen in diesem Plan (Claude)".
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| Q1 | Die Datenbank bleibt Version 6. Es gibt keine Migration. | `rksv_chains.mode` und `unit` sind Text und kennen `live` und `atrust` schon. Alles Neue liegt im geschützten Speicher oder in `rksv_state.tasks`. | Die für S2b reservierte Version 7 bleibt frei. |
+| Q2 | Kassen-Kennung und AES-Schlüssel entstehen, wenn der Chef zum ersten Mal die "Angaben für FinanzOnline" öffnet, und liegen bis zur Inbetriebnahme im geschützten Speicher (`PendingSetup`). Die Inbetriebnahme verwendet genau diese Werte. | Die Angaben, die bei FinanzOnline eingetragen werden, müssen zu der Kette passen, auch wenn zwischen Abschreiben und Start Tage liegen. | Bricht der Chef ab, bleiben die Werte liegen, bis er startet oder die Zugangsdaten löscht. |
+| Q3 | Benutzername und Passwort werden mit der Tastatur getippt, nur im Bildschirm "Zugangsdaten von A-Trust". `test/no_text_field_test.dart` lässt genau diese eine Datei zu. | Entwurf 6.7, Ausnahme von der Touch-Regel, weil Einrichtung. | Ein Bildschirm mit Tastatur. |
+| Q4 | "Abgelehnt" gilt je System: das echte System hat ein eigenes Kennzeichen (`rksv_atrust_rejected_live`). Neue Zugangsdaten speichern hebt es auf. | Entwurf 11.7, Punkt 2. Eine Ablehnung des Test-Benutzers darf den echten Betrieb nicht stilllegen und umgekehrt. | Keiner. |
+| Q5 | Der Halter liest die Zugangsdaten bei jeder Anmeldung neu aus dem geschützten Speicher. Fehlen sie, schickt er nichts und meldet "Die Zugangsdaten von A-Trust fehlen.". Speichert der Chef neue, verwirft der Halter seine Sitzung. | Entwurf 11.7, Punkt 3. | Ein Lesezugriff je Anmeldung. |
+| Q6 | Im Zustand `live` ist jeder Fehler beim Bauen oder Benutzen der Signatureinheit ein Ausfall mit einem deutschen Satz. Nur ein Fehler der Datenbank lässt den Verkauf scheitern. K9 (Probe schaltet sich ab) bleibt allein für `probe`. | Entwurf 6.3 und 11.7, Punkt 1. | Ein Programmierfehler in der Einheit zeigt sich als Ausfall statt als Absturz. |
+| Q7 | `goLive` ist eine einzige Transaktion: laufende Probe mit Schlussbeleg beenden, neue Kette `live`, Startbeleg von A-Trust signiert. Scheitert der Startbeleg, bleibt alles, wie es war, auch die Probe. | Kein halber Zustand. | Die Datenbank ist für die Dauer einer Signatur belegt (wie bei jedem Bon). |
+| Q8 | "Außer Betrieb" ist kein neuer Modus: `mode` wird `off`, und der Stand heißt "Außer Betrieb", wenn die jüngste Kette eine beendete `live`-Kette ist. Offene Aufgaben bleiben, dazu kommt "Außerbetriebnahme melden". | Keine Migration (Q1). | Eine Abfrage mehr im Stand. |
+| Q9 | Signiert A-Trust mit einer frisch geholten Sitzung wieder nicht (401 oder 403), meldet die Einheit für diese Sitzung nicht noch einmal neu an. Der Bon wird ein Ausfall mit "A-Trust hat die Signatur abgelehnt.". | Entwurf 11.7, Punkt 4: Auf einem echten Konto kann 403 etwas anderes heißen als "Sitzung abgelaufen", etwa ein aufgebrauchtes Paket. Sonst ginge je Bon eine Anmeldung hinaus. | Läuft eine Sitzung wirklich zweimal hintereinander ab, dauert der Ausfall bis zur nächsten frischen Sitzung (55 Minuten Ruhe oder neuer Tag). |
+| Q10 | Der Server und die Nachrichten an ihn bleiben unverändert. `rksv_chains.unit` geht weiter nicht zum Server. Das Feld `test` eines Bons kann sich nie ändern: Bon und Protokoll-Eintrag entstehen in derselben Transaktion, und der Modus einer Kette wird nie umgeschrieben (die Inbetriebnahme beginnt eine neue Kette). Tests halten das fest. | Der Hinweis aus Teil C Stufe 2 ("test steckt in der Prüfsumme") braucht so keine Änderung am Server und kein Ausrollen. | Sollte je ein Weg entstehen, der einen Bon ohne seinen Eintrag sendet, meldet der Server einen Konflikt. |
+| Q11 | Kein Test und kein Lauf auf GitHub spricht mit dem echten System (`rksv.a-trust.at`). `AtrustSystem.live` wird nur in `online_providers.dart` gebaut. Geprüft wird der echte Weg mit dem nachgebauten A-Trust und am Tablet mit Nikos Konto. | Es gibt noch kein Konto, und ein Test darf nie echte Signaturen verbrauchen. | Der erste echte Lauf ist Nikos Prüfliste. |
+| Q12 | Der Benutzername des echten Kontos gilt wie das Passwort als Geheimnis: Er steht in keinem Bericht, Log, Fehlertext oder Ausdruck. Am Bildschirm "Zugangsdaten" ist er zu sehen. | Entwurf 6.4. | Der Bericht von "Verbindung prüfen" nennt am echten System keinen Benutzer. |
+| Q13 | Solange eine nach 20 Sekunden aufgegebene Anmeldung noch keine Antwort hat, schickt der Halter keine neue, höchstens 120 Sekunden lang (`AtrustSessionKeeper.abandonedLimit`). In dieser Zeit endet `session()` sofort mit "Kein Internet.". | Entwurf 11.7, Punkt 6: Ein hängendes Netz würde sonst alle 20 Sekunden eine Anmeldung losschicken, und mit einem falschen Passwort zählt jede für die Sperre des Kontos. | Nach einem hängenden Netz dauert der Ausfall bis zu zwei Minuten länger. |
+| Q14 | Scheitert das Schreiben des Kennzeichens "abgelehnt", merkt sich der Halter das und versucht es bei jedem `session()`, `warmUp()` und `restore()` wieder, bis es steht. Im Arbeitsspeicher gilt "abgelehnt" sofort. | Entwurf 11.7, Punkt 5: Sonst geht nach einem Neustart eine Anmeldung mit dem falschen Passwort mehr hinaus. | Bleibt der Speicher bis zum Neustart kaputt, geht diese eine Anmeldung doch hinaus. |
+| Q15 | "Protokoll ausgeben" nimmt die laufende Kette, wenn sie `live` ist. Sonst nimmt es die jüngste beendete `live`-Kette, wenn es eine gibt, und erst sonst wie bisher die laufende oder jüngste Kette der Probe. Die Außerbetriebnahme legt die Aufgabe "Protokoll sichern" an. | Das Protokoll des echten Betriebs muss aufgehoben werden (7 Jahre) und darf nicht unerreichbar werden, nur weil danach wieder eine Probe läuft. | Nach einem echten Betrieb lässt sich das Protokoll einer Probe nicht mehr ausgeben. Gab es mehrere echte Ketten, ist nur die jüngste erreichbar; die älteren wurden bei ihrer Außerbetriebnahme gesichert. |
+| Q16 | "Verbindung prüfen" am echten System sagt dazu: "Jede Prüfung zählt bei A-Trust als eine Signatur." | Die Probe-Unterschrift entsteht mit dem echten Konto und geht vom Paket ab. | Ein Satz mehr. |
+| Q17 | Das Journal behält den AES-Schlüssel einer `live`-Kette im Arbeitsspeicher, sobald er einmal gelesen wurde (`rememberLiveKey`, `primeLiveKey`). Ketten der Probe lesen weiter jedes Mal. | Gefunden in Task 2: Ohne den Schlüssel gibt es keinen gültigen Eintrag, und ein geschützter Speicher, der gerade nicht liest, hätte im echten Betrieb den Verkauf scheitern lassen. | Startet die App im echten Betrieb und der geschützte Speicher liest gar nicht, scheitert der Verkauf weiter, bis er wieder liest. |
+
+### 12.2 Abweichungen vom Entwurf (Abschnitte 6 bis 9)
+
+- 6.7 Schritt 3: Kassen-Kennung und AES-Schlüssel entstehen beim ersten Öffnen der "Angaben für FinanzOnline" und bleiben bis zur Inbetriebnahme im geschützten Speicher (Q2). Der Entwurf sagte nicht, wann sie entstehen.
+- 6.7 Schritt 4: Der Hinweis steht auf demselben Bildschirm wie die Angaben, rechts unter "Bevor du startest", nicht als eigener Schritt.
+- 6.8: Es gibt den Zustand "Außer Betrieb" in der Karte "Signatur". Er ist kein eigener Modus in der Datenbank (Q8).
+- 6.9: Die Datenbank bleibt bei Version 6 (Q1). Die für S2b vorgemerkte Version 7 bleibt frei.
+- 6.3: Im echten Betrieb ist jeder Fehler der Signatureinheit ein Ausfall (Q6). Ausnahme: Startet die App im echten Betrieb und der geschützte Speicher liest den AES-Schlüssel gar nicht, scheitert der Verkauf, bis er wieder liest (Q17).
+- Entwurf 11.7, Entscheidung F1 (S2a) ist geändert: Nach einer aufgegebenen Anmeldung wartet der Halter bis zu 120 Sekunden, bevor er neu anmeldet (Q13).
+- Die Angaben am Bildschirm stehen in der Schrift JetBrains Mono (SemiBold, SIL Open Font License 1.1, Datei und Lizenztext unter `app/assets/fonts/`), damit I, l, 1, 0 und O beim Abschreiben zu unterscheiden sind.
+- Der Server und die Nachrichten an ihn sind unverändert (Q10).
+
+### 12.3 Entscheidungen während des Baus
+
+| Nr. | Entscheidung | Warum | Preis |
+|---|---|---|---|
+| B1 | Zugangsdaten werden erst nach dem Lesen noch einmal gegen "abgelehnt", "neue Zugangsdaten" und "aufgegeben" geprüft, bevor die Anmeldung hinausgeht. | Ein langsamer geschützter Speicher hätte sonst Anmeldungen nach einer Ablehnung losgeschickt. | Keiner. |
+| B2 | Läuft die Sitzung von selbst ab und A-Trust lehnt die Signatur danach zweimal ab, gehen für diesen Bon zwei Anmeldungen hinaus, danach je Bon keine mehr. | Die Regel Q9 gilt je Sitzung. | Bei aufgebrauchtem Paket zwei Anmeldungen je 55 Minuten, mit richtigen Zugangsdaten, also ohne Sperre. |
+| B3 | Zwei Sätze, die der Plan nicht kannte: "Die Kassa konnte nicht in Betrieb genommen werden." und "Das Tablet konnte den Schlüssel nicht lesen." | Der Plan nannte für diese Fehler keinen Satz. | Der Wortlaut kann sich ändern. |
+| B4 | Liegen nach der Inbetriebnahme noch vorbereitete Werte im geschützten Speicher, deren Kassen-Kennung schon eine Kette trägt, gelten sie als nicht vorhanden. | Sonst bekäme eine zweite Inbetriebnahme dieselbe Kassen-Kennung. | Keiner. |
+| B5 | Endet eine Probe nach einer Außerbetriebnahme, bleiben die Aufgaben der echten Kette stehen. Nur die Aufgaben der Probe gehen weg. | Sonst wären "Außerbetriebnahme melden" und "Protokoll sichern" still verschwunden. | Zwei Aufgaben ohne Kettennummer (Jahresbeleg, Protokoll je Quartal) werden nach ihrem Zeitpunkt zugeordnet. |
+| B6 | "Verbindung prüfen" zeigt bei schon abgelehnten Zugangsdaten das Kreuz sofort in der ersten Zeile, ohne Anfrage. Wird die Anmeldung während der Prüfung abgelehnt, steht das Kreuz weiter in Zeile "Anmeldung". | Entwurf 11.7, Punkt 5. | Bestehende Tests erwarten das Kreuz jetzt in Zeile 1. |
+| B7 | Der Bericht von "Verbindung prüfen" hat am echten System die Zeile "Konto: echtes Konto". | Wer den Bericht bekommt, sieht, welches System geprüft wurde, ohne den Benutzernamen. | Keiner. |
+| B8 | Das Passwortfeld meldet sich der Tastatur als Passwort. Nur das Feld für den Benutzernamen verwendet die Tastatur für sichtbare Passwörter. | Sonst behandelt die Tastatur von Android das Feld nicht geschützt. | Keiner. |
+| B9 | "Zurück" aus den "Angaben für FinanzOnline" führt zu den gespeicherten Zugangsdaten, nicht zur Prüfung. | Eine neue Prüfung zählt bei A-Trust als Signatur. | Ein Tippen mehr, wenn man die Prüfung noch einmal sehen will. |
+| B10 | Während die Kassa in Betrieb geht oder außer Betrieb geht, sind "Zurück", die Bereiche, die Einstellungen-Taste und Abmelden gesperrt. | Das Ergebnis eines Schritts, der sich nicht zurücknehmen lässt, darf nicht verloren gehen. | Bis zu 20 Sekunden ohne Bedienung, wenn A-Trust langsam antwortet. |
+| B11 | "Angaben drucken" zeigt ohne Drucker oder bei einem Fehler den Satz des Druckers. Scheitert der Druck des Startbelegs, steht kein Satz da; der Beleg lässt sich unter "Bons" drucken. | Der Nullbeleg zeigt in diesem Fall keinen Satz, auf den der Plan verwies. | Keiner. |
+| B12 | Die Karte "Signatur" darf höher sein als der Bildschirm eines Tablets mit 800 dp Höhe (Probe 840 bis 878 dp, In Betrieb rund 940 dp). Die Einstellungen lassen sich wischen. | Die Zeile "Signatur einrichten" muss auch aus der Probe erreichbar sein. | Für die letzten Zeilen der Karte ist ein Wischen nötig. |
+| B13 | Nach "Kassa außer Betrieb nehmen" steht keine eigene Meldung da. Die Pille wechselt auf "Außer Betrieb", der Schlussbeleg wird gedruckt, zwei Aufgaben erscheinen. | Plan und Bild nennen keinen Satz. | Keiner. |
+| B14 | Ohne Signatur steht "Protokoll ausgeben" vor den Zeilen zum Einschalten, auch nach einer beendeten Probe. | Bild der Karte "Außer Betrieb". | Die Reihenfolge der Zeilen in "Nicht eingerichtet" hat sich für Geräte mit einer beendeten Probe geändert. |
+| B15 | Solange "In Betrieb nehmen" oder "Außer Betrieb" läuft, gilt dieselbe Sperre der Bedienung (ein Mechanismus für beide). `openCredentials` tut für Mitarbeiter ohne Chef-Recht nichts. | Entscheidung B10; ein Mitarbeiter hätte sonst den Bildschirm für den nächsten Chef vorbereitet. | Keiner. |
+| B16 | Im Ausfall in Betrieb steht unter der Pille nur der Grund, ohne "Seit 13:05." wie im Bild. | Der Plan sagt "wie in der Online-Probe", dort steht auch keine Uhrzeit. | Die Uhrzeit des Ausfalls steht nur am Bon und in der Aufgabe. |
+
+### 12.4 Was am Wortlaut der Verordnung geprüft wurde (20.11.2026)
+
+Quellen: Text der RKSV, Stand 11/2015; Leitfaden der WKO, Stand 11/2016; Handbuch des BMF zu Registrierkassen in FinanzOnline, Stand 1/2021.
+
+- Startbeleg: Betrag 0, ausdrucken, mit der App "BMF Belegcheck" prüfen, aufheben.
+- Anmeldung von Signatureinheit und Kassa bei FinanzOnline: binnen einer Woche nach der Inbetriebnahme.
+- Protokoll (Datenerfassungsprotokoll): vierteljährlich auf einem externen Medium sichern.
+- Monatsbeleg: zu jedem Monatsende, Betrag 0. Jahresbeleg ist der Monatsbeleg für Dezember: ausdrucken, prüfen, aufheben.
+- Ausfall der Signatureinheit: Ein Ausfall, der nicht nur vorübergehend ist, ist ohne unnötigen Aufschub zu melden. Die Fristen "48 Stunden" und "eine Woche" stehen nur in den Leitfäden. Nach dem Ausfall ein Sammelbeleg mit Betrag 0. Grund in FinanzOnline: 3, Ausfall der Verbindung zur Signaturerstellungseinheit.
+- Außerbetriebnahme: Schlussbeleg mit Betrag 0, ausdrucken und aufheben; Meldung bei FinanzOnline binnen einer Woche (Handbuch des BMF); Grund 6, planmäßige Außerbetriebnahme.
+
+### 12.5 Offen für die Steuerberatung
+
+- Die Kassa erstellt den Monatsbeleg erst vor dem ersten Bon des neuen Monats. Reicht das?
+- Bis wann muss der Jahresbeleg geprüft sein? "Bis 15. Februar" steht in den drei Quellen nicht.
+- Wie läuft der Tausch der alten Kassa genau ab (Schlussbeleg dort, Abmeldung, Reihenfolge)?
+
+### 12.6 Bekannte Punkte, die in S2b bleiben
+
+Wird nach der Schlussprüfung ergänzt.
