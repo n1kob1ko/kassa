@@ -708,4 +708,32 @@ void main() {
       });
     }
   });
+
+  testWidgets('Schlussprüfung: läuft eine Probe nach der Außerbetriebnahme, '
+      'steht "zum Üben" nicht über den Aufgaben der echten Kette; erst wenn '
+      'nur noch Aufgaben der Probe da sind', (t) async {
+    await _settings(t, printer: true);
+    await goLiveInApp(t);
+    final c = containerOf(t);
+    final chef = c.read(sessionProvider)!;
+    await c.read(rksvServiceProvider).decommission(staff: chef);
+    await c.read(rksvServiceProvider).enableProbe(staff: chef);
+    await t.pumpAndSettle();
+    final state = await _state(t);
+    expect(state.mode, RksvMode.probe);
+    final ids = [for (final task in state.tasks) task.id];
+    expect(ids, contains('report-decommission-1'));
+    expect(ids, contains('backup-decommission-1'));
+    expect(_inCard(find.text('Zu erledigen')), findsOneWidget);
+    expect(_inCard(find.text(_practice)), findsNothing);
+
+    // Die Aufgaben der echten Kette erledigt: nur noch die der Probe.
+    for (final id in ids) {
+      if (id.endsWith('-1')) await _tap(t, 'rksv-task-done-$id');
+    }
+    final rest = (await _state(t)).tasks;
+    expect(rest, isNotEmpty);
+    expect(rest.every((task) => !task.id.endsWith('-1')), isTrue);
+    expect(_inCard(find.text(_practice)), findsOneWidget);
+  });
 }

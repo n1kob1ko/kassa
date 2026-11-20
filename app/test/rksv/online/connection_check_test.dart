@@ -3,12 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
+import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:kassa/core/clock.dart';
+import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/rksv/card/card_check.dart' show RowState;
 import 'package:kassa/rksv/online/atrust_client.dart';
@@ -65,6 +68,7 @@ class _Setup {
       atrustTestUser,
       atrustTestPassword,
     ),
+    this.liveChainSerial,
   }) : atrust = atrust ?? FakeAtrust(),
        secrets = secrets ?? MemoryRksvSecrets() {
     // Jede Anfrage dauert 0,2 Sekunden auf der Uhr der Prüfung.
@@ -78,6 +82,9 @@ class _Setup {
 
   /// Die Zugangsdaten des Kontos; null: keine gespeichert.
   final AtrustCredentials? credentials;
+
+  /// Die Seriennummer der laufenden Kette `live`; null: keine.
+  final Future<String?> Function()? liveChainSerial;
   final clock = FixedClock(DateTime(2026, 11, 19, 10, 15, 30));
 
   late AtrustSessionKeeper keeper = makeKeeper();
@@ -96,6 +103,7 @@ class _Setup {
     keeper: keeper,
     user: () async => credentials?.user,
     clock: clock,
+    liveChainSerial: liveChainSerial,
   );
 
   int get logins => atrust.requests.where((r) => r == _login).length;
@@ -627,11 +635,141 @@ void main() {
     const password = 'geheim-beispiel-4711';
     const liveLogin = 'PUT /Session/$user';
 
-    _Setup live({FakeAtrust? atrust, AtrustCredentials? credentials}) => _Setup(
+    _Setup live({
+      FakeAtrust? atrust,
+      AtrustCredentials? credentials,
+      Future<String?> Function()? liveChainSerial,
+    }) => _Setup(
       atrust: atrust ?? FakeAtrust(validFrom: DateTime.utc(2020, 6, 1)),
       system: AtrustSystem.live,
       credentials: credentials ?? const AtrustCredentials(user, password),
+      liveChainSerial: liveChainSerial,
     );
+
+    group('Schlussprüfung: das Konto der laufenden Kette', () {
+      const other =
+          'Diese Zugangsdaten gehören zu einem anderen Konto als diese Kassa.';
+
+      test(
+        'anderes Zertifikat als die laufende Kette: Kreuz bei '
+        '"Zertifikat", keine Anmeldung, keine Unterschrift, keine Fakten',
+        () async {
+          var asked = 0;
+          final s = live(
+            liveChainSerial: () async {
+              asked++;
+              return '7a3f0001';
+            },
+          );
+          final result = await s.check.run(chefTapped: false);
+          expect(asked, 1);
+          expect(result.rows[ConnectionRow.reach]!.state, RowState.ok);
+          expect(_row(result, ConnectionRow.certificate), (
+            RowState.problem,
+            other,
+            null,
+          ));
+          _expectWaiting(result, [
+            ConnectionRow.login,
+            ConnectionRow.signature,
+          ]);
+          expect(result.facts, isNull);
+          expect(s.atrust.requests, [
+            'GET /$user/ZDA',
+            'GET /$user/Certificate',
+          ]);
+          expect(s.logins, 0);
+        },
+      );
+
+      test(
+        'dasselbe Zertifikat (auch in Großbuchstaben): vier Haken',
+        () async {
+          final s = live(liveChainSerial: () async => '2159B9F6');
+          final result = await s.check.run(chefTapped: false);
+          expect(result.facts, isNotNull);
+          for (final row in ConnectionRow.values) {
+            expect(result.rows[row]!.state, RowState.ok, reason: row.name);
+          }
+        },
+      );
+
+      test('ohne laufende Kette live: nichts ändert sich', () async {
+        final s = live(liveChainSerial: () async => null);
+        final result = await s.check.run(chefTapped: false);
+        expect(result.facts, isNotNull);
+        expect(s.atrust.requests, hasLength(4));
+      });
+
+      test('am Testsystem wird nicht verglichen', () async {
+        var asked = 0;
+        final s = _Setup(
+          liveChainSerial: () async {
+            asked++;
+            return '7a3f0001';
+          },
+        );
+        final result = await s.check.run(chefTapped: false);
+        expect(result.facts, isNotNull);
+        expect(asked, 0);
+      });
+
+      test('connectionCheckProvider(live) liest die laufende Kette aus der '
+          'Datenbank', () async {
+        final atrust = FakeAtrust(validFrom: DateTime.utc(2020, 6, 1));
+        final secrets = MemoryRksvSecrets();
+        await secrets.writeAtrustCredentials(
+          const AtrustCredentials(user, password),
+        );
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+        final db = KassaDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        final container = ProviderContainer(
+          overrides: [
+            databaseProvider.overrideWithValue(db),
+            atrustHttpClientProvider.overrideWithValue(atrust.client),
+            rksvSecretsProvider.overrideWithValue(secrets),
+            clockProvider.overrideWithValue(
+              FixedClock(DateTime(2026, 11, 19, 10)),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final check = container.read(
+          connectionCheckProvider(AtrustSystem.live),
+        );
+        // Ohne laufende Kette: vier Haken.
+        expect((await check.run(chefTapped: false)).facts, isNotNull);
+
+        await db
+            .into(db.rksvCertificateRows)
+            .insert(
+              RksvCertificateRowsCompanion.insert(
+                serialHex: '7a3f0001',
+                certificate: Uint8List.fromList([1, 2, 3]),
+              ),
+            );
+        await db
+            .into(db.rksvChainRows)
+            .insert(
+              RksvChainRowsCompanion.insert(
+                chain: const Value(1),
+                mode: 'live',
+                unit: const Value('atrust'),
+                cashBoxId: 'R4TW9KD2PX',
+                zdaId: 'AT1',
+                certSerial: '7a3f0001',
+                startedAt: DateTime(2026, 11, 17, 9),
+              ),
+            );
+        await (db.update(db.rksvStateRows)..where((r) => r.id.equals(1))).write(
+          const RksvStateRowsCompanion(mode: Value('live'), chain: Value(1)),
+        );
+        final result = await check.run(chefTapped: false);
+        expect(result.facts, isNull);
+        expect(_row(result, ConnectionRow.certificate).$2, other);
+      });
+    });
 
     test('vier Haken mit gespeicherten Zugangsdaten, facts.system ist live, '
         'die Anfragen gehen an den gespeicherten Benutzer', () async {
@@ -755,8 +893,13 @@ void main() {
       await secrets.writeAtrustCredentials(
         const AtrustCredentials(user, password),
       );
+      // Die Datenbank sagt, ob eine Kette live läuft (B21); hier keine.
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+      final db = KassaDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
       final container = ProviderContainer(
         overrides: [
+          databaseProvider.overrideWithValue(db),
           atrustHttpClientProvider.overrideWithValue(atrust.client),
           rksvSecretsProvider.overrideWithValue(secrets),
           clockProvider.overrideWithValue(

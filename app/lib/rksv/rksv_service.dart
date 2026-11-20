@@ -693,6 +693,18 @@ class RksvService {
     return saved ? ExportOutcome.saved : ExportOutcome.cancelled;
   }
 
+  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette `live`;
+  /// null, wenn keine läuft. Für "Verbindung prüfen" am echten System.
+  Future<String?> liveChainSerial() async {
+    final state = await _state();
+    final chain = state.chain;
+    if (state.mode != RksvMode.live.name || chain == null) return null;
+    final row = await (_db.select(
+      _db.rksvChainRows,
+    )..where((t) => t.chain.equals(chain))).getSingleOrNull();
+    return row?.certSerial;
+  }
+
   Future<RksvMode> _mode() async =>
       enumByNameOr(RksvMode.values, (await _state()).mode, RksvMode.off);
 

@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/features/login/session.dart';
+import 'package:kassa/rksv/rksv_providers.dart';
 import 'package:kassa/features/settings/rksv_task_row.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/close_pump.dart';
+import '../support/fake_atrust.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/signature_pump.dart';
@@ -86,4 +89,28 @@ void main() {
       expect([for (final task in state.tasks) task.id], [tasks.last.id]);
     });
   }
+
+  testWidgets('Schlussprüfung: Probe nach der Außerbetriebnahme: im '
+      'Abschluss kein "zum Üben" über den Aufgaben der echten Kette', (
+    t,
+  ) async {
+    await pumpClose(
+      t,
+      floatCents: 15000,
+      extra: onlineOverrides(FakeAtrust(validFrom: DateTime.utc(2024, 1, 1))),
+    );
+    await goLiveInApp(t);
+    final c = containerOf(t);
+    final chef = c.read(sessionProvider)!;
+    await c.read(rksvServiceProvider).decommission(staff: chef);
+    await c.read(rksvServiceProvider).enableProbe(staff: chef);
+    await t.pumpAndSettle();
+    expect(
+      (await c.read(rksvRepositoryProvider).current()).mode,
+      RksvMode.probe,
+    );
+    expect(_key('rksv-tasks'), findsOneWidget);
+    expect(find.text(rksvTaskText(decommissionTasks.first)), findsOneWidget);
+    expect(find.text('Aufgaben aus der Probe sind zum Üben.'), findsNothing);
+  });
 }

@@ -85,6 +85,7 @@ class RksvRepository {
       mode: mode,
       chain: r.chain,
       cashBoxId: chain?.cashBoxId,
+      chainStartedAt: chain?.startedAt,
       // Ein unbekannter Wert darf das Beobachten nicht abbrechen; signieren
       // lässt sich damit nicht (signatureUnitOf wirft).
       unit: chain == null ? null : RksvUnit.values.asNameMap()[chain.unit],

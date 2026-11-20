@@ -315,7 +315,7 @@ class _RksvTasksCardState extends ConsumerState<_RksvTasksCard> {
         padding: const EdgeInsets.fromLTRB(24, 6, 24, 14),
         child: RksvTaskBlock(
           tasks: state.tasks,
-          probe: state.mode == RksvMode.probe,
+          practice: state.onlyProbeTasks,
           busy: _busy,
           onDone: isChef ? _complete : null,
         ),

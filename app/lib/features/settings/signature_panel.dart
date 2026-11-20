@@ -360,7 +360,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         if (state.tasks.isNotEmpty)
           RksvTaskBlock(
             tasks: state.tasks,
-            probe: probe,
+            practice: state.onlyProbeTasks,
             busy: _busy,
             onDone: isChef ? _completeTask : null,
           ),

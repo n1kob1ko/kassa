@@ -91,18 +91,23 @@ List<RksvTask> tasksAfterProbe(
   List<RksvTask> tasks, {
   required int chain,
   required DateTime startedAt,
-}) {
-  bool ofProbe(RksvTask t) {
-    final m = _chainInId.firstMatch(t.id);
-    return m != null
-        ? int.parse(m.group(1)!) == chain
-        : t.createdAt.isAfter(startedAt);
-  }
+}) => [
+  for (final t in tasks)
+    if (!rksvTaskOfChain(t, chain: chain, startedAt: startedAt)) t,
+];
 
-  return [
-    for (final t in tasks)
-      if (!ofProbe(t)) t,
-  ];
+/// Gehört [t] zur Kette [chain] (begonnen um [startedAt])? Eine Id mit
+/// Kettennummer gehört zu ihrer Kette; eine ohne, wenn sie nach dem Beginn
+/// entstand.
+bool rksvTaskOfChain(
+  RksvTask t, {
+  required int chain,
+  required DateTime startedAt,
+}) {
+  final m = _chainInId.firstMatch(t.id);
+  return m != null
+      ? int.parse(m.group(1)!) == chain
+      : t.createdAt.isAfter(startedAt);
 }
 
 /// Der Satz der Aufgabe am Bildschirm.
@@ -129,6 +134,7 @@ final class RksvState {
     this.mode = RksvMode.off,
     this.chain,
     this.cashBoxId,
+    this.chainStartedAt,
     this.unit,
     this.counterCents = 0,
     this.outageSince,
@@ -146,6 +152,9 @@ final class RksvState {
   /// Kassen-Kennung der laufenden Kette, `null` ohne Kette.
   final String? cashBoxId;
 
+  /// Beginn der laufenden Kette, `null` ohne Kette.
+  final DateTime? chainStartedAt;
+
   /// Einheit der laufenden Kette, `null` ohne Kette (und bei einem Wert,
   /// den diese Version nicht kennt).
   final RksvUnit? unit;
@@ -162,4 +171,14 @@ final class RksvState {
   final bool decommissioned;
 
   bool get outage => outageSince != null;
+
+  /// Läuft die Probe, und gehört jede offene Aufgabe zu ihr? Nur dann steht
+  /// "Aufgaben aus der Probe sind zum Üben." über ihnen; eine Aufgabe einer
+  /// früheren Kette `live` (B5) ist echt.
+  bool get onlyProbeTasks {
+    final c = chain;
+    final started = chainStartedAt;
+    if (mode != RksvMode.probe || c == null || started == null) return false;
+    return tasks.every((t) => rksvTaskOfChain(t, chain: c, startedAt: started));
+  }
 }

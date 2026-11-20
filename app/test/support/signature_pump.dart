@@ -103,7 +103,9 @@ Future<void> seedProbe(
   await t.pumpAndSettle();
 }
 
-/// Die zwei Aufgaben aus dem Bild `s1b-2`.
+/// Die zwei Aufgaben aus dem Bild `s1b-2`, beide aus der Probe von
+/// [seedProbe] (Kette 1, begonnen um 9 Uhr): Eine Aufgabe ohne Kettennummer
+/// gehört zur Probe, wenn sie nach deren Beginn entstand.
 final twoTasks = [
   RksvTask(
     id: 'check-start-1',
@@ -113,7 +115,7 @@ final twoTasks = [
   RksvTask(
     id: 'backup-2026-Q4',
     kind: RksvTaskKind.backupProtocol,
-    createdAt: DateTime(2026, 11, 17, 9),
+    createdAt: DateTime(2026, 11, 17, 9, 30),
   ),
 ];
 

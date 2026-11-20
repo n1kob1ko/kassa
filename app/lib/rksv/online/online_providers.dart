@@ -58,7 +58,8 @@ final atrustKeeperProvider = Provider.family<AtrustSessionKeeper, AtrustSystem>(
 /// "Verbindung prüfen" je System mit dem Halter der Bons, also derselben
 /// Sitzung und demselben Kennzeichen "abgelehnt". Der Benutzer ist am
 /// Testsystem fest, am echten System wird er bei jedem Lauf aus dem
-/// geschützten Speicher gelesen.
+/// geschützten Speicher gelesen. Am echten System vergleicht der Lauf das
+/// Zertifikat des Kontos mit dem der laufenden Kette `live` (B21).
 final connectionCheckProvider = Provider.family<ConnectionCheck, AtrustSystem>((
   ref,
   system,
@@ -73,6 +74,11 @@ final connectionCheckProvider = Provider.family<ConnectionCheck, AtrustSystem>((
         () async => (await secrets.atrustCredentials())?.user,
     },
     clock: ref.watch(clockProvider),
+    liveChainSerial: switch (system) {
+      AtrustSystem.test => null,
+      AtrustSystem.live =>
+        () => ref.read(rksvServiceProvider).liveChainSerial(),
+    },
   );
   ref.onDispose(check.dispose);
   return check;

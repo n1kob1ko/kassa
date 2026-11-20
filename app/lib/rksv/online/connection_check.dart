@@ -68,6 +68,7 @@ class ConnectionCheck {
     required this._keeper,
     required this._user,
     required this._clock,
+    this._liveChainSerial,
   });
 
   /// Je Zeile, auch für das Laden oder Aufheben von "abgelehnt" vorher.
@@ -84,6 +85,12 @@ class ConnectionCheck {
   /// gespeichert ist. Er ist ein Geheimnis und steht nie im Bericht.
   final Future<String?> Function() _user;
   final Clock _clock;
+
+  /// Am echten System: die Seriennummer (hex) des Zertifikats der laufenden
+  /// Kette `live`, null ohne eine. Passt das Zertifikat des Kontos nicht
+  /// dazu, endet der Lauf mit einem Kreuz bei "Zertifikat", ohne Anmeldung
+  /// und Unterschrift (Entwurf 12.3, B21).
+  final Future<String?> Function()? _liveChainSerial;
 
   late final ValueNotifier<ConnectionCheckState> _state = ValueNotifier(
     ConnectionCheckState.initial,
@@ -175,6 +182,7 @@ class ConnectionCheck {
       final certificate = await _step(row, () => _client.certificate(user));
       _certificate = certificate;
       final (message, hint) = _judge(certificate);
+      await _sameAccount(certificate);
       _ok(row, message, hint);
 
       row = ConnectionRow.login;
@@ -262,6 +270,22 @@ class ConnectionCheck {
           : 'Test-Zertifikat von A-Trust (${parsed.issuer}), gültig bis '
                 '$until.',
     );
+  }
+
+  /// Am echten System mit laufender Kette `live`: gehört [c] zu ihr? Sonst
+  /// [_RowFailure]. Lässt sich die Kette nicht lesen, wird nicht verglichen.
+  Future<void> _sameAccount(AtrustCertificate c) async {
+    final read = _liveChainSerial;
+    if (_client.system != AtrustSystem.live || read == null) return;
+    String? running;
+    try {
+      running = await read().timeout(timeLimit);
+    } on Object {
+      return;
+    }
+    if (running != null && running.toLowerCase() != c.serialHex.toLowerCase()) {
+      throw const _RowFailure(_T.otherAccount, null);
+    }
   }
 
   static String _mismatch(String reason) =>
@@ -438,6 +462,8 @@ abstract final class _T {
   static const cannotReadLogin =
       'Die Kassa konnte den Stand der Anmeldung nicht lesen.';
   static const notValid = 'Das Zertifikat von A-Trust ist nicht gültig.';
+  static const otherAccount =
+      'Diese Zugangsdaten gehören zu einem anderen Konto als diese Kassa.';
   static const failed = 'Die Prüfung ist gescheitert.';
 
   static const wifi = 'WLAN prüfen.';
