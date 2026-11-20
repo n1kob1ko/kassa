@@ -162,15 +162,32 @@ void main() {
   testWidgets('Tastatur ohne Vorschläge, Autokorrektur, Großschreiben und '
       'Ausfüllhilfe', (t) async {
     await _open(t);
-    for (final key in ['credentials-user', 'credentials-password']) {
+    void quiet(String key) {
       final f = _field(t, key);
       expect(f.autocorrect, isFalse, reason: key);
       expect(f.enableSuggestions, isFalse, reason: key);
       expect(f.textCapitalization, TextCapitalization.none, reason: key);
       expect(f.autofillHints, isNull, reason: key);
       expect(f.enableIMEPersonalizedLearning, isFalse, reason: key);
-      expect(f.keyboardType, TextInputType.visiblePassword, reason: key);
     }
+
+    /// Das Passwortfeld meldet der Tastatur nie "sichtbares Passwort": Auf
+    /// Android ginge sonst die Variante "Passwort" verloren, an der
+    /// Tastaturen ihren geschützten Modus festmachen.
+    void protectedPassword() {
+      final f = _field(t, 'credentials-password');
+      expect(f.keyboardType, TextInputType.text);
+      expect(f.keyboardType, isNot(TextInputType.visiblePassword));
+    }
+
+    quiet('credentials-user');
+    quiet('credentials-password');
+    // Der Benutzername ist sichtbarer Text ohne Vorschläge.
+    expect(
+      _field(t, 'credentials-user').keyboardType,
+      TextInputType.visiblePassword,
+    );
+    protectedPassword();
     expect(_field(t, 'credentials-user').obscureText, isFalse);
     expect(_field(t, 'credentials-user').textInputAction, TextInputAction.next);
     expect(_field(t, 'credentials-password').obscureText, isTrue);
@@ -178,6 +195,16 @@ void main() {
       _field(t, 'credentials-password').textInputAction,
       TextInputAction.done,
     );
+
+    // Mit "Anzeigen" bleibt die Tastatur genauso still und geschützt.
+    await _tap(t, 'credentials-show');
+    expect(_field(t, 'credentials-password').obscureText, isFalse);
+    quiet('credentials-password');
+    protectedPassword();
+    await _tap(t, 'credentials-show');
+    expect(_field(t, 'credentials-password').obscureText, isTrue);
+    quiet('credentials-password');
+    protectedPassword();
   });
 
   testWidgets('"Anzeigen" zeigt das Passwort, "Verbergen" verdeckt es', (

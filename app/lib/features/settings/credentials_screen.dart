@@ -318,6 +318,7 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
         key: const Key('credentials-user'),
         controller: _user,
         label: 'Benutzername',
+        keyboardType: TextInputType.visiblePassword,
         action: TextInputAction.next,
         onSubmitted: (_) => _passwordFocus.requestFocus(),
       ),
@@ -555,6 +556,7 @@ class _Field extends StatefulWidget {
     required this.onSubmitted,
     this.focusNode,
     this.obscure = false,
+    this.keyboardType = TextInputType.text,
     this.trailing,
   });
 
@@ -564,6 +566,13 @@ class _Field extends StatefulWidget {
   final ValueChanged<String> onSubmitted;
   final FocusNode? focusNode;
   final bool obscure;
+
+  /// Der Benutzername ist `visiblePassword` (Android-Tastaturen schlagen dann
+  /// nichts vor). Das Passwortfeld bleibt `text`: Mit `visiblePassword`
+  /// verlöre es auf Android die Variante "Passwort", an der Tastaturen ihren
+  /// geschützten Modus festmachen; Vorschläge schaltet dort schon
+  /// `obscureText` ab, und die Parameter darunter gelten in beiden Zuständen.
+  final TextInputType keyboardType;
   final Widget? trailing;
 
   @override
@@ -646,7 +655,7 @@ class _FieldState extends State<_Field> {
                   enableIMEPersonalizedLearning: false,
                   smartDashesType: SmartDashesType.disabled,
                   smartQuotesType: SmartQuotesType.disabled,
-                  keyboardType: TextInputType.visiblePassword,
+                  keyboardType: widget.keyboardType,
                   textInputAction: widget.action,
                   onSubmitted: widget.onSubmitted,
                   maxLines: 1,
