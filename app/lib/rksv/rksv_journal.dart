@@ -118,6 +118,43 @@ class RksvJournal {
   static const signLimit = Duration(seconds: 5);
   static const signLimitDuringOutage = Duration(seconds: 1);
 
+  /// AES-Schlüssel der Ketten `live`, je Kette, nach dem ersten Lesen in
+  /// diesem Prozess (Q17): Danach hängt ein Bon nicht mehr am geschützten
+  /// Speicher. Nur hier, nie in einem Text; Probe-Ketten kommen nicht hinein.
+  final Map<int, Uint8List> _liveKeys = {};
+
+  /// Merkt sich den AES-Schlüssel [key] der Kette [chain] `live` (eine
+  /// Kopie), etwa gleich nach dem Anlegen der Kette.
+  void rememberLiveKey(int chain, Uint8List key) =>
+      _liveKeys[chain] = Uint8List.fromList(key);
+
+  /// Läuft eine Kette `live` und ist ihr Schlüssel noch nicht im Speicher,
+  /// liest es ihn einmal (beim Start der App). Wirft nie.
+  Future<void> primeLiveKey() async {
+    try {
+      final state = await _state();
+      final chain = state.chain;
+      if (_mode(state) != RksvMode.live || chain == null) return;
+      if (_liveKeys.containsKey(chain)) return;
+      final key = await _secrets.aesKey(chain);
+      if (key != null) rememberLiveKey(chain, key);
+    } catch (_) {
+      // Dann liest der nächste Bon selbst.
+    }
+  }
+
+  /// Der AES-Schlüssel der Kette [chain]: bei [live] aus dem Speicher, wenn
+  /// er dort ist, und nach dem Lesen dort abgelegt; sonst jedes Mal gelesen.
+  Future<Uint8List?> _aesKey(int chain, {required bool live}) async {
+    if (live) {
+      final known = _liveKeys[chain];
+      if (known != null) return known;
+    }
+    final key = await _secrets.aesKey(chain);
+    if (live && key != null) rememberLiveKey(chain, key);
+    return key;
+  }
+
   /// Wahr, solange die Signatur läuft (mode nicht off).
   Future<bool> isActive() async => _mode(await _state()) != RksvMode.off;
 
@@ -413,7 +450,7 @@ class RksvJournal {
 
     Future<_Signed> attempt() async {
       final aesKey =
-          await _secrets.aesKey(chain) ??
+          await _aesKey(chain, live: live) ??
           (throw StateError('Der AES-Schlüssel der Kette $chain fehlt.'));
       stopIfLate();
       counterField = kind == ReceiptKind.voided
@@ -544,7 +581,7 @@ class RksvJournal {
                 ..where((t) => t.chain.equals(chain))
                 ..orderBy([(t) => OrderingTerm.asc(t.position)]))
               .get();
-      final aesKey = await _secrets.aesKey(chain);
+      final aesKey = _liveKeys[chain] ?? await _secrets.aesKey(chain);
       if (aesKey == null) return false;
       var previous = chainValue(chainRow.cashBoxId);
       var counter = 0;

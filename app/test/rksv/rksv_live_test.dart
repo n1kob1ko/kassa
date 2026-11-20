@@ -370,4 +370,166 @@ void main() {
       }
     });
   });
+
+  group('AES-Schlüssel einer live-Kette im Arbeitsspeicher (Q17)', () {
+    test('Schlüssel im Speicher, dann failReads: Verkauf, Storno und '
+        'Nullbeleg signiert A-Trust, die Kette ist in Ordnung', () async {
+      final atrust = FakeAtrust();
+      final rig = await RksvRig.open(atrust: atrust);
+      addTearDown(rig.close);
+      final chain = await rig.seedLive();
+      atrust.requests.clear();
+      rig.secrets.failReads = true;
+      final s1 = await rig.sell('s1', cart);
+      expect(s1.rksv!.damaged, isFalse);
+      final v = await rig.receipts.voidReceipt('s1', staff: rig.chef);
+      expect(v.rksv!.damaged, isFalse);
+      final z = await rig.service.zeroReceipt(staff: rig.chef);
+      expect(z.rksv!.damaged, isFalse);
+      expect(
+        atrust.requests.where((r) => r.endsWith('/Sign/Hash')),
+        hasLength(3),
+      );
+      expect((await rig.stateRow()).outageSince, isNull);
+      expect(await rig.journal.chainIsSound(chain), isTrue);
+      rig.secrets.failReads = false;
+      await rig.verifyChain(chain);
+    });
+
+    test('Schlüssel im Speicher, dann hangReads: der Verkauf ist unter der '
+        'Frist fertig und signiert', () async {
+      final atrust = FakeAtrust();
+      final rig = await RksvRig.open(atrust: atrust);
+      addTearDown(rig.close);
+      final chain = await rig.seedLive();
+      rig.secrets.hangReads = true;
+      final watch = Stopwatch()..start();
+      final s1 = await rig.sell('s1', cart);
+      expect(watch.elapsed, lessThan(RksvJournal.signLimit));
+      expect(s1.rksv!.damaged, isFalse);
+      expect((await rig.stateRow()).outageSince, isNull);
+      expect(await rig.journal.chainIsSound(chain), isTrue);
+    });
+
+    test('Sammelbeleg nach einem Ausfall braucht den Speicher nicht', () async {
+      final atrust = FakeAtrust();
+      final rig = await RksvRig.open(atrust: atrust);
+      addTearDown(rig.close);
+      final chain = await rig.seedLive();
+      rig.secrets.failReads = true;
+      atrust.signStatus = 500;
+      expect((await rig.sell('s1', cart)).rksv!.damaged, isTrue);
+      atrust.signStatus = null;
+      expect(await rig.service.retrySignature(staff: rig.chef), isTrue);
+      expect(await rig.entryKinds(chain), ['start', 'sale', 'collective']);
+      expect(await rig.journal.chainIsSound(chain), isTrue);
+    });
+
+    test('primeLiveKey liest den Schlüssel einmal; danach ist failReads '
+        'egal', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.startLive();
+      final before = rig.secrets.aesKeyReads;
+      await rig.journal.primeLiveKey();
+      expect(rig.secrets.aesKeyReads, before + 1);
+      await rig.journal.primeLiveKey();
+      expect(rig.secrets.aesKeyReads, before + 1);
+      rig.secrets.failReads = true;
+      final s1 = await rig.sell('s1', cart);
+      expect(s1.rksv!.damaged, isFalse);
+      expect(rig.secrets.aesKeyReads, before + 1);
+      expect(await rig.journal.chainIsSound(1), isTrue);
+    });
+
+    test('primeLiveKey wirft nicht, wenn der Speicher scheitert, und liest '
+        'beim nächsten Mal wieder', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.startLive();
+      rig.secrets.failReads = true;
+      await rig.journal.primeLiveKey();
+      rig.secrets.failReads = false;
+      await rig.journal.primeLiveKey();
+      rig.secrets.failReads = true;
+      expect((await rig.sell('s1', cart)).rksv!.damaged, isFalse);
+    });
+
+    test('primeLiveKey ohne live-Kette liest nichts', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.journal.primeLiveKey();
+      expect(rig.secrets.aesKeyReads, 0);
+      await rig.service.enableProbe(staff: rig.chef);
+      final reads = rig.secrets.aesKeyReads;
+      await rig.journal.primeLiveKey();
+      expect(rig.secrets.aesKeyReads, reads);
+    });
+
+    test('Probe-Kette mit failReads: K9 wie bisher, der Schlüssel wird '
+        'jedes Mal gelesen', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.service.enableProbe(staff: rig.chef);
+      await rig.sell('s1', cart);
+      final reads = rig.secrets.aesKeyReads;
+      await rig.sell('s2', cart);
+      expect(rig.secrets.aesKeyReads, greaterThan(reads));
+      rig.secrets.failReads = true;
+      final s3 = await rig.sell('s3', cart);
+      expect(s3.rksv, isNull);
+      final state = await rig.stateRow();
+      expect((state.mode, state.chain), ('off', null));
+      expect(state.notice, contains('Probe-Signatur wurde beendet'));
+    });
+
+    test('Rest (Q17): Schlüssel nie gelesen, Speicher scheitert: der Verkauf '
+        'scheitert wie bisher, nichts bleibt zurück', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.startLive();
+      rig.secrets.failReads = true;
+      await expectLater(
+        rig.sell('s1', cart),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Der sichere Speicher ist nicht lesbar.',
+          ),
+        ),
+      );
+      expect(await rig.receipts.find('s1'), isNull);
+      expect(await rig.count('receipts'), 0);
+      expect((await rig.stateRow()).mode, 'live');
+    });
+
+    test('Rest (Q17): Schlüssel nie gelesen, Speicher hängt: der Verkauf '
+        'scheitert nach der Frist wie bisher', () {
+      fakeAsync((async) {
+        final rig = _await(async, RksvRig.open());
+        try {
+          _await(async, rig.startLive());
+          rig.secrets.hangReads = true;
+          Object? error;
+          rig
+              .sell('s1', cart)
+              .then<void>((_) {}, onError: (Object e) => error = e);
+          async.elapse(RksvJournal.signLimit + const Duration(milliseconds: 1));
+          expect(
+            error,
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              'Der geschützte Speicher hat nicht geantwortet.',
+            ),
+          );
+          rig.secrets.hangReads = false;
+          expect(_await(async, rig.count('receipts')), 0);
+        } finally {
+          _await(async, rig.close());
+        }
+      });
+    });
+  });
 }

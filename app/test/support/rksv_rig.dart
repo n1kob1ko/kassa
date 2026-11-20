@@ -61,6 +61,15 @@ class RecordingProtocolSaver implements ProtocolSaver {
 class RigSecrets extends MemoryRksvSecrets {
   bool failCredentialReads = false;
 
+  /// Wie oft ein AES-Schlüssel gelesen wurde (auch gescheiterte Versuche).
+  int aesKeyReads = 0;
+
+  @override
+  Future<Uint8List?> aesKey(int chain) {
+    aesKeyReads++;
+    return super.aesKey(chain);
+  }
+
   @override
   Future<AtrustCredentials?> atrustCredentials() async {
     if (failCredentialReads) {
@@ -393,7 +402,8 @@ class RksvRig {
   /// mit Schlussbeleg ([RksvService.disableProbe]). Dann [liveCredentials]
   /// im geschützten Speicher, das Zertifikat von [atrust], die nächste Kette
   /// mit Modus `live`, Einheit `atrust`, Kennung `AT1`, Kassen-Kennung
-  /// [liveCashBoxId] und dem AES-Schlüssel aus den Bytes 0 bis 31, Stand
+  /// [liveCashBoxId] und dem AES-Schlüssel aus den Bytes 0 bis 31 (auch im
+  /// Journal, [RksvJournal.rememberLiveKey]), Stand
   /// `live`, und ein Startbeleg, den A-Trust über [liveKeeper] signiert.
   /// Liefert die Nummer der Kette.
   Future<int> seedLive() async {
@@ -411,10 +421,10 @@ class RksvRig {
                 .getSingle())
             .read<int>('c') +
         1;
-    await secrets.writeAesKey(
-      chain,
-      Uint8List.fromList(List.generate(32, (i) => i)),
-    );
+    final aesKey = Uint8List.fromList(List.generate(32, (i) => i));
+    await secrets.writeAesKey(chain, aesKey);
+    // Wie goLive: den Schlüssel der neuen Kette gleich im Journal (Q17).
+    journal.rememberLiveKey(chain, aesKey);
     await db
         .into(db.rksvCertificateRows)
         .insert(
