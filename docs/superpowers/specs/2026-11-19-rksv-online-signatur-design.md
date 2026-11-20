@@ -474,5 +474,7 @@ Quellen: Text der RKSV, Stand 11/2015; Leitfaden der WKO, Stand 11/2016; Handbuc
 - Die Seiten mit Passwort und AES-Schlüssel lassen sich am Tablet als Bildschirmfoto aufnehmen. Die Prüfliste verbietet es, die App verhindert es nicht.
 - Speicher-Aufrufe im Bildschirm "Zugangsdaten von A-Trust" haben keine Zeitgrenze. Hängt der geschützte Speicher, bleibt die Seite leer oder die Taste gesperrt.
 - Nach dem Speichern neuer Zugangsdaten kann die Zeile "Anmeldung" bis zu zwei Minuten "Kein Internet." zeigen, wenn davor eine Anmeldung ohne Antwort geblieben ist (Q13).
+- Speichert der Chef neue Zugangsdaten, während noch eine Prüfung mit den alten läuft, können in zwei engen Fällen zwei Anmeldungen mit den neuen Zugangsdaten hinausgehen statt einer: wenn die alte Prüfung die neuen Zugangsdaten liest, bevor die Kassa die alte Sitzung vergessen hat, und wenn die Sitzung der alten Prüfung genau während ihrer Probe-Unterschrift abläuft. Sind die neuen Zugangsdaten falsch, sind das zwei abgelehnte Anmeldungen für ein Tippen. Im zweiten Fall kostet es außerdem eine Signatur mehr. Gehört zum Umbau "erst prüfen, dann speichern".
+- Der Bericht von "Verbindung prüfen" kann nach so einem Wechsel noch das Zertifikat des alten Kontos nennen. Zu "Weiter" kommt es nicht.
 - Der Satz "A-Trust hat die Zugangsdaten abgelehnt." steht in der Karte "Signatur" zweimal.
 - Kleinere Punkte aus den Prüfungen der einzelnen Aufgaben stehen im Protokoll des Baus.
