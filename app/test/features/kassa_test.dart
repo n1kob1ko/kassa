@@ -61,6 +61,18 @@ Future<void> _addBowl(
 }
 
 const _login = 'PUT /Session/u123456789';
+const _liveLogin = 'PUT /Session/u-beispiel';
+
+/// Zählt, wie oft der AES-Schlüssel gelesen wird.
+class _CountingSecrets extends MemoryRksvSecrets {
+  int aesReads = 0;
+
+  @override
+  Future<Uint8List?> aesKey(int chain) {
+    aesReads++;
+    return super.aesKey(chain);
+  }
+}
 
 /// Die App geht in den Hintergrund und kommt wieder nach vorn.
 Future<void> _resume(WidgetTester t) async {
@@ -845,6 +857,87 @@ void main() {
       await _resume(t);
       await pumpKassa(t, sameDatabase: true);
       expect(fake.requests, [_login]);
+    });
+
+    testWidgets('Start und Zurückkommen in Betrieb: eine Anmeldung am echten '
+        'System, keine am Testsystem; den AES-Schlüssel liest die Kassa '
+        'einmal (Q17)', (t) async {
+      final fake = FakeAtrust();
+      final secrets = _CountingSecrets();
+      await secrets.writeAtrustCredentials(exampleLiveCredentials);
+      await secrets.writeAesKey(1, Uint8List(32));
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      expect(fake.requests, isEmpty);
+      await seedLive(t);
+      // Wechselt der Stand bei offener Kassa, meldet sie sich nicht an.
+      expect(fake.requests, isEmpty);
+      expect(secrets.aesReads, 0);
+
+      await pumpKassa(t, sameDatabase: true);
+      expect(fake.requests, [_liveLogin]);
+      expect(secrets.aesReads, 1);
+      await _resume(t);
+      expect(fake.requests, [_liveLogin]);
+      // Der Schlüssel liegt im Speicher, er wird nicht noch einmal gelesen.
+      expect(secrets.aesReads, 1);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('in Betrieb und abgelehnt: weder beim Start noch beim '
+        'Zurückkommen eine Anfrage', (t) async {
+      final fake = FakeAtrust();
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustCredentials(exampleLiveCredentials);
+      await secrets.writeAtrustRejected(true, live: true);
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedLive(t);
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(fake.requests, isEmpty);
+    });
+
+    testWidgets('außer Betrieb: keine Anfrage, kein Schlüssel gelesen', (
+      t,
+    ) async {
+      final fake = FakeAtrust();
+      final secrets = _CountingSecrets();
+      await secrets.writeAtrustCredentials(exampleLiveCredentials);
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedLive(t, decommissioned: true);
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(fake.requests, isEmpty);
+      expect(secrets.aesReads, 0);
+    });
+
+    testWidgets('hängt der geschützte Speicher in Betrieb, steht die Kassa '
+        'trotzdem da', (t) async {
+      final fake = FakeAtrust();
+      final secrets = MemoryRksvSecrets();
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ..._online(fake, secrets)],
+      );
+      await seedLive(t);
+      secrets.hangReads = true;
+      await pumpKassa(t, sameDatabase: true);
+      await _resume(t);
+      expect(find.byKey(const Key('area-kassa')), findsOneWidget);
+      expect(
+        find.byKey(Key('cat-${catalog.item('cola').categoryId}')),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+      expect(fake.requests, isEmpty);
     });
 
     testWidgets('geschützter Speicher nicht lesbar: kein Fehler, kein Satz, '

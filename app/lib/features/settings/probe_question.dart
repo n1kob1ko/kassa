@@ -3,12 +3,13 @@ import 'package:material_ui/material_ui.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 
-/// Welche Rückfrage: Probe-Signatur einschalten oder beenden, oder mit A-Trust
-/// ausprobieren (Online-Probe).
-enum ProbeQuestion { enable, disable, online }
+/// Welche Rückfrage: Probe-Signatur einschalten oder beenden, mit A-Trust
+/// ausprobieren (Online-Probe) oder die Kassa außer Betrieb nehmen.
+enum ProbeQuestion { enable, disable, online, decommission }
 
-/// Fragt vor dem Einschalten oder Beenden der Probe-Signatur nach. true bei
-/// "Einschalten", "Beenden" bzw. "Weiter" (`rksv-question-confirm`), false bei
+/// Fragt vor dem Einschalten oder Beenden der Probe-Signatur nach (und vor
+/// der Außerbetriebnahme). true bei "Einschalten", "Beenden", "Weiter" bzw.
+/// "Außer Betrieb nehmen" (`rksv-question-confirm`), false bei
 /// "Abbrechen" (`rksv-question-cancel`) oder "Zurück". Die Antwort zählt nur
 /// einmal: Ein zweites Antippen, während das Blatt schon geht, tut nichts.
 Future<bool> showProbeQuestion(
@@ -143,6 +144,13 @@ class _ProbeQuestionState extends State<_ProbeQuestion> {
             'signiert. Die Bons bleiben Testbons. Ältere Bons kannst du '
             'danach nicht mehr stornieren.',
         'Weiter',
+      ),
+      ProbeQuestion.decommission => (
+        'Kassa außer Betrieb nehmen?',
+        'Das lässt sich nicht zurücknehmen. Die Kassa erstellt den '
+            'Schlussbeleg und signiert danach keine Bons mehr. Du musst das '
+            'bei FinanzOnline melden.',
+        'Außer Betrieb nehmen',
       ),
     };
     return SettingsSheet(

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/app_info.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../rksv/online/atrust_client.dart' show AtrustSystem;
 import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
@@ -110,6 +111,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return ConnectionCheckScreen(
         key: const Key('connection-check-screen'),
         opening: opening,
+        // In Betrieb prüft "Verbindung prüfen" das echte System, ohne
+        // "Weiter": Es gibt keinen nächsten Schritt.
+        system: opening == ConnectionCheckOpening.checkLive
+            ? AtrustSystem.live
+            : AtrustSystem.test,
         onBack: () => widget.onCheckingConnection(null),
       );
     }

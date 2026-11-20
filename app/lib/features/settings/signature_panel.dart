@@ -17,6 +17,7 @@ import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
+import '../shell/shell_screen.dart' show openCredentials;
 import 'probe_question.dart';
 import 'protocol_export_sheet.dart';
 import 'rksv_task_row.dart';
@@ -32,9 +33,27 @@ const staleSettingsSentence =
 
 /// Wie der Bildschirm "Verbindung prüfen" geöffnet wird: [enable] nach
 /// "Weiter" im Blatt "Mit A-Trust ausprobieren?" (mit "Online-Probe
-/// starten"), [check] aus der Zeile "Verbindung prüfen", [relogin] aus
-/// "Erneut anmelden". Nur [relogin] zählt als Antippen des Chefs.
-enum ConnectionCheckOpening { enable, check, relogin }
+/// starten"), [check] aus der Zeile "Verbindung prüfen" der Online-Probe,
+/// [checkLive] aus derselben Zeile in Betrieb (am echten System), [relogin]
+/// aus "Erneut anmelden". Nur [relogin] zählt als Antippen des Chefs.
+enum ConnectionCheckOpening { enable, check, checkLive, relogin }
+
+/// Läuft gerade ein Schritt, der sich nicht zurücknehmen lässt: `goLive` aus
+/// "Angaben für FinanzOnline" oder `decommission` aus der Karte "Signatur"?
+/// Solange er läuft, schließen weder "Zurück" noch ein anderer Bereich, die
+/// Einstellungen-Taste, Abmelden oder der Hinweis zum vergessenen Abschluss
+/// den Bildschirm: Sein Ergebnis darf nicht verloren gehen. Wer ihn setzt,
+/// hebt ihn in einem `finally` wieder auf.
+class IrreversibleStep extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final irreversibleStepProvider = NotifierProvider<IrreversibleStep, bool>(
+  IrreversibleStep.new,
+);
 
 /// Druckt einen Start-, Null- oder Schlussbeleg über denselben Weg wie
 /// "Nochmal drucken". Wartet nicht und meldet nichts: Der Beleg steht, ob
@@ -44,7 +63,17 @@ void printRksvReceipt(SaleService sales, Receipt receipt) {
 }
 
 /// Welche Zeile eine Rückmeldung bekommt.
-enum _Action { enable, zero, export, disable, connection, other }
+enum _Action {
+  enable,
+  zero,
+  export,
+  disable,
+  connection,
+  setup,
+  credentials,
+  decommission,
+  other,
+}
 
 /// Art der Rückmeldung: geschafft (Haken), nur zur Kenntnis (Info) oder ein
 /// Problem (Warnzeichen). Das Wort sagt es immer, das Zeichen ergänzt es.
@@ -58,6 +87,11 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 /// Nullbeleg, Protokoll ausgeben, Beenden). Für die Online-Probe dazu "Mit
 /// A-Trust ausprobieren" (aus), "Verbindung prüfen" und bei abgelehnten
 /// Zugangsdaten "Erneut anmelden"; alle drei rufen [onOpenConnectionCheck].
+/// Außer in Betrieb steht "Signatur einrichten" da, das die Zugangsdaten von
+/// A-Trust öffnet. In Betrieb: "Verbindung prüfen" am echten System,
+/// Nullbeleg, Protokoll, "Zugangsdaten" und "Kassa außer Betrieb nehmen",
+/// bei abgelehnten Zugangsdaten "Zugangsdaten neu eingeben". Außer Betrieb
+/// bleiben die Aufgaben und "Protokoll ausgeben" (Q15).
 /// Dazu die Zeile "Karte prüfen" (`open-card-check`), die [onOpenCardCheck]
 /// ruft. Ein Ausfall zeigt seinen Grund unter dem Zustand. Während eine
 /// Aktion läuft, sind alle Tasten gesperrt. Start-, Null- und Schlussbeleg
@@ -184,6 +218,29 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     });
   }
 
+  /// "Kassa außer Betrieb nehmen": einmal nachfragen, dann `decommission`
+  /// und der Schlussbeleg gedruckt. Solange es läuft, hält die Hülle den
+  /// Bildschirm ([irreversibleStepProvider]).
+  Future<void> _decommission() async {
+    if (_busy) return;
+    final yes = await _ask(
+      () => showProbeQuestion(context, ProbeQuestion.decommission),
+    );
+    if (!yes || !mounted) return;
+    final step = ref.read(irreversibleStepProvider.notifier);
+    step.set(true);
+    try {
+      await _run(_Action.decommission, () async {
+        final staff = ref.read(sessionProvider);
+        if (staff == null) return null;
+        _print(await ref.read(rksvServiceProvider).decommission(staff: staff));
+        return null;
+      });
+    } finally {
+      step.set(false);
+    }
+  }
+
   Future<void> _zero() => _run(_Action.zero, () async {
     final staff = ref.read(sessionProvider);
     if (staff == null) return null;
@@ -238,6 +295,8 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final isChef = ref.watch(sessionProvider)?.isChef ?? false;
     final ended = ref.watch(rksvHasEndedChainProvider).value ?? false;
     final probe = state.mode == RksvMode.probe;
+    final live = state.mode == RksvMode.live;
+    final off = state.mode == RksvMode.off;
     final online = probe && state.unit == RksvUnit.atrustTest;
     final notice = state.notice;
 
@@ -258,10 +317,14 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             : _AccentPill(word);
       case RksvMode.live:
         help = state.cashBoxId == null
-            ? 'Für die Registrierkassen-Pflicht.'
-            : 'Für die Registrierkassen-Pflicht. '
-                  'Kassen-ID ${state.cashBoxId}.';
-        pill = const NeutralPill('In Betrieb');
+            ? 'Signatur von A-Trust.'
+            : 'Signatur von A-Trust. Kassen-ID ${state.cashBoxId}.';
+        pill = state.outage
+            ? const WarnPill('In Betrieb, Signatur ausgefallen')
+            : const _AccentPill('In Betrieb');
+      case RksvMode.off when state.decommissioned:
+        help = 'Die Kassa ist außer Betrieb. Neue Bons sind Testbons.';
+        pill = const NeutralPill('Außer Betrieb');
       case RksvMode.off:
         help = 'Für die Registrierkassen-Pflicht. Noch nicht eingerichtet.';
         pill = const NeutralPill('Nicht eingerichtet');
@@ -285,8 +348,11 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
           ),
         if (rejected)
           _RejectedRow(
-            onRelogin: _busy
+            live: live,
+            onPressed: _busy
                 ? null
+                : live
+                ? () => openCredentials(context, edit: true)
                 : () => widget.onOpenConnectionCheck(
                     ConnectionCheckOpening.relogin,
                   ),
@@ -298,39 +364,20 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             busy: _busy,
             onDone: isChef ? _completeTask : null,
           ),
-        if (isChef && state.mode == RksvMode.off)
-          _action(
-            _Action.enable,
-            key: 'rksv-probe-on',
-            title: 'Zum Ausprobieren einschalten',
-            help:
-                'Bons bekommen einen QR-Code und kommen ins Protokoll, wie '
-                'später im echten Betrieb. Sie bleiben Testbons.',
-            label: 'Einschalten',
-            onPressed: _enable,
-          ),
-        if (isChef && state.mode == RksvMode.off)
-          _action(
-            _Action.connection,
-            key: 'rksv-online-probe-on',
-            title: 'Mit A-Trust ausprobieren',
-            help:
-                'Die Bons werden über das Testsystem von A-Trust signiert. '
-                'Braucht Internet. Sie bleiben Testbons.',
-            label: 'Ausprobieren',
-            onPressed: _tryOnline,
-          ),
-        if (isChef && online)
+        if (isChef && (online || live))
           _action(
             _Action.connection,
             key: 'rksv-connection-check',
             title: 'Verbindung prüfen',
             help: 'Internet und A-Trust ausprobieren.',
             label: 'Prüfen',
-            onPressed: () =>
-                widget.onOpenConnectionCheck(ConnectionCheckOpening.check),
+            onPressed: () => widget.onOpenConnectionCheck(
+              live
+                  ? ConnectionCheckOpening.checkLive
+                  : ConnectionCheckOpening.check,
+            ),
           ),
-        if (isChef && probe)
+        if (isChef && (probe || live))
           _action(
             _Action.zero,
             key: 'rksv-zero',
@@ -339,7 +386,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             label: 'Drucken',
             onPressed: _zero,
           ),
-        if (isChef && (probe || ended))
+        if (isChef && (probe || live || ended))
           _action(
             _Action.export,
             key: 'rksv-export',
@@ -349,6 +396,26 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
                 'einen USB-Stick.',
             label: 'Ausgeben',
             onPressed: _export,
+          ),
+        if (isChef && live)
+          _action(
+            _Action.credentials,
+            key: 'rksv-credentials',
+            title: 'Zugangsdaten',
+            help: 'Benutzername und Passwort von A-Trust ändern.',
+            label: 'Ändern',
+            onPressed: () => openCredentials(context),
+          ),
+        if (isChef && live)
+          _action(
+            _Action.decommission,
+            key: 'rksv-decommission',
+            title: 'Kassa außer Betrieb nehmen',
+            help:
+                'Die Kassa erstellt einen Schlussbeleg. Danach sind neue Bons '
+                'wieder Testbons.',
+            label: 'Außer Betrieb',
+            onPressed: _decommission,
           ),
         if (isChef && probe)
           _action(
@@ -360,6 +427,39 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
                 'keinen QR-Code mehr.',
             label: 'Beenden',
             onPressed: _disable,
+          ),
+        if (isChef && off)
+          _action(
+            _Action.enable,
+            key: 'rksv-probe-on',
+            title: 'Zum Ausprobieren einschalten',
+            help:
+                'Bons bekommen einen QR-Code und kommen ins Protokoll, wie '
+                'später im echten Betrieb. Sie bleiben Testbons.',
+            label: 'Einschalten',
+            onPressed: _enable,
+          ),
+        if (isChef && off)
+          _action(
+            _Action.connection,
+            key: 'rksv-online-probe-on',
+            title: 'Mit A-Trust ausprobieren',
+            help:
+                'Die Bons werden über das Testsystem von A-Trust signiert. '
+                'Braucht Internet. Sie bleiben Testbons.',
+            label: 'Ausprobieren',
+            onPressed: _tryOnline,
+          ),
+        if (isChef && !live)
+          _action(
+            _Action.setup,
+            key: 'rksv-setup',
+            title: 'Signatur einrichten',
+            help:
+                'Für den echten Betrieb. Du brauchst die Zugangsdaten von '
+                'A-Trust.',
+            label: 'Einrichten',
+            onPressed: () => openCredentials(context),
           ),
         // Ein Problem beim Erledigen einer Aufgabe oder beim Hinweis, oder
         // ein Stand, der sich inzwischen geändert hat.
@@ -382,11 +482,14 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     );
 
     // Das Kennzeichen "abgelehnt" liegt im Sitzungshalter (P1), nicht im
-    // Stand. Nur der Chef kann es aufheben, und nur in der Online-Probe.
-    if (!isChef || !online) return card(false);
+    // Stand, je System (Q4): in der Online-Probe das des Testsystems, in
+    // Betrieb das des echten. Nur der Chef kann es aufheben.
+    if (!isChef || !(online || live)) return card(false);
     return ValueListenableBuilder<bool>(
       valueListenable: ref
-          .watch(atrustKeeperProvider(AtrustSystem.test))
+          .watch(
+            atrustKeeperProvider(live ? AtrustSystem.live : AtrustSystem.test),
+          )
           .rejected,
       builder: (context, rejected, _) => card(rejected),
     );
@@ -524,12 +627,15 @@ class _NoticeRow extends StatelessWidget {
 }
 
 /// A-Trust hat die Zugangsdaten abgelehnt (`rksv-rejected`): der Satz in der
-/// Warnfläche und "Erneut anmelden" (`rksv-relogin`), das "Verbindung
-/// prüfen" als Antippen des Chefs öffnet.
+/// Warnfläche und in der Online-Probe "Erneut anmelden" (`rksv-relogin`),
+/// das "Verbindung prüfen" als Antippen des Chefs öffnet, in Betrieb
+/// ([live]) "Zugangsdaten neu eingeben" (`rksv-credentials-again`), das die
+/// Felder der Zugangsdaten öffnet.
 class _RejectedRow extends StatelessWidget {
-  const _RejectedRow({required this.onRelogin});
+  const _RejectedRow({required this.live, required this.onPressed});
 
-  final VoidCallback? onRelogin;
+  final bool live;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -558,11 +664,11 @@ class _RejectedRow extends StatelessWidget {
             ),
             const SizedBox(width: KassaTokens.spaceXl),
             PrimaryButton(
-              key: const Key('rksv-relogin'),
-              label: 'Erneut anmelden',
+              key: Key(live ? 'rksv-credentials-again' : 'rksv-relogin'),
+              label: live ? 'Zugangsdaten neu eingeben' : 'Erneut anmelden',
               filled: false,
               height: 56,
-              onPressed: onRelogin,
+              onPressed: onPressed,
             ),
           ],
         ),
@@ -571,7 +677,8 @@ class _RejectedRow extends StatelessWidget {
   }
 }
 
-/// Pille im Akzent ("Probe", "Online-Probe"): `accentSoft` mit `accentInk`.
+/// Pille im Akzent ("Probe", "Online-Probe", "In Betrieb"): `accentSoft` mit
+/// `accentInk`.
 class _AccentPill extends StatelessWidget {
   const _AccentPill(this.label);
 

@@ -15,13 +15,14 @@ import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
 import '../settings/credentials_screen.dart' show CredentialsRoute;
-import '../settings/setup_facts_screen.dart' show goingLiveProvider;
 import '../settings/settings_screen.dart';
-import '../settings/signature_panel.dart' show ConnectionCheckOpening;
+import '../settings/signature_panel.dart'
+    show ConnectionCheckOpening, irreversibleStepProvider;
 
 /// Öffnet in den Einstellungen "Zugangsdaten von A-Trust", mit [edit] gleich
-/// die Felder. Wie jede Seite der Einstellungen steht sie nur für den Chef
-/// da. [context] liegt unter der [ShellScreen].
+/// die Felder. Wie jede Seite der Einstellungen nur für den Chef: Für jemand
+/// anderen geschieht nichts, auch nichts, was ein späterer Chef sähe.
+/// [context] liegt unter der [ShellScreen].
 void openCredentials(BuildContext context, {bool edit = false}) => context
     .findAncestorStateOfType<_ShellScreenState>()
     ?._openCredentials(edit: edit);
@@ -56,8 +57,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   CredentialsRoute? _credentials;
 
   void _openCredentials({required bool edit}) {
+    if (!(ref.read(sessionProvider)?.isChef ?? false)) return;
     if (ref.read(activeCardPaymentProvider) != null) return;
-    if (ref.read(goingLiveProvider)) return;
+    if (ref.read(irreversibleStepProvider)) return;
     setState(() {
       _settingsOpen = true;
       _testingDevices = false;
@@ -77,9 +79,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   void _onBack(bool didPop, Object? result) {
     if (didPop) return;
     if (ref.read(unclearCardPaymentsProvider).isNotEmpty) return;
-    // Während der Inbetriebnahme bleibt "Angaben für FinanzOnline" stehen,
-    // bis ihr Ergebnis da ist.
-    if (ref.read(goingLiveProvider)) return;
+    // Während der Inbetriebnahme oder der Außerbetriebnahme bleibt der
+    // Bildschirm stehen, bis ihr Ergebnis da ist.
+    if (ref.read(irreversibleStepProvider)) return;
     if (_testingDevices) {
       setState(() => _testingDevices = false);
     } else if (_checkingCard) {
@@ -104,11 +106,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     // Während eine Kartenzahlung läuft, bleibt die Kassa stehen: kein anderer
     // Bereich, keine Einstellungen, kein Abmelden. Sonst ginge das Ergebnis
     // der Zahlung an einer Kassa verloren, die es nicht mehr gibt.
-    // Ebenso während der Inbetriebnahme: Ihr Ergebnis (in Betrieb oder der
-    // Satz, warum nicht) muss zu sehen sein.
+    // Ebenso während der Inbetriebnahme und der Außerbetriebnahme: Ihr
+    // Ergebnis (der neue Stand oder der Satz, warum nicht) muss zu sehen
+    // sein.
     final paying =
         ref.watch(activeCardPaymentProvider) != null ||
-        ref.watch(goingLiveProvider);
+        ref.watch(irreversibleStepProvider);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: _onBack,

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/features/settings/rksv_task_row.dart';
+import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/close_pump.dart';
@@ -65,4 +66,24 @@ void main() {
     expect(_key('rksv-task-backup-2026-Q4'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
+
+  for (final decommissioned in [false, true]) {
+    testWidgets('Aufgaben des echten Betriebs '
+        '(${decommissioned ? 'außer Betrieb' : 'in Betrieb'}): ohne den Satz '
+        'zum Üben, "Erledigt" nimmt sie weg', (t) async {
+      final tasks = decommissioned ? decommissionTasks : liveTasks;
+      await pumpClose(t, floatCents: 15000, extra: signatureOverrides());
+      await seedLive(t, tasks: tasks, decommissioned: decommissioned);
+      expect(_key('rksv-tasks'), findsOneWidget);
+      expect(find.text('Aufgaben aus der Probe sind zum Üben.'), findsNothing);
+      for (final task in tasks) {
+        expect(find.text(rksvTaskText(task)), findsOneWidget);
+      }
+      final first = tasks.first.id;
+      await _tap(t, 'rksv-task-done-$first');
+      expect(_key('rksv-task-$first'), findsNothing);
+      final state = await containerOf(t).read(rksvRepositoryProvider).current();
+      expect([for (final task in state.tasks) task.id], [tasks.last.id]);
+    });
+  }
 }

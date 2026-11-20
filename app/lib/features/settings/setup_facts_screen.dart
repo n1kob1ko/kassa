@@ -18,22 +18,10 @@ import '../login/session.dart';
 import 'card_check_screen.dart' show checkCardDecoration;
 import 'go_live_question.dart';
 import 'settings_rows.dart';
-import 'signature_panel.dart' show printRksvReceipt, staleSettingsSentence;
+import 'signature_panel.dart'
+    show irreversibleStepProvider, printRksvReceipt, staleSettingsSentence;
 
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
-
-/// Läuft gerade `goLive` aus "Angaben für FinanzOnline"? Solange es läuft,
-/// schließen weder "Zurück" noch ein anderer Bereich, die Einstellungen-Taste
-/// oder Abmelden den Bildschirm: Das Ergebnis eines Schritts, der sich nicht
-/// zurücknehmen lässt, darf nicht verloren gehen.
-class GoingLive extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool value) => state = value;
-}
-
-final goingLiveProvider = NotifierProvider<GoingLive, bool>(GoingLive.new);
 
 const _steps = [
   'An der alten Kassa den Schlussbeleg erstellen und sie bei FinanzOnline '
@@ -181,7 +169,7 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     if (staff == null) return;
     final service = ref.read(rksvServiceProvider);
     final sales = ref.read(saleServiceProvider);
-    final going = ref.read(goingLiveProvider.notifier);
+    final going = ref.read(irreversibleStepProvider.notifier);
     setState(() => _going = true);
     going.set(true);
     String? problem;

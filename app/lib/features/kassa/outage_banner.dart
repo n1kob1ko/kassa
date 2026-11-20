@@ -43,10 +43,12 @@ String outageSinceText(DateTime since, DateTime now) {
 /// Geht die Signatur wieder, bleibt der Hinweis noch [outageBackStay] mit
 /// "Die Signatur geht wieder." stehen. Ohne Ausfall ist er nicht da.
 ///
-/// In der Online-Probe mit abgelehnten Zugangsdaten steht statt des Grunds,
-/// dass der Chef kommen soll, und die Taste fehlt: Nur seine Einstellungen
-/// heben das auf. Den Sitzungshalter liest der Hinweis nur in der
-/// Online-Probe; sonst entsteht keine Verbindung zu A-Trust.
+/// In der Online-Probe oder in Betrieb mit abgelehnten Zugangsdaten steht
+/// statt des Grunds, dass der Chef kommen soll, und die Taste fehlt: Nur
+/// seine Einstellungen heben das auf. Den Sitzungshalter liest der Hinweis
+/// nur bei einer Kette von A-Trust, und zwar den ihres Systems (Q4): in der
+/// Online-Probe den des Testsystems, in Betrieb den des echten. Sonst
+/// entsteht keine Verbindung zu A-Trust.
 class OutageBanner extends ConsumerStatefulWidget {
   const OutageBanner({super.key});
 
@@ -117,15 +119,18 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     if (since == null || state.mode == RksvMode.off) {
       return const SizedBox.shrink();
     }
-    // Das Kennzeichen kann eine beendete Online-Probe überdauern; es zählt
-    // nur, solange eine läuft (R9).
-    if (state.unit != RksvUnit.atrustTest) {
+    // Das Kennzeichen kann eine beendete Kette von A-Trust überdauern; es
+    // zählt nur, solange eine läuft (R9), und nur das ihres Systems.
+    final system = switch (state.unit) {
+      RksvUnit.atrustTest => AtrustSystem.test,
+      RksvUnit.atrust => AtrustSystem.live,
+      RksvUnit.probe || null => null,
+    };
+    if (system == null) {
       return _banner(context, state, since, rejected: false);
     }
     return ValueListenableBuilder<bool>(
-      valueListenable: ref
-          .watch(atrustKeeperProvider(AtrustSystem.test))
-          .rejected,
+      valueListenable: ref.watch(atrustKeeperProvider(system)).rejected,
       builder: (context, rejected, _) =>
           _banner(context, state, since, rejected: rejected),
     );

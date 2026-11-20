@@ -362,5 +362,67 @@ void main() {
       expect(find.text(_rejectedLine), findsNothing);
       expect(find.text('Geht noch nicht.'), findsNothing);
     });
+
+    testWidgets('in Betrieb, abgelehnt: der Satz mit dem Chef, keine Taste '
+        '"Nochmal prüfen", keine Anfrage', (t) async {
+      final fake = FakeAtrust();
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustCredentials(exampleLiveCredentials);
+      await secrets.writeAtrustRejected(true, live: true);
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ...onlineOverrides(fake, secrets: secrets),
+        ],
+      );
+      await seedLive(
+        t,
+        outageSince: DateTime(2026, 11, 17, 13, 5),
+        outageReason: _rejectedReason,
+      );
+      expect(find.text('Signatur ausgefallen seit 13:05'), findsOneWidget);
+      expect(_inBanner(find.text(_rejectedLine)), findsOneWidget);
+      expect(find.text(_rejectedReason), findsNothing);
+      expect(_key('rksv-retry'), findsNothing);
+      expect(find.text('Nochmal prüfen'), findsNothing);
+      expect(fake.requests, isEmpty);
+    });
+
+    testWidgets('in Betrieb zählt nur das Kennzeichen des echten Systems, in '
+        'der Online-Probe nur das des Testsystems (Q4)', (t) async {
+      final testRejected = MemoryRksvSecrets();
+      await testRejected.writeAtrustRejected(true);
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ...onlineOverrides(FakeAtrust(), secrets: testRejected),
+        ],
+      );
+      await seedLive(t, outageSince: DateTime(2026, 11, 17, 13, 5));
+      expect(_inBanner(find.text('Kein Internet.')), findsOneWidget);
+      expect(find.text(_rejectedLine), findsNothing);
+      expect(_key('rksv-retry'), findsOneWidget);
+
+      final liveRejected = MemoryRksvSecrets();
+      await liveRejected.writeAtrustRejected(true, live: true);
+      await pumpKassa(
+        t,
+        overrides: [
+          ...await memoryOverrides(),
+          ...onlineOverrides(FakeAtrust(), secrets: liveRejected),
+        ],
+      );
+      await seedProbe(
+        t,
+        unit: RksvUnit.atrustTest,
+        outageSince: DateTime(2026, 11, 17, 13, 5),
+        outageReason: 'Kein Internet.',
+      );
+      expect(_inBanner(find.text('Kein Internet.')), findsOneWidget);
+      expect(find.text(_rejectedLine), findsNothing);
+      expect(_key('rksv-retry'), findsOneWidget);
+    });
   });
 }

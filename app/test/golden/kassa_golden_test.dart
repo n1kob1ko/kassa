@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -138,6 +139,36 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/kassa_ausfall_grund_hell.png'),
+    );
+  });
+
+  testWidgets('Kassa in Betrieb, A-Trust hat die Zugangsdaten abgelehnt '
+      '(hell)', (t) async {
+    final secrets = MemoryRksvSecrets();
+    await secrets.writeAtrustRejected(true, live: true);
+    await _threeLines(
+      t,
+      overrides: [
+        ...await memoryOverrides(),
+        ...onlineOverrides(FakeAtrust(), secrets: secrets),
+      ],
+    );
+    await seedLive(
+      t,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: 'A-Trust hat die Zugangsdaten abgelehnt.',
+    );
+    expect(
+      find.text(
+        'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('rksv-retry')), findsNothing);
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/kassa_ausfall_abgelehnt_hell.png'),
     );
   });
 }

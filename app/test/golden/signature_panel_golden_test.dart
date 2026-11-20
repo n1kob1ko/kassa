@@ -9,17 +9,28 @@ import '../support/settings_pump.dart';
 import '../support/signature_pump.dart';
 
 // Bildvergleich der Karte "Signatur" gegen die Bilder `s1b-2` und `s1b-7`,
-// für die Online-Probe gegen `s2a-01`, `s2a-07`, `s2a-08` und `s2a-09`.
+// für die Online-Probe gegen `s2a-01`, `s2a-07`, `s2a-08` und `s2a-09`, für
+// den echten Betrieb gegen `s2b-08`, `s2b-09` und `s2b-11` (die Bilder sind
+// 960 dp hoch wie die Entwürfe, weil die Karte dort mehr Zeilen hat).
 // Neu erzeugen mit
 // `flutter test --update-goldens test/golden/signature_panel_golden_test.dart`.
 
-Future<void> _expectCard(WidgetTester t, String file) async {
+Future<void> _expectCard(
+  WidgetTester t,
+  String file, {
+  double height = 800,
+}) async {
   // Die Karte steht ohne Scrollen ganz im Bild.
   final card = t.getRect(find.byKey(const Key('signature-card')));
-  expect(card.bottom, lessThanOrEqualTo(800));
+  expect(card.bottom, lessThanOrEqualTo(height));
   expect(t.takeException(), isNull);
   await expectLater(find.byType(KassaApp), matchesGoldenFile(file));
 }
+
+/// Einstellungen 1280 x 960 dp wie die Entwürfe `s2b-08` bis `s2b-11`: für
+/// Karten, die mit der Zeile "Signatur einrichten" nicht mehr in 800 dp
+/// passen.
+const _tall = Size(1280, 960);
 
 void main() {
   testWidgets('Signatur aus (hell)', (t) async {
@@ -34,22 +45,23 @@ void main() {
     testWidgets('Signatur in der Probe mit zwei Aufgaben ($name)', (t) async {
       await pumpSettings(
         t,
+        size: _tall,
         brightness: brightness,
         extra: signatureOverrides(),
       );
       await seedProbe(t, tasks: twoTasks);
-      await _expectCard(t, 'goldens/signatur_probe_$name.png');
+      await _expectCard(t, 'goldens/signatur_probe_$name.png', height: 960);
     });
   }
 
   testWidgets('Signatur in der Probe, ausgefallen (hell)', (t) async {
-    await pumpSettings(t, extra: signatureOverrides());
+    await pumpSettings(t, size: _tall, extra: signatureOverrides());
     await seedProbe(
       t,
       tasks: [twoTasks.first],
       outageSince: DateTime(2026, 11, 17, 10, 30),
     );
-    await _expectCard(t, 'goldens/signatur_ausfall_hell.png');
+    await _expectCard(t, 'goldens/signatur_ausfall_hell.png', height: 960);
   });
 
   testWidgets('Signatur aus (dunkel)', (t) async {
@@ -95,11 +107,80 @@ void main() {
       await secrets.writeAtrustRejected(true);
       await pumpSettings(
         t,
+        size: _tall,
         brightness: brightness,
         extra: onlineOverrides(FakeAtrust(), secrets: secrets),
       );
       await seedProbe(t, unit: RksvUnit.atrustTest);
-      await _expectCard(t, 'goldens/signatur_online_abgelehnt_$name.png');
+      await _expectCard(
+        t,
+        'goldens/signatur_online_abgelehnt_$name.png',
+        height: 960,
+      );
     });
   }
+
+  for (final (name, brightness) in [
+    ('hell', Brightness.light),
+    ('dunkel', Brightness.dark),
+  ]) {
+    testWidgets('Signatur in Betrieb mit zwei Aufgaben ($name)', (t) async {
+      await pumpSettings(
+        t,
+        size: _tall,
+        brightness: brightness,
+        extra: onlineOverrides(FakeAtrust()),
+      );
+      await seedLive(t, tasks: liveTasks);
+      await _expectCard(
+        t,
+        'goldens/signatur_in_betrieb_$name.png',
+        height: 960,
+      );
+    });
+  }
+
+  testWidgets('Signatur in Betrieb, ausgefallen (hell)', (t) async {
+    await pumpSettings(t, size: _tall, extra: onlineOverrides(FakeAtrust()));
+    await seedLive(
+      t,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: 'Kein Internet.',
+    );
+    await _expectCard(
+      t,
+      'goldens/signatur_in_betrieb_ausfall_hell.png',
+      height: 960,
+    );
+  });
+
+  testWidgets('Signatur in Betrieb, abgelehnt (hell)', (t) async {
+    final secrets = MemoryRksvSecrets();
+    await secrets.writeAtrustRejected(true, live: true);
+    await pumpSettings(
+      t,
+      size: _tall,
+      extra: onlineOverrides(FakeAtrust(), secrets: secrets),
+    );
+    await seedLive(
+      t,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: 'A-Trust hat die Zugangsdaten abgelehnt.',
+    );
+    await _expectCard(
+      t,
+      'goldens/signatur_in_betrieb_abgelehnt_hell.png',
+      height: 960,
+    );
+  });
+
+  testWidgets('Signatur außer Betrieb mit zwei Aufgaben (hell)', (t) async {
+    await pumpSettings(t, size: _tall, extra: onlineOverrides(FakeAtrust()));
+    await seedLive(t, tasks: decommissionTasks, decommissioned: true);
+    await _expectCard(
+      t,
+      'goldens/signatur_ausser_betrieb_hell.png',
+      height: 960,
+    );
+  });
 }

@@ -12,6 +12,7 @@ import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
+import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
@@ -101,15 +102,29 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     }
   }
 
-  /// Meldet die Kassa in der Online-Probe im Voraus bei A-Trust an, damit der
-  /// nächste Bon nicht auf die Anmeldung wartet. Ohne laufende Online-Probe
-  /// entsteht weder Sitzungshalter noch Verbindung; nach einer Ablehnung
-  /// schickt der Halter selbst nichts. Fehler gehen still unter.
+  /// Meldet die Kassa in der Online-Probe oder in Betrieb im Voraus bei
+  /// A-Trust an, am Halter des Systems der laufenden Kette, damit der
+  /// nächste Bon nicht auf die Anmeldung wartet. In Betrieb liest das Journal
+  /// dazu den AES-Schlüssel in den Speicher (Q17). Ohne laufende Kette von
+  /// A-Trust entsteht weder Sitzungshalter noch Verbindung; nach einer
+  /// Ablehnung schickt der Halter selbst nichts. Auf nichts davon wartet ein
+  /// Verkauf oder das erste Bild: Wer das ruft, wartet nicht, und Fehler
+  /// gehen still unter.
   Future<void> _warmUpSignature() async {
     try {
       final state = await ref.read(rksvStateProvider.future);
-      if (!mounted || state.unit != RksvUnit.atrustTest) return;
-      final keeper = ref.read(atrustKeeperProvider(AtrustSystem.test));
+      if (!mounted) return;
+      final system = switch (state.unit) {
+        RksvUnit.atrustTest => AtrustSystem.test,
+        RksvUnit.atrust => AtrustSystem.live,
+        RksvUnit.probe || null => null,
+      };
+      if (system == null) return;
+      if (system == AtrustSystem.live) {
+        // Ohne Frist, wenn der geschützte Speicher hängt: nie darauf warten.
+        ref.read(rksvJournalProvider).primeLiveKey().ignore();
+      }
+      final keeper = ref.read(atrustKeeperProvider(system));
       try {
         await keeper.restore();
       } catch (_) {
