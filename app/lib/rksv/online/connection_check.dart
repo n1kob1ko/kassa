@@ -51,6 +51,12 @@ final class ConnectionCheckState {
   final ConnectionFacts? facts;
 }
 
+/// Seit Beginn des Laufs gab es neue Zugangsdaten
+/// ([AtrustSessionKeeper.forget]).
+final class _Outdated implements Exception {
+  const _Outdated();
+}
+
 /// Eine Zeile ist gescheitert: Satz, Rat und, wenn es sie gibt, der
 /// Statuscode von A-Trust und die Art des Fehlers (nur für den Bericht).
 final class _RowFailure implements Exception {
@@ -98,6 +104,10 @@ class ConnectionCheck {
   Map<ConnectionRow, RowResult> _rows = _initialRows;
   Future<ConnectionCheckState>? _running;
 
+  /// Die Runde von [AtrustSessionKeeper.forget], in der der letzte Lauf
+  /// begann.
+  int? _round;
+
   // Für den Bericht, vom letzten Lauf.
   DateTime? _startedAt;
   final Map<ConnectionRow, Duration> _durations = {};
@@ -111,6 +121,14 @@ class ConnectionCheck {
   /// Das System, gegen das geprüft wird.
   AtrustSystem get system => _client.system;
 
+  /// Der letzte Lauf begann vor dem letzten [AtrustSessionKeeper.forget],
+  /// also mit alten Zugangsdaten. Läuft er noch, endet er beim nächsten
+  /// Schritt ohne Angaben; seine Angaben kommen nie zu "Weiter".
+  bool get outdated {
+    final r = _round;
+    return r != null && r != _keeper.round;
+  }
+
   /// [chefTapped]: Der Aufruf kommt von einem Antippen des Chefs und darf
   /// eine abgelehnte Anmeldung ein Mal neu versuchen (keeper.allowOneLogin).
   /// Sonst geht bei "abgelehnt" keine einzige Anfrage hinaus. Ein zweiter
@@ -119,6 +137,11 @@ class ConnectionCheck {
       _running ??= _run(chefTapped).whenComplete(() => _running = null);
 
   Future<ConnectionCheckState> _run(bool chefTapped) async {
+    final round = _round = _keeper.round;
+    void current() {
+      if (round != _keeper.round) throw const _Outdated();
+    }
+
     _startedAt = _clock.now();
     _durations.clear();
     _statuses.clear();
@@ -174,19 +197,26 @@ class ConnectionCheck {
     final user = stored;
     var row = ConnectionRow.reach;
     try {
+      current();
       final zdaId = await _step(row, () => _client.zdaId(user));
+      current();
       _zdaId = zdaId;
       _ok(row, 'A-Trust erreicht (${_seconds(_durations[row]!)}).');
 
       row = ConnectionRow.certificate;
       final certificate = await _step(row, () => _client.certificate(user));
+      current();
       _certificate = certificate;
       final (message, hint) = _judge(certificate);
       await _sameAccount(certificate);
+      current();
       _ok(row, message, hint);
 
       row = ConnectionRow.login;
       await _step(row, _keeper.session);
+      // Eine Sitzung aus der Runde der neuen Zugangsdaten bleibt für deren
+      // Lauf; die Probe-Unterschrift kostet dann keine Signatur umsonst.
+      current();
       _ok(row, _T.loggedIn);
 
       row = ConnectionRow.signature;
@@ -198,6 +228,7 @@ class ConnectionCheck {
         issuerCertificatesDer: certificate.issuersDer,
       );
       await _step(row, () => unit.sign(signingInput));
+      current();
       _ok(
         row,
         'Probe-Unterschrift erstellt und geprüft '
@@ -211,9 +242,19 @@ class ConnectionCheck {
           certificate: certificate,
         ),
       );
+    } on _Outdated {
+      return _outdated();
     } on Object catch (e) {
+      if (round != _keeper.round) return _outdated();
       return _fail(row, _failureOf(e));
     }
+  }
+
+  /// Ende eines Laufs der alten Zugangsdaten: keine Angaben, alle Zeilen
+  /// warten wieder, als hätte es ihn nicht gegeben.
+  ConnectionCheckState _outdated() {
+    _rows = _initialRows;
+    return _finish(null);
   }
 
   /// Zeile [row] läuft [work], höchstens [timeLimit] lang; die Dauer zählt

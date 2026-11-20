@@ -457,6 +457,33 @@ void main() {
     expect(s.atrust.requests, hasLength(4));
   });
 
+  test('Nachprüfung A5: ein Lauf, der vor keeper.forget() begann, endet ohne '
+      'Angaben, ohne Unterschrift und ohne weitere Anmeldung', () async {
+    final s = _Setup(atrust: FakeAtrust()..holdLogins = true);
+    expect(s.check.outdated, isFalse);
+    final run = s.check.run(chefTapped: false);
+    for (var i = 0; i < 20 && s.atrust.heldLogins.isEmpty; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(s.atrust.requests, [_zda, _certificate, _login]);
+    s.keeper.forget();
+    expect(s.check.outdated, isTrue);
+    s.atrust.heldLogins.single.complete(200);
+    final result = await run;
+    expect(result.facts, isNull);
+    expect(result.running, isFalse);
+    _expectWaiting(result, ConnectionRow.values);
+    expect(s.atrust.requests, [_zda, _certificate, _login]);
+    expect(s.check.outdated, isTrue);
+
+    // Der nächste Lauf gehört zur neuen Runde und gibt Angaben.
+    s.atrust.holdLogins = false;
+    final fresh = await s.check.run(chefTapped: false);
+    expect(s.check.outdated, isFalse);
+    expect(fresh.facts, isNotNull);
+    expect(s.logins, 2);
+  });
+
   test('Signatur passt nicht zum Zertifikat: Zeile 4 Problem mit dem Satz '
       'der Einheit', () async {
     final s = _Setup()..atrust.wrongSignature = true;

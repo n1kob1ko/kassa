@@ -60,6 +60,10 @@ class AtrustSessionKeeper {
   /// gehalten noch setzt sie [rejected].
   int _round = 0;
 
+  /// Die Runde von [forget]: Was vor dem letzten [forget] begann, gehört zu
+  /// alten Zugangsdaten.
+  int get round => _round;
+
   /// "Abgelehnt" gilt, steht aber noch nicht im Speicher (Q14), und das
   /// Schreiben, das gerade läuft.
   bool _rejectUnsaved = false;

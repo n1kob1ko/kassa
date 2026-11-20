@@ -425,9 +425,9 @@ class RksvService {
   ///
   /// Scheitert etwas, bleibt alles wie vorher, auch die Probe und das
   /// PendingSetup: [RksvProblem] mit dem Satz der Einheit, dem Satz zum
-  /// unlesbaren AES-Schlüssel oder einem allgemeinen. Stammen [facts] nicht vom echten System, fehlt das
-  /// PendingSetup oder ist die Kassa schon in Betrieb: [StateError], ohne
-  /// eine Anfrage an A-Trust.
+  /// unlesbaren AES-Schlüssel oder einem allgemeinen. Stammen [facts] nicht
+  /// vom echten System, fehlt das PendingSetup oder ist die Kassa schon in
+  /// Betrieb: [StateError], ohne eine Anfrage an A-Trust.
   Future<Receipt> goLive({
     required Staff staff,
     required ConnectionFacts facts,

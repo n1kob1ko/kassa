@@ -72,9 +72,9 @@ class RksvTaskRow extends StatelessWidget {
 /// Der Block der offenen Aufgaben: klein die Überschrift "Zu erledigen", mit
 /// [practice] (alle Aufgaben gehören zur laufenden Probe,
 /// `RksvState.onlyProbeTasks`) darunter "Aufgaben aus der Probe sind zum
-/// Üben.", dann je Aufgabe eine [RksvTaskRow]. [onDone] bekommt die Aufgabe; ohne
-/// [onDone] stehen keine Tasten da. Ohne Aufgabe ist der Block leer
-/// (`SizedBox.shrink`), wer ihn einbaut, lässt ihn dann besser ganz weg.
+/// Üben.", dann je Aufgabe eine [RksvTaskRow]. [onDone] bekommt die
+/// Aufgabe; ohne [onDone] stehen keine Tasten da. Ohne Aufgabe ist der Block
+/// leer (`SizedBox.shrink`), wer ihn einbaut, lässt ihn dann besser ganz weg.
 class RksvTaskBlock extends StatelessWidget {
   const RksvTaskBlock({
     super.key,

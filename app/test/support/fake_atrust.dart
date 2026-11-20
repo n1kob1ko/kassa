@@ -23,20 +23,35 @@ class FakeAtrust {
   /// Ohne Angabe ab 10.03.2016, also am 18.11.2026 abgelaufen wie beim
   /// Testsystem. Der Fake antwortet am Pfad jeder [AtrustSystem]-Adresse
   /// (beide haben denselben Pfad); angesprochen wird keine.
-  FakeAtrust({DateTime? validFrom}) {
+  FakeAtrust({DateTime? validFrom})
+    : _from = validFrom ?? DateTime.utc(2016, 3, 10) {
+    certificateDer = _certificate(BigInt.parse('2159b9f6', radix: 16));
+  }
+
+  final DateTime _from;
+
+  Uint8List _certificate(BigInt serial) {
     final params = ECCurve_secp256r1();
     final d = BigInt.parse(testPrivateKeyHex, radix: 16);
-    certificateDer = buildSelfSignedCertificate(
+    return buildSelfSignedCertificate(
       key: ECPrivateKey(d, params),
       publicKey: ECPublicKey(params.G * d, params),
-      serial: BigInt.parse('2159b9f6', radix: 16),
+      serial: serial,
       commonName: 'Beispiel-Imbiss Test',
-      from: validFrom ?? DateTime.utc(2016, 3, 10),
+      from: _from,
     );
   }
 
   /// Das Signaturzertifikat, das `GET …/Certificate` liefert.
   late final Uint8List certificateDer;
+
+  final Map<String, Uint8List> _certificatesOf = {};
+
+  /// `GET …/Certificate` für [user] liefert ein eigenes Zertifikat mit
+  /// demselben Schlüssel und der Seriennummer [serialHex] (ein anderes
+  /// Konto); für alle anderen bleibt es [certificateDer].
+  void certificateFor(String user, {required String serialHex}) =>
+      _certificatesOf[user] = _certificate(BigInt.parse(serialHex, radix: 16));
 
   /// Zwei Aussteller wie beim Testsystem; nur Bytes, kein Zertifikat.
   final List<Uint8List> issuersDer = [
@@ -107,15 +122,9 @@ class FakeAtrust {
     final parts = path.split('/').skip(1).toList();
     return switch ((request.method, parts)) {
       ('GET', [_, 'ZDA']) => _json({'zdaid': 'AT1'}),
-      ('GET', [_, 'Certificate']) => _json({
-        'Signaturzertifikat': base64.encode(certificateDer),
-        'Zertifizierungsstellen': [
-          for (final i in issuersDer) base64.encode(i),
-        ],
-        'Zertifikatsseriennummer': '559528438',
-        'ZertifikatsseriennummerHex': '2159B9F6',
-        'alg': alg,
-      }),
+      ('GET', [final user, 'Certificate']) => _certificateAnswer(
+        _certificatesOf[Uri.decodeComponent(user)] ?? certificateDer,
+      ),
       ('PUT', ['Session', _]) => await _login(request.body),
       ('POST', ['Session', final id, 'Sign', 'Hash']) => _sign(
         id,
@@ -124,6 +133,17 @@ class FakeAtrust {
       ('DELETE', ['Session', _]) => _json({'result': true}),
       _ => _html(404),
     };
+  }
+
+  http.Response _certificateAnswer(Uint8List der) {
+    final hex = certificateSerialHex(der);
+    return _json({
+      'Signaturzertifikat': base64.encode(der),
+      'Zertifizierungsstellen': [for (final i in issuersDer) base64.encode(i)],
+      'Zertifikatsseriennummer': BigInt.parse(hex, radix: 16).toString(),
+      'ZertifikatsseriennummerHex': hex.toUpperCase(),
+      'alg': alg,
+    });
   }
 
   Future<http.Response> _login(String body) async {

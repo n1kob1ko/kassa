@@ -580,6 +580,83 @@ void main() {
     expect(_key('setup-facts'), findsOneWidget);
   });
 
+  testWidgets('Nachprüfung A5: auch über "Zurück" und "Weiter" kommt eine '
+      'Prüfung der alten Zugangsdaten nie zu "Weiter"; die Seite prüft die '
+      'neuen, und die Angaben zeigen deren Zertifikat', (t) async {
+    final fake = _fake()
+      ..holdLogins = true
+      ..certificateFor(_user, serialHex: '3a7c51e2');
+    final secrets = MemoryRksvSecrets();
+    await secrets.writeAtrustCredentials(
+      const AtrustCredentials('u-alt', 'alt-beispiel'),
+    );
+    await _open(t, fake: fake, secrets: secrets);
+    // Eine Prüfung mit den alten Zugangsdaten hängt bei der Anmeldung.
+    await t.tap(_key('credentials-continue'));
+    for (var i = 0; i < 5; i++) {
+      await t.pump();
+    }
+    expect(fake.requests.last, 'PUT /Session/u-alt');
+    await t.binding.handlePopRoute();
+    await t.pump();
+    await t.pump();
+
+    // Neue Zugangsdaten, "Speichern und prüfen", dann gleich "Zurück".
+    await t.tap(_key('credentials-new'));
+    await t.pump();
+    await _type(t, user: _user, password: _password);
+    await t.tap(_key('credentials-save'));
+    await t.pump();
+    await t.pump();
+    expect(_key('connection-check'), findsOneWidget);
+    await t.binding.handlePopRoute();
+    await t.pump();
+    await t.pump();
+    expect(_key('credentials-saved'), findsOneWidget);
+
+    // "Weiter" in der gespeicherten Ansicht öffnet wieder "Verbindung
+    // prüfen", während die alte Prüfung noch läuft.
+    await t.tap(_key('credentials-continue'));
+    await t.pump();
+    await t.pump();
+    expect(_key('connection-check'), findsOneWidget);
+    expect(_key('connection-continue'), findsNothing);
+
+    // Die alte Anmeldung antwortet: Ihr Ergebnis kommt nicht zu "Weiter".
+    fake.heldLogins.first.complete(200);
+    for (var i = 0; i < 20; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+      expect(_key('connection-continue'), findsNothing);
+    }
+    // Die Prüfung der neuen Zugangsdaten läuft, ganz.
+    expect(fake.requests, contains('GET /$_user/Certificate'));
+    final held = fake.heldLogins.skip(1).toList();
+    expect(held, hasLength(1));
+    held.single.complete(200);
+    await t.pumpAndSettle();
+    expect(_key('connection-continue'), findsOneWidget);
+    final requests = fake.requests;
+    expect(
+      requests.lastIndexOf('GET /$_user/Certificate'),
+      greaterThan(requests.lastIndexOf('GET /u-alt/Certificate')),
+    );
+    // Keine Anmeldung mehr mit den alten Zugangsdaten, nur eine mit den
+    // neuen.
+    expect(requests.where((r) => r.startsWith('PUT /Session/')), [
+      'PUT /Session/u-alt',
+      _login,
+    ]);
+    await _tap(t, 'connection-continue');
+    expect(_key('setup-facts'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: _key('setup-value-serial'),
+        matching: find.textContaining('3a7c51e2'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('Schlussprüfung: das Passwort lässt sich weder kopieren noch '
       'ausschneiden noch teilen, gezeigt oder verdeckt', (t) async {
     await _open(t);

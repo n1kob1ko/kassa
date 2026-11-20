@@ -43,10 +43,12 @@ const _titles = {
 /// "Nochmal prüfen" zählt immer. Der Lauf gehört dem Provider: Wer die Seite
 /// verlässt, beendet ihn nicht, und sein Ende ändert hier nichts mehr.
 ///
-/// Bei [ConnectionCheckOpening.relogin] (eben gespeicherte Zugangsdaten)
-/// gehört ein Lauf, der schon läuft, zu den alten Zugangsdaten: Die Seite
-/// zeigt dann wartende Zeilen statt seiner, und wenn er endet, startet der
-/// Lauf für die neuen. Seine Angaben kommen so nie zu "Weiter".
+/// Läuft schon ein Lauf, der zu alten Zugangsdaten gehört
+/// ([ConnectionCheck.outdated], bei [ConnectionCheckOpening.relogin] jeder
+/// laufende), zeigt die Seite wartende Zeilen statt seiner, und wenn er
+/// endet, startet genau ein Lauf für die gespeicherten Zugangsdaten, als
+/// Antippen des Chefs nur bei [ConnectionCheckOpening.relogin]. Die Angaben
+/// eines alten Laufs kommen nie zu "Weiter" ([ConnectionCheck] gibt keine).
 class ConnectionCheckScreen extends ConsumerStatefulWidget {
   const ConnectionCheckScreen({
     super.key,
@@ -99,17 +101,17 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
   void initState() {
     super.initState();
     final relogin = widget.opening == ConnectionCheckOpening.relogin;
-    if (relogin && _check.state.value.running) {
+    final check = _check;
+    if (check.state.value.running && (relogin || check.outdated)) {
       _awaitingOld = true;
-      unawaited(_runAfterOld());
+      unawaited(_runAfterOld(chefTapped: relogin));
     } else {
       _run(chefTapped: relogin);
     }
   }
 
-  /// Wartet auf den Lauf, der noch läuft, und startet dann den eigenen, als
-  /// Antippen des Chefs wie jedes [ConnectionCheckOpening.relogin].
-  Future<void> _runAfterOld() async {
+  /// Wartet auf den Lauf, der noch läuft, und startet dann den eigenen.
+  Future<void> _runAfterOld({required bool chefTapped}) async {
     final check = _check;
     while (check.state.value.running) {
       // Während eines Laufs liefert run dessen Ende, ohne neuen Lauf.
@@ -118,7 +120,7 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
           .then<void>((_) {}, onError: (Object _) {});
       if (!mounted) return;
     }
-    _run(chefTapped: true);
+    _run(chefTapped: chefTapped);
     setState(() => _awaitingOld = false);
   }
 
