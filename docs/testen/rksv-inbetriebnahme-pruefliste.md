@@ -145,7 +145,7 @@ Das solltest du sehen: Die alte Kassa ist fertig, und deine Steuerberatung weiß
 Das solltest du sehen: Ein Fenster "Jetzt in Betrieb nehmen?" mit dem Satz "Das lässt sich nicht zurücknehmen. Ab jetzt ist jeder Bon ein echter Bon für das Finanzamt." Läuft eine Probe, steht dazu "Die laufende Probe endet mit einem Schlussbeleg." Mit "Abbrechen" bleibt alles, wie es war.
 
 - [ ] Auf "In Betrieb nehmen" tippen.
-- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann bis zu 45 Sekunden dauern. In der Zeit sind die anderen Tasten gesperrt.
+- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann bis zu einer Minute dauern. In der Zeit sind die anderen Tasten gesperrt.
 
 Das solltest du sehen: Du bist wieder in den Einstellungen. Die Pille in der Zeile "Signatur der Bons" heißt jetzt "In Betrieb". Darunter steht "Signatur von A-Trust." mit der Kassen-ID. Die Kassa druckt den Startbeleg. In der Karte stehen zwei Aufgaben: "Startbeleg mit der App "BMF Belegcheck" prüfen." und "Signatureinheit und Kassa bei FinanzOnline anmelden, bis" mit einem Datum eine Woche nach heute.
 
