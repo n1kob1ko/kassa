@@ -35,6 +35,7 @@ import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/theme.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'demo_fixtures.dart';
@@ -43,7 +44,7 @@ import 'kassa_pump.dart' show containerOf;
 
 Future<void>? _fonts;
 
-/// Lädt Figtree aus `assets/fonts` und die Lucide-Symbole, damit Bildvergleiche
+/// Lädt Figtree und JetBrains Mono aus `assets/fonts` und die Lucide-Symbole, damit Bildvergleiche
 /// echten Text und echte Symbole zeigen.
 Future<void> loadFigtree() => _fonts ??= () async {
   final loader = FontLoader('Figtree');
@@ -54,6 +55,16 @@ Future<void> loadFigtree() => _fonts ??= () async {
     );
   }
   await loader.load();
+  // Ziffern-Schrift für Kennungen und Schlüssel (nur SemiBold).
+  final mono = FontLoader(KassaTokens.monoFontFamily)
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          File('assets/fonts/JetBrainsMono-SemiBold.ttf').readAsBytesSync(),
+        ),
+      ),
+    );
+  await mono.load();
   // Lucide-Symbole kommen aus dem Paket, nicht aus dem Testgerät.
   final lucide = FontLoader('packages/lucide_icons_flutter/Lucide')
     ..addFont(

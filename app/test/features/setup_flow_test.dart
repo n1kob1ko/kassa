@@ -20,6 +20,7 @@ import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 import 'package:kassa/ui/primary_button.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart' show queryRows, setUpPrinter;
@@ -92,8 +93,13 @@ Future<void> _settings(
   required MemoryRksvSecrets secrets,
   bool printer = true,
   bool probe = false,
+  double textScale = 1.0,
 }) async {
-  await pumpSettings(t, extra: onlineOverrides(fake, secrets: secrets));
+  await pumpSettings(
+    t,
+    textScale: textScale,
+    extra: onlineOverrides(fake, secrets: secrets),
+  );
   if (printer) await setUpPrinter(t);
   if (probe) {
     final c = containerOf(t);
@@ -120,6 +126,7 @@ Future<({FakeAtrust fake, _Secrets secrets})> _open(
   bool pending = true,
   bool printer = true,
   bool probe = false,
+  double textScale = 1.0,
 }) async {
   final fake = _fake();
   final secrets = await _secrets(pending: pending);
@@ -129,6 +136,7 @@ Future<({FakeAtrust fake, _Secrets secrets})> _open(
     secrets: secrets,
     printer: printer,
     probe: probe,
+    textScale: textScale,
   );
   await _toFacts(t);
   return (fake: fake, secrets: secrets);
@@ -187,6 +195,25 @@ Future<List<String>> _liveChains(WidgetTester t) async => [
 Future<RksvState> _state(WidgetTester t) =>
     containerOf(t).read(rksvRepositoryProvider).current();
 
+/// Startet nach der Nachfrage die Inbetriebnahme, während A-Trust jede
+/// Antwort eine Sekunde verzögert; die Inbetriebnahme läuft danach noch.
+Future<void> _startDelayed(WidgetTester t, FakeAtrust fake) async {
+  await _tap(t, 'setup-go-live');
+  fake.delay = const Duration(seconds: 1);
+  await t.tap(_key('go-live-confirm'));
+  await t.pump();
+  await t.pump(const Duration(milliseconds: 300));
+  expect(_button(t, 'setup-go-live').leading, isNotNull);
+}
+
+/// Lässt die verzögerte Inbetriebnahme zu Ende laufen.
+Future<void> _finish(WidgetTester t) async {
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(seconds: 1));
+  }
+  await t.pumpAndSettle();
+}
+
 void main() {
   testWidgets('zeigt Titel, Satz, die sechs Angaben aus SetupFacts und '
       '"Bevor du startest"', (t) async {
@@ -225,7 +252,33 @@ void main() {
               .first,
         )
         .style!;
-    expect(style.fontFeatures, contains(const FontFeature.tabularFigures()));
+    expect(style.fontFamily, KassaTokens.monoFontFamily);
+    final aesStyle = t
+        .widget<Text>(
+          find
+              .descendant(
+                of: _key('setup-value-aes'),
+                matching: find.byType(Text),
+              )
+              .first,
+        )
+        .style!;
+    expect(aesStyle.fontFamily, KassaTokens.monoFontFamily);
+    // Die Art der Sicherheitseinrichtung ist Text, keine Kennung.
+    expect(
+      t
+          .widget<Text>(
+            find
+                .descendant(
+                  of: _key('setup-value-kind'),
+                  matching: find.byType(Text),
+                )
+                .first,
+          )
+          .style!
+          .fontFamily,
+      isNot(KassaTokens.monoFontFamily),
+    );
 
     expect(find.text('Bevor du startest'), findsOneWidget);
     for (final step in [
@@ -254,6 +307,31 @@ void main() {
     );
     expect(_button(t, 'setup-go-live').onPressed, isNotNull);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('große Schrift: nichts läuft über, jede Zeile des Schlüssels '
+      'bleibt eine Zeile', (t) async {
+    await _open(t, textScale: 1.3);
+    expect(t.takeException(), isNull);
+    final lines = find.descendant(
+      of: _key('setup-value-aes'),
+      matching: find.byType(Text),
+    );
+    final single = t.getSize(
+      find
+          .descendant(
+            of: _key('setup-value-cashbox'),
+            matching: find.byType(Text),
+          )
+          .first,
+    );
+    for (final e in lines.evaluate()) {
+      expect(
+        t.getSize(find.byWidget(e.widget)).height,
+        single.height,
+        reason: (e.widget as Text).data,
+      );
+    }
   });
 
   testWidgets('ohne PendingSetup: neue Werte, im geschützten Speicher, und '
@@ -564,5 +642,75 @@ void main() {
       fake.requests.where((r) => r.startsWith('PUT /Session/')),
       hasLength(1),
     );
+  });
+
+  testWidgets('"Zurück" während der Inbetriebnahme tut nichts, danach steht '
+      'die Meldung da', (t) async {
+    final (:fake, secrets: _) = await _open(t);
+    await _startDelayed(t, fake);
+    await t.binding.handlePopRoute();
+    await t.pump();
+    expect(_key('setup-facts'), findsOneWidget);
+    await t.tap(_key('setup-facts-back'), warnIfMissed: false);
+    await t.pump();
+    expect(_key('setup-facts'), findsOneWidget);
+    expect(_key('credentials-saved'), findsNothing);
+
+    await _finish(t);
+    expect((await _state(t)).mode, RksvMode.live);
+    expect(_key('setup-facts'), findsNothing);
+    expect(
+      find.descendant(of: _key('rksv-message'), matching: find.text(_done)),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('ein anderer Bereich, die Einstellungen-Taste oder Abmelden '
+      'während der Inbetriebnahme tun nichts, das Ergebnis geht nicht '
+      'verloren', (t) async {
+    final (:fake, secrets: _) = await _open(t);
+    await _startDelayed(t, fake);
+    for (final key in ['tab-Kassa', 'tab-Bons', 'settings', 'staff']) {
+      await t.tap(_key(key));
+      await t.pump();
+      expect(_key('setup-facts'), findsOneWidget, reason: key);
+    }
+    expect(_key('area-kassa'), findsNothing);
+
+    await _finish(t);
+    expect((await _state(t)).mode, RksvMode.live);
+    expect(_key('area-settings'), findsOneWidget);
+    expect(
+      find.descendant(of: _key('rksv-message'), matching: find.text(_done)),
+      findsOneWidget,
+    );
+    // Danach geht alles wieder.
+    await _tap(t, 'tab-Kassa');
+    expect(_key('area-kassa'), findsOneWidget);
+  });
+
+  testWidgets('scheitert die verzögerte Inbetriebnahme mit "Zurück" '
+      'dazwischen, steht der Satz trotzdem da', (t) async {
+    final (:fake, secrets: _) = await _open(t);
+    fake.wrongSignature = true;
+    await _startDelayed(t, fake);
+    await t.binding.handlePopRoute();
+    await t.pump();
+    await _finish(t);
+    expect(_key('setup-facts'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: _key('setup-go-live-problem'),
+        matching: find.text(
+          'Die Signatur von A-Trust passt nicht zum Zertifikat.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect((await _state(t)).mode, RksvMode.off);
+    // Danach führt "Zurück" wieder zu den Zugangsdaten.
+    await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    expect(_key('credentials-saved'), findsOneWidget);
   });
 }

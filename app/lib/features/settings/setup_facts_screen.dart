@@ -22,6 +22,19 @@ import 'signature_panel.dart' show printRksvReceipt, staleSettingsSentence;
 
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 
+/// Läuft gerade `goLive` aus "Angaben für FinanzOnline"? Solange es läuft,
+/// schließen weder "Zurück" noch ein anderer Bereich, die Einstellungen-Taste
+/// oder Abmelden den Bildschirm: Das Ergebnis eines Schritts, der sich nicht
+/// zurücknehmen lässt, darf nicht verloren gehen.
+class GoingLive extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final goingLiveProvider = NotifierProvider<GoingLive, bool>(GoingLive.new);
+
 const _steps = [
   'An der alten Kassa den Schlussbeleg erstellen und sie bei FinanzOnline '
       'abmelden.',
@@ -168,7 +181,9 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     if (staff == null) return;
     final service = ref.read(rksvServiceProvider);
     final sales = ref.read(saleServiceProvider);
+    final going = ref.read(goingLiveProvider.notifier);
     setState(() => _going = true);
+    going.set(true);
     String? problem;
     try {
       // Dieselben Angaben wie für `prepareSetup`: Die Seriennummer bei
@@ -181,6 +196,8 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
       problem = staleSettingsSentence;
     } catch (_) {
       problem = _unexpected;
+    } finally {
+      going.set(false);
     }
     if (!mounted) return;
     if (problem == null) {
@@ -210,7 +227,7 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
             children: [
               Pressable(
                 key: const Key('setup-facts-back'),
-                onTap: widget.onBack,
+                onTap: _going ? null : widget.onBack,
                 semanticLabel: 'Zurück zu den Zugangsdaten',
                 minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
                 child: Row(
@@ -452,6 +469,19 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
   }
 }
 
+/// Werte, die der Chef abschreibt (Kennungen, Seriennummer, Schlüssel): die
+/// Schrift mit gleich breiten Zeichen ([KassaTokens.monoFontFamily]), in der
+/// sich 0 und O, I, l und 1 deutlich unterscheiden.
+TextStyle _mono(TextStyle base, {required double size, required Color color}) =>
+    base.copyWith(
+      fontFamily: KassaTokens.monoFontFamily,
+      fontSize: size,
+      fontWeight: FontWeight.w600,
+      height: 1.35,
+      letterSpacing: 0,
+      color: color,
+    );
+
 /// Eine Angabe: links der Name, rechts der Wert (eine oder mehrere Zeilen,
 /// in Ziffern-Schrift mit gleich breiten Zeichen), darunter eine [note].
 /// Mit [placeholder] stehen statt der Werte ruhige Balken (Zeilen, Breite).
@@ -479,14 +509,14 @@ class _FactRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
-    final valueStyle = text.titleMedium!.copyWith(
-      fontSize: plain ? 16 : 18,
-      fontWeight: plain ? FontWeight.w500 : FontWeight.w700,
-      height: 1.3,
-      color: c.ink,
-      letterSpacing: plain ? null : 0.6,
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+    final valueStyle = plain
+        ? text.titleMedium!.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            height: 1.3,
+            color: c.ink,
+          )
+        : _mono(text.titleMedium!, size: 17, color: c.ink);
     final bars = placeholder;
     final Widget value;
     if (bars != null) {
@@ -518,12 +548,7 @@ class _FactRow extends StatelessWidget {
               child: Text(
                 note,
                 textAlign: TextAlign.right,
-                style: text.bodyMedium!.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: c.ink2,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: _mono(text.bodyMedium!, size: 14, color: c.ink2),
               ),
             ),
         ],

@@ -88,6 +88,11 @@ class KassaTokens {
   static const String fontFamily = 'Figtree';
   static const List<String> fontFallback = ['Roboto'];
 
+  /// Schrift mit gleich breiten Zeichen für Werte, die jemand abschreibt
+  /// (Kennungen, Schlüssel): Null mit Punkt, I, l und 1 deutlich verschieden.
+  /// Nur SemiBold (600) liegt bei.
+  static const String monoFontFamily = 'JetBrains Mono';
+
   /// Systemschrift darf die Oberfläche höchstens so weit vergrößern.
   static const double maxTextScale = 1.3;
 }

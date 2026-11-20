@@ -15,6 +15,7 @@ import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
 import '../settings/credentials_screen.dart' show CredentialsRoute;
+import '../settings/setup_facts_screen.dart' show goingLiveProvider;
 import '../settings/settings_screen.dart';
 import '../settings/signature_panel.dart' show ConnectionCheckOpening;
 
@@ -56,6 +57,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
   void _openCredentials({required bool edit}) {
     if (ref.read(activeCardPaymentProvider) != null) return;
+    if (ref.read(goingLiveProvider)) return;
     setState(() {
       _settingsOpen = true;
       _testingDevices = false;
@@ -75,6 +77,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   void _onBack(bool didPop, Object? result) {
     if (didPop) return;
     if (ref.read(unclearCardPaymentsProvider).isNotEmpty) return;
+    // Während der Inbetriebnahme bleibt "Angaben für FinanzOnline" stehen,
+    // bis ihr Ergebnis da ist.
+    if (ref.read(goingLiveProvider)) return;
     if (_testingDevices) {
       setState(() => _testingDevices = false);
     } else if (_checkingCard) {
@@ -99,7 +104,11 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     // Während eine Kartenzahlung läuft, bleibt die Kassa stehen: kein anderer
     // Bereich, keine Einstellungen, kein Abmelden. Sonst ginge das Ergebnis
     // der Zahlung an einer Kassa verloren, die es nicht mehr gibt.
-    final paying = ref.watch(activeCardPaymentProvider) != null;
+    // Ebenso während der Inbetriebnahme: Ihr Ergebnis (in Betrieb oder der
+    // Satz, warum nicht) muss zu sehen sein.
+    final paying =
+        ref.watch(activeCardPaymentProvider) != null ||
+        ref.watch(goingLiveProvider);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: _onBack,
