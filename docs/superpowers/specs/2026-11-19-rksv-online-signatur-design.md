@@ -438,6 +438,12 @@ Aus dem Plan `docs/superpowers/plans/2026-11-20-rksv-s2b-inbetriebnahme.md`, Abs
 | B14 | Ohne Signatur steht "Protokoll ausgeben" vor den Zeilen zum Einschalten, auch nach einer beendeten Probe. | Bild der Karte "Außer Betrieb". | Die Reihenfolge der Zeilen in "Nicht eingerichtet" hat sich für Geräte mit einer beendeten Probe geändert. |
 | B15 | Solange "In Betrieb nehmen" oder "Außer Betrieb" läuft, gilt dieselbe Sperre der Bedienung (ein Mechanismus für beide). `openCredentials` tut für Mitarbeiter ohne Chef-Recht nichts. | Entscheidung B10; ein Mitarbeiter hätte sonst den Bildschirm für den nächsten Chef vorbereitet. | Keiner. |
 | B16 | Im Ausfall in Betrieb steht unter der Pille nur der Grund, ohne "Seit 13:05." wie im Bild. | Der Plan sagt "wie in der Online-Probe", dort steht auch keine Uhrzeit. | Die Uhrzeit des Ausfalls steht nur am Bon und in der Aufgabe. |
+| B17 | Der geschützte Speicher löscht bei einem Lesefehler nichts mehr. Das gilt für die Signatur, die Kopplung mit dem Server und den Schutz der PIN. | Die Voreinstellung des Bausteins hätte den Schlüssel der echten Kette beim ersten Lesefehler für immer gelöscht. | Ein Lesefehler bleibt ein Fehler, bis der Speicher wieder liest. |
+| B18 | Android sichert die Daten der App nicht mit und überträgt sie nicht auf ein neues Gerät. | Eine zurückgespielte Datenbank ohne ihre Schlüssel wäre eine Kassa, die nicht verkaufen kann. | Ein neues Tablet beginnt leer. Die Daten kommen vom Server ("Neu einspielen"). |
+| B19 | Vor "In Betrieb nehmen" meldet sich die Kassa bei A-Trust an. | Nach einer langen Pause hätten Anmeldung und Signatur zusammen nur 5 Sekunden gehabt. | Keiner. |
+| B20 | Zugangsdaten und vorbereitete Werte werden je als ein Wert gespeichert. | Ein Fehler zwischen zwei Schreibvorgängen hätte einen neuen Benutzernamen mit dem alten Passwort hinterlassen. | Keiner. |
+| B21 | "Verbindung prüfen" vergleicht im Betrieb das Zertifikat des Kontos mit dem der laufenden Kette. Passt es nicht, steht ein Kreuz bei "Zertifikat". | Zugangsdaten eines anderen Kontos hätten vier Haken gezeigt, und jeder Bon wäre ein Ausfall geworden. | Ein neues Zertifikat desselben Kontos zeigt auch ein Kreuz. |
+| B22 | Kann die Kassa den Schlüssel nicht lesen, steht "Das Tablet konnte den Schlüssel nicht lesen. Bitte nichts löschen und die App nicht neu installieren." | Der alte Satz schickte den Chef im Kreis. | Einen Weg, den Schlüssel neu einzugeben, gibt es noch nicht. |
 
 ### 12.4 Was am Wortlaut der Verordnung geprüft wurde (20.11.2026)
 
@@ -455,7 +461,18 @@ Quellen: Text der RKSV, Stand 11/2015; Leitfaden der WKO, Stand 11/2016; Handbuc
 - Die Kassa erstellt den Monatsbeleg erst vor dem ersten Bon des neuen Monats. Reicht das?
 - Bis wann muss der Jahresbeleg geprüft sein? "Bis 15. Februar" steht in den drei Quellen nicht.
 - Wie läuft der Tausch der alten Kassa genau ab (Schlussbeleg dort, Abmeldung, Reihenfolge)?
+- Muss das Ende eines Ausfalls gemeldet werden, wenn die Kassa während des Ausfalls außer Betrieb geht?
 
 ### 12.6 Bekannte Punkte, die in S2b bleiben
 
-Wird nach der Schlussprüfung ergänzt.
+- Geht der Schlüssel der echten Kette wirklich verloren (zum Beispiel weil der Schlüsselspeicher des Tablets kaputt ist), kann die Kassa nicht verkaufen und nicht außer Betrieb gehen. Die App löscht ihn nicht mehr selbst (B17, B18). Einen Weg, den Schlüssel vom Zettel neu einzugeben, gibt es noch nicht. Das braucht eine Tastatur und ist eine Entscheidung für Niko.
+- Im Verkauf steht in diesem Fall weiter "Der Bon konnte nicht gespeichert werden. Bitte noch einmal."
+- Nach einer zweiten Inbetriebnahme gibt "Protokoll ausgeben" die neue Kette aus. Die offene Aufgabe "Protokoll sichern" der alten Kette führt dann zur falschen Kette (Q15).
+- Im Betrieb werden neue Zugangsdaten gespeichert, bevor sie geprüft sind. Ein Tippfehler führt zu einem Ausfall und einer abgelehnten Anmeldung, bis die richtigen eingegeben sind.
+- Der Prüfwert des AES-Schlüssels ist nach der Beschreibung des Ministeriums gerechnet. Einen Vergleichswert aus dem Code des Ministeriums gibt es nicht. Der erste echte Beweis ist, dass FinanzOnline ihn annimmt.
+- Wird die Kassa während eines Ausfalls außer Betrieb genommen, trägt der Schlussbeleg den Vermerk des Ausfalls. Die Frage dazu sagt das nicht, und es entsteht keine Aufgabe "Ende des Ausfalls melden".
+- Die Seiten mit Passwort und AES-Schlüssel lassen sich am Tablet als Bildschirmfoto aufnehmen. Die Prüfliste verbietet es, die App verhindert es nicht.
+- Speicher-Aufrufe im Bildschirm "Zugangsdaten von A-Trust" haben keine Zeitgrenze. Hängt der geschützte Speicher, bleibt die Seite leer oder die Taste gesperrt.
+- Nach dem Speichern neuer Zugangsdaten kann die Zeile "Anmeldung" bis zu zwei Minuten "Kein Internet." zeigen, wenn davor eine Anmeldung ohne Antwort geblieben ist (Q13).
+- Der Satz "A-Trust hat die Zugangsdaten abgelehnt." steht in der Karte "Signatur" zweimal.
+- Kleinere Punkte aus den Prüfungen der einzelnen Aufgaben stehen im Protokoll des Baus.
