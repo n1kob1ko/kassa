@@ -1,5 +1,6 @@
-// Probe-Signatur und Online-Probe ein- und ausschalten, Nullbeleg,
-// "Nochmal prüfen", "Protokoll ausgeben".
+// Probe-Signatur und Online-Probe ein- und ausschalten, Angaben für
+// FinanzOnline, Inbetriebnahme und Außerbetriebnahme, Nullbeleg, "Nochmal
+// prüfen", "Protokoll ausgeben".
 
 import 'dart:convert';
 import 'dart:math';
@@ -18,6 +19,7 @@ import 'online/connection_check.dart';
 import 'probe_signature_unit.dart';
 import 'rksv_secrets.dart';
 import 'rksv_state.dart';
+import 'setup_facts.dart';
 import 'signature_unit.dart';
 
 /// Etwas, das der Chef wissen muss; [message] ist ein deutscher Satz ohne
@@ -33,8 +35,10 @@ final class RksvProblem implements Exception {
 const _storageProblem =
     'Das Tablet konnte den Schlüssel nicht sicher speichern.';
 const _enableProblem = 'Die Probe-Signatur konnte nicht eingeschaltet werden.';
+const _goLiveProblem = 'Die Kassa konnte nicht in Betrieb genommen werden.';
 const _notRunning = 'Die Signatur ist nicht eingeschaltet.';
 const _noProtocol = 'Es gibt noch kein Protokoll.';
+const _storageReadProblem = 'Das Tablet konnte den Schlüssel nicht lesen.';
 
 /// Zeichen der Kassen-Kennung: ohne I, O, 0 und 1, damit sie sich sicher
 /// abschreiben lässt.
@@ -210,17 +214,25 @@ class RksvService {
   Uint8List _newAesKey() =>
       Uint8List.fromList([for (var i = 0; i < 32; i++) _random.nextInt(256)]);
 
-  /// Stand auf die neue Kette [chain], dann ihr Startbeleg (muss signiert
-  /// sein).
-  Future<Receipt> _startReceipt(int chain, Staff staff) async {
+  /// Stand auf die neue Kette [chain] im Modus [mode], mit [tasks], wenn
+  /// angegeben; dann ihr Startbeleg (muss signiert sein).
+  Future<Receipt> _startReceipt(
+    int chain,
+    Staff staff, {
+    RksvMode mode = RksvMode.probe,
+    List<RksvTask>? tasks,
+  }) async {
     await _writeState(
       RksvStateRowsCompanion(
-        mode: Value(RksvMode.probe.name),
+        mode: Value(mode.name),
         chain: Value(chain),
         counterCents: const Value(0),
         outageSince: const Value(null),
         outageReason: const Value(null),
         notice: const Value(null),
+        tasks: tasks == null
+            ? const Value.absent()
+            : Value(encodeRksvTasks(tasks)),
       ),
     );
     return _receipts.createSpecial(
@@ -273,31 +285,289 @@ class RksvService {
   Future<Receipt> disableProbe({required Staff staff}) {
     return _db.transaction(() async {
       final state = await _state();
-      final chain = state.chain;
-      if (state.mode != RksvMode.probe.name || chain == null) {
+      if (state.mode != RksvMode.probe.name || state.chain == null) {
         throw StateError('Die Probe-Signatur läuft nicht.');
+      }
+      return _closeProbe(staff);
+    });
+  }
+
+  /// Die laufende Probe beenden: Schlussbeleg, Kette zu, mode off, ihre
+  /// Aufgaben weg. In der Transaktion des Aufrufers.
+  Future<Receipt> _closeProbe(Staff staff) async {
+    final chain = (await _state()).chain!;
+    final closing = await _receipts.createSpecial(
+      ReceiptKind.closing,
+      staff: staff,
+    );
+    // Hat sich die Probe beim Schlussbeleg selbst beendet (K9), ist die
+    // Kette schon zu.
+    await _endChain(chain);
+    await _writeState(
+      RksvStateRowsCompanion(
+        mode: Value(RksvMode.off.name),
+        chain: const Value(null),
+        outageSince: const Value(null),
+        outageReason: const Value(null),
+        // Die Aufgaben gehören zur Probe und enden mit ihr.
+        tasks: const Value('[]'),
+      ),
+    );
+    return closing;
+  }
+
+  Future<void> _endChain(int chain) =>
+      (_db.update(_db.rksvChainRows)
+            ..where((t) => t.chain.equals(chain) & t.endedAt.isNull()))
+          .write(RksvChainRowsCompanion(endedAt: Value(_clock.now())));
+
+  // Nur ein "Angaben für FinanzOnline" zugleich: Zwei Aufrufe dürfen nicht
+  // je ein PendingSetup anlegen, sonst zeigte einer überholte Werte.
+  Future<void> _setupQueue = Future.value();
+
+  /// "Angaben für FinanzOnline" (Entwurf 6.7, Schritt 3, Q2): Kassen-Kennung
+  /// und AES-Schlüssel aus dem PendingSetup, sonst neue (wie bei der
+  /// Online-Probe), die bis zur Inbetriebnahme im geschützten Speicher
+  /// bleiben; dazu Kennung und Seriennummer aus [facts]. Schreibt nichts in
+  /// die Datenbank. Liest oder schreibt der geschützte Speicher nicht:
+  /// [RksvProblem], und ein vorhandenes PendingSetup bleibt, wie es ist.
+  /// Stammen [facts] nicht vom echten System oder ist die Kassa schon in
+  /// Betrieb: [StateError].
+  Future<SetupFacts> prepareSetup({required ConnectionFacts facts}) {
+    final done = _setupQueue.then((_) => _prepareSetup(facts));
+    _setupQueue = done.then<void>((_) {}, onError: (Object _) {});
+    return done;
+  }
+
+  Future<SetupFacts> _prepareSetup(ConnectionFacts facts) async {
+    if (facts.system != AtrustSystem.live) {
+      throw StateError('Die Angaben gibt es nur am echten System.');
+    }
+    if (await _mode() == RksvMode.live) {
+      throw StateError('Die Kassa ist schon in Betrieb.');
+    }
+    var setup = await _readPendingSetup();
+    if (setup == null) {
+      final fresh = PendingSetup(
+        cashBoxId: _newCashBoxId(),
+        aesKey: _newAesKey(),
+      );
+      try {
+        await () async {
+          await _secrets.writePendingSetup(fresh);
+          final back = await _secrets.pendingSetup();
+          if (back == null ||
+              back.cashBoxId != fresh.cashBoxId ||
+              back.aesKey.length != fresh.aesKey.length ||
+              !_equal(back.aesKey, fresh.aesKey)) {
+            throw const RksvProblem(_storageProblem);
+          }
+        }().timeout(storageLimit);
+      } on Object {
+        throw const RksvProblem(_storageProblem);
+      }
+      setup = fresh;
+    }
+    return setupFactsOf(
+      zdaId: facts.zdaId,
+      certSerialHex: facts.certificate.serialHex,
+      cashBoxId: setup.cashBoxId,
+      aesKey: setup.aesKey,
+    );
+  }
+
+  /// Das PendingSetup, höchstens [storageLimit] lang gelesen; null auch,
+  /// wenn eine Kette schon seine Kassen-Kennung trägt (das Löschen nach der
+  /// Inbetriebnahme ist gescheitert): Eine Kennung gehört zu genau einer
+  /// Kette. Scheitert das Lesen: [RksvProblem].
+  Future<PendingSetup?> _readPendingSetup() async {
+    final PendingSetup? setup;
+    try {
+      setup = await _secrets.pendingSetup().timeout(storageLimit);
+    } on Object {
+      throw const RksvProblem(_storageReadProblem);
+    }
+    if (setup == null) return null;
+    final used = await (_db.select(
+      _db.rksvChainRows,
+    )..where((t) => t.cashBoxId.equals(setup!.cashBoxId))).get();
+    return used.isEmpty ? setup : null;
+  }
+
+  /// "Jetzt in Betrieb nehmen" (Entwurf 6.7, Schritt 5, Q7), eine einzige
+  /// Transaktion: Läuft eine Probe, endet sie mit Schlussbeleg (wie
+  /// [disableProbe]). Dann neue Kette `live` am echten System mit
+  /// Kassen-Kennung und AES-Schlüssel aus dem PendingSetup und Kennung und
+  /// Zertifikat aus [facts], Stand `live`, Aufgaben "Bei FinanzOnline
+  /// anmelden" (bis heute plus 7 Tage) und "Startbeleg prüfen", Startbeleg
+  /// von A-Trust signiert. Danach kennt das Journal den AES-Schlüssel (Q17),
+  /// und das PendingSetup wird gelöscht (scheitert das, ohne Folgen).
+  ///
+  /// Scheitert etwas, bleibt alles wie vorher, auch die Probe und das
+  /// PendingSetup: [RksvProblem] mit dem Satz der Einheit, sonst einem
+  /// allgemeinen. Stammen [facts] nicht vom echten System, fehlt das
+  /// PendingSetup oder ist die Kassa schon in Betrieb: [StateError], ohne
+  /// eine Anfrage an A-Trust.
+  Future<Receipt> goLive({
+    required Staff staff,
+    required ConnectionFacts facts,
+  }) async {
+    final journal =
+        _receipts.journal ??
+        (throw StateError('Ohne Journal gibt es keinen echten Betrieb.'));
+    int? chain;
+    late Uint8List aesKey;
+    final Receipt start;
+    try {
+      start = await _db.transaction(() async {
+        // Echt heißt echt (Plan, Global Constraints).
+        if (facts.system != AtrustSystem.live) {
+          throw StateError('Die Inbetriebnahme läuft nur am echten System.');
+        }
+        final mode = await _mode();
+        if (mode == RksvMode.live) {
+          throw StateError('Die Kassa ist schon in Betrieb.');
+        }
+        final setup =
+            await _readPendingSetup() ??
+            (throw StateError('Es gibt keine Angaben für FinanzOnline.'));
+        aesKey = setup.aesKey;
+        try {
+          if (mode == RksvMode.probe) await _closeProbe(staff);
+          chain = await _nextChain();
+          return await _startLiveChain(chain!, staff, facts, setup);
+        } on RksvProblem {
+          rethrow;
+        } on SignatureFailure catch (e) {
+          throw RksvProblem(e.reason);
+        } on Object {
+          throw const RksvProblem(_goLiveProblem);
+        }
+      });
+    } on Object {
+      // Die Kette gibt es nicht; ihr Schlüssel darf keiner späteren Kette
+      // mit derselben Nummer bleiben.
+      final c = chain;
+      if (c != null) journal.forgetLiveKey(c);
+      rethrow;
+    }
+    journal.rememberLiveKey(chain!, aesKey);
+    try {
+      await _secrets.writePendingSetup(null).timeout(storageLimit);
+    } on Object {
+      // Ohne Folgen: Ein PendingSetup, dessen Kennung eine Kette trägt,
+      // gilt als keins (_readPendingSetup).
+    }
+    return start;
+  }
+
+  Future<Receipt> _startLiveChain(
+    int chain,
+    Staff staff,
+    ConnectionFacts facts,
+    PendingSetup setup,
+  ) async {
+    final certificate = facts.certificate;
+    await _storeSecrets(chain, setup.aesKey);
+    // Dasselbe Zertifikat aus einer früheren Kette bleibt, wie es ist.
+    await _db
+        .into(_db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: certificate.serialHex,
+            certificate: certificate.certificateDer,
+            issuers: Value(
+              jsonEncode([
+                for (final i in certificate.issuersDer) base64.encode(i),
+              ]),
+            ),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+    final now = _clock.now();
+    await _db
+        .into(_db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: Value(chain),
+            mode: RksvMode.live.name,
+            unit: Value(RksvUnit.atrust.name),
+            cashBoxId: setup.cashBoxId,
+            zdaId: facts.zdaId,
+            certSerial: certificate.serialHex,
+            startedAt: now,
+          ),
+        );
+    // "Startbeleg prüfen" legt das Journal mit dem Startbeleg an.
+    return _startReceipt(
+      chain,
+      staff,
+      mode: RksvMode.live,
+      tasks: [
+        ...decodeRksvTasks((await _state()).tasks),
+        RksvTask(
+          id: 'register-finanzonline-$chain',
+          kind: RksvTaskKind.registerFinanzOnline,
+          createdAt: now,
+          detail: _inAWeek(now),
+        ),
+      ],
+    );
+  }
+
+  /// "Kassa außer Betrieb nehmen" (Q8): Schlussbeleg (im Ausfall mit dem
+  /// Vermerk), Kette beenden, mode off, Ausfall gelöscht. Die offenen
+  /// Aufgaben bleiben, dazu "Außerbetriebnahme melden" (bis heute plus 7
+  /// Tage) und, wenn nicht schon offen, "Protokoll sichern" (Q15). Nicht in
+  /// Betrieb: [StateError].
+  Future<Receipt> decommission({required Staff staff}) {
+    return _db.transaction(() async {
+      final state = await _state();
+      final chain = state.chain;
+      if (state.mode != RksvMode.live.name || chain == null) {
+        throw StateError('Die Kassa ist nicht in Betrieb.');
       }
       final closing = await _receipts.createSpecial(
         ReceiptKind.closing,
         staff: staff,
       );
-      // Hat sich die Probe beim Schlussbeleg selbst beendet (K9), ist die
-      // Kette schon zu.
-      await (_db.update(_db.rksvChainRows)
-            ..where((t) => t.chain.equals(chain) & t.endedAt.isNull()))
-          .write(RksvChainRowsCompanion(endedAt: Value(_clock.now())));
+      await _endChain(chain);
+      final now = _clock.now();
+      final tasks = decodeRksvTasks((await _state()).tasks);
       await _writeState(
         RksvStateRowsCompanion(
           mode: Value(RksvMode.off.name),
           chain: const Value(null),
           outageSince: const Value(null),
           outageReason: const Value(null),
-          // Die Aufgaben gehören zur Probe und enden mit ihr.
-          tasks: const Value('[]'),
+          tasks: Value(
+            encodeRksvTasks([
+              ...tasks,
+              RksvTask(
+                id: 'report-decommission-$chain',
+                kind: RksvTaskKind.reportDecommission,
+                createdAt: now,
+                detail: _inAWeek(now),
+              ),
+              if (!tasks.any((t) => t.kind == RksvTaskKind.backupProtocol))
+                RksvTask(
+                  id: 'backup-decommission-$chain',
+                  kind: RksvTaskKind.backupProtocol,
+                  createdAt: now,
+                ),
+            ]),
+          ),
         ),
       );
       return closing;
     });
+  }
+
+  /// Der Tag eine Woche nach [now], `25.11.2026`.
+  static String _inAWeek(DateTime now) {
+    final d = DateTime(now.year, now.month, now.day + 7);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)}.${d.year}';
   }
 
   /// Nullbeleg, auf Wunsch des Chefs (gedruckt wird er vom Bildschirm).
@@ -319,25 +589,36 @@ class RksvService {
   Future<bool> retrySignature({required Staff staff}) =>
       _receipts.retryCollective(staff: staff);
 
-  /// "Protokoll ausgeben": die laufende Kette, sonst die zuletzt beendete,
-  /// im Zeitraum [range] (Vierteljahre von [now] aus, Ortszeit). Ohne Kette:
-  /// [RksvProblem]. Ohne Eintrag im Zeitraum: [ExportOutcome.empty], dann
-  /// öffnet sich kein Fenster.
+  /// "Protokoll ausgeben" (Q15): die laufende Kette, wenn sie `live` ist;
+  /// sonst die jüngste beendete Kette `live`, wenn es eine gibt; sonst die
+  /// laufende, sonst die zuletzt beendete Kette. Im Zeitraum [range]
+  /// (Vierteljahre von [now] aus, Ortszeit). Ohne Kette: [RksvProblem]. Ohne
+  /// Eintrag im Zeitraum: [ExportOutcome.empty], dann öffnet sich kein
+  /// Fenster.
   Future<ExportOutcome> exportProtocol(
     ExportRange range, {
     required DateTime now,
   }) async {
     final state = await _state();
     final running = state.chain;
-    final chain = running != null
-        ? await (_db.select(
+    final current = running == null
+        ? null
+        : await (_db.select(
             _db.rksvChainRows,
-          )..where((t) => t.chain.equals(running))).getSingleOrNull()
-        : await (_db.select(_db.rksvChainRows)
-                ..where((t) => t.endedAt.isNotNull())
-                ..orderBy([(t) => OrderingTerm.desc(t.chain)])
-                ..limit(1))
-              .getSingleOrNull();
+          )..where((t) => t.chain.equals(running))).getSingleOrNull();
+    Future<RksvChainRow?> latestEnded({bool liveOnly = false}) =>
+        (_db.select(_db.rksvChainRows)
+              ..where(
+                (t) => liveOnly
+                    ? t.endedAt.isNotNull() & t.mode.equals(RksvMode.live.name)
+                    : t.endedAt.isNotNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.chain)])
+              ..limit(1))
+            .getSingleOrNull();
+    final chain = current?.mode == RksvMode.live.name
+        ? current
+        : await latestEnded(liveOnly: true) ?? current ?? await latestEnded();
     if (chain == null) throw const RksvProblem(_noProtocol);
 
     final quarter = DateTime(now.year, now.month - (now.month - 1) % 3);
@@ -371,6 +652,9 @@ class RksvService {
     );
     return saved ? ExportOutcome.saved : ExportOutcome.cancelled;
   }
+
+  Future<RksvMode> _mode() async =>
+      enumByNameOr(RksvMode.values, (await _state()).mode, RksvMode.off);
 
   Future<RksvStateRow> _state() =>
       (_db.select(_db.rksvStateRows)..where((t) => t.id.equals(1))).getSingle();

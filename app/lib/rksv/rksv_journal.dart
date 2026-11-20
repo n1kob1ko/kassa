@@ -128,6 +128,11 @@ class RksvJournal {
   void rememberLiveKey(int chain, Uint8List key) =>
       _liveKeys[chain] = Uint8List.fromList(key);
 
+  /// Vergisst den Schlüssel der Kette [chain], etwa wenn die Inbetriebnahme
+  /// zurückgerollt wurde und es die Kette nicht gibt: Sonst nähme eine
+  /// spätere Kette mit derselben Nummer diesen Schlüssel.
+  void forgetLiveKey(int chain) => _liveKeys.remove(chain);
+
   /// Läuft eine Kette `live` und ist ihr Schlüssel noch nicht im Speicher,
   /// liest es ihn einmal (beim Start der App). Wirft nie.
   Future<void> primeLiveKey() async {

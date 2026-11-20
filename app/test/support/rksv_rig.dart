@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart'
-    show InsertMode, OrderingTerm, Value, driftRuntimeOptions, innerJoin;
+    show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -27,6 +27,7 @@ import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/dep_export.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/atrust_session_keeper.dart';
+import 'package:kassa/rksv/online/connection_check.dart';
 import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
@@ -63,6 +64,17 @@ class RigSecrets extends MemoryRksvSecrets {
 
   /// Wie oft ein AES-Schlüssel gelesen wurde (auch gescheiterte Versuche).
   int aesKeyReads = 0;
+
+  /// Nur das Schreiben (und Löschen) des PendingSetup scheitert.
+  bool failPendingSetupWrites = false;
+
+  @override
+  Future<void> writePendingSetup(PendingSetup? setup) async {
+    if (failPendingSetupWrites) {
+      throw StateError('Der sichere Speicher ist nicht beschreibbar.');
+    }
+    return super.writePendingSetup(setup);
+  }
 
   @override
   Future<Uint8List?> aesKey(int chain) {
@@ -323,8 +335,9 @@ class RksvRig {
       (await db.customSelect('SELECT COUNT(*) c FROM $table').getSingle())
           .read<int>('c');
 
-  /// Setzt den Zustand `live` direkt in die Datenbank (in dieser Stufe führt
-  /// kein Weg der App dorthin): Kette 1 mit der Kassen-Kennung `LIVETEST01`,
+  /// Setzt den Zustand `live` direkt in die Datenbank, ohne A-Trust und ohne
+  /// Startbeleg (signiert wird mit der Attrappe; den Weg der App geht
+  /// [seedLive]): Kette 1 mit der Kassen-Kennung `LIVETEST01`,
   /// dem Zertifikat der Attrappe und dem AES-Schlüssel aus den Bytes 0 bis 31.
   Future<void> startLive() async {
     final info = await fake.info();
@@ -397,75 +410,52 @@ class RksvRig {
     'geheim-beispiel',
   );
 
-  /// Legt eine laufende Kette `live` am nachgebauten A-Trust an (braucht
-  /// `open(atrust: …)`), bis `goLive` das tut: Läuft eine Probe, endet sie
-  /// mit Schlussbeleg ([RksvService.disableProbe]). Dann [liveCredentials]
-  /// im geschützten Speicher, das Zertifikat von [atrust], die nächste Kette
-  /// mit Modus `live`, Einheit `atrust`, Kennung `AT1`, Kassen-Kennung
-  /// [liveCashBoxId] und dem AES-Schlüssel aus den Bytes 0 bis 31 (auch im
-  /// Journal, [RksvJournal.rememberLiveKey]), Stand
-  /// `live`, und ein Startbeleg, den A-Trust über [liveKeeper] signiert.
-  /// Liefert die Nummer der Kette.
+  /// Die Angaben von "Verbindung prüfen" am echten System, wie sie die App
+  /// bekommt: der echte Lauf von [ConnectionCheck] mit [AtrustSystem.live],
+  /// aber gegen einen eigenen nachgebauten A-Trust mit gültigem Zertifikat
+  /// (Schlüssel und Seriennummer wie [atrust], also passen dessen
+  /// Signaturen dazu) und einem eigenen Halter. In [atrust] erscheint keine
+  /// Anfrage, und der Halter der Bons bleibt ohne Sitzung.
+  Future<ConnectionFacts> liveFacts() async {
+    final checked = FakeAtrust(validFrom: DateTime.utc(2020, 6, 1));
+    final client = AtrustClient(checked.client, AtrustSystem.live);
+    final result = await ConnectionCheck(
+      client: client,
+      keeper: AtrustSessionKeeper(
+        client: client,
+        credentials: () async => liveCredentials,
+        secrets: MemoryRksvSecrets(),
+        clock: clock,
+        live: true,
+      ),
+      user: liveCredentials.user,
+      clock: clock,
+    ).run(chefTapped: false);
+    return result.facts ??
+        (throw StateError('Verbindung prüfen ist gescheitert.'));
+  }
+
+  /// Nimmt die Kassa am nachgebauten A-Trust in Betrieb (braucht
+  /// `open(atrust: …)`), über den Weg der App: [liveCredentials] im
+  /// geschützten Speicher, ein PendingSetup mit der Kassen-Kennung
+  /// [liveCashBoxId] und dem AES-Schlüssel aus den Bytes 0 bis 31 (damit
+  /// Bons und Ausdrucke feste Werte zeigen), dann
+  /// [RksvService.prepareSetup] und [RksvService.goLive] mit [liveFacts].
+  /// Läuft eine Probe, endet sie dabei mit Schlussbeleg; den Startbeleg
+  /// signiert A-Trust über [liveKeeper]. Liefert die Nummer der Kette.
   Future<int> seedLive() async {
-    final atrust =
-        this.atrust ?? (throw StateError('seedLive braucht open(atrust: …).'));
-    if ((await stateRow()).mode == RksvMode.probe.name) {
-      await service.disableProbe(staff: chef);
-    }
+    if (atrust == null) throw StateError('seedLive braucht open(atrust: …).');
     await secrets.writeAtrustCredentials(liveCredentials);
-    final chain =
-        (await db
-                .customSelect(
-                  'SELECT COALESCE(MAX(chain), 0) c FROM rksv_chains',
-                )
-                .getSingle())
-            .read<int>('c') +
-        1;
-    final aesKey = Uint8List.fromList(List.generate(32, (i) => i));
-    await secrets.writeAesKey(chain, aesKey);
-    // Wie goLive: den Schlüssel der neuen Kette gleich im Journal (Q17).
-    journal.rememberLiveKey(chain, aesKey);
-    await db
-        .into(db.rksvCertificateRows)
-        .insert(
-          RksvCertificateRowsCompanion.insert(
-            serialHex: '2159b9f6',
-            certificate: atrust.certificateDer,
-            issuers: Value(
-              jsonEncode([for (final i in atrust.issuersDer) base64.encode(i)]),
-            ),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
-    await db
-        .into(db.rksvChainRows)
-        .insert(
-          RksvChainRowsCompanion.insert(
-            chain: Value(chain),
-            mode: RksvMode.live.name,
-            unit: Value(RksvUnit.atrust.name),
-            cashBoxId: liveCashBoxId,
-            zdaId: 'AT1',
-            certSerial: '2159b9f6',
-            startedAt: clock.now(),
-          ),
-        );
-    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
-      RksvStateRowsCompanion(
-        mode: Value(RksvMode.live.name),
-        chain: Value(chain),
-        counterCents: const Value(0),
-        outageSince: const Value(null),
-        outageReason: const Value(null),
-        notice: const Value(null),
+    await secrets.writePendingSetup(
+      PendingSetup(
+        cashBoxId: liveCashBoxId,
+        aesKey: Uint8List.fromList(List.generate(32, (i) => i)),
       ),
     );
-    await receipts.createSpecial(
-      ReceiptKind.start,
-      staff: chef,
-      mustSign: true,
-    );
-    return chain;
+    final facts = await liveFacts();
+    await service.prepareSetup(facts: facts);
+    await service.goLive(staff: chef, facts: facts);
+    return (await stateRow()).chain!;
   }
 
   /// Rechnet die Kette [chain] nach, ohne das Journal zu fragen: Positionen

@@ -53,20 +53,36 @@ class RksvRepository {
   Future<void> _writeState(RksvStateRowsCompanion c) =>
       (_db.update(_db.rksvStateRows)..where((t) => t.id.equals(1))).write(c);
 
-  JoinedSelectStatement<HasResultSet, dynamic> _query() =>
-      _db.select(_db.rksvStateRows).join([
-        leftOuterJoin(
-          _db.rksvChainRows,
-          _db.rksvChainRows.chain.equalsExp(_db.rksvStateRows.chain),
+  /// Die Kette mit der höchsten Nummer, für "Außer Betrieb" (Q8).
+  late final _latest = _db.alias(_db.rksvChainRows, 'latest');
+
+  /// Stand, laufende Kette und jüngste Kette.
+  JoinedSelectStatement<HasResultSet, dynamic> _query() {
+    final highest = _db.rksvChainRows.chain.max();
+    return _db.select(_db.rksvStateRows).join([
+      leftOuterJoin(
+        _db.rksvChainRows,
+        _db.rksvChainRows.chain.equalsExp(_db.rksvStateRows.chain),
+      ),
+      leftOuterJoin(
+        _latest,
+        _latest.chain.equalsExp(
+          subqueryExpression<int>(
+            _db.selectOnly(_db.rksvChainRows)..addColumns([highest]),
+          ),
         ),
-      ])..where(_db.rksvStateRows.id.equals(1));
+      ),
+    ])..where(_db.rksvStateRows.id.equals(1));
+  }
 
   RksvState _toState(TypedResult? result) {
     if (result == null) return const RksvState();
     final r = result.readTable(_db.rksvStateRows);
     final chain = result.readTableOrNull(_db.rksvChainRows);
+    final latest = result.readTableOrNull(_latest);
+    final mode = enumByNameOr(RksvMode.values, r.mode, RksvMode.off);
     return RksvState(
-      mode: enumByNameOr(RksvMode.values, r.mode, RksvMode.off),
+      mode: mode,
       chain: r.chain,
       cashBoxId: chain?.cashBoxId,
       // Ein unbekannter Wert darf das Beobachten nicht abbrechen; signieren
@@ -77,6 +93,11 @@ class RksvRepository {
       outageReason: r.outageReason,
       tasks: decodeRksvTasks(r.tasks),
       notice: r.notice,
+      decommissioned:
+          mode == RksvMode.off &&
+          latest != null &&
+          latest.mode == RksvMode.live.name &&
+          latest.endedAt != null,
     );
   }
 }

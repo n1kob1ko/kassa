@@ -3,8 +3,9 @@
 
 import 'dart:convert';
 
-/// `off`: Nicht eingerichtet (oder außer Betrieb), `probe`: Probe-Signatur,
-/// `live`: in Betrieb mit Chipkarte.
+/// `off`: Nicht eingerichtet (oder außer Betrieb, siehe
+/// [RksvState.decommissioned]), `probe`: Probe-Signatur, `live`: in Betrieb
+/// am echten System von A-Trust.
 enum RksvMode { off, probe, live }
 
 /// Wer eine Kette signiert (`rksv_chains.unit`): `probe` die Probe-Signatur
@@ -18,6 +19,8 @@ enum RksvTaskKind {
   reportOutage,
   reportOutageEnd,
   backupProtocol,
+  registerFinanzOnline,
+  reportDecommission,
 }
 
 /// Eine offene Aufgabe. Sie sperrt nichts und verschwindet mit "Erledigt".
@@ -34,7 +37,9 @@ final class RksvTask {
   final DateTime createdAt;
 
   /// Was der Satz der Aufgabe einsetzt: das Jahr bei [RksvTaskKind.checkYear],
-  /// Beginn oder Ende bei den Meldungen eines Ausfalls (`18.11.2026 13:05`).
+  /// Beginn oder Ende bei den Meldungen eines Ausfalls (`18.11.2026 13:05`),
+  /// die Frist bei [RksvTaskKind.registerFinanzOnline] und
+  /// [RksvTaskKind.reportDecommission] (`25.11.2026`).
   final String detail;
 
   Map<String, Object?> toJson() => {
@@ -83,6 +88,11 @@ String rksvTaskText(RksvTask t) => switch (t.kind) {
     'Ende des Ausfalls bei FinanzOnline melden. Ende: ${t.detail}.',
   RksvTaskKind.backupProtocol =>
     'Protokoll sichern: "Protokoll ausgeben" und die Datei aufheben.',
+  RksvTaskKind.registerFinanzOnline =>
+    'Signatureinheit und Kassa bei FinanzOnline anmelden, bis ${t.detail}.',
+  RksvTaskKind.reportDecommission =>
+    'Außerbetriebnahme bei FinanzOnline melden, bis ${t.detail}. '
+        'Grund: 6, planmäßige Außerbetriebnahme.',
 };
 
 final class RksvState {
@@ -96,6 +106,7 @@ final class RksvState {
     this.outageReason,
     this.tasks = const [],
     this.notice,
+    this.decommissioned = false,
   });
 
   final RksvMode mode;
@@ -116,6 +127,10 @@ final class RksvState {
 
   /// Ein Satz für den Chef, etwa warum die Probe-Signatur beendet wurde.
   final String? notice;
+
+  /// "Außer Betrieb" (Q8): [mode] ist off, und die Kette mit der höchsten
+  /// Nummer ist eine beendete Kette `live`.
+  final bool decommissioned;
 
   bool get outage => outageSince != null;
 }

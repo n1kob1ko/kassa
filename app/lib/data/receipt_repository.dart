@@ -74,6 +74,9 @@ class ReceiptRepository {
   /// Ohne Journal (in Tests) bekommt kein Bon einen Eintrag.
   final RksvJournal? _journal;
 
+  /// Das Journal, mit dem die Bons ihre Einträge bekommen (null ohne).
+  RksvJournal? get journal => _journal;
+
   /// Reihenfolge der fünf Beträge im Code.
   static const _codeRates = [
     TaxRate.normal,
