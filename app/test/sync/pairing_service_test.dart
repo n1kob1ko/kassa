@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app_sync_providers.dart';
@@ -27,8 +28,17 @@ import '../support/fake_server.dart';
 final now = DateTime(2026, 11, 18, 10);
 
 /// Ein Schlüssel-Speicher, der nach dem Schreiben noch etwas tun lässt.
+/// Mit [failReads] liest er nicht, wie der geschützte Speicher, der gerade
+/// nicht entschlüsseln kann.
 class SpyTokenStore extends MemoryTokenStore {
   Future<void> Function()? afterWrite;
+  bool failReads = false;
+
+  @override
+  Future<String?> read() async {
+    if (failReads) throw StateError('Der sichere Speicher ist nicht lesbar.');
+    return super.read();
+  }
 
   @override
   Future<void> write(String token) async {
@@ -419,4 +429,40 @@ void main() {
     expect(called, 1);
     expect((await t.state()).paired, isTrue);
   });
+
+  test(
+    'liest der geschützte Speicher den Schlüssel nicht: kein neues '
+    'Koppeln, die Speisekarte bleibt, der Abgleich versucht es später',
+    () async {
+      final t = await Tablet.open();
+      await t.pairing.pair(FakeServer.code);
+      await t.pairing.loadInitial();
+      final before = await t.menu();
+      final pulls = t.server.pullRequests.length;
+      t.tokens.failReads = true;
+
+      Object? error;
+      try {
+        await t.pairing.loadInitial();
+      } catch (e) {
+        error = e;
+      }
+      expect(error, isNotNull);
+      expect(error, isNot(isA<ServerException>()), reason: 'nicht "ungültig"');
+      expect(await t.menu(), before);
+
+      final print = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {};
+      try {
+        await t.syncService().syncNow();
+      } finally {
+        debugPrint = print;
+      }
+      final state = await t.state();
+      expect(state.paired, isTrue);
+      expect(state.lastError, isNot(ServerFailure.unauthorized.name));
+      expect(state.lastError, localError);
+      expect(t.server.pullRequests, hasLength(pulls));
+    },
+  );
 }

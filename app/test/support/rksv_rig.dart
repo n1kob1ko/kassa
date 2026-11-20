@@ -76,9 +76,18 @@ class RigSecrets extends MemoryRksvSecrets {
     return super.writePendingSetup(setup);
   }
 
+  /// Gesetzt: so viele AES-Schlüssel liest er noch, danach scheitert jedes
+  /// Lesen eines AES-Schlüssels (der Rest bleibt lesbar).
+  int? aesKeyReadsBeforeFailure;
+
   @override
-  Future<Uint8List?> aesKey(int chain) {
+  Future<Uint8List?> aesKey(int chain) async {
     aesKeyReads++;
+    final left = aesKeyReadsBeforeFailure;
+    if (left != null) {
+      if (left <= 0) throw StateError('Der sichere Speicher ist nicht lesbar.');
+      aesKeyReadsBeforeFailure = left - 1;
+    }
     return super.aesKey(chain);
   }
 

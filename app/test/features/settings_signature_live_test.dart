@@ -668,4 +668,44 @@ void main() {
       });
     }
   });
+  group('Schlüssel nicht lesbar (Schlussprüfung C1)', () {
+    const keyUnreadable =
+        'Das Tablet konnte den Schlüssel nicht lesen. Bitte nichts löschen '
+        'und die App nicht neu installieren.';
+
+    for (final zero in [false, true]) {
+      testWidgets('${zero ? 'Nullbeleg' : 'Außer Betrieb nehmen'}: der Satz '
+          'unter der Zeile, die Kassa bleibt in Betrieb', (t) async {
+        final secrets = MemoryRksvSecrets();
+        await _settings(t, secrets: secrets, printer: true);
+        await seedLive(t);
+        secrets.failReads = true;
+        if (zero) {
+          await _tap(t, 'rksv-zero');
+        } else {
+          await _tap(t, 'rksv-decommission');
+          await _tap(t, 'rksv-question-confirm');
+        }
+        expect(
+          find.descendant(
+            of: _key('rksv-message'),
+            matching: find.text(keyUnreadable),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text(staleSettingsSentence), findsNothing);
+        final row = zero ? 'rksv-zero' : 'rksv-decommission';
+        expect(
+          t.getTopLeft(_key('rksv-message')).dy,
+          greaterThan(t.getTopLeft(_key(row)).dy),
+        );
+        secrets.failReads = false;
+        final state = await _state(t);
+        expect((state.mode, state.chain), (RksvMode.live, 1));
+        expect(await _kinds(t), isEmpty);
+        expect(printerOf(t).printed, isEmpty);
+        expect(_inCard(find.text('In Betrieb')), findsOneWidget);
+      });
+    }
+  });
 }

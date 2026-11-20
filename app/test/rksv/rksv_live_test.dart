@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
+import 'package:kassa/rksv/rksv_service.dart' show RksvProblem;
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/rksv/signature_unit.dart';
 
@@ -531,5 +532,77 @@ void main() {
         }
       });
     });
+  });
+
+  group('Schlüssel nicht lesbar (Schlussprüfung C1)', () {
+    const keyUnreadable =
+        'Das Tablet konnte den Schlüssel nicht lesen. Bitte nichts löschen '
+        'und die App nicht neu installieren.';
+    final isKeyUnreadable = isA<RksvProblem>().having(
+      (p) => p.message,
+      'message',
+      keyUnreadable,
+    );
+
+    for (final zero in [false, true]) {
+      final what = zero ? 'Nullbeleg' : 'Außerbetriebnahme';
+      test('$what, Speicher scheitert: der Satz, die Kassa bleibt in '
+          'Betrieb, nichts geschrieben', () async {
+        final rig = await RksvRig.open();
+        addTearDown(rig.close);
+        await rig.startLive();
+        rig.secrets.failReads = true;
+        await expectLater(
+          zero
+              ? rig.service.zeroReceipt(staff: rig.chef)
+              : rig.service.decommission(staff: rig.chef),
+          throwsA(isKeyUnreadable),
+        );
+        final state = await rig.stateRow();
+        expect((state.mode, state.chain), ('live', 1));
+        expect((await rig.chainRow(1)).endedAt, isNull);
+        expect(await rig.count('receipts'), 0);
+        expect(await rig.count('rksv_entries'), 0);
+      });
+
+      test('$what, Speicher hängt: nach der Frist der Satz, die Kassa '
+          'bleibt in Betrieb', () {
+        fakeAsync((async) {
+          final rig = _await(async, RksvRig.open());
+          try {
+            _await(async, rig.startLive());
+            rig.secrets.hangReads = true;
+            Object? error;
+            (zero
+                    ? rig.service.zeroReceipt(staff: rig.chef)
+                    : rig.service.decommission(staff: rig.chef))
+                .then<void>((_) {}, onError: (Object e) => error = e);
+            async.elapse(
+              RksvJournal.signLimit + const Duration(milliseconds: 1),
+            );
+            expect(error, isKeyUnreadable);
+            rig.secrets.hangReads = false;
+            expect(_await(async, rig.stateRow()).mode, 'live');
+            expect(_await(async, rig.count('receipts')), 0);
+          } finally {
+            _await(async, rig.close());
+          }
+        });
+      });
+    }
+
+    test(
+      'ein Verkauf scheitert weiter wie bisher (kein RksvProblem)',
+      () async {
+        final rig = await RksvRig.open();
+        addTearDown(rig.close);
+        await rig.startLive();
+        rig.secrets.failReads = true;
+        await expectLater(
+          rig.sell('s1', cart),
+          throwsA(isNot(isA<RksvProblem>())),
+        );
+      },
+    );
   });
 }

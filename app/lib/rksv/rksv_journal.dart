@@ -85,6 +85,15 @@ SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
           throw StateError('Kette ${chain.chain} ist keine Probe-Kette.'),
     );
 
+/// Der AES-Schlüssel der Kette ließ sich nicht lesen: Der geschützte Speicher
+/// warf, antwortete nicht innerhalb der Frist oder hat ihn nicht. Ohne ihn
+/// gibt es keinen Code und keinen Eintrag. Ein [StateError] wie bisher (der
+/// Verkauf scheitert damit wie vorher), aber eigens erkennbar: Der Chef soll
+/// dazu einen wahren Satz sehen, nicht den eines geänderten Stands.
+final class AesKeyUnreadable extends StateError {
+  AesKeyUnreadable(super.message);
+}
+
 const _reasonSilent = 'Die Signatur hat nicht geantwortet.';
 
 /// Im echten Betrieb: ein Fehler der Einheit ohne eigenen Satz (Q6).
@@ -454,9 +463,16 @@ class RksvJournal {
     }
 
     Future<_Signed> attempt() async {
+      final Uint8List? read;
+      try {
+        read = await _aesKey(chain, live: live);
+      } on Object {
+        // Nur die Art, nie der Text des Speichers.
+        throw AesKeyUnreadable('Der sichere Speicher ist nicht lesbar.');
+      }
       final aesKey =
-          await _aesKey(chain, live: live) ??
-          (throw StateError('Der AES-Schlüssel der Kette $chain fehlt.'));
+          read ??
+          (throw AesKeyUnreadable('Der AES-Schlüssel der Kette $chain fehlt.'));
       stopIfLate();
       counterField = kind == ReceiptKind.voided
           ? stornoCounterField
@@ -497,7 +513,13 @@ class RksvJournal {
       failure = e.reason;
     } on TimeoutException {
       tooLate = true;
-      if (unit == null && !(live && counterField != null)) {
+      // Ohne Zähler kam der AES-Schlüssel nicht rechtzeitig.
+      if (counterField == null) {
+        throw AesKeyUnreadable(
+          'Der geschützte Speicher hat nicht geantwortet.',
+        );
+      }
+      if (unit == null && !live) {
         throw StateError('Der geschützte Speicher hat nicht geantwortet.');
       }
       if (mustSign) throw const SignatureFailure(_reasonSilent);

@@ -420,6 +420,32 @@ void main() {
       });
     });
 
+    test('Schlussprüfung C1: liest das Journal den eben gespeicherten '
+        'Schlüssel nicht, der Satz dazu; alles bleibt wie vorher', () async {
+      final facts = await rig.liveFacts();
+      await rig.service.prepareSetup(facts: facts);
+      // Das Zurücklesen nach dem Speichern gelingt, das Lesen für den
+      // Startbeleg nicht.
+      rig.secrets.aesKeyReadsBeforeFailure = 1;
+      await expectLater(
+        rig.service.goLive(staff: rig.chef, facts: facts),
+        throwsA(
+          isA<RksvProblem>().having(
+            (p) => p.message,
+            'message',
+            'Das Tablet konnte den Schlüssel nicht lesen. Bitte nichts '
+                'löschen und die App nicht neu installieren.',
+          ),
+        ),
+      );
+      expect(rig.secrets.aesKeyReadsBeforeFailure, 0, reason: 'zweimal');
+      final state = await rig.stateRow();
+      expect((state.mode, state.chain), ('off', null));
+      expect(await rig.count('rksv_chains'), 0);
+      expect(await rig.count('receipts'), 0);
+      expect(await rig.secrets.pendingSetup(), isNotNull);
+    });
+
     test('ohne PendingSetup: StateError, keine Anfrage', () async {
       final facts = await rig.liveFacts();
       atrust.requests.clear();

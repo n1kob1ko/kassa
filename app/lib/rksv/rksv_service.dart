@@ -17,6 +17,7 @@ import 'dep_export.dart';
 import 'online/atrust_client.dart';
 import 'online/connection_check.dart';
 import 'probe_signature_unit.dart';
+import 'rksv_journal.dart' show AesKeyUnreadable;
 import 'rksv_secrets.dart';
 import 'rksv_state.dart';
 import 'setup_facts.dart';
@@ -39,6 +40,13 @@ const _goLiveProblem = 'Die Kassa konnte nicht in Betrieb genommen werden.';
 const _notRunning = 'Die Signatur ist nicht eingeschaltet.';
 const _noProtocol = 'Es gibt noch kein Protokoll.';
 const _storageReadProblem = 'Das Tablet konnte den Schlüssel nicht lesen.';
+
+/// Das Journal liest den AES-Schlüssel der Kette nicht ([AesKeyUnreadable]).
+/// Kein Weg hinaus ist gebaut (Entwurf 12.6): Der Chef soll nur nichts tun,
+/// was den Schlüssel endgültig löscht.
+const _keyUnreadable =
+    'Das Tablet konnte den Schlüssel nicht lesen. Bitte nichts löschen und '
+    'die App nicht neu installieren.';
 
 /// Zeichen der Kassen-Kennung: ohne I, O, 0 und 1, damit sie sich sicher
 /// abschreiben lässt.
@@ -416,8 +424,8 @@ class RksvService {
   /// und das PendingSetup wird gelöscht (scheitert das, ohne Folgen).
   ///
   /// Scheitert etwas, bleibt alles wie vorher, auch die Probe und das
-  /// PendingSetup: [RksvProblem] mit dem Satz der Einheit, sonst einem
-  /// allgemeinen. Stammen [facts] nicht vom echten System, fehlt das
+  /// PendingSetup: [RksvProblem] mit dem Satz der Einheit, dem Satz zum
+  /// unlesbaren AES-Schlüssel oder einem allgemeinen. Stammen [facts] nicht vom echten System, fehlt das
   /// PendingSetup oder ist die Kassa schon in Betrieb: [StateError], ohne
   /// eine Anfrage an A-Trust.
   Future<Receipt> goLive({
@@ -452,6 +460,8 @@ class RksvService {
           rethrow;
         } on SignatureFailure catch (e) {
           throw RksvProblem(e.reason);
+        } on AesKeyUnreadable {
+          throw const RksvProblem(_keyUnreadable);
         } on Object {
           throw const RksvProblem(_goLiveProblem);
         }
@@ -531,48 +541,63 @@ class RksvService {
   /// Vermerk), Kette beenden, mode off, Ausfall gelöscht. Die offenen
   /// Aufgaben bleiben, dazu "Außerbetriebnahme melden" (bis heute plus 7
   /// Tage) und, wenn nicht schon offen, "Protokoll sichern" (Q15). Nicht in
-  /// Betrieb: [StateError].
+  /// Betrieb: [StateError]. Liest das Journal den AES-Schlüssel nicht:
+  /// [RksvProblem] mit dem Satz dazu, und die Kassa bleibt in Betrieb.
   Future<Receipt> decommission({required Staff staff}) {
-    return _db.transaction(() async {
-      final state = await _state();
-      final chain = state.chain;
-      if (state.mode != RksvMode.live.name || chain == null) {
-        throw StateError('Die Kassa ist nicht in Betrieb.');
-      }
-      final closing = await _receipts.createSpecial(
-        ReceiptKind.closing,
-        staff: staff,
-      );
-      await _endChain(chain);
-      final now = _clock.now();
-      final tasks = decodeRksvTasks((await _state()).tasks);
-      await _writeState(
-        RksvStateRowsCompanion(
-          mode: Value(RksvMode.off.name),
-          chain: const Value(null),
-          outageSince: const Value(null),
-          outageReason: const Value(null),
-          tasks: Value(
-            encodeRksvTasks([
-              ...tasks,
-              RksvTask(
-                id: 'report-decommission-$chain',
-                kind: RksvTaskKind.reportDecommission,
-                createdAt: now,
-                detail: _inAWeek(now),
-              ),
-              if (!tasks.any((t) => t.kind == RksvTaskKind.backupProtocol))
+    return _keyReadable(
+      () => _db.transaction(() async {
+        final state = await _state();
+        final chain = state.chain;
+        if (state.mode != RksvMode.live.name || chain == null) {
+          throw StateError('Die Kassa ist nicht in Betrieb.');
+        }
+        final closing = await _receipts.createSpecial(
+          ReceiptKind.closing,
+          staff: staff,
+        );
+        await _endChain(chain);
+        final now = _clock.now();
+        final tasks = decodeRksvTasks((await _state()).tasks);
+        await _writeState(
+          RksvStateRowsCompanion(
+            mode: Value(RksvMode.off.name),
+            chain: const Value(null),
+            outageSince: const Value(null),
+            outageReason: const Value(null),
+            tasks: Value(
+              encodeRksvTasks([
+                ...tasks,
                 RksvTask(
-                  id: 'backup-decommission-$chain',
-                  kind: RksvTaskKind.backupProtocol,
+                  id: 'report-decommission-$chain',
+                  kind: RksvTaskKind.reportDecommission,
                   createdAt: now,
+                  detail: _inAWeek(now),
                 ),
-            ]),
+                if (!tasks.any((t) => t.kind == RksvTaskKind.backupProtocol))
+                  RksvTask(
+                    id: 'backup-decommission-$chain',
+                    kind: RksvTaskKind.backupProtocol,
+                    createdAt: now,
+                  ),
+              ]),
+            ),
           ),
-        ),
-      );
-      return closing;
-    });
+        );
+        return closing;
+      }),
+    );
+  }
+
+  /// [body], aber liest das Journal den AES-Schlüssel nicht, ein
+  /// [RksvProblem] mit dem Satz dazu statt des [StateError] (der sonst
+  /// "geänderter Stand" hieße). Die Transaktion in [body] ist dann schon
+  /// zurückgerollt.
+  static Future<T> _keyReadable<T>(Future<T> Function() body) async {
+    try {
+      return await body();
+    } on AesKeyUnreadable {
+      throw const RksvProblem(_keyUnreadable);
+    }
   }
 
   /// Der Tag eine Woche nach [now], `25.11.2026`.
@@ -583,16 +608,19 @@ class RksvService {
   }
 
   /// Nullbeleg, auf Wunsch des Chefs (gedruckt wird er vom Bildschirm).
-  /// Ohne laufende Signatur: [RksvProblem].
+  /// Ohne laufende Signatur oder wenn das Journal den AES-Schlüssel nicht
+  /// liest: [RksvProblem].
   Future<Receipt> zeroReceipt({required Staff staff}) {
-    return _db.transaction(() async {
-      final state = await _state();
-      if (enumByNameOr(RksvMode.values, state.mode, RksvMode.off) ==
-          RksvMode.off) {
-        throw const RksvProblem(_notRunning);
-      }
-      return _receipts.createSpecial(ReceiptKind.zero, staff: staff);
-    });
+    return _keyReadable(
+      () => _db.transaction(() async {
+        final state = await _state();
+        if (enumByNameOr(RksvMode.values, state.mode, RksvMode.off) ==
+            RksvMode.off) {
+          throw const RksvProblem(_notRunning);
+        }
+        return _receipts.createSpecial(ReceiptKind.zero, staff: staff);
+      }),
+    );
   }
 
   /// "Nochmal prüfen": versucht den Sammelbeleg. true, wenn die Signatur

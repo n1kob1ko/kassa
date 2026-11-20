@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
@@ -82,15 +83,17 @@ void credentialsAndSetup() {
       await expectLater(s.atrustCredentials(), throwsA(anything));
     });
 
-    test('SecureRksvSecrets: Zugangsdaten unter rksv_atrust_user und '
-        'rksv_atrust_password', () async {
+    test('SecureRksvSecrets: Zugangsdaten als ein Wert unter '
+        'rksv_atrust_credentials', () async {
       FlutterSecureStorage.setMockInitialValues({});
       final s = SecureRksvSecrets();
       expect(await s.atrustCredentials(), isNull);
       await s.writeAtrustCredentials(creds);
-      expect(await const FlutterSecureStorage().readAll(), {
-        'rksv_atrust_user': 'u-beispiel',
-        'rksv_atrust_password': 'geheim-beispiel',
+      final raw = await const FlutterSecureStorage().readAll();
+      expect(raw.keys, ['rksv_atrust_credentials']);
+      expect(jsonDecode(raw['rksv_atrust_credentials']!), {
+        'user': 'u-beispiel',
+        'password': 'geheim-beispiel',
       });
       final read = await s.atrustCredentials();
       expect(read!.user, 'u-beispiel');
@@ -99,6 +102,44 @@ void credentialsAndSetup() {
       expect(await s.atrustCredentials(), isNull);
       expect(await const FlutterSecureStorage().readAll(), isEmpty);
     });
+
+    test(
+      'SecureRksvSecrets: scheitert das Schreiben an irgendeiner Stelle, '
+      'bleiben die alten Zugangsdaten oder keine, nie ein gemischtes Paar',
+      () async {
+        const fresh = AtrustCredentials(
+          'u-neu-beispiel',
+          'neu-geheim-beispiel',
+        );
+        for (final AtrustCredentials? next in [fresh, null]) {
+          for (var left = 0; left < 3; left++) {
+            FlutterSecureStorage.setMockInitialValues({});
+            final storage = _FailingStorage();
+            final s = SecureRksvSecrets(storage);
+            await s.writeAtrustCredentials(creds);
+            storage.writesLeft = left;
+            var failed = false;
+            try {
+              await s.writeAtrustCredentials(next);
+            } catch (_) {
+              failed = true;
+            }
+            final read = await s.atrustCredentials();
+            final pair = (read?.user, read?.password);
+            final why = '$next nach $left Schreibvorgängen';
+            if (failed) {
+              expect(
+                pair,
+                anyOf((creds.user, creds.password), (null, null)),
+                reason: why,
+              );
+            } else {
+              expect(pair, (next?.user, next?.password), reason: why);
+            }
+          }
+        }
+      },
+    );
 
     test('MemoryRksvSecrets: PendingSetup schreiben, lesen, löschen', () async {
       final s = MemoryRksvSecrets();
@@ -115,25 +156,69 @@ void credentialsAndSetup() {
       await expectLater(s.pendingSetup(), throwsA(anything));
     });
 
-    test('SecureRksvSecrets: PendingSetup unter rksv_setup_cash_box_id und '
-        'rksv_setup_aes', () async {
-      FlutterSecureStorage.setMockInitialValues({});
-      final s = SecureRksvSecrets();
-      expect(await s.pendingSetup(), isNull);
-      await s.writePendingSetup(
-        PendingSetup(cashBoxId: 'KASSA-1', aesKey: aes),
-      );
-      expect(await const FlutterSecureStorage().readAll(), {
-        'rksv_setup_cash_box_id': 'KASSA-1',
-        'rksv_setup_aes': base64.encode(aes),
-      });
-      final read = await s.pendingSetup();
-      expect(read!.cashBoxId, 'KASSA-1');
-      expect(read.aesKey, aes);
-      await s.writePendingSetup(null);
-      expect(await s.pendingSetup(), isNull);
-      expect(await const FlutterSecureStorage().readAll(), isEmpty);
-    });
+    test(
+      'SecureRksvSecrets: PendingSetup als ein Wert unter rksv_setup',
+      () async {
+        FlutterSecureStorage.setMockInitialValues({});
+        final s = SecureRksvSecrets();
+        expect(await s.pendingSetup(), isNull);
+        await s.writePendingSetup(
+          PendingSetup(cashBoxId: 'KASSA-1', aesKey: aes),
+        );
+        final raw = await const FlutterSecureStorage().readAll();
+        expect(raw.keys, ['rksv_setup']);
+        expect(jsonDecode(raw['rksv_setup']!), {
+          'cashBoxId': 'KASSA-1',
+          'aesKey': base64.encode(aes),
+        });
+        final read = await s.pendingSetup();
+        expect(read!.cashBoxId, 'KASSA-1');
+        expect(read.aesKey, aes);
+        await s.writePendingSetup(null);
+        expect(await s.pendingSetup(), isNull);
+        expect(await const FlutterSecureStorage().readAll(), isEmpty);
+      },
+    );
+
+    test(
+      'SecureRksvSecrets: scheitert das Schreiben an irgendeiner Stelle, '
+      'bleibt das alte PendingSetup oder keins, nie eine gemischte Hälfte',
+      () async {
+        final fresh = PendingSetup(cashBoxId: 'KASSA-2', aesKey: Uint8List(32));
+        for (final PendingSetup? next in [fresh, null]) {
+          for (var left = 0; left < 3; left++) {
+            FlutterSecureStorage.setMockInitialValues({});
+            final storage = _FailingStorage();
+            final s = SecureRksvSecrets(storage);
+            await s.writePendingSetup(
+              PendingSetup(cashBoxId: 'KASSA-1', aesKey: aes),
+            );
+            storage.writesLeft = left;
+            var failed = false;
+            try {
+              await s.writePendingSetup(next);
+            } catch (_) {
+              failed = true;
+            }
+            final read = await s.pendingSetup();
+            final why = '$next nach $left Schreibvorgängen';
+            bool isOld(PendingSetup? p) =>
+                p != null && p.cashBoxId == 'KASSA-1' && _same(p.aesKey, aes);
+            bool isNew(PendingSetup? p) =>
+                p != null &&
+                p.cashBoxId == 'KASSA-2' &&
+                _same(p.aesKey, fresh.aesKey);
+            if (failed) {
+              expect(read == null || isOld(read), isTrue, reason: why);
+            } else if (next == null) {
+              expect(read, isNull, reason: why);
+            } else {
+              expect(isNew(read), isTrue, reason: why);
+            }
+          }
+        }
+      },
+    );
 
     test('MemoryRksvSecrets: abgelehnt für Test und echt getrennt', () async {
       final s = MemoryRksvSecrets();
@@ -190,4 +275,52 @@ void credentialsAndSetup() {
       },
     );
   });
+}
+
+bool _same(Uint8List a, Uint8List b) =>
+    a.length == b.length &&
+    [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
+
+/// Der Speicher der Tests, der nach [writesLeft] Schreib- oder
+/// Löschvorgängen scheitert, wie ein Speicher, der mitten im Speichern
+/// aufgibt.
+class _FailingStorage extends FlutterSecureStorage {
+  _FailingStorage();
+
+  int writesLeft = 1 << 30;
+
+  void _count() {
+    if (writesLeft-- <= 0) {
+      throw PlatformException(code: 'beispiel', message: 'Schreiben scheitert');
+    }
+  }
+
+  @override
+  Future<void> write({
+    required String key,
+    required String? value,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    _count();
+    await super.write(key: key, value: value);
+  }
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    _count();
+    await super.delete(key: key);
+  }
 }

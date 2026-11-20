@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../core/secure_storage.dart';
 
 /// Zugangsdaten des echten Kontos bei A-Trust. Der Benutzername gilt wie das
 /// Passwort als Geheimnis (Plan Q12); toString nennt keins von beiden.
@@ -48,13 +51,15 @@ abstract interface class RksvSecrets {
   Future<bool> atrustRejected({bool live = false});
   Future<void> writeAtrustRejected(bool rejected, {bool live = false});
 
-  /// Die Zugangsdaten des echten Kontos; null, wenn keine (vollständig)
-  /// gespeichert sind.
+  /// Die Zugangsdaten des echten Kontos; null, wenn keine gespeichert sind.
+  /// Benutzername und Passwort sind ein Wert: Es gibt nie das eine ohne das
+  /// andere.
   Future<AtrustCredentials?> atrustCredentials();
 
   /// null löscht sie.
   Future<void> writeAtrustCredentials(AtrustCredentials? credentials);
 
+  /// Kassen-Kennung und AES-Schlüssel sind ein Wert, wie die Zugangsdaten.
   Future<PendingSetup?> pendingSetup();
 
   /// null löscht es.
@@ -63,9 +68,13 @@ abstract interface class RksvSecrets {
 
 class SecureRksvSecrets implements RksvSecrets {
   SecureRksvSecrets([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? kassaSecureStorage;
 
   final FlutterSecureStorage _storage;
+
+  /// Der Speicher dahinter, für Tests.
+  @visibleForTesting
+  FlutterSecureStorage get storage => _storage;
 
   Future<Uint8List?> _read(String name) async {
     final value = await _storage.read(key: name);
@@ -91,10 +100,11 @@ class SecureRksvSecrets implements RksvSecrets {
 
   static String _rejected(bool live) =>
       live ? 'rksv_atrust_rejected_live' : 'rksv_atrust_rejected';
-  static const _user = 'rksv_atrust_user';
-  static const _password = 'rksv_atrust_password';
-  static const _cashBoxId = 'rksv_setup_cash_box_id';
-  static const _setupAes = 'rksv_setup_aes';
+  // Zugangsdaten und PendingSetup sind je EIN Wert: Ein Fehler zwischen zwei
+  // Schreibvorgängen hinterließe sonst ein gemischtes Paar (Schlussprüfung
+  // S2b, Minor 1).
+  static const _credentials = 'rksv_atrust_credentials';
+  static const _setup = 'rksv_setup';
 
   @override
   Future<bool> atrustRejected({bool live = false}) async =>
@@ -106,43 +116,56 @@ class SecureRksvSecrets implements RksvSecrets {
       ? _storage.write(key: _rejected(live), value: 'true')
       : _storage.delete(key: _rejected(live));
 
-  @override
-  Future<AtrustCredentials?> atrustCredentials() async {
-    final user = await _storage.read(key: _user);
-    final password = await _storage.read(key: _password);
-    if (user == null || password == null) return null;
-    return AtrustCredentials(user, password);
+  /// Liest [name] als JSON-Objekt; null ohne Eintrag. Ein beschädigter Wert
+  /// wirft.
+  Future<Map<String, Object?>?> _readJson(String name) async {
+    final value = await _storage.read(key: name);
+    if (value == null) return null;
+    return (jsonDecode(value) as Map).cast<String, Object?>();
   }
 
   @override
-  Future<void> writeAtrustCredentials(AtrustCredentials? credentials) async {
-    if (credentials == null) {
-      await _storage.delete(key: _user);
-      await _storage.delete(key: _password);
-    } else {
-      await _storage.write(key: _user, value: credentials.user);
-      await _storage.write(key: _password, value: credentials.password);
-    }
+  Future<AtrustCredentials?> atrustCredentials() async {
+    final json = await _readJson(_credentials);
+    if (json == null) return null;
+    return AtrustCredentials(
+      json['user']! as String,
+      json['password']! as String,
+    );
   }
+
+  @override
+  Future<void> writeAtrustCredentials(AtrustCredentials? credentials) =>
+      credentials == null
+      ? _storage.delete(key: _credentials)
+      : _storage.write(
+          key: _credentials,
+          value: jsonEncode({
+            'user': credentials.user,
+            'password': credentials.password,
+          }),
+        );
 
   @override
   Future<PendingSetup?> pendingSetup() async {
-    final id = await _storage.read(key: _cashBoxId);
-    final aes = await _read(_setupAes);
-    if (id == null || aes == null) return null;
-    return PendingSetup(cashBoxId: id, aesKey: aes);
+    final json = await _readJson(_setup);
+    if (json == null) return null;
+    return PendingSetup(
+      cashBoxId: json['cashBoxId']! as String,
+      aesKey: base64.decode(json['aesKey']! as String),
+    );
   }
 
   @override
-  Future<void> writePendingSetup(PendingSetup? setup) async {
-    if (setup == null) {
-      await _storage.delete(key: _cashBoxId);
-      await _storage.delete(key: _setupAes);
-    } else {
-      await _storage.write(key: _cashBoxId, value: setup.cashBoxId);
-      await _write(_setupAes, setup.aesKey);
-    }
-  }
+  Future<void> writePendingSetup(PendingSetup? setup) => setup == null
+      ? _storage.delete(key: _setup)
+      : _storage.write(
+          key: _setup,
+          value: jsonEncode({
+            'cashBoxId': setup.cashBoxId,
+            'aesKey': base64.encode(setup.aesKey),
+          }),
+        );
 }
 
 /// Für Tests. Mit [failReads] schlagen alle Lesezugriffe fehl, mit

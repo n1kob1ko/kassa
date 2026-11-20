@@ -3,7 +3,10 @@
 // keine PIN mehr, bis der Chef ihn zurücksetzt. Er speichert nie die PIN,
 // nur die Zahl.
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../../core/secure_storage.dart';
 
 abstract interface class PinGuard {
   /// Versuche, die die Karte mit [cardNumber] laut letzter Antwort noch hat;
@@ -18,13 +21,19 @@ abstract interface class PinGuard {
 /// Geschützter Speicher des Geräts; übersteht einen Neustart der App.
 class SecurePinGuard implements PinGuard {
   SecurePinGuard([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? kassaSecureStorage;
 
   static String keyOf(String cardNumber) => 'rksv_pin_guard_$cardNumber';
 
   final FlutterSecureStorage _storage;
 
-  /// Ein unlesbarer Eintrag zählt wie 0: lieber keine PIN schicken.
+  /// Der Speicher dahinter, für Tests.
+  @visibleForTesting
+  FlutterSecureStorage get storage => _storage;
+
+  /// Ein unlesbarer Eintrag zählt wie 0: lieber keine PIN schicken. Liest
+  /// der Speicher gerade nicht, wirft dies; dann schickt die Kassa auch keine
+  /// PIN (`CardCheck.sign`).
   @override
   Future<int?> retriesLeft(String cardNumber) async {
     final value = await _storage.read(key: keyOf(cardNumber));
