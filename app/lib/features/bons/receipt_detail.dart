@@ -8,6 +8,7 @@ import '../../data/receipt_repository.dart' show NotInCurrentChainException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
+import '../../rksv/rksv_state.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
@@ -66,14 +67,27 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         _busy = false;
       });
     } catch (e) {
+      final failure = e is NotInCurrentChainException
+          ? await _notInChainText()
+          : voidFailText;
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _failure = e is NotInCurrentChainException
-            ? voidOlderThanProbeText
-            : voidFailText;
+        _failure = failure;
       });
     }
+  }
+
+  /// Der Satz, wenn der Bon nicht zur laufenden Kette gehört: in Betrieb
+  /// stammt er aus der Testzeit, sonst ist er älter als die Probe.
+  Future<String> _notInChainText() async {
+    try {
+      final state = await ref.read(rksvRepositoryProvider).current();
+      if (state.mode == RksvMode.live) return voidFromTestTimeText;
+    } catch (_) {
+      // Ohne Stand bleibt der bisherige Satz.
+    }
+    return voidOlderThanProbeText;
   }
 
   /// Zeigt das Ergebnis des Druckens als Hinweis unten, ohne "Rückgängig".

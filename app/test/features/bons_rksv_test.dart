@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
@@ -44,7 +47,118 @@ Future<Receipt> _stamped(
   return containerOf(t).read(receiptRepositoryProvider).byId(sale);
 }
 
+/// Eine laufende Kette `live` (Kette 1, Einheit `atrust`, [fixedCashBoxId])
+/// direkt in der Datenbank, ohne Startbeleg: Die Kassa ist in Betrieb.
+Future<void> _seedLive(WidgetTester t) async {
+  final db = containerOf(t).read(databaseProvider);
+  await db
+      .into(db.rksvCertificateRows)
+      .insert(
+        RksvCertificateRowsCompanion.insert(
+          serialHex: '01',
+          certificate: Uint8List.fromList([1, 2, 3]),
+        ),
+      );
+  await db
+      .into(db.rksvChainRows)
+      .insert(
+        RksvChainRowsCompanion.insert(
+          chain: const Value(1),
+          mode: 'live',
+          unit: const Value('atrust'),
+          cashBoxId: fixedCashBoxId,
+          zdaId: 'AT1',
+          certSerial: '01',
+          startedAt: DateTime(2026, 11, 17, 9),
+        ),
+      );
+  await (db.update(db.rksvStateRows)..where((r) => r.id.equals(1))).write(
+    const RksvStateRowsCompanion(mode: Value('live'), chain: Value(1)),
+  );
+  await t.pumpAndSettle();
+}
+
+/// Ein Barverkauf (Nr. 1) mit festem Eintrag in der Kette `live`, geöffnet.
+Future<void> _stampedLive(WidgetTester t, {bool damaged = false}) async {
+  await pumpBonsWithSales(
+    t,
+    1,
+    overrides: [...await memoryOverrides(), ...signatureOverrides()],
+  );
+  await _seedLive(t);
+  final sale =
+      (await containerOf(t)
+              .read(databaseProvider)
+              .customSelect('SELECT id FROM receipts WHERE number = 1')
+              .getSingle())
+          .read<String>('id');
+  await stampReceipt(t, sale, damaged: damaged);
+  await openReceipt(t, 1);
+}
+
 void main() {
+  testWidgets('Bon der live-Kette: QR-Code und Kassen-ID, kein Satz zum '
+      'Testbon', (t) async {
+    await _stampedLive(t);
+    expect(_inDetail(find.byType(QrView)), findsOneWidget);
+    expect(_inDetail(find.text('Kassen-ID $fixedCashBoxId')), findsOneWidget);
+    expect(find.text('Testbon mit Probe-Signatur.'), findsNothing);
+    expect(find.text('Testbon'), findsNothing);
+    expect(find.text('Sicherheitseinrichtung ausgefallen'), findsNothing);
+  });
+
+  testWidgets('Bon der live-Kette mit Ausfall: nur "Sicherheitseinrichtung '
+      'ausgefallen"', (t) async {
+    await _stampedLive(t, damaged: true);
+    expect(
+      _inDetail(find.text('Sicherheitseinrichtung ausgefallen')),
+      findsOneWidget,
+    );
+    expect(find.text('Testbon mit Probe-Signatur.'), findsNothing);
+    expect(find.text('Testbon'), findsNothing);
+  });
+
+  testWidgets('Storno eines Bons aus der Testzeit, während die Kassa in '
+      'Betrieb ist: der Satz zur Testzeit, nichts wird storniert', (t) async {
+    await pumpBonsWithSales(
+      t,
+      1,
+      pin: '4711',
+      overrides: [...await memoryOverrides(), ...signatureOverrides()],
+    );
+    await _seedLive(t);
+    await openReceipt(t, 1);
+    await t.tap(_key('void-receipt'));
+    await t.pumpAndSettle();
+    await t.tap(_key('confirm-void'));
+    await t.pumpAndSettle();
+    expect(
+      find.text(
+        'Dieser Bon stammt aus der Testzeit und kann nicht storniert werden.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Dieser Bon ist älter als die Probe-Signatur und kann nicht '
+        'storniert werden.',
+      ),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.',
+      ),
+      findsNothing,
+    );
+    final kinds = await containerOf(t)
+        .read(databaseProvider)
+        .customSelect('SELECT kind FROM receipts ORDER BY number')
+        .map((r) => r.read<String>('kind'))
+        .get();
+    expect(kinds, ['sale']);
+  });
+
   testWidgets('Bon mit Signatur: QR-Code 180 dp, Kassen-ID und die zwei '
       'Sätze der Probe', (t) async {
     final receipt = await _stamped(t);

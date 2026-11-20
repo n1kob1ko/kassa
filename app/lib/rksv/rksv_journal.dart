@@ -30,7 +30,8 @@ typedef OnlineUnitOf = Future<SignatureUnit> Function(
 /// Probe-Signatur mit dem Schlüssel aus [secrets] und dem Zertifikat der
 /// Kette, bei `atrustTest` und `atrust` was [online] aus Kette und
 /// Zertifikat baut. Fehlt etwas, passt der Modus nicht oder ist die Einheit
-/// unbekannt, ist das ein unerwarteter Fehler ([StateError]), kein Ausfall.
+/// unbekannt, ist das ein unerwarteter Fehler ([StateError]); in der Probe
+/// kein Ausfall, im echten Betrieb macht das Journal einen daraus (Q6).
 SignatureUnitOf signatureUnitOf(
   KassaDatabase db,
   RksvSecrets secrets, {
@@ -86,6 +87,13 @@ SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
 
 const _reasonSilent = 'Die Signatur hat nicht geantwortet.';
 
+/// Im echten Betrieb: ein Fehler der Einheit ohne eigenen Satz (Q6).
+const _reasonDown = 'Die Signatur ist ausgefallen.';
+
+/// Grund des Ausfalls für FinanzOnline bei einer Kette an A-Trust.
+const _outageGround =
+    'Grund: 3, Ausfall der Verbindung zur Signaturerstellungseinheit';
+
 /// Nur noch, wenn ohne Frage an die Signatur ein Ausfall-Vermerk entsteht und
 /// kein Grund gespeichert ist.
 const _reasonError = 'Die Signatur hat einen Fehler gemeldet.';
@@ -135,6 +143,7 @@ class RksvJournal {
         state.chain ?? (throw StateError('Die Signatur hat keine Kette.'));
     final chainRow = await _chainRow(chain);
     final last = await _lastEntry(chain);
+    final live = _mode(state) == RksvMode.live;
     // 2. bis 5. unter einer Frist: Schlüssel lesen, Einheit bauen,
     // signieren. Ein Speicher, der nicht antwortet, hält den Bon nicht auf.
     final counter =
@@ -151,6 +160,7 @@ class RksvJournal {
       previous: chainValue(last?.jws ?? chainRow.cashBoxId),
       limit: state.outageSince == null ? signLimit : signLimitDuringOutage,
       mustSign: mustSign,
+      live: live,
       skipReason: trySign ? null : (state.outageReason ?? _reasonError),
     );
 
@@ -190,6 +200,7 @@ class RksvJournal {
     await _addTasks(
       state: state,
       chain: chain,
+      chainRow: chainRow,
       kind: kind,
       position: position,
       createdAt: createdAt,
@@ -204,6 +215,7 @@ class RksvJournal {
   Future<void> _addTasks({
     required RksvStateRow state,
     required int chain,
+    required RksvChainRow chainRow,
     required ReceiptKind kind,
     required int position,
     required DateTime createdAt,
@@ -230,10 +242,15 @@ class RksvJournal {
       // nicht mit dem nächsten Bon wieder.
       if (long(createdAt) && (lastTime == null || !long(lastTime))) {
         final first = await _firstOutageEntry(chain, position) ?? position;
+        final online =
+            chainRow.unit == RksvUnit.atrust.name ||
+            chainRow.unit == RksvUnit.atrustTest.name;
         add(
           'report-outage-$chain-$first',
           RksvTaskKind.reportOutage,
-          _dateTime(outageSince),
+          online
+              ? '${_dateTime(outageSince)}. $_outageGround'
+              : _dateTime(outageSince),
         );
       }
       if (kind == ReceiptKind.collective && long(createdAt)) {
@@ -350,6 +367,12 @@ class RksvJournal {
   /// der Frist wird verworfen. Läuft die Frist ab, bevor Schlüssel und
   /// Einheit da sind, ist das ein unerwarteter Fehler ([StateError]), wie
   /// jeder andere Fehler dabei.
+  ///
+  /// Mit [live] (echter Betrieb, Q6) ist jeder Fehler beim Bauen und
+  /// Benutzen der Einheit ein Ausfall wie eine [SignatureFailure], mit dem
+  /// Satz [_reasonDown]; die Frist läuft dann auch beim Bauen der Einheit
+  /// mit [_reasonSilent] ab. Nur ein Fehler beim Lesen des AES-Schlüssels
+  /// bleibt ein unerwarteter Fehler: Ohne ihn gibt es keinen Code.
   Future<_Signed> _sign({
     required int chain,
     required RksvChainRow chainRow,
@@ -361,6 +384,7 @@ class RksvJournal {
     required String previous,
     required Duration limit,
     required bool mustSign,
+    required bool live,
     String? skipReason,
   }) async {
     String? counterField;
@@ -431,11 +455,17 @@ class RksvJournal {
       failure = e.reason;
     } on TimeoutException {
       tooLate = true;
-      if (unit == null) {
+      if (unit == null && !(live && counterField != null)) {
         throw StateError('Der geschützte Speicher hat nicht geantwortet.');
       }
       if (mustSign) throw const SignatureFailure(_reasonSilent);
       failure = _reasonSilent;
+    } on Object {
+      // Im echten Betrieb ist ein Fehler der Einheit ein Ausfall (Q6). Ohne
+      // Zähler (der AES-Schlüssel fehlt) gibt es keinen Code.
+      if (!live || counterField == null) rethrow;
+      if (mustSign) throw const SignatureFailure(_reasonDown);
+      failure = _reasonDown;
     }
     final known = info;
     return (

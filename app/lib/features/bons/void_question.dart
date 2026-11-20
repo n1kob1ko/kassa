@@ -8,10 +8,14 @@ import '../../ui/tokens.dart';
 const voidFailText =
     'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.';
 
-/// Der Bon gehört nicht zur laufenden Kette der Signatur.
+/// Der Bon gehört nicht zur laufenden Kette der Signatur (in der Probe).
 const voidOlderThanProbeText =
     'Dieser Bon ist älter als die Probe-Signatur und kann nicht storniert '
     'werden.';
+
+/// Der Bon gehört nicht zur laufenden Kette, und die Kassa ist in Betrieb.
+const voidFromTestTimeText =
+    'Dieser Bon stammt aus der Testzeit und kann nicht storniert werden.';
 
 /// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] ist
 /// der Satz, warum der letzte Versuch nicht geklappt hat.

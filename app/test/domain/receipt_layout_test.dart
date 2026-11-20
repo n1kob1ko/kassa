@@ -5,6 +5,8 @@ import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
 
+import '../support/fake_atrust.dart';
+import '../support/rksv_rig.dart';
 import '../support/sales.dart';
 
 String row(String l, String r, [int w = 48]) =>
@@ -462,6 +464,32 @@ void main() {
       expect(texts(d).where((x) => x.startsWith('Kassen-ID')), isEmpty);
       expect(texts(d), contains('TESTBON'));
     });
+
+    test(
+      'Bon einer live-Kette (echt signiert und mit Ausfall): kein TESTBON, '
+      'keine Zeile "Keine gültige Rechnung", beim Ausfall der Vermerk',
+      () async {
+        final atrust = FakeAtrust();
+        final rig = await RksvRig.open(atrust: atrust);
+        addTearDown(rig.close);
+        await rig.seedLive();
+        final signed = await rig.sell('l1', cart);
+        expect(signed.rksv!.probe, isFalse);
+        final t = texts(layoutReceipt(signed, business));
+        expect(t, contains('Kassen-ID: ${RksvRig.liveCashBoxId}'));
+        expect(t, isNot(contains('TESTBON')));
+        expect(t, isNot(contains('Keine gültige Rechnung')));
+        expect(t, isNot(contains('Sicherheitseinrichtung ausgefallen')));
+
+        atrust.signStatus = 500;
+        final damaged = await rig.sell('l2', cart);
+        expect(damaged.rksv!.damaged, isTrue);
+        final d = texts(layoutReceipt(damaged, business));
+        expect(d, contains('Sicherheitseinrichtung ausgefallen'));
+        expect(d, isNot(contains('TESTBON')));
+        expect(d, isNot(contains('Keine gültige Rechnung')));
+      },
+    );
 
     test('Sonderbeleg: der Code folgt der Summe', () async {
       final shop = await TestShop.open();

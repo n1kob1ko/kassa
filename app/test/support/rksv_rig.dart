@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart'
-    show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
+    show InsertMode, OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -55,6 +55,21 @@ class RecordingProtocolSaver implements ProtocolSaver {
   String get lastText => utf8.decode(saved.last.$2);
 }
 
+/// Geschützter Speicher des Rigs: wie [MemoryRksvSecrets], dazu
+/// [failCredentialReads], das nur das Lesen der Zugangsdaten scheitern lässt
+/// (der AES-Schlüssel bleibt lesbar).
+class RigSecrets extends MemoryRksvSecrets {
+  bool failCredentialReads = false;
+
+  @override
+  Future<AtrustCredentials?> atrustCredentials() async {
+    if (failCredentialReads) {
+      throw StateError('Der sichere Speicher ist nicht lesbar.');
+    }
+    return super.atrustCredentials();
+  }
+}
+
 class RksvRig {
   RksvRig._(
     this.db,
@@ -70,11 +85,12 @@ class RksvRig {
     this.saver,
     this.atrust,
     this.keeper,
+    this.liveKeeper,
   );
 
   final KassaDatabase db;
   final FixedClock clock;
-  final MemoryRksvSecrets secrets;
+  final RigSecrets secrets;
   final FakeSignatureUnit fake;
   final RksvJournal journal;
   final ReceiptRepository receipts;
@@ -91,6 +107,12 @@ class RksvRig {
   /// (mit [secrets] und [clock]), sonst null.
   final AtrustSessionKeeper? keeper;
 
+  /// Der Sitzungshalter am echten System über [atrust] (nur mit dem
+  /// nachgebauten A-Trust, nie mit `atrustClient`): wie in der App mit den
+  /// Zugangsdaten aus [secrets], bei jeder Anmeldung neu gelesen, und dem
+  /// Kennzeichen "abgelehnt" des echten Systems. Sonst null.
+  final AtrustSessionKeeper? liveKeeper;
+
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
   /// Probe-Signatur wie in der App ([probeSignatureUnitOf]).
@@ -106,10 +128,14 @@ class RksvRig {
   ///
   /// Mit [atrust] signiert das Journal wie in der App ([signatureUnitOf]):
   /// Probe-Ketten mit der Probe-Signatur, Ketten `atrustTest` mit einer
-  /// [OnlineSignatureUnit] am Testsystem über [atrust] und [keeper].
+  /// [OnlineSignatureUnit] am Testsystem über [atrust] und [keeper], Ketten
+  /// `atrust` mit einer am echten System über [atrust] und [liveKeeper]
+  /// (angesprochen wird nur der nachgebaute A-Trust).
   ///
   /// [atrustClient] statt [atrust]: dasselbe über diesen Client, etwa den
-  /// echten gegen das Testsystem (`atrust_testsystem_test.dart`).
+  /// echten gegen das Testsystem (`atrust_testsystem_test.dart`). Eine Kette
+  /// `atrust` ist dann ein [StateError]: Der echte Client spräche sonst mit
+  /// dem echten System.
   static Future<RksvRig> open({
     bool probeUnit = false,
     SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
@@ -134,7 +160,7 @@ class RksvRig {
       pin: '2222',
       role: StaffRole.chef,
     );
-    final secrets = MemoryRksvSecrets();
+    final secrets = RigSecrets();
     final fake = FakeSignatureUnit();
     final info = await fake.info();
     await db
@@ -154,6 +180,15 @@ class RksvRig {
             secrets: secrets,
             clock: clock,
           );
+    final liveKeeper = atrust == null
+        ? null
+        : AtrustSessionKeeper(
+            client: AtrustClient(atrust.client, AtrustSystem.live),
+            credentials: secrets.atrustCredentials,
+            secrets: secrets,
+            clock: clock,
+            live: true,
+          );
     final journal = RksvJournal(
       db,
       secrets,
@@ -163,15 +198,24 @@ class RksvRig {
           ? signatureUnitOf(
               db,
               secrets,
-              online: (chain, cert) async => OnlineSignatureUnit(
-                client: AtrustClient(online, AtrustSystem.test),
-                keeper: keeper!,
-                zdaId: chain.zdaId,
-                certificateDer: cert.certificate,
-                issuerCertificatesDer: [
-                  for (final i in issuersBase64(cert)) base64.decode(i),
-                ],
-              ),
+              online: (chain, cert) async {
+                final live = chain.unit == RksvUnit.atrust.name;
+                if (live && liveKeeper == null) {
+                  throw StateError('Das echte System gibt es hier nicht.');
+                }
+                return OnlineSignatureUnit(
+                  client: AtrustClient(
+                    online,
+                    live ? AtrustSystem.live : AtrustSystem.test,
+                  ),
+                  keeper: live ? liveKeeper! : keeper!,
+                  zdaId: chain.zdaId,
+                  certificateDer: cert.certificate,
+                  issuerCertificatesDer: [
+                    for (final i in issuersBase64(cert)) base64.decode(i),
+                  ],
+                );
+              },
             )
           : probeUnit
           ? probeSignatureUnitOf(db, secrets)
@@ -200,6 +244,7 @@ class RksvRig {
       saver,
       atrust,
       keeper,
+      liveKeeper,
     );
   }
 
@@ -332,6 +377,85 @@ class RksvRig {
     await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
       const RksvStateRowsCompanion(mode: Value('probe'), chain: Value(1)),
     );
+  }
+
+  /// Die Kassen-Kennung der Kette aus [seedLive].
+  static const liveCashBoxId = 'BSPIMBECHT';
+
+  /// Die Zugangsdaten, die [seedLive] speichert (erfunden).
+  static const liveCredentials = AtrustCredentials(
+    'u-beispiel',
+    'geheim-beispiel',
+  );
+
+  /// Legt eine laufende Kette `live` am nachgebauten A-Trust an (braucht
+  /// `open(atrust: …)`), bis `goLive` das tut: Läuft eine Probe, endet sie
+  /// mit Schlussbeleg ([RksvService.disableProbe]). Dann [liveCredentials]
+  /// im geschützten Speicher, das Zertifikat von [atrust], die nächste Kette
+  /// mit Modus `live`, Einheit `atrust`, Kennung `AT1`, Kassen-Kennung
+  /// [liveCashBoxId] und dem AES-Schlüssel aus den Bytes 0 bis 31, Stand
+  /// `live`, und ein Startbeleg, den A-Trust über [liveKeeper] signiert.
+  /// Liefert die Nummer der Kette.
+  Future<int> seedLive() async {
+    final atrust =
+        this.atrust ?? (throw StateError('seedLive braucht open(atrust: …).'));
+    if ((await stateRow()).mode == RksvMode.probe.name) {
+      await service.disableProbe(staff: chef);
+    }
+    await secrets.writeAtrustCredentials(liveCredentials);
+    final chain =
+        (await db
+                .customSelect(
+                  'SELECT COALESCE(MAX(chain), 0) c FROM rksv_chains',
+                )
+                .getSingle())
+            .read<int>('c') +
+        1;
+    await secrets.writeAesKey(
+      chain,
+      Uint8List.fromList(List.generate(32, (i) => i)),
+    );
+    await db
+        .into(db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: '2159b9f6',
+            certificate: atrust.certificateDer,
+            issuers: Value(
+              jsonEncode([for (final i in atrust.issuersDer) base64.encode(i)]),
+            ),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+    await db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: Value(chain),
+            mode: RksvMode.live.name,
+            unit: Value(RksvUnit.atrust.name),
+            cashBoxId: liveCashBoxId,
+            zdaId: 'AT1',
+            certSerial: '2159b9f6',
+            startedAt: clock.now(),
+          ),
+        );
+    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
+      RksvStateRowsCompanion(
+        mode: Value(RksvMode.live.name),
+        chain: Value(chain),
+        counterCents: const Value(0),
+        outageSince: const Value(null),
+        outageReason: const Value(null),
+        notice: const Value(null),
+      ),
+    );
+    await receipts.createSpecial(
+      ReceiptKind.start,
+      staff: chef,
+      mustSign: true,
+    );
+    return chain;
   }
 
   /// Rechnet die Kette [chain] nach, ohne das Journal zu fragen: Positionen

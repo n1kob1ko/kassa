@@ -527,7 +527,9 @@ class ReceiptRepository {
       return false;
     } on Object {
       // Unerwartet (K9): Der Sammelbeleg ist zurückgerollt, die Probe
-      // endet, der Verkauf läuft weiter. Außerhalb der Probe weiterwerfen.
+      // endet, der Verkauf läuft weiter. Außerhalb der Probe weiterwerfen:
+      // Im echten Betrieb kommt hier nur noch ein Fehler der Datenbank (oder
+      // des AES-Schlüssels) an, jeder der Einheit ist SignatureFailure (Q6).
       if (!await journal.endProbeAfterError()) rethrow;
       return false;
     }
@@ -586,7 +588,9 @@ class ReceiptRepository {
   /// Der Eintrag im Protokoll, in einer inneren Transaktion. Scheitert dabei
   /// etwas Unerwartetes und läuft die Probe, wird nur der Eintrag
   /// zurückgerollt und die Probe endet (K9): Der Bon bleibt gespeichert.
-  /// Sonst rollt der Fehler den ganzen Bon zurück.
+  /// Sonst rollt der Fehler den ganzen Bon zurück. Im echten Betrieb macht
+  /// das Journal aus jedem Fehler der Einheit einen Ausfall (Q6); hier kommt
+  /// dann nur noch ein Fehler der Datenbank (oder des AES-Schlüssels) an.
   Future<void> _record(
     RksvJournal journal, {
     required String receiptId,
