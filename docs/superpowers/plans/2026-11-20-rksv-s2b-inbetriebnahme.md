@@ -62,7 +62,7 @@ Der Controller zeichnet vor Task 5 die Bildschirme nach `docs/design-regeln.md` 
 
 **Files:**
 - Modify: `app/lib/rksv/rksv_secrets.dart`, `app/lib/rksv/online/atrust_client.dart`, `app/lib/rksv/online/atrust_session_keeper.dart`, `app/lib/rksv/online/online_signature_unit.dart`, `app/lib/rksv/online/online_providers.dart`, `app/lib/rksv/rksv_providers.dart`, alle Aufrufer von `atrustTestKeeperProvider`
-- Test: `app/test/rksv/online/atrust_session_keeper_test.dart`, `app/test/rksv/online/online_signature_unit_test.dart`, `app/test/rksv/rksv_secrets_test.dart` (neu, falls es keinen gibt), `app/test/support/fake_atrust.dart`
+- Test: `app/test/rksv/online/atrust_session_keeper_test.dart`, `app/test/rksv/online/online_signature_unit_test.dart`, `app/test/rksv/rksv_secrets_test.dart`, `app/test/support/fake_atrust.dart`, `app/test/rksv/online/atrust_testsystem_test.dart` (nur die neue Form des Konstruktors; dieser Test läuft allein auf GitHub gegen das Testsystem)
 
 **Interfaces (Produces):**
 - `final class AtrustCredentials { const AtrustCredentials(this.user, this.password); final String user, password; }` in `rksv_secrets.dart`, `toString()` gibt nur `'AtrustCredentials'`.
@@ -90,13 +90,13 @@ Der Controller zeichnet vor Task 5 die Bildschirme nach `docs/design-regeln.md` 
 
 - [ ] Tests schreiben und scheitern sehen
 - [ ] Umsetzen
-- [ ] `flutter analyze`, `flutter test test/rksv test/features/connection_check_test.dart test/features/kassa` grün
+- [ ] `flutter analyze`, `flutter test test/rksv test/features/connection_check_test.dart test/features/outage_banner_test.dart test/features/sale_outage_test.dart test/features/signature_panel_test.dart` grün
 - [ ] Commit: `RKSV S2b Task 1: Zugangsdaten im geschützten Speicher, Halter je System`
 
 ### Task 2: Journal und Bon im echten Betrieb
 
 **Files:**
-- Modify: `app/lib/rksv/rksv_journal.dart`, `app/lib/data/receipt_repository.dart` (nur wo K9 und `rethrow` stehen), `app/lib/features/bons/receipt_detail.dart` (Satz zum Storno), `app/test/support/rksv_rig.dart`
+- Modify: `app/lib/rksv/rksv_journal.dart`, `app/lib/data/receipt_repository.dart` (nur wo K9 und `rethrow` stehen), `app/lib/features/bons/void_question.dart` (Satz zum Storno), `app/lib/features/bons/receipt_detail.dart` (nur falls der Satz dort gewählt wird), `app/test/support/rksv_rig.dart`
 - Test: `app/test/rksv/rksv_live_test.dart` (neu), `app/test/sync/` (ein Test zu `test`), `app/test/domain/receipt_layout_test.dart` oder der vorhandene Test des Bon-Layouts
 
 **Interfaces:**
@@ -119,7 +119,7 @@ Der Controller zeichnet vor Task 5 die Bildschirme nach `docs/design-regeln.md` 
 
 - [ ] Tests schreiben und scheitern sehen
 - [ ] Umsetzen
-- [ ] `flutter analyze`, `flutter test test/rksv test/data test/sync test/domain test/features/bons` grün
+- [ ] `flutter analyze`, `flutter test test/rksv test/data test/sync test/domain test/features/bons_rksv_test.dart test/features/bons_test.dart` grün
 - [ ] Commit: `RKSV S2b Task 2: Im echten Betrieb ist jeder Fehler der Signatur ein Ausfall`
 
 ### Task 3: Einrichtung, Inbetriebnahme, Außerbetriebnahme im Service
@@ -186,16 +186,16 @@ Der Controller zeichnet vor Task 5 die Bildschirme nach `docs/design-regeln.md` 
 
 **Interfaces:**
 - Consumes: `RksvSecrets.atrustCredentials`, `writeAtrustCredentials`, `writeAtrustRejected(false, live: true)`, `atrustKeeperProvider(AtrustSystem.live).forget()`, Bild `s2b-*` aus Task 0.
-- Produces: `class CredentialsScreen extends ConsumerStatefulWidget` (nur Chef). `ConnectionCheckScreen` bekommt `system` (Vorgabe `test`) und zeigt am echten System unten `Weiter` statt `Online-Probe starten`; `Weiter` ruft einen übergebenen Rückruf mit den `ConnectionFacts` (Task 6 hängt den nächsten Bildschirm an; bis dahin schließt er).
+- Produces: `class CredentialsScreen extends ConsumerStatefulWidget { const CredentialsScreen({this.edit = false}); final bool edit; }` (nur Chef; `edit: true` zeigt gleich die Felder, auch wenn Zugangsdaten gespeichert sind). `ConnectionCheckScreen({AtrustSystem system = AtrustSystem.test, void Function(ConnectionFacts facts)? onContinue})`: am Testsystem unverändert; am echten System steht nach vier Haken unten `Weiter`, wenn `onContinue` gesetzt ist, sonst keine Taste unten. `CredentialsScreen` übergibt `onContinue` nur, wenn die Kassa nicht in Betrieb ist (Task 6 hängt dort den nächsten Bildschirm an; bis dahin schließt der Rückruf die Prüfung).
 - Texte:
   - Titel `Zugangsdaten von A-Trust`. Darunter: `Benutzername und Passwort hast du von A-Trust bekommen, als das Konto für diesen Betrieb angelegt wurde. Die Kassa speichert sie geschützt auf diesem Tablet.`
   - Felder `Benutzername` und `Passwort`. Das Passwort ist verdeckt, daneben `Anzeigen` und `Verbergen`.
   - Haupttaste `Speichern und prüfen`. Leeres Feld: `Bitte beides ausfüllen.`
-  - Sind Zugangsdaten gespeichert: statt der Felder `Zugangsdaten sind gespeichert.` mit dem Benutzernamen darunter, Tasten `Weiter`, `Neu eingeben` und `Löschen`. Nachfrage `Zugangsdaten löschen?` mit `Löschen` und `Abbrechen`. Im Zustand "In Betrieb" gibt es `Löschen` nicht.
+  - Sind Zugangsdaten gespeichert: statt der Felder `Zugangsdaten sind gespeichert.` mit dem Benutzernamen darunter, Tasten `Weiter`, `Neu eingeben` und `Löschen`. Nachfrage `Zugangsdaten löschen?` mit `Löschen` und `Abbrechen`. Im Zustand "In Betrieb" gibt es `Löschen` und `Weiter` nicht.
   - Scheitert das Speichern: `Die Zugangsdaten konnten nicht gespeichert werden. Bitte noch einmal.`
 - Verhalten: Der Benutzername wird ohne Leerzeichen am Rand gespeichert, das Passwort genau wie getippt. Tastatur ohne Vorschläge, ohne Autokorrektur, ohne Großschreiben, ohne Ausfüllhilfe von Android. `Speichern und prüfen` schreibt die Zugangsdaten, hebt "abgelehnt" (echt) auf, ruft `forget()` und öffnet "Verbindung prüfen" am echten System mit `chefTapped: true`. `Löschen` entfernt Zugangsdaten und `PendingSetup`. Die Felder werden beim Verlassen geleert. Die Regeln aus `docs/design-regeln.md` gelten (Tastenhöhen wie in der Karte "Signatur", Fokus sichtbar, das Feld rollt über die Tastatur).
 
-**Tests:** Speichern schreibt genau die getippten Werte (Benutzername gekürzt, Passwort mit Leerzeichen am Ende unverändert) und öffnet die Prüfung; leeres Feld speichert nichts; `Anzeigen` zeigt das Passwort; mit gespeicherten Zugangsdaten steht der Benutzername da und kein Passwort im Baum; `Löschen` nach der Nachfrage entfernt beides; im Zustand `live` fehlt `Löschen`; ein Mitarbeiter ohne Chef-Recht kommt nicht auf den Bildschirm; "abgelehnt" ist nach dem Speichern aufgehoben und der Halter hat keine Sitzung mehr; `no_text_field_test` findet nur diese Datei.
+**Tests:** Speichern schreibt genau die getippten Werte (Benutzername gekürzt, Passwort mit Leerzeichen am Ende unverändert) und öffnet die Prüfung; leeres Feld speichert nichts; `Anzeigen` zeigt das Passwort; mit gespeicherten Zugangsdaten steht der Benutzername da und kein Passwort im Baum; `Löschen` nach der Nachfrage entfernt beides; im Zustand `live` fehlen `Löschen` und `Weiter`, und die Prüfung nach dem Speichern hat unten keine Taste; mit `edit: true` stehen die Felder da, obwohl Zugangsdaten gespeichert sind; ein Mitarbeiter ohne Chef-Recht kommt nicht auf den Bildschirm; "abgelehnt" ist nach dem Speichern aufgehoben und der Halter hat keine Sitzung mehr; `no_text_field_test` findet nur diese Datei.
 
 - [ ] Tests schreiben und scheitern sehen
 - [ ] Umsetzen, Vergleichsbilder der drei neuen Bilder erzeugen und ansehen
@@ -233,14 +233,14 @@ Der Controller zeichnet vor Task 5 die Bildschirme nach `docs/design-regeln.md` 
 
 **Files:**
 - Modify: `app/lib/features/settings/signature_panel.dart`, `app/lib/features/settings/probe_question.dart` (Nachfrage "außer Betrieb"), `app/lib/features/settings/rksv_task_row.dart`, `app/lib/features/kassa/outage_banner.dart`, `app/lib/features/kassa/kassa_screen.dart`, `app/lib/features/close/` (wo offene Aufgaben stehen)
-- Test: `app/test/features/settings_signature_live_test.dart` (neu), `app/test/features/kassa/` (Hinweis), `app/test/golden/signature_panel_golden_test.dart` (Bilder `signatur_in_betrieb_hell`, `signatur_in_betrieb_dunkel`, `signatur_in_betrieb_ausfall_hell`, `signatur_in_betrieb_abgelehnt_hell`, `signatur_ausser_betrieb_hell`), `app/test/golden/kassa_golden_test.dart` (Bild `kassa_ausfall_abgelehnt_hell`)
+- Test: `app/test/features/settings_signature_live_test.dart` (neu), `app/test/features/outage_banner_test.dart` (Hinweis), `app/test/golden/signature_panel_golden_test.dart` (Bilder `signatur_in_betrieb_hell`, `signatur_in_betrieb_dunkel`, `signatur_in_betrieb_ausfall_hell`, `signatur_in_betrieb_abgelehnt_hell`, `signatur_ausser_betrieb_hell`), `app/test/golden/kassa_golden_test.dart` (Bild `kassa_ausfall_abgelehnt_hell`)
 
 **Interfaces:**
 - Consumes: `RksvState.decommissioned`, `decommission`, `atrustKeeperProvider(AtrustSystem.live).rejected`, `CredentialsScreen`, die neuen Aufgaben.
 - Texte und Verhalten der Karte:
   - In den Zuständen "Nicht eingerichtet", "Probe", "Online-Probe" und "Außer Betrieb" gibt es die Zeile `Signatur einrichten` mit `Für den echten Betrieb. Du brauchst die Zugangsdaten von A-Trust.` und der Taste `Einrichten`; sie öffnet `CredentialsScreen`.
-  - In Betrieb: Pille `In Betrieb`, im Ausfall `In Betrieb, Signatur ausgefallen`. Hilfe `Signatur von A-Trust. Kassen-ID <Kennung>.`. Im Ausfall steht der Grund darunter wie in der Online-Probe. Zeilen: `Verbindung prüfen` (echtes System), `Nullbeleg drucken`, `Protokoll ausgeben`, `Zugangsdaten` mit `Benutzername und Passwort von A-Trust ändern.` und Taste `Ändern`, `Kassa außer Betrieb nehmen` mit `Die Kassa erstellt einen Schlussbeleg. Danach sind neue Bons wieder Testbons.` und Taste `Außer Betrieb`. Die Zeilen der Probe (`Zum Ausprobieren einschalten`, `Mit A-Trust ausprobieren`, `Probe beenden`) gibt es in Betrieb nicht.
-  - Abgelehnt in Betrieb: Hinweis `A-Trust hat die Zugangsdaten abgelehnt.` mit der Taste `Zugangsdaten neu eingeben` (öffnet `CredentialsScreen` gleich mit den Feldern). In der Online-Probe bleibt `Erneut anmelden`.
+  - In Betrieb: Pille `In Betrieb`, im Ausfall `In Betrieb, Signatur ausgefallen`. Hilfe `Signatur von A-Trust. Kassen-ID <Kennung>.`. Im Ausfall steht der Grund darunter wie in der Online-Probe. Zeilen: `Verbindung prüfen` (echtes System), `Nullbeleg drucken`, `Protokoll ausgeben`, `Zugangsdaten` mit `Benutzername und Passwort von A-Trust ändern.` und Taste `Ändern` (öffnet `CredentialsScreen`), `Kassa außer Betrieb nehmen` mit `Die Kassa erstellt einen Schlussbeleg. Danach sind neue Bons wieder Testbons.` und Taste `Außer Betrieb`. Die Zeilen der Probe (`Zum Ausprobieren einschalten`, `Mit A-Trust ausprobieren`, `Probe beenden`) gibt es in Betrieb nicht.
+  - Abgelehnt in Betrieb: Hinweis `A-Trust hat die Zugangsdaten abgelehnt.` mit der Taste `Zugangsdaten neu eingeben` (öffnet `CredentialsScreen(edit: true)`). In der Online-Probe bleibt `Erneut anmelden`.
   - Nachfrage: Titel `Kassa außer Betrieb nehmen?`, Text `Das lässt sich nicht zurücknehmen. Die Kassa erstellt den Schlussbeleg und signiert danach keine Bons mehr. Du musst das bei FinanzOnline melden.`, Tasten `Außer Betrieb nehmen` und `Abbrechen`. Danach wird der Schlussbeleg gedruckt.
   - Außer Betrieb: Pille `Außer Betrieb`, Hilfe `Die Kassa ist außer Betrieb. Neue Bons sind Testbons.`. Die offenen Aufgaben stehen weiter da.
   - Aufgaben im echten Betrieb sind keine Übung: Der Satz `Aufgaben aus der Probe sind zum Üben.` steht nur in der Probe.
