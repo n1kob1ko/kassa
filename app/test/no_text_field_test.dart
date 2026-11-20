@@ -2,17 +2,41 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+/// Die einzige Datei mit Tastatur: "Zugangsdaten von A-Trust" (Plan Q3).
+const _allowed = 'lib/features/settings/credentials_screen.dart';
+
+final _textField = RegExp(r'\b(TextField|TextFormField|EditableText)\b');
+
+/// Die Dateien unter [root] mit einem Textfeld, außer [_allowed]; Pfade mit
+/// `/`, ab dem Ordner der App.
+List<String> textFieldFiles(Directory root) => [
+  for (final f in root.listSync(recursive: true).whereType<File>())
+    if (f.path.endsWith('.dart') && _textField.hasMatch(f.readAsStringSync()))
+      f.path.replaceAll(r'\', '/'),
+]..removeWhere((p) => p == _allowed || p.endsWith('/$_allowed'));
+
 void main() {
-  test('in der App gibt es kein Textfeld', () {
-    final hits = Directory('lib')
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.dart'))
-        .where(
-          (f) =>
-              RegExp(r'\b(TextField|TextFormField|EditableText)\b')
-                  .hasMatch(f.readAsStringSync()),
-        );
-    expect(hits.map((f) => f.path), isEmpty);
+  test('in der App gibt es kein Textfeld außer den Zugangsdaten', () {
+    expect(textFieldFiles(Directory('lib')), isEmpty);
+    expect(
+      File(_allowed).readAsStringSync(),
+      contains('TextField'),
+      reason: 'Die Ausnahme gilt nur, solange es diese Datei mit Feldern gibt.',
+    );
+  });
+
+  test('ein Textfeld in einer anderen Datei fällt auf', () {
+    final root = Directory.systemTemp.createTempSync('kassa_no_text_field');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final lib = Directory('${root.path}/lib/features/settings')
+      ..createSync(recursive: true);
+    File('${lib.path}/credentials_screen.dart').writeAsStringSync('TextField');
+    File('${lib.path}/settings_screen.dart').writeAsStringSync('TextField');
+    File('${root.path}/lib/other.dart').writeAsStringSync('EditableText');
+    File('${root.path}/lib/fine.dart').writeAsStringSync('Text');
+    final hits = textFieldFiles(Directory('${root.path}/lib'));
+    expect(hits, hasLength(2));
+    expect(hits.any((p) => p.endsWith('/settings_screen.dart')), isTrue);
+    expect(hits.any((p) => p.endsWith('/lib/other.dart')), isTrue);
   });
 }

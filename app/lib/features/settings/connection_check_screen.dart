@@ -33,7 +33,10 @@ const _titles = {
 /// Die Seite "Verbindung prüfen" im Bereich Einstellungen, aufgebaut wie
 /// "Karte prüfen": links die vier Zeilen von [ConnectionCheck] mit ihren
 /// Sätzen, rechts was geprüft wird, "Bericht teilen", "Nochmal prüfen" und,
-/// geöffnet mit [ConnectionCheckOpening.enable], "Online-Probe starten".
+/// am Testsystem geöffnet mit [ConnectionCheckOpening.enable], "Online-Probe
+/// starten". Am echten System ([system]) steht nach vier Haken "Weiter",
+/// wenn es [onContinue] gibt, sonst keine Taste dafür; "Online-Probe starten"
+/// gibt es dort nie.
 ///
 /// Beim Öffnen startet ein Lauf, nur einmal und nur, wenn keiner läuft. Er
 /// zählt als Antippen des Chefs nur bei [ConnectionCheckOpening.relogin];
@@ -44,9 +47,17 @@ class ConnectionCheckScreen extends ConsumerStatefulWidget {
     super.key,
     required this.opening,
     required this.onBack,
+    this.system = AtrustSystem.test,
+    this.onContinue,
   });
 
   final ConnectionCheckOpening opening;
+
+  /// Das System von A-Trust, gegen das geprüft wird.
+  final AtrustSystem system;
+
+  /// Nur am echten System: "Weiter" nach vier Haken, mit deren Angaben.
+  final void Function(ConnectionFacts facts)? onContinue;
 
   /// Zurück zur Karte "Signatur", auch nach "Online-Probe starten".
   final VoidCallback onBack;
@@ -63,9 +74,12 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
   String? _startProblem;
 
   ConnectionCheck get _check =>
-      ref.read(connectionCheckProvider(AtrustSystem.test));
+      ref.read(connectionCheckProvider(widget.system));
 
-  bool get _offersStart => widget.opening == ConnectionCheckOpening.enable;
+  bool get _live => widget.system == AtrustSystem.live;
+
+  bool get _offersStart =>
+      !_live && widget.opening == ConnectionCheckOpening.enable;
 
   @override
   void initState() {
@@ -153,7 +167,7 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final check = ref.watch(connectionCheckProvider(AtrustSystem.test));
+    final check = ref.watch(connectionCheckProvider(widget.system));
     return ValueListenableBuilder<ConnectionCheckState>(
       valueListenable: check.state,
       builder: (context, state, _) => _page(context, state),
@@ -171,6 +185,10 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
     // des Laufs gesperrt, nach vier Haken frei. Scheitert der Lauf, wird
     // "Nochmal prüfen" die Hauptaktion.
     final startShown = _offersStart && (running || facts != null);
+    // Am echten System: "Weiter" erst nach vier Haken.
+    final onContinue = widget.onContinue;
+    final continueShown =
+        _live && onContinue != null && !running && facts != null;
     final busy = running || _starting;
 
     final rows = <Widget>[
@@ -212,9 +230,9 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
       key: const Key('connection-retry'),
       child: PrimaryButton(
         label: 'Nochmal prüfen',
-        filled: !startShown,
-        height: startShown ? 64 : 76,
-        labelSize: startShown ? 18 : 22,
+        filled: !startShown && !continueShown,
+        height: startShown || continueShown ? 64 : 76,
+        labelSize: startShown || continueShown ? 18 : 22,
         onPressed: busy ? null : _retry,
       ),
     );
@@ -249,8 +267,11 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
                   ),
                   const SizedBox(height: KassaTokens.spaceXl),
                   Text(
-                    'Das ist das Testsystem von A-Trust. Bons bleiben '
-                    'Testbons.',
+                    _live
+                        ? 'Das ist das echte System von A-Trust. Jede '
+                              'Prüfung zählt bei A-Trust als eine Signatur.'
+                        : 'Das ist das Testsystem von A-Trust. Bons bleiben '
+                              'Testbons.',
                     style: text.bodyMedium!.copyWith(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
@@ -300,6 +321,18 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
                 height: 76,
                 labelSize: 22,
                 onPressed: busy || facts == null ? null : () => _start(facts),
+              ),
+            ),
+          ],
+          if (continueShown) ...[
+            const SizedBox(height: KassaTokens.spaceXl),
+            KeyedSubtree(
+              key: const Key('connection-continue'),
+              child: PrimaryButton(
+                label: 'Weiter',
+                height: 76,
+                labelSize: 22,
+                onPressed: () => onContinue(facts),
               ),
             ),
           ],

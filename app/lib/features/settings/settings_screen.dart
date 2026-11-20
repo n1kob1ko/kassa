@@ -12,6 +12,7 @@ import '../items/item_detail.dart' show FailedHint;
 import 'card_check_screen.dart';
 import 'card_panel.dart';
 import 'connection_check_screen.dart';
+import 'credentials_screen.dart';
 import 'device_test_screen.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
@@ -32,6 +33,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onCheckingCard,
     required this.checkingConnection,
     required this.onCheckingConnection,
+    required this.credentials,
+    required this.onCredentials,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -48,6 +51,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
   /// geöffnet wie angegeben; `null` zeigt die Karten.
   final ConnectionCheckOpening? checkingConnection;
   final ValueChanged<ConnectionCheckOpening?> onCheckingConnection;
+
+  /// Der Weg "Zugangsdaten von A-Trust" ersetzt die Karten wie "Verbindung
+  /// prüfen"; `null` zeigt die Karten.
+  final CredentialsRoute? credentials;
+  final ValueChanged<CredentialsRoute?> onCredentials;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -87,6 +95,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         key: const Key('connection-check-screen'),
         opening: opening,
         onBack: () => widget.onCheckingConnection(null),
+      );
+    }
+    if (widget.credentials case final route?) {
+      return CredentialsScreen(
+        key: const Key('credentials-screen'),
+        edit: route.edit,
+        checking: route.check,
+        onChecking: (check) =>
+            widget.onCredentials(CredentialsRoute(check: check)),
+        onBack: () => widget.onCredentials(null),
       );
     }
     final c = KassaColors.of(context);

@@ -14,8 +14,16 @@ import '../kassa/sale_service.dart';
 import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
+import '../settings/credentials_screen.dart' show CredentialsRoute;
 import '../settings/settings_screen.dart';
 import '../settings/signature_panel.dart' show ConnectionCheckOpening;
+
+/// Öffnet in den Einstellungen "Zugangsdaten von A-Trust", mit [edit] gleich
+/// die Felder. Wie jede Seite der Einstellungen steht sie nur für den Chef
+/// da. [context] liegt unter der [ShellScreen].
+void openCredentials(BuildContext context, {bool edit = false}) => context
+    .findAncestorStateOfType<_ShellScreenState>()
+    ?._openCredentials(edit: edit);
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -42,9 +50,25 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// sie geöffnet wurde; `null` ohne.
   ConnectionCheckOpening? _checkingConnection;
 
+  /// Der Weg "Zugangsdaten von A-Trust" ersetzt die Karten der
+  /// Einstellungen; `null` ohne.
+  CredentialsRoute? _credentials;
+
+  void _openCredentials({required bool edit}) {
+    if (ref.read(activeCardPaymentProvider) != null) return;
+    setState(() {
+      _settingsOpen = true;
+      _testingDevices = false;
+      _checkingCard = false;
+      _checkingConnection = null;
+      _credentials = CredentialsRoute(edit: edit);
+    });
+  }
+
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
-  /// testen", "Karte prüfen" oder "Verbindung prüfen", dann die Einstellungen. An der Kassa tut es nichts, die App
-  /// verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
+  /// testen", "Karte prüfen" oder "Verbindung prüfen" (bei den Zugangsdaten
+  /// erst die Prüfung, dann die Zugangsdaten), dann die Einstellungen. An der
+  /// Kassa tut es nichts, die App verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
   void _onBack(bool didPop, Object? result) {
@@ -56,6 +80,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _checkingCard = false);
     } else if (_checkingConnection != null) {
       setState(() => _checkingConnection = null);
+    } else if (_credentials?.check != null) {
+      setState(() => _credentials = const CredentialsRoute());
+    } else if (_credentials != null) {
+      setState(() => _credentials = null);
     } else if (_settingsOpen) {
       setState(() => _settingsOpen = false);
     }
@@ -97,6 +125,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _testingDevices = false;
                           _checkingCard = false;
                           _checkingConnection = null;
+                          _credentials = null;
                         });
                       },
                       staffName: staff.name,
@@ -112,6 +141,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _testingDevices = false;
                           _checkingCard = false;
                           _checkingConnection = null;
+                          _credentials = null;
                         });
                       },
                       businessName: ref
@@ -131,6 +161,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                             _testingDevices = false;
                             _checkingCard = false;
                             _checkingConnection = null;
+                            _credentials = null;
                           });
                         },
                       ),
@@ -148,6 +179,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                                 checkingConnection: _checkingConnection,
                                 onCheckingConnection: (v) =>
                                     setState(() => _checkingConnection = v),
+                                credentials: _credentials,
+                                onCredentials: (v) =>
+                                    setState(() => _credentials = v),
                               ),
                             )
                           : _areaWidget(

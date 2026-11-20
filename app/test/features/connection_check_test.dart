@@ -498,6 +498,15 @@ void main() {
         ),
         findsOneWidget,
       );
+      // Auch ein Lauf, der mit einem Kreuz in der ersten Zeile endet, lässt
+      // sich teilen.
+      expect(
+        find.descendant(
+          of: _key('connection-share'),
+          matching: find.text('Bericht teilen'),
+        ),
+        findsOneWidget,
+      );
       final login = _key('connection-row-login');
       expect(
         find.descendant(
