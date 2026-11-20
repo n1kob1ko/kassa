@@ -15,6 +15,7 @@ import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
 import '../../domain/receipt.dart';
 import '../../domain/staff.dart';
+import '../../rksv/setup_facts.dart';
 import 'cart_controller.dart';
 
 class SaleResult {
@@ -381,6 +382,20 @@ class SaleService {
   /// Druckt den Bon noch einmal, ohne die Lade (Bon-Detail).
   Future<PrintOutcome> reprint(Receipt receipt) async =>
       _output(receipt, await _settings(), openDrawer: false);
+
+  /// Druckt den Zettel "Angaben für FinanzOnline" über denselben Drucker wie
+  /// die Bons: ohne eingerichteten Drucker `notSetUp`, ein unerwarteter
+  /// Fehler ist `unreachable`.
+  Future<PrintOutcome> printSetupFacts(SetupFacts facts) async {
+    if ((await _settings()).printerKind == PrinterKind.none) {
+      return const PrintOutcome.failed(PrintProblem.notSetUp);
+    }
+    try {
+      return await _ref.read(receiptPrinterProvider).printSetupFacts(facts);
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+  }
 
   /// "Nochmal drucken" in der Fertig-Ansicht. Ist bei diesem Barverkauf die
   /// Lade nicht aufgegangen (und ist sie eingeschaltet), geht sie jetzt mit

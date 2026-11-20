@@ -178,4 +178,6 @@ class _ThrowingPrinter implements ReceiptPrinter {
   Future<PrintOutcome> openDrawer() async => throw StateError('x');
   @override
   Future<PrintOutcome> testPrint() async => throw StateError('x');
+  @override
+  Future<PrintOutcome> printSetupFacts(facts) async => throw StateError('x');
 }

@@ -4,6 +4,7 @@ import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
+import 'package:kassa/rksv/setup_facts.dart';
 
 import '../support/fake_atrust.dart';
 import '../support/rksv_rig.dart';
@@ -502,6 +503,92 @@ void main() {
       );
       final qr = d.indexWhere((o) => o is PrintQr);
       expect(qr, greaterThan(sum));
+    });
+  });
+
+  group('Zettel "Angaben für FinanzOnline"', () {
+    // Erfundene Werte.
+    const facts = SetupFacts(
+      kind: setupKind,
+      provider: 'AT1 = A-TRUST',
+      certSerialHex: '2159b9f6',
+      certSerialDecimal: '559528438',
+      cashBoxId: 'R4TW9KD2PX',
+      aesKeyBase64: 'k3Vt9mQe2Lx8RbY1uZp0Hfd6Wc4NsJ7aGiTo5EyPqMw=',
+      aesChecksum: 'Jq4T',
+    );
+
+    test('Überschrift, Betrieb, Zeit, je Angabe Name und Wert, Schlüssel in '
+        'zwei Zeilen, Hinweis unten', () {
+      final d = layoutSetupFacts(
+        facts,
+        business,
+        DateTime(2026, 11, 20, 10, 15),
+      );
+      expect(texts(d), [
+        'Angaben für FinanzOnline',
+        'Beispiel-Imbiss',
+        '20.11.2026 10:15',
+        '-' * 48,
+        'Art der Sicherheitseinrichtung',
+        'Hardware-Sicherheitsmodul (HSM) eines',
+        'Dienstleisters',
+        'Anbieter',
+        'AT1 = A-TRUST',
+        'Seriennummer des Zertifikats',
+        '2159b9f6',
+        'dezimal 559528438',
+        'Kassenidentifikationsnummer',
+        'R4TW9KD2PX',
+        'AES-Schlüssel',
+        'k3Vt9mQe2Lx8RbY1uZp0Hf',
+        'd6Wc4NsJ7aGiTo5EyPqMw=',
+        'Prüfwert',
+        'Jq4T',
+        '-' * 48,
+        'Diesen Zettel sicher aufheben. Der AES-Schlüssel',
+        'ist geheim.',
+      ]);
+      final title = d.whereType<PrintText>().first;
+      expect(title.bold, isTrue);
+      expect(title.align, PrintAlign.center);
+      // Kein QR-Code, kein TESTBON, und am Ende wird geschnitten.
+      expect(d.whereType<PrintQr>(), isEmpty);
+      expect(texts(d).where((l) => l.contains('TESTBON')), isEmpty);
+      expect(d.last, isA<PrintCut>());
+    });
+
+    test('schmales Papier: lange Werte brechen um, der Schlüssel bleibt in '
+        'zwei Zeilen zu je 22 Zeichen', () {
+      const long = SetupFacts(
+        kind: setupKind,
+        provider: 'AT1 = A-TRUST',
+        certSerialHex: '7a3f00c2e91b5d4486f2a0c7e35b19d24f68a0c1',
+        certSerialDecimal: '698412639015284377109264590118374920571833640257',
+        cashBoxId: 'R4TW9KD2PX',
+        aesKeyBase64: 'k3Vt9mQe2Lx8RbY1uZp0Hfd6Wc4NsJ7aGiTo5EyPqMw=',
+        aesChecksum: 'Jq4T',
+      );
+      final t = texts(
+        layoutSetupFacts(
+          long,
+          business,
+          DateTime(2026, 11, 20, 10, 15),
+          columns: 32,
+        ),
+      );
+      expect(t.every((l) => l.length <= 32), isTrue);
+      expect(t.join(), contains('7a3f00c2e91b5d4486f2a0c7e35b19d24f68a0c1'));
+      expect(
+        t.join(),
+        contains('698412639015284377109264590118374920571833640257'),
+      );
+      final key = t.indexOf('AES-Schlüssel');
+      expect(t.sublist(key + 1, key + 3), [
+        'k3Vt9mQe2Lx8RbY1uZp0Hf',
+        'd6Wc4NsJ7aGiTo5EyPqMw=',
+      ]);
+      expect(t[key + 3], 'Prüfwert');
     });
   });
 }

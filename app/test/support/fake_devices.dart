@@ -7,6 +7,7 @@ import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/rksv/setup_facts.dart';
 
 class FakePrinter implements ReceiptPrinter {
   /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`,
@@ -56,6 +57,16 @@ class FakePrinter implements ReceiptPrinter {
 
   @override
   Future<PrintOutcome> testPrint() => _call('test');
+
+  /// Die Angaben jedes Zettels "Angaben für FinanzOnline", in der Reihenfolge
+  /// der Aufrufe (im Protokoll als `setup`).
+  final List<SetupFacts> setupSlips = [];
+
+  @override
+  Future<PrintOutcome> printSetupFacts(SetupFacts facts) {
+    setupSlips.add(facts);
+    return _call('setup');
+  }
 }
 
 /// Falsche Druckersuche: je Verbindung eine Liste, optional ein Fehler.

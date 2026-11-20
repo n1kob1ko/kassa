@@ -66,9 +66,15 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 class SignaturePanel extends ConsumerStatefulWidget {
   const SignaturePanel({
     super.key,
+    this.announcement,
     required this.onOpenCardCheck,
     required this.onOpenConnectionCheck,
   });
+
+  /// Das Ergebnis eines Wegs, der eben in die Einstellungen zurückgeführt
+  /// hat ("Die Kassa ist in Betrieb."): steht als geschafft unten in der
+  /// Karte, bis die nächste Aktion ihre eigene Rückmeldung bringt.
+  final String? announcement;
 
   final VoidCallback onOpenCardCheck;
   final ValueChanged<ConnectionCheckOpening> onOpenConnectionCheck;
@@ -79,7 +85,10 @@ class SignaturePanel extends ConsumerStatefulWidget {
 
 class _SignaturePanelState extends ConsumerState<SignaturePanel> {
   bool _busy = false;
-  _Message? _message;
+  late _Message? _message = switch (widget.announcement) {
+    final text? => (action: _Action.other, text: text, tone: _Tone.done),
+    null => null,
+  };
 
   /// Sperrt die Tasten, führt [body] aus und zeigt danach dessen Satz unter
   /// der Zeile von [action]. RksvProblem zeigt seinen Satz, eine andere

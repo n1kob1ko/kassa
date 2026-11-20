@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../rksv/online/atrust_client.dart';
+import '../../rksv/online/connection_check.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_secrets.dart';
@@ -16,6 +17,7 @@ import '../../ui/tokens.dart';
 import 'card_check_screen.dart' show checkCardDecoration;
 import 'connection_check_screen.dart';
 import 'settings_rows.dart';
+import 'setup_facts_screen.dart';
 import 'signature_panel.dart' show ConnectionCheckOpening;
 
 const _empty = 'Bitte beides ausfüllen.';
@@ -24,11 +26,11 @@ const _saveFailed =
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 
 /// Wo der Weg "Zugangsdaten von A-Trust" steht. Die Hülle hält ihn, damit
-/// "Zurück" des Tablets eine Ebene schließt: erst die Prüfung, dann die
-/// Zugangsdaten.
+/// "Zurück" des Tablets eine Ebene schließt: erst die Prüfung oder die
+/// Angaben für FinanzOnline, dann die Zugangsdaten.
 @immutable
 final class CredentialsRoute {
-  const CredentialsRoute({this.edit = false, this.check});
+  const CredentialsRoute({this.edit = false, this.check, this.setup});
 
   /// Die Felder stehen da, auch wenn Zugangsdaten gespeichert sind.
   final bool edit;
@@ -36,6 +38,13 @@ final class CredentialsRoute {
   /// "Verbindung prüfen" am echten System steht an Stelle der Zugangsdaten,
   /// geöffnet wie angegeben; `null` ohne.
   final ConnectionCheckOpening? check;
+
+  /// "Angaben für FinanzOnline" mit den Angaben der Prüfung am echten System
+  /// steht an Stelle der Zugangsdaten; `null` ohne. "Zurück" führt von dort
+  /// zu den Zugangsdaten, nicht zur Prüfung: Die liefe sonst noch einmal und
+  /// zählte bei A-Trust als Signatur. Die Werte liegen im geschützten
+  /// Speicher und gehen dabei nicht verloren.
+  final ConnectionFacts? setup;
 }
 
 /// Der Bildschirm "Zugangsdaten von A-Trust" (nur Chef, Plan Q3): der einzige
@@ -53,6 +62,9 @@ class CredentialsScreen extends ConsumerStatefulWidget {
     this.edit = false,
     this.checking,
     required this.onChecking,
+    this.setup,
+    required this.onSetup,
+    required this.onLive,
     required this.onBack,
   });
 
@@ -64,6 +76,14 @@ class CredentialsScreen extends ConsumerStatefulWidget {
   final ConnectionCheckOpening? checking;
   final ValueChanged<ConnectionCheckOpening?> onChecking;
 
+  /// "Angaben für FinanzOnline" zu diesen Angaben der Prüfung; `null` zeigt
+  /// die Zugangsdaten oder die Prüfung.
+  final ConnectionFacts? setup;
+  final ValueChanged<ConnectionFacts?> onSetup;
+
+  /// Die Kassa ist in Betrieb: Der ganze Weg schließt.
+  final VoidCallback onLive;
+
   /// Zurück zu den Einstellungen.
   final VoidCallback onBack;
 
@@ -74,6 +94,14 @@ class CredentialsScreen extends ConsumerStatefulWidget {
 class _CredentialsScreenState extends ConsumerState<CredentialsScreen> {
   @override
   Widget build(BuildContext context) {
+    if (widget.setup case final facts?) {
+      return SetupFactsScreen(
+        key: const Key('credentials-setup'),
+        facts: facts,
+        onBack: () => widget.onSetup(null),
+        onLive: widget.onLive,
+      );
+    }
     final opening = widget.checking;
     if (opening == null) {
       return _CredentialsPage(
@@ -90,9 +118,9 @@ class _CredentialsScreenState extends ConsumerState<CredentialsScreen> {
       system: AtrustSystem.live,
       opening: opening,
       onBack: () => widget.onChecking(null),
-      // Task 6 hängt hier den nächsten Schritt an; bis dahin schließt
-      // "Weiter" die Prüfung. In Betrieb gibt es keinen nächsten Schritt.
-      onContinue: live ? null : (_) => widget.onChecking(null),
+      // "Weiter" öffnet die Angaben für FinanzOnline mit genau diesen
+      // Angaben. In Betrieb gibt es keinen nächsten Schritt.
+      onContinue: live ? null : widget.onSetup,
     );
   }
 }

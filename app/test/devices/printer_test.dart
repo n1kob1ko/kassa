@@ -9,6 +9,7 @@ import 'package:kassa/domain/business_info.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
+import 'package:kassa/rksv/setup_facts.dart';
 
 const business = BusinessInfo(name: 'Beispiel-Imbiss');
 
@@ -93,6 +94,17 @@ EscPosPrinter printerOf(
   limit: limit,
 );
 
+/// Erfundene Angaben für FinanzOnline.
+const _facts = SetupFacts(
+  kind: setupKind,
+  provider: 'AT1 = A-TRUST',
+  certSerialHex: '2159b9f6',
+  certSerialDecimal: '559528438',
+  cashBoxId: 'R4TW9KD2PX',
+  aesKeyBase64: 'k3Vt9mQe2Lx8RbY1uZp0Hfd6Wc4NsJ7aGiTo5EyPqMw=',
+  aesChecksum: 'Jq4T',
+);
+
 void main() {
   test('printReceipt schickt den gesetzten Bon', () async {
     final t = RecordingTransport();
@@ -160,6 +172,7 @@ void main() {
       await p.printReceipt(receipt()),
       await p.openDrawer(),
       await p.testPrint(),
+      await p.printSetupFacts(_facts),
     ]) {
       expect(o.problem, PrintProblem.notSetUp);
       expect(o.message, 'Kein Bondrucker eingerichtet.');
@@ -331,6 +344,20 @@ void main() {
       t.hang = false;
       expect((await second).ok, isTrue);
       expect(t.started, hasLength(2));
+    },
+  );
+
+  test(
+    'printSetupFacts schickt den Zettel "Angaben für FinanzOnline"',
+    () async {
+      final t = RecordingTransport();
+      expect((await printerOf(t).printSetupFacts(_facts)).ok, isTrue);
+      expect(
+        t.sent.single,
+        encodeEscPos(
+          layoutSetupFacts(_facts, business, DateTime(2026, 11, 17, 12)),
+        ),
+      );
     },
   );
 

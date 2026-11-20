@@ -9,6 +9,7 @@ import '../domain/business_info.dart';
 import '../domain/print_document.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_layout.dart';
+import '../rksv/setup_facts.dart';
 import 'escpos.dart';
 
 enum PrintProblem {
@@ -88,6 +89,9 @@ abstract interface class ReceiptPrinter {
   Future<PrintOutcome> printReceipt(Receipt receipt, {bool openDrawer = false});
   Future<PrintOutcome> openDrawer();
   Future<PrintOutcome> testPrint();
+
+  /// Druckt den Zettel "Angaben für FinanzOnline" ([layoutSetupFacts]).
+  Future<PrintOutcome> printSetupFacts(SetupFacts facts);
 }
 
 /// Höchstdauer eines ganzen Aufrufs (Zustandsfragen und Senden).
@@ -163,6 +167,14 @@ class EscPosPrinter implements ReceiptPrinter {
     checkStatus: true,
     bytes: () async =>
         encodeEscPos(layoutTestPrint(business, clock.now(), columns: columns)),
+  );
+
+  @override
+  Future<PrintOutcome> printSetupFacts(SetupFacts facts) => _run(
+    checkStatus: true,
+    bytes: () async => encodeEscPos(
+      layoutSetupFacts(facts, business, clock.now(), columns: columns),
+    ),
   );
 
   /// Ende des letzten Aufrufs. Das Limit gilt je Transport für einen Aufruf,

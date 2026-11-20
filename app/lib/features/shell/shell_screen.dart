@@ -67,7 +67,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
   /// testen", "Karte prüfen" oder "Verbindung prüfen" (bei den Zugangsdaten
-  /// erst die Prüfung, dann die Zugangsdaten), dann die Einstellungen. An der
+  /// erst die Prüfung oder die Angaben für FinanzOnline, dann die
+  /// Zugangsdaten), dann die Einstellungen. An der
   /// Kassa tut es nichts, die App verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -80,7 +81,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _checkingCard = false);
     } else if (_checkingConnection != null) {
       setState(() => _checkingConnection = null);
-    } else if (_credentials?.check != null) {
+    } else if (_credentials?.check != null || _credentials?.setup != null) {
       setState(() => _credentials = const CredentialsRoute());
     } else if (_credentials != null) {
       setState(() => _credentials = null);

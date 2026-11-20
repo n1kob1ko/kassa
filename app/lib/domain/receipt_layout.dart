@@ -1,6 +1,7 @@
 // Setzt einen gespeicherten Bon zu Druckzeilen fester Breite. Reines Dart,
 // ohne Flutter und ohne Datenbank.
 
+import '../rksv/setup_facts.dart';
 import 'business_info.dart';
 import 'pricing.dart';
 import 'print_document.dart';
@@ -382,6 +383,51 @@ List<PrintOp> layoutTestPrint(
   b.rule();
   b.text([for (var i = 1; i <= columns; i++) i % 10].join());
   b.text('ä ö ü ß € sind lesbar');
+  b.ops
+    ..add(const PrintFeed(3))
+    ..add(const PrintCut());
+  return b.ops;
+}
+
+/// Zettel "Angaben drucken" (Entwurf 6.7, Schritt 3): Überschrift, Betrieb,
+/// Datum und Uhrzeit, dann je Angabe Name und Wert in eigenen Zeilen. Lange
+/// Werte brechen um, der AES-Schlüssel steht in zwei Zeilen zu je 22
+/// Zeichen. Kein QR-Code und kein TESTBON: Der Zettel ist kein Beleg.
+List<PrintOp> layoutSetupFacts(
+  SetupFacts facts,
+  BusinessInfo business,
+  DateTime now, {
+  int columns = 48,
+}) {
+  final b = _Builder(columns);
+  void value(String s) {
+    for (final line in _wrap(printable(s), columns, columns)) {
+      b.text(line);
+    }
+  }
+
+  void fact(String name, List<String> values) {
+    value(name);
+    values.forEach(value);
+  }
+
+  final key = facts.aesKeyBase64;
+  final half = (key.length + 1) ~/ 2;
+  b.centered('Angaben für FinanzOnline', bold: true);
+  b.centered(business.name);
+  b.centered(_dateTime(now));
+  b.rule();
+  fact('Art der Sicherheitseinrichtung', [facts.kind]);
+  fact('Anbieter', [facts.provider]);
+  fact('Seriennummer des Zertifikats', [
+    facts.certSerialHex,
+    'dezimal ${facts.certSerialDecimal}',
+  ]);
+  fact('Kassenidentifikationsnummer', [facts.cashBoxId]);
+  fact('AES-Schlüssel', [key.substring(0, half), key.substring(half)]);
+  fact('Prüfwert', [facts.aesChecksum]);
+  b.rule();
+  value('Diesen Zettel sicher aufheben. Der AES-Schlüssel ist geheim.');
   b.ops
     ..add(const PrintFeed(3))
     ..add(const PrintCut());

@@ -260,10 +260,11 @@ void main() {
       findsOneWidget,
     );
 
-    // "Weiter" schließt die Prüfung (bis Task 6 den nächsten Schritt hat).
+    // "Weiter" öffnet "Angaben für FinanzOnline" (Task 6), ohne neue
+    // Anmeldung.
     await _tap(t, 'connection-continue');
     expect(_key('connection-check'), findsNothing);
-    expect(_key('credentials-saved'), findsOneWidget);
+    expect(_key('setup-facts'), findsOneWidget);
     expect(fake.requests.where((r) => r.startsWith('PUT')), hasLength(1));
   });
 

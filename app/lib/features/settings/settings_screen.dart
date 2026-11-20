@@ -64,6 +64,22 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _failed = false;
 
+  /// Das Ergebnis eines Wegs, der eben geschlossen hat ("Die Kassa ist in
+  /// Betrieb."), für die Karte "Signatur". Geht weg, sobald eine Seite an
+  /// Stelle der Karten öffnet.
+  String? _announcement;
+
+  @override
+  void didUpdateWidget(SettingsScreen old) {
+    super.didUpdateWidget(old);
+    if (widget.testingDevices ||
+        widget.checkingCard ||
+        widget.checkingConnection != null ||
+        widget.credentials != null) {
+      _announcement = null;
+    }
+  }
+
   Future<void> _change(
     RegisterSettings Function(RegisterSettings s) change,
   ) async {
@@ -104,6 +120,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         checking: route.check,
         onChecking: (check) =>
             widget.onCredentials(CredentialsRoute(check: check)),
+        setup: route.setup,
+        onSetup: (facts) => widget.onCredentials(
+          facts == null
+              ? const CredentialsRoute()
+              : CredentialsRoute(setup: facts),
+        ),
+        onLive: () {
+          setState(() => _announcement = 'Die Kassa ist in Betrieb.');
+          widget.onCredentials(null);
+        },
         onBack: () => widget.onCredentials(null),
       );
     }
@@ -227,6 +253,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SignaturePanel(
+                      announcement: _announcement,
                       onOpenCardCheck: () => widget.onCheckingCard(true),
                       onOpenConnectionCheck: widget.onCheckingConnection,
                     ),

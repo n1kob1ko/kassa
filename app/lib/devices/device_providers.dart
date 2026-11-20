@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/providers.dart';
 import '../data/settings_repository.dart';
 import '../domain/receipt.dart';
+import '../rksv/setup_facts.dart';
 import 'card_terminal.dart';
 import 'channel_transport.dart';
 import 'network_transport.dart';
@@ -91,4 +92,7 @@ class _NoPrinter implements ReceiptPrinter {
 
   @override
   Future<PrintOutcome> testPrint() async => _outcome;
+
+  @override
+  Future<PrintOutcome> printSetupFacts(SetupFacts facts) async => _outcome;
 }
