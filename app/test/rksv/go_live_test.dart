@@ -490,6 +490,105 @@ void main() {
     });
   });
 
+  group('eine Probe nach "außer Betrieb" lässt die Aufgaben der live-Kette '
+      'stehen', () {
+    /// Kette 1 live mit offenen Aufgaben (anmelden, Startbeleg, Ausfall
+    /// über 48 Stunden mit Beginn und Ende), dann außer Betrieb. Liefert
+    /// die Ids der offenen Aufgaben danach.
+    Future<List<String>> decommissioned() async {
+      await rig.seedLive();
+      atrust.signStatus = 500;
+      await rig.sell('s1', cart);
+      rig.clock.value = rig.clock.value.add(const Duration(hours: 49));
+      await rig.sell('s2', cart);
+      atrust.signStatus = null;
+      expect(await rig.service.retrySignature(staff: rig.chef), isTrue);
+      await rig.service.decommission(staff: rig.chef);
+      final ids = [for (final t in await rig.tasks()) t.$1];
+      expect(ids, [
+        'register-finanzonline-1',
+        'check-start-1',
+        'report-outage-1-2',
+        'report-outage-end-1-4',
+        'report-decommission-1',
+        'backup-decommission-1',
+      ]);
+      return ids;
+    }
+
+    Future<List<String>> openIds() async => [
+      for (final t in await rig.tasks()) t.$1,
+    ];
+
+    test('disableProbe', () async {
+      final live = await decommissioned();
+      await rig.service.enableProbe(staff: rig.chef);
+      expect(await openIds(), [...live, 'check-start-2']);
+      await rig.service.disableProbe(staff: rig.chef);
+      expect(await openIds(), live);
+    });
+
+    test('goLive aus der Probe', () async {
+      final live = await decommissioned();
+      await rig.service.enableProbe(staff: rig.chef);
+      final facts = await rig.liveFacts();
+      await rig.service.prepareSetup(facts: facts);
+      await rig.service.goLive(staff: rig.chef, facts: facts);
+      expect(await openIds(), [
+        ...live,
+        'register-finanzonline-3',
+        'check-start-3',
+      ]);
+    });
+
+    test('K9: die Probe beendet sich nach einem Fehler', () async {
+      final live = await decommissioned();
+      await rig.service.enableProbe(staff: rig.chef);
+      rig.secrets.failReads = true;
+      expect((await rig.sell('p1', cart)).rksv, isNull);
+      rig.secrets.failReads = false;
+      final state = await rig.stateRow();
+      expect(state.mode, 'off');
+      expect(state.notice, contains('Probe-Signatur wurde beendet'));
+      expect(await openIds(), live);
+      expect((await rig.rksv.current()).decommissioned, isFalse);
+    });
+
+    test('Online-Probe: enableOnlineProbe, dann disableProbe', () async {
+      final live = await decommissioned();
+      await rig.service.enableOnlineProbe(
+        staff: rig.chef,
+        facts: await testFacts(),
+      );
+      expect(await openIds(), [...live, 'check-start-2']);
+      await rig.service.disableProbe(staff: rig.chef);
+      expect(await openIds(), live);
+    });
+
+    test('Aufgaben ohne Kettennummer (Jahresbeleg, Protokoll sichern) der '
+        'live-Kette bleiben, die der Probe gehen', () async {
+      await rig.seedLive();
+      rig.clock.value = DateTime(2027, 1, 5, 10);
+      await rig.sell('s1', cart);
+      await rig.service.decommission(staff: rig.chef);
+      final live = await openIds();
+      expect(live, [
+        'register-finanzonline-1',
+        'check-start-1',
+        'check-year-2026',
+        'backup-2027-Q1',
+        'report-decommission-1',
+      ]);
+      rig.clock.value = DateTime(2027, 1, 5, 11);
+      await rig.service.enableProbe(staff: rig.chef);
+      rig.clock.value = DateTime(2027, 4, 2, 9);
+      await rig.sell('p1', cart);
+      expect(await openIds(), [...live, 'check-start-2', 'backup-2027-Q2']);
+      await rig.service.disableProbe(staff: rig.chef);
+      expect(await openIds(), live);
+    });
+  });
+
   group('decommission', () {
     test('Schlussbeleg, Kette beendet, mode off, decommissioned, Aufgaben '
         'mit Datum; die offenen bleiben', () async {

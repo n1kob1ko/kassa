@@ -76,6 +76,35 @@ List<RksvTask> decodeRksvTasks(String json) {
 String encodeRksvTasks(List<RksvTask> tasks) =>
     jsonEncode([for (final t in tasks) t.toJson()]);
 
+/// Ids mit der Nummer ihrer Kette (so legen Journal und Service sie an).
+final _chainInId = RegExp(
+  r'^(?:check-start|report-outage-end|report-outage|register-finanzonline|'
+  r'report-decommission|backup-decommission)-(\d+)(?:-\d+)?$',
+);
+
+/// Die Aufgaben, die bleiben, wenn die Probe-Kette [chain] (begonnen um
+/// [startedAt]) endet: Ihre eigenen gehen, die einer früheren Kette (etwa
+/// der außer Betrieb genommenen `live`-Kette) bleiben. Eine Id mit
+/// Kettennummer gehört zu dieser Kette; eine ohne (Jahresbeleg, Protokoll
+/// sichern) zur Probe, wenn sie nach deren Beginn entstand.
+List<RksvTask> tasksAfterProbe(
+  List<RksvTask> tasks, {
+  required int chain,
+  required DateTime startedAt,
+}) {
+  bool ofProbe(RksvTask t) {
+    final m = _chainInId.firstMatch(t.id);
+    return m != null
+        ? int.parse(m.group(1)!) == chain
+        : t.createdAt.isAfter(startedAt);
+  }
+
+  return [
+    for (final t in tasks)
+      if (!ofProbe(t)) t,
+  ];
+}
+
 /// Der Satz der Aufgabe am Bildschirm.
 String rksvTaskText(RksvTask t) => switch (t.kind) {
   RksvTaskKind.checkStart => 'Startbeleg mit der App "BMF Belegcheck" prüfen.',

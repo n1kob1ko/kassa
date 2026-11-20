@@ -303,14 +303,26 @@ class RksvService {
     // Hat sich die Probe beim Schlussbeleg selbst beendet (K9), ist die
     // Kette schon zu.
     await _endChain(chain);
+    final row = await (_db.select(
+      _db.rksvChainRows,
+    )..where((t) => t.chain.equals(chain))).getSingle();
     await _writeState(
       RksvStateRowsCompanion(
         mode: Value(RksvMode.off.name),
         chain: const Value(null),
         outageSince: const Value(null),
         outageReason: const Value(null),
-        // Die Aufgaben gehören zur Probe und enden mit ihr.
-        tasks: const Value('[]'),
+        // Die Aufgaben der Probe enden mit ihr; die einer früheren Kette
+        // (außer Betrieb) bleiben.
+        tasks: Value(
+          encodeRksvTasks(
+            tasksAfterProbe(
+              decodeRksvTasks((await _state()).tasks),
+              chain: chain,
+              startedAt: row.startedAt,
+            ),
+          ),
+        ),
       ),
     );
     return closing;

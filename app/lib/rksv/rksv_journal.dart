@@ -557,10 +557,16 @@ class RksvJournal {
     final state = await _state();
     if (_mode(state) != RksvMode.probe) return false;
     final chain = state.chain;
+    var tasks = const <RksvTask>[];
     if (chain != null) {
       await (_db.update(_db.rksvChainRows)
             ..where((t) => t.chain.equals(chain) & t.endedAt.isNull()))
           .write(RksvChainRowsCompanion(endedAt: Value(_clock.now())));
+      tasks = tasksAfterProbe(
+        decodeRksvTasks(state.tasks),
+        chain: chain,
+        startedAt: (await _chainRow(chain)).startedAt,
+      );
     }
     await _writeState(
       RksvStateRowsCompanion(
@@ -568,8 +574,9 @@ class RksvJournal {
         chain: const Value(null),
         outageSince: const Value(null),
         outageReason: const Value(null),
-        // Die Aufgaben gehören zur Probe und enden mit ihr.
-        tasks: const Value('[]'),
+        // Die Aufgaben der Probe enden mit ihr; die einer früheren Kette
+        // (außer Betrieb) bleiben.
+        tasks: Value(encodeRksvTasks(tasks)),
         notice: const Value(_notice),
       ),
     );
