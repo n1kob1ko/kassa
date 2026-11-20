@@ -53,7 +53,7 @@ class AtrustSessionKeeper {
 
   /// Die zuletzt aufgegebene Anmeldung, solange sie keine Antwort hat, und
   /// wann sie aufgegeben wurde (Q13).
-  Object? _abandoned;
+  _Attempt? _abandoned;
   DateTime? _abandonedAt;
 
   /// Zählt [forget]: Eine Anmeldung aus einer früheren Runde wird weder
@@ -134,14 +134,15 @@ class AtrustSessionKeeper {
   /// [rejected], eine Sitzung gilt nur, wenn der Halter keine hat und
   /// [rejected] nicht gilt, ein anderer Fehler fällt weg.
   Future<AtrustSession> _startLogin() {
-    final token = Object();
-    final answer = _answer(token, _round);
+    final attempt = _Attempt();
+    final answer = _answer(attempt, _round);
     late final Future<AtrustSession> shared;
     shared = answer
         .timeout(
           loginLimit,
           onTimeout: () {
-            _abandoned = token;
+            attempt.abandoned = true;
+            _abandoned = attempt;
             _abandonedAt = _clock.now();
             throw const AtrustException(AtrustProblem.noInternet);
           },
@@ -152,11 +153,18 @@ class AtrustSessionKeeper {
     return shared;
   }
 
-  Future<AtrustSession> _answer(Object token, int round) async {
+  Future<AtrustSession> _answer(_Attempt attempt, int round) async {
     try {
       final credentials = await _credentials();
       if (credentials == null) {
         throw const AtrustException(AtrustProblem.noCredentials);
+      }
+      // Das Lesen kann dauern: Was in session() geprüft wurde, gilt dann
+      // vielleicht nicht mehr. Nach einer Ablehnung, für alte Zugangsdaten
+      // (forget) oder nach dem Aufgeben geht keine Anfrage hinaus.
+      if (_rejected.value) throw const AtrustException(AtrustProblem.rejected);
+      if (round != _round || attempt.abandoned) {
+        throw const AtrustException(AtrustProblem.noInternet);
       }
       final AtrustSession s;
       try {
@@ -175,7 +183,7 @@ class AtrustSessionKeeper {
       }
       return s;
     } finally {
-      if (identical(_abandoned, token)) {
+      if (identical(_abandoned, attempt)) {
         _abandoned = null;
         _abandonedAt = null;
       }
@@ -247,4 +255,10 @@ class AtrustSessionKeeper {
 
   @override
   String toString() => 'AtrustSessionKeeper';
+}
+
+/// Eine Anmeldung; [abandoned], sobald sie nach
+/// [AtrustSessionKeeper.loginLimit] aufgegeben wurde.
+class _Attempt {
+  bool abandoned = false;
 }

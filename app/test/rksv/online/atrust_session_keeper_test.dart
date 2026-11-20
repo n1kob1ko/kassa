@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
@@ -33,6 +35,23 @@ class _Rig {
   AtrustSessionKeeper makeLive() => AtrustSessionKeeper(
     client: AtrustClient(fake.client, AtrustSystem.test),
     credentials: secrets.atrustCredentials,
+    secrets: secrets,
+    clock: clock,
+    live: true,
+  );
+
+  /// Lesezugriffe auf die Zugangsdaten, die der Test selbst beendet.
+  final List<Completer<AtrustCredentials?>> reads = [];
+
+  /// Ein Halter wie der des echten Systems, dessen Lesen der Zugangsdaten
+  /// erst endet, wenn der Test das Element in [reads] beendet.
+  AtrustSessionKeeper makeHeldReads() => AtrustSessionKeeper(
+    client: AtrustClient(fake.client, AtrustSystem.test),
+    credentials: () {
+      final read = Completer<AtrustCredentials?>();
+      reads.add(read);
+      return read.future;
+    },
     secrets: secrets,
     clock: clock,
     live: true,
@@ -827,6 +846,100 @@ void main() {
         async.flushMicrotasks();
         expect(ok, hasLength(1));
         expect(rig.fake.requests, [_login, _login]);
+      });
+    });
+  });
+
+  group('langsames Lesen der Zugangsdaten', () {
+    late AtrustSessionKeeper k;
+    setUp(() => k = rig.makeHeldReads());
+
+    /// Die Sperre nach einer aufgegebenen Anmeldung ist um.
+    void afterBlock() => rig.clock.value = rig.clock.value.add(
+      AtrustSessionKeeper.abandonedLimit,
+    );
+
+    test(
+      'eine aufgegebene Anmeldung, deren Lesen spät endet, schickt nichts',
+      () {
+        fakeAsync((async) {
+          final (_, errors) = _start(k);
+          async.elapse(AtrustSessionKeeper.loginLimit);
+          expect(
+            (errors.single as AtrustException).problem,
+            AtrustProblem.noInternet,
+          );
+          rig.reads.single.complete(_creds);
+          async.elapse(const Duration(minutes: 5));
+          expect(rig.fake.requests, isEmpty);
+        });
+      },
+    );
+
+    test(
+      'mehrere wartende Lesezugriffe, zugleich beendet: höchstens ein PUT',
+      () {
+        fakeAsync((async) {
+          for (var i = 0; i < 3; i++) {
+            _start(k);
+            async.elapse(AtrustSessionKeeper.loginLimit);
+            afterBlock();
+          }
+          final (ok, _) = _start(k);
+          async.flushMicrotasks();
+          expect(rig.reads, hasLength(4));
+          for (final read in rig.reads) {
+            read.complete(_creds);
+          }
+          async.flushMicrotasks();
+          expect(rig.fake.requests, [_liveLogin]);
+          expect(ok, hasLength(1));
+        });
+      },
+    );
+
+    test('nach einer 401 schickt keine wartende Anmeldung mehr', () {
+      fakeAsync((async) {
+        rig.fake.loginStatus = 401;
+        _start(k);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        afterBlock();
+        final (_, errors) = _start(k);
+        async.flushMicrotasks();
+        rig.reads[1].complete(_creds);
+        async.flushMicrotasks();
+        expect(
+          (errors.single as AtrustException).problem,
+          AtrustProblem.rejected,
+        );
+        expect(rig.fake.requests, [_liveLogin]);
+
+        rig.reads[0].complete(_creds);
+        async.elapse(const Duration(minutes: 5));
+        expect(rig.fake.requests, [_liveLogin]);
+      });
+    });
+
+    test('forget() während des Lesens: die Anmeldung der alten Runde schickt '
+        'nichts, die neue meldet an', () {
+      fakeAsync((async) {
+        final (oldOk, oldErrors) = _start(k);
+        async.flushMicrotasks();
+        k.forget();
+        final (ok, _) = _start(k);
+        async.flushMicrotasks();
+        expect(rig.reads, hasLength(2));
+
+        rig.reads[0].complete(_creds);
+        async.flushMicrotasks();
+        expect(rig.fake.requests, isEmpty);
+        expect(oldOk, isEmpty);
+        expect(oldErrors, hasLength(1));
+
+        rig.reads[1].complete(_creds);
+        async.flushMicrotasks();
+        expect(rig.fake.requests, [_liveLogin]);
+        expect(ok, hasLength(1));
       });
     });
   });
