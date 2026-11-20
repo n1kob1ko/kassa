@@ -9,7 +9,7 @@ Mit dieser Liste nimmst du die Kassa in den echten Betrieb. Ab dann signiert A-T
 - Stimme den Tag vorher mit deiner Steuerberatung ab. Mach den Schritt erst, wenn sie Bescheid weiß.
 - Schreib die Zugangsdaten von A-Trust nie in den Chat. Fotografiere sie nicht und schick sie nicht.
 
-Diese Liste ist zum Abhaken am echten Tablet. Bei jedem Punkt steht, was du tun sollst und was du sehen solltest. Wenn etwas anders aussieht oder nicht geht: Punkt offen lassen, ein Foto vom Bildschirm machen und kurz dazuschreiben, was passiert ist. Bis Schritt 7 kannst du jederzeit aufhören. Dann ist noch nichts passiert.
+Diese Liste ist zum Abhaken am echten Tablet. Bei jedem Punkt steht, was du tun sollst und was du sehen solltest. Wenn etwas anders aussieht oder nicht geht: Punkt offen lassen, ein Foto vom Bildschirm machen und kurz dazuschreiben, was passiert ist. Bis einschließlich Schritt 4 kannst du jederzeit aufhören. An der neuen Kassa ist dann noch nichts passiert. Nur jede Prüfung in Schritt 3 hat eine Signatur gekostet. Schritt 5 an der alten Kassa lässt sich auch nicht zurücknehmen. Mach Schritt 5 und Schritt 7 darum am selben Tag, den du mit deiner Steuerberatung abgemacht hast.
 
 Noch ein paar Dinge:
 
@@ -90,6 +90,8 @@ Rechts auf derselben Seite steht "Bevor du startest" mit drei Punkten:
 - [ ] Mit deiner Steuerberatung klären, wie du mit der alten Kassa umgehst: wann dort der Schlussbeleg entsteht und in welcher Reihenfolge sie abgemeldet wird.
 - [ ] Die alte Kassa so abschließen, wie ihr es besprochen habt.
 
+Achtung: Auch das lässt sich nicht zurücknehmen. Mach diesen Schritt erst an dem Tag, den du mit deiner Steuerberatung abgemacht hast, und am selben Tag gleich danach Schritt 7.
+
 Das solltest du sehen: Die alte Kassa ist fertig, und deine Steuerberatung weiß, dass heute die neue Kassa startet.
 
 ## 6. Läuft noch eine Probe?
@@ -113,7 +115,7 @@ Das solltest du sehen: Ein Fenster "Jetzt in Betrieb nehmen?" mit dem Satz "Das 
 
 Das solltest du sehen: Du bist wieder in den Einstellungen. Die Pille in der Zeile "Signatur der Bons" heißt jetzt "In Betrieb". Darunter steht "Signatur von A-Trust." mit der Kassen-ID. Die Kassa druckt den Startbeleg. In der Karte stehen zwei Aufgaben: "Startbeleg mit der App "BMF Belegcheck" prüfen." und "Signatureinheit und Kassa bei FinanzOnline anmelden, bis" mit einem Datum eine Woche nach heute.
 
-Steht stattdessen "Die Kassa konnte nicht in Betrieb genommen werden." oder ein anderer Satz: Dann ist nichts passiert, alles ist wie vorher. Foto machen und mir schreiben, bevor du es noch einmal versuchst.
+Steht stattdessen "Die Kassa konnte nicht in Betrieb genommen werden." oder ein anderer Satz: An der neuen Kassa ist dann nichts passiert, sie ist wie vorher. Die alte Kassa ist aber schon abgeschlossen. Verkauf dann mit keiner der beiden Kassen weiter, als wäre nichts passiert: Foto machen, mir schreiben und deiner Steuerberatung Bescheid sagen. Versuch es erst danach noch einmal.
 
 Kommt kein Startbeleg aus dem Drucker: In der Kassa oben auf "Bons" tippen, den "Startbeleg" antippen und dort drucken.
 
