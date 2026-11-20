@@ -145,11 +145,11 @@ Das solltest du sehen: Die alte Kassa ist fertig, und deine Steuerberatung weiß
 Das solltest du sehen: Ein Fenster "Jetzt in Betrieb nehmen?" mit dem Satz "Das lässt sich nicht zurücknehmen. Ab jetzt ist jeder Bon ein echter Bon für das Finanzamt." Läuft eine Probe, steht dazu "Die laufende Probe endet mit einem Schlussbeleg." Mit "Abbrechen" bleibt alles, wie es war.
 
 - [ ] Auf "In Betrieb nehmen" tippen.
-- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann bis zu 30 Sekunden dauern. In der Zeit sind die anderen Tasten gesperrt.
+- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann bis zu 45 Sekunden dauern. In der Zeit sind die anderen Tasten gesperrt.
 
 Das solltest du sehen: Du bist wieder in den Einstellungen. Die Pille in der Zeile "Signatur der Bons" heißt jetzt "In Betrieb". Darunter steht "Signatur von A-Trust." mit der Kassen-ID. Die Kassa druckt den Startbeleg. In der Karte stehen zwei Aufgaben: "Startbeleg mit der App "BMF Belegcheck" prüfen." und "Signatureinheit und Kassa bei FinanzOnline anmelden, bis" mit einem Datum eine Woche nach heute.
 
-Steht stattdessen über den Tasten "Die Signatur hat nicht geantwortet." oder "Kein Internet.": An der neuen Kassa ist nichts passiert. Warte eine Minute und tippe noch einmal auf "Jetzt in Betrieb nehmen", dann wieder auf "In Betrieb nehmen".
+Steht stattdessen über den Tasten "Die Signatur hat nicht geantwortet." oder "Kein Internet.": An der neuen Kassa ist nichts passiert. Warte drei Minuten und tippe dann noch einmal auf "Jetzt in Betrieb nehmen", dann wieder auf "In Betrieb nehmen". Die Kassa fragt A-Trust erst nach einer Pause wieder, damit das Konto nicht gesperrt wird.
 
 Scheitert auch der zweite Versuch, oder steht ein anderer Satz da, zum Beispiel "Die Kassa konnte nicht in Betrieb genommen werden.": Den Satz abschreiben, kein Foto. Mir schreiben und deiner Steuerberatung Bescheid sagen. An der neuen Kassa ist nichts passiert, sie ist wie vorher. Die alte Kassa ist aber schon abgeschlossen. Verkauf dann nicht weiter, als wäre nichts passiert. Das heißt: Bis das geklärt ist, ist die alte Kassa abgeschlossen, und die neue Kassa macht nur Testbons. Versuch es erst wieder, wenn wir gesprochen haben.
 
@@ -225,7 +225,7 @@ Das solltest du sehen: "In Betrieb, Signatur ausgefallen", darunter der Grund.
 - [ ] Das WLAN wieder einschalten und warten, bis das Tablet im Netz ist.
 - [ ] In der Kassa im gelben Hinweis auf "Nochmal prüfen" tippen.
 
-Das solltest du sehen: Kurz steht "Die Signatur geht wieder." Steht stattdessen "Geht noch nicht.", warte einen Augenblick und tippe noch einmal. In "Bons" gibt es jetzt einen "Sammelbeleg" über 0 Euro. Die Pille heißt wieder "In Betrieb".
+Das solltest du sehen: Kurz steht "Die Signatur geht wieder." Steht stattdessen "Geht noch nicht.", warte einen Augenblick und tippe noch einmal. Das kann bis zu drei Minuten dauern, weil die Kassa A-Trust erst nach einer Pause wieder fragt. In "Bons" gibt es jetzt einen "Sammelbeleg" über 0 Euro. Die Pille heißt wieder "In Betrieb".
 
 - [ ] Den Sammelbeleg in "Bons" drucken und aufheben.
 
