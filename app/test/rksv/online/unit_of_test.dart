@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
-import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/online/online_signature_unit.dart';
