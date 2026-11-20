@@ -5,7 +5,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../rksv/online/atrust_client.dart';
+import '../../rksv/online/atrust_session_keeper.dart';
 import '../../rksv/online/connection_check.dart';
+import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_service.dart';
 import '../../rksv/rksv_state.dart';
@@ -170,10 +173,19 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     final service = ref.read(rksvServiceProvider);
     final sales = ref.read(saleServiceProvider);
     final going = ref.read(irreversibleStepProvider.notifier);
+    final keeper = ref.read(atrustKeeperProvider(AtrustSystem.live));
     setState(() => _going = true);
     going.set(true);
     String? problem;
     try {
+      // Erst anmelden (B19): Nach einer langen Pause gingen sonst Anmeldung
+      // und Signatur des Startbelegs zusammen in die 5 Sekunden der Frist.
+      // Bei "abgelehnt" schickt der Halter nichts. Was hier scheitert, ändert
+      // nichts: goLive sagt dann seinen eigenen Satz.
+      await keeper.warmUp().timeout(
+        AtrustSessionKeeper.loginLimit,
+        onTimeout: () {},
+      );
       // Dieselben Angaben wie für `prepareSetup`: Die Seriennummer bei
       // FinanzOnline ist die der Kette.
       final start = await service.goLive(staff: staff, facts: widget.facts);

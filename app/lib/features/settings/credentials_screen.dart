@@ -10,6 +10,7 @@ import '../../rksv/online/connection_check.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_secrets.dart';
+import '../../rksv/rksv_service.dart' show RksvService;
 import '../../rksv/rksv_state.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
@@ -156,6 +157,9 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
   bool _shown = false;
   bool _busy = false;
   bool _confirmDelete = false;
+
+  /// Beim Fragen gab es Angaben für FinanzOnline (ein PendingSetup).
+  bool _deleteDropsSetup = false;
   String? _problem;
 
   RksvSecrets get _secrets => ref.read(rksvSecretsProvider);
@@ -238,10 +242,14 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
       _problem = null;
     });
     String? problem;
+    var gone = false;
     try {
       await _secrets.writeAtrustCredentials(null);
-      await _secrets.writePendingSetup(null);
+      gone = true;
+      // Die Zugangsdaten sind weg: die Sitzung auch, gleich, bevor etwas
+      // anderes scheitern kann.
       ref.read(atrustKeeperProvider(AtrustSystem.live)).forget();
+      await _secrets.writePendingSetup(null);
     } catch (_) {
       problem = _unexpected;
     }
@@ -249,10 +257,33 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
     setState(() {
       _busy = false;
       _problem = problem;
-      if (problem == null) {
+      if (gone) {
         _storedUser = null;
         _editing = true;
       }
+    });
+  }
+
+  /// "Löschen": fragt nach. Gibt es Angaben für FinanzOnline, sagt die
+  /// Nachfrage, dass sie mit weggehen. Lässt sich das nicht lesen, steht
+  /// die Nachfrage ohne diesen Satz da.
+  Future<void> _askDelete() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
+    var pending = false;
+    try {
+      pending =
+          await _secrets.pendingSetup().timeout(RksvService.storageLimit) !=
+          null;
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _confirmDelete = true;
+      _deleteDropsSetup = pending;
     });
   }
 
@@ -359,6 +390,7 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
         focusNode: _passwordFocus,
         label: 'Passwort',
         obscure: !_shown,
+        secret: true,
         action: TextInputAction.done,
         onSubmitted: (_) => _save(),
         trailing: _ShowToggle(
@@ -470,6 +502,7 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
         const SizedBox(height: KassaTokens.spaceXxl),
         if (_confirmDelete)
           _DeleteQuestion(
+            dropsSetup: _deleteDropsSetup,
             onConfirm: _busy ? null : _delete,
             onCancel: () => setState(() => _confirmDelete = false),
           )
@@ -484,12 +517,7 @@ class _CredentialsPageState extends ConsumerState<_CredentialsPage> {
                     label: 'Löschen',
                     filled: false,
                     height: 56,
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
-                            _confirmDelete = true;
-                            _problem = null;
-                          }),
+                    onPressed: _busy ? null : _askDelete,
                   ),
                 ),
                 const SizedBox(width: KassaTokens.spaceXl),
@@ -584,6 +612,7 @@ class _Field extends StatefulWidget {
     required this.onSubmitted,
     this.focusNode,
     this.obscure = false,
+    this.secret = false,
     this.keyboardType = TextInputType.text,
     this.trailing,
   });
@@ -594,6 +623,11 @@ class _Field extends StatefulWidget {
   final ValueChanged<String> onSubmitted;
   final FocusNode? focusNode;
   final bool obscure;
+
+  /// Das Passwort: Es lässt sich nicht markieren, und es gibt kein Menü zum
+  /// Kopieren, Ausschneiden oder Teilen, gezeigt oder verdeckt. Was in der
+  /// Zwischenablage liegt, hat die Kassa nicht mehr in der Hand.
+  final bool secret;
 
   /// Der Benutzername ist `visiblePassword` (Android-Tastaturen schlagen dann
   /// nichts vor). Das Passwortfeld bleibt `text`: Mit `visiblePassword`
@@ -606,6 +640,14 @@ class _Field extends StatefulWidget {
   @override
   State<_Field> createState() => _FieldState();
 }
+
+/// Das Menü, das ein [TextField] ohne eigenes hat.
+Widget _defaultContextMenu(
+  BuildContext context,
+  EditableTextState editableTextState,
+) => AdaptiveTextSelectionToolbar.editableText(
+  editableTextState: editableTextState,
+);
 
 class _FieldState extends State<_Field> {
   FocusNode? _own;
@@ -676,6 +718,10 @@ class _FieldState extends State<_Field> {
                   focusNode: _focus,
                   obscureText: widget.obscure,
                   obscuringCharacter: '•',
+                  enableInteractiveSelection: !widget.secret,
+                  contextMenuBuilder: widget.secret
+                      ? null
+                      : _defaultContextMenu,
                   autocorrect: false,
                   enableSuggestions: false,
                   textCapitalization: TextCapitalization.none,
@@ -745,10 +791,17 @@ class _ShowToggle extends StatelessWidget {
   }
 }
 
-/// Nachfrage "Zugangsdaten löschen?" mit "Löschen" und "Abbrechen".
+/// Nachfrage "Zugangsdaten löschen?" mit "Löschen" und "Abbrechen"; mit
+/// [dropsSetup] dazu der Satz, dass die Angaben für FinanzOnline mit
+/// weggehen.
 class _DeleteQuestion extends StatelessWidget {
-  const _DeleteQuestion({required this.onConfirm, required this.onCancel});
+  const _DeleteQuestion({
+    required this.dropsSetup,
+    required this.onConfirm,
+    required this.onCancel,
+  });
 
+  final bool dropsSetup;
   final VoidCallback? onConfirm;
   final VoidCallback onCancel;
 
@@ -774,6 +827,15 @@ class _DeleteQuestion extends StatelessWidget {
               height: 1.35,
             ),
           ),
+          if (dropsSetup) ...[
+            const SizedBox(height: KassaTokens.spaceSm),
+            Text(
+              'Die Angaben für FinanzOnline gelten dann nicht mehr. Ein '
+              'gedruckter Zettel ist ungültig.',
+              style: Theme.of(context).textTheme.bodyMedium!
+                  .copyWith(fontSize: 16, height: 1.35),
+            ),
+          ],
           const SizedBox(height: KassaTokens.spaceXl),
           Row(
             children: [

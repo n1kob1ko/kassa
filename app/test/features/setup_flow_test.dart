@@ -713,4 +713,61 @@ void main() {
     await t.pumpAndSettle();
     expect(_key('credentials-saved'), findsOneWidget);
   });
+
+  group('Schlussprüfung I2: anmelden vor dem Schritt, der sich nicht '
+      'zurücknehmen lässt', () {
+    int logins(FakeAtrust fake) =>
+        fake.requests.where((r) => r.startsWith('PUT /Session/')).length;
+
+    testWidgets('ohne Sitzung: die Anmeldung geht vor dem Startbeleg hinaus, '
+        'genau eine; dauert sie länger als die Frist der Signatur, gelingt '
+        'die Inbetriebnahme trotzdem', (t) async {
+      final (:fake, :secrets) = await _open(t);
+      // Wie nach einer langen Pause: keine gültige Sitzung mehr.
+      containerOf(t).read(atrustKeeperProvider(AtrustSystem.live)).forget();
+      fake.requests.clear();
+      fake.holdLogins = true;
+      await _tap(t, 'setup-go-live');
+      await t.tap(_key('go-live-confirm'));
+      await t.pump();
+      expect(fake.requests, ['PUT /Session/$_user']);
+      // Die Anmeldung braucht 6 Sekunden, mehr als die 5 der Signatur.
+      await t.pump(const Duration(seconds: 6));
+      expect(fake.requests, ['PUT /Session/$_user']);
+      fake.heldLogins.single.complete(200);
+      await t.pumpAndSettle();
+
+      expect(fake.requests, ['PUT /Session/$_user', endsWith('/Sign/Hash')]);
+      expect(logins(fake), 1);
+      expect((await _state(t)).mode, RksvMode.live);
+      expect(await _kinds(t), ['start']);
+      expect(_key('setup-facts'), findsNothing);
+    });
+
+    testWidgets('abgelehnt: die Anmeldung davor geht genau einmal hinaus, '
+        'danach keine mehr; die Inbetriebnahme sagt ihren Satz', (t) async {
+      final (:fake, :secrets) = await _open(t);
+      containerOf(t).read(atrustKeeperProvider(AtrustSystem.live)).forget();
+      fake.requests.clear();
+      fake.loginStatus = 401;
+      await _tap(t, 'setup-go-live');
+      await _tap(t, 'go-live-confirm');
+      expect(fake.requests, ['PUT /Session/$_user']);
+      expect(
+        find.descendant(
+          of: _key('setup-go-live-problem'),
+          matching: find.text('A-Trust hat die Zugangsdaten abgelehnt.'),
+        ),
+        findsOneWidget,
+      );
+      expect((await _state(t)).mode, RksvMode.off);
+
+      // Ein zweiter Versuch schickt nichts.
+      await _tap(t, 'setup-go-live');
+      await _tap(t, 'go-live-confirm');
+      expect(fake.requests, ['PUT /Session/$_user']);
+      expect((await _state(t)).mode, RksvMode.off);
+      expect(await _kinds(t), isEmpty);
+    });
+  });
 }

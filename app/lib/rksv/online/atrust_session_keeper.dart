@@ -212,10 +212,14 @@ class AtrustSessionKeeper {
   /// Anmelden im Hintergrund, wenn keine gültige Sitzung da ist. Wirft nie.
   /// Höchstens eine Anmeldung je Aufruf, keine bei [rejected], keine, solange
   /// schon eine läuft, und keine, solange eine aufgegebene Anmeldung sperrt.
-  void warmUp() {
+  /// Das Ergebnis ist fertig, wenn die Anmeldung fertig ist (gelungen oder
+  /// nicht); wer nicht warten will, lässt es liegen.
+  Future<void> warmUp() {
     _saveReject();
-    if (_rejected.value || (_login == null && _blocked())) return;
-    session().then<void>((_) {}, onError: (_) {});
+    if (_rejected.value || (_login == null && _blocked())) {
+      return Future<void>.value();
+    }
+    return session().then<void>((_) {}, onError: (_) {});
   }
 
   /// Nach erfolgreichem Signieren: Die Sitzung gilt wieder 55 Minuten.

@@ -38,6 +38,12 @@ final class ConnectionCheckState {
     this.facts,
   });
 
+  /// Vor dem ersten Lauf: Alle Zeilen warten.
+  static const initial = ConnectionCheckState(
+    rows: _initialRows,
+    running: false,
+  );
+
   final Map<ConnectionRow, RowResult> rows;
   final bool running;
 
@@ -80,7 +86,7 @@ class ConnectionCheck {
   final Clock _clock;
 
   late final ValueNotifier<ConnectionCheckState> _state = ValueNotifier(
-    const ConnectionCheckState(rows: _initialRows, running: false),
+    ConnectionCheckState.initial,
   );
   Map<ConnectionRow, RowResult> _rows = _initialRows;
   Future<ConnectionCheckState>? _running;

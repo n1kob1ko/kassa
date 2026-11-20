@@ -42,6 +42,11 @@ const _titles = {
 /// zählt als Antippen des Chefs nur bei [ConnectionCheckOpening.relogin];
 /// "Nochmal prüfen" zählt immer. Der Lauf gehört dem Provider: Wer die Seite
 /// verlässt, beendet ihn nicht, und sein Ende ändert hier nichts mehr.
+///
+/// Bei [ConnectionCheckOpening.relogin] (eben gespeicherte Zugangsdaten)
+/// gehört ein Lauf, der schon läuft, zu den alten Zugangsdaten: Die Seite
+/// zeigt dann wartende Zeilen statt seiner, und wenn er endet, startet der
+/// Lauf für die neuen. Seine Angaben kommen so nie zu "Weiter".
 class ConnectionCheckScreen extends ConsumerStatefulWidget {
   const ConnectionCheckScreen({
     super.key,
@@ -81,10 +86,40 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
   bool get _offersStart =>
       !_live && widget.opening == ConnectionCheckOpening.enable;
 
+  /// Ein Lauf der alten Zugangsdaten läuft noch; der eigene beginnt, wenn
+  /// er endet.
+  bool _awaitingOld = false;
+
+  static final _waiting = ConnectionCheckState(
+    rows: ConnectionCheckState.initial.rows,
+    running: true,
+  );
+
   @override
   void initState() {
     super.initState();
-    _run(chefTapped: widget.opening == ConnectionCheckOpening.relogin);
+    final relogin = widget.opening == ConnectionCheckOpening.relogin;
+    if (relogin && _check.state.value.running) {
+      _awaitingOld = true;
+      unawaited(_runAfterOld());
+    } else {
+      _run(chefTapped: relogin);
+    }
+  }
+
+  /// Wartet auf den Lauf, der noch läuft, und startet dann den eigenen, als
+  /// Antippen des Chefs wie jedes [ConnectionCheckOpening.relogin].
+  Future<void> _runAfterOld() async {
+    final check = _check;
+    while (check.state.value.running) {
+      // Während eines Laufs liefert run dessen Ende, ohne neuen Lauf.
+      await check
+          .run(chefTapped: false)
+          .then<void>((_) {}, onError: (Object _) {});
+      if (!mounted) return;
+    }
+    _run(chefTapped: true);
+    setState(() => _awaitingOld = false);
   }
 
   /// "Nochmal prüfen": ein Antippen des Chefs.
@@ -170,7 +205,8 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
     final check = ref.watch(connectionCheckProvider(widget.system));
     return ValueListenableBuilder<ConnectionCheckState>(
       valueListenable: check.state,
-      builder: (context, state, _) => _page(context, state),
+      builder: (context, state, _) =>
+          _page(context, _awaitingOld ? _waiting : state),
     );
   }
 

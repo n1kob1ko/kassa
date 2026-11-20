@@ -530,4 +530,218 @@ void main() {
     expect(find.byType(TextField), findsNothing);
     expect(fake.requests, isEmpty);
   });
+
+  testWidgets('Schlussprüfung I3: läuft noch eine Prüfung der alten '
+      'Zugangsdaten, zeigt "Speichern und prüfen" erst die Prüfung der neuen; '
+      'die alte kommt nie zu "Weiter"', (t) async {
+    final fake = _fake()..holdLogins = true;
+    final secrets = MemoryRksvSecrets();
+    await secrets.writeAtrustCredentials(
+      const AtrustCredentials('u-alt', 'alt-beispiel'),
+    );
+    await _open(t, fake: fake, secrets: secrets);
+    // Eine Prüfung mit den alten Zugangsdaten hängt bei der Anmeldung.
+    await t.tap(_key('credentials-continue'));
+    for (var i = 0; i < 5; i++) {
+      await t.pump();
+    }
+    expect(fake.requests.last, 'PUT /Session/u-alt');
+    expect(
+      containerOf(t)
+          .read(connectionCheckProvider(AtrustSystem.live))
+          .state
+          .value
+          .running,
+      isTrue,
+    );
+    await t.binding.handlePopRoute();
+    await t.pump();
+    await t.pump();
+    expect(_key('credentials-saved'), findsOneWidget);
+
+    await t.tap(_key('credentials-new'));
+    await t.pump();
+    await _type(t, user: _user, password: _password);
+    await t.tap(_key('credentials-save'));
+    await t.pump();
+    await t.pump();
+    expect(_key('connection-check'), findsOneWidget);
+    expect(_key('connection-continue'), findsNothing);
+
+    // Die alte Anmeldung antwortet: Ihr Lauf läuft weiter (seine
+    // Probe-Unterschrift braucht eine Sitzung, und die meldet sich mit den
+    // neuen Zugangsdaten an), sein Ergebnis zeigt die Seite nicht.
+    fake.heldLogins.single.complete(200);
+    for (var i = 0; i < 20; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+    expect(_key('connection-continue'), findsNothing);
+    expect(fake.requests.where((r) => r.startsWith('PUT /Session/')), [
+      'PUT /Session/u-alt',
+      _login,
+    ]);
+    expect(fake.heldLogins, hasLength(2));
+    fake.heldLogins.last.complete(200);
+    await t.pumpAndSettle();
+    expect(_key('connection-continue'), findsOneWidget);
+    // Erst danach lief die Prüfung der neuen Zugangsdaten, ganz, mit
+    // derselben neuen Sitzung.
+    final requests = fake.requests;
+    final oldEnd = requests.lastIndexOf('GET /u-alt/Certificate');
+    final newCertificate = requests.lastIndexOf('GET /$_user/Certificate');
+    expect(newCertificate, greaterThan(oldEnd));
+    expect(requests.last, endsWith('/Sign/Hash'));
+    expect(requests.where((r) => r.startsWith('PUT /Session/')), [
+      'PUT /Session/u-alt',
+      _login,
+    ]);
+    await _tap(t, 'connection-continue');
+    expect(_key('setup-facts'), findsOneWidget);
+  });
+
+  testWidgets('Schlussprüfung: das Passwort lässt sich weder kopieren noch '
+      'ausschneiden noch teilen, gezeigt oder verdeckt', (t) async {
+    await _open(t);
+    await _type(t, user: _user, password: _password);
+    final password = find.descendant(
+      of: _key('credentials-password'),
+      matching: find.byType(EditableText),
+    );
+    for (final shown in [true, false]) {
+      await _tap(t, 'credentials-show');
+      expect(_field(t, 'credentials-password').obscureText, !shown);
+      final f = _field(t, 'credentials-password');
+      expect(f.enableInteractiveSelection, isFalse);
+      expect(f.contextMenuBuilder, isNull);
+      // Wie ein Finger: lange drücken und doppelt tippen.
+      await t.longPress(password);
+      await t.pumpAndSettle();
+      await t.tap(password);
+      await t.pump(const Duration(milliseconds: 50));
+      await t.tap(password);
+      await t.pumpAndSettle();
+      final state = t.state<EditableTextState>(password);
+      expect(state.textEditingValue.selection.isCollapsed, isTrue);
+      expect(state.selectAllEnabled, isFalse, reason: 'gezeigt: $shown');
+      expect(state.shareEnabled, isFalse, reason: 'gezeigt: $shown');
+      expect(state.showToolbar(), isFalse, reason: 'gezeigt: $shown');
+      // Auch eine Tastatur mit Tasten markiert nichts.
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await t.pump();
+      expect(
+        state.textEditingValue.selection.isCollapsed,
+        isTrue,
+        reason: 'Tasten, gezeigt: $shown',
+      );
+      await t.pumpAndSettle();
+      expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
+      for (final word in ['Copy', 'Cut', 'Share', 'Select all']) {
+        expect(find.text(word), findsNothing, reason: word);
+      }
+      expect(
+        _field(t, 'credentials-password').keyboardType,
+        TextInputType.text,
+      );
+    }
+  });
+
+  group('Löschen (Schlussprüfung)', () {
+    const extra =
+        'Die Angaben für FinanzOnline gelten dann nicht mehr. Ein gedruckter '
+        'Zettel ist ungültig.';
+
+    testWidgets('mit PendingSetup sagt die Nachfrage, was noch weggeht', (
+      t,
+    ) async {
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustCredentials(
+        const AtrustCredentials(_user, _password),
+      );
+      await secrets.writePendingSetup(
+        PendingSetup(cashBoxId: 'K7QM2XB4HN', aesKey: Uint8List(32)),
+      );
+      await _open(t, secrets: secrets);
+      await _tap(t, 'credentials-delete');
+      expect(
+        find.descendant(
+          of: _key('credentials-delete-question'),
+          matching: find.text('Zugangsdaten löschen?'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: _key('credentials-delete-question'),
+          matching: find.text(extra),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('ohne PendingSetup bleibt die Nachfrage, wie sie ist', (
+      t,
+    ) async {
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustCredentials(
+        const AtrustCredentials(_user, _password),
+      );
+      await _open(t, secrets: secrets);
+      await _tap(t, 'credentials-delete');
+      expect(find.text('Zugangsdaten löschen?'), findsOneWidget);
+      expect(find.text(extra), findsNothing);
+    });
+
+    testWidgets('scheitert das Löschen des PendingSetup: die Sitzung ist '
+        'trotzdem vergessen und der Benutzername weg', (t) async {
+      final fake = _fake();
+      final secrets = _NoPendingWrites();
+      await secrets.writeAtrustCredentials(
+        const AtrustCredentials(_user, _password),
+      );
+      await _open(t, fake: fake, secrets: secrets);
+      final keeper = containerOf(t)
+          .read(atrustKeeperProvider(AtrustSystem.live));
+      await keeper.session();
+      expect(fake.requests.where((r) => r == _login), hasLength(1));
+      expect(find.text('Benutzername $_user'), findsOneWidget);
+
+      await _tap(t, 'credentials-delete');
+      await _tap(t, 'credentials-delete-confirm');
+      expect(await secrets.atrustCredentials(), isNull);
+      expect(
+        find.text('Das hat nicht geklappt. Bitte noch einmal.'),
+        findsOneWidget,
+      );
+      expect(find.text('Benutzername $_user'), findsNothing);
+      expect(_key('credentials-saved'), findsNothing);
+      expect(_key('credentials-user'), findsOneWidget);
+      // Die alte Sitzung gilt nicht mehr: Ohne Zugangsdaten meldet sich der
+      // Halter nicht an, statt die alte Sitzung zu liefern.
+      await expectLater(
+        keeper.session(),
+        throwsA(
+          isA<AtrustException>().having(
+            (e) => e.problem,
+            'problem',
+            AtrustProblem.noCredentials,
+          ),
+        ),
+      );
+      expect(fake.requests.where((r) => r == _login), hasLength(1));
+    });
+  });
+}
+
+/// Ein geschützter Speicher, der das PendingSetup nicht schreiben (und
+/// nicht löschen) kann.
+class _NoPendingWrites extends MemoryRksvSecrets {
+  @override
+  Future<void> writePendingSetup(PendingSetup? setup) async =>
+      throw StateError('Der sichere Speicher ist nicht beschreibbar.');
 }
