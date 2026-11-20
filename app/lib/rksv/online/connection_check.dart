@@ -73,7 +73,10 @@ class ConnectionCheck {
 
   final AtrustClient _client;
   final AtrustSessionKeeper _keeper;
-  final String _user;
+
+  /// Der Benutzer bei A-Trust, bei jedem Lauf neu gelesen; null, wenn keiner
+  /// gespeichert ist. Er ist ein Geheimnis und steht nie im Bericht.
+  final Future<String?> Function() _user;
   final Clock _clock;
 
   late final ValueNotifier<ConnectionCheckState> _state = ValueNotifier(
@@ -112,14 +115,16 @@ class ConnectionCheck {
     _rows = _initialRows;
     _publish(running: true);
 
-    // Erst wissen, ob die Zugangsdaten abgelehnt sind, dann fragen.
+    // Erst wissen, ob die Zugangsdaten abgelehnt sind, dann fragen. Scheitert
+    // das, oder gilt "abgelehnt" und der Chef hat nicht getippt, endet der
+    // Lauf gleich in der ersten Zeile, ohne Anfrage.
     try {
       await (chefTapped ? _keeper.allowOneLogin() : _keeper.restore()).timeout(
         timeLimit,
       );
     } on Object catch (e) {
       return _fail(
-        ConnectionRow.login,
+        ConnectionRow.reach,
         e is TimeoutException
             ? const _RowFailure(_T.noAnswer, _T.later)
             : const _RowFailure(_T.cannotReadLogin, _T.later),
@@ -127,19 +132,41 @@ class ConnectionCheck {
     }
     if (_keeper.rejected.value) {
       return _fail(
-        ConnectionRow.login,
+        ConnectionRow.reach,
         const _RowFailure(_T.rejected, _T.rejectedHint),
       );
     }
 
+    final String? stored;
+    try {
+      stored = await _user().timeout(timeLimit);
+    } on Object catch (e) {
+      return _fail(
+        ConnectionRow.reach,
+        e is TimeoutException
+            ? const _RowFailure(_T.noAnswer, _T.later)
+            : const _RowFailure(_T.cannotReadLogin, _T.later),
+      );
+    }
+    if (stored == null) {
+      return _fail(
+        ConnectionRow.reach,
+        _RowFailure(
+          AtrustException(AtrustProblem.noCredentials).sentence,
+          null,
+        ),
+      );
+    }
+
+    final user = stored;
     var row = ConnectionRow.reach;
     try {
-      final zdaId = await _step(row, () => _client.zdaId(_user));
+      final zdaId = await _step(row, () => _client.zdaId(user));
       _zdaId = zdaId;
       _ok(row, 'A-Trust erreicht (${_seconds(_durations[row]!)}).');
 
       row = ConnectionRow.certificate;
-      final certificate = await _step(row, () => _client.certificate(_user));
+      final certificate = await _step(row, () => _client.certificate(user));
       _certificate = certificate;
       final (message, hint) = _judge(certificate);
       _ok(row, message, hint);
@@ -205,12 +232,14 @@ class ConnectionCheck {
     if (_client.system == AtrustSystem.live) {
       if (now.isBefore(parsed.notBefore)) {
         throw _RowFailure(
-          _mismatch('gültig erst ab ${_date(parsed.notBefore)}'),
+          _T.notValid,
           _T.report,
+          null,
+          'gültig erst ab ${_date(parsed.notBefore)}',
         );
       }
       if (expired) {
-        throw _RowFailure(_mismatch('abgelaufen am $until'), _T.report);
+        throw _RowFailure(_T.notValid, _T.report, null, 'abgelaufen am $until');
       }
       return (
         'Zertifikat geladen: Nummer ${c.serialHex}, gültig bis $until.',
@@ -310,8 +339,10 @@ class ConnectionCheck {
       ..writeln(
         'Verbindung prüfen am ${started == null ? '-' : _dateTime(started)}',
       )
-      ..writeln('Adresse: ${_client.system.base}')
-      ..writeln();
+      ..writeln('Adresse: ${_client.system.base}');
+    // Der Benutzer am echten System ist ein Geheimnis (Q12).
+    if (_client.system == AtrustSystem.live) out.writeln('Konto: echtes Konto');
+    out.writeln();
     for (final row in ConnectionRow.values) {
       final r = _rows[row]!;
       final hint = r.hint;
@@ -400,6 +431,7 @@ abstract final class _T {
   static const noAnswer = 'A-Trust hat nicht geantwortet.';
   static const cannotReadLogin =
       'Die Kassa konnte den Stand der Anmeldung nicht lesen.';
+  static const notValid = 'Das Zertifikat von A-Trust ist nicht gültig.';
   static const failed = 'Die Prüfung ist gescheitert.';
 
   static const wifi = 'WLAN prüfen.';

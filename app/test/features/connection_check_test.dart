@@ -12,6 +12,7 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/features/settings/signature_panel.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/connection_check.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
@@ -110,7 +111,7 @@ Future<int> _chains(WidgetTester t) async =>
     (await queryRows(t, 'SELECT chain FROM rksv_chains')).length;
 
 ConnectionCheck _check(WidgetTester t) =>
-    containerOf(t).read(connectionCheckProvider);
+    containerOf(t).read(connectionCheckProvider(AtrustSystem.test));
 
 void main() {
   group('Karte "Signatur"', () {
@@ -489,11 +490,15 @@ void main() {
       await seedProbe(t, unit: RksvUnit.atrustTest);
       await _tap(t, 'rksv-connection-check');
       expect(fake.requests, isEmpty);
-      final login = _key('connection-row-login');
+      // Ohne Antippen steht das Kreuz sofort in der ersten Zeile.
       expect(
-        find.descendant(of: login, matching: find.text(_rejected)),
+        find.descendant(
+          of: _key('connection-row-reach'),
+          matching: find.text(_rejected),
+        ),
         findsOneWidget,
       );
+      final login = _key('connection-row-login');
       expect(
         find.descendant(
           of: _key('connection-retry'),

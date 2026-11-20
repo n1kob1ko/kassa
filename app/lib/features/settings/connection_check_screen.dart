@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../rksv/card/card_check.dart' show RowResult, RowState;
 import '../../rksv/card/card_providers.dart';
+import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/connection_check.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
@@ -61,7 +62,8 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
   bool _starting = false;
   String? _startProblem;
 
-  ConnectionCheck get _check => ref.read(connectionCheckProvider);
+  ConnectionCheck get _check =>
+      ref.read(connectionCheckProvider(AtrustSystem.test));
 
   bool get _offersStart => widget.opening == ConnectionCheckOpening.enable;
 
@@ -151,7 +153,7 @@ class _ConnectionCheckScreenState extends ConsumerState<ConnectionCheckScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final check = ref.watch(connectionCheckProvider);
+    final check = ref.watch(connectionCheckProvider(AtrustSystem.test));
     return ValueListenableBuilder<ConnectionCheckState>(
       valueListenable: check.state,
       builder: (context, state, _) => _page(context, state),

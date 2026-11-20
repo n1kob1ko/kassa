@@ -30,6 +30,7 @@ const _rejected = 'A-Trust hat die Zugangsdaten abgelehnt.';
 const _rejectedHint =
     'Die Kassa versucht es nicht von selbst noch einmal. "Nochmal prüfen" ist '
     'genau ein Versuch.';
+const _notValid = 'Das Zertifikat von A-Trust ist nicht gültig.';
 const _later = 'Später noch einmal versuchen.';
 const _sendReport = 'Bitte den Bericht schicken.';
 
@@ -60,6 +61,10 @@ class _Setup {
     FakeAtrust? atrust,
     this.system = AtrustSystem.test,
     MemoryRksvSecrets? secrets,
+    this.credentials = const AtrustCredentials(
+      atrustTestUser,
+      atrustTestPassword,
+    ),
   }) : atrust = atrust ?? FakeAtrust(),
        secrets = secrets ?? MemoryRksvSecrets() {
     // Jede Anfrage dauert 0,2 Sekunden auf der Uhr der Prüfung.
@@ -70,6 +75,9 @@ class _Setup {
   final FakeAtrust atrust;
   final AtrustSystem system;
   final MemoryRksvSecrets secrets;
+
+  /// Die Zugangsdaten des Kontos; null: keine gespeichert.
+  final AtrustCredentials? credentials;
   final clock = FixedClock(DateTime(2026, 11, 19, 10, 15, 30));
 
   late AtrustSessionKeeper keeper = makeKeeper();
@@ -77,16 +85,16 @@ class _Setup {
 
   AtrustSessionKeeper makeKeeper() => AtrustSessionKeeper(
     client: AtrustClient(atrust.client, system),
-    credentials: () async =>
-        const AtrustCredentials(atrustTestUser, atrustTestPassword),
+    credentials: () async => credentials,
     secrets: secrets,
     clock: clock,
+    live: system == AtrustSystem.live,
   );
 
   ConnectionCheck makeCheck() => ConnectionCheck(
     client: AtrustClient(atrust.client, system),
     keeper: keeper,
-    user: atrustTestUser,
+    user: () async => credentials?.user,
     clock: clock,
   );
 
@@ -209,7 +217,7 @@ void main() {
         AtrustSystem.test,
       ),
       keeper: _Setup().keeper,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: FixedClock(DateTime(2026, 11, 19)),
     );
     final a = await untrusted.run(chefTapped: false);
@@ -226,7 +234,7 @@ void main() {
         AtrustSystem.test,
       ),
       keeper: s.keeper,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: s.clock,
     );
     final b = await server.run(chefTapped: false);
@@ -276,8 +284,7 @@ void main() {
     expect(result.rows[ConnectionRow.reach]!.state, RowState.ok);
     expect(_row(result, ConnectionRow.certificate), (
       RowState.problem,
-      'Das Zertifikat von A-Trust passt nicht: abgelaufen am '
-          '${_localDate(DateTime.utc(2026, 3, 10))}.',
+      _notValid,
       _sendReport,
     ));
     _expectWaiting(result, [ConnectionRow.login, ConnectionRow.signature]);
@@ -295,10 +302,10 @@ void main() {
       final result = await s.check.run(chefTapped: false);
       expect(_row(result, ConnectionRow.certificate), (
         RowState.problem,
-        'Das Zertifikat von A-Trust passt nicht: gültig erst ab '
-            '${_localDate(DateTime.utc(2027, 1, 2, 12))}.',
+        _notValid,
         _sendReport,
       ));
+      expect(result.facts, isNull);
     },
   );
 
@@ -340,11 +347,11 @@ void main() {
     final again = await s.check.run(chefTapped: false);
     expect(s.atrust.requests, isEmpty);
     _expectWaiting(again, [
-      ConnectionRow.reach,
       ConnectionRow.certificate,
+      ConnectionRow.login,
       ConnectionRow.signature,
     ]);
-    expect(_row(again, ConnectionRow.login), (
+    expect(_row(again, ConnectionRow.reach), (
       RowState.problem,
       _rejected,
       _rejectedHint,
@@ -378,7 +385,7 @@ void main() {
     await s.secrets.writeAtrustRejected(true);
     final result = await s.check.run(chefTapped: false);
     expect(s.atrust.requests, isEmpty);
-    expect(result.rows[ConnectionRow.login]!.message, _rejected);
+    expect(result.rows[ConnectionRow.reach]!.message, _rejected);
   });
 
   test('Frist 20 Sekunden je Zeile: A-Trust antwortet nicht', () {
@@ -411,21 +418,21 @@ void main() {
     });
   });
 
-  test('Frist gilt auch für allowOneLogin: hängt der Speicher, ist Zeile 3 '
+  test('Frist gilt auch für allowOneLogin: hängt der Speicher, ist Zeile 1 '
       'nach 20 Sekunden ein Problem, keine Anfrage', () {
     fakeAsync((async) {
       final s = _Setup(secrets: _HangingSecrets());
       ConnectionCheckState? result;
       s.check.run(chefTapped: true).then((r) => result = r);
       async.elapse(ConnectionCheck.timeLimit);
-      expect(_row(result!, ConnectionRow.login), (
+      expect(_row(result!, ConnectionRow.reach), (
         RowState.problem,
         'A-Trust hat nicht geantwortet.',
         _later,
       ));
       _expectWaiting(result!, [
-        ConnectionRow.reach,
         ConnectionRow.certificate,
+        ConnectionRow.login,
         ConnectionRow.signature,
       ]);
       expect(s.atrust.requests, isEmpty);
@@ -522,7 +529,7 @@ void main() {
         AtrustSystem.test,
       ),
       keeper: s.keeper,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: s.clock,
     );
     final result = await check.run(chefTapped: false);
@@ -547,7 +554,7 @@ void main() {
     final check = ConnectionCheck(
       client: _BrokenClient(),
       keeper: s.keeper,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: s.clock,
     );
     final result = await check.run(chefTapped: false);
@@ -598,7 +605,7 @@ void main() {
         secrets: secrets,
         clock: clock,
       ),
-      user: user,
+      user: () async => user,
       clock: clock,
     );
     final result = await check.run(chefTapped: false);
@@ -614,6 +621,201 @@ void main() {
       expect(report, isNot(contains(secret)));
     }
   });
+
+  group('echtes System', () {
+    const user = 'u-beispiel-4711';
+    const password = 'geheim-beispiel-4711';
+    const liveLogin = 'PUT /Session/$user';
+
+    _Setup live({FakeAtrust? atrust, AtrustCredentials? credentials}) => _Setup(
+      atrust: atrust ?? FakeAtrust(validFrom: DateTime.utc(2020, 6, 1)),
+      system: AtrustSystem.live,
+      credentials: credentials ?? const AtrustCredentials(user, password),
+    );
+
+    test('vier Haken mit gespeicherten Zugangsdaten, facts.system ist live, '
+        'die Anfragen gehen an den gespeicherten Benutzer', () async {
+      final s = live();
+      final result = await s.check.run(chefTapped: false);
+      expect(result.facts, isNotNull);
+      expect(result.facts!.system, AtrustSystem.live);
+      for (final row in ConnectionRow.values) {
+        expect(result.rows[row]!.state, RowState.ok, reason: row.name);
+      }
+      expect(s.atrust.requests, [
+        'GET /$user/ZDA',
+        'GET /$user/Certificate',
+        liveLogin,
+        startsWith('POST /Session/'),
+      ]);
+    });
+
+    test('ohne Zugangsdaten: Kreuz in Zeile 1 mit dem Satz, keine Anfrage, '
+        'keine Fakten', () async {
+      final s = _Setup(system: AtrustSystem.live, credentials: null);
+      final result = await s.check.run(chefTapped: false);
+      expect(result.rows[ConnectionRow.reach]!.state, RowState.problem);
+      expect(
+        result.rows[ConnectionRow.reach]!.message,
+        'Die Zugangsdaten von A-Trust fehlen.',
+      );
+      _expectWaiting(result, [
+        ConnectionRow.certificate,
+        ConnectionRow.login,
+        ConnectionRow.signature,
+      ]);
+      expect(result.facts, isNull);
+      expect(s.atrust.requests, isEmpty);
+      expect(s.check.report(), contains('A-Trust: Fehler.'));
+    });
+
+    test('abgelaufenes Zertifikat: Kreuz in Zeile 2, später gesperrt, keine '
+        'ConnectionFacts, keine Anmeldung', () async {
+      final s = live(atrust: FakeAtrust());
+      final result = await s.check.run(chefTapped: false);
+      expect(_row(result, ConnectionRow.certificate), (
+        RowState.problem,
+        _notValid,
+        _sendReport,
+      ));
+      _expectWaiting(result, [ConnectionRow.login, ConnectionRow.signature]);
+      expect(result.facts, isNull);
+      expect(s.atrust.requests, ['GET /$user/ZDA', 'GET /$user/Certificate']);
+    });
+
+    test('abgelehnt ohne Tippen: Kreuz in Zeile 1 mit dem Satz, keine Anfrage; '
+        'mit Tippen genau eine Anmeldung', () async {
+      final s = live()..atrust.loginStatus = 401;
+      await s.check.run(chefTapped: false);
+      expect(s.keeper.rejected.value, isTrue);
+      s.atrust.requests.clear();
+
+      final again = await s.check.run(chefTapped: false);
+      expect(s.atrust.requests, isEmpty);
+      expect(_row(again, ConnectionRow.reach), (
+        RowState.problem,
+        _rejected,
+        _rejectedHint,
+      ));
+      expect(again.rows[ConnectionRow.reach]!.message, isNot(_wait));
+
+      s.atrust.loginStatus = 200;
+      final tapped = await s.check.run(chefTapped: true);
+      expect(s.atrust.requests.where((r) => r == liveLogin), hasLength(1));
+      expect(tapped.facts, isNotNull);
+      expect(s.keeper.rejected.value, isFalse);
+    });
+
+    test('der Bericht nennt weder Benutzer noch Passwort noch Sitzung, auch '
+        'nicht bei Fehlern', () async {
+      final s = live();
+      await s.check.run(chefTapped: false);
+      final session = await s.keeper.session();
+      final report = s.check.report();
+      expect(report, contains('Konto: echtes Konto'));
+      for (final secret in [user, password, session.key, session.id]) {
+        expect(report, isNot(contains(secret)));
+      }
+      expect(report.toLowerCase(), isNot(contains('passwort')));
+
+      final expired = live(atrust: FakeAtrust());
+      await expired.check.run(chefTapped: false);
+      final rejected = live()..atrust.loginStatus = 401;
+      await rejected.check.run(chefTapped: false);
+      final missing = _Setup(system: AtrustSystem.live, credentials: null);
+      await missing.check.run(chefTapped: false);
+      for (final r in [expired, rejected, missing]) {
+        final text = r.check.report();
+        for (final secret in [user, password]) {
+          expect(text, isNot(contains(secret)));
+        }
+      }
+    });
+
+    test('der Benutzer wird je Lauf neu gelesen', () async {
+      var name = 'u-erste';
+      final s = live();
+      final check = ConnectionCheck(
+        client: AtrustClient(s.atrust.client, AtrustSystem.live),
+        keeper: s.keeper,
+        user: () async => name,
+        clock: s.clock,
+      );
+      await check.run(chefTapped: false);
+      name = 'u-zweite';
+      s.atrust.requests.clear();
+      await check.run(chefTapped: false);
+      expect(s.atrust.requests.first, 'GET /u-zweite/ZDA');
+    });
+
+    test('connectionCheckProvider(live): echtes System mit den Zugangsdaten '
+        'aus dem Speicher, kein Netzverkehr beim Erzeugen', () async {
+      final atrust = FakeAtrust(validFrom: DateTime.utc(2020, 6, 1));
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeAtrustCredentials(
+        const AtrustCredentials(user, password),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          atrustHttpClientProvider.overrideWithValue(atrust.client),
+          rksvSecretsProvider.overrideWithValue(secrets),
+          clockProvider.overrideWithValue(
+            FixedClock(DateTime(2026, 11, 19, 10)),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final check = container.read(connectionCheckProvider(AtrustSystem.live));
+      await pumpEventQueue();
+      expect(atrust.requests, isEmpty);
+      expect(check.system, AtrustSystem.live);
+      final result = await check.run(chefTapped: false);
+      expect(result.facts!.system, AtrustSystem.live);
+      expect(atrust.requests.first, 'GET /$user/ZDA');
+    });
+  });
+
+  test('abgelehnt ohne Tippen am Testsystem: nie der Wartesatz', () async {
+    final s = _Setup()..atrust.loginStatus = 401;
+    await s.check.run(chefTapped: false);
+    final again = await s.check.run(chefTapped: false);
+    expect(again.rows[ConnectionRow.reach]!.message, isNot(_wait));
+    expect(again.rows[ConnectionRow.reach]!.message, _rejected);
+  });
+
+  test('Laden von "abgelehnt" scheitert: Kreuz in der ersten Zeile, ein '
+      'Bericht ist da, keine Anfrage', () async {
+    final s = _Setup(secrets: MemoryRksvSecrets()..failReads = true);
+    final result = await s.check.run(chefTapped: false);
+    expect(_row(result, ConnectionRow.reach), (
+      RowState.problem,
+      'Die Kassa konnte den Stand der Anmeldung nicht lesen.',
+      _later,
+    ));
+    _expectWaiting(result, [
+      ConnectionRow.certificate,
+      ConnectionRow.login,
+      ConnectionRow.signature,
+    ]);
+    expect(result.facts, isNull);
+    expect(s.atrust.requests, isEmpty);
+    final report = s.check.report();
+    expect(report, contains('A-Trust: Fehler. Die Kassa konnte'));
+    expect(report, contains('Verbindung prüfen am 19.11.2026'));
+  });
+
+  test(
+    'Aufheben von "abgelehnt" scheitert: Kreuz in der ersten Zeile',
+    () async {
+      final s = _Setup()..atrust.loginStatus = 401;
+      await s.check.run(chefTapped: false);
+      s.secrets.failWrites = true;
+      final result = await s.check.run(chefTapped: true);
+      expect(result.rows[ConnectionRow.reach]!.state, RowState.problem);
+      expect(result.facts, isNull);
+      expect(s.check.report(), contains('A-Trust: Fehler.'));
+    },
+  );
 
   test('report() vor dem ersten Lauf: Zeilen offen, Zeit "-"', () {
     final report = _Setup().check.report();
@@ -634,7 +836,7 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    final check = container.read(connectionCheckProvider);
+    final check = container.read(connectionCheckProvider(AtrustSystem.test));
     await pumpEventQueue();
     expect(atrust.requests, isEmpty);
     expect(check.system, AtrustSystem.test);

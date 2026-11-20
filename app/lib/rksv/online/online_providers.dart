@@ -55,16 +55,23 @@ final atrustKeeperProvider = Provider.family<AtrustSessionKeeper, AtrustSystem>(
   },
 );
 
-/// "Verbindung prüfen" am Testsystem mit dem Halter der Bons, also derselben
-/// Sitzung und demselben Kennzeichen "abgelehnt".
-final connectionCheckProvider = Provider<ConnectionCheck>((ref) {
+/// "Verbindung prüfen" je System mit dem Halter der Bons, also derselben
+/// Sitzung und demselben Kennzeichen "abgelehnt". Der Benutzer ist am
+/// Testsystem fest, am echten System wird er bei jedem Lauf aus dem
+/// geschützten Speicher gelesen.
+final connectionCheckProvider = Provider.family<ConnectionCheck, AtrustSystem>((
+  ref,
+  system,
+) {
+  final secrets = ref.watch(rksvSecretsProvider);
   final check = ConnectionCheck(
-    client: AtrustClient(
-      ref.watch(atrustHttpClientProvider),
-      AtrustSystem.test,
-    ),
-    keeper: ref.watch(atrustKeeperProvider(AtrustSystem.test)),
-    user: atrustTestUser,
+    client: AtrustClient(ref.watch(atrustHttpClientProvider), system),
+    keeper: ref.watch(atrustKeeperProvider(system)),
+    user: switch (system) {
+      AtrustSystem.test => () async => atrustTestUser,
+      AtrustSystem.live =>
+        () async => (await secrets.atrustCredentials())?.user,
+    },
     clock: ref.watch(clockProvider),
   );
   ref.onDispose(check.dispose);

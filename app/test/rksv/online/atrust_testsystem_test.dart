@@ -99,7 +99,7 @@ Future<void> _checkConnection(http.Client http) async {
   final check = ConnectionCheck(
     client: client,
     keeper: _keeper(client),
-    user: atrustTestUser,
+    user: () async => atrustTestUser,
     clock: FixedClock(_start),
   );
   addTearDown(check.dispose);
@@ -190,7 +190,7 @@ Future<RksvRig> _buildChain(http.Client http) async {
   final check = ConnectionCheck(
     client: AtrustClient(http, AtrustSystem.test),
     keeper: rig.keeper!,
-    user: atrustTestUser,
+    user: () async => atrustTestUser,
     clock: rig.clock,
   );
   final facts = (await check.run(chefTapped: false)).facts;

@@ -32,7 +32,7 @@ void main() {
     final result = await ConnectionCheck(
       client: AtrustClient(atrust.client, AtrustSystem.test),
       keeper: rig.keeper!,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: rig.clock,
     ).run(chefTapped: false);
     return result.facts!;
@@ -183,7 +183,7 @@ void main() {
       final result = await ConnectionCheck(
         client: AtrustClient(live.client, AtrustSystem.live),
         keeper: keeper,
-        user: atrustTestUser,
+        user: () async => atrustTestUser,
         clock: rig.clock,
       ).run(chefTapped: false);
       await expectLater(

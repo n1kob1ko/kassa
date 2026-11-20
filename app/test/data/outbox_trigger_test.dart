@@ -177,7 +177,7 @@ void main() {
     final facts = (await ConnectionCheck(
       client: AtrustClient(atrust.client, AtrustSystem.test),
       keeper: online.keeper!,
-      user: atrustTestUser,
+      user: () async => atrustTestUser,
       clock: online.clock,
     ).run(chefTapped: false)).facts!;
 

@@ -428,7 +428,7 @@ class RksvRig {
         clock: clock,
         live: true,
       ),
-      user: liveCredentials.user,
+      user: () async => liveCredentials.user,
       clock: clock,
     ).run(chefTapped: false);
     return result.facts ??

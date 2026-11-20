@@ -328,7 +328,7 @@ void main() {
       );
       final c = containerOf(t);
       final check = await c
-          .read(connectionCheckProvider)
+          .read(connectionCheckProvider(AtrustSystem.test))
           .run(chefTapped: false);
       await c
           .read(rksvServiceProvider)
