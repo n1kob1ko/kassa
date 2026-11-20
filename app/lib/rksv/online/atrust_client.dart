@@ -55,6 +55,12 @@ enum AtrustProblem {
   sessionExpired,
   server,
   unreadable,
+
+  /// Der Halter hat keine Zugangsdaten; es ging keine Anfrage hinaus.
+  noCredentials,
+
+  /// Auch eine frisch geholte Sitzung signiert nicht (Plan Q9).
+  refused,
 }
 
 /// [sentence] ist ein deutscher Satz ohne Geheimnisse. toString nennt nur
@@ -79,6 +85,8 @@ final class AtrustException implements Exception {
     AtrustProblem.sessionExpired => 'Die Anmeldung bei A-Trust ist abgelaufen.',
     AtrustProblem.server => 'A-Trust meldet einen Fehler.',
     AtrustProblem.unreadable => 'Die Antwort von A-Trust war nicht lesbar.',
+    AtrustProblem.noCredentials => 'Die Zugangsdaten von A-Trust fehlen.',
+    AtrustProblem.refused => 'A-Trust hat die Signatur abgelehnt.',
   };
 
   @override

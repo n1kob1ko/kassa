@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -53,6 +54,21 @@ class FakeAtrust {
   /// Status der Anmeldung; 401 oder 403 heißt abgelehnt, 500 Serverfehler.
   int loginStatus = 200;
 
+  /// Mit Wert: Eine Anmeldung mit einem anderen Passwort antwortet 401.
+  /// Das geschickte Passwort wird nur verglichen, nie gespeichert.
+  String? password;
+
+  /// Jede Anmeldung wartet, bis der Test ihr Element in [heldLogins] mit
+  /// einem Status beendet (200 gibt eine Sitzung, sonst wie [loginStatus]).
+  /// Ohne Beenden antwortet sie nie.
+  bool holdLogins = false;
+
+  /// Je gehaltener Anmeldung eins, in der Reihenfolge der Anfragen.
+  final List<Completer<int>> heldLogins = [];
+
+  /// Mit Wert: Jeder Aufruf von `Sign/Hash` antwortet mit diesem Status.
+  int? signStatus;
+
   /// Der nächste Aufruf von `Sign/Hash` antwortet 401, und seine Sitzung ist
   /// danach unbekannt. Danach steht es wieder auf false.
   bool expireSessions = false;
@@ -100,7 +116,7 @@ class FakeAtrust {
         'ZertifikatsseriennummerHex': '2159B9F6',
         'alg': alg,
       }),
-      ('PUT', ['Session', _]) => _login(),
+      ('PUT', ['Session', _]) => await _login(request.body),
       ('POST', ['Session', final id, 'Sign', 'Hash']) => _sign(
         id,
         request.body,
@@ -110,8 +126,18 @@ class FakeAtrust {
     };
   }
 
-  http.Response _login() {
-    if (loginStatus != 200) return _html(loginStatus);
+  Future<http.Response> _login(String body) async {
+    var status = loginStatus;
+    if (holdLogins) {
+      final held = Completer<int>();
+      heldLogins.add(held);
+      status = await held.future;
+    }
+    if (status != 200) return _html(status);
+    final wanted = password;
+    if (wanted != null && jsonDecode(body)['password'] != wanted) {
+      return _html(401);
+    }
     _issued++;
     final id = 'sitzung$_issued'.padRight(32, 'x');
     final key = base64.encode(
@@ -123,6 +149,8 @@ class FakeAtrust {
 
   http.Response _sign(String id, String body) {
     signBodies.add(body);
+    final forced = signStatus;
+    if (forced != null) return _html(forced);
     if (expireSessions) {
       expireSessions = false;
       _sessions.remove(id);

@@ -85,8 +85,7 @@ AtrustSessionKeeper _keeper(
   String password = atrustTestPassword,
 }) => AtrustSessionKeeper(
   client: client,
-  user: user,
-  password: password,
+  credentials: () async => AtrustCredentials(user, password),
   secrets: MemoryRksvSecrets(),
   clock: FixedClock(_start),
 );

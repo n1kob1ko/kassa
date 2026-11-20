@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/providers.dart';
 import '../../domain/receipt.dart';
 import '../../rksv/dep_export.dart';
+import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_service.dart';
@@ -375,7 +376,9 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     // Stand. Nur der Chef kann es aufheben, und nur in der Online-Probe.
     if (!isChef || !online) return card(false);
     return ValueListenableBuilder<bool>(
-      valueListenable: ref.watch(atrustTestKeeperProvider).rejected,
+      valueListenable: ref
+          .watch(atrustKeeperProvider(AtrustSystem.test))
+          .rejected,
       builder: (context, rejected, _) => card(rejected),
     );
   }

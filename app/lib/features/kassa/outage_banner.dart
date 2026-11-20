@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
@@ -122,7 +123,9 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
       return _banner(context, state, since, rejected: false);
     }
     return ValueListenableBuilder<bool>(
-      valueListenable: ref.watch(atrustTestKeeperProvider).rejected,
+      valueListenable: ref
+          .watch(atrustKeeperProvider(AtrustSystem.test))
+          .rejected,
       builder: (context, rejected, _) =>
           _banner(context, state, since, rejected: rejected),
     );

@@ -23,35 +23,39 @@ Uint8List _sha256(String s) =>
 
 class _Rig {
   _Rig() {
-    final client = AtrustClient(fake.client, AtrustSystem.test);
     keeper = AtrustSessionKeeper(
       client: client,
-      user: atrustTestUser,
-      password: atrustTestPassword,
+      credentials: () async =>
+          const AtrustCredentials(atrustTestUser, atrustTestPassword),
       secrets: secrets,
-      clock: FixedClock(DateTime(2026, 11, 19, 10)),
+      clock: clock,
     );
-    unit = OnlineSignatureUnit(
-      client: client,
-      keeper: keeper,
-      zdaId: 'AT1',
-      certificateDer: fake.certificateDer,
-      issuerCertificatesDer: fake.issuersDer,
-    );
+    unit = makeUnit();
   }
 
   final fake = FakeAtrust();
   final secrets = MemoryRksvSecrets();
+  final clock = FixedClock(DateTime(2026, 11, 19, 10));
+  late final client = AtrustClient(fake.client, AtrustSystem.test);
   late final AtrustSessionKeeper keeper;
   late final OnlineSignatureUnit unit;
+
+  /// Eine neue Einheit am selben Halter, wie die App sie je Bon baut.
+  OnlineSignatureUnit makeUnit() => OnlineSignatureUnit(
+    client: client,
+    keeper: keeper,
+    zdaId: 'AT1',
+    certificateDer: fake.certificateDer,
+    issuerCertificatesDer: fake.issuersDer,
+  );
 
   List<String> get methods => [
     for (final r in fake.requests) r.split(' ').first,
   ];
 
-  Future<String> failure([String text = _text]) async {
+  Future<String> failure([String text = _text, OnlineSignatureUnit? u]) async {
     try {
-      await unit.sign(text);
+      await (u ?? unit).sign(text);
     } on SignatureFailure catch (e) {
       return e.reason;
     }
@@ -109,16 +113,77 @@ void main() {
     );
   });
 
-  test('zwei Mal abgelaufen: SignatureFailure, genau zwei POST', () async {
+  test('Q9: zwei Mal abgelaufen: A-Trust hat die Signatur abgelehnt., genau '
+      'zwei POST', () async {
     await rig.unit.sign(_text);
     rig.fake.requests.clear();
     rig.fake.expireSessions = true;
     rig.fake.onRequest = (r) {
       if (r == _login) rig.fake.expireSessions = true;
     };
-    expect(await rig.failure(), 'Die Anmeldung bei A-Trust ist abgelaufen.');
+    expect(await rig.failure(), 'A-Trust hat die Signatur abgelehnt.');
     await pumpEventQueue();
     expect(rig.methods, ['POST', 'PUT', 'POST']);
+  });
+
+  group('Q9: Signieren antwortet immer 403', () {
+    test(
+      'erster Bon: POST, PUT, POST und abgelehnt; zweiter Bon: genau ein '
+      'POST; neue Sitzung vom Halter: wieder ein Mal neu angemeldet',
+      () async {
+        await rig.unit.sign(_text);
+        rig.fake.requests.clear();
+        rig.fake.signStatus = 403;
+        expect(
+          const AtrustException(AtrustProblem.refused).sentence,
+          'A-Trust hat die Signatur abgelehnt.',
+        );
+
+        expect(await rig.failure(), 'A-Trust hat die Signatur abgelehnt.');
+        await pumpEventQueue();
+        expect(rig.methods, ['POST', 'PUT', 'POST']);
+
+        // Die App baut je Bon eine neue Einheit am selben Halter.
+        rig.fake.requests.clear();
+        expect(
+          await rig.failure(_text, rig.makeUnit()),
+          'A-Trust hat die Signatur abgelehnt.',
+        );
+        expect(await rig.failure(), 'A-Trust hat die Signatur abgelehnt.');
+        await pumpEventQueue();
+        expect(rig.methods, ['POST', 'POST']);
+        expect(rig.keeper.rejected.value, isFalse);
+
+        // 56 Minuten später gibt der Halter eine neue Sitzung aus.
+        rig.clock.value = DateTime(2026, 11, 19, 10, 56);
+        rig.fake.requests.clear();
+        expect(
+          await rig.failure(_text, rig.makeUnit()),
+          'A-Trust hat die Signatur abgelehnt.',
+        );
+        await pumpEventQueue();
+        expect(rig.methods, ['PUT', 'POST', 'PUT', 'POST']);
+
+        rig.fake.requests.clear();
+        expect(
+          await rig.failure(_text, rig.makeUnit()),
+          'A-Trust hat die Signatur abgelehnt.',
+        );
+        await pumpEventQueue();
+        expect(rig.methods, ['POST']);
+      },
+    );
+
+    test('gelingt das Signieren wieder, signiert dieselbe Sitzung', () async {
+      await rig.unit.sign(_text);
+      rig.fake.signStatus = 403;
+      expect(await rig.failure(), 'A-Trust hat die Signatur abgelehnt.');
+      rig.fake.signStatus = null;
+      rig.fake.requests.clear();
+      final sig = await rig.makeUnit().sign(_text);
+      expect(sig, hasLength(64));
+      expect(rig.methods, ['POST']);
+    });
   });
 
   test('wrongSignature: SignatureFailure', () async {

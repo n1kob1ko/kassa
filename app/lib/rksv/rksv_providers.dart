@@ -24,34 +24,29 @@ final protocolSaverProvider = Provider<ProtocolSaver>(
   (ref) => const FilePickerProtocolSaver(),
 );
 
-/// Die Online-Einheiten der App: bei `atrustTest` eine
-/// [OnlineSignatureUnit] am Testsystem mit dem Halter aus
-/// [atrustTestKeeperProvider], Kennung, Zertifikat und Ausstellern der
-/// Kette; bei `atrust` (noch) ein [StateError]. Halter und Verbindung
-/// entstehen erst beim ersten Bon einer solchen Kette. Auf das Laden des
-/// Halters wird hier nicht gewartet: Ein Fehler beim Bauen der Einheit wäre
-/// ein unerwarteter Fehler und beendete die Probe; der Halter schützt das
-/// Konto selbst (R6).
+/// Die Online-Einheiten der App: eine [OnlineSignatureUnit] mit Kennung,
+/// Zertifikat und Ausstellern der Kette, bei `atrustTest` am Testsystem, bei
+/// `atrust` am echten System, jeweils mit dem Halter des Systems aus
+/// [atrustKeeperProvider]. Halter und Verbindung entstehen erst beim ersten
+/// Bon einer solchen Kette. Auf das Laden des Halters wird hier nicht
+/// gewartet: Ein Fehler beim Bauen der Einheit wäre ein unerwarteter Fehler
+/// und beendete die Probe; der Halter schützt das Konto selbst (R6).
 OnlineUnitOf onlineSignatureUnitOf(Ref ref) => (chain, certificate) async {
-  switch (RksvUnit.values.asNameMap()[chain.unit]) {
-    case RksvUnit.atrustTest:
-      return OnlineSignatureUnit(
-        client: AtrustClient(
-          ref.read(atrustHttpClientProvider),
-          AtrustSystem.test,
-        ),
-        keeper: ref.read(atrustTestKeeperProvider),
-        zdaId: chain.zdaId,
-        certificateDer: certificate.certificate,
-        issuerCertificatesDer: [
-          for (final i in issuersBase64(certificate)) base64.decode(i),
-        ],
-      );
-    case RksvUnit.atrust:
-      throw StateError('Noch nicht gebaut.');
-    case RksvUnit.probe || null:
-      throw StateError('Kette ${chain.chain} hat keine Online-Einheit.');
-  }
+  final system = switch (RksvUnit.values.asNameMap()[chain.unit]) {
+    RksvUnit.atrustTest => AtrustSystem.test,
+    RksvUnit.atrust => AtrustSystem.live,
+    RksvUnit.probe ||
+    null => throw StateError('Kette ${chain.chain} hat keine Online-Einheit.'),
+  };
+  return OnlineSignatureUnit(
+    client: AtrustClient(ref.read(atrustHttpClientProvider), system),
+    keeper: ref.read(atrustKeeperProvider(system)),
+    zdaId: chain.zdaId,
+    certificateDer: certificate.certificate,
+    issuerCertificatesDer: [
+      for (final i in issuersBase64(certificate)) base64.decode(i),
+    ],
+  );
 };
 
 final rksvJournalProvider = Provider((ref) {

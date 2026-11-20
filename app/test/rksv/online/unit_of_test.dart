@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/probe_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/signature_unit.dart';
 
 import '../../support/fake_atrust.dart';
@@ -118,8 +120,11 @@ void main() {
         'kennt das gespeicherte Kennzeichen', () async {
       await rig.secrets.writeAtrustRejected(true);
       container.read(rksvJournalProvider);
-      final keeper = container.read(atrustTestKeeperProvider);
-      expect(container.read(atrustTestKeeperProvider), same(keeper));
+      final keeper = container.read(atrustKeeperProvider(AtrustSystem.test));
+      expect(
+        container.read(atrustKeeperProvider(AtrustSystem.test)),
+        same(keeper),
+      );
       await pumpEventQueue();
       expect(keeper.rejected.value, isTrue);
       expect(atrust.requests, isEmpty);
@@ -185,32 +190,57 @@ void main() {
       expect(atrust.requests, isEmpty);
     });
 
-    test(
-      'Kette atrust: StateError "Noch nicht gebaut.", nichts an A-Trust',
-      () async {
-        await rig.startAtrustTest(atrust);
-        await setUnit('atrust');
-        await expectLater(
-          container
-              .read(rksvJournalProvider)
-              .record(
-                receiptId: 'x',
-                number: 1,
-                createdAt: rig.clock.now(),
-                kind: ReceiptKind.sale,
-                sumsCents: const [0, 0, 0, 0, 0],
-              ),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              'Noch nicht gebaut.',
-            ),
+    test('Kette atrust: OnlineSignatureUnit mit dem Halter des echten '
+        'Systems; ohne Zugangsdaten nichts an A-Trust, mit ihnen meldet sie '
+        'mit diesen an', () async {
+      await rig.startAtrustTest(atrust);
+      await setUnit('atrust');
+      final online = container.read(_onlineProvider);
+      final chain = await rig.chainRow(1);
+      final cert = await rig.db.select(rig.db.rksvCertificateRows).get();
+      final unit = await online(
+        chain,
+        cert.singleWhere((c) => c.serialHex == '2159b9f6'),
+      );
+      expect(unit, isA<OnlineSignatureUnit>());
+      expect((await unit.info()).zdaId, 'AT1');
+      await expectLater(
+        unit.sign('Beispiel-Imbiss'),
+        throwsA(
+          isA<SignatureFailure>().having(
+            (e) => e.reason,
+            'reason',
+            'Die Zugangsdaten von A-Trust fehlen.',
           ),
-        );
-        expect(atrust.requests, isEmpty);
-      },
-    );
+        ),
+      );
+      await pumpEventQueue();
+      expect(atrust.requests, isEmpty);
+
+      await rig.secrets.writeAtrustCredentials(
+        const AtrustCredentials('u-beispiel', 'geheim-beispiel'),
+      );
+      expect(await unit.sign('Beispiel-Imbiss'), hasLength(64));
+      expect(atrust.requests, [
+        'PUT /Session/u-beispiel',
+        endsWith('/Sign/Hash'),
+      ]);
+    });
+
+    test('je System ein eigener Halter mit eigenem Kennzeichen', () async {
+      await rig.secrets.writeAtrustRejected(true, live: true);
+      final live = container.read(atrustKeeperProvider(AtrustSystem.live));
+      final test = container.read(atrustKeeperProvider(AtrustSystem.test));
+      expect(identical(live, test), isFalse);
+      expect(
+        container.read(atrustKeeperProvider(AtrustSystem.live)),
+        same(live),
+      );
+      await pumpEventQueue();
+      expect(live.rejected.value, isTrue);
+      expect(test.rejected.value, isFalse);
+      expect(atrust.requests, isEmpty);
+    });
   });
 }
 

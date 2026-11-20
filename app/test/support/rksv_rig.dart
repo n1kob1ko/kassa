@@ -149,8 +149,8 @@ class RksvRig {
         ? null
         : AtrustSessionKeeper(
             client: AtrustClient(online, AtrustSystem.test),
-            user: atrustTestUser,
-            password: atrustTestPassword,
+            credentials: () async =>
+                const AtrustCredentials(atrustTestUser, atrustTestPassword),
             secrets: secrets,
             clock: clock,
           );

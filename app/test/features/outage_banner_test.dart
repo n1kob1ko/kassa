@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/features/login/session.dart';
+import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
@@ -355,7 +356,7 @@ void main() {
       expect(_key('rksv-retry'), findsNothing);
       expect(find.text('Geht noch nicht.'), findsNothing);
 
-      await c.read(atrustTestKeeperProvider).allowOneLogin();
+      await c.read(atrustKeeperProvider(AtrustSystem.test)).allowOneLogin();
       await t.pumpAndSettle();
       expect(_key('rksv-retry'), findsOneWidget);
       expect(find.text(_rejectedLine), findsNothing);

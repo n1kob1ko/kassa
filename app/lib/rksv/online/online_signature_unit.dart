@@ -10,7 +10,10 @@ import 'atrust_client.dart';
 import 'atrust_session_keeper.dart';
 
 /// Die Signatureinheit über A-Trust (Entwurf 6.2). Jeder Fehler wird zu einer
-/// [SignatureFailure] mit einem deutschen Satz (P2). Eine Frist setzt der
+/// [SignatureFailure] mit einem deutschen Satz (P2). Scheitert das Signieren
+/// auch mit einer nach `sessionExpired` frisch geholten Sitzung, ist das
+/// "A-Trust hat die Signatur abgelehnt.", und mit dieser Sitzung wird nicht
+/// noch einmal neu angemeldet (Plan Q9). Eine Frist setzt der
 /// Aufrufer; eine Antwort nach der Frist läuft hier ohne unbehandelte
 /// Ausnahme zu Ende, und eine dabei erhaltene Sitzung bleibt im Halter.
 class OnlineSignatureUnit implements SignatureUnit {
@@ -28,6 +31,11 @@ class OnlineSignatureUnit implements SignatureUnit {
   static const _mismatch =
       'Die Signatur von A-Trust passt nicht zum Zertifikat.';
   static const _failed = 'Die Signatur von A-Trust ist gescheitert.';
+
+  /// Je Halter die Sitzung, mit der nach einer neuen Anmeldung wieder nicht
+  /// signiert werden konnte (Q9). Am Halter und nicht an der Einheit, weil die
+  /// App je Bon eine neue Einheit baut; der Halter selbst weiß davon nichts.
+  static final _refused = Expando<AtrustSession>('refused');
 
   final AtrustClient _client;
   final AtrustSessionKeeper _keeper;
@@ -61,13 +69,19 @@ class OnlineSignatureUnit implements SignatureUnit {
         signature = await _client.signHash(session, hash);
       } on AtrustException catch (e) {
         if (e.problem != AtrustProblem.sessionExpired) rethrow;
+        if (identical(session, _refused[_keeper])) {
+          throw const AtrustException(AtrustProblem.refused);
+        }
         _keeper.drop(session);
         session = await _session();
         try {
           signature = await _client.signHash(session, hash);
         } on AtrustException catch (e) {
-          if (e.problem == AtrustProblem.sessionExpired) _keeper.drop(session);
-          rethrow;
+          if (e.problem != AtrustProblem.sessionExpired) rethrow;
+          // Q9: Auch die frisch geholte Sitzung signiert nicht. Für sie wird
+          // nicht noch einmal angemeldet, solange der Halter sie ausgibt.
+          _refused[_keeper] = session;
+          throw const AtrustException(AtrustProblem.refused);
         }
       }
       if (!certificate.verify(hash, signature)) {
@@ -84,13 +98,17 @@ class OnlineSignatureUnit implements SignatureUnit {
     }
   }
 
-  /// Fehlt die Sitzung und lässt sie sich nicht holen (außer bei Ablehnung),
-  /// beginnt eine Anmeldung im Hintergrund für den nächsten Bon.
+  /// Fehlt die Sitzung und lässt sie sich nicht holen (außer bei Ablehnung
+  /// oder ohne Zugangsdaten), beginnt eine Anmeldung im Hintergrund für den
+  /// nächsten Bon.
   Future<AtrustSession> _session() async {
     try {
       return await _keeper.session();
     } on AtrustException catch (e) {
-      if (e.problem != AtrustProblem.rejected) _keeper.warmUp();
+      if (e.problem != AtrustProblem.rejected &&
+          e.problem != AtrustProblem.noCredentials) {
+        _keeper.warmUp();
+      }
       rethrow;
     } catch (_) {
       _keeper.warmUp();

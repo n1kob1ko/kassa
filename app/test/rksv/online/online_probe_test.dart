@@ -6,6 +6,7 @@ import 'package:kassa/rksv/dep_export.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/atrust_session_keeper.dart';
 import 'package:kassa/rksv/online/connection_check.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 
@@ -174,8 +175,8 @@ void main() {
       final live = FakeAtrust(validFrom: DateTime.utc(2020, 6, 1));
       final keeper = AtrustSessionKeeper(
         client: AtrustClient(live.client, AtrustSystem.live),
-        user: atrustTestUser,
-        password: atrustTestPassword,
+        credentials: () async =>
+            const AtrustCredentials(atrustTestUser, atrustTestPassword),
         secrets: rig.secrets,
         clock: rig.clock,
       );

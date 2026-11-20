@@ -36,7 +36,8 @@ const _sendReport = 'Bitte den Bericht schicken.';
 /// Ein Speicher, dessen Schreiben des Kennzeichens nie fertig wird.
 class _HangingSecrets extends MemoryRksvSecrets {
   @override
-  Future<void> writeAtrustRejected(bool rejected) => Completer<void>().future;
+  Future<void> writeAtrustRejected(bool rejected, {bool live = false}) =>
+      Completer<void>().future;
 }
 
 /// Ein Client, dessen erste Anfrage mit einem fremden Fehler scheitert.
@@ -76,8 +77,8 @@ class _Setup {
 
   AtrustSessionKeeper makeKeeper() => AtrustSessionKeeper(
     client: AtrustClient(atrust.client, system),
-    user: atrustTestUser,
-    password: atrustTestPassword,
+    credentials: () async =>
+        const AtrustCredentials(atrustTestUser, atrustTestPassword),
     secrets: secrets,
     clock: clock,
   );
@@ -593,8 +594,7 @@ void main() {
       client: client,
       keeper: AtrustSessionKeeper(
         client: client,
-        user: user,
-        password: password,
+        credentials: () async => AtrustCredentials(user, password),
         secrets: secrets,
         clock: clock,
       ),
@@ -643,7 +643,7 @@ void main() {
     expect(result.facts, isNotNull);
     expect(atrust.requests.where((r) => r == _login), hasLength(1));
     // Dieselbe Sitzung wie die Bons: der Halter der App hat sie schon.
-    await container.read(atrustTestKeeperProvider).session();
+    await container.read(atrustKeeperProvider(AtrustSystem.test)).session();
     expect(atrust.requests.where((r) => r == _login), hasLength(1));
   });
 }

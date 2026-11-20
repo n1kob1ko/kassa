@@ -3,11 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/atrust_session_keeper.dart';
+import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 
 import '../../support/fake_atrust.dart';
 
 const _login = 'PUT /Session/u123456789';
+const _liveLogin = 'PUT /Session/u-beispiel';
+const _creds = AtrustCredentials('u-beispiel', 'geheim-beispiel');
 
 class _Rig {
   final fake = FakeAtrust();
@@ -16,12 +19,23 @@ class _Rig {
   late final AtrustSessionKeeper keeper = make();
 
   /// Ein neuer Halter auf demselben Speicher, wie nach einem Neustart.
+  /// Der Halter des Testsystems mit dem öffentlichen Test-Benutzer.
   AtrustSessionKeeper make() => AtrustSessionKeeper(
     client: AtrustClient(fake.client, AtrustSystem.test),
-    user: atrustTestUser,
-    password: atrustTestPassword,
+    credentials: () async =>
+        const AtrustCredentials(atrustTestUser, atrustTestPassword),
     secrets: secrets,
     clock: clock,
+  );
+
+  /// Ein Halter wie der des echten Systems: Zugangsdaten aus dem Speicher,
+  /// Kennzeichen `live`. Der Fake antwortet am Pfad beider Systeme.
+  AtrustSessionKeeper makeLive() => AtrustSessionKeeper(
+    client: AtrustClient(fake.client, AtrustSystem.test),
+    credentials: secrets.atrustCredentials,
+    secrets: secrets,
+    clock: clock,
+    live: true,
   );
 
   int get logins => fake.requests.where((r) => r == _login).length;
@@ -34,6 +48,14 @@ class _Rig {
     }
     fail('keine AtrustException');
   }
+}
+
+/// session() in fake_async: das Ergebnis oder der Fehler, sobald da.
+(List<AtrustSession>, List<Object>) _start(AtrustSessionKeeper k) {
+  final sessions = <AtrustSession>[];
+  final errors = <Object>[];
+  k.session().then(sessions.add, onError: errors.add);
+  return (sessions, errors);
 }
 
 void main() {
@@ -323,8 +345,9 @@ void main() {
       expect(AtrustSessionKeeper.loginLimit, const Duration(seconds: 20));
     });
 
-    test('nach loginLimit gibt eine neue session() ein zweites PUT und '
-        'bekommt eine Sitzung, sobald A-Trust wieder antwortet', () {
+    test('Q13: nach loginLimit noInternet, dann schickt eine neue session() '
+        'erst nach abandonedLimit ein zweites PUT und bekommt eine Sitzung, '
+        'sobald A-Trust wieder antwortet', () {
       fakeAsync((async) {
         rig.fake.delay = hang;
         final (firstOk, firstErrors) = start(rig.keeper);
@@ -342,6 +365,9 @@ void main() {
         expect(rig.fake.requests, [_login]);
 
         rig.fake.delay = Duration.zero;
+        rig.clock.value = rig.clock.value.add(
+          AtrustSessionKeeper.abandonedLimit,
+        );
         final (secondOk, secondErrors) = start(rig.keeper);
         async.flushMicrotasks();
         expect(secondErrors, isEmpty);
@@ -408,6 +434,9 @@ void main() {
         async.elapse(AtrustSessionKeeper.loginLimit);
 
         rig.fake.delay = Duration.zero;
+        rig.clock.value = rig.clock.value.add(
+          AtrustSessionKeeper.abandonedLimit,
+        );
         final (second, _) = start(rig.keeper);
         async.flushMicrotasks();
         expect(second, hasLength(1));
@@ -455,6 +484,419 @@ void main() {
         expect(rig.fake.requests, [_login]);
       });
     });
+  });
+
+  group('Halter echt: Zugangsdaten aus dem geschützten Speicher', () {
+    test(
+      'ohne Zugangsdaten: noCredentials, keine Anfrage, nicht abgelehnt',
+      () async {
+        final k = rig.makeLive();
+        await k.restore();
+        expect(await rig.problem(k), AtrustProblem.noCredentials);
+        expect(
+          const AtrustException(AtrustProblem.noCredentials).sentence,
+          'Die Zugangsdaten von A-Trust fehlen.',
+        );
+        k.warmUp();
+        await pumpEventQueue();
+        expect(rig.fake.requests, isEmpty);
+        expect(k.rejected.value, isFalse);
+        expect(await rig.secrets.atrustRejected(live: true), isFalse);
+      },
+    );
+
+    test('mit Zugangsdaten genau ein PUT mit diesen', () async {
+      rig.fake.password = 'geheim-beispiel';
+      await rig.secrets.writeAtrustCredentials(_creds);
+      final k = rig.makeLive();
+      await k.restore();
+      await k.session();
+      await k.session();
+      expect(rig.fake.requests, [_liveLogin]);
+      expect(k.rejected.value, isFalse);
+    });
+
+    test('401 setzt nur das Kennzeichen live', () async {
+      rig.fake.loginStatus = 401;
+      await rig.secrets.writeAtrustCredentials(_creds);
+      final k = rig.makeLive();
+      expect(await rig.problem(k), AtrustProblem.rejected);
+      await pumpEventQueue();
+      expect(await rig.secrets.atrustRejected(live: true), isTrue);
+      expect(await rig.secrets.atrustRejected(), isFalse);
+      expect(rig.keeper.rejected.value, isFalse);
+      rig.fake.loginStatus = 200;
+      await rig.keeper.session();
+      expect(rig.fake.requests, [_liveLogin, _login]);
+    });
+
+    test('401 am Testsystem setzt nur dessen Kennzeichen', () async {
+      rig.fake.loginStatus = 401;
+      expect(await rig.problem(), AtrustProblem.rejected);
+      await pumpEventQueue();
+      expect(await rig.secrets.atrustRejected(), isTrue);
+      expect(await rig.secrets.atrustRejected(live: true), isFalse);
+      rig.fake.loginStatus = 200;
+      await rig.secrets.writeAtrustCredentials(_creds);
+      final k = rig.makeLive();
+      await k.restore();
+      expect(k.rejected.value, isFalse);
+      await k.session();
+      expect(rig.fake.requests, [_login, _liveLogin]);
+    });
+
+    test('Review Focus 2: neue Zugangsdaten und forget(): PUT mit den neuen, '
+        'die alte Sitzung wird nicht mehr ausgegeben', () async {
+      await rig.secrets.writeAtrustCredentials(
+        const AtrustCredentials('u-alt', 'geheim-alt'),
+      );
+      final k = rig.makeLive();
+      await k.restore();
+      final old = await k.session();
+      expect(identical(await k.session(), old), isTrue);
+
+      await rig.secrets.writeAtrustCredentials(_creds);
+      rig.fake.password = 'geheim-beispiel';
+      k.forget();
+      expect(rig.fake.requests, ['PUT /Session/u-alt']);
+      final fresh = await k.session();
+      expect(identical(fresh, old), isFalse);
+      expect(rig.fake.requests, ['PUT /Session/u-alt', _liveLogin]);
+
+      k.used(old);
+      expect(identical(await k.session(), fresh), isTrue);
+      expect(rig.fake.requests, ['PUT /Session/u-alt', _liveLogin]);
+    });
+
+    test('forget() während einer Anmeldung mit den alten Zugangsdaten: die '
+        'nächste session() meldet mit den neuen an, die alte Antwort wird '
+        'nicht gehalten', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        rig.secrets.writeAtrustCredentials(
+          const AtrustCredentials('u-alt', 'geheim-alt'),
+        );
+        async.flushMicrotasks();
+        final k = rig.makeLive();
+        final (oldOk, _) = _start(k);
+        async.flushMicrotasks();
+        expect(rig.fake.requests, ['PUT /Session/u-alt']);
+
+        rig.secrets.writeAtrustCredentials(_creds);
+        async.flushMicrotasks();
+        k.forget();
+        final (newOk, _) = _start(k);
+        async.flushMicrotasks();
+        expect(rig.fake.requests, ['PUT /Session/u-alt', _liveLogin]);
+
+        rig.fake.heldLogins[0].complete(200);
+        async.flushMicrotasks();
+        expect(oldOk, hasLength(1));
+        final (laterOk, _) = _start(k);
+        async.flushMicrotasks();
+        expect(laterOk, isEmpty);
+
+        rig.fake.heldLogins[1].complete(200);
+        async.flushMicrotasks();
+        expect(newOk, hasLength(1));
+        expect(identical(laterOk.single, newOk.single), isTrue);
+        expect(identical(newOk.single, oldOk.single), isFalse);
+        expect(rig.fake.requests, hasLength(2));
+      });
+    });
+
+    test('eine späte 401 mit den alten Zugangsdaten nach forget() setzt '
+        'abgelehnt nicht', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        rig.secrets.writeAtrustCredentials(
+          const AtrustCredentials('u-alt', 'geheim-alt'),
+        );
+        async.flushMicrotasks();
+        final k = rig.makeLive();
+        final (_, oldErrors) = _start(k);
+        async.flushMicrotasks();
+        rig.secrets.writeAtrustCredentials(_creds);
+        async.flushMicrotasks();
+        k.forget();
+        rig.fake.heldLogins.single.complete(401);
+        async.flushMicrotasks();
+        expect(
+          (oldErrors.single as AtrustException).problem,
+          AtrustProblem.rejected,
+        );
+        expect(k.rejected.value, isFalse);
+
+        rig.fake.holdLogins = false;
+        final (ok, _) = _start(k);
+        async.flushMicrotasks();
+        expect(ok, hasLength(1));
+        expect(rig.fake.requests, ['PUT /Session/u-alt', _liveLogin]);
+      });
+    });
+
+    test(
+      'Review Focus 5: nach 401 keine Anfrage bei session() und warmUp(); '
+      'nach Aufheben des Kennzeichens und allowOneLogin() genau ein PUT',
+      () async {
+        await rig.secrets.writeAtrustCredentials(_creds);
+        rig.fake.loginStatus = 401;
+        final k = rig.makeLive();
+        await k.restore();
+        expect(await rig.problem(k), AtrustProblem.rejected);
+        rig.fake.loginStatus = 200;
+        expect(await rig.problem(k), AtrustProblem.rejected);
+        k.warmUp();
+        await pumpEventQueue();
+        expect(rig.fake.requests, [_liveLogin]);
+
+        // Ein Neustart ändert nichts.
+        final restarted = rig.makeLive();
+        expect(await rig.problem(restarted), AtrustProblem.rejected);
+        restarted.warmUp();
+        await pumpEventQueue();
+        expect(rig.fake.requests, [_liveLogin]);
+
+        await rig.secrets.writeAtrustRejected(false, live: true);
+        await k.allowOneLogin();
+        await k.session();
+        await k.session();
+        k.warmUp();
+        await pumpEventQueue();
+        expect(rig.fake.requests, [_liveLogin, _liveLogin]);
+      },
+    );
+  });
+
+  group('F5: abgelehnt gilt, sobald eine Anmeldung antwortet', () {
+    test('aufgegebene Anmeldung antwortet spät mit 401, während eine neue '
+        'läuft; die neue antwortet 200: die Wartenden bekommen rejected, der '
+        'Halter hält keine Sitzung, danach keine Anfrage', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        final (_, first) = _start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        expect(
+          (first.single as AtrustException).problem,
+          AtrustProblem.noInternet,
+        );
+
+        rig.clock.value = rig.clock.value.add(
+          AtrustSessionKeeper.abandonedLimit,
+        );
+        final (ok, waiting) = _start(rig.keeper);
+        async.flushMicrotasks();
+        expect(rig.fake.requests, [_login, _login]);
+
+        rig.fake.heldLogins[0].complete(401);
+        async.flushMicrotasks();
+        expect(rig.keeper.rejected.value, isTrue);
+        expect(waiting, isEmpty);
+
+        rig.fake.heldLogins[1].complete(200);
+        async.flushMicrotasks();
+        expect(ok, isEmpty);
+        expect(
+          (waiting.single as AtrustException).problem,
+          AtrustProblem.rejected,
+        );
+
+        final (_, later) = _start(rig.keeper);
+        rig.keeper.warmUp();
+        async.elapse(const Duration(minutes: 5));
+        expect(
+          (later.single as AtrustException).problem,
+          AtrustProblem.rejected,
+        );
+        expect(rig.fake.requests, [_login, _login]);
+
+        // Keine Sitzung gehalten: nach dem Antippen geht eine Anmeldung los.
+        rig.fake.holdLogins = false;
+        rig.keeper.allowOneLogin();
+        async.flushMicrotasks();
+        final (after, _) = _start(rig.keeper);
+        async.flushMicrotasks();
+        expect(after, hasLength(1));
+        expect(rig.fake.requests, [_login, _login, _login]);
+      });
+    });
+  });
+
+  group('Q13: aufgegebene Anmeldung ohne Antwort', () {
+    test('abandonedLimit ist 120 Sekunden', () {
+      expect(AtrustSessionKeeper.abandonedLimit, const Duration(seconds: 120));
+    });
+
+    test('hängt die Anmeldung, schicken session() und warmUp() 120 Sekunden '
+        'lang nichts und enden sofort mit noInternet; danach genau eine neue '
+        'Anmeldung', () {
+      fakeAsync((async) {
+        final abandonedAt = rig.clock.value;
+        rig.fake.holdLogins = true;
+        final (_, first) = _start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        expect(
+          (first.single as AtrustException).problem,
+          AtrustProblem.noInternet,
+        );
+        expect(rig.fake.requests, [_login]);
+
+        for (final seconds in [0, 1, 60, 119]) {
+          rig.clock.value = abandonedAt.add(Duration(seconds: seconds));
+          final (ok, errors) = _start(rig.keeper);
+          rig.keeper.warmUp();
+          async.flushMicrotasks();
+          expect(ok, isEmpty);
+          expect(
+            (errors.single as AtrustException).problem,
+            AtrustProblem.noInternet,
+            reason: 'nach $seconds Sekunden',
+          );
+        }
+        expect(rig.fake.requests, [_login]);
+
+        rig.clock.value = abandonedAt.add(AtrustSessionKeeper.abandonedLimit);
+        final (_, errors) = _start(rig.keeper);
+        rig.keeper.warmUp();
+        async.flushMicrotasks();
+        expect(errors, isEmpty);
+        expect(rig.fake.requests, [_login, _login]);
+      });
+    });
+
+    test('allowOneLogin() hebt die Sperre nicht auf', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        _start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        rig.keeper.allowOneLogin();
+        async.flushMicrotasks();
+        final (_, errors) = _start(rig.keeper);
+        async.flushMicrotasks();
+        expect(
+          (errors.single as AtrustException).problem,
+          AtrustProblem.noInternet,
+        );
+        expect(rig.fake.requests, [_login]);
+      });
+    });
+
+    test('antwortet die hängende vorher mit 200 und der Halter hat keine '
+        'Sitzung, wird sie gehalten; der nächste Bon signiert ohne neue '
+        'Anmeldung', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        _start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        rig.clock.value = rig.clock.value.add(const Duration(seconds: 30));
+        rig.fake.heldLogins.single.complete(200);
+        async.flushMicrotasks();
+
+        final unit = OnlineSignatureUnit(
+          client: AtrustClient(rig.fake.client, AtrustSystem.test),
+          keeper: rig.keeper,
+          zdaId: 'AT1',
+          certificateDer: rig.fake.certificateDer,
+        );
+        Object? signature;
+        unit.sign('Beispiel-Imbiss Bon 1').then((s) => signature = s);
+        async.flushMicrotasks();
+        expect(signature, hasLength(64));
+        expect(rig.fake.requests, hasLength(2));
+        expect(rig.fake.requests.first, _login);
+        expect(
+          rig.fake.requests.last,
+          matches(r'^POST /Session/\w+/Sign/Hash$'),
+        );
+      });
+    });
+
+    test('antwortet die hängende mit einem Fehler, darf die nächste '
+        'Anmeldung hinaus', () {
+      fakeAsync((async) {
+        rig.fake.holdLogins = true;
+        _start(rig.keeper);
+        async.elapse(AtrustSessionKeeper.loginLimit);
+        rig.clock.value = rig.clock.value.add(const Duration(seconds: 30));
+        rig.fake.heldLogins.single.complete(500);
+        async.flushMicrotasks();
+        expect(rig.keeper.rejected.value, isFalse);
+
+        rig.fake.holdLogins = false;
+        final (ok, _) = _start(rig.keeper);
+        async.flushMicrotasks();
+        expect(ok, hasLength(1));
+        expect(rig.fake.requests, [_login, _login]);
+      });
+    });
+  });
+
+  group('Q14: scheiterndes Schreiben von abgelehnt', () {
+    for (final trigger in ['session()', 'warmUp()', 'restore()']) {
+      test('rejected gilt sofort, keine weitere Anfrage; das Schreiben wird '
+          'bei $trigger wiederholt, bis es steht', () async {
+        rig.secrets.failWrites = true;
+        rig.fake.loginStatus = 401;
+        expect(await rig.problem(), AtrustProblem.rejected);
+        expect(rig.keeper.rejected.value, isTrue);
+        await pumpEventQueue();
+
+        rig.fake.loginStatus = 200;
+        expect(await rig.problem(), AtrustProblem.rejected);
+        rig.keeper.warmUp();
+        await rig.keeper.restore();
+        await pumpEventQueue();
+        expect(await rig.secrets.atrustRejected(), isFalse);
+        expect(rig.fake.requests, [_login]);
+
+        rig.secrets.failWrites = false;
+        switch (trigger) {
+          case 'session()':
+            expect(await rig.problem(), AtrustProblem.rejected);
+          case 'warmUp()':
+            rig.keeper.warmUp();
+          case 'restore()':
+            await rig.keeper.restore();
+        }
+        await pumpEventQueue();
+        expect(await rig.secrets.atrustRejected(), isTrue);
+
+        final restarted = rig.make();
+        expect(await rig.problem(restarted), AtrustProblem.rejected);
+        restarted.warmUp();
+        await pumpEventQueue();
+        expect(rig.fake.requests, [_login]);
+      });
+    }
+
+    test('hangWrites: rejected gilt sofort, keine weitere Anfrage', () async {
+      rig.secrets.hangWrites = true;
+      rig.fake.loginStatus = 401;
+      expect(await rig.problem(), AtrustProblem.rejected);
+      expect(rig.keeper.rejected.value, isTrue);
+      rig.fake.loginStatus = 200;
+      expect(await rig.problem(), AtrustProblem.rejected);
+      rig.keeper.warmUp();
+      await pumpEventQueue();
+      expect(rig.fake.requests, [_login]);
+    });
+
+    test(
+      'der Halter des echten Systems schreibt das Kennzeichen live nach',
+      () async {
+        await rig.secrets.writeAtrustCredentials(_creds);
+        rig.secrets.failWrites = true;
+        rig.fake.loginStatus = 401;
+        final k = rig.makeLive();
+        expect(await rig.problem(k), AtrustProblem.rejected);
+        await pumpEventQueue();
+        rig.secrets.failWrites = false;
+        expect(await rig.problem(k), AtrustProblem.rejected);
+        await pumpEventQueue();
+        expect(await rig.secrets.atrustRejected(live: true), isTrue);
+        expect(await rig.secrets.atrustRejected(), isFalse);
+      },
+    );
   });
 
   test('toString enthält weder Passwort noch Sitzungsschlüssel', () async {

@@ -6,6 +6,7 @@ import 'package:kassa/rksv/online/atrust_client.dart';
 import 'package:kassa/rksv/online/atrust_session_keeper.dart';
 import 'package:kassa/rksv/online/online_signature_unit.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/rksv/signature_unit.dart';
 
@@ -115,8 +116,8 @@ void main() {
         );
         keeper = AtrustSessionKeeper(
           client: AtrustClient(atrust.client, AtrustSystem.test),
-          user: atrustTestUser,
-          password: atrustTestPassword,
+          credentials: () async =>
+              const AtrustCredentials(atrustTestUser, atrustTestPassword),
           secrets: rig.secrets,
           clock: rig.clock,
         );

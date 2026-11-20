@@ -10,6 +10,7 @@ import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
+import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/tokens.dart';
@@ -108,7 +109,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     try {
       final state = await ref.read(rksvStateProvider.future);
       if (!mounted || state.unit != RksvUnit.atrustTest) return;
-      final keeper = ref.read(atrustTestKeeperProvider);
+      final keeper = ref.read(atrustKeeperProvider(AtrustSystem.test));
       try {
         await keeper.restore();
       } catch (_) {

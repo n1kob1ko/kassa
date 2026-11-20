@@ -1,6 +1,6 @@
-// Provider der Online-Probe: Verbindung ins Netz, Sitzungshalter und
-// "Verbindung prüfen" für das Testsystem von A-Trust. Keiner von ihnen
-// schickt beim Erzeugen eine Anfrage; das tut erst eine Kette mit einer
+// Provider der Online-Signatur: Verbindung ins Netz, Sitzungshalter je
+// System und "Verbindung prüfen" für das Testsystem von A-Trust. Keiner von
+// ihnen schickt beim Erzeugen eine Anfrage; das tut erst eine Kette mit einer
 // Online-Einheit oder ein Lauf von "Verbindung prüfen".
 
 import 'dart:io';
@@ -11,6 +11,7 @@ import 'package:http/io_client.dart';
 
 import '../../data/providers.dart';
 import '../rksv_providers.dart';
+import '../rksv_secrets.dart';
 import 'atrust_client.dart';
 import 'atrust_session_keeper.dart';
 import 'connection_check.dart';
@@ -26,25 +27,33 @@ final atrustHttpClientProvider = Provider<http.Client>((ref) {
   return client;
 });
 
-/// Der Sitzungshalter für das Testsystem mit dem öffentlichen Test-Benutzer
-/// (P6). Er lädt das Kennzeichen "abgelehnt" gleich beim Erzeugen, damit die
-/// Oberfläche es früh kennt; darauf gewartet wird nicht, und ein Fehler dabei
-/// ist egal: Der Halter schickt nichts, solange er es nicht kennt, und liest
-/// beim nächsten Gebrauch neu.
-final atrustTestKeeperProvider = Provider<AtrustSessionKeeper>((ref) {
-  final keeper = AtrustSessionKeeper(
-    client: AtrustClient(
-      ref.watch(atrustHttpClientProvider),
-      AtrustSystem.test,
-    ),
-    user: atrustTestUser,
-    password: atrustTestPassword,
-    secrets: ref.watch(rksvSecretsProvider),
-    clock: ref.watch(clockProvider),
-  );
-  keeper.restore().ignore();
-  return keeper;
-});
+/// Der Sitzungshalter je System. Am Testsystem mit dem öffentlichen
+/// Test-Benutzer (P6), am echten System mit den Zugangsdaten aus dem
+/// geschützten Speicher, bei jeder Anmeldung neu gelesen (Q5), und dessen
+/// eigenem Kennzeichen "abgelehnt" (Q4). Er lädt das Kennzeichen gleich beim
+/// Erzeugen, damit die Oberfläche es früh kennt; darauf gewartet wird nicht,
+/// und ein Fehler dabei ist egal: Der Halter schickt nichts, solange er es
+/// nicht kennt, und liest beim nächsten Gebrauch neu.
+final atrustKeeperProvider = Provider.family<AtrustSessionKeeper, AtrustSystem>(
+  (ref, system) {
+    final secrets = ref.watch(rksvSecretsProvider);
+    final keeper = AtrustSessionKeeper(
+      client: AtrustClient(ref.watch(atrustHttpClientProvider), system),
+      credentials: switch (system) {
+        AtrustSystem.test => () async => const AtrustCredentials(
+          atrustTestUser,
+          atrustTestPassword,
+        ),
+        AtrustSystem.live => secrets.atrustCredentials,
+      },
+      secrets: secrets,
+      clock: ref.watch(clockProvider),
+      live: system == AtrustSystem.live,
+    );
+    keeper.restore().ignore();
+    return keeper;
+  },
+);
 
 /// "Verbindung prüfen" am Testsystem mit dem Halter der Bons, also derselben
 /// Sitzung und demselben Kennzeichen "abgelehnt".
@@ -54,7 +63,7 @@ final connectionCheckProvider = Provider<ConnectionCheck>((ref) {
       ref.watch(atrustHttpClientProvider),
       AtrustSystem.test,
     ),
-    keeper: ref.watch(atrustTestKeeperProvider),
+    keeper: ref.watch(atrustKeeperProvider(AtrustSystem.test)),
     user: atrustTestUser,
     clock: ref.watch(clockProvider),
   );

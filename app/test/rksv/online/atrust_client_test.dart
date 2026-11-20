@@ -431,6 +431,8 @@ void main() {
             'Die Anmeldung bei A-Trust ist abgelaufen.',
         AtrustProblem.server: 'A-Trust meldet einen Fehler.',
         AtrustProblem.unreadable: 'Die Antwort von A-Trust war nicht lesbar.',
+        AtrustProblem.noCredentials: 'Die Zugangsdaten von A-Trust fehlen.',
+        AtrustProblem.refused: 'A-Trust hat die Signatur abgelehnt.',
       };
       for (final e in s.entries) {
         expect(AtrustException(e.key).sentence, e.value);
