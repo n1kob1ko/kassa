@@ -8,10 +8,16 @@
          selbst mit. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- Keine Sicherung und keine Übertragung der App-Daten durch Android:
+         Eine zurückgespielte Datenbank ohne ihre Schlüssel im Keystore wäre
+         eine Kassa, die nicht verkaufen kann. Ein neues Tablet bekommt seine
+         Daten vom Server ("Neu einspielen"). -->
     <application
         android:label="Kassa"
         android:name=".KassaApplication"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
