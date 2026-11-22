@@ -42,6 +42,8 @@ Steht dort "Nicht eingerichtet" oder "Außer Betrieb": In Ordnung, weiter mit A3
 
 Steht dort "Probe" oder "Online-Probe": Zuerst bei "Probe beenden" auf "Beenden" tippen und in der Frage "Beenden" wählen. Die Kassa druckt einen Schlussbeleg. Dann weiter mit A3.
 
+Steht dort "Karten-Probe": Die Probe mit einer Karte läuft noch von einem früheren Durchgang. Steckt dieselbe Testkarte im Leser, mach gleich mit A5 weiter. Sonst steck die Testkarte ein und beende die Probe wie in A10, dann weiter mit A3.
+
 Steht dort "In Betrieb": Hör hier auf und schreib mir.
 
 Das solltest du sehen: In der Karte "Signatur" stehen jetzt unter anderem die Zeilen "Zum Ausprobieren einschalten", "Mit A-Trust ausprobieren", "Mit Karte ausprobieren", "Signatur einrichten" und "Karte prüfen".
@@ -105,22 +107,40 @@ Das solltest du sehen: Der Verkauf geht durch, der Bon wird gedruckt. Unter dem 
 Das solltest du sehen: "Karten-Probe, Signatur ausgefallen".
 
 - [ ] Die Karte wieder in den Leser stecken.
+
+Jetzt endet der Ausfall auf einem von zwei Wegen. Diesmal nimmst du den Verkauf, beim nächsten Mal (unten beim Kartenleser) "Nochmal prüfen".
+
 - [ ] Einen Verkauf mit "Bar" abschließen.
 
 Das solltest du sehen: Der Bon hat wieder einen QR-Code ohne "Sicherheitseinrichtung ausgefallen". Der gelbe Hinweis verschwindet. In der Kassa oben unter "Bons" gibt es jetzt einen "Sammelbeleg" über 0 Euro.
-
-Statt mit einem Verkauf geht es auch mit "Nochmal prüfen" im gelben Hinweis. Dann steht kurz "Die Signatur geht wieder." Steht "Geht noch nicht.", warte einen Augenblick und tippe noch einmal.
 
 - [ ] Jetzt den ganzen Kartenleser vom Verteiler abziehen und einen Verkauf machen.
 
 Das solltest du sehen: Wie oben, nur steht als Grund "Kein Kartenleser gefunden."
 
 - [ ] Den Leser wieder anstecken. Aufschreiben, ob Android ein Fenster zeigt oder nach der Erlaubnis fragt.
-- [ ] Im gelben Hinweis auf "Nochmal prüfen" tippen. Fragt Android nach der Erlaubnis: erlauben.
+- [ ] Diesmal keinen Verkauf machen, sondern im gelben Hinweis auf "Nochmal prüfen" tippen. Fragt Android nach der Erlaubnis: erlauben.
 
-Das solltest du sehen: "Die Signatur geht wieder." und ein neuer "Sammelbeleg". Steht als Grund "Der Zugriff auf den Kartenleser ist nicht erlaubt.", tipp noch einmal auf "Nochmal prüfen" und erlaube den Zugriff im Fenster von Android. Schreib auf, dass das passiert ist.
+Das solltest du sehen: Kurz "Die Signatur geht wieder." und ein neuer "Sammelbeleg". Steht "Geht noch nicht.", schau dir den Grund im gelben Hinweis an. Er nennt immer den letzten Versuch. Steht dort "Der Zugriff auf den Kartenleser ist nicht erlaubt.", erlaube den Zugriff im Fenster von Android und tipp dann noch einmal auf "Nochmal prüfen". Schreib auf, dass das passiert ist. Steht ein anderer Grund, warte einen Augenblick und tipp noch einmal.
 
-## A8. Tablet neu starten
+## A8. Karte kurz ziehen, Bildschirm aus, Fenster von Android
+
+Hier sammelst du drei Dinge über die echte Hardware. Mach nach jedem Punkt genau einen Verkauf mit "Bar".
+
+- [ ] Die Karte ziehen und sofort wieder stecken, ohne Verkauf dazwischen. Dann einen Verkauf abschließen.
+
+Das solltest du sehen: Der Bon hat einen QR-Code ohne "Sicherheitseinrichtung ausgefallen". Aufschreiben, ob das so war.
+
+- [ ] Das Tablet zehn Minuten liegen lassen, bis der Bildschirm dunkel ist. Dann den Bildschirm wieder einschalten, dich anmelden, wenn die Kassa fragt, und einen Verkauf abschließen.
+
+Das solltest du sehen: Der Bon hat einen QR-Code ohne "Sicherheitseinrichtung ausgefallen". Aufschreiben, ob das so war und wie lange der Verkauf gedauert hat: sofort, etwa eine Sekunde, oder länger.
+
+- [ ] Den Kartenleser vom Verteiler abziehen und wieder anstecken. Fragt Android, ob die Kassa den Kartenleser verwenden darf: einmal auf "Abbrechen" tippen. Aufschreiben, ob das Fenster sofort wieder kommt.
+- [ ] Kommt das Fenster wieder: diesmal erlauben. Kommt es nicht: einen Verkauf abschließen (er bekommt den Vermerk "Sicherheitseinrichtung ausgefallen", als Grund steht "Der Zugriff auf den Kartenleser ist nicht erlaubt."), dann im gelben Hinweis auf "Nochmal prüfen" tippen und im Fenster von Android erlauben.
+
+Das solltest du sehen: Am Ende ist kein gelber Hinweis mehr da, und der nächste Bon hat einen QR-Code ohne "Sicherheitseinrichtung ausgefallen".
+
+## A9. Tablet neu starten
 
 - [ ] Das Tablet ganz neu starten. Karte und Leser bleiben stecken.
 - [ ] Die Kassa öffnen und dich anmelden.
@@ -129,7 +149,7 @@ Das solltest du sehen: "Die Signatur geht wieder." und ein neuer "Sammelbeleg". 
 
 Das solltest du sehen: Die Kassa fragt nicht nach der PIN. Der Bon hat einen QR-Code ohne "Sicherheitseinrichtung ausgefallen". Steht doch der gelbe Hinweis da: Grund abschreiben, auf "Nochmal prüfen" tippen und aufschreiben, was passiert.
 
-## A9. Probe beenden
+## A10. Probe beenden
 
 - [ ] In den Einstellungen in der Karte "Signatur" bei "Probe beenden" auf "Beenden" tippen.
 - [ ] In der Frage "Probe-Signatur beenden?" auf "Beenden" tippen.
@@ -138,7 +158,7 @@ Das solltest du sehen: Die Kassa druckt einen Schlussbeleg, signiert von der Tes
 
 - [ ] Die Testkarte aus dem Leser nehmen.
 
-## A10. Was du mir schickst
+## A11. Was du mir schickst
 
 Hier im Chat:
 
@@ -146,7 +166,8 @@ Hier im Chat:
 - [ ] Die Dauer der Probe-Unterschrift aus A3.
 - [ ] Ob die Kassa nur ein einziges Mal nach der PIN gefragt hat (in A3), oder auch später.
 - [ ] Wie lange ein Bon gedauert hat: sofort, etwa eine Sekunde, oder länger.
-- [ ] Ob Android nach dem Wiederanstecken des Lesers (A7) und nach dem Neustart (A8) wieder nach der Erlaubnis gefragt hat, und ob du "Immer für dieses Gerät öffnen" gesehen hast.
+- [ ] Ob Android nach dem Wiederanstecken des Lesers (A7) und nach dem Neustart (A9) wieder nach der Erlaubnis gefragt hat, und ob du "Immer für dieses Gerät öffnen" gesehen hast.
+- [ ] Aus A8: ob der Bon nach dem kurzen Ziehen der Karte signiert war; ob der Bon nach zehn Minuten dunklem Bildschirm signiert war und wie lange er gedauert hat; ob das Fenster von Android nach "Abbrechen" sofort wieder kam.
 - [ ] Das Foto vom Testbon mit dem QR-Code (A6).
 - [ ] Was die Kassa gezeigt hat, während die Karte draußen war (A7): der Grund im gelben Hinweis und die Pille.
 - [ ] Eine kurze Rückmeldung: Was war unklar, wo hast du gezögert, was hast du erwartet und nicht gesehen?
@@ -189,7 +210,9 @@ Steht dort "Nicht eingerichtet": In Ordnung.
 
 Steht dort "Probe" oder "Online-Probe": Auch in Ordnung. Die Probe endet am Tag beim Schritt "In Betrieb nehmen" von selbst mit einem Schlussbeleg.
 
-Steht dort "Karten-Probe": Läuft noch die Probe mit der Testkarte, beende sie jetzt, solange die Testkarte im Leser steckt (wie in A9). Die Karte von YICHI ist eine andere Karte, mit ihr kann die Probe der Testkarte nicht weiter signieren.
+Steht dort "Karten-Probe": Läuft noch die Probe mit der Testkarte, beende sie jetzt, solange die Testkarte im Leser steckt (wie in A10). Die Karte von YICHI ist eine andere Karte, mit ihr kann die Probe der Testkarte nicht weiter signieren.
+
+Hast du die Testkarte nicht mehr: Die Probe endet am Tag beim Schritt "In Betrieb nehmen" von selbst. Ihr Schlussbeleg hat dann den Vermerk "Sicherheitseinrichtung ausgefallen", weil die Testkarte nicht im Leser steckt. Das schadet nicht, es ist ein Testbon.
 
 ## B3. Karte und PIN
 
@@ -209,7 +232,9 @@ Das solltest du sehen: Die Seite "Karte und PIN" mit den fünf Zeilen wie in A3.
 
 Das solltest du sehen: "Unterschrift erstellt und geprüft. Dauer: … Sekunden." und darunter mit Haken "Karte und PIN sind gespeichert." Die PIN der Testkarte gilt für diese Karte nicht, darum fragt die Kassa hier neu.
 
-Steht "Die PIN war falsch. Noch 2 Versuche.": Hör auf. Nicht raten. Steck die Karte zurück in die alte Kassa und erstelle dort einen Bon mit der richtigen PIN, damit der Zähler der Karte wieder voll ist. Dann schreib mir.
+Steht "Die PIN war falsch. Noch 2 Versuche.": Hör auf. Nicht raten. Steck die Karte zurück in die alte Kassa und erstelle dort einen normalen Bon (die alte Kassa kennt die richtige PIN), damit der Zähler der Karte wieder voll ist. Dann schreib mir.
+
+Steht später auf der Seite "Karte und PIN" in der Zeile "Probe-Unterschrift" "Die Karte hat vermutlich nur noch einen Versuch." mit der Taste "Zähler ist wieder voll": Tipp die Taste nur, wenn die alte Kassa danach einen normalen Bon mit dieser Karte gemacht hat. Sonst nichts antippen und mir schreiben.
 
 ## B4. Angaben für FinanzOnline
 
@@ -241,8 +266,10 @@ Klappt das Drucken nicht, steht über den Tasten ein Satz des Druckers. Dann abs
 
 Melde heute noch nichts bei FinanzOnline an. Das kommt erst nach dem Start (B12).
 
-- [ ] Oben links auf "Zurück" tippen (du bist wieder bei "Karte und PIN"), noch einmal "Zurück" (die Wahl "Womit signiert die Kassa?") und noch einmal "Zurück" (die Einstellungen).
-- [ ] Die Karte von YICHI wieder in die alte Kassa stecken.
+- [ ] Oben links auf "Zurück" tippen. Du bist wieder bei "Karte und PIN", und die Kassa liest die Karte noch einmal. Die Karte bleibt stecken.
+- [ ] Warten, bis alle fünf Zeilen grün sind und "Karte und PIN sind gespeichert." steht.
+- [ ] Noch einmal "Zurück" (die Wahl "Womit signiert die Kassa?") und noch einmal "Zurück" (die Einstellungen).
+- [ ] Erst jetzt die Karte von YICHI aus dem Leser nehmen und wieder in die alte Kassa stecken.
 
 Hier hörst du für heute auf. An der neuen Kassa ist nichts passiert. Die Angaben bleiben dieselben, bis du die Kassa in Betrieb nimmst.
 
@@ -259,6 +286,8 @@ Bevor du an der alten Kassa etwas abschließt, prüfst du, dass Karte und PIN am
 - [ ] Auf der Seite "Karte und PIN" warten, bis alle fünf Zeilen grün sind. Bei der fünften steht "Karte und PIN sind gespeichert." Die Kassa macht die Probe-Unterschrift mit der gespeicherten PIN selbst, ohne Zahlenfeld.
 
 Hat eine Zeile ein rotes Kreuz: Hör hier auf. Schließ die alte Kassa nicht ab. Satz abschreiben und mir schicken.
+
+Steht in der fünften Zeile statt "Karte und PIN sind gespeichert." die Taste "PIN eingeben": Gib die PIN der Karte von YICHI ein wie in B3 und warte, bis die Zeile grün ist. Nicht raten.
 
 - [ ] Auf "Weiter" tippen.
 - [ ] Auf der Seite "Angaben für FinanzOnline" die "Kassenidentifikationsnummer" mit deinem Zettel vergleichen, Zeichen für Zeichen.
@@ -292,18 +321,20 @@ Das solltest du sehen: Die alte Kassa ist fertig, und deine Steuerberatung weiß
 
 **Noch einmal: Dieser Schritt lässt sich nicht zurücknehmen. Ab jetzt ist jeder Bon ein echter Bon für das Finanzamt. Die Kassen-ID ist danach verbraucht. Mach ihn nur, wenn deine Steuerberatung Bescheid weiß und die alte Kassa fertig ist.**
 
+Ist die Seite "Angaben für FinanzOnline" aus B6 nicht mehr offen: In der Karte "Signatur" bei "Signatur einrichten" auf "Einrichten" tippen, dann auf "Signaturkarte am Kartenleser". Warten, bis alle fünf Zeilen grün sind, und auf "Weiter" tippen.
+
 - [ ] Auf der Seite "Angaben für FinanzOnline" unten rechts auf "Jetzt in Betrieb nehmen" tippen.
 
 Das solltest du sehen: Ein Fenster "Jetzt in Betrieb nehmen?" mit dem Satz "Das lässt sich nicht zurücknehmen. Ab jetzt ist jeder Bon ein echter Bon für das Finanzamt." Läuft eine Probe, steht dazu "Die laufende Probe endet mit einem Schlussbeleg." Mit "Abbrechen" bleibt alles, wie es war.
 
 - [ ] Auf "In Betrieb nehmen" tippen.
-- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann etwas dauern. In der Zeit sind die anderen Tasten gesperrt.
+- [ ] Warten und nichts antippen, bis die Seite sich schließt. Das kann bis zu einer halben Minute dauern. Tipp in dieser Zeit nichts an, auch wenn sich nichts zu bewegen scheint.
 
 Das solltest du sehen: Du bist wieder in den Einstellungen, und dort steht "Die Kassa ist in Betrieb." Die Pille in der Zeile "Signatur der Bons" heißt jetzt "In Betrieb". Darunter steht "Signatur mit der Karte. Kassen-ID" mit deiner Kennung. Die Kassa druckt den Startbeleg. Unter "Zu erledigen" stehen zwei Aufgaben: "Startbeleg mit der App "BMF Belegcheck" prüfen." und "Signatureinheit und Kassa bei FinanzOnline anmelden, bis" mit einem Datum eine Woche nach heute. In der Karte stehen jetzt die Zeilen "Karte und PIN", "Nullbeleg drucken", "Protokoll ausgeben", "Kassa außer Betrieb nehmen" und "Karte prüfen".
 
 Steht stattdessen über den Tasten ein Satz der Karte, zum Beispiel "Keine Karte im Kartenleser." oder "Kein Kartenleser gefunden.": An der neuen Kassa ist nichts passiert. Prüf Karte, Leser und Verteiler und tippe noch einmal auf "Jetzt in Betrieb nehmen", dann wieder auf "In Betrieb nehmen".
 
-Steht "Die Karte hat die PIN abgelehnt." oder ein anderer Satz, oder scheitert auch der zweite Versuch: Den Satz abschreiben, kein Foto. Mir schreiben und deiner Steuerberatung Bescheid sagen. An der neuen Kassa ist nichts passiert, sie ist wie vorher. Die alte Kassa ist aber schon abgeschlossen. Verkauf dann nicht weiter, als wäre nichts passiert. Versuch es erst wieder, wenn wir gesprochen haben. Gib keine PIN auf gut Glück ein.
+Steht "Die Karte hat die PIN abgelehnt." oder ein anderer Satz, oder scheitert auch der zweite Versuch: Den Satz abschreiben, kein Foto. Die neue Kassa ist nicht in Betrieb und ist wie vorher. Die alte Kassa ist aber schon abgeschlossen. Sag sofort deiner Steuerberatung Bescheid und mach mit ihr aus, wie du Belege ausstellst, bis die neue Kassa in Betrieb ist. Schreib mir mit dem Satz. Versuch es nicht immer wieder, und gib nie eine PIN auf gut Glück ein.
 
 Kommt kein Startbeleg aus dem Drucker: In der Kassa oben auf "Bons" tippen, den "Startbeleg" antippen und dort drucken.
 
@@ -374,7 +405,9 @@ Diesen Satz siehst du in der Karte "Signatur" und oben in der Kassa im gelben Hi
 - [ ] In der Zeile "Probe-Unterschrift" die richtige PIN eingeben und auf "Unterschrift erstellen" tippen.
 - [ ] Ist die Zeile grün und steht "Karte und PIN sind gespeichert.", auf "Fertig" tippen.
 
-Das solltest du sehen: Der nächste Bon ist wieder signiert, davor entsteht ein "Sammelbeleg".
+Das solltest du sehen: Die Kassa versucht gleich den "Sammelbeleg". Der gelbe Hinweis verschwindet, und der nächste Bon ist wieder signiert.
+
+Steht in der Zeile "Probe-Unterschrift" statt "PIN eingeben" der Satz "Die Karte hat vermutlich nur noch einen Versuch." oder "Die PIN war falsch. Die Karte hat nur noch einen Versuch.": Die Kassa schickt die PIN dann nicht mehr. Mit der Taste "Zähler ist wieder voll" und danach "Ja, Zähler ist wieder voll" setzt du das zurück. Tu das nur, wenn die alte Kassa danach einen normalen Bon mit dieser Karte gemacht hat, oder wenn du die PIN ganz sicher weißt. Sonst schreib mir zuerst.
 
 Mitarbeiter ohne Chef-Recht sehen den Satz, aber nicht die Taste "PIN neu eingeben". Sie verkaufen normal weiter.
 
