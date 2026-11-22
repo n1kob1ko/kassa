@@ -55,8 +55,9 @@ OnlineUnitOf onlineSignatureUnitOf(Ref ref) => (chain, certificate) async {
 
 /// Die Karten-Einheiten der App: eine [CardSignatureUnit] mit Kennung und
 /// Zertifikat der Kette über den einen Halter der App
-/// ([cardSignerProvider]), bei `cardTest` und bei `card`. Der Halter
-/// entsteht erst beim ersten Bon einer solchen Kette.
+/// ([cardSignerProvider]), bei `cardTest` und bei `card`. Den Halter legt
+/// der erste Bon einer solchen Kette an oder schon "Karte prüfen"
+/// ([cardCheckProvider]); das Anlegen öffnet den Leser nicht.
 CardUnitOf cardSignatureUnitOf(Ref ref) => (chain, certificate) async {
   switch (RksvUnit.values.asNameMap()[chain.unit]) {
     case RksvUnit.cardTest || RksvUnit.card:

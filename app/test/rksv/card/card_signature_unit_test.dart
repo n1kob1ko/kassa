@@ -181,6 +181,44 @@ void main() {
     expect(signature, expected);
   });
 
+  test('DER mit einer negativen Zahl: der Satz, keine Signatur', () async {
+    // Ein Eingang, dessen r mit gesetztem obersten Bit beginnt; die Karte
+    // lässt die Null davor weg.
+    var input = '';
+    for (var i = 0; ; i++) {
+      input = '$_input$i';
+      if (testSigner(_hashOf(input))[0] & 0x80 != 0) break;
+    }
+    final rig = _Rig(
+      signer: (hash) {
+        final rs = testSigner(hash);
+        final der = _der(rs);
+        final sPart = der.sublist(2 + 2 + 33);
+        return Uint8List.fromList([
+          0x30,
+          2 + 32 + sPart.length,
+          0x02,
+          32,
+          ...rs.sublist(0, 32),
+          ...sPart,
+        ]);
+      },
+    );
+    await rig.store();
+    await expectLater(rig.unit.sign(input), _failure(_mismatch));
+  });
+
+  test('aus DER zurückgegebene 64 Bytes passen zum Zertifikat', () async {
+    final rig = _Rig(signer: (hash) => _der(testSigner(hash)));
+    await rig.store();
+    final signature = await rig.unit.sign(_input);
+    expect(signature, hasLength(64));
+    expect(
+      CardCertificate.parse(testCertificate).verify(_hashOf(_input), signature),
+      isTrue,
+    );
+  });
+
   test('falsches Zertifikat: der Satz, keine Signatur', () async {
     final rig = _Rig(certificate: _otherCertificate());
     await rig.store();

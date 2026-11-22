@@ -198,4 +198,67 @@ void main() {
     expect(derTotalLength(Uint8List.fromList([0x30, 0x81, 0x90])), 147);
     expect(derTotalLength(testCertificate), testCertificate.length);
   });
+
+  group('signatureAsRs', () {
+    Uint8List sigOf(int fill) => testSigner(_sha(fill));
+
+    test('64 Bytes bleiben, wie sie sind (eine Kopie)', () {
+      final sig = sigOf(1);
+      final rs = signatureAsRs(sig)!;
+      expect(rs, sig);
+      expect(identical(rs, sig), isFalse);
+    });
+
+    test('DER wird zu 64 Bytes r || s, auch mit kurzem r oder s', () {
+      var shortFound = false;
+      for (var fill = 0; fill < 256 && !shortFound; fill++) {
+        final sig = sigOf(fill);
+        expect(signatureAsRs(_der(sig)), sig, reason: 'fill $fill');
+        shortFound = sig[0] == 0 || sig[32] == 0;
+      }
+      expect(shortFound, isTrue, reason: 'kein kurzes r oder s gefunden');
+    });
+
+    test('eine negative Zahl (oberstes Bit ohne Null davor) ergibt null', () {
+      for (var fill = 0; fill < 256; fill++) {
+        final sig = sigOf(fill);
+        if (sig[0] & 0x80 == 0) continue;
+        final r = sig.sublist(0, 32);
+        final der = _der(sig);
+        // Die Null vor r weglassen.
+        final sBody = der.sublist(2 + 2 + 33);
+        final negative = Uint8List.fromList([
+          0x30,
+          2 + 32 + sBody.length,
+          0x02,
+          32,
+          ...r,
+          ...sBody,
+        ]);
+        expect(signatureAsRs(negative), isNull);
+        return;
+      }
+      fail('kein r mit oberstem Bit gefunden');
+    });
+
+    test('Müll, Reste und zu große Zahlen ergeben null', () {
+      final der = _der(sigOf(2));
+      expect(signatureAsRs(Uint8List(0)), isNull);
+      expect(signatureAsRs(sigOf(2).sublist(0, 63)), isNull);
+      expect(signatureAsRs(Uint8List.fromList([...der, 0])), isNull);
+      expect(signatureAsRs(der.sublist(0, der.length - 1)), isNull);
+      final big = Uint8List.fromList([
+        0x30,
+        0x26,
+        0x02,
+        0x21,
+        0x01,
+        ...List.filled(32, 0),
+        0x02,
+        0x01,
+        0x01, //
+      ]);
+      expect(signatureAsRs(big), isNull);
+    });
+  });
 }

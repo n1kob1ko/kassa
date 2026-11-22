@@ -47,12 +47,14 @@ class CardSignatureUnit implements SignatureUnit {
         Uint8List.fromList(ascii.encode(signingInput)),
       );
       final answer = await _signer.sign(hash);
-      // verify liest 64 Bytes r|s und DER; danach steht fest, dass die
-      // Antwort eines von beiden ist.
-      if (!certificate.verify(hash, answer)) {
+      // Erst in 64 Bytes r|s bringen, dann genau diese prüfen: Gespeichert
+      // wird, was geprüft wurde.
+      final signature =
+          signatureAsRs(answer) ?? (throw const SignatureFailure(_mismatch));
+      if (!certificate.verify(hash, signature)) {
         throw const SignatureFailure(_mismatch);
       }
-      return _rs(answer) ?? (throw const SignatureFailure(_mismatch));
+      return signature;
     } on SignatureFailure {
       rethrow;
     } on CardSignException catch (e) {
@@ -64,36 +66,4 @@ class CardSignatureUnit implements SignatureUnit {
 
   @override
   String toString() => 'CardSignatureUnit';
-}
-
-/// [answer] als 64 Bytes r|s: so, wie es ist, wenn es 64 Bytes hat, sonst
-/// aus DER (`30 len 02 rl r 02 sl s`); `null`, wenn es keines von beiden
-/// ist oder eine Zahl länger als 32 Bytes wäre.
-Uint8List? _rs(Uint8List answer) {
-  if (answer.length == 64) return Uint8List.fromList(answer);
-  if (answer.length < 8 || answer[0] != 0x30) return null;
-  var pos = 1;
-  var length = answer[pos++];
-  if (length == 0x81) {
-    length = answer[pos++];
-  } else if (length >= 0x80) {
-    return null;
-  }
-  if (pos + length != answer.length) return null;
-  final out = Uint8List(64);
-  for (final offset in [0, 32]) {
-    if (pos + 2 > answer.length || answer[pos] != 0x02) return null;
-    var size = answer[pos + 1];
-    pos += 2;
-    if (size == 0 || pos + size > answer.length) return null;
-    var start = pos;
-    pos += size;
-    while (size > 1 && answer[start] == 0) {
-      start++;
-      size--;
-    }
-    if (size > 32) return null;
-    out.setRange(offset + 32 - size, offset + 32, answer, start);
-  }
-  return pos == answer.length ? out : null;
 }

@@ -2229,6 +2229,7 @@ void main() {
         overrides: [
           readerTransportProvider.overrideWithValue(reader),
           pinGuardProvider.overrideWithValue(MemoryPinGuard()),
+          rksvSecretsProvider.overrideWithValue(MemoryRksvSecrets()),
         ],
       );
       addTearDown(container.dispose);

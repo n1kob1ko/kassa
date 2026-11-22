@@ -285,6 +285,24 @@ Uint8List _publicKey(ASN1Object spki) {
   return point;
 }
 
+/// Eine ECDSA-Unterschrift als genau 64 Bytes r || s, jede Zahl links mit
+/// Nullen auf 32 Bytes. Liest dieselben Formen wie [CardCertificate.verify]:
+/// 64 Bytes r || s (als Kopie zurück) oder DER (`30 len 02 .. 02 ..`).
+/// `null` für alles andere, auch für eine negative oder zu große Zahl.
+Uint8List? signatureAsRs(Uint8List sig) {
+  final rs = _decodeSignature(sig);
+  if (rs == null) return null;
+  final (r, s) = rs;
+  if (r.bitLength > 256 || s.bitLength > 256) return null;
+  final out = Uint8List(64);
+  for (final (offset, v) in [(0, r), (32, s)]) {
+    for (var i = 31; i >= 0; i--) {
+      out[offset + i] = (v >> (8 * (31 - i))).toUnsigned(8).toInt();
+    }
+  }
+  return out;
+}
+
 (BigInt, BigInt)? _decodeSignature(Uint8List sig) {
   if (sig.length == 64) {
     return (_unsigned(sig.sublist(0, 32)), _unsigned(sig.sublist(32)));
