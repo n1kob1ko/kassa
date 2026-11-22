@@ -77,6 +77,51 @@ FakeCard _ownCertificateCard() {
   );
 }
 
+/// Ein erfundener zweiter Schlüssel, nur für Karte B.
+final _keyB = BigInt.parse(
+  '1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988',
+  radix: 16,
+);
+
+Uint8List _signerB(Uint8List sha256) {
+  final params = ECCurve_secp256r1();
+  final signer = ECDSASigner(null, HMac(SHA256Digest(), 64));
+  signer.init(
+    true,
+    PrivateKeyParameter<ECPrivateKey>(ECPrivateKey(_keyB, params)),
+  );
+  final sig = signer.generateSignature(sha256) as ECSignature;
+  final out = Uint8List(64);
+  for (final (offset, v) in [(0, sig.r), (32, sig.s)]) {
+    for (var i = 31; i >= 0; i--) {
+      out[offset + i] = (v >> (8 * (31 - i))).toUnsigned(8).toInt();
+    }
+  }
+  return out;
+}
+
+/// Karte B: eigener Schlüssel, eigenes Zertifikat (Seriennummer 4712, hex
+/// 1268) und eigene Kartennummer.
+FakeCard _cardB() {
+  final params = ECCurve_secp256r1();
+  final atr = bytesOf(rigCardAtr);
+  return FakeCard(
+    atr: atr,
+    profile: profileForAtr(atr)!,
+    pin: rigCardPin,
+    certificate: buildSelfSignedCertificate(
+      key: ECPrivateKey(_keyB, params),
+      publicKey: ECPublicKey(params.G * _keyB, params),
+      serial: BigInt.from(4712),
+      commonName: 'Beispiel-Imbiss Signaturkarte B',
+      from: DateTime.utc(2026),
+    ),
+    signer: _signerB,
+    number: Uint8List.fromList([9, 8, 7, 6, 5, 4, 3, 2]),
+    verifyPerSignature: false,
+  );
+}
+
 void main() {
   late RksvRig rig;
   late CardFacts facts;
@@ -321,6 +366,54 @@ void main() {
       await expectLiveChain(2, shown.cashBoxId);
       // Start und Schluss der Probe, Start der Kette card.
       expect(card().signCount, 3);
+    });
+
+    test('D2: in Betrieb mit Karte B, während die Karten-Probe mit Karte A '
+        'läuft: der Schlussbeleg der Probe trägt den Vermerk, die Kette card '
+        'beginnt mit Karte B, gespeichert ist die PIN von Karte B', () async {
+      await rig.service.enableCardProbe(staff: rig.chef, facts: facts);
+      expect(card().signCount, 1);
+      final cardA = card();
+
+      // Karte A raus, Karte B rein; "Karte und PIN" speichert die PIN von B.
+      final cardB = _cardB();
+      rig.cardReader!.card = cardB;
+      await rig.storeCardPin();
+      rig.cardSigner!.pinChanged();
+      final factsB = rig.cardFacts();
+      expect(factsB.serialHex, '1268');
+
+      final shown = await rig.service.prepareCardSetup(facts: factsB);
+      final start = await rig.service.goLiveWithCard(
+        staff: rig.chef,
+        facts: factsB,
+      );
+      expect(start.rksv!.damaged, isFalse);
+
+      // Die Probe: Start von Karte A, Schluss mit Vermerk (A steckt nicht).
+      expect(await rig.entryKinds(1), ['start', 'closing']);
+      expect([for (final e in await rig.entries(1)) e.damaged], [false, true]);
+      expect((await rig.chainRow(1)).endedAt, isNotNull);
+      expect(cardA.signCount, 1);
+
+      // Die Kette card mit Karte B.
+      final row = await rig.chainRow(2);
+      expect((row.mode, row.unit, row.certSerial), ('live', 'card', '1268'));
+      expect(row.cashBoxId, shown.cashBoxId);
+      expect(await rig.entryKinds(2), ['start']);
+      // Karte B unterschrieb auch den Schluss der Probe; die Unterschrift
+      // passt nicht zum Zertifikat von Karte A, daher der Vermerk.
+      expect(cardB.signCount, 2);
+      await rig.verifyChain(2);
+      final state = await rig.rksv.current();
+      expect(
+        (state.mode, state.chain, state.outage),
+        (RksvMode.live, 2, false),
+      );
+
+      final pin = (await rig.secrets.cardPin())!;
+      expect(pin.numberHex, factsB.numberHex);
+      expect(pin.numberHex, isNot(facts.numberHex));
     });
 
     test(

@@ -303,9 +303,12 @@ void main() {
       // nächste Bon signiert, davor der Sammelbeleg.
       card.removed = true;
       tick();
-      await rig.sell('ausfall-1', const Cart.empty().add(cola));
+      final outage1 = await rig.sell('ausfall-1', const Cart.empty().add(cola));
       tick();
-      await rig.sell('ausfall-2', const Cart.empty().add(teigtaschen));
+      final outage2 = await rig.sell(
+        'ausfall-2',
+        const Cart.empty().add(teigtaschen),
+      );
       expect(
         (await rig.stateRow()).outageReason,
         'Keine Karte im Kartenleser.',
@@ -338,6 +341,15 @@ void main() {
       expect(
         [for (final e in entries) e.damaged].where((d) => d),
         hasLength(2),
+      );
+      // Beschädigt sind genau die zwei Bons, die bei gezogener Karte
+      // entstanden: die Einträge 6 und 7, direkt vor dem Sammelbeleg.
+      expect(
+        [
+          for (final e in entries)
+            if (e.damaged) (e.position, e.receiptId),
+        ],
+        [(6, outage1.id), (7, outage2.id)],
       );
       // Signiert hat nur die Karte: jeder Eintrag außer den zwei im Ausfall.
       expect(card.signCount, entries.length - 2);

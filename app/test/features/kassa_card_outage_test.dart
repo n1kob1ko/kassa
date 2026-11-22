@@ -5,6 +5,7 @@
 // signiert. Kassen-Kennung, AES-Schlüssel und PIN sind erfunden.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -80,6 +81,17 @@ class _RecordingService extends RksvService {
   }
 }
 
+/// Zählt, wie oft der AES-Schlüssel einer Kette gelesen wird.
+class _CountingSecrets extends MemoryRksvSecrets {
+  int aesReads = 0;
+
+  @override
+  Future<Uint8List?> aesKey(int chain) {
+    aesReads++;
+    return super.aesKey(chain);
+  }
+}
+
 typedef _Rig = ({
   FakeCardReader reader,
   AskingReader asking,
@@ -89,10 +101,10 @@ typedef _Rig = ({
 
 /// Die Kassa (Anna angemeldet) mit der nachgebauten Karte im Leser. Fehlt
 /// die Erlaubnis für den Leser, fragt Android, bis der Test antwortet.
-Future<_Rig> _kassa(WidgetTester t) async {
+Future<_Rig> _kassa(WidgetTester t, {MemoryRksvSecrets? secrets}) async {
   final reader = FakeCardReader(card: testSignatureCard());
   final asking = AskingReader(reader);
-  final secrets = MemoryRksvSecrets();
+  secrets ??= MemoryRksvSecrets();
   final events = <String>[];
   final List<Override> overrides = [
     ...await memoryOverrides(),
@@ -232,6 +244,28 @@ void main() {
     await t.pumpAndSettle();
     expect(_warmUps(rig), 2);
   });
+
+  for (final (unit, primes) in [
+    (RksvUnit.card, true),
+    (RksvUnit.cardTest, false),
+  ]) {
+    testWidgets('D1: Start der Kassa mit Kette ${unit.name}: der AES-Schlüssel '
+        '${primes ? 'wird' : 'wird nicht'} im Voraus gelesen', (t) async {
+      final secrets = _CountingSecrets();
+      final rig = await _kassa(t, secrets: secrets);
+      await _startCardChain(t, rig, unit: unit);
+      await pumpKassa(t, sameDatabase: true);
+      secrets.aesReads = 0;
+      await pumpKassa(t, sameDatabase: true);
+      await t.pumpAndSettle();
+      expect(secrets.aesReads, primes ? 1 : 0);
+      // Der Bon danach liest ihn in Betrieb nicht noch einmal (Q17).
+      await sellCash(t);
+      await t.pumpAndSettle();
+      expect(await _lastDamaged(t), isFalse);
+      if (primes) expect(secrets.aesReads, 1);
+    });
+  }
 
   testWidgets('ohne Kette mit Karte: kein Aufwärmen', (t) async {
     final rig = await _kassa(t);
