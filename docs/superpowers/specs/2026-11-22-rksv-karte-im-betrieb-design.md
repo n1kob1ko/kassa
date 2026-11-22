@@ -163,3 +163,83 @@ Namen von Klassen und Dateien, die genaue Form der gespeicherten Werte, Abständ
 - Die echte Karte von YICHI: Art und Ablauf (ACOS-ID 2.1 und CardOS 5.3 müssen bis Mai 2027 getauscht werden).
 - Bericht aus "Karte prüfen" mit der Testkarte (Dauer der Unterschrift).
 - Die sechs Fragen aus 1.7.0.
+
+## 10. Abweichungen beim Bau
+
+Stand: 22.11.2026, nach den sieben Tasks des Bauplans `docs/superpowers/plans/2026-11-22-rksv-s2c-karte-im-betrieb.md`. Wo dieser Abschnitt etwas anderes sagt als die Abschnitte 1 bis 9, gilt dieser Abschnitt.
+
+### 10.1 Entscheidungen im Plan
+
+- **C1:** Keine Migration, die Datenbank bleibt Version 6; `rksv_chains.unit` bekommt die Werte `cardTest` und `card`.
+- **C2:** Die PIN wird einmal je Sitzung geprüft, beim ersten Signieren und genau einmal mehr, wenn die Karte eine Unterschrift mit `6982` ablehnt.
+- **C3:** Die gespeicherte PIN gilt nur für die Karte (Kartenart und Kartennummer), mit der sie in "Karte und PIN" eine gültige Probe-Unterschrift geliefert hat.
+- **C4:** Eine beantwortete Ablehnung der PIN oder zwei PIN-Prüfungen ohne Antwort setzen "abgelehnt"; danach geht von selbst keine PIN mehr hinaus, auch nach einem Neustart. Der Zähler wird vor dem Senden geschrieben.
+- **C5:** Bei Ketten mit Karte gilt auch im Ausfall die Frist von 5 Sekunden; ohne Sitzung öffnet das Signieren selbst eine, die PIN prüft erst das Signieren.
+- **C6:** Beim Signieren öffnet der Halter den Leser nur mit schon gegebener Erlaubnis von Android; nur das Aufwärmen mit `ask: true` darf das Fenster von Android auslösen.
+- **C7:** Das Manifest meldet die App für USB-Geräte der Klasse 11 an; Kotlin bleibt, wie es ist.
+- **C8:** Kassen-ID: 1 bis 20 Zeichen aus A bis Z, 0 bis 9 und Bindestrich, groß geschrieben; geändert wird das `PendingSetup`, der AES-Schlüssel bleibt; Kennungen der Ketten dieses Tablets sind gesperrt.
+- **C9:** Eine Tastatur gibt es in zwei Dateien: `credentials_screen.dart` und `cash_box_id_sheet.dart`.
+- **C10:** Die Wege des Online-Betriebs behalten Namen und Parameter; die Karte bekommt `enableCardProbe`, `prepareCardSetup` und `goLiveWithCard` über demselben Kern.
+- **C11:** Bei der Karte gibt es keine Aussteller-Zertifikate: leere Liste in Kette und Protokoll; das Prüfwerkzeug bekommt das Zertifikat der Karte über seine Schlüsseldatei.
+- **C12:** Ein Ausfall über 48 Stunden bei `card` trägt "Grund: 2, Signatur- bzw. Siegelerstellung unmöglich oder fehlerhaft"; der Text der Online-Ketten bleibt.
+- **C13:** Während "Karte prüfen" oder "Karte und PIN" läuft, hat der Halter keine Sitzung; ein Bon in dieser Zeit ist ein Ausfall mit "Die Karte wird gerade geprüft."
+
+### 10.2 Entscheidungen während des Baus
+
+**Halter und PIN**
+
+- Vor jedem VERIFY fragt der Halter den PIN-Wächter von "Karte prüfen". Weiß der Wächter, dass die Karte nur noch einen Versuch hat, schickt der Halter keine PIN und meldet "Die Karte hat die PIN abgelehnt."; nach einer angenommenen PIN löscht er den Eintrag des Wächters. Scheitert das Lesen des Wächters, geht nichts hinaus. Abschnitt 6.3 sagte, der Wächter bleibe daneben, wie er ist; jetzt hält er auch den Halter zurück.
+- Jeder Aufruf des Halters in den geschützten Speicher hat eine Grenze von 2 Sekunden (`CardSigner.storageLimit`). Ein Speicher, der hängt, ist ein Ausfall ("Die Karte antwortet nicht."), nie eine blockierte Warteschlange.
+- Schließt der Halter gerade eine Sitzung, wartet ein neues Öffnen, bis das Schließen fertig ist.
+- Ein VERIFY, das die Karte mit etwas anderem als "angenommen" beantwortet, zählt vorsichtig: Andere Statuswörter als die der Ablehnung lassen den Zähler "ohne Antwort" erhöht stehen. In "Karte und PIN" markiert jede beantwortete Nicht-Annahme der gespeicherten PIN diese als abgelehnt.
+- Es gibt eine einzige Stelle, die die Unterschrift der Karte liest: `signatureAsRs` in `certificate.dart` macht aus der Antwort der Karte 64 Bytes; die Einheit prüft genau diese 64 Bytes und speichert sie.
+
+**Service**
+
+- `liveChainSerial` bleibt die Seriennummer einer Kette, die online über A-Trust signiert, und ist bei einer Kette mit Karte null (der Plan sagte anderes und wurde berichtigt); `cardChainSerial` liefert die Seriennummer der Karte. Sonst hielte "Verbindung prüfen" am echten System auf einer Kassa mit Karte jedes Konto von A-Trust für ein anderes Konto.
+- `changeCashBoxId` prüft in dieser Reihenfolge: in Betrieb oder keine vorbereiteten Angaben (Programmierfehler), Speicher lesbar, Form, dieselbe Kennung wie vorher (dann wird nichts geschrieben), Kennung schon von einer Kette dieser Kassa verwendet, Schreiben und Zurücklesen.
+- Scheitert der Start der Karten-Probe, bleibt der AES-Schlüssel der nicht entstandenen Kette im geschützten Speicher; der nächste Start überschreibt ihn (wie beim Online-Weg).
+- Die Aufgabe zu einem langen Ausfall in einer Karten-Probe trägt denselben Grund wie die Kette `card` (Grund 2). Abschnitt 6.5 nannte ihn nur für die Kette mit Karte im Betrieb.
+
+**"Karte und PIN"**
+
+- Ist schon eine PIN gespeichert, macht "Karte und PIN" die Probe-Unterschrift mit der gespeicherten PIN, ohne Zahlenfeld, damit die Angaben der Karte (Zertifikat, Seriennummer) für den nächsten Schritt da sind. Abschnitt 6.4 sagte nur, der Schritt zeige "Karte und PIN sind gespeichert." mit "Weiter". Die Probe ist dieselbe wie in "Karte prüfen": drei Runden mit je einem VERIFY, Runde zwei und drei nur, wenn die erste angenommen wurde.
+- Diese Probe markiert die gespeicherte PIN nur dann als abgelehnt, wenn sie gegen die Versuche der Karte gezählt hat (beantwortete Nicht-Annahme, oder VERIFY gesendet ohne Antwort), nicht, wenn Leser oder Karte vor dem VERIFY scheiterten oder die Unterschrift nach einem angenommenen VERIFY scheiterte.
+- `signAndStore` speichert eine PIN nur, wenn seine eigene Probe-Unterschrift gelaufen ist und Zeile 5 grün gemacht hat; eine frühere grüne Zeile zählt nicht.
+- Zeile 5 zeigt "wartet", bis das Nachsehen nach der gespeicherten PIN fertig ist; erst dann erscheint "PIN eingeben".
+- "Karte und PIN" hat "Nochmal prüfen" bekommen (die Sätze der Zeilen verweisen darauf) und ist eine Seite der Hülle wie die anderen Seiten der Einstellungen.
+
+**Wege und Texte**
+
+- Die Hilfe von "Signatur einrichten" heißt in jedem Zustand, der die Zeile zeigt, "Für den echten Betrieb, mit Signaturkarte oder A-Trust online."
+- Zurück: von "Angaben für FinanzOnline" (Karte) zu "Karte und PIN", von dort zur Wahl, von der Wahl zu den Einstellungen. "Zugangsdaten von A-Trust", von der Wahl aus geöffnet, führt zurück zur Wahl.
+- Beide Wege von "Angaben für FinanzOnline" haben bei der Kassen-ID die Taste "Ändern"; die Vergleichsbilder der Online-Seite haben sich genau um diese Taste geändert.
+- Auf dem Kartenweg heißt Schritt 2 rechts "Signaturkarte und Kassa bei FinanzOnline anmelden, spätestens eine Woche nach dem Start." Abschnitt 6.4 sagte "wie in 1.7.0" ("Signatureinheit"). Die Aufgabe nach dem Start sagt weiter "Signatureinheit und Kassa bei FinanzOnline anmelden, bis …".
+- Vor `goLiveWithCard` wartet der Bildschirm höchstens 20 Sekunden darauf, dass der Leser offen ist, und nimmt dann in jedem Fall in Betrieb; ohne Karte steht der Satz der Karte da, und die Kassa ist nicht in Betrieb.
+- Der Hinweis "Die Karte hat die PIN abgelehnt." mit "PIN neu eingeben" erscheint in der Karte "Signatur" auch während der Karten-Probe, und auch dann, wenn der PIN-Wächter die PIN zurückhält. Mitarbeiter ohne Chef-Recht sehen den Satz, nicht die Taste.
+- Eine Karten-Probe im Ausfall zeigt die Pille "Karten-Probe, Signatur ausgefallen".
+
+**Prüfwerkzeug**
+
+- Das dritte Szenario in `app/test/rksv/pruefwerkzeug_test.dart` ist eine Kette `card`, über `prepareCardSetup`, `changeCashBoxId` und `goLiveWithCard` begonnen und von der nachgebauten Karte über den echten `CardSigner` und die echte `CardSignatureUnit` signiert: Startbeleg, Verkäufe, Storno, zwei Bons mit gezogener Karte, Sammelbeleg, Nullbeleg, Schlussbeleg durch die Außerbetriebnahme. Das Prüfwerkzeug 1.1.1 des BMF hat alle drei Szenarien angenommen (`tool/rksv/pruefen.sh`: `+3: All tests passed!`). Die Hilfsdatei `app/test/support/pruefwerkzeug.dart` brauchte dafür keine Änderung: Das Zertifikat der Karte geht wie bei den anderen Szenarien über die Schlüsseldatei an das Werkzeug.
+
+### 10.3 Was an echter Hardware ungeprüft ist
+
+Nichts aus dieser Stufe lief gegen einen echten Leser oder eine echte Karte; alles wurde gegen die nachgebaute Karte geprüft (`FakeCardReader`, `FakeCard`). Offen am echten Tablet:
+
+- Ob eine Karte die PIN für die ganze Sitzung angenommen hält, so dass ein VERIFY für viele Bons reicht. Das Handbuch von A-Trust (Listing 2 für die älteste Kartenart) wiederholt VERIFY vor jeder Unterschrift. Die Kassa kommt mit einer Karte zurecht, die neu fragt (eine abgelehnte Runde, dann VERIFY und Unterschrift), um den Preis von Zeit je Bon.
+- Wie lange Öffnen des Lesers, VERIFY und eine Unterschrift am Redmi Pad über den Verteiler dauern; die Frist je Bon ist 5 Sekunden.
+- Ob Android nach jedem Wiederanstecken oder Neustart wieder nach der Erlaubnis für den Leser fragt, und ob der Filter für USB-Klasse 11 im Manifest (C7) die Erlaubnis halten lässt ("immer für dieses Gerät öffnen").
+- Leser, Drucker und Kassenlade zusammen am einen USB-Anschluss über den Verteiler mit Strom.
+- Abziehen und Wiederanstecken von Karte oder Leser während eines Verkaufs.
+- Die echte Karte von YICHI: ihre Art (manche Arten müssen bis Mai 2027 getauscht werden) und ihre PIN.
+- Die App "BMF Belegcheck" mit einem Startbeleg, den eine echte Karte signiert hat.
+
+### 10.4 Bekannte Punkte
+
+- Die Regel für die Kassen-ID (1 bis 20 Zeichen, A bis Z, 0 bis 9, Bindestrich) ist eine vorsichtige Wahl von Claude; die Unterlagen des BMF nennen weder Länge noch Muster.
+- Der Grund eines langen Ausfalls bei Online-Ketten ("Grund: 3, …") stammt aus dem Leitfaden der WKO und ist unverändert; die Dokumentation des Webservice des BMF nennt nur die Gründe 1, 2 und 99. Bei Ketten mit Karte nimmt die Kassa Grund 2. Niko soll mit der Steuerberatung klären, welchen Grund FinanzOnline anbietet.
+- Die Probe-Unterschrift mit der gespeicherten PIN läuft jedes Mal neu, wenn "Karte und PIN" aufgeht (zum Beispiel beim Zurückgehen von den Angaben).
+- Aufgeschobene kleine Punkte aus den Reviews (für die Schlussprüfung): eigene Kopien des Lesens der Kartennummer und der Auswahl aus `CardCheck` in `card_signer.dart`; eine dritte Kopie von Kopfzeile und rechter Karte der Prüfseiten; Import-Kreise `card_providers.dart`/`rksv_providers.dart` und `card_setup_screen.dart`/`signature_panel.dart`; `changeCashBoxId` läuft in der Warteschlange der Einrichtung, das Inbetriebnehmen nicht; kein Test für `primeLiveKey` mit einer Kette mit Karte; zwei Hilfen `_cardChain`; öffnet "Karte und PIN", während schon eine Prüfung läuft, wartet Zeile 5 bis "Nochmal prüfen".
+- 1.7.0 wurde nie hochgeladen; 1.8.0 enthält es. Die sechs offenen Fragen aus 1.7.0 bleiben offen.
+- Die Prüfliste für Niko: `docs/testen/rksv-karte-betrieb-pruefliste.md` (Teil A mit der Testkarte, Teil B mit der Karte von YICHI).

@@ -254,4 +254,120 @@ void main() {
         : null,
     timeout: const Timeout(Duration(minutes: 3)),
   );
+
+  test(
+    'Kette der nachgebauten Signaturkarte besteht das Prüfwerkzeug des '
+    'Finanzministeriums',
+    () async {
+      final rig = await RksvRig.open(card: rigCard());
+      addTearDown(rig.close);
+      final temp = await Directory.systemTemp.createTemp('kassa-rksv-');
+      addTearDown(() => temp.delete(recursive: true));
+      final card = rig.cardReader!.card!;
+
+      // Feste Zeiten in der Vergangenheit, wie oben (R11). Das
+      // Test-Zertifikat der Karte gilt ab dem 1.1.2026.
+      // Startbeleg am 18.11.2026 10:05:09, über prepareSetup mit der Karte,
+      // changeCashBoxId und goLiveWithCard, signiert von der Karte über den
+      // Halter (CardSigner) und die CardSignatureUnit.
+      rig.clock.value = DateTime(2026, 11, 18, 10, 5, 9);
+      final chain = await rig.startCardChain();
+      expect((await rig.chainRow(chain)).unit, 'card');
+      expect(card.signCount, 1);
+      var minute = 0;
+      void tick() =>
+          rig.clock.value = DateTime(2026, 11, 18, 10, 6 + minute++, 9);
+
+      // Verkäufe, einer mit Bankomatkarte, einer mit allen fünf Sätzen.
+      tick();
+      await rig.sell(
+        'alle-saetze',
+        const Cart.empty()
+            .add(cola)
+            .add(huhnBowl, options: [xxl, nudeln])
+            .add(_item('satz-13', 1350, TaxRate.reduced2))
+            .add(_item('satz-0', 500, TaxRate.zero))
+            .add(_item('satz-19', 1190, TaxRate.special)),
+      );
+      tick();
+      await rig.sell('bar', const Cart.empty().add(teigtaschen));
+      tick();
+      await rig.sellCard(
+        'karte',
+        const Cart.empty().add(teigtaschen).add(cola),
+      );
+      // Storno.
+      tick();
+      await rig.receipts.voidReceipt('bar', staff: rig.chef);
+      // Karte gezogen: zwei Bons im Ausfall. Karte wieder gesteckt: der
+      // nächste Bon signiert, davor der Sammelbeleg.
+      card.removed = true;
+      tick();
+      await rig.sell('ausfall-1', const Cart.empty().add(cola));
+      tick();
+      await rig.sell('ausfall-2', const Cart.empty().add(teigtaschen));
+      expect(
+        (await rig.stateRow()).outageReason,
+        'Keine Karte im Kartenleser.',
+      );
+      card.removed = false;
+      tick();
+      await rig.sell('danach', const Cart.empty().add(cola));
+      expect((await rig.stateRow()).outageSince, isNull);
+      // Nullbeleg, Schlussbeleg durch die Außerbetriebnahme.
+      tick();
+      await rig.service.zeroReceipt(staff: rig.chef);
+      tick();
+      await rig.service.decommission(staff: rig.chef);
+
+      expect(await rig.entryKinds(chain), [
+        'start',
+        'sale',
+        'sale',
+        'sale',
+        'voided',
+        'sale',
+        'sale',
+        'collective',
+        'sale',
+        'zero',
+        'closing',
+      ]);
+      await rig.verifyChain(chain);
+      final entries = await rig.entries(chain);
+      expect(
+        [for (final e in entries) e.damaged].where((d) => d),
+        hasLength(2),
+      );
+      // Signiert hat nur die Karte: jeder Eintrag außer den zwei im Ausfall.
+      expect(card.signCount, entries.length - 2);
+      expect(
+        {for (final e in entries) e.certSerial},
+        {rig.cardFacts().serialHex},
+      );
+      final state = await rig.stateRow();
+      expect((state.mode, state.chain), ('off', null));
+
+      expect(
+        await rig.service.exportProtocol(ExportRange.all, now: rig.clock.now()),
+        ExportOutcome.saved,
+      );
+      final dep = File('${temp.path}/dep-export.json')
+        ..writeAsStringSync(rig.saver.lastText);
+      final crypto = File('${temp.path}/cryptographicMaterialContainer.json')
+        ..writeAsStringSync(await cryptographicMaterialContainer(rig, chain));
+      final problems = await checkWithPruefwerkzeug(
+        tool!,
+        dep: dep,
+        crypto: crypto,
+        entryCount: entries.length,
+        workDir: temp,
+      );
+      expect(problems, isEmpty, reason: problems.join('\n\n'));
+    },
+    skip: tool == null
+        ? 'Prüfwerkzeug nicht da: KASSA_RKSV_TOOL zeigt auf keinen Ordner.'
+        : null,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 }
