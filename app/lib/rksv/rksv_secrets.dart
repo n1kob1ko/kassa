@@ -32,6 +32,41 @@ final class PendingSetup {
   String toString() => 'PendingSetup';
 }
 
+/// Die PIN der Signaturkarte mit Kartenart und Kartennummer der Karte, die
+/// mit ihr eine gültige Probe-Unterschrift geliefert hat (Plan C3). Ein Wert:
+/// Es gibt nie die PIN ohne die Karte. toString nennt nichts davon.
+final class CardPin {
+  const CardPin({
+    required this.kind,
+    required this.numberHex,
+    required this.pin,
+  });
+
+  /// `CardKind.name`.
+  final String kind;
+
+  /// Die Kartennummer als Hex in Großbuchstaben, ohne Leerzeichen.
+  final String numberHex;
+  final String pin;
+
+  @override
+  String toString() => 'CardPin';
+}
+
+/// Was die Kassa über die gespeicherte PIN weiß (Plan C4): [rejected], wenn
+/// die Karte sie abgelehnt hat; [unanswered], wie viele VERIFY seit der
+/// letzten gelungenen Prüfung ohne Antwort blieben. Kein Geheimnis.
+final class CardPinStatus {
+  const CardPinStatus({this.rejected = false, this.unanswered = 0});
+
+  final bool rejected;
+  final int unanswered;
+
+  @override
+  String toString() =>
+      'CardPinStatus(rejected: $rejected, unanswered: $unanswered)';
+}
+
 /// Geheimnisse der Registrierkasse. Sie liegen nur im sicheren Speicher, nie in
 /// der Datenbank, in einem Log oder in einem Text.
 abstract interface class RksvSecrets {
@@ -64,6 +99,17 @@ abstract interface class RksvSecrets {
 
   /// null löscht es.
   Future<void> writePendingSetup(PendingSetup? setup);
+
+  /// Die PIN der einen gespeicherten Karte; null, wenn keine gespeichert ist.
+  Future<CardPin?> cardPin();
+
+  /// null löscht sie. Setzt den [cardPinStatus] zurück, auch beim Löschen.
+  Future<void> writeCardPin(CardPin? pin);
+
+  /// Ohne Eintrag `const CardPinStatus()`; ein unlesbarer Eintrag gilt als
+  /// abgelehnt.
+  Future<CardPinStatus> cardPinStatus();
+  Future<void> writeCardPinStatus(CardPinStatus status);
 }
 
 class SecureRksvSecrets implements RksvSecrets {
@@ -105,6 +151,8 @@ class SecureRksvSecrets implements RksvSecrets {
   // S2b, Minor 1).
   static const _credentials = 'rksv_atrust_credentials';
   static const _setup = 'rksv_setup';
+  static const _cardPin = 'rksv_card_pin';
+  static const _cardPinStatus = 'rksv_card_pin_status';
 
   @override
   Future<bool> atrustRejected({bool live = false}) async =>
@@ -164,6 +212,62 @@ class SecureRksvSecrets implements RksvSecrets {
           value: jsonEncode({
             'cashBoxId': setup.cashBoxId,
             'aesKey': base64.encode(setup.aesKey),
+          }),
+        );
+
+  @override
+  Future<CardPin?> cardPin() async {
+    final json = await _readJson(_cardPin);
+    if (json == null) return null;
+    return CardPin(
+      kind: json['kind']! as String,
+      numberHex: json['numberHex']! as String,
+      pin: json['pin']! as String,
+    );
+  }
+
+  @override
+  Future<void> writeCardPin(CardPin? pin) async {
+    if (pin == null) {
+      await _storage.delete(key: _cardPin);
+    } else {
+      await _storage.write(
+        key: _cardPin,
+        value: jsonEncode({
+          'kind': pin.kind,
+          'numberHex': pin.numberHex,
+          'pin': pin.pin,
+        }),
+      );
+    }
+    await _storage.delete(key: _cardPinStatus);
+  }
+
+  @override
+  Future<CardPinStatus> cardPinStatus() async {
+    final value = await _storage.read(key: _cardPinStatus);
+    if (value == null) return const CardPinStatus();
+    try {
+      final json = jsonDecode(value) as Map;
+      return CardPinStatus(
+        rejected: json['rejected']! as bool,
+        unanswered: json['unanswered']! as int,
+      );
+    } catch (_) {
+      // Lieber keine PIN mehr schicken.
+      return const CardPinStatus(rejected: true);
+    }
+  }
+
+  @override
+  Future<void> writeCardPinStatus(CardPinStatus status) =>
+      !status.rejected && status.unanswered == 0
+      ? _storage.delete(key: _cardPinStatus)
+      : _storage.write(
+          key: _cardPinStatus,
+          value: jsonEncode({
+            'rejected': status.rejected,
+            'unanswered': status.unanswered,
           }),
         );
 }
@@ -269,5 +373,33 @@ class MemoryRksvSecrets implements RksvSecrets {
             cashBoxId: setup.cashBoxId,
             aesKey: Uint8List.fromList(setup.aesKey),
           );
+  }
+
+  CardPin? _cardPin;
+  CardPinStatus _cardPinStatus = const CardPinStatus();
+
+  @override
+  Future<CardPin?> cardPin() async {
+    await _reading();
+    return _cardPin;
+  }
+
+  @override
+  Future<void> writeCardPin(CardPin? pin) async {
+    await _writing();
+    _cardPin = pin;
+    _cardPinStatus = const CardPinStatus();
+  }
+
+  @override
+  Future<CardPinStatus> cardPinStatus() async {
+    await _reading();
+    return _cardPinStatus;
+  }
+
+  @override
+  Future<void> writeCardPinStatus(CardPinStatus status) async {
+    await _writing();
+    _cardPinStatus = status;
   }
 }

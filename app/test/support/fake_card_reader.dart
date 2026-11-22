@@ -51,6 +51,7 @@ class FakeCard {
     Uint8List? certificate,
     Uint8List? number,
     Uint8List Function(Uint8List hash)? signer,
+    this.verifyPerSignature = true,
   }) : certificate = certificate ?? fillerCertificate(),
        number = number ?? fakeCardNumber,
        signer = signer ?? _defaultSigner;
@@ -68,6 +69,10 @@ class FakeCard {
   /// Die Kartennummer; ohne Angabe [fakeCardNumber].
   final Uint8List number;
   final Uint8List Function(Uint8List hash) signer;
+
+  /// `true`: Jede Unterschrift braucht ein neues VERIFY (sonst `6982`).
+  /// `false`: Ein VERIFY gilt bis zum Ausschalten.
+  final bool verifyPerSignature;
 
   /// Jedes VERIFY, das die Karte sah, richtig oder falsch.
   int verifyCount = 0;
@@ -273,8 +278,7 @@ class FakeCard {
       if (!_verified) return _status(0x6982);
       hash = body.sublist(1, 33);
     }
-    // Jede Unterschrift braucht ein neues VERIFY.
-    _verified = false;
+    if (verifyPerSignature) _verified = false;
     _hash = null;
     signCount++;
     return Uint8List.fromList([...signer(hash), 0x90, 0x00]);
@@ -356,7 +360,14 @@ class FakeCardReader implements ReaderTransport {
   bool acceptParameters = true;
 
   /// Läuft vor jedem Aufruf von [exchange] mit dessen laufender Nummer (ab 1).
+  /// Wirft es, endet der Aufruf mit diesem Fehler.
   void Function(int exchange)? onExchange;
+
+  /// So viele VERIFY bekommen keine Antwort: Die Karte führt den Befehl aus,
+  /// der Leser meldet danach aber `ReaderException(timeout)` statt der
+  /// Antwort, wie bei einer Karte, die mitten im Befehl gezogen wird.
+  int dropVerifyAnswers = 0;
+  bool _swallow = false;
 
   /// Was in welcher Reihenfolge geschah: `powerOn`, `powerOff`,
   /// `parameters <hex>`, `ifsd <hex>`, `command <maskedApdu>`.
@@ -451,6 +462,10 @@ class FakeCardReader implements ReaderTransport {
       0x6F => _transfer(sequence, parameter, data),
       _ => [_answer(0x81, sequence, 0x40 | _slotState, 0x00)],
     };
+    if (_swallow) {
+      _swallow = false;
+      throw const ReaderException(ReaderProblem.timeout);
+    }
     _pending.addAll(answers.skip(1));
     return answers.first;
   }
@@ -506,12 +521,20 @@ class FakeCardReader implements ReaderTransport {
     final isSign = data.length >= 4 && data[1] == 0x2A && data[2] == 0x9E;
     events.add('command ${maskedApdu(data)}');
     final response = present.process(data);
+    _maybeSwallow(data);
     return [
       if (isSign)
         for (var i = 0; i < wtxBeforeSign; i++)
           _answer(0x80, sequence, 0x80, 0x01),
       _answer(0x80, sequence, 0x00, 0x00, response),
     ];
+  }
+
+  void _maybeSwallow(Uint8List apdu) {
+    if (apdu.length >= 2 && apdu[1] == 0x20 && dropVerifyAnswers > 0) {
+      dropVerifyAnswers--;
+      _swallow = true;
+    }
   }
 
   static String _maskedBlock(Uint8List block) {
@@ -587,6 +610,7 @@ class _T1Card {
       final apdu = _command.takeBytes();
       _reader.events.add('command ${maskedApdu(apdu)}');
       _response = _card.process(apdu);
+      _reader._maybeSwallow(apdu);
       _responseAt = 0;
       final isSign = apdu.length >= 4 && apdu[1] == 0x2A && apdu[2] == 0x9E;
       _waitsLeft = isSign ? _reader.wtxBeforeSign : 0;

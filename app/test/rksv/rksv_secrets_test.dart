@@ -8,6 +8,7 @@ import 'package:kassa/rksv/rksv_secrets.dart';
 
 void main() {
   credentialsAndSetup();
+  cardPinAndStatus();
   final key = Uint8List.fromList(List.generate(32, (i) => i));
 
   test('MemoryRksvSecrets: lesen nach schreiben; failReads wirft', () async {
@@ -272,6 +273,123 @@ void credentialsAndSetup() {
         s.failWrites = false;
         expect(await s.atrustRejected(), isFalse);
         expect(await s.atrustCredentials(), isNull);
+      },
+    );
+  });
+}
+
+void cardPinAndStatus() {
+  const pin = CardPin(
+    kind: 'acosId41',
+    numberHex: '0102030405060708',
+    pin: '246813',
+  );
+
+  group('PIN der Karte und ihr Status', () {
+    test('CardPin nennt in toString nichts', () {
+      expect(pin.toString(), 'CardPin');
+      expect('$pin', isNot(contains('246813')));
+    });
+
+    test('MemoryRksvSecrets: Hin und Zurück, Löschen, Status', () async {
+      final s = MemoryRksvSecrets();
+      expect(await s.cardPin(), isNull);
+      final status = await s.cardPinStatus();
+      expect(status.rejected, isFalse);
+      expect(status.unanswered, 0);
+
+      await s.writeCardPin(pin);
+      final read = (await s.cardPin())!;
+      expect(read.kind, 'acosId41');
+      expect(read.numberHex, '0102030405060708');
+      expect(read.pin, '246813');
+
+      await s.writeCardPinStatus(const CardPinStatus(unanswered: 1));
+      expect((await s.cardPinStatus()).unanswered, 1);
+      await s.writeCardPinStatus(const CardPinStatus(rejected: true));
+      expect((await s.cardPinStatus()).rejected, isTrue);
+
+      // Schreiben der PIN setzt den Status zurück.
+      await s.writeCardPin(pin);
+      expect((await s.cardPinStatus()).rejected, isFalse);
+      expect((await s.cardPinStatus()).unanswered, 0);
+
+      await s.writeCardPinStatus(const CardPinStatus(unanswered: 2));
+      await s.writeCardPin(null);
+      expect(await s.cardPin(), isNull);
+      expect((await s.cardPinStatus()).unanswered, 0);
+
+      s.failWrites = true;
+      await expectLater(s.writeCardPin(pin), throwsA(anything));
+      await expectLater(
+        s.writeCardPinStatus(const CardPinStatus(unanswered: 1)),
+        throwsA(anything),
+      );
+      s.failWrites = false;
+      expect(await s.cardPin(), isNull);
+      expect((await s.cardPinStatus()).unanswered, 0);
+      s.failReads = true;
+      await expectLater(s.cardPin(), throwsA(anything));
+      await expectLater(s.cardPinStatus(), throwsA(anything));
+    });
+
+    test('SecureRksvSecrets: ein JSON-Wert unter rksv_card_pin, Status unter '
+        'rksv_card_pin_status', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final s = SecureRksvSecrets();
+      expect(await s.cardPin(), isNull);
+      expect((await s.cardPinStatus()).rejected, isFalse);
+      expect((await s.cardPinStatus()).unanswered, 0);
+
+      await s.writeCardPin(pin);
+      var raw = await const FlutterSecureStorage().readAll();
+      expect(raw.keys.toSet(), {'rksv_card_pin'});
+      expect(jsonDecode(raw['rksv_card_pin']!), {
+        'kind': 'acosId41',
+        'numberHex': '0102030405060708',
+        'pin': '246813',
+      });
+      final read = (await s.cardPin())!;
+      expect(read.kind, 'acosId41');
+      expect(read.numberHex, '0102030405060708');
+      expect(read.pin, '246813');
+
+      await s.writeCardPinStatus(const CardPinStatus(unanswered: 1));
+      expect((await s.cardPinStatus()).unanswered, 1);
+      expect((await s.cardPinStatus()).rejected, isFalse);
+      await s.writeCardPinStatus(const CardPinStatus(rejected: true));
+      expect((await s.cardPinStatus()).rejected, isTrue);
+      raw = await const FlutterSecureStorage().readAll();
+      expect(raw.keys.toSet(), {'rksv_card_pin', 'rksv_card_pin_status'});
+      expect(raw['rksv_card_pin_status'], isNot(contains('246813')));
+
+      // Schreiben der PIN setzt den Status zurück.
+      await s.writeCardPin(pin);
+      expect((await s.cardPinStatus()).rejected, isFalse);
+      expect((await s.cardPinStatus()).unanswered, 0);
+
+      // Der leere Status ist kein Eintrag.
+      await s.writeCardPinStatus(const CardPinStatus(unanswered: 2));
+      await s.writeCardPinStatus(const CardPinStatus());
+      raw = await const FlutterSecureStorage().readAll();
+      expect(raw.keys.toSet(), {'rksv_card_pin'});
+
+      await s.writeCardPinStatus(const CardPinStatus(unanswered: 1));
+      await s.writeCardPin(null);
+      expect(await s.cardPin(), isNull);
+      expect(await const FlutterSecureStorage().readAll(), isEmpty);
+    });
+
+    test(
+      'SecureRksvSecrets: ein unlesbarer Status gilt als abgelehnt',
+      () async {
+        for (final value in ['kaputt', '[]', '{"unanswered":"eins"}', '7']) {
+          FlutterSecureStorage.setMockInitialValues({
+            'rksv_card_pin_status': value,
+          });
+          final status = await SecureRksvSecrets().cardPinStatus();
+          expect(status.rejected, isTrue, reason: value);
+        }
       },
     );
   });
