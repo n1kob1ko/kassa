@@ -121,7 +121,7 @@ Das solltest du sehen: Wie oben, nur steht als Grund "Kein Kartenleser gefunden.
 - [ ] Den Leser wieder anstecken. Aufschreiben, ob Android ein Fenster zeigt oder nach der Erlaubnis fragt.
 - [ ] Diesmal keinen Verkauf machen, sondern im gelben Hinweis auf "Nochmal prüfen" tippen. Fragt Android nach der Erlaubnis: erlauben.
 
-Das solltest du sehen: Kurz "Die Signatur geht wieder." und ein neuer "Sammelbeleg". Steht "Geht noch nicht.", schau dir den Grund im gelben Hinweis an. Er nennt immer den letzten Versuch. Steht dort "Der Zugriff auf den Kartenleser ist nicht erlaubt.", erlaube den Zugriff im Fenster von Android und tipp dann noch einmal auf "Nochmal prüfen". Schreib auf, dass das passiert ist. Steht ein anderer Grund, warte einen Augenblick und tipp noch einmal.
+Das solltest du sehen: Kurz "Die Signatur geht wieder." und ein neuer "Sammelbeleg". Klappt es nicht, bleibt der gelbe Hinweis stehen, manchmal mit "Geht noch nicht." Schau dir dann den Grund im gelben Hinweis an. Er nennt immer den letzten Versuch. Steht dort "Der Zugriff auf den Kartenleser ist nicht erlaubt.", tipp noch einmal auf "Nochmal prüfen" und erlaube den Zugriff im Fenster von Android. Schreib auf, dass das passiert ist. Steht ein anderer Grund, warte einen Augenblick und tipp noch einmal.
 
 ## A8. Karte kurz ziehen, Bildschirm aus, Fenster von Android
 
@@ -289,6 +289,8 @@ Hat eine Zeile ein rotes Kreuz: Hör hier auf. Schließ die alte Kassa nicht ab.
 
 Steht in der fünften Zeile statt "Karte und PIN sind gespeichert." die Taste "PIN eingeben": Gib die PIN der Karte von YICHI ein wie in B3 und warte, bis die Zeile grün ist. Nicht raten.
 
+Steht in der fünften Zeile "Die Karte hat vermutlich nur noch einen Versuch." oder "Die PIN war falsch. Die Karte hat nur noch einen Versuch.": Hör hier auf. Schließ die alte Kassa nicht ab, tipp nichts an und schreib mir.
+
 - [ ] Auf "Weiter" tippen.
 - [ ] Auf der Seite "Angaben für FinanzOnline" die "Kassenidentifikationsnummer" mit deinem Zettel vergleichen, Zeichen für Zeichen.
 
@@ -407,7 +409,7 @@ Diesen Satz siehst du in der Karte "Signatur" und oben in der Kassa im gelben Hi
 
 Das solltest du sehen: Die Kassa versucht gleich den "Sammelbeleg". Der gelbe Hinweis verschwindet, und der nächste Bon ist wieder signiert.
 
-Steht in der Zeile "Probe-Unterschrift" statt "PIN eingeben" der Satz "Die Karte hat vermutlich nur noch einen Versuch." oder "Die PIN war falsch. Die Karte hat nur noch einen Versuch.": Die Kassa schickt die PIN dann nicht mehr. Mit der Taste "Zähler ist wieder voll" und danach "Ja, Zähler ist wieder voll" setzt du das zurück. Tu das nur, wenn die alte Kassa danach einen normalen Bon mit dieser Karte gemacht hat, oder wenn du die PIN ganz sicher weißt. Sonst schreib mir zuerst.
+Steht in der Zeile "Probe-Unterschrift" statt "PIN eingeben" der Satz "Die Karte hat vermutlich nur noch einen Versuch." oder "Die PIN war falsch. Die Karte hat nur noch einen Versuch.": Die Kassa schickt die PIN dann nicht mehr. Mit der Taste "Zähler ist wieder voll" und danach "Ja, Zähler ist wieder voll" setzt du das zurück. Tu das nur, wenn die alte Kassa danach einen normalen Bon mit dieser Karte gemacht hat, oder wenn du die PIN ganz sicher weißt. Sonst schreib mir zuerst. Nach dem Zurücksetzen gibst du die PIN ein: mit "PIN eingeben" oder "PIN neu eingeben", je nachdem, was in der Zeile steht. Erst dann auf "Fertig" tippen.
 
 Mitarbeiter ohne Chef-Recht sehen den Satz, aber nicht die Taste "PIN neu eingeben". Sie verkaufen normal weiter.
 

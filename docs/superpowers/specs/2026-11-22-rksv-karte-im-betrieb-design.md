@@ -257,5 +257,13 @@ Nichts aus dieser Stufe lief gegen einen echten Leser oder eine echte Karte; all
 - Ein Verkauf im Ausfall kann bis zu 5 Sekunden für den Sammelbeleg und dazu bis zu 5 Sekunden für die eigene Signatur dauern, wenn eine Karte langsam antwortet und dann scheitert; die Frist je Eintrag hält. Am Tablet zu messen.
 - Die Kassa löscht die gespeicherte PIN nie von selbst, auch nicht am Ende einer Probe oder bei der Außerbetriebnahme; die PIN einer neuen Karte ersetzt sie.
 - `CardSigner.lastProblem` liest im Code der App niemand; nur die Tests.
+- Aus der Nachprüfung der Schlusskorrektur, offen für die erste Version nach Nikos Teil A:
+  - Ändert ein gescheitertes "Nochmal prüfen" den Grund des Ausfalls, zeigt der gelbe Hinweis kein "Geht noch nicht.", sondern nur den neuen Grund (`outage_banner.dart`: der Grund gehört zu `_outageKey`).
+  - Nach "Zähler ist wieder voll" mit gespeicherter PIN bleiben "Probe starten" und "Weiter" aus, bis "Nochmal prüfen" getippt wird; die Seite sagt das nicht.
+  - "Fertig" nach "Zähler ist wieder voll" ohne neue PIN versucht den Sammelbeleg nicht; der Ausfall endet mit dem nächsten Bon.
+  - Scheitert das Löschen im PIN-Wächter nach einem angenommenen VERIFY zweimal, hält der Wächter eine richtige PIN zurück, bis der Chef ihn zurücksetzt (vorsichtige Seite).
+  - `RksvJournal.noteFailedAttempt` kann bei einem Fehler der Datenbank aus `ReceiptRepository._tryCollective` werfen; dann scheitert dieser eine Verkauf.
+  - Eine aufgewärmte Sitzung, die noch kein VERIFY geschickt hat und dann stirbt, kostet den nächsten Bon die Signatur und zählt einmal "ohne Antwort" (der Halter wiederholt nur, solange in diesem Aufruf kein VERIFY hinausging).
+  - Nimmt man mit einer zweiten Karte in Betrieb, während die Probe einer anderen Karte läuft, signiert die zweite Karte den Schlussbeleg der Probe einmal; die Einheit verwirft die Unterschrift, der Schlussbeleg trägt den Vermerk des Ausfalls.
 - 1.7.0 wurde nie hochgeladen; 1.8.0 enthält es. Die sechs offenen Fragen aus 1.7.0 bleiben offen.
 - Die Prüfliste für Niko: `docs/testen/rksv-karte-betrieb-pruefliste.md` (Teil A mit der Testkarte, Teil B mit der Karte von YICHI).
