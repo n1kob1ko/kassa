@@ -89,10 +89,11 @@ Eine Kette `cardTest` verhält sich wie die Online-Probe: Ein Fehler der Einheit
 
 Ein Halter für die ganze App. Er allein öffnet den Leser für das Signieren.
 
-- **Sitzung:** Leser öffnen (ohne Frage von Android, siehe 6.6), Karte einschalten, Kartenart und Kartennummer mit der gespeicherten vergleichen, Ordner der Signatur wählen. Die Sitzung bleibt offen, bis ein Fehler der Verbindung sie beendet oder jemand sie freigibt.
+- **Sitzung:** Leser öffnen (ohne Frage von Android, siehe 6.6), Karte einschalten, Kartenart (jedes Mal neu aus der Antwort der Karte) und Kartennummer mit der gespeicherten vergleichen, Ordner der Signatur wählen. Die Sitzung bleibt offen, bis ein Fehler der Verbindung sie beendet oder jemand sie freigibt.
 - **Signieren:** mit offener Sitzung nur der Befehl zur Unterschrift (bei der ersten Generation davor der Hash). Antwortet die Karte "Sicherheitszustand nicht erfüllt", prüft der Halter die PIN einmal und unterschreibt noch einmal. Das erste Signieren einer Sitzung prüft die PIN gleich.
 - **Prüfung der Signatur:** Jede Unterschrift wird am Tablet gegen das Zertifikat der Kette geprüft. Passt sie nicht: "Die Unterschrift der Karte passt nicht zum Zertifikat."
-- **Aufwärmen:** Ohne offene Sitzung versucht der Halter im Hintergrund, eine zu öffnen: beim Start und Fortsetzen der App, nach jedem gescheiterten Signieren, bei "Nochmal prüfen" und wenn die Kassa in den Vordergrund kommt. Nie mehr als ein Versuch zugleich. So gelingt der nächste Bon innerhalb der kurzen Frist im Ausfall (1 Sekunde), und der Sammelbeleg entsteht von selbst.
+- **Aufwärmen:** Ohne offene Sitzung versucht der Halter im Hintergrund, eine zu öffnen: beim Start und Fortsetzen der App (dazu zählt, dass Android der laufenden Kassa das Anstecken des Lesers meldet), nach einem gescheiterten Signieren und bei "Nochmal prüfen". Nie mehr als ein Versuch zugleich. Das Aufwärmen prüft keine PIN. Einen eigenen Kanal für das Anstecken gibt es nicht.
+- **Signieren ohne Sitzung:** Der Bon versucht selbst zu öffnen. Fehlen Leser, Erlaubnis oder Karte, steht das sofort fest. Bei Ketten mit Karte gilt darum auch im Ausfall die Frist von 5 Sekunden statt 1: Öffnen, PIN und Unterschrift passen nicht in eine Sekunde. So signiert schon der erste Bon nach dem Wiederanstecken. Der Sammelbeleg entsteht wie bisher mit diesem Bon oder mit "Nochmal prüfen"; ohne Verkauf entsteht keiner.
 - **Frist:** Die Frist setzt wie bisher das Journal. Läuft sie ab, arbeitet der Halter im Hintergrund zu Ende; eine dabei geöffnete Sitzung bleibt für den nächsten Bon.
 - **Ein Bon zugleich:** Aufrufe laufen nacheinander.
 - **"Karte prüfen":** Startet der Bildschirm einen Lauf, gibt der Halter zuerst seine Sitzung frei und öffnet erst wieder, wenn der Lauf zu Ende ist. Ein Bon in dieser Zeit ist ein Ausfall mit dem Satz "Die Karte wird gerade geprüft."
@@ -107,12 +108,15 @@ Sätze des Ausfalls (jeder ohne Geheimnis): "Kein Kartenleser gefunden.", "Der Z
 - Kommt auf eine PIN-Prüfung keine Antwort, zählt die Kassa das. Nach zwei solchen Fällen ohne gelungene Prüfung dazwischen schickt sie die PIN nicht mehr von selbst ("abgelehnt", wie oben). Der Zähler wird geschrieben, bevor die PIN hinausgeht; schreibt der Speicher nicht, geht keine PIN hinaus.
 - Folge: Im schlimmsten Fall verbraucht die Kassa von selbst zwei der drei Versuche, nie den dritten.
 - Die PIN steht außerhalb des geschützten Speichers nur für die Dauer eines Befehls im Arbeitsspeicher.
+- Es gibt genau eine gespeicherte Karte je Kassa; PIN und "abgelehnt" gelten für sie. Der PIN-Wächter von "Karte prüfen" bleibt daneben, wie er ist, und erfährt jede beantwortete Ablehnung.
+- Eine abgelehnte oder fehlende PIN ist für den Verkauf ein Ausfall wie jeder andere (Vermerk am Bon, Hinweis in der Kassa, Aufgabe nach 48 Stunden). Der Hinweis bietet dem Chef "PIN neu eingeben" an.
+- Ein abgelaufenes Zertifikat der Karte hält weder Einrichtung noch Betrieb auf; "Karte und PIN" zeigt den Hinweis wie "Karte prüfen".
 
 ### 6.4 Einrichtung
 
 In der Karte "Signatur" (nur der Chef):
 
-- **"Mit Karte ausprobieren"** (Zeile neben "Mit A-Trust ausprobieren", nur wenn die Signatur aus ist): führt zu "Karte und PIN" und beginnt danach die Probe-Kette `cardTest` mit Startbeleg von der Karte.
+- **"Mit Karte ausprobieren"** (Zeile neben "Mit A-Trust ausprobieren", nur wenn die Signatur aus ist, also auch nach "Außer Betrieb"): führt zu "Karte und PIN" und beginnt danach die Probe-Kette `cardTest` mit Startbeleg von der Karte.
 - **"Signatur einrichten"** öffnet zuerst die Wahl "Womit signiert die Kassa?": "Signaturkarte am Kartenleser" (Hilfe: "Ohne Internet. Die Karte muss immer im Leser stecken.") und "A-Trust online" (Hilfe: "Braucht Internet und die Zugangsdaten von A-Trust."). "A-Trust online" führt in den Ablauf von 1.7.0, unverändert.
 
 Der Kartenweg:
@@ -121,7 +125,7 @@ Der Kartenweg:
 2. **Angaben für FinanzOnline.** Wie in 1.7.0, mit: Art "Signaturkarte", Anbieter "AT1 = A-TRUST", Seriennummer des Zertifikats (hexadezimal und dezimal), Kassenidentifikationsnummer, AES-Schlüssel (44 Zeichen), Prüfwert. "Angaben drucken". Rechts "Bevor du startest" wie in 1.7.0.
 3. **"Jetzt in Betrieb nehmen"** mit der Frage von 1.7.0. Eine laufende Probe endet mit Schlussbeleg, die Kette `card` beginnt, die Karte signiert den Startbeleg. Scheitert etwas, bleibt alles wie vorher (Q7). Aufgaben wie in 1.7.0.
 
-**Kassen-ID ändern.** In "Angaben für FinanzOnline" steht bei der Kassenidentifikationsnummer die Taste "Ändern". Sie öffnet ein Feld mit Tastatur. Erlaubt: 1 bis 20 Zeichen aus A bis Z, 0 bis 9 und Bindestrich; Kleinbuchstaben werden groß. Kein Unterstrich (er trennt die Felder im Code). Nicht erlaubt ist eine Kennung, die eine Kette dieses Tablets schon trägt. Hinweis im Feld: "Nimm keine Kennung, die bei FinanzOnline schon angemeldet ist." Die Änderung gilt für das PendingSetup, also bis zur Inbetriebnahme; danach ist die Kennung fest. Der AES-Schlüssel bleibt beim Ändern derselbe. Ein schon gedruckter Zettel ist danach ungültig; das Feld sagt es.
+**Kassen-ID ändern.** In "Angaben für FinanzOnline" steht bei der Kassenidentifikationsnummer die Taste "Ändern". Sie öffnet ein Feld mit Tastatur. Erlaubt: 1 bis 20 Zeichen aus A bis Z, 0 bis 9 und Bindestrich; Kleinbuchstaben werden groß. Kein Unterstrich (er trennt die Felder im Code). Nicht erlaubt ist eine Kennung, die eine Kette dieses Tablets schon trägt. Hinweis im Feld: "Nimm keine Kennung, die bei FinanzOnline schon angemeldet ist." Die Änderung gilt für das PendingSetup, also bis zur Inbetriebnahme; danach ist die Kennung fest. Das PendingSetup gehört zu keinem der beiden Wege: Wer die Kennung ändert und dann den anderen Weg wählt, sieht dort dieselbe Kennung und denselben AES-Schlüssel. Gesperrt sind die Kennungen aller Ketten dieses Tablets, auch die der Proben. Der AES-Schlüssel bleibt beim Ändern derselbe. Ein schon gedruckter Zettel ist danach ungültig; das Feld sagt es.
 
 **Im Betrieb mit Karte** zeigt die Karte "Signatur": "Signatur mit der Karte. Kassen-ID …", die Zeilen von 1.7.0 ohne "Verbindung prüfen" und "Zugangsdaten", dafür "Karte und PIN" (Taste "Prüfen"; bei abgelehnter PIN die Taste "PIN neu eingeben" im Hinweis). Im Schritt "Karte und PIN" gilt im Betrieb: Die Seriennummer des gelesenen Zertifikats muss die der Kette sein, sonst Kreuz bei "Zertifikat": "Das ist nicht die Karte dieser Kassa."
 
