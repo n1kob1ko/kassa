@@ -369,6 +369,15 @@ class FakeCardReader implements ReaderTransport {
   int dropVerifyAnswers = 0;
   bool _swallow = false;
 
+  /// `true`: Ohne offenen Leser ([open] ohne [close] danach) wirft
+  /// [exchange] `ReaderException(notOpen)`, wie der Kanal von Android.
+  bool strictOpen = false;
+
+  /// So lange dauert [close], bevor es den Leser schließt; auch einen, der
+  /// inzwischen neu geöffnet wurde.
+  Duration? closeDelay;
+  bool _isOpen = false;
+
   /// Was in welcher Reihenfolge geschah: `powerOn`, `powerOff`,
   /// `parameters <hex>`, `ifsd <hex>`, `command <maskedApdu>`.
   final List<String> events = [];
@@ -424,11 +433,15 @@ class FakeCardReader implements ReaderTransport {
     }
     if (!permission) throw const ReaderException(ReaderProblem.noPermission);
     _pending.clear();
+    _isOpen = true;
     return descriptors;
   }
 
   @override
   Future<void> close() async {
+    final delay = closeDelay;
+    if (delay != null) await Future<void>.delayed(delay);
+    _isOpen = false;
     closed++;
     _pending.clear();
   }
@@ -442,6 +455,9 @@ class FakeCardReader implements ReaderTransport {
     exchanges++;
     limits.add(limit);
     onExchange?.call(exchanges);
+    if (strictOpen && !_isOpen) {
+      throw const ReaderException(ReaderProblem.notOpen);
+    }
     final failAfter = failAfterExchanges;
     if (failAfter != null && exchanges > failAfter) {
       throw ReaderException(ReaderProblem.io, failureDetail);

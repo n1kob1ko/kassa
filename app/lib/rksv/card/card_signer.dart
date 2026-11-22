@@ -68,6 +68,10 @@ class CardSigner {
   final RksvSecrets _secrets;
   final PinGuard _guard;
 
+  /// So lange darf jeder Aufruf in den geschützten Speicher und den
+  /// PIN-Wächter höchstens dauern.
+  static const storageLimit = Duration(seconds: 2);
+
   static const _masterFile = [0x3F, 0x00];
   static const _notSatisfied = 0x6982;
 
@@ -85,6 +89,10 @@ class CardSigner {
 
   /// Ein Öffnen läuft gerade (aus [warmUp] oder [sign]); endet nie mit Fehler.
   Future<void>? _opening;
+
+  /// Die Sitzung wird gerade freigegeben (Ausschalten, Leser schließen); ein
+  /// neues Öffnen wartet darauf. Endet nie mit Fehler.
+  Future<void>? _dropping;
 
   /// Das Ende des letzten [sign] oder [release]; endet nie mit Fehler.
   Future<void> _queue = Future<void>.value();
@@ -169,6 +177,19 @@ class CardSigner {
     unawaited(release());
   }
 
+  /// [call] mit [storageLimit]; nach Ablauf [TimeoutException], wie ein
+  /// Speicher, der wirft.
+  static Future<T> _stored<T>(Future<T> call) => call.timeout(storageLimit);
+
+  /// [_stored], ein Fehler oder Ablauf zählt nicht.
+  static Future<void> _quietly(Future<void> call) async {
+    try {
+      await _stored(call);
+    } catch (_) {
+      // Bewusst übergangen; siehe die Aufrufer.
+    }
+  }
+
   // Signieren.
 
   Future<Uint8List> _signGuarded(Uint8List hash) async {
@@ -188,7 +209,11 @@ class CardSigner {
 
   void _failed(CardSignProblem problem) {
     _lastProblem = problem;
-    if (!_noWarmUpAfter.contains(problem)) unawaited(warmUp());
+    // Während einer Pause bliebe vom Aufwärmen nur "busy" über dem echten
+    // Problem.
+    if (_pauses == 0 && !_noWarmUpAfter.contains(problem)) {
+      unawaited(warmUp());
+    }
   }
 
   Future<Uint8List> _signNow(Uint8List hash) async {
@@ -240,7 +265,9 @@ class CardSigner {
   Future<void> _verify(_Held held) async {
     final CardPin? pin;
     try {
-      pin = await _secrets.cardPin();
+      pin = await _stored(_secrets.cardPin());
+    } on TimeoutException {
+      throw const CardSignException(CardSignProblem.silent);
     } catch (_) {
       throw const CardSignException(CardSignProblem.pinMissing);
     }
@@ -250,7 +277,7 @@ class CardSigner {
     }
     final CardPinStatus stored;
     try {
-      stored = await _secrets.cardPinStatus();
+      stored = await _stored(_secrets.cardPinStatus());
     } catch (_) {
       // Ohne den Stand geht keine PIN hinaus.
       throw const CardSignException(CardSignProblem.silent);
@@ -264,7 +291,7 @@ class CardSigner {
     // Chef kann den Wächter jederzeit zurücksetzen.
     final int? guarded;
     try {
-      guarded = await _guard.retriesLeft(held.numberHex);
+      guarded = await _stored(_guard.retriesLeft(held.numberHex));
     } catch (_) {
       throw const CardSignException(CardSignProblem.silent);
     }
@@ -279,8 +306,8 @@ class CardSigner {
     }
     // Vorher merken: Kommt keine Antwort, zählt der Versuch (C4).
     try {
-      await _secrets.writeCardPinStatus(
-        CardPinStatus(unanswered: unanswered + 1),
+      await _stored(
+        _secrets.writeCardPinStatus(CardPinStatus(unanswered: unanswered + 1)),
       );
     } catch (_) {
       throw const CardSignException(CardSignProblem.silent);
@@ -292,16 +319,14 @@ class CardSigner {
     if (answer.ok) {
       _unanswered = 0;
       held.verified = true;
-      try {
-        await _secrets.writeCardPinStatus(const CardPinStatus());
-      } catch (_) {
-        // Der Zähler bleibt im Speicher stehen: vorsichtig, nicht falsch.
-      }
-      try {
-        await _guard.clear(held.numberHex);
-      } catch (_) {
-        // Wie CardCheck: Die Unterschrift geht weiter.
-      }
+      // Beides zugleich, damit ein hängender Speicher den Bon höchstens
+      // einmal [storageLimit] kostet. Scheitert eins: Der Zähler bleibt im
+      // Speicher stehen (vorsichtig, nicht falsch), oder der Wächter bleibt,
+      // wie er war (wie CardCheck); die Unterschrift geht weiter.
+      await Future.wait([
+        _quietly(_secrets.writeCardPinStatus(const CardPinStatus())),
+        _quietly(_guard.clear(held.numberHex)),
+      ]);
       return;
     }
     // Wie CardCheck._wrongVerify: die Zahl der Versuche für den Wächter.
@@ -318,18 +343,14 @@ class CardSigner {
     }
     _rejected = true;
     _unanswered = 0;
-    try {
-      await _secrets.writeCardPinStatus(const CardPinStatus(rejected: true));
-    } catch (_) {
-      // Der Arbeitsspeicher hält "abgelehnt" fest.
-    }
-    if (left != null) {
-      try {
-        await _guard.recordFailure(held.numberHex, left);
-      } catch (_) {
-        // Der Wächter ist eine zweite Sicherung; "abgelehnt" gilt schon.
-      }
-    }
+    // Scheitert eins, hält der Arbeitsspeicher "abgelehnt" fest; der Wächter
+    // ist eine zweite Sicherung.
+    await Future.wait([
+      _quietly(
+        _secrets.writeCardPinStatus(const CardPinStatus(rejected: true)),
+      ),
+      if (left != null) _quietly(_guard.recordFailure(held.numberHex, left)),
+    ]);
     throw const CardSignException(CardSignProblem.pinRejected);
   }
 
@@ -349,6 +370,10 @@ class CardSigner {
   }
 
   Future<_Held> _open({required bool ask}) async {
+    // Ein Schließen, das noch läuft, schlösse sonst den neuen Leser.
+    while (_dropping != null) {
+      await _dropping;
+    }
     try {
       final held = await _openSteps(ask: ask);
       _held = held;
@@ -364,7 +389,9 @@ class CardSigner {
   Future<_Held> _openSteps({required bool ask}) async {
     final CardPin? pin;
     try {
-      pin = await _secrets.cardPin();
+      pin = await _stored(_secrets.cardPin());
+    } on TimeoutException {
+      throw const CardSignException(CardSignProblem.silent);
     } catch (_) {
       throw const CardSignException(CardSignProblem.pinMissing);
     }
@@ -494,9 +521,21 @@ class CardSigner {
   Future<void> _drop() async {
     final held = _held;
     _held = null;
-    if (held == null) return;
-    await held.session.end();
-    await _closeTransport();
+    if (held == null) {
+      final running = _dropping;
+      if (running != null) await running;
+      return;
+    }
+    final done = () async {
+      await held.session.end();
+      await _closeTransport();
+    }();
+    _dropping = done;
+    try {
+      await done;
+    } finally {
+      if (identical(_dropping, done)) _dropping = null;
+    }
   }
 
   Future<void> _closeTransport() async {

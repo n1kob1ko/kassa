@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/rksv/card/atrust_card.dart';
 import 'package:kassa/rksv/card/card_signer.dart';
@@ -118,6 +119,69 @@ class BrokenGuard extends MemoryPinGuard {
     return super.clear(cardNumber);
   }
 }
+
+/// Ein Wächter, der beim Lesen oder Schreiben nie antwortet.
+class HangingGuard extends MemoryPinGuard {
+  HangingGuard({this.hangReads = false, this.hangWrites = false});
+
+  bool hangReads;
+  bool hangWrites;
+
+  @override
+  Future<int?> retriesLeft(String cardNumber) async {
+    if (hangReads) await Completer<void>().future;
+    return super.retriesLeft(cardNumber);
+  }
+
+  @override
+  Future<void> clear(String cardNumber) async {
+    if (hangWrites) await Completer<void>().future;
+    return super.clear(cardNumber);
+  }
+
+  @override
+  Future<void> recordFailure(String cardNumber, int retriesLeft) async {
+    if (hangWrites) await Completer<void>().future;
+    return super.recordFailure(cardNumber, retriesLeft);
+  }
+}
+
+/// Ein Speicher, der beim Zurücksetzen des Status nie antwortet.
+class ResetHangSecrets extends MemoryRksvSecrets {
+  int resets = 0;
+
+  @override
+  Future<void> writeCardPinStatus(CardPinStatus status) async {
+    if (!status.rejected && status.unanswered == 0) {
+      resets++;
+      await Completer<void>().future;
+    }
+    return super.writeCardPinStatus(status);
+  }
+}
+
+/// Startet [future] und merkt sich Ergebnis oder Fehler, für fakeAsync.
+class Outcome<T> {
+  Outcome(Future<T> future) {
+    future.then(
+      (v) {
+        value = v;
+        done = true;
+      },
+      onError: (Object e) {
+        error = e;
+        done = true;
+      },
+    );
+  }
+
+  bool done = false;
+  T? value;
+  Object? error;
+}
+
+Matcher isProblem(CardSignProblem problem) =>
+    isA<CardSignException>().having((e) => e.problem, 'problem', problem);
 
 class Rig {
   Rig({
@@ -488,6 +552,147 @@ void main() {
         await rig.store();
         expect(await rig.sign(1), testSigner(hashOf(1)));
         expect(rig.card.verifyCount, 1);
+      },
+    );
+  });
+
+  group('Korrektur 1', () {
+    for (final (name, start) in [
+      ('release', (CardSigner s) => s.release()),
+      (
+        'pinChanged',
+        (CardSigner s) async {
+          s.pinChanged();
+          await pumpEventQueue();
+        },
+      ),
+    ]) {
+      test('$name, gleich danach warmUp, während der Leser noch schließt: '
+          'die Sitzung signiert den nächsten Bon', () async {
+        final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+        rig.reader.strictOpen = true;
+        await rig.store();
+        await rig.sign(1);
+        rig.reader.closeDelay = const Duration(milliseconds: 20);
+        final released = start(rig.signer);
+        await pumpEventQueue();
+        final warming = rig.signer.warmUp();
+        await released;
+        await warming;
+        expect(rig.signer.ready, isTrue);
+        expect(await rig.sign(2), testSigner(hashOf(2)));
+        expect(rig.signer.lastProblem, isNull);
+      });
+    }
+
+    test('Speicher liest nicht: silent nach storageLimit, kein Befehl, '
+        'danach geht es wieder', () {
+      fakeAsync((time) {
+        final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+        rig.store();
+        time.flushMicrotasks();
+        rig.secrets.hangReads = true;
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit - const Duration(milliseconds: 10));
+        expect(first.done, isFalse);
+        time.elapse(const Duration(milliseconds: 20));
+        expect(first.error, isProblem(CardSignProblem.silent));
+        expect(rig.reader.opened, isEmpty);
+        expect(rig.commands, 0);
+
+        rig.secrets.hangReads = false;
+        final second = Outcome(rig.sign(2));
+        time.elapse(CardSigner.storageLimit * 3);
+        expect(second.value, testSigner(hashOf(2)));
+        final pause = Outcome(rig.signer.paused(() async => 7));
+        time.elapse(CardSigner.storageLimit);
+        expect(pause.value, 7);
+      });
+    });
+
+    test('Speicher liest nicht bei offener Sitzung: kein VERIFY', () {
+      fakeAsync((time) {
+        final rig = Rig();
+        rig.store();
+        rig.signer.warmUp();
+        time.flushMicrotasks();
+        expect(rig.signer.ready, isTrue);
+        final commands = rig.commands;
+        rig.secrets.hangReads = true;
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit * 2);
+        expect(first.error, isProblem(CardSignProblem.silent));
+        expect(rig.commands, commands);
+        expect(rig.card.verifyCount, 0);
+        // release kehrt zurück.
+        final released = Outcome(rig.signer.release());
+        time.elapse(CardSigner.storageLimit);
+        expect(released.done, isTrue);
+      });
+    });
+
+    test('Schreiben vor VERIFY hängt: kein VERIFY, silent', () {
+      fakeAsync((time) {
+        final rig = Rig();
+        rig.store();
+        time.flushMicrotasks();
+        rig.secrets.hangWrites = true;
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit * 2);
+        expect(first.error, isProblem(CardSignProblem.silent));
+        expect(rig.card.verifyCount, 0);
+        expect(rig.card.signCount, 0);
+      });
+    });
+
+    test('Wächter liest nicht: kein VERIFY, silent', () {
+      fakeAsync((time) {
+        final rig = Rig(guard: HangingGuard(hangReads: true));
+        rig.store();
+        time.flushMicrotasks();
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit * 2);
+        expect(first.error, isProblem(CardSignProblem.silent));
+        expect(rig.card.verifyCount, 0);
+      });
+    });
+
+    test('Wächter löscht nicht und Speicher setzt nicht zurück: die '
+        'Unterschrift geht weiter', () {
+      fakeAsync((time) {
+        final secrets = ResetHangSecrets();
+        final rig = Rig(
+          guard: HangingGuard(hangWrites: true),
+          secrets: secrets,
+        );
+        rig.store();
+        time.flushMicrotasks();
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit - const Duration(milliseconds: 10));
+        expect(first.done, isFalse);
+        // Beide hängen, zusammen kostet es nur einmal storageLimit.
+        time.elapse(const Duration(milliseconds: 20));
+        expect(first.value, testSigner(hashOf(1)));
+        expect(rig.card.verifyCount, 1);
+        expect(secrets.resets, 1);
+      });
+    });
+
+    test(
+      'Ein sign von vor paused, das scheitert, behält sein Problem',
+      () async {
+        final rig = Rig();
+        await rig.store();
+        rig.reader.devices.clear();
+        final signed = rig.sign(1);
+        CardSignProblem? inside;
+        final pause = rig.signer.paused(() async {
+          inside = rig.signer.lastProblem;
+        });
+        await expectLater(signed, fails(CardSignProblem.noReader));
+        await pause;
+        expect(inside, CardSignProblem.noReader);
+        expect(rig.signer.lastProblem, CardSignProblem.noReader);
       },
     );
   });
