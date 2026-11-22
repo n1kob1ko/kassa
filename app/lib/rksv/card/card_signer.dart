@@ -75,6 +75,9 @@ class CardSigner {
   static const _masterFile = [0x3F, 0x00];
   static const _notSatisfied = 0x6982;
 
+  /// So viele Versuche hat eine Karte, von der kein Fehlversuch bekannt ist.
+  static const _fullRetries = 3;
+
   /// Nach diesen Problemen wärmt der Halter nicht von selbst auf: Ein neuer
   /// Versuch änderte nichts, oder jemand anderer hat den Leser.
   static const _noWarmUpAfter = {
@@ -99,6 +102,17 @@ class CardSigner {
 
   /// Wie viele [paused] gerade laufen.
   int _pauses = 0;
+
+  /// Ein laufendes Öffnen wartet gerade auf die Antwort von Android auf die
+  /// Frage nach der Erlaubnis (nur mit `ask`, Gerät ohne Erlaubnis).
+  bool _waitingForAndroid = false;
+
+  /// Endet, sobald ein Öffnen Android zu fragen beginnt; danach neu.
+  Completer<void> _androidAsks = Completer<void>();
+
+  /// Wie viele VERIFY dieser Halter abgeschickt hat (A1: kein zweiter
+  /// Versuch nach einem VERIFY im selben Aufruf).
+  int _verifiesSent = 0;
 
   /// Was dieser Halter selbst weiß, zusätzlich zum Speicher (Plan C4).
   int _unanswered = 0;
@@ -220,13 +234,49 @@ class CardSigner {
     if (hash.length != 32) {
       throw const CardSignException(CardSignProblem.refused);
     }
-    var held = _held;
-    if (held == null) {
-      while (_opening != null) {
-        await _opening;
+    final old = _held;
+    if (old != null) {
+      final verifiesBefore = _verifiesSent;
+      try {
+        return await _signOn(old, hash);
+      } on _SessionLost catch (lost) {
+        // Die Sitzung von vorher ist tot (Karte neu gesteckt, USB kurz weg).
+        // Ging in diesem Aufruf noch kein VERIFY hinaus, öffnet der Halter
+        // einmal neu und signiert noch einmal, mit dem ersten VERIFY der
+        // neuen Sitzung. Nach einem VERIFY nie: Es kann gezählt haben.
+        if (_verifiesSent != verifiesBefore) {
+          throw CardSignException(lost.problem);
+        }
       }
-      held = _held ?? await _openOnce(ask: false);
     }
+    // Scheitert das Öffnen, gilt sein Problem (etwa noReader).
+    final held = await _sessionForSign();
+    try {
+      return await _signOn(held, hash);
+    } on _SessionLost catch (lost) {
+      throw CardSignException(lost.problem);
+    }
+  }
+
+  /// Die Sitzung für ein [sign] ohne offene Sitzung: wartet auf ein laufendes
+  /// Öffnen, außer es wartet auf die Antwort von Android (dann sofort
+  /// [CardSignProblem.noPermission], A3), sonst öffnet es selbst, ohne
+  /// Android zu fragen (C6).
+  Future<_Held> _sessionForSign() async {
+    while (true) {
+      final running = _opening;
+      if (running == null) break;
+      if (_waitingForAndroid) {
+        throw const CardSignException(CardSignProblem.noPermission);
+      }
+      await Future.any([running, _androidAsks.future]);
+    }
+    return _held ?? await _openOnce(ask: false);
+  }
+
+  /// VERIFY, wenn die Sitzung es braucht, und die Unterschrift. Bricht die
+  /// Verbindung ab, gibt es die Sitzung frei und wirft [_SessionLost].
+  Future<Uint8List> _signOn(_Held held, Uint8List hash) async {
     try {
       var verifiedNow = false;
       if (!held.verified) {
@@ -245,7 +295,7 @@ class CardSigner {
     } on SessionException {
       final absent = held.reader.cardAbsent;
       await _drop();
-      throw CardSignException(
+      throw _SessionLost(
         absent ? CardSignProblem.noCard : CardSignProblem.silent,
       );
     }
@@ -312,8 +362,25 @@ class CardSigner {
     } catch (_) {
       throw const CardSignException(CardSignProblem.silent);
     }
+    // Und im Wächter, wie CardCheck._signRound (write-ahead): ein Versuch
+    // weniger als bekannt, ohne Eintrag der volle Zähler der Karte weniger
+    // eins. So sieht "Karte prüfen" die Versuche des Halters und umgekehrt.
+    try {
+      await _stored(
+        _guard.recordFailure(held.numberHex, (guarded ?? _fullRetries) - 1),
+      );
+    } catch (_) {
+      // Nichts ging hinaus: der Zähler zurück auf den alten Stand, keine PIN.
+      await _quietly(
+        _secrets.writeCardPinStatus(
+          CardPinStatus(unanswered: stored.unanswered),
+        ),
+      );
+      throw const CardSignException(CardSignProblem.silent);
+    }
     _unanswered = unanswered + 1;
 
+    _verifiesSent++;
     final answer = await held.session.send(command);
     final status = answer.status;
     if (answer.ok) {
@@ -412,6 +479,12 @@ class CardSigner {
     }
 
     final Uint8List raw;
+    // Mit `ask` fragt Android jetzt; ein [sign] wartet darauf nicht (A3).
+    final asks = ask && !device.granted;
+    if (asks) {
+      _waitingForAndroid = true;
+      if (!_androidAsks.isCompleted) _androidAsks.complete();
+    }
     try {
       raw = await _transport.open(device.address);
     } on ReaderException catch (e) {
@@ -422,6 +495,11 @@ class CardSigner {
         ReaderProblem.noChannel => CardSignProblem.noReader,
         _ => CardSignProblem.silent,
       });
+    } finally {
+      if (asks) {
+        _waitingForAndroid = false;
+        _androidAsks = Completer<void>();
+      }
     }
     try {
       final CcidDescriptor descriptor;
@@ -545,6 +623,13 @@ class CardSigner {
       // Schließen gelingt immer.
     }
   }
+}
+
+/// Die Verbindung zur Karte brach ab; die Sitzung ist schon freigegeben.
+final class _SessionLost implements Exception {
+  const _SessionLost(this.problem);
+
+  final CardSignProblem problem;
 }
 
 /// Die offene Sitzung. Die PIN steht nicht darin.

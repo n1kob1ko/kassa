@@ -296,8 +296,9 @@ void main() {
       expect(rig.halter.ready, isTrue);
 
       final broken = rig.reader.exchanges + 1;
+      // Die alte Sitzung und das neue Öffnen danach (A1) scheitern beide.
       rig.reader.onExchange = (n) {
-        if (n == broken) {
+        if (n >= broken && n <= broken + 2) {
           throw const ReaderException(ReaderProblem.io);
         }
       };

@@ -43,24 +43,20 @@ String _sentence(CardSignProblem p) => CardSignException(p).sentence;
 
 const _cashBoxId = 'BSPIMBKARTE';
 
-/// Der echte Halter, der jedes [warmUp] in [events] schreibt; mit [hold]
-/// endet ein Aufwärmen mit `ask` erst, wenn der Test es freigibt.
+/// Der echte Halter, der jedes [warmUp] in [events] schreibt.
 class _RecordingSigner extends CardSigner {
   _RecordingSigner({
     required super.transport,
     required super.secrets,
     required super.guard,
     required this.events,
-    this.hold,
   });
 
   final List<String> events;
-  final Completer<void>? hold;
 
   @override
-  Future<void> warmUp({bool ask = false}) async {
+  Future<void> warmUp({bool ask = false}) {
     events.add('warmUp(ask: $ask)');
-    if (ask && hold != null) await hold!.future;
     return super.warmUp(ask: ask);
   }
 }
@@ -86,19 +82,22 @@ class _RecordingService extends RksvService {
 
 typedef _Rig = ({
   FakeCardReader reader,
+  AskingReader asking,
   MemoryRksvSecrets secrets,
   List<String> events,
 });
 
-/// Die Kassa (Anna angemeldet) mit der nachgebauten Karte im Leser.
-Future<_Rig> _kassa(WidgetTester t, {Completer<void>? holdWarmUp}) async {
+/// Die Kassa (Anna angemeldet) mit der nachgebauten Karte im Leser. Fehlt
+/// die Erlaubnis für den Leser, fragt Android, bis der Test antwortet.
+Future<_Rig> _kassa(WidgetTester t) async {
   final reader = FakeCardReader(card: testSignatureCard());
+  final asking = AskingReader(reader);
   final secrets = MemoryRksvSecrets();
   final events = <String>[];
   final List<Override> overrides = [
     ...await memoryOverrides(),
     ...signatureOverrides(secrets: secrets),
-    readerTransportProvider.overrideWithValue(reader),
+    readerTransportProvider.overrideWithValue(asking),
     pinGuardProvider.overrideWithValue(MemoryPinGuard()),
     shareSheetProvider.overrideWithValue(FakeShareSheet()),
     rksvServiceProvider.overrideWith(
@@ -116,14 +115,13 @@ Future<_Rig> _kassa(WidgetTester t, {Completer<void>? holdWarmUp}) async {
         secrets: ref.watch(rksvSecretsProvider),
         guard: ref.watch(pinGuardProvider),
         events: events,
-        hold: holdWarmUp,
       );
       ref.onDispose(() => unawaited(signer.release()));
       return signer;
     }),
   ];
   await pumpKassa(t, overrides: overrides);
-  return (reader: reader, secrets: secrets, events: events);
+  return (reader: reader, asking: asking, secrets: secrets, events: events);
 }
 
 CardFacts _facts(FakeCard card) {
@@ -221,23 +219,37 @@ void main() {
     expect(rig.events, isEmpty);
   });
 
-  testWidgets('ein hängendes Aufwärmen hält weder Bild noch Verkauf auf', (
-    t,
-  ) async {
-    final hold = Completer<void>();
-    final rig = await _kassa(t, holdWarmUp: hold);
+  testWidgets('Android fragt beim Aufwärmen nach dem Leser: weder Bild noch '
+      'Verkauf warten darauf, der Bon nennt die fehlende Erlaubnis', (t) async {
+    final rig = await _kassa(t);
     await _startCardChain(t, rig);
+    // Nach dem Neustart fehlt die Erlaubnis; das Aufwärmen fragt Android.
+    rig.reader.devices[0] = FakeCardReader.readerDevice(granted: false);
     await pumpKassa(t, sameDatabase: true);
     await t.pumpAndSettle();
     expect(_warmUps(rig), greaterThanOrEqualTo(1));
+    expect(rig.asking.asking, isTrue);
     expect(_key('cart-count'), findsOneWidget);
     await tapItem(t, 'cola');
     expect(t.widget<PrimaryButton>(_key('pay-cash')).onPressed, isNotNull);
     await sellCash(t);
     await t.pumpAndSettle();
-    expect(await _lastDamaged(t), isFalse);
-    hold.complete();
+    expect(await _lastDamaged(t), isTrue);
+    // Der wahre Satz, nicht "Die Signatur hat nicht geantwortet.".
+    expect(
+      (await _state(t)).outageReason,
+      _sentence(CardSignProblem.noPermission),
+    );
+    expect(rig.asking.questions, 1);
+
+    // Ja: Die Sitzung steht, der nächste Bon signiert (mit Sammelbeleg).
+    rig.asking.answer(yes: true);
     await t.pumpAndSettle();
+    await sellCash(t);
+    await t.pumpAndSettle();
+    expect(await _lastDamaged(t), isFalse);
+    expect((await _state(t)).outage, isFalse);
+    expect(await _kinds(t), ['start', 'sale', 'collective', 'sale']);
   });
 
   testWidgets('Verkauf mit gezogener Karte: Hinweis mit dem Grund, '

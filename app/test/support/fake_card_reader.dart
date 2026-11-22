@@ -6,6 +6,7 @@
 //
 // Keine Liste und kein Fehlertext hier zeigt die 8 Bytes PIN eines VERIFY.
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:kassa/rksv/card/atrust_card.dart';
@@ -122,6 +123,15 @@ class FakeCard {
   }
 
   void _powerOff() => _powered = false;
+
+  /// Die Karte wurde gezogen und gleich wieder gesteckt: Sie ist aus, bis der
+  /// Leser sie neu einschaltet, und weiß von keinem VERIFY mehr.
+  void reseat() {
+    _powerOff();
+    _verified = false;
+    _prepared = false;
+    _hash = null;
+  }
 
   /// Führt einen ganzen Befehl aus; die Antwort endet mit dem Status.
   Uint8List process(Uint8List apdu) {
@@ -585,7 +595,64 @@ class FakeCardReader implements ReaderTransport {
   }
 }
 
-/// Die Seite der Karte bei T=1: nimmt Blöcke der Kassa, setzt Befehle aus
+/// Ein Leser, bei dem Android nach der Erlaubnis fragt: [open] eines Geräts,
+/// das [list] ohne Erlaubnis meldet, wartet, bis der Test mit [answer]
+/// antwortet. Ja trägt die Erlaubnis in die Liste ein.
+class AskingReader implements ReaderTransport {
+  AskingReader(this.inner);
+
+  final FakeCardReader inner;
+  Completer<bool>? _question;
+
+  /// Android fragt gerade.
+  bool get asking => _question != null;
+
+  /// Wie oft Android gefragt hat.
+  int questions = 0;
+
+  /// Beantwortet die laufende Frage.
+  void answer({required bool yes}) {
+    final question = _question;
+    _question = null;
+    if (yes) {
+      for (var i = 0; i < inner.devices.length; i++) {
+        final d = inner.devices[i];
+        if (d.isCardReader && !d.granted) {
+          inner.devices[i] = FakeCardReader.readerDevice();
+        }
+      }
+    }
+    question?.complete(yes);
+  }
+
+  @override
+  Future<List<UsbDeviceInfo>> list() => inner.list();
+
+  @override
+  Future<Uint8List> open(String address) async {
+    final device = inner.devices.where((d) => d.address == address).firstOrNull;
+    if (device != null && !device.granted) {
+      questions++;
+      final question = _question = Completer<bool>();
+      if (!await question.future) {
+        throw const ReaderException(ReaderProblem.noPermission);
+      }
+    }
+    return inner.open(address);
+  }
+
+  @override
+  Future<Uint8List> exchange(Uint8List? out, {required Duration limit}) =>
+      inner.exchange(out, limit: limit);
+
+  @override
+  Future<void> close() => inner.close();
+
+  @override
+  Future<TabletInfo> info() => inner.info();
+}
+
+/// Die Seite der Karte bei T=1:nimmt Blöcke der Kassa, setzt Befehle aus
 /// mehreren Blöcken zusammen und schickt Antworten in Stücken zurück.
 class _T1Card {
   _T1Card(this._reader, this._card);

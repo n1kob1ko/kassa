@@ -120,12 +120,17 @@ class BrokenGuard extends MemoryPinGuard {
   }
 }
 
-/// Ein Wächter, der beim Lesen oder Schreiben nie antwortet.
+/// Ein Wächter, der beim Lesen, Löschen oder Eintragen nie antwortet.
 class HangingGuard extends MemoryPinGuard {
-  HangingGuard({this.hangReads = false, this.hangWrites = false});
+  HangingGuard({
+    this.hangReads = false,
+    this.hangClears = false,
+    this.hangRecords = false,
+  });
 
   bool hangReads;
-  bool hangWrites;
+  bool hangClears;
+  bool hangRecords;
 
   @override
   Future<int?> retriesLeft(String cardNumber) async {
@@ -135,14 +140,36 @@ class HangingGuard extends MemoryPinGuard {
 
   @override
   Future<void> clear(String cardNumber) async {
-    if (hangWrites) await Completer<void>().future;
+    if (hangClears) await Completer<void>().future;
     return super.clear(cardNumber);
   }
 
   @override
   Future<void> recordFailure(String cardNumber, int retriesLeft) async {
-    if (hangWrites) await Completer<void>().future;
+    if (hangRecords) await Completer<void>().future;
     return super.recordFailure(cardNumber, retriesLeft);
+  }
+}
+
+/// Ein Wächter, dessen Eintragen scheitert.
+class RefusingGuard extends MemoryPinGuard {
+  @override
+  Future<void> recordFailure(String cardNumber, int retriesLeft) async =>
+      throw StateError('Wächter schreibt nicht');
+}
+
+/// Wie [FakeCardReader], aber [open] eines Geräts ohne Erlaubnis hängt bis
+/// zur Antwort; [list] kann der Test mit [holdList] aufhalten.
+class SlowListReader extends AskingReader {
+  SlowListReader(super.inner);
+
+  Completer<void>? holdList;
+
+  @override
+  Future<List<UsbDeviceInfo>> list() async {
+    final hold = holdList;
+    if (hold != null) await hold.future;
+    return super.list();
   }
 }
 
@@ -361,13 +388,109 @@ void main() {
       expect(rig.signer.ready, isFalse);
     });
 
-    test('Nach einem gescheiterten sign wärmt der Halter selbst auf', () async {
+    test('Ein einzelner Fehler auf einer alten Sitzung: der Halter öffnet neu '
+        'und signiert den Bon doch', () async {
       final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
       await rig.store();
       await rig.sign(1);
       final broken = rig.reader.exchanges + 1;
       rig.reader.onExchange = (n) {
         if (n == broken) throw const ReaderException(ReaderProblem.io);
+      };
+      expect(await rig.sign(2), testSigner(hashOf(2)));
+      expect(rig.signer.ready, isTrue);
+      expect(rig.signer.lastProblem, isNull);
+      expect(rig.powerOns, 2);
+      // Die neue Sitzung prüft die PIN wie jede: genau ein VERIFY mehr.
+      expect(rig.card.verifyCount, 2);
+      expect(rig.card.signCount, 2);
+      expect((await rig.secrets.cardPinStatus()).unanswered, 0);
+    });
+
+    test('Karte zwischen zwei Bons gezogen und gleich wieder gesteckt: der '
+        'zweite Bon signiert, ein Einschalten und ein VERIFY mehr', () async {
+      final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+      await rig.store();
+      await rig.sign(1);
+      expect(rig.powerOns, 1);
+      expect(rig.card.verifyCount, 1);
+      rig.card.reseat();
+      expect(await rig.sign(2), testSigner(hashOf(2)));
+      expect(rig.powerOns, 2);
+      expect(rig.card.verifyCount, 2);
+      expect(rig.signer.ready, isTrue);
+    });
+
+    test(
+      'Leser abgezogen bei offener Sitzung: noReader, kein VERIFY',
+      () async {
+        final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+        await rig.store();
+        await rig.sign(1);
+        rig.reader.devices.clear();
+        rig.reader.failAfterExchanges = rig.reader.exchanges;
+        await expectLater(rig.sign(2), fails(CardSignProblem.noReader));
+        expect(rig.card.verifyCount, 1);
+        expect(rig.signer.ready, isFalse);
+        await pumpEventQueue();
+        expect(rig.signer.lastProblem, CardSignProblem.noReader);
+      },
+    );
+
+    test('Fehler beim VERIFY auf einer alten Sitzung: kein zweiter Versuch, '
+        'der Versuch zählt wie bisher', () async {
+      final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+      await rig.store();
+      await rig.signer.warmUp();
+      expect(rig.signer.ready, isTrue);
+      rig.reader.dropVerifyAnswers = 1;
+      await expectLater(rig.sign(1), fails(CardSignProblem.silent));
+      expect(rig.card.verifyCount, 1);
+      expect(rig.powerOns, 1);
+      expect((await rig.secrets.cardPinStatus()).unanswered, 1);
+    });
+
+    test('Fehler nach dem 6982-VERIFY auf einer alten Sitzung: kein zweiter '
+        'Versuch', () async {
+      final rig = Rig();
+      await rig.store();
+      await rig.sign(1);
+      rig.reader.dropVerifyAnswers = 1;
+      await expectLater(rig.sign(2), fails(CardSignProblem.silent));
+      expect(rig.card.verifyCount, 2);
+      expect(rig.card.signCount, 1);
+      expect(rig.powerOns, 1);
+    });
+
+    test('Fehler auf einer Sitzung, die dieser Aufruf geöffnet hat: kein '
+        'zweiter Versuch', () async {
+      final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+      await rig.store();
+      var thrown = false;
+      rig.reader.onExchange = (n) {
+        if (rig.card.verifyCount == 1 && !thrown) {
+          thrown = true;
+          throw const ReaderException(ReaderProblem.io);
+        }
+      };
+      await expectLater(rig.sign(1), fails(CardSignProblem.silent));
+      expect(rig.powerOns, 1);
+      expect(rig.card.verifyCount, 1);
+      expect(rig.card.signCount, 0);
+    });
+
+    test('Scheitert auch das neue Öffnen, wärmt der Halter danach selbst '
+        'auf', () async {
+      final rig = Rig(card: cardOf(acosId41Atr, verifyPerSignature: false));
+      await rig.store();
+      await rig.sign(1);
+      final broken = rig.reader.exchanges + 1;
+      rig.reader.onExchange = (n) {
+        // Die Unterschrift der alten Sitzung, ihr Ausschalten und das
+        // Einschalten der neuen.
+        if (n >= broken && n <= broken + 2) {
+          throw const ReaderException(ReaderProblem.io);
+        }
       };
       await expectLater(rig.sign(2), fails(CardSignProblem.silent));
       await pumpEventQueue();
@@ -554,6 +677,101 @@ void main() {
         expect(rig.card.verifyCount, 1);
       },
     );
+
+    test('Vor dem VERIFY trägt der Halter einen Versuch weniger ein, wie '
+        'Karte prüfen; ohne Antwort bleibt er stehen', () async {
+      final guard = MemoryPinGuard();
+      final rig = Rig(guard: guard);
+      await rig.store();
+      rig.reader.dropVerifyAnswers = 2;
+      await expectLater(rig.sign(1), fails(CardSignProblem.silent));
+      // Nichts bekannt: der volle Zähler der Karte weniger eins.
+      expect(await guard.retriesLeft(number), 2);
+      await expectLater(rig.sign(2), fails(CardSignProblem.silent));
+      expect(await guard.retriesLeft(number), 1);
+      expect(rig.card.verifyCount, 2);
+      expect(rig.card.retriesLeft, 3);
+    });
+
+    test('Kann der Wächter nicht eintragen, geht kein VERIFY hinaus', () async {
+      final rig = Rig(guard: RefusingGuard());
+      await rig.store();
+      await expectLater(rig.sign(1), fails(CardSignProblem.silent));
+      await pumpEventQueue();
+      expect(rig.card.verifyCount, 0);
+      expect(rig.card.signCount, 0);
+      expect((await rig.secrets.cardPinStatus()).unanswered, 0);
+    });
+
+    test('Ein gelungenes VERIFY lässt keinen Eintrag zurück', () async {
+      final guard = MemoryPinGuard();
+      final rig = Rig(guard: guard);
+      await rig.store();
+      expect(await rig.sign(1), testSigner(hashOf(1)));
+      expect(await rig.sign(2), testSigner(hashOf(2)));
+      expect(rig.card.verifyCount, 2);
+      expect(await guard.retriesLeft(number), isNull);
+    });
+  });
+
+  group('Erlaubnis von Android', () {
+    Rig askingRig({SlowListReader Function(FakeCardReader r)? make}) {
+      return Rig(
+        card: cardOf(acosId41Atr, verifyPerSignature: false),
+        granted: false,
+        wrap: (r) => make == null ? AskingReader(r) : make(r),
+      );
+    }
+
+    test('Wartet ein Öffnen auf die Antwort von Android, endet sign sofort '
+        'mit noPermission; nach Ja signiert der nächste Bon', () async {
+      late AskingReader asking;
+      final rig = Rig(
+        card: cardOf(acosId41Atr, verifyPerSignature: false),
+        granted: false,
+        wrap: (r) => asking = AskingReader(r),
+      );
+      await rig.store();
+      final warming = rig.signer.warmUp(ask: true);
+      await pumpEventQueue();
+      expect(asking.asking, isTrue);
+
+      final first = Outcome(rig.sign(1));
+      await pumpEventQueue();
+      expect(first.error, isProblem(CardSignProblem.noPermission));
+      expect(asking.questions, 1);
+      expect(rig.reader.opened, isEmpty);
+      expect(rig.card.verifyCount, 0);
+
+      asking.answer(yes: true);
+      await warming;
+      expect(rig.signer.ready, isTrue);
+      expect(await rig.sign(2), testSigner(hashOf(2)));
+      expect(asking.questions, 1);
+      expect(rig.reader.opened, hasLength(1));
+    });
+
+    test('Auch wenn die Frage erst nach dem Beginn von sign kommt', () async {
+      late SlowListReader slow;
+      final rig = askingRig(make: (r) => slow = SlowListReader(r));
+      await rig.store();
+      final hold = slow.holdList = Completer<void>();
+      final warming = rig.signer.warmUp(ask: true);
+      await pumpEventQueue();
+      final first = Outcome(rig.sign(1));
+      await pumpEventQueue();
+      expect(first.done, isFalse);
+      slow.holdList = null;
+      hold.complete();
+      await pumpEventQueue();
+      expect(slow.asking, isTrue);
+      expect(first.error, isProblem(CardSignProblem.noPermission));
+
+      slow.answer(yes: false);
+      await warming;
+      expect(rig.signer.ready, isFalse);
+      expect(rig.signer.lastProblem, CardSignProblem.noPermission);
+    });
   });
 
   group('Korrektur 1', () {
@@ -645,6 +863,23 @@ void main() {
       });
     });
 
+    test('Wächter trägt vor VERIFY nicht ein: kein VERIFY, silent, der '
+        'Zähler im Speicher bleibt', () {
+      fakeAsync((time) {
+        final rig = Rig(guard: HangingGuard(hangRecords: true));
+        rig.store();
+        time.flushMicrotasks();
+        final first = Outcome(rig.sign(1));
+        time.elapse(CardSigner.storageLimit * 4);
+        expect(first.error, isProblem(CardSignProblem.silent));
+        expect(rig.card.verifyCount, 0);
+        expect(rig.card.signCount, 0);
+        final status = Outcome(rig.secrets.cardPinStatus());
+        time.flushMicrotasks();
+        expect(status.value!.unanswered, 0);
+      });
+    });
+
     test('Wächter liest nicht: kein VERIFY, silent', () {
       fakeAsync((time) {
         final rig = Rig(guard: HangingGuard(hangReads: true));
@@ -662,7 +897,7 @@ void main() {
       fakeAsync((time) {
         final secrets = ResetHangSecrets();
         final rig = Rig(
-          guard: HangingGuard(hangWrites: true),
+          guard: HangingGuard(hangClears: true),
           secrets: secrets,
         );
         rig.store();

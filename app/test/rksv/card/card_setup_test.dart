@@ -4,6 +4,8 @@
 
 import 'dart:typed_data';
 
+import 'package:kassa/rksv/card/reader_transport.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/rksv/card/card_check.dart';
 import 'package:kassa/rksv/card/card_facts.dart';
@@ -71,6 +73,111 @@ class _Rig {
       pin: pin,
     ),
   );
+}
+
+/// Ein Wächter, der nach dem "Tod" der App nichts mehr annimmt.
+class _MortalGuard extends MemoryPinGuard {
+  bool dead = false;
+
+  @override
+  Future<void> recordFailure(String cardNumber, int retriesLeft) async {
+    if (dead) throw StateError('tot');
+    return super.recordFailure(cardNumber, retriesLeft);
+  }
+
+  @override
+  Future<void> clear(String cardNumber) async {
+    if (dead) throw StateError('tot');
+    return super.clear(cardNumber);
+  }
+}
+
+/// Der Leser eines Lebens der App: Sobald die Karte ein VERIFY gesehen hat,
+/// stirbt die App ([onVerify]); danach geht von ihr nichts mehr zur Karte.
+class _DyingReader implements ReaderTransport {
+  _DyingReader(this.inner, this.onVerify);
+
+  final FakeCardReader inner;
+  final void Function() onVerify;
+  bool _dead = false;
+
+  @override
+  Future<List<UsbDeviceInfo>> list() => inner.list();
+
+  @override
+  Future<Uint8List> open(String address) => inner.open(address);
+
+  @override
+  Future<Uint8List> exchange(Uint8List? out, {required Duration limit}) async {
+    if (_dead) throw const ReaderException(ReaderProblem.io);
+    final before = inner.card!.verifyCount;
+    try {
+      return await inner.exchange(out, limit: limit);
+    } finally {
+      if (inner.card!.verifyCount > before) {
+        _dead = true;
+        onVerify();
+      }
+    }
+  }
+
+  @override
+  Future<void> close() => inner.close();
+
+  @override
+  Future<TabletInfo> info() => inner.info();
+}
+
+/// Ein Leben der App über demselben Leser, Speicher und Wächter: Halter,
+/// Prüflauf und "Karte und PIN" neu, wie nach einem Neustart.
+class _Life {
+  _Life(FakeCardReader reader, MemoryRksvSecrets secrets, _MortalGuard guard) {
+    // Wie ein Neustart: Was die tote App noch schreiben wollte, kam nicht an.
+    secrets.failWrites = false;
+    guard.dead = false;
+    final transport = _DyingReader(reader, () {
+      secrets.failWrites = true;
+      guard.dead = true;
+    });
+    signer = CardSigner(transport: transport, secrets: secrets, guard: guard);
+    check = CardCheck(
+      transport: transport,
+      guard: guard,
+      signer: signer,
+      now: () => DateTime(2026, 11, 22, 10),
+      appVersion: 'test',
+    );
+    setup = CardSetup(check: check, secrets: secrets, signer: signer);
+  }
+
+  late final CardSigner signer;
+  late final CardCheck check;
+  late final CardSetup setup;
+
+  /// Ein Bon des Halters, dessen VERIFY ohne Antwort bleibt.
+  Future<Object?> halterDies(FakeCardReader reader) async {
+    reader.dropVerifyAnswers = 1;
+    try {
+      await signer.sign(_hash());
+      return null;
+    } catch (e) {
+      return e;
+    } finally {
+      reader.dropVerifyAnswers = 0;
+    }
+  }
+
+  /// "Karte und PIN" mit der gespeicherten PIN, deren VERIFY ohne Antwort
+  /// bleibt.
+  Future<void> setupDies(FakeCardReader reader) async {
+    await check.run();
+    reader.dropVerifyAnswers = 1;
+    try {
+      await setup.signWithStored();
+    } finally {
+      reader.dropVerifyAnswers = 0;
+    }
+  }
 }
 
 final _pinRejected = isA<CardSignException>().having(
@@ -367,6 +474,71 @@ void main() {
       expect(rig.check.lastSignCountedAgainstPin, isTrue);
       await rig.check.run();
       expect(rig.check.lastSignCountedAgainstPin, isFalse);
+    });
+  });
+  group('Halter und Karte prüfen zählen gemeinsam (falsche gespeicherte PIN, '
+      'die App stirbt nach jedem VERIFY)', () {
+    late FakeCardReader reader;
+    late MemoryRksvSecrets secrets;
+    late _MortalGuard guard;
+
+    Future<void> start() async {
+      reader = FakeCardReader(card: testSignatureCard());
+      secrets = MemoryRksvSecrets();
+      guard = _MortalGuard();
+      await secrets.writeCardPin(
+        CardPin(
+          kind: reader.card!.profile.kind.name,
+          numberHex: _cardNumber,
+          pin: '111111',
+        ),
+      );
+    }
+
+    /// Ein neues Leben: Der Halter schickt nichts, Karte prüfen zeigt die
+    /// Zeile des Wächters und schickt auch nichts.
+    Future<void> expectStopped() async {
+      final life = _Life(reader, secrets, guard);
+      await expectLater(life.signer.sign(_hash()), throwsA(_pinRejected));
+      await life.check.run();
+      expect(life.check.state.guardBlocks, isTrue);
+      expect(
+        life.check.state.rows[CheckRow.signature]!.message,
+        'Die Karte hat vermutlich nur noch einen Versuch.',
+      );
+      expect(await life.setup.signWithStored(), '');
+      expect(await guard.retriesLeft(_cardNumber), 1);
+      expect(reader.card!.verifyCount, 2);
+      expect(reader.card!.retriesLeft, 1);
+    }
+
+    test('erst Karte und PIN, dann zwei Bons: zwei VERIFY', () async {
+      await start();
+      await _Life(reader, secrets, guard).setupDies(reader);
+      expect(reader.card!.verifyCount, 1);
+      expect(await guard.retriesLeft(_cardNumber), 2);
+      await _Life(reader, secrets, guard).halterDies(reader);
+      expect(reader.card!.verifyCount, 2);
+      await expectStopped();
+    });
+
+    test('erst zwei Bons, dann Karte und PIN: zwei VERIFY, der Wächter kennt '
+        '1', () async {
+      await start();
+      await _Life(reader, secrets, guard).halterDies(reader);
+      expect(await guard.retriesLeft(_cardNumber), 2);
+      await _Life(reader, secrets, guard).halterDies(reader);
+      expect(await guard.retriesLeft(_cardNumber), 1);
+      expect(reader.card!.verifyCount, 2);
+      await expectStopped();
+    });
+
+    test('Bon, Karte und PIN, Bon: zwei VERIFY', () async {
+      await start();
+      await _Life(reader, secrets, guard).halterDies(reader);
+      await _Life(reader, secrets, guard).setupDies(reader);
+      expect(reader.card!.verifyCount, 2);
+      await expectStopped();
     });
   });
 }
