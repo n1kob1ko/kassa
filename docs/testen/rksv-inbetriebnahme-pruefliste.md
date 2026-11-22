@@ -27,7 +27,7 @@ Noch ein paar Dinge:
 
 ## 1. Was du brauchst
 
-- [ ] Das Tablet mit der Kassa in Version 1.7.0. Ganz unten in den Einstellungen steht "Kassa Version 1.7.0". Du musst vielleicht nach unten wischen.
+- [ ] Das Tablet mit der Kassa in Version 1.8.0. Ganz unten in den Einstellungen steht "Kassa Version 1.8.0". Du musst vielleicht nach unten wischen.
 - [ ] Das Konto deines Betriebs bei A-Trust: den Benutzernamen und das Passwort, die du von A-Trust bekommen hast.
 - [ ] Den Bondrucker, am Strom und mit Papier.
 - [ ] Den Zugang zu FinanzOnline, oder deine Steuerberatung, die die Anmeldung für dich macht.
@@ -49,6 +49,7 @@ Steht dort "Nicht eingerichtet": Auch in Ordnung.
 
 - [ ] In der Karte "Signatur" nach unten wischen bis zur Zeile "Signatur einrichten".
 - [ ] Bei "Signatur einrichten" auf "Einrichten" tippen.
+- [ ] Auf der Seite "Womit signiert die Kassa?" auf "A-Trust online" tippen.
 
 Das solltest du sehen: Die Seite "Zugangsdaten von A-Trust" mit den Feldern "Benutzername" und "Passwort".
 
@@ -96,7 +97,7 @@ Klappt das Drucken nicht, steht über den Tasten ein Satz des Druckers. Dann abs
 
 Melde heute noch nichts bei FinanzOnline an. Das kommt erst nach dem Start (Schritt 10).
 
-Hier hörst du für heute auf. Mit "Zurück" kommst du zu den gespeicherten Zugangsdaten, mit noch einem "Zurück" zu den Einstellungen. An der neuen Kassa ist nichts passiert. Die Angaben bleiben dieselben, bis du die Kassa in Betrieb nimmst.
+Hier hörst du für heute auf. Mit "Zurück" kommst du zu den gespeicherten Zugangsdaten, mit noch einem "Zurück" zur Wahl "Womit signiert die Kassa?" und mit einem dritten zu den Einstellungen. An der neuen Kassa ist nichts passiert. Die Angaben bleiben dieselben, bis du die Kassa in Betrieb nimmst.
 
 # Teil 2: Der Tag
 
@@ -106,7 +107,7 @@ Mach diese drei Schritte an dem Tag, den du mit deiner Steuerberatung abgemacht 
 
 Bevor du an der alten Kassa etwas abschließt, prüfst du, dass A-Trust heute antwortet.
 
-- [ ] Einstellungen öffnen, in der Karte "Signatur" bei "Signatur einrichten" auf "Einrichten" tippen.
+- [ ] Einstellungen öffnen, in der Karte "Signatur" bei "Signatur einrichten" auf "Einrichten" tippen, dann auf "A-Trust online".
 - [ ] Bei "Zugangsdaten sind gespeichert." auf "Weiter" tippen.
 - [ ] Auf der Seite "Verbindung prüfen" warten, bis alle vier Zeilen einen Haken haben. Diese Prüfung kostet wieder eine Signatur.
 
