@@ -454,11 +454,9 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             _Action.setup,
             key: 'rksv-setup',
             title: 'Signatur einrichten',
-            help: off
-                ? 'Für den echten Betrieb, mit Signaturkarte oder A-Trust '
-                      'online.'
-                : 'Für den echten Betrieb. Du brauchst die Zugangsdaten von '
-                      'A-Trust.',
+            help:
+                'Für den echten Betrieb, mit Signaturkarte oder A-Trust '
+                'online.',
             label: 'Einrichten',
             onPressed: () => openCredentials(context),
           ),

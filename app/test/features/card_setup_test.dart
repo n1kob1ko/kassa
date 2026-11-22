@@ -198,6 +198,8 @@ void main() {
       await seedProbe(t);
       expect(_key('rksv-card-probe-on'), findsNothing);
       expect(_inCard(find.text('Mit Karte ausprobieren')), findsNothing);
+      // "Signatur einrichten" hat in jedem Zustand die Hilfe mit beiden Wegen.
+      expect(_inCard(find.text(_setupHelp)), findsOneWidget);
     });
 
     testWidgets('ein Mitarbeiter ohne Chef-Recht sieht sie nicht', (t) async {

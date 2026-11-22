@@ -119,6 +119,9 @@ class CardCheck {
   /// Die Karte der letzten gelungenen Probe-Unterschrift dieses Laufs.
   CardFacts? _signed;
 
+  /// Siehe [lastSignCountedAgainstPin].
+  bool _countedTry = false;
+
   CardCheckState get state => _state;
 
   /// Art, Nummer und Zertifikat der Karte, solange Zeile 5 des letzten Laufs
@@ -135,6 +138,13 @@ class CardCheck {
     return (kind: ready.profile.kind.name, numberHex: ready.key);
   }
 
+  /// Der letzte [sign] hat einen Versuch der PIN gekostet: Die Karte hat
+  /// das VERIFY abgelehnt, oder es ging hinaus und blieb ohne Antwort. Zu
+  /// Beginn jedes [run] und [sign] `false`; nicht nach einem Fehler vor dem
+  /// VERIFY und nicht nach einem angenommenen VERIFY. Nur zum Lesen ("Karte
+  /// und PIN").
+  bool get lastSignCountedAgainstPin => _countedTry;
+
   /// Jede Änderung von [state].
   Stream<CardCheckState> get changes => _changes.stream;
 
@@ -143,6 +153,7 @@ class CardCheck {
   /// "Das ist nicht die Karte dieser Kassa.", und Zeile 5 gibt es nicht.
   Future<void> run({String? expectSerialHex}) async {
     if (_busy) return;
+    _countedTry = false;
     final signer = _signer;
     if (signer == null) return _run(expectSerialHex);
     return signer.paused(() => _run(expectSerialHex));
@@ -174,7 +185,9 @@ class CardCheck {
   /// Zeile 5: Probe-Unterschrift mit [pin]. Tut nichts, wenn `!canSign` oder
   /// die PIN nicht aus 4 oder 6 Ziffern besteht.
   Future<void> sign(String pin) async {
-    if (_ready == null || _busy || _guardBlocks) return;
+    if (_busy) return;
+    _countedTry = false;
+    if (_ready == null || _guardBlocks) return;
     if (!_pinPattern.hasMatch(pin)) return;
     final signer = _signer;
     if (signer == null) return _sign(pin);
@@ -713,6 +726,8 @@ class CardCheck {
     try {
       verified = await session.send(CardCommand.verifyPin(profile, pin));
     } catch (e) {
+      // Das VERIFY ging hinaus und blieb ohne Antwort: ein Versuch.
+      _countedTry = true;
       // Nach Ablauf der Zeit hat _limited die Zeile schon gesetzt. Der vorher
       // geschriebene Wert bleibt stehen.
       if (!a.live) return false;
@@ -726,6 +741,7 @@ class CardCheck {
     }
     a.verifyInFlight = null;
     if (!verified.ok) {
+      _countedTry = true;
       await _wrongVerify(a, ready, verified.status);
       return false;
     }
@@ -818,6 +834,7 @@ class CardCheck {
       // vorsichtige Wert steht schon im Wächter.
       final inFlight = a.verifyInFlight;
       a.verifyInFlight = null;
+      if (inFlight != null) _countedTry = true;
       final hint = inFlight == null ? _T.tooSlowHint : _unclearHint(inFlight);
       _put(_failure(a.running ?? CheckRow.reader, _T.tooSlow, hint));
       return false;

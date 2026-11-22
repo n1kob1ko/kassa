@@ -73,6 +73,11 @@ class _Rig {
   );
 }
 
+/// Der Stand der gespeicherten PIN, wie ihn das Speichern hinterlässt.
+final _unchanged = isA<CardPinStatus>()
+    .having((s) => s.rejected, 'rejected', isFalse)
+    .having((s) => s.unanswered, 'unanswered', 0);
+
 Uint8List _hash() => Uint8List(32)..fillRange(0, 32, 7);
 
 void main() {
@@ -236,11 +241,74 @@ void main() {
       expect(await rig.setup.signWithStored(), '');
       expect(rig.card.verifyCount, 1);
       expect(rig.check.facts, isNull);
+      expect(rig.check.lastSignCountedAgainstPin, isTrue);
       expect((await rig.secrets.cardPinStatus()).rejected, isTrue);
       expect(await rig.setup.storedForReadCard(), isFalse);
       // Ein zweiter Aufruf schickt nichts mehr.
       expect(await rig.setup.signWithStored(), '');
       expect(rig.card.verifyCount, 1);
+    });
+
+    test('Karte vor dem VERIFY weg: nicht abgelehnt, der Halter signiert '
+        'danach mit der Karte wieder', () async {
+      final rig = _Rig();
+      await rig.store('123456');
+      await rig.check.run();
+      rig.card.removed = true;
+      expect(await rig.setup.signWithStored(), '');
+      expect(rig.card.verifyCount, 0);
+      expect(rig.check.lastSignCountedAgainstPin, isFalse);
+      expect(await rig.secrets.cardPinStatus(), _unchanged);
+      rig.card.removed = false;
+      expect(await rig.signer.sign(_hash()), isNotEmpty);
+      await rig.signer.release();
+    });
+
+    test('VERIFY ohne Antwort: abgelehnt', () async {
+      final rig = _Rig();
+      await rig.store('123456');
+      await rig.check.run();
+      rig.reader.dropVerifyAnswers = 1;
+      expect(await rig.setup.signWithStored(), '');
+      expect(rig.card.verifyCount, 1);
+      expect(rig.check.lastSignCountedAgainstPin, isTrue);
+      expect((await rig.secrets.cardPinStatus()).rejected, isTrue);
+    });
+
+    test(
+      'VERIFY angenommen, Unterschrift passt nicht: nicht abgelehnt',
+      () async {
+        final base = testSignatureCard();
+        final rig = _Rig(
+          card: FakeCard(
+            atr: base.atr,
+            profile: base.profile,
+            certificate: base.certificate,
+            signer: (_) => Uint8List(64),
+          ),
+        );
+        await rig.store('123456');
+        await rig.check.run();
+        expect(await rig.setup.signWithStored(), '');
+        expect(rig.card.verifyCount, 1);
+        expect(
+          rig.check.state.rows[CheckRow.signature]!.state,
+          RowState.problem,
+        );
+        expect(rig.check.lastSignCountedAgainstPin, isFalse);
+        expect(await rig.secrets.cardPinStatus(), _unchanged);
+        expect(await rig.setup.storedForReadCard(), isTrue);
+      },
+    );
+
+    test('ein neuer Lauf setzt das Kennzeichen zurück', () async {
+      final rig = _Rig();
+      await rig.store('111111');
+      await rig.check.run();
+      await rig.setup.signWithStored();
+      expect(rig.check.lastSignCountedAgainstPin, isTrue);
+      await rig.check.run();
+      expect(rig.check.lastSignCountedAgainstPin, isFalse);
     });
   });
 }

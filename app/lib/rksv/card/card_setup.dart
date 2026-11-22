@@ -76,8 +76,12 @@ class CardSetup {
   /// Zeile 5 grün wird und es [CardCheck.facts] gibt. Nur wenn die PIN für
   /// die gelesene Karte gespeichert und nicht abgelehnt ist und der Wächter
   /// es erlaubt; sonst geht nichts zur Karte. `null`: Zeile 5 ist grün.
-  /// `''`: nicht; wurde Zeile 5 dabei rot, gilt die gespeicherte PIN als
-  /// abgelehnt (Plan C4), bis der Chef sie neu eingibt.
+  /// `''`: nicht. Hat der Versuch die Karte einen Versuch der PIN gekostet
+  /// (VERIFY abgelehnt oder ohne Antwort,
+  /// [CardCheck.lastSignCountedAgainstPin]), gilt die gespeicherte PIN als
+  /// abgelehnt (Plan C4), bis der Chef sie neu eingibt. Ein Fehler von Leser
+  /// oder Karte vor dem VERIFY oder nach einem angenommenen VERIFY ändert
+  /// ihren Stand nicht: Eine laufende Kette mit Karte signiert weiter.
   Future<String?> signWithStored() async {
     final read = _check.readCard;
     if (read == null || !_check.state.canSign) return '';
@@ -85,7 +89,7 @@ class CardSetup {
     if (stored == null) return '';
     await _check.sign(stored.pin);
     if (_check.facts != null) return null;
-    if (_check.state.rows[CheckRow.signature]!.state == RowState.problem) {
+    if (_check.lastSignCountedAgainstPin) {
       try {
         await _secrets
             .writeCardPinStatus(const CardPinStatus(rejected: true))
