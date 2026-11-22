@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Geräte, die Android der Kassa beim Anstecken meldet: Kartenleser der
+     USB-Klasse 11 (Chipkarte, CCID). Der Drucker steht nicht darin. -->
+<resources>
+    <usb-device class="11" />
+</resources>

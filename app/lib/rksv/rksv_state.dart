@@ -10,8 +10,10 @@ enum RksvMode { off, probe, live }
 
 /// Wer eine Kette signiert (`rksv_chains.unit`): `probe` die Probe-Signatur
 /// auf dem Tablet, `atrustTest` das Testsystem von A-Trust (immer im Modus
-/// probe), `atrust` das echte System von A-Trust.
-enum RksvUnit { probe, atrustTest, atrust }
+/// probe), `atrust` das echte System von A-Trust, `cardTest` die
+/// Signaturkarte zur Probe (immer im Modus probe), `card` die Signaturkarte
+/// im echten Betrieb.
+enum RksvUnit { probe, atrustTest, atrust, cardTest, card }
 
 enum RksvTaskKind {
   checkStart,

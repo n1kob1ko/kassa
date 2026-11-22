@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart'
-    show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
+    show InsertMode, OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -22,7 +22,13 @@ import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/rksv/card/atrust_card.dart';
+import 'package:kassa/rksv/card/card_facts.dart';
+import 'package:kassa/rksv/card/card_signature_unit.dart';
+import 'package:kassa/rksv/card/card_signer.dart';
 import 'package:kassa/rksv/card/certificate.dart';
+import 'package:kassa/rksv/card/pin_guard.dart';
+import 'package:kassa/rksv/card/reader_transport.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/dep_export.dart';
 import 'package:kassa/rksv/online/atrust_client.dart';
@@ -35,9 +41,33 @@ import 'package:kassa/rksv/rksv_service.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:pointycastle/digests/sha256.dart';
 
+import '../rksv/fixtures/test_card.dart';
 import 'demo_fixtures.dart';
 import 'fake_atrust.dart';
+import 'fake_card_reader.dart';
 import 'fake_signature_unit.dart';
+import 'scripted_reader.dart' show bytesOf;
+
+/// ATR der nachgebauten Karte des Rigs (a.sign RK CHIP mit ACOS-ID 4.1).
+const rigCardAtr = '3BDF97008131FE4680319052410464050401AC73D622C0F9';
+
+/// Die erfundene PIN der Karte des Rigs.
+const rigCardPin = '246813';
+
+/// Die nachgebaute Signaturkarte des Beispiel-Imbiss mit dem Test-Zertifikat
+/// (dasselbe wie das der Attrappe). Ein VERIFY gilt bis zum Ausschalten,
+/// außer mit [verifyPerSignature].
+FakeCard rigCard({bool verifyPerSignature = false}) {
+  final atr = bytesOf(rigCardAtr);
+  return FakeCard(
+    atr: atr,
+    profile: profileForAtr(atr)!,
+    pin: rigCardPin,
+    certificate: testCertificate,
+    signer: testSigner,
+    verifyPerSignature: verifyPerSignature,
+  );
+}
 
 /// Speichert ausgegebene Protokolle im Speicher. Mit [accept] false bricht
 /// die Person den Speichern-Dialog ab.
@@ -116,6 +146,9 @@ class RksvRig {
     this.atrust,
     this.keeper,
     this.liveKeeper,
+    this.cardReader,
+    this.pinGuard,
+    this.cardSigner,
   );
 
   final KassaDatabase db;
@@ -143,6 +176,21 @@ class RksvRig {
   /// Kennzeichen "abgelehnt" des echten Systems. Sonst null.
   final AtrustSessionKeeper? liveKeeper;
 
+  /// Der nachgebaute Kartenleser aus `open(card: …)`, sonst null. Die Karte
+  /// darin lässt sich ziehen (`card.removed`) oder tauschen.
+  final FakeCardReader? cardReader;
+
+  /// Der PIN-Wächter des Halters aus `open(card: …)`, sonst null.
+  final MemoryPinGuard? pinGuard;
+
+  /// Der Halter der Karte über [cardReader] (mit [secrets] und [pinGuard]),
+  /// sonst null.
+  final CardSigner? cardSigner;
+
+  /// Gesetzt: Das Bauen der Einheit einer Kette mit Karte wirft dies, wie ein
+  /// unerwarteter Fehler.
+  Object? cardUnitError;
+
   /// Ohne [probeUnit] signiert jede Kette mit der Attrappe; deren Zertifikat
   /// steht dafür in `rksv_certificates`. Mit [probeUnit] signiert die
   /// Probe-Signatur wie in der App ([probeSignatureUnitOf]).
@@ -166,15 +214,24 @@ class RksvRig {
   /// echten gegen das Testsystem (`atrust_testsystem_test.dart`). Eine Kette
   /// `atrust` ist dann ein [StateError]: Der echte Client spräche sonst mit
   /// dem echten System.
+  ///
+  /// Mit [card] steckt diese Karte in [cardReader], und das Journal signiert
+  /// wie in der App ([signatureUnitOf]): Ketten `cardTest` und `card` mit
+  /// einer [CardSignatureUnit] über [cardSigner], Probe-Ketten mit der
+  /// Probe-Signatur, Online-Ketten nur zusammen mit [atrust] oder
+  /// [atrustClient] (sonst [StateError]). [wrapCardReader] legt einen
+  /// eigenen Leser um den nachgebauten, den der Halter dann benutzt.
   static Future<RksvRig> open({
     bool probeUnit = false,
     SignatureUnitOf Function(KassaDatabase db, RksvSecrets secrets)? unitOf,
     FakeAtrust? atrust,
     http.Client? atrustClient,
+    FakeCard? card,
+    ReaderTransport Function(FakeCardReader reader)? wrapCardReader,
   }) async {
     assert(atrust == null || atrustClient == null);
     final online = atrustClient ?? atrust?.client;
-    assert(unitOf == null || online == null);
+    assert(unitOf == null || (online == null && card == null));
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 18, 13, 5, 9));
@@ -219,16 +276,32 @@ class RksvRig {
             clock: clock,
             live: true,
           );
+    final cardReader = card == null ? null : FakeCardReader(card: card);
+    final pinGuard = card == null ? null : MemoryPinGuard();
+    final cardSigner = cardReader == null
+        ? null
+        : CardSigner(
+            transport: wrapCardReader == null
+                ? cardReader
+                : wrapCardReader(cardReader),
+            secrets: secrets,
+            guard: pinGuard!,
+          );
+    // Das Rig selbst, sobald es steht (für [cardUnitError]).
+    RksvRig? self;
     final journal = RksvJournal(
       db,
       secrets,
       unitOf != null
           ? unitOf(db, secrets)
-          : online != null
+          : online != null || cardSigner != null
           ? signatureUnitOf(
               db,
               secrets,
               online: (chain, cert) async {
+                if (online == null) {
+                  throw StateError('A-Trust gibt es hier nicht.');
+                }
                 final live = chain.unit == RksvUnit.atrust.name;
                 if (live && liveKeeper == null) {
                   throw StateError('Das echte System gibt es hier nicht.');
@@ -246,6 +319,18 @@ class RksvRig {
                   ],
                 );
               },
+              card: (chain, cert) async {
+                final error = self?.cardUnitError;
+                if (error != null) throw error;
+                if (cardSigner == null) {
+                  throw StateError('Eine Karte gibt es hier nicht.');
+                }
+                return CardSignatureUnit(
+                  signer: cardSigner,
+                  zdaId: chain.zdaId,
+                  certificateDer: cert.certificate,
+                );
+              },
             )
           : probeUnit
           ? probeSignatureUnitOf(db, secrets)
@@ -260,7 +345,7 @@ class RksvRig {
     );
     final saver = RecordingProtocolSaver();
     final service = RksvService(db, secrets, receipts, clock, saver: saver);
-    return RksvRig._(
+    return self = RksvRig._(
       db,
       clock,
       secrets,
@@ -275,6 +360,9 @@ class RksvRig {
       atrust,
       keeper,
       liveKeeper,
+      cardReader,
+      pinGuard,
+      cardSigner,
     );
   }
 
@@ -408,6 +496,71 @@ class RksvRig {
     await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
       const RksvStateRowsCompanion(mode: Value('probe'), chain: Value(1)),
     );
+  }
+
+  /// Die Kassen-Kennung der Kette aus [insertCardChain].
+  static const cardCashBoxId = 'BSPIMBKARTE';
+
+  /// Setzt eine laufende Kette mit Karte direkt in die Datenbank, ohne
+  /// Startbeleg (braucht `open(card: …)`; den Weg der App dorthin bauen erst
+  /// `enableCardProbe` und `goLiveWithCard`, die diesen Helfer ersetzen):
+  /// das Zertifikat der Karte, Kette 1 mit der Einheit [unit] (`cardTest` im
+  /// Modus probe, `card` im Modus live), der Kennung [cardZdaId] und der
+  /// Kassen-Kennung [cardCashBoxId], der AES-Schlüssel aus den Bytes 0 bis
+  /// 31 und im geschützten Speicher die PIN für die Karte in [cardReader].
+  /// Liefert die Nummer der Kette.
+  Future<int> insertCardChain({RksvUnit unit = RksvUnit.card}) async {
+    final card = cardReader?.card;
+    if (card == null) {
+      throw StateError('insertCardChain braucht open(card: …).');
+    }
+    final mode = switch (unit) {
+      RksvUnit.cardTest => RksvMode.probe,
+      RksvUnit.card => RksvMode.live,
+      RksvUnit.probe ||
+      RksvUnit.atrustTest ||
+      RksvUnit.atrust => throw ArgumentError.value(unit, 'unit'),
+    };
+    final certificate = CardCertificate.parse(card.certificate);
+    final serialHex = certificate.serial.toRadixString(16);
+    await secrets.writeAesKey(
+      1,
+      Uint8List.fromList(List.generate(32, (i) => i)),
+    );
+    await secrets.writeCardPin(
+      CardPin(
+        kind: card.profile.kind.name,
+        numberHex: compactHex(card.number),
+        pin: card.pin,
+      ),
+    );
+    await db
+        .into(db.rksvCertificateRows)
+        .insert(
+          RksvCertificateRowsCompanion.insert(
+            serialHex: serialHex,
+            certificate: certificate.der,
+          ),
+          // Das Test-Zertifikat der Attrappe steht schon da.
+          mode: InsertMode.insertOrIgnore,
+        );
+    await db
+        .into(db.rksvChainRows)
+        .insert(
+          RksvChainRowsCompanion.insert(
+            chain: const Value(1),
+            mode: mode.name,
+            unit: Value(unit.name),
+            cashBoxId: cardCashBoxId,
+            zdaId: cardZdaId,
+            certSerial: serialHex,
+            startedAt: clock.now(),
+          ),
+        );
+    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
+      RksvStateRowsCompanion(mode: Value(mode.name), chain: const Value(1)),
+    );
+    return 1;
   }
 
   /// Die Kassen-Kennung der Kette aus [seedLive].

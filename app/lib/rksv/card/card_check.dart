@@ -7,6 +7,10 @@
 // geht in diesem Aufruf nur noch das Ausschalten zur Karte. Die PIN lebt nur
 // als Parameter von [CardCheck.sign]; sie steht in keinem Feld, keinem
 // Zustand, keinem Bericht und keinem Protokoll.
+//
+// Mit einem Halter ([CardSigner]) laufen [CardCheck.run] und
+// [CardCheck.sign] in dessen Pause: Er gibt seine Sitzung vorher frei, und
+// ein Bon in dieser Zeit ist ein Ausfall (Plan C13).
 
 import 'dart:async';
 import 'dart:convert';
@@ -17,7 +21,9 @@ import 'package:crypto/crypto.dart' as crypto;
 
 import 'atr.dart';
 import 'atrust_card.dart';
+import 'card_facts.dart';
 import 'card_session.dart';
+import 'card_signer.dart';
 import 'ccid.dart';
 import 'certificate.dart';
 import 'pin_guard.dart';
@@ -72,6 +78,7 @@ class CardCheck {
     required this._guard,
     required this._now,
     required this._appVersion,
+    this._signer,
   }) {
     _state = _compose();
   }
@@ -87,6 +94,9 @@ class CardCheck {
 
   final ReaderTransport _transport;
   final PinGuard _guard;
+
+  /// Der Halter, der den Leser sonst besitzt; `null`: keiner.
+  final CardSigner? _signer;
   final DateTime Function() _now;
   final String _appVersion;
   final _changes = StreamController<CardCheckState>.broadcast();
@@ -106,16 +116,34 @@ class CardCheck {
   late _Facts _facts = _Facts(null, _now);
   late CardCheckState _state;
 
+  /// Die Karte der letzten gelungenen Probe-Unterschrift dieses Laufs.
+  CardFacts? _signed;
+
   CardCheckState get state => _state;
+
+  /// Art, Nummer und Zertifikat der Karte, solange Zeile 5 des letzten Laufs
+  /// grün ist; sonst `null`.
+  CardFacts? get facts =>
+      _rows[CheckRow.signature]!.state == RowState.ok ? _signed : null;
 
   /// Jede Änderung von [state].
   Stream<CardCheckState> get changes => _changes.stream;
 
-  /// Zeilen 1 bis 4; schickt nie eine PIN.
-  Future<void> run() async {
+  /// Zeilen 1 bis 4; schickt nie eine PIN. Mit [expectSerialHex] muss das
+  /// Zertifikat der Karte diese Seriennummer haben, sonst steht in Zeile 4
+  /// "Das ist nicht die Karte dieser Kassa.", und Zeile 5 gibt es nicht.
+  Future<void> run({String? expectSerialHex}) async {
+    if (_busy) return;
+    final signer = _signer;
+    if (signer == null) return _run(expectSerialHex);
+    return signer.paused(() => _run(expectSerialHex));
+  }
+
+  Future<void> _run(String? expectSerialHex) async {
     if (_busy) return;
     _busy = true;
     _ready = null;
+    _signed = null;
     _guardBlocks = false;
     _cardLocked = false;
     final facts = _facts = _Facts(_now(), _now);
@@ -124,7 +152,7 @@ class CardCheck {
     final attempt = _Attempt(this, _Link(_transport), facts);
     _publish();
     try {
-      await _runSteps(attempt);
+      await _runSteps(attempt, expectSerialHex);
     } catch (e) {
       _unexpected(attempt, e);
     } finally {
@@ -137,10 +165,18 @@ class CardCheck {
   /// Zeile 5: Probe-Unterschrift mit [pin]. Tut nichts, wenn `!canSign` oder
   /// die PIN nicht aus 4 oder 6 Ziffern besteht.
   Future<void> sign(String pin) async {
+    if (_ready == null || _busy || _guardBlocks) return;
+    if (!_pinPattern.hasMatch(pin)) return;
+    final signer = _signer;
+    if (signer == null) return _sign(pin);
+    return signer.paused(() => _sign(pin));
+  }
+
+  Future<void> _sign(String pin) async {
     final ready = _ready;
     if (ready == null || _busy || _guardBlocks) return;
-    if (!_pinPattern.hasMatch(pin)) return;
     _busy = true;
+    _signed = null;
     _publish();
     final int? left;
     try {
@@ -204,7 +240,7 @@ class CardCheck {
 
   // Ablauf von run.
 
-  Future<void> _runSteps(_Attempt a) async {
+  Future<void> _runSteps(_Attempt a, String? expectSerialHex) async {
     String? address;
     final listed = await _limited(a, () async {
       a.start(CheckRow.reader);
@@ -240,13 +276,14 @@ class CardCheck {
     if (descriptor == null) return;
     a.set(CheckRow.access, RowState.ok, _T.allowed);
 
-    await _limited(a, () => _readCard(a, found, descriptor));
+    await _limited(a, () => _readCard(a, found, descriptor, expectSerialHex));
   }
 
   Future<void> _readCard(
     _Attempt a,
     String address,
     CcidDescriptor descriptor,
+    String? expectSerialHex,
   ) async {
     a.start(CheckRow.card);
     final session = await _startSession(a, descriptor, forSign: false);
@@ -285,6 +322,12 @@ class CardCheck {
       final certificate = await _readCertificate(send, profile, a.facts);
       if (certificate == null) {
         a.fail(CheckRow.certificate, _T.certificateUnreadable, _T.shareReport);
+        return;
+      }
+      if (expectSerialHex != null &&
+          BigInt.tryParse(expectSerialHex, radix: 16) != certificate.serial) {
+        a.facts.log.line('Seriennummer nicht die der Kette');
+        a.fail(CheckRow.certificate, _T.notThisCashRegister);
         return;
       }
       final until = _date(certificate.notAfter);
@@ -596,6 +639,14 @@ class CardCheck {
       final durations = a.facts.durationsMs;
       final mean = durations.reduce((x, y) => x + y) / durations.length;
       final seconds = (mean / 1000).toStringAsFixed(1).replaceAll('.', ',');
+      if (a.live) {
+        _signed = CardFacts(
+          kind: profile.kind.name,
+          numberHex: ready.key,
+          certificateDer: Uint8List.fromList(ready.certificate.der),
+          serialHex: ready.certificate.serial.toRadixString(16),
+        );
+      }
       a.set(
         CheckRow.signature,
         RowState.ok,
@@ -994,6 +1045,7 @@ abstract final class _T {
   static const otherCard = 'Das ist eine andere Karte. Prüf nochmal.';
 
   static const certificateUnreadable = 'Das Zertifikat ließ sich nicht lesen.';
+  static const notThisCashRegister = 'Das ist nicht die Karte dieser Kassa.';
 
   static const wrongPinHint =
       'Frag im Betrieb nach der richtigen PIN, bevor du es nochmal versuchst.';

@@ -26,16 +26,25 @@ typedef OnlineUnitOf = Future<SignatureUnit> Function(
   RksvCertificateRow certificate,
 );
 
+/// Baut die Einheit der Signaturkarte einer Kette aus ihren gespeicherten
+/// Zeilen.
+typedef CardUnitOf = Future<SignatureUnit> Function(
+  RksvChainRow chain,
+  RksvCertificateRow certificate,
+);
+
 /// Die Signatur-Einheit der App, nach `rksv_chains.unit`: bei `probe` die
 /// Probe-Signatur mit dem Schlüssel aus [secrets] und dem Zertifikat der
 /// Kette, bei `atrustTest` und `atrust` was [online] aus Kette und
-/// Zertifikat baut. Fehlt etwas, passt der Modus nicht oder ist die Einheit
-/// unbekannt, ist das ein unerwarteter Fehler ([StateError]); in der Probe
-/// kein Ausfall, im echten Betrieb macht das Journal einen daraus (Q6).
+/// Zertifikat baut, bei `cardTest` und `card` was [card] baut. Fehlt etwas,
+/// passt der Modus nicht oder ist die Einheit unbekannt, ist das ein
+/// unerwarteter Fehler ([StateError]); in der Probe kein Ausfall, im echten
+/// Betrieb macht das Journal einen daraus (Q6).
 SignatureUnitOf signatureUnitOf(
   KassaDatabase db,
   RksvSecrets secrets, {
   required OnlineUnitOf online,
+  required CardUnitOf card,
 }) => (chain) async {
   final row = await (db.select(db.rksvChainRows).join([
     innerJoin(
@@ -72,16 +81,26 @@ SignatureUnitOf signatureUnitOf(
       return online(chainRow, certificate);
     case RksvUnit.atrust:
       return online(chainRow, certificate);
+    case RksvUnit.cardTest:
+      // Karte zur Probe heißt Testbon, wie am Testsystem.
+      if (chainRow.mode != RksvMode.probe.name) {
+        throw StateError('Kette $chain mit Testkarte ist keine Probe-Kette.');
+      }
+      return card(chainRow, certificate);
+    case RksvUnit.card:
+      return card(chainRow, certificate);
   }
 };
 
 /// Wie [signatureUnitOf], aber nur für Probe-Ketten: Eine Kette mit einer
-/// Online-Einheit ist ein [StateError].
+/// Online-Einheit oder einer Karte ist ein [StateError].
 SignatureUnitOf probeSignatureUnitOf(KassaDatabase db, RksvSecrets secrets) =>
     signatureUnitOf(
       db,
       secrets,
       online: (chain, _) async =>
+          throw StateError('Kette ${chain.chain} ist keine Probe-Kette.'),
+      card: (chain, _) async =>
           throw StateError('Kette ${chain.chain} ist keine Probe-Kette.'),
     );
 
@@ -102,6 +121,11 @@ const _reasonDown = 'Die Signatur ist ausgefallen.';
 /// Grund des Ausfalls für FinanzOnline bei einer Kette an A-Trust.
 const _outageGround =
     'Grund: 3, Ausfall der Verbindung zur Signaturerstellungseinheit';
+
+/// Grund des Ausfalls für FinanzOnline bei einer Kette mit Karte (C12, BMF
+/// Webservice 4.1).
+const _cardOutageGround =
+    'Grund: 2, Signatur- bzw. Siegelerstellung unmöglich oder fehlerhaft';
 
 /// Nur noch, wenn ohne Frage an die Signatur ein Ausfall-Vermerk entsteht und
 /// kein Grund gespeichert ist.
@@ -125,7 +149,22 @@ class RksvJournal {
   final Clock _clock;
 
   static const signLimit = Duration(seconds: 5);
+
+  /// Im Ausfall, außer bei Ketten mit Karte: Dort gilt auch dann [signLimit],
+  /// weil Öffnen, PIN und Unterschrift nicht in eine Sekunde passen (C5).
   static const signLimitDuringOutage = Duration(seconds: 1);
+
+  /// Die Frist für einen Bon der Kette [chainRow].
+  static Duration _limitOf(RksvChainRow chainRow, {required bool outage}) {
+    if (!outage) return signLimit;
+    return switch (RksvUnit.values.asNameMap()[chainRow.unit]) {
+      RksvUnit.cardTest || RksvUnit.card => signLimit,
+      RksvUnit.probe ||
+      RksvUnit.atrustTest ||
+      RksvUnit.atrust ||
+      null => signLimitDuringOutage,
+    };
+  }
 
   /// AES-Schlüssel der Ketten `live`, je Kette, nach dem ersten Lesen in
   /// diesem Prozess (Q17): Danach hängt ein Bon nicht mehr am geschützten
@@ -209,7 +248,7 @@ class RksvJournal {
       counter: counter,
       // 3. Kettenwert.
       previous: chainValue(last?.jws ?? chainRow.cashBoxId),
-      limit: state.outageSince == null ? signLimit : signLimitDuringOutage,
+      limit: _limitOf(chainRow, outage: state.outageSince != null),
       mustSign: mustSign,
       live: live,
       skipReason: trySign ? null : (state.outageReason ?? _reasonError),
@@ -293,15 +332,17 @@ class RksvJournal {
       // nicht mit dem nächsten Bon wieder.
       if (long(createdAt) && (lastTime == null || !long(lastTime))) {
         final first = await _firstOutageEntry(chain, position) ?? position;
-        final online =
-            chainRow.unit == RksvUnit.atrust.name ||
-            chainRow.unit == RksvUnit.atrustTest.name;
+        final ground = switch (RksvUnit.values.asNameMap()[chainRow.unit]) {
+          RksvUnit.atrustTest || RksvUnit.atrust => _outageGround,
+          RksvUnit.cardTest || RksvUnit.card => _cardOutageGround,
+          RksvUnit.probe || null => null,
+        };
         add(
           'report-outage-$chain-$first',
           RksvTaskKind.reportOutage,
-          online
-              ? '${_dateTime(outageSince)}. $_outageGround'
-              : _dateTime(outageSince),
+          ground == null
+              ? _dateTime(outageSince)
+              : '${_dateTime(outageSince)}. $ground',
         );
       }
       if (kind == ReceiptKind.collective && long(createdAt)) {

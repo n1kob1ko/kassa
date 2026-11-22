@@ -124,7 +124,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     final system = switch (state.unit) {
       RksvUnit.atrustTest => AtrustSystem.test,
       RksvUnit.atrust => AtrustSystem.live,
-      RksvUnit.probe || null => null,
+      RksvUnit.probe || RksvUnit.cardTest || RksvUnit.card || null => null,
     };
     if (system == null) {
       return _banner(context, state, since, rejected: false);

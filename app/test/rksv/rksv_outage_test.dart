@@ -111,6 +111,8 @@ void main() {
                 zdaId: chain.zdaId,
                 certificateDer: cert.certificate,
               ),
+              card: (chain, _) async =>
+                  throw StateError('Eine Karte gibt es hier nicht.'),
             ),
           ),
         );

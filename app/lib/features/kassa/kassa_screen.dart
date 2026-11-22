@@ -117,7 +117,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       final system = switch (state.unit) {
         RksvUnit.atrustTest => AtrustSystem.test,
         RksvUnit.atrust => AtrustSystem.live,
-        RksvUnit.probe || null => null,
+        RksvUnit.probe || RksvUnit.cardTest || RksvUnit.card || null => null,
       };
       if (system == null) return;
       if (system == AtrustSystem.live) {

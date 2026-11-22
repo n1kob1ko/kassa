@@ -10,9 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/rksv/card/atrust_card.dart';
 import 'package:kassa/rksv/card/card_check.dart';
 import 'package:kassa/rksv/card/card_providers.dart';
+import 'package:kassa/rksv/card/card_signer.dart';
 import 'package:kassa/rksv/card/pin_guard.dart';
 import 'package:kassa/rksv/card/probe_log.dart';
 import 'package:kassa/rksv/card/reader_transport.dart';
+import 'package:kassa/rksv/rksv_providers.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 
 import '../../support/fake_card_reader.dart';
 import '../../support/scripted_reader.dart' show bytesOf;
@@ -2057,6 +2060,168 @@ void main() {
       expect(protocol.where((l) => l == '… gekürzt …').length, 1);
     });
   });
+  group('neben dem Halter (C13)', () {
+    final hash = Uint8List.fromList(List.generate(32, (i) => i));
+    Matcher busy() => throwsA(
+      isA<CardSignException>().having(
+        (e) => e.problem,
+        'problem',
+        CardSignProblem.busy,
+      ),
+    );
+
+    /// Ein Prüflauf und ein Halter am selben nachgebauten Leser; die PIN der
+    /// Karte ist gespeichert.
+    Future<(CardCheck, CardSigner, FakeCardReader)> setUpBoth({
+      ReaderTransport Function(FakeCardReader reader)? wrap,
+    }) async {
+      final reader = FakeCardReader(card: cardOf(acosId41Atr));
+      final transport = wrap == null ? reader : wrap(reader);
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeCardPin(
+        const CardPin(kind: 'acosId41', numberHex: cardNumber, pin: '123456'),
+      );
+      final signer = CardSigner(
+        transport: transport,
+        secrets: secrets,
+        guard: MemoryPinGuard(),
+      );
+      final check = CardCheck(
+        transport: transport,
+        guard: MemoryPinGuard(),
+        now: () => DateTime.utc(2026, 11, 18, 12),
+        appVersion: '9.9.9',
+        signer: signer,
+      );
+      return (check, signer, reader);
+    }
+
+    test('run gibt die Sitzung des Halters zuerst frei; ein sign des '
+        'Halters währenddessen ist busy, danach signiert er wieder', () async {
+      final (check, signer, reader) = await setUpBoth();
+      await signer.sign(hash);
+      expect(signer.ready, isTrue);
+      final closedBefore = reader.closed;
+
+      final running = check.run();
+      await expectLater(signer.sign(hash), busy());
+      await running;
+      expect(signer.ready, isFalse);
+      expect(reader.closed, greaterThan(closedBefore));
+      expect(check.state.canSign, isTrue);
+      expect(check.state.rows[CheckRow.certificate]!.state, RowState.ok);
+
+      expect(await signer.sign(hash), testSigner(hash));
+    });
+
+    test('sign läuft ebenso in der Pause des Halters', () async {
+      final (check, signer, reader) = await setUpBoth();
+      await check.run();
+      await signer.sign(hash);
+      expect(signer.ready, isTrue);
+
+      final signing = check.sign('123456');
+      await expectLater(signer.sign(hash), busy());
+      await signing;
+      expect(check.state.rows[CheckRow.signature]!.state, RowState.ok);
+      expect(signer.ready, isFalse);
+      expect(await signer.sign(hash), testSigner(hash));
+    });
+
+    test('ohne Halter ändert sich nichts: run und sign wie bisher', () async {
+      final rig = Rig();
+      await rig.check.run();
+      await rig.check.sign('123456');
+      expect(rig.row(CheckRow.signature).state, RowState.ok);
+      expect(rig.check.facts, isNotNull);
+    });
+  });
+
+  group('facts', () {
+    test('null vor dem Lauf und nach Zeile 4; nach grüner Zeile 5 Art, '
+        'Nummer, Zertifikat und Seriennummer der Karte; ein neuer Lauf '
+        'vergisst sie', () async {
+      final rig = Rig();
+      expect(rig.check.facts, isNull);
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+      expect(rig.check.facts, isNull);
+
+      await rig.check.sign('123456');
+      expect(rig.row(CheckRow.signature).state, RowState.ok);
+      final facts = rig.check.facts!;
+      expect(facts.kind, 'acosId41');
+      expect(facts.numberHex, cardNumber);
+      expect(facts.certificateDer, testCertificate);
+      expect(facts.serialHex, 'cf36cd7808');
+      expect(facts.toString(), isNot(contains('123456')));
+
+      await rig.check.run();
+      expect(rig.check.facts, isNull);
+    });
+
+    test('eine falsche PIN: null', () async {
+      final rig = Rig();
+      await rig.check.run();
+      await rig.check.sign('654321');
+      expect(rig.row(CheckRow.signature).state, RowState.problem);
+      expect(rig.check.facts, isNull);
+    });
+
+    test('nach einer grünen Zeile 5 ist eine gescheiterte zweite '
+        'Probe-Unterschrift null', () async {
+      final rig = Rig();
+      await rig.check.run();
+      await rig.check.sign('123456');
+      expect(rig.check.facts, isNotNull);
+      rig.card.removed = true;
+      await rig.check.sign('123456');
+      expect(rig.row(CheckRow.signature).state, isNot(RowState.ok));
+      expect(rig.check.facts, isNull);
+    });
+  });
+
+  group('expectSerialHex', () {
+    test('andere Seriennummer: Kreuz in Zeile 4, Zeile 5 nicht angeboten, '
+        'keine PIN', () async {
+      final rig = Rig();
+      await rig.check.run(expectSerialHex: 'cf36cd7809');
+      expect(
+        rig.row(CheckRow.certificate),
+        isRow(RowState.problem, 'Das ist nicht die Karte dieser Kassa.'),
+      );
+      expect(rig.row(CheckRow.signature), isRow(RowState.locked, prerequisite));
+      expect(rig.state.canSign, isFalse);
+      await rig.check.sign('123456');
+      expect(verifiesSent(rig.reader), 0);
+      expect(rig.check.facts, isNull);
+      expect(
+        rig.state.report,
+        contains('4 Zertifikat: Fehler Das ist nicht die Karte dieser Kassa.'),
+      );
+    });
+
+    test('gleiche Seriennummer (auch mit führender Null und groß): wie '
+        'ohne', () async {
+      for (final serial in ['cf36cd7808', '00CF36CD7808']) {
+        final rig = Rig();
+        await rig.check.run(expectSerialHex: serial);
+        expect(rig.row(CheckRow.certificate).state, RowState.ok);
+        expect(rig.state.canSign, isTrue);
+        await rig.check.sign('123456');
+        expect(rig.check.facts!.serialHex, 'cf36cd7808');
+      }
+    });
+
+    test('ein Lauf danach ohne expectSerialHex prüft nicht mehr', () async {
+      final rig = Rig();
+      await rig.check.run(expectSerialHex: '1');
+      expect(rig.state.canSign, isFalse);
+      await rig.check.run();
+      expect(rig.state.canSign, isTrue);
+    });
+  });
+
   group('Provider', () {
     test('cardCheckProvider startet beim Anlegen keinen Lauf', () async {
       final reader = FakeCardReader(card: cardOf(acosId41Atr));
@@ -2081,6 +2246,34 @@ void main() {
 
       await check.run();
       expect(check.state.canSign, isTrue);
+    });
+
+    test('cardSignerProvider: ein Halter für die App, und cardCheckProvider '
+        'läuft in dessen Pause', () async {
+      final reader = FakeCardReader(card: cardOf(acosId41Atr));
+      final container = ProviderContainer(
+        overrides: [
+          readerTransportProvider.overrideWithValue(reader),
+          pinGuardProvider.overrideWithValue(MemoryPinGuard()),
+          rksvSecretsProvider.overrideWithValue(MemoryRksvSecrets()),
+        ],
+      );
+      addTearDown(container.dispose);
+      final signer = container.read(cardSignerProvider);
+      expect(identical(container.read(cardSignerProvider), signer), isTrue);
+      expect(reader.opened, isEmpty);
+      final running = container.read(cardCheckProvider).run();
+      await expectLater(
+        signer.sign(Uint8List(32)),
+        throwsA(
+          isA<CardSignException>().having(
+            (e) => e.problem,
+            'problem',
+            CardSignProblem.busy,
+          ),
+        ),
+      );
+      await running;
     });
   });
 }

@@ -40,6 +40,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Kartenleser (USB-Klasse 11): Android meldet das Anstecken und
+                 bietet an, die Kassa immer für dieses Gerät zu öffnen; die
+                 Erlaubnis gilt dann nach dem Anstecken von selbst. Wegen
+                 singleTop startet die laufende Kassa dabei nicht neu. -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_card_reader_filter" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/providers.dart';
+import 'card/card_providers.dart';
+import 'card/card_signature_unit.dart';
 import 'dep_export.dart';
 import 'online/atrust_client.dart';
 import 'online/online_providers.dart';
@@ -36,6 +38,8 @@ OnlineUnitOf onlineSignatureUnitOf(Ref ref) => (chain, certificate) async {
     RksvUnit.atrustTest => AtrustSystem.test,
     RksvUnit.atrust => AtrustSystem.live,
     RksvUnit.probe ||
+    RksvUnit.cardTest ||
+    RksvUnit.card ||
     null => throw StateError('Kette ${chain.chain} hat keine Online-Einheit.'),
   };
   return OnlineSignatureUnit(
@@ -49,13 +53,35 @@ OnlineUnitOf onlineSignatureUnitOf(Ref ref) => (chain, certificate) async {
   );
 };
 
+/// Die Karten-Einheiten der App: eine [CardSignatureUnit] mit Kennung und
+/// Zertifikat der Kette über den einen Halter der App
+/// ([cardSignerProvider]), bei `cardTest` und bei `card`. Der Halter
+/// entsteht erst beim ersten Bon einer solchen Kette.
+CardUnitOf cardSignatureUnitOf(Ref ref) => (chain, certificate) async {
+  switch (RksvUnit.values.asNameMap()[chain.unit]) {
+    case RksvUnit.cardTest || RksvUnit.card:
+      return CardSignatureUnit(
+        signer: ref.read(cardSignerProvider),
+        zdaId: chain.zdaId,
+        certificateDer: certificate.certificate,
+      );
+    case RksvUnit.probe || RksvUnit.atrustTest || RksvUnit.atrust || null:
+      throw StateError('Kette ${chain.chain} hat keine Karte.');
+  }
+};
+
 final rksvJournalProvider = Provider((ref) {
   final db = ref.watch(databaseProvider);
   final secrets = ref.watch(rksvSecretsProvider);
   return RksvJournal(
     db,
     secrets,
-    signatureUnitOf(db, secrets, online: onlineSignatureUnitOf(ref)),
+    signatureUnitOf(
+      db,
+      secrets,
+      online: onlineSignatureUnitOf(ref),
+      card: cardSignatureUnitOf(ref),
+    ),
     ref.watch(clockProvider),
   );
 });

@@ -20,6 +20,9 @@ import '../../support/sales.dart' show cart;
 Future<Never> _noOnline(RksvChainRow chain, RksvCertificateRow cert) =>
     fail('online darf hier nicht gerufen werden');
 
+Future<Never> _noCard(RksvChainRow chain, RksvCertificateRow cert) =>
+    fail('card darf hier nicht gerufen werden');
+
 void main() {
   late RksvRig rig;
   late FakeAtrust atrust;
@@ -41,6 +44,7 @@ void main() {
         rig.db,
         rig.secrets,
         online: _noOnline,
+        card: _noCard,
       )(1);
       expect(unit, isA<ProbeSignatureUnit>());
       final chain = await rig.chainRow(1);
@@ -60,6 +64,7 @@ void main() {
             calls.add((chain, cert));
             return rig.fake;
           },
+          card: _noCard,
         )(1);
         expect(result, same(rig.fake));
         expect(calls, hasLength(1));
@@ -77,7 +82,9 @@ void main() {
       await rig.service.enableProbe(staff: rig.chef);
       await setUnit('neu');
       await expectLater(
-        signatureUnitOf(rig.db, rig.secrets, online: _noOnline)(1),
+        signatureUnitOf(rig.db, rig.secrets, online: _noOnline, card: _noCard)(
+          1,
+        ),
         throwsStateError,
       );
     });
@@ -87,14 +94,18 @@ void main() {
       await rig.startAtrustTest(atrust);
       await rig.db.customStatement("UPDATE rksv_chains SET mode = 'live'");
       await expectLater(
-        signatureUnitOf(rig.db, rig.secrets, online: _noOnline)(1),
+        signatureUnitOf(rig.db, rig.secrets, online: _noOnline, card: _noCard)(
+          1,
+        ),
         throwsStateError,
       );
     });
 
     test('fehlende Kette wirft StateError', () async {
       await expectLater(
-        signatureUnitOf(rig.db, rig.secrets, online: _noOnline)(7),
+        signatureUnitOf(rig.db, rig.secrets, online: _noOnline, card: _noCard)(
+          7,
+        ),
         throwsStateError,
       );
     });
