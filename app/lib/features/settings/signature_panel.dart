@@ -6,10 +6,12 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../domain/receipt.dart';
+import '../../rksv/card/card_signer.dart';
 import '../../rksv/dep_export.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
+import '../../rksv/rksv_secrets.dart';
 import '../../rksv/rksv_service.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/pressable.dart';
@@ -57,6 +59,7 @@ enum _Action {
   connection,
   card,
   setup,
+  cardPin,
   credentials,
   decommission,
   other,
@@ -75,13 +78,18 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 /// A-Trust ausprobieren" (aus), "Verbindung prüfen" und bei abgelehnten
 /// Zugangsdaten "Erneut anmelden"; alle drei rufen [onOpenConnectionCheck].
 /// Für die Karten-Probe "Mit Karte ausprobieren" (aus), das "Karte und PIN"
-/// öffnet ([openCardSetup]).
+/// öffnet ([openCardSetup]); läuft sie, dieselben Zeilen wie die Online-Probe
+/// ohne "Verbindung prüfen".
 /// Außer in Betrieb steht "Signatur einrichten" da, das die Wahl "Womit
-/// signiert die Kassa?" öffnet ([openSignerChoice]). In Betrieb:
+/// signiert die Kassa?" öffnet ([openSignerChoice]). In Betrieb an A-Trust:
 /// "Verbindung prüfen" am echten System, Nullbeleg, Protokoll, "Zugangsdaten"
 /// und "Kassa außer Betrieb nehmen",
-/// bei abgelehnten Zugangsdaten "Zugangsdaten neu eingeben". Außer Betrieb
-/// bleiben die Aufgaben und "Protokoll ausgeben" (Q15).
+/// bei abgelehnten Zugangsdaten "Zugangsdaten neu eingeben". In Betrieb mit
+/// der Karte: "Karte und PIN" (für eine neue PIN), Nullbeleg, Protokoll und
+/// "Kassa außer Betrieb nehmen". Hat die Karte die PIN abgelehnt (gespeicherter
+/// Stand der PIN oder Grund des Ausfalls), steht das einmal in der Karte, für
+/// den Chef mit "PIN neu eingeben". Außer Betrieb bleiben die Aufgaben und
+/// "Protokoll ausgeben" (Q15).
 /// Dazu die Zeile "Karte prüfen" (`open-card-check`), die [onOpenCardCheck]
 /// ruft. Ein Ausfall zeigt seinen Grund unter dem Zustand. Während eine
 /// Aktion läuft, sind alle Tasten gesperrt. Start-, Null- und Schlussbeleg
@@ -112,6 +120,70 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
   late _Message? _message = switch (widget.announcement) {
     final text? => (action: _Action.other, text: text, tone: _Tone.done),
     null => null,
+  };
+
+  /// Der gespeicherte Stand der PIN der Karte; `null`, solange er nicht
+  /// gelesen ist, ohne Kette mit Karte und wenn der Speicher nicht antwortet.
+  CardPinStatus? _pinStatus;
+
+  /// Was am Stand der Signatur zählt, als der Stand der PIN gelesen wurde.
+  Object? _pinReadFor;
+
+  /// Zählt die Lesungen: Nur die letzte setzt [_pinStatus].
+  int _pinReads = 0;
+
+  ProviderSubscription<AsyncValue<RksvState>>? _stateSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _stateSubscription = ref.listenManual(
+      rksvStateProvider,
+      (_, next) => _pinStatusFor(next.value),
+      fireImmediately: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _stateSubscription?.close();
+    super.dispose();
+  }
+
+  /// Liest den Stand der PIN neu, wenn eine Kette mit Karte läuft und sich an
+  /// ihr etwas geändert hat. Wartet höchstens [CardSigner.storageLimit]; das
+  /// Bild wartet nie darauf.
+  void _pinStatusFor(RksvState? state) {
+    final key = state == null || !_cardChain(state)
+        ? null
+        : (state.mode, state.chain, state.unit, state.outageReason);
+    if (key == _pinReadFor) return;
+    _pinReadFor = key;
+    final read = ++_pinReads;
+    if (key == null) {
+      if (_pinStatus != null && mounted) setState(() => _pinStatus = null);
+      return;
+    }
+    unawaited(() async {
+      CardPinStatus? status;
+      try {
+        status = await ref
+            .read(rksvSecretsProvider)
+            .cardPinStatus()
+            .timeout(CardSigner.storageLimit);
+      } catch (_) {
+        // Ein Speicher, der nicht antwortet, zeigt keinen Hinweis.
+        status = null;
+      }
+      if (!mounted || read != _pinReads) return;
+      setState(() => _pinStatus = status);
+    }());
+  }
+
+  static bool _cardChain(RksvState state) => switch (state.mode) {
+    RksvMode.probe => state.unit == RksvUnit.cardTest,
+    RksvMode.live => state.unit == RksvUnit.card,
+    RksvMode.off => false,
   };
 
   /// Sperrt die Tasten, führt [body] aus und zeigt danach dessen Satz unter
@@ -288,7 +360,22 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final live = state.mode == RksvMode.live;
     final off = state.mode == RksvMode.off;
     final online = probe && state.unit == RksvUnit.atrustTest;
+    final cardProbe = probe && state.unit == RksvUnit.cardTest;
+    final cardLive = live && state.unit == RksvUnit.card;
+    final atrustLive = live && !cardLive;
     final notice = state.notice;
+    final pinRejectedSentence = const CardSignException(
+      CardSignProblem.pinRejected,
+    ).sentence;
+    final pinStatus = _pinStatus;
+    // Abgelehnt (C4): eine beantwortete Ablehnung, zwei Prüfungen ohne
+    // Antwort oder der Grund des Ausfalls (auch, wenn der PIN-Wächter die
+    // PIN zurückhält).
+    final pinRejected =
+        (cardProbe || cardLive) &&
+        ((pinStatus != null &&
+                (pinStatus.rejected || pinStatus.unanswered >= 2)) ||
+            (state.outage && state.outageReason == pinRejectedSentence));
 
     final String help;
     final Widget pill;
@@ -297,18 +384,27 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         final what = online
             ? 'Signatur vom Testsystem von A-Trust, nicht für den echten '
                   'Betrieb.'
+            : cardProbe
+            ? 'Signatur mit der Karte, nicht für den echten Betrieb.'
             : 'Probe-Signatur, nicht für den echten Betrieb.';
         help = state.cashBoxId == null
             ? what
             : '$what Kassen-ID ${state.cashBoxId}.';
-        final word = online ? 'Online-Probe' : 'Probe';
+        final word = online
+            ? 'Online-Probe'
+            : cardProbe
+            ? 'Karten-Probe'
+            : 'Probe';
         pill = state.outage
             ? WarnPill('$word, Signatur ausgefallen')
             : _AccentPill(word);
       case RksvMode.live:
+        final what = cardLive
+            ? 'Signatur mit der Karte.'
+            : 'Signatur von A-Trust.';
         help = state.cashBoxId == null
-            ? 'Signatur von A-Trust.'
-            : 'Signatur von A-Trust. Kassen-ID ${state.cashBoxId}.';
+            ? what
+            : '$what Kassen-ID ${state.cashBoxId}.';
         pill = state.outage
             ? const WarnPill('In Betrieb, Signatur ausgefallen')
             : const _AccentPill('In Betrieb');
@@ -327,7 +423,12 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         SettingsRow(
           title: 'Signatur der Bons',
           help: help,
-          note: state.outage ? state.outageReason : null,
+          // Der Satz der abgelehnten PIN steht nur einmal da, im Hinweis.
+          note:
+              state.outage &&
+                  !(pinRejected && state.outageReason == pinRejectedSentence)
+              ? state.outageReason
+              : null,
           control: pill,
         ),
         if (notice != null)
@@ -337,8 +438,11 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             showButton: isChef,
           ),
         if (rejected)
-          _RejectedRow(
-            live: live,
+          _WarnRow(
+            key: const Key('rksv-rejected'),
+            text: 'A-Trust hat die Zugangsdaten abgelehnt.',
+            buttonKey: live ? 'rksv-credentials-again' : 'rksv-relogin',
+            label: live ? 'Zugangsdaten neu eingeben' : 'Erneut anmelden',
             onPressed: _busy
                 ? null
                 : live
@@ -347,6 +451,17 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
                     ConnectionCheckOpening.relogin,
                   ),
           ),
+        if (pinRejected)
+          _WarnRow(
+            key: const Key('rksv-card-rejected'),
+            text: pinRejectedSentence,
+            buttonKey: 'rksv-card-repin',
+            label: 'PIN neu eingeben',
+            showButton: isChef,
+            onPressed: _busy
+                ? null
+                : () => openCardSetup(context, CardSetupPurpose.repin),
+          ),
         if (state.tasks.isNotEmpty)
           RksvTaskBlock(
             tasks: state.tasks,
@@ -354,7 +469,16 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             busy: _busy,
             onDone: isChef ? _completeTask : null,
           ),
-        if (isChef && (online || live))
+        if (isChef && cardLive)
+          _action(
+            _Action.cardPin,
+            key: 'rksv-card-pin',
+            title: 'Karte und PIN',
+            help: 'Kartenleser, Karte und PIN prüfen.',
+            label: 'Prüfen',
+            onPressed: () => openCardSetup(context, CardSetupPurpose.repin),
+          ),
+        if (isChef && (online || atrustLive))
           _action(
             _Action.connection,
             key: 'rksv-connection-check',
@@ -387,7 +511,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             label: 'Ausgeben',
             onPressed: _export,
           ),
-        if (isChef && live)
+        if (isChef && atrustLive)
           _action(
             _Action.credentials,
             key: 'rksv-credentials',
@@ -485,11 +609,13 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     // Das Kennzeichen "abgelehnt" liegt im Sitzungshalter (P1), nicht im
     // Stand, je System (Q4): in der Online-Probe das des Testsystems, in
     // Betrieb das des echten. Nur der Chef kann es aufheben.
-    if (!isChef || !(online || live)) return card(false);
+    if (!isChef || !(online || atrustLive)) return card(false);
     return ValueListenableBuilder<bool>(
       valueListenable: ref
           .watch(
-            atrustKeeperProvider(live ? AtrustSystem.live : AtrustSystem.test),
+            atrustKeeperProvider(
+              atrustLive ? AtrustSystem.live : AtrustSystem.test,
+            ),
           )
           .rejected,
       builder: (context, rejected, _) => card(rejected),
@@ -627,24 +753,36 @@ class _NoticeRow extends StatelessWidget {
   }
 }
 
-/// A-Trust hat die Zugangsdaten abgelehnt (`rksv-rejected`): der Satz in der
-/// Warnfläche und in der Online-Probe "Erneut anmelden" (`rksv-relogin`),
-/// das "Verbindung prüfen" als Antippen des Chefs öffnet, in Betrieb
-/// ([live]) "Zugangsdaten neu eingeben" (`rksv-credentials-again`), das die
-/// Felder der Zugangsdaten öffnet.
-class _RejectedRow extends StatelessWidget {
-  const _RejectedRow({required this.live, required this.onPressed});
+/// Ein Problem, das nur der Chef aufhebt, in der Warnfläche: A-Trust hat
+/// die Zugangsdaten abgelehnt (`rksv-rejected`; in der Online-Probe "Erneut
+/// anmelden" (`rksv-relogin`), das "Verbindung prüfen" als Antippen des Chefs
+/// öffnet, in Betrieb "Zugangsdaten neu eingeben" (`rksv-credentials-again`),
+/// das die Felder der Zugangsdaten öffnet), oder die Karte hat die PIN
+/// abgelehnt (`rksv-card-rejected` mit "PIN neu eingeben",
+/// `rksv-card-repin`). Ohne [showButton] steht nur der Satz da.
+class _WarnRow extends StatelessWidget {
+  const _WarnRow({
+    super.key,
+    required this.text,
+    required this.buttonKey,
+    required this.label,
+    required this.onPressed,
+    this.showButton = true,
+  });
 
-  final bool live;
+  final String text;
+  final String buttonKey;
+  final String label;
   final VoidCallback? onPressed;
+  final bool showButton;
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     return Padding(
-      key: const Key('rksv-rejected'),
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 76),
         padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
         decoration: BoxDecoration(
           color: c.warnBg,
@@ -654,7 +792,7 @@ class _RejectedRow extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'A-Trust hat die Zugangsdaten abgelehnt.',
+                text,
                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -663,14 +801,16 @@ class _RejectedRow extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: KassaTokens.spaceXl),
-            PrimaryButton(
-              key: Key(live ? 'rksv-credentials-again' : 'rksv-relogin'),
-              label: live ? 'Zugangsdaten neu eingeben' : 'Erneut anmelden',
-              filled: false,
-              height: 56,
-              onPressed: onPressed,
-            ),
+            if (showButton) ...[
+              const SizedBox(width: KassaTokens.spaceXl),
+              PrimaryButton(
+                key: Key(buttonKey),
+                label: label,
+                filled: false,
+                height: 56,
+                onPressed: onPressed,
+              ),
+            ],
           ],
         ),
       ),

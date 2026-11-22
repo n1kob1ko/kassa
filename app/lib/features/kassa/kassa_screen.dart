@@ -10,6 +10,7 @@ import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
+import '../../rksv/card/card_providers.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
@@ -104,25 +105,34 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
 
   /// Meldet die Kassa in der Online-Probe oder in Betrieb im Voraus bei
   /// A-Trust an, am Halter des Systems der laufenden Kette, damit der
-  /// nächste Bon nicht auf die Anmeldung wartet. In Betrieb liest das Journal
-  /// dazu den AES-Schlüssel in den Speicher (Q17). Ohne laufende Kette von
-  /// A-Trust entsteht weder Sitzungshalter noch Verbindung; nach einer
-  /// Ablehnung schickt der Halter selbst nichts. Auf nichts davon wartet ein
-  /// Verkauf oder das erste Bild: Wer das ruft, wartet nicht, und Fehler
-  /// gehen still unter.
+  /// nächste Bon nicht auf die Anmeldung wartet. Läuft eine Kette mit Karte
+  /// (Karten-Probe oder in Betrieb), öffnet der Halter der Karte die Sitzung
+  /// im Voraus; nur hier, beim Start und beim Fortsetzen, darf Android dafür
+  /// nach der Erlaubnis für den Kartenleser fragen (C6). In Betrieb liest das
+  /// Journal dazu den AES-Schlüssel in den Speicher (Q17). Ohne laufende
+  /// Kette von A-Trust entsteht weder Sitzungshalter noch Verbindung; nach
+  /// einer Ablehnung schickt der Halter selbst nichts. Auf nichts davon
+  /// wartet ein Verkauf oder das erste Bild: Wer das ruft, wartet nicht, und
+  /// Fehler gehen still unter.
   Future<void> _warmUpSignature() async {
     try {
       final state = await ref.read(rksvStateProvider.future);
       if (!mounted) return;
+      if (state.unit == RksvUnit.atrust || state.unit == RksvUnit.card) {
+        // Ohne Frist, wenn der geschützte Speicher hängt: nie darauf warten.
+        ref.read(rksvJournalProvider).primeLiveKey().ignore();
+      }
       final system = switch (state.unit) {
         RksvUnit.atrustTest => AtrustSystem.test,
         RksvUnit.atrust => AtrustSystem.live,
         RksvUnit.probe || RksvUnit.cardTest || RksvUnit.card || null => null,
       };
-      if (system == null) return;
-      if (system == AtrustSystem.live) {
-        // Ohne Frist, wenn der geschützte Speicher hängt: nie darauf warten.
-        ref.read(rksvJournalProvider).primeLiveKey().ignore();
+      if (system == null) {
+        if (state.unit == RksvUnit.cardTest || state.unit == RksvUnit.card) {
+          // Wirft nie.
+          ref.read(cardSignerProvider).warmUp(ask: true).ignore();
+        }
+        return;
       }
       final keeper = ref.read(atrustKeeperProvider(system));
       try {

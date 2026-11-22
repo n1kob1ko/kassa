@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/rksv/card/card_signer.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
@@ -169,6 +170,27 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/kassa_ausfall_abgelehnt_hell.png'),
+    );
+  });
+
+  testWidgets('Kassa in Betrieb mit Karte, keine Karte im Leser (hell)', (
+    t,
+  ) async {
+    await _threeLines(
+      t,
+      overrides: [...await memoryOverrides(), ...signatureOverrides()],
+    );
+    await seedLive(
+      t,
+      unit: RksvUnit.card,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: const CardSignException(CardSignProblem.noCard).sentence,
+    );
+    expect(find.byKey(const Key('rksv-retry')), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/kassa_ausfall_karte_hell.png'),
     );
   });
 }

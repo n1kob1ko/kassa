@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../rksv/card/card_providers.dart';
+import '../../rksv/card/card_signer.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
@@ -12,6 +14,8 @@ import '../../rksv/rksv_state.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import '../login/session.dart';
+import '../settings/card_setup_screen.dart' show CardSetupPurpose;
+import '../shell/shell_screen.dart' show openCardSetup;
 
 /// So lange bleibt "Die Signatur geht wieder." stehen, dann geht der Hinweis.
 const outageBackStay = Duration(seconds: 4);
@@ -49,6 +53,13 @@ String outageSinceText(DateTime since, DateTime now) {
 /// nur bei einer Kette von A-Trust, und zwar den ihres Systems (Q4): in der
 /// Online-Probe den des Testsystems, in Betrieb den des echten. Sonst
 /// entsteht keine Verbindung zu A-Trust.
+///
+/// Bei einer Kette mit Karte steht der Satz der Karte als Grund da.
+/// "Nochmal prüfen" wärmt dann zuerst den Halter der Karte auf (darf Android
+/// nach der Erlaubnis fragen) und prüft danach. Hat die Karte die PIN
+/// abgelehnt oder fehlt die PIN, steht für den Chef statt "Nochmal prüfen"
+/// "PIN neu eingeben" (`rksv-repin`), das "Karte und PIN" öffnet; ein
+/// Mitarbeiter behält "Nochmal prüfen".
 class OutageBanner extends ConsumerStatefulWidget {
   const OutageBanner({super.key});
 
@@ -76,6 +87,16 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
       ? null
       : (s.mode, s.chain, s.unit, s.outageSince, s.outageReason);
 
+  static bool _cardChain(RksvState s) =>
+      s.mode != RksvMode.off &&
+      (s.unit == RksvUnit.cardTest || s.unit == RksvUnit.card);
+
+  /// Die Sätze der Karte, nach denen nur eine neue PIN hilft.
+  static final _pinSentences = {
+    const CardSignException(CardSignProblem.pinRejected).sentence,
+    const CardSignException(CardSignProblem.pinMissing).sentence,
+  };
+
   Future<void> _retry() async {
     if (_busy) return;
     final staff = ref.read(sessionProvider);
@@ -86,6 +107,11 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     });
     var back = false;
     try {
+      final state = ref.read(rksvStateProvider).value;
+      if (state != null && _cardChain(state)) {
+        // Wirft nie; nur hier darf Android nach der Erlaubnis fragen (C6).
+        await ref.read(cardSignerProvider).warmUp(ask: true);
+      }
       back = await ref.read(rksvServiceProvider).retrySignature(staff: staff);
     } catch (_) {
       // Was auch schiefgeht: Die Signatur geht dann noch nicht.
@@ -114,6 +140,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
       }
     });
     final state = ref.watch(rksvStateProvider).value ?? const RksvState();
+    final isChef = ref.watch(sessionProvider)?.isChef ?? false;
     final since = state.outageSince;
     if (_back) return const _BackNotice();
     if (since == null || state.mode == RksvMode.off) {
@@ -127,7 +154,11 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
       RksvUnit.probe || RksvUnit.cardTest || RksvUnit.card || null => null,
     };
     if (system == null) {
-      return _banner(context, state, since, rejected: false);
+      final repin =
+          isChef &&
+          _cardChain(state) &&
+          _pinSentences.contains(state.outageReason);
+      return _banner(context, state, since, rejected: false, repin: repin);
     }
     return ValueListenableBuilder<bool>(
       valueListenable: ref.watch(atrustKeeperProvider(system)).rejected,
@@ -141,6 +172,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     RksvState state,
     DateTime since, {
     required bool rejected,
+    bool repin = false,
   }) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
@@ -205,7 +237,18 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
           ),
           if (!rejected) ...[
             const SizedBox(width: KassaTokens.spaceXl),
-            _RetryButton(onTap: _busy ? null : _retry),
+            if (repin)
+              _BannerButton(
+                buttonKey: const Key('rksv-repin'),
+                label: 'PIN neu eingeben',
+                onTap: () => openCardSetup(context, CardSetupPurpose.repin),
+              )
+            else
+              _BannerButton(
+                buttonKey: const Key('rksv-retry'),
+                label: 'Nochmal prüfen',
+                onTap: _busy ? null : _retry,
+              ),
           ],
         ],
       ),
@@ -213,20 +256,26 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
   }
 }
 
-/// "Nochmal prüfen": 56 dp hoch wie die Tasten rechts in den Einstellungen,
-/// helle Fläche auf dem Hinweis.
-class _RetryButton extends StatelessWidget {
-  const _RetryButton({required this.onTap});
+/// "Nochmal prüfen" oder "PIN neu eingeben": 56 dp hoch wie die Tasten
+/// rechts in den Einstellungen, helle Fläche auf dem Hinweis.
+class _BannerButton extends StatelessWidget {
+  const _BannerButton({
+    required this.buttonKey,
+    required this.label,
+    required this.onTap,
+  });
 
+  final Key buttonKey;
+  final String label;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     return Pressable(
-      key: const Key('rksv-retry'),
+      key: buttonKey,
       onTap: onTap,
-      semanticLabel: 'Nochmal prüfen',
+      semanticLabel: label,
       child: Container(
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -236,7 +285,7 @@ class _RetryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
         ),
         child: Text(
-          'Nochmal prüfen',
+          label,
           maxLines: 1,
           style: Theme.of(context).textTheme.bodyMedium!
               .copyWith(fontWeight: FontWeight.w800, color: c.warnInk),

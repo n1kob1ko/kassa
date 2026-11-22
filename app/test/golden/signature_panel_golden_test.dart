@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/rksv/card/card_signer.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:material_ui/material_ui.dart';
@@ -11,7 +12,8 @@ import '../support/signature_pump.dart';
 // Bildvergleich der Karte "Signatur" gegen die Bilder `s1b-2` und `s1b-7`,
 // für die Online-Probe gegen `s2a-01`, `s2a-07`, `s2a-08` und `s2a-09`, für
 // den echten Betrieb gegen `s2b-08`, `s2b-09` und `s2b-11` (die Bilder sind
-// 960 dp hoch wie die Entwürfe, weil die Karte dort mehr Zeilen hat).
+// 960 dp hoch wie die Entwürfe, weil die Karte dort mehr Zeilen hat). Dazu
+// die Karten-Probe und der Betrieb mit der Signaturkarte.
 // Neu erzeugen mit
 // `flutter test --update-goldens test/golden/signature_panel_golden_test.dart`.
 
@@ -182,5 +184,46 @@ void main() {
       'goldens/signatur_ausser_betrieb_hell.png',
       height: 960,
     );
+  });
+
+  for (final (name, brightness) in [
+    ('hell', Brightness.light),
+    ('dunkel', Brightness.dark),
+  ]) {
+    testWidgets('Signatur in Betrieb mit Karte, abgelehnte PIN ($name)', (
+      t,
+    ) async {
+      final secrets = MemoryRksvSecrets();
+      await secrets.writeCardPinStatus(const CardPinStatus(rejected: true));
+      await pumpSettings(
+        t,
+        size: _tall,
+        brightness: brightness,
+        extra: signatureOverrides(secrets: secrets),
+      );
+      await seedLive(t, unit: RksvUnit.card, tasks: [liveTasks.first]);
+      expect(
+        find.text(
+          const CardSignException(CardSignProblem.pinRejected).sentence,
+        ),
+        findsOneWidget,
+      );
+      await _expectCard(
+        t,
+        'goldens/signatur_karte_in_betrieb_$name.png',
+        height: 960,
+      );
+    });
+  }
+
+  testWidgets('Signatur in der Karten-Probe, ausgefallen (hell)', (t) async {
+    await pumpSettings(t, size: _tall, extra: signatureOverrides());
+    await seedProbe(
+      t,
+      unit: RksvUnit.cardTest,
+      outageSince: DateTime(2026, 11, 17, 13, 5),
+      outageReason: const CardSignException(CardSignProblem.noCard).sentence,
+    );
+    await _expectCard(t, 'goldens/signatur_karte_probe_hell.png', height: 960);
   });
 }

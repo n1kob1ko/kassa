@@ -181,13 +181,15 @@ const exampleLiveCredentials = AtrustCredentials(
 /// [outageSince] (Grund [outageReason]) und einem erfundenen AES-Schlüssel
 /// im geschützten Speicher, ohne einen Bon zu signieren. Mit
 /// [decommissioned] ist die Kette beendet und die Kassa außer Betrieb. Ohne
-/// [container] gilt der der laufenden App.
+/// [container] gilt der der laufenden App. Mit [unit] `card` signiert die
+/// Signaturkarte die Kette.
 Future<void> seedLive(
   WidgetTester t, {
   List<RksvTask> tasks = const [],
   DateTime? outageSince,
   String outageReason = 'Kein Internet.',
   bool decommissioned = false,
+  RksvUnit unit = RksvUnit.atrust,
   ProviderContainer? container,
 }) async {
   final c = container ?? containerOf(t);
@@ -208,7 +210,7 @@ Future<void> seedLive(
         RksvChainRowsCompanion.insert(
           chain: const Value(1),
           mode: RksvMode.live.name,
-          unit: Value(RksvUnit.atrust.name),
+          unit: Value(unit.name),
           cashBoxId: fixedLiveCashBoxId,
           zdaId: 'AT1',
           certSerial: '01',
