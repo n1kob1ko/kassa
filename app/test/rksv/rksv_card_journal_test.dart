@@ -97,7 +97,7 @@ void main() {
 
     setUp(() async {
       rig = await RksvRig.open(card: rigCard());
-      await rig.insertCardChain();
+      await rig.startCardChain();
     });
     tearDown(() => rig.close());
 
@@ -108,7 +108,8 @@ void main() {
       () async {
         final sold = await rig.sell('s1', cart);
         expect(sold.rksv!.damaged, isFalse);
-        expect(card().signCount, 1);
+        // Startbeleg und Bon.
+        expect(card().signCount, 2);
         expect((await rig.codeFieldsOf('s1'))[1], 'R1-AT1');
         expect((await rig.stateRow()).outageSince, isNull);
         await rig.verifyChain(1);
@@ -133,9 +134,18 @@ void main() {
       rig.clock.value = DateTime(2026, 11, 18, 13, 20);
       final s3 = await rig.sell('s3', cart);
       expect(s3.rksv!.damaged, isFalse);
-      expect(await rig.entryKinds(), ['sale', 'sale', 'collective', 'sale']);
+      expect(await rig.entryKinds(), [
+        'start',
+        'sale',
+        'sale',
+        'collective',
+        'sale',
+      ]);
       final entries = await rig.entries(1);
-      expect([for (final e in entries) e.damaged], [false, true, false, false]);
+      expect(
+        [for (final e in entries) e.damaged],
+        [false, false, true, false, false],
+      );
       state = await rig.stateRow();
       expect((state.outageSince, state.outageReason), (null, null));
       expect(state.mode, 'live');
@@ -151,7 +161,7 @@ void main() {
       expect(await rig.service.retrySignature(staff: rig.chef), isFalse);
       card().removed = false;
       expect(await rig.service.retrySignature(staff: rig.chef), isTrue);
-      expect(await rig.entryKinds(), ['sale', 'collective']);
+      expect(await rig.entryKinds(), ['start', 'sale', 'collective']);
       expect((await rig.entries(1)).last.damaged, isFalse);
       final state = await rig.stateRow();
       expect((state.outageSince, state.outageReason), (null, null));
@@ -176,7 +186,7 @@ void main() {
       final task = (await rig.rksv.current()).tasks.singleWhere(
         (t) => t.kind == RksvTaskKind.reportOutage,
       );
-      expect(task.id, 'report-outage-1-1');
+      expect(task.id, 'report-outage-1-2');
       expect(task.detail, '18.11.2026 13:05. $_ground2');
       expect(
         rksvTaskText(task),
@@ -201,7 +211,7 @@ void main() {
           ),
         );
         try {
-          _await(async, rig.insertCardChain(unit: unit));
+          _await(async, rig.startCardChain(unit: unit));
           final card = rig.cardReader!.card!;
           card.removed = true;
           Receipt? first;
@@ -228,12 +238,16 @@ void main() {
           expect(second, isNotNull);
           expect(second!.rksv!.damaged, isFalse);
           expect(_await(async, rig.entryKinds()), [
+            'start',
             'sale',
             'collective',
             'sale',
           ]);
           final entries = _await(async, rig.entries(1));
-          expect([for (final e in entries) e.damaged], [true, false, false]);
+          expect(
+            [for (final e in entries) e.damaged],
+            [false, true, false, false],
+          );
           final state = _await(async, rig.stateRow());
           expect((state.outageSince, state.outageReason), (null, null));
           _await(async, rig.verifyChain(1));
@@ -249,7 +263,7 @@ void main() {
 
     setUp(() async {
       rig = await RksvRig.open(card: rigCard());
-      await rig.insertCardChain(unit: RksvUnit.cardTest);
+      await rig.startCardChain(unit: RksvUnit.cardTest);
     });
     tearDown(() => rig.close());
 
@@ -298,7 +312,7 @@ void main() {
 
     for (final unit in [RksvUnit.cardTest, RksvUnit.card]) {
       test('Kette ${unit.name} ruft card mit Kette und Zertifikat', () async {
-        await rig.insertCardChain(unit: unit);
+        await rig.startCardChain(unit: unit);
         final calls = <(RksvChainRow, RksvCertificateRow)>[];
         final result = await signatureUnitOf(
           rig.db,
@@ -311,15 +325,18 @@ void main() {
         )(1);
         expect(result, same(rig.fake));
         final (chain, cert) = calls.single;
+        expect((chain.chain, chain.unit, chain.zdaId), (1, unit.name, 'AT1'));
         expect(
-          (chain.chain, chain.unit, chain.zdaId, chain.cashBoxId),
-          (1, unit.name, 'AT1', RksvRig.cardCashBoxId),
+          chain.cashBoxId,
+          unit == RksvUnit.card
+              ? RksvRig.cardCashBoxId
+              : matches(RegExp(r'^[A-HJ-NP-Z2-9]{10}$')),
         );
         expect(cert.serialHex, 'cf36cd7808');
       });
 
       test('probeSignatureUnitOf lehnt ${unit.name} ab', () async {
-        await rig.insertCardChain(unit: unit);
+        await rig.startCardChain(unit: unit);
         await expectLater(
           probeSignatureUnitOf(rig.db, rig.secrets)(1),
           throwsStateError,
@@ -330,7 +347,7 @@ void main() {
     test(
       'cardTest im Modus live: StateError, card wird nicht gerufen',
       () async {
-        await rig.insertCardChain(unit: RksvUnit.cardTest);
+        await rig.startCardChain(unit: RksvUnit.cardTest);
         await rig.db.customStatement("UPDATE rksv_chains SET mode = 'live'");
         await expectLater(
           signatureUnitOf(
@@ -345,7 +362,7 @@ void main() {
     );
 
     test('die Einheit der Rig-Kette ist eine CardSignatureUnit', () async {
-      await rig.insertCardChain();
+      await rig.startCardChain();
       final unit = await signatureUnitOf(
         rig.db,
         rig.secrets,

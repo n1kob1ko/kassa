@@ -35,6 +35,7 @@ void main() {
 
     test('Art, Anbieter, Kennung, Schlüssel und Prüfwert', () {
       final f = setupFactsOf(
+        kind: setupKind,
         zdaId: 'AT1',
         certSerialHex: '2159b9f6',
         cashBoxId: 'BSPIMBECHT',
@@ -50,9 +51,25 @@ void main() {
       expect(f.aesChecksum, 'kF8o');
     });
 
+    test('Art der Signaturkarte; der Anbieter bleibt A-Trust', () {
+      expect(setupKindCard, 'Signaturkarte');
+      final f = setupFactsOf(
+        kind: setupKindCard,
+        zdaId: 'AT1',
+        certSerialHex: 'cf36cd7808',
+        cashBoxId: 'BSPIMBKARTE',
+        aesKey: key,
+      );
+      expect(f.kind, 'Signaturkarte');
+      expect(f.provider, 'AT1 = A-TRUST');
+      expect(f.certSerialDecimal, '889977665544');
+      expect(f.aesChecksum, 'kF8o');
+    });
+
     test('certSerialDecimal auch bei mehr als 64 Bit', () {
       const hex = '1a2b3c4d5e6f708192a3b4c5d6e7f8091';
       final f = setupFactsOf(
+        kind: setupKind,
         zdaId: 'AT1',
         certSerialHex: hex,
         cashBoxId: 'BSPIMBECHT',
@@ -65,6 +82,7 @@ void main() {
 
     test('toString nennt weder Schlüssel noch Prüfwert', () {
       final f = setupFactsOf(
+        kind: setupKind,
         zdaId: 'AT1',
         certSerialHex: '2159b9f6',
         cashBoxId: 'BSPIMBECHT',

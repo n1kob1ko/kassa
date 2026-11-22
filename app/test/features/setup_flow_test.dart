@@ -151,6 +151,7 @@ SetupFacts _expected(WidgetTester t) {
       .value
       .facts!;
   return setupFactsOf(
+    kind: setupKind,
     zdaId: facts.zdaId,
     certSerialHex: facts.certificate.serialHex,
     cashBoxId: _cashBoxId,

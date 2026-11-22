@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart'
-    show InsertMode, OrderingTerm, Value, driftRuntimeOptions, innerJoin;
+    show OrderingTerm, Value, driftRuntimeOptions, innerJoin;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -498,69 +498,60 @@ class RksvRig {
     );
   }
 
-  /// Die Kassen-Kennung der Kette aus [insertCardChain].
+  /// Die Kassen-Kennung der Kette `card` aus [startCardChain].
   static const cardCashBoxId = 'BSPIMBKARTE';
 
-  /// Setzt eine laufende Kette mit Karte direkt in die Datenbank, ohne
-  /// Startbeleg (braucht `open(card: …)`; den Weg der App dorthin bauen erst
-  /// `enableCardProbe` und `goLiveWithCard`, die diesen Helfer ersetzen):
-  /// das Zertifikat der Karte, Kette 1 mit der Einheit [unit] (`cardTest` im
-  /// Modus probe, `card` im Modus live), der Kennung [cardZdaId] und der
-  /// Kassen-Kennung [cardCashBoxId], der AES-Schlüssel aus den Bytes 0 bis
-  /// 31 und im geschützten Speicher die PIN für die Karte in [cardReader].
-  /// Liefert die Nummer der Kette.
-  Future<int> insertCardChain({RksvUnit unit = RksvUnit.card}) async {
-    final card = cardReader?.card;
-    if (card == null) {
-      throw StateError('insertCardChain braucht open(card: …).');
-    }
-    final mode = switch (unit) {
-      RksvUnit.cardTest => RksvMode.probe,
-      RksvUnit.card => RksvMode.live,
-      RksvUnit.probe ||
-      RksvUnit.atrustTest ||
-      RksvUnit.atrust => throw ArgumentError.value(unit, 'unit'),
-    };
+  /// Was "Karte prüfen" über die Karte in [cardReader] weiß (braucht
+  /// `open(card: …)`): Kartenart, Kartennummer, Zertifikat und Seriennummer.
+  CardFacts cardFacts() {
+    final card =
+        cardReader?.card ?? (throw StateError('cardFacts braucht eine Karte.'));
     final certificate = CardCertificate.parse(card.certificate);
-    final serialHex = certificate.serial.toRadixString(16);
-    await secrets.writeAesKey(
-      1,
-      Uint8List.fromList(List.generate(32, (i) => i)),
+    return CardFacts(
+      kind: card.profile.kind.name,
+      numberHex: compactHex(card.number),
+      certificateDer: certificate.der,
+      serialHex: certificate.serial.toRadixString(16),
     );
+  }
+
+  /// Speichert die PIN der Karte in [cardReader] für deren Kartenart und
+  /// Kartennummer, wie es "Karte und PIN" nach der Probe-Unterschrift tut.
+  /// Mit [pin] eine andere (etwa eine falsche).
+  Future<void> storeCardPin({String? pin}) async {
+    final card =
+        cardReader?.card ??
+        (throw StateError('storeCardPin braucht eine Karte.'));
     await secrets.writeCardPin(
       CardPin(
         kind: card.profile.kind.name,
         numberHex: compactHex(card.number),
-        pin: card.pin,
+        pin: pin ?? card.pin,
       ),
     );
-    await db
-        .into(db.rksvCertificateRows)
-        .insert(
-          RksvCertificateRowsCompanion.insert(
-            serialHex: serialHex,
-            certificate: certificate.der,
-          ),
-          // Das Test-Zertifikat der Attrappe steht schon da.
-          mode: InsertMode.insertOrIgnore,
-        );
-    await db
-        .into(db.rksvChainRows)
-        .insert(
-          RksvChainRowsCompanion.insert(
-            chain: const Value(1),
-            mode: mode.name,
-            unit: Value(unit.name),
-            cashBoxId: cardCashBoxId,
-            zdaId: cardZdaId,
-            certSerial: serialHex,
-            startedAt: clock.now(),
-          ),
-        );
-    await (db.update(db.rksvStateRows)..where((t) => t.id.equals(1))).write(
-      RksvStateRowsCompanion(mode: Value(mode.name), chain: const Value(1)),
-    );
-    return 1;
+  }
+
+  /// Startet eine Kette mit Karte über den Weg der App (braucht
+  /// `open(card: …)`): die PIN der Karte im geschützten Speicher
+  /// ([storeCardPin]), dann bei [RksvUnit.cardTest]
+  /// [RksvService.enableCardProbe], bei [RksvUnit.card]
+  /// [RksvService.prepareCardSetup], [RksvService.changeCashBoxId] auf
+  /// [cardCashBoxId] und [RksvService.goLiveWithCard]. Den Startbeleg
+  /// signiert die Karte. Liefert die Nummer der Kette.
+  Future<int> startCardChain({RksvUnit unit = RksvUnit.card}) async {
+    await storeCardPin();
+    final facts = cardFacts();
+    switch (unit) {
+      case RksvUnit.cardTest:
+        await service.enableCardProbe(staff: chef, facts: facts);
+      case RksvUnit.card:
+        await service.prepareCardSetup(facts: facts);
+        await service.changeCashBoxId(cardCashBoxId);
+        await service.goLiveWithCard(staff: chef, facts: facts);
+      case RksvUnit.probe || RksvUnit.atrustTest || RksvUnit.atrust:
+        throw ArgumentError.value(unit, 'unit');
+    }
+    return (await stateRow()).chain!;
   }
 
   /// Die Kassen-Kennung der Kette aus [seedLive].

@@ -6,8 +6,12 @@ import 'dart:typed_data';
 
 import 'package:pointycastle/digests/sha256.dart';
 
-/// Art der Signatureinheit, wie FinanzOnline sie zur Auswahl anbietet.
+/// Art der Signatureinheit, wie FinanzOnline sie zur Auswahl anbietet: am
+/// echten System von A-Trust.
 const setupKind = 'Hardware-Sicherheitsmodul (HSM) eines Dienstleisters';
+
+/// Dasselbe für die Signaturkarte.
+const setupKindCard = 'Signaturkarte';
 
 /// Alles als Text, wie es am Bildschirm und auf dem Zettel steht. Der
 /// AES-Schlüssel ist ein Geheimnis: toString nennt nichts davon.
@@ -22,7 +26,7 @@ final class SetupFacts {
     required this.aesChecksum,
   });
 
-  /// [setupKind].
+  /// [setupKind] oder [setupKindCard].
   final String kind;
 
   /// `<zdaId> = A-TRUST`, am echten System `AT1 = A-TRUST`.
@@ -55,10 +59,12 @@ String aesKeyChecksum(String aesKeyBase64) {
   return base64.encode(hash.sublist(0, 3)).replaceAll('=', '');
 }
 
-/// Die Angaben zu Kennung [zdaId] und Seriennummer [certSerialHex] des
-/// Zertifikats von A-Trust und zu Kassen-Kennung [cashBoxId] und
+/// Die Angaben zur Art [kind] der Signatureinheit, zu Kennung [zdaId] und
+/// Seriennummer [certSerialHex] des Zertifikats von A-Trust (am echten
+/// System oder auf der Karte) und zu Kassen-Kennung [cashBoxId] und
 /// AES-Schlüssel [aesKey] (32 Bytes) der künftigen Kette.
 SetupFacts setupFactsOf({
+  required String kind,
   required String zdaId,
   required String certSerialHex,
   required String cashBoxId,
@@ -66,7 +72,7 @@ SetupFacts setupFactsOf({
 }) {
   final key = base64.encode(aesKey);
   return SetupFacts(
-    kind: setupKind,
+    kind: kind,
     provider: '$zdaId = A-TRUST',
     certSerialHex: certSerialHex,
     certSerialDecimal: BigInt.parse(certSerialHex, radix: 16).toString(),

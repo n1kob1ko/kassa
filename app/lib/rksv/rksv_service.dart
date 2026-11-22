@@ -1,5 +1,6 @@
-// Probe-Signatur und Online-Probe ein- und ausschalten, Angaben für
-// FinanzOnline, Inbetriebnahme und Außerbetriebnahme, Nullbeleg, "Nochmal
+// Probe-Signatur, Online-Probe und Karten-Probe ein- und ausschalten,
+// Angaben für FinanzOnline, Kassen-ID ändern, Inbetriebnahme (am echten
+// System oder mit der Karte) und Außerbetriebnahme, Nullbeleg, "Nochmal
 // prüfen", "Protokoll ausgeben".
 
 import 'dart:convert';
@@ -13,6 +14,7 @@ import '../data/database.dart';
 import '../data/receipt_repository.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
+import 'card/card_facts.dart';
 import 'dep_export.dart';
 import 'online/atrust_client.dart';
 import 'online/connection_check.dart';
@@ -40,6 +42,41 @@ const _goLiveProblem = 'Die Kassa konnte nicht in Betrieb genommen werden.';
 const _notRunning = 'Die Signatur ist nicht eingeschaltet.';
 const _noProtocol = 'Es gibt noch kein Protokoll.';
 const _storageReadProblem = 'Das Tablet konnte den Schlüssel nicht lesen.';
+const _cashBoxIdForm =
+    'Die Kassen-ID darf nur Buchstaben, Ziffern und Bindestriche haben, '
+    'höchstens 20 Zeichen.';
+const _cashBoxIdUsed = 'Diese Kassen-ID hat diese Kassa schon verwendet.';
+
+/// Kassen-ID, die der Chef eingibt (Plan C8): Der Unterstrich trennt die
+/// Felder im Code und ist ausgeschlossen.
+final _cashBoxIdRule = RegExp(r'^[A-Z0-9-]{1,20}$');
+
+/// Einheit, Kennung und Zertifikat einer neuen Kette: von A-Trust online
+/// ([ConnectionFacts]) oder von der Karte ([CardFacts], ohne Aussteller,
+/// Plan C11).
+typedef _ChainUnit = ({
+  RksvUnit unit,
+  String zdaId,
+  String serialHex,
+  Uint8List certificateDer,
+  List<Uint8List> issuersDer,
+});
+
+_ChainUnit _onlineUnit(RksvUnit unit, ConnectionFacts facts) => (
+  unit: unit,
+  zdaId: facts.zdaId,
+  serialHex: facts.certificate.serialHex,
+  certificateDer: facts.certificate.certificateDer,
+  issuersDer: facts.certificate.issuersDer,
+);
+
+_ChainUnit _cardUnit(RksvUnit unit, CardFacts facts) => (
+  unit: unit,
+  zdaId: cardZdaId,
+  serialHex: facts.serialHex,
+  certificateDer: facts.certificateDer,
+  issuersDer: const [],
+);
 
 /// Das Journal liest den AES-Schlüssel der Kette nicht ([AesKeyUnreadable]).
 /// Kein Weg hinaus ist gebaut (Entwurf 12.6): Der Chef soll nur nichts tun,
@@ -109,18 +146,47 @@ class RksvService {
     required Staff staff,
     required ConnectionFacts facts,
   }) {
+    return _enableUnitProbe(
+      staff,
+      _onlineUnit(RksvUnit.atrustTest, facts),
+      check: () {
+        // Testsystem heißt Testbon (Plan, Global Constraints).
+        if (facts.system != AtrustSystem.test) {
+          throw StateError('Die Online-Probe läuft nur am Testsystem.');
+        }
+      },
+    );
+  }
+
+  /// "Mit Karte ausprobieren": neue Kette im Modus probe mit der Einheit
+  /// `cardTest`, Kennung [cardZdaId] und dem Zertifikat der Karte aus
+  /// [facts] (ohne Aussteller), Startbeleg von der Karte signiert. Fehler wie
+  /// bei [enableOnlineProbe]: RksvProblem (fehlt die Karte, mit dem Satz der
+  /// Einheit), und nichts bleibt zurück. Läuft die Signatur schon:
+  /// [StateError].
+  Future<Receipt> enableCardProbe({
+    required Staff staff,
+    required CardFacts facts,
+  }) {
+    return _enableUnitProbe(staff, _cardUnit(RksvUnit.cardTest, facts));
+  }
+
+  /// Der Kern von [enableOnlineProbe] und [enableCardProbe]: in einer
+  /// Transaktion [check], dann die neue Probe-Kette mit [unit].
+  Future<Receipt> _enableUnitProbe(
+    Staff staff,
+    _ChainUnit unit, {
+    void Function()? check,
+  }) {
     return _db.transaction(() async {
-      // Testsystem heißt Testbon (Plan, Global Constraints).
-      if (facts.system != AtrustSystem.test) {
-        throw StateError('Die Online-Probe läuft nur am Testsystem.');
-      }
+      check?.call();
       final state = await _state();
       if (enumByNameOr(RksvMode.values, state.mode, RksvMode.off) !=
           RksvMode.off) {
         throw StateError('Die Signatur läuft schon.');
       }
       try {
-        return await _startOnlineChain(staff, facts);
+        return await _startUnitChain(staff, unit);
       } on RksvProblem {
         rethrow;
       } on SignatureFailure catch (e) {
@@ -166,44 +232,42 @@ class RksvService {
     return _startReceipt(chain, staff);
   }
 
-  Future<Receipt> _startOnlineChain(Staff staff, ConnectionFacts facts) async {
+  Future<Receipt> _startUnitChain(Staff staff, _ChainUnit unit) async {
     final chain = await _nextChain();
     final cashBoxId = _newCashBoxId();
     final aesKey = _newAesKey();
-    final certificate = facts.certificate;
     await _storeSecrets(chain, aesKey);
-
-    // Eine zweite Online-Probe mit demselben Zertifikat findet die Zeile
-    // schon vor; sie bleibt, wie sie ist.
-    await _db
-        .into(_db.rksvCertificateRows)
-        .insert(
-          RksvCertificateRowsCompanion.insert(
-            serialHex: certificate.serialHex,
-            certificate: certificate.certificateDer,
-            issuers: Value(
-              jsonEncode([
-                for (final i in certificate.issuersDer) base64.encode(i),
-              ]),
-            ),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
+    await _insertCertificate(unit);
     await _db
         .into(_db.rksvChainRows)
         .insert(
           RksvChainRowsCompanion.insert(
             chain: Value(chain),
             mode: RksvMode.probe.name,
-            unit: Value(RksvUnit.atrustTest.name),
+            unit: Value(unit.unit.name),
             cashBoxId: cashBoxId,
-            zdaId: facts.zdaId,
-            certSerial: certificate.serialHex,
+            zdaId: unit.zdaId,
+            certSerial: unit.serialHex,
             startedAt: _clock.now(),
           ),
         );
     return _startReceipt(chain, staff);
   }
+
+  /// Das Zertifikat von [unit] mit seinen Ausstellern. Dasselbe Zertifikat
+  /// aus einer früheren Kette bleibt, wie es ist.
+  Future<void> _insertCertificate(_ChainUnit unit) => _db
+      .into(_db.rksvCertificateRows)
+      .insert(
+        RksvCertificateRowsCompanion.insert(
+          serialHex: unit.serialHex,
+          certificate: unit.certificateDer,
+          issuers: Value(
+            jsonEncode([for (final i in unit.issuersDer) base64.encode(i)]),
+          ),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
 
   Future<int> _nextChain() async {
     final highest = _db.rksvChainRows.chain.max();
@@ -354,15 +418,44 @@ class RksvService {
   /// Stammen [facts] nicht vom echten System oder ist die Kassa schon in
   /// Betrieb: [StateError].
   Future<SetupFacts> prepareSetup({required ConnectionFacts facts}) {
-    final done = _setupQueue.then((_) => _prepareSetup(facts));
+    return _inSetupQueue(() {
+      if (facts.system != AtrustSystem.live) {
+        throw StateError('Die Angaben gibt es nur am echten System.');
+      }
+      return _prepareSetup(
+        kind: setupKind,
+        zdaId: facts.zdaId,
+        certSerialHex: facts.certificate.serialHex,
+      );
+    });
+  }
+
+  /// Wie [prepareSetup] (dasselbe PendingSetup), aber für die Signaturkarte
+  /// aus [facts]: Art [setupKindCard], Anbieter `AT1 = A-TRUST`, die
+  /// Seriennummer des Zertifikats der Karte. Ist die Kassa schon in
+  /// Betrieb: [StateError].
+  Future<SetupFacts> prepareCardSetup({required CardFacts facts}) {
+    return _inSetupQueue(
+      () => _prepareSetup(
+        kind: setupKindCard,
+        zdaId: cardZdaId,
+        certSerialHex: facts.serialHex,
+      ),
+    );
+  }
+
+  /// [body], nachdem alles davor in [_setupQueue] fertig ist.
+  Future<T> _inSetupQueue<T>(Future<T> Function() body) {
+    final done = _setupQueue.then((_) => body());
     _setupQueue = done.then<void>((_) {}, onError: (Object _) {});
     return done;
   }
 
-  Future<SetupFacts> _prepareSetup(ConnectionFacts facts) async {
-    if (facts.system != AtrustSystem.live) {
-      throw StateError('Die Angaben gibt es nur am echten System.');
-    }
+  Future<SetupFacts> _prepareSetup({
+    required String kind,
+    required String zdaId,
+    required String certSerialHex,
+  }) async {
     if (await _mode() == RksvMode.live) {
       throw StateError('Die Kassa ist schon in Betrieb.');
     }
@@ -372,29 +465,73 @@ class RksvService {
         cashBoxId: _newCashBoxId(),
         aesKey: _newAesKey(),
       );
-      try {
-        await () async {
-          await _secrets.writePendingSetup(fresh);
-          final back = await _secrets.pendingSetup();
-          if (back == null ||
-              back.cashBoxId != fresh.cashBoxId ||
-              back.aesKey.length != fresh.aesKey.length ||
-              !_equal(back.aesKey, fresh.aesKey)) {
-            throw const RksvProblem(_storageProblem);
-          }
-        }().timeout(storageLimit);
-      } on Object {
-        throw const RksvProblem(_storageProblem);
-      }
+      await _storePendingSetup(fresh);
       setup = fresh;
     }
     return setupFactsOf(
-      zdaId: facts.zdaId,
-      certSerialHex: facts.certificate.serialHex,
+      kind: kind,
+      zdaId: zdaId,
+      certSerialHex: certSerialHex,
       cashBoxId: setup.cashBoxId,
       aesKey: setup.aesKey,
     );
   }
+
+  /// Schreibt [setup] und liest es zurück, zusammen höchstens
+  /// [storageLimit] lang. Scheitert etwas: [RksvProblem].
+  Future<void> _storePendingSetup(PendingSetup setup) async {
+    try {
+      await () async {
+        await _secrets.writePendingSetup(setup);
+        final back = await _secrets.pendingSetup();
+        if (back == null ||
+            back.cashBoxId != setup.cashBoxId ||
+            back.aesKey.length != setup.aesKey.length ||
+            !_equal(back.aesKey, setup.aesKey)) {
+          throw const RksvProblem(_storageProblem);
+        }
+      }().timeout(storageLimit);
+    } on Object {
+      throw const RksvProblem(_storageProblem);
+    }
+  }
+
+  /// "Kassen-ID ändern" (Plan C8): [id] ohne Leerzeichen am Rand und groß
+  /// geschrieben wird die Kassen-Kennung des PendingSetup; der AES-Schlüssel
+  /// bleibt. Läuft in derselben Schlange wie [prepareSetup]. Passt [id] nicht
+  /// zur Regel ([cashBoxIdProblem]) oder trägt eine Kette dieser Kassa (auch
+  /// eine beendete) schon diese Kennung: [RksvProblem], und das PendingSetup
+  /// bleibt, wie es ist; ebenso, wenn der geschützte Speicher nicht liest
+  /// oder schreibt. Dieselbe Kennung wie bisher schreibt nichts. Ohne
+  /// PendingSetup oder in Betrieb: [StateError].
+  Future<void> changeCashBoxId(String id) =>
+      _inSetupQueue(() => _changeCashBoxId(id));
+
+  Future<void> _changeCashBoxId(String input) async {
+    if (await _mode() == RksvMode.live) {
+      throw StateError('Die Kassa ist schon in Betrieb.');
+    }
+    final setup =
+        await _readPendingSetup() ??
+        (throw StateError('Es gibt keine Angaben für FinanzOnline.'));
+    final problem = cashBoxIdProblem(input);
+    if (problem != null) throw RksvProblem(problem);
+    final id = _normalCashBoxId(input);
+    if (id == setup.cashBoxId) return;
+    final used = await (_db.select(
+      _db.rksvChainRows,
+    )..where((t) => t.cashBoxId.equals(id))).get();
+    if (used.isNotEmpty) throw const RksvProblem(_cashBoxIdUsed);
+    await _storePendingSetup(PendingSetup(cashBoxId: id, aesKey: setup.aesKey));
+  }
+
+  /// Der Satz, wenn [input] (ohne Leerzeichen am Rand, groß geschrieben)
+  /// keine erlaubte Kassen-ID ist (1 bis 20 Zeichen aus A bis Z, 0 bis 9 und
+  /// Bindestrich), sonst null. Für das Feld der Eingabe.
+  static String? cashBoxIdProblem(String input) =>
+      _cashBoxIdRule.hasMatch(_normalCashBoxId(input)) ? null : _cashBoxIdForm;
+
+  static String _normalCashBoxId(String input) => input.trim().toUpperCase();
 
   /// Das PendingSetup, höchstens [storageLimit] lang gelesen; null auch,
   /// wenn eine Kette schon seine Kassen-Kennung trägt (das Löschen nach der
@@ -431,6 +568,39 @@ class RksvService {
   Future<Receipt> goLive({
     required Staff staff,
     required ConnectionFacts facts,
+  }) {
+    return _goLive(
+      staff,
+      _onlineUnit(RksvUnit.atrust, facts),
+      check: () {
+        // Echt heißt echt (Plan, Global Constraints).
+        if (facts.system != AtrustSystem.live) {
+          throw StateError('Die Inbetriebnahme läuft nur am echten System.');
+        }
+      },
+    );
+  }
+
+  /// "In Betrieb nehmen" mit der Signaturkarte: wie [goLive] (Q7, Q17),
+  /// aber die neue Kette `live` hat die Einheit `card`, die Kennung
+  /// [cardZdaId] und das Zertifikat der Karte aus [facts] (ohne Aussteller);
+  /// den Startbeleg signiert die Karte. Scheitert er (Karte gezogen, andere
+  /// Karte, abgelehnte PIN), bleibt alles wie vorher: [RksvProblem] mit dem
+  /// Satz der Einheit. Fehlt das PendingSetup oder ist die Kassa schon in
+  /// Betrieb: [StateError].
+  Future<Receipt> goLiveWithCard({
+    required Staff staff,
+    required CardFacts facts,
+  }) {
+    return _goLive(staff, _cardUnit(RksvUnit.card, facts));
+  }
+
+  /// Der Kern von [goLive] und [goLiveWithCard]: in einer Transaktion
+  /// [check], dann die neue Kette `live` mit [unit].
+  Future<Receipt> _goLive(
+    Staff staff,
+    _ChainUnit unit, {
+    void Function()? check,
   }) async {
     final journal =
         _receipts.journal ??
@@ -440,10 +610,7 @@ class RksvService {
     final Receipt start;
     try {
       start = await _db.transaction(() async {
-        // Echt heißt echt (Plan, Global Constraints).
-        if (facts.system != AtrustSystem.live) {
-          throw StateError('Die Inbetriebnahme läuft nur am echten System.');
-        }
+        check?.call();
         final mode = await _mode();
         if (mode == RksvMode.live) {
           throw StateError('Die Kassa ist schon in Betrieb.');
@@ -455,7 +622,7 @@ class RksvService {
         try {
           if (mode == RksvMode.probe) await _closeProbe(staff);
           chain = await _nextChain();
-          return await _startLiveChain(chain!, staff, facts, setup);
+          return await _startLiveChain(chain!, staff, unit, setup);
         } on RksvProblem {
           rethrow;
         } on SignatureFailure catch (e) {
@@ -486,26 +653,11 @@ class RksvService {
   Future<Receipt> _startLiveChain(
     int chain,
     Staff staff,
-    ConnectionFacts facts,
+    _ChainUnit unit,
     PendingSetup setup,
   ) async {
-    final certificate = facts.certificate;
     await _storeSecrets(chain, setup.aesKey);
-    // Dasselbe Zertifikat aus einer früheren Kette bleibt, wie es ist.
-    await _db
-        .into(_db.rksvCertificateRows)
-        .insert(
-          RksvCertificateRowsCompanion.insert(
-            serialHex: certificate.serialHex,
-            certificate: certificate.certificateDer,
-            issuers: Value(
-              jsonEncode([
-                for (final i in certificate.issuersDer) base64.encode(i),
-              ]),
-            ),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
+    await _insertCertificate(unit);
     final now = _clock.now();
     await _db
         .into(_db.rksvChainRows)
@@ -513,10 +665,10 @@ class RksvService {
           RksvChainRowsCompanion.insert(
             chain: Value(chain),
             mode: RksvMode.live.name,
-            unit: Value(RksvUnit.atrust.name),
+            unit: Value(unit.unit.name),
             cashBoxId: setup.cashBoxId,
-            zdaId: facts.zdaId,
-            certSerial: certificate.serialHex,
+            zdaId: unit.zdaId,
+            certSerial: unit.serialHex,
             startedAt: now,
           ),
         );
@@ -693,17 +845,32 @@ class RksvService {
     return saved ? ExportOutcome.saved : ExportOutcome.cancelled;
   }
 
-  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette `live`;
-  /// null, wenn keine läuft. Für "Verbindung prüfen" am echten System.
+  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette `live`
+  /// (mit A-Trust online oder mit der Karte); null, wenn keine läuft. Für
+  /// "Verbindung prüfen" am echten System.
   Future<String?> liveChainSerial() async {
     final state = await _state();
     final chain = state.chain;
     if (state.mode != RksvMode.live.name || chain == null) return null;
-    final row = await (_db.select(
-      _db.rksvChainRows,
-    )..where((t) => t.chain.equals(chain))).getSingleOrNull();
-    return row?.certSerial;
+    return (await _chainRow(chain))?.certSerial;
   }
+
+  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette, wenn ihre
+  /// Einheit `card` oder `cardTest` ist; sonst null.
+  Future<String?> cardChainSerial() async {
+    final chain = (await _state()).chain;
+    if (chain == null) return null;
+    final row = await _chainRow(chain);
+    if (row == null) return null;
+    final unit = RksvUnit.values.asNameMap()[row.unit];
+    return unit == RksvUnit.card || unit == RksvUnit.cardTest
+        ? row.certSerial
+        : null;
+  }
+
+  Future<RksvChainRow?> _chainRow(int chain) => (_db.select(
+    _db.rksvChainRows,
+  )..where((t) => t.chain.equals(chain))).getSingleOrNull();
 
   Future<RksvMode> _mode() async =>
       enumByNameOr(RksvMode.values, (await _state()).mode, RksvMode.off);
