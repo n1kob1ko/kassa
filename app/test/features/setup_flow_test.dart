@@ -310,6 +310,41 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('"Ändern" bei der Kassenidentifikationsnummer: neue Kennung am '
+      'Bildschirm und in der Kette, Schlüssel und Prüfwert bleiben', (t) async {
+    final (fake: _, :secrets) = await _open(t);
+    final aes = _aesLines(t);
+    final checksum = _value(t, 'setup-value-checksum');
+    expect(
+      find.descendant(
+        of: _key('setup-cashbox-change'),
+        matching: find.text('Ändern'),
+      ),
+      findsOneWidget,
+    );
+    await _tap(t, 'setup-cashbox-change');
+    expect(_key('cash-box-id-sheet'), findsOneWidget);
+    await t.enterText(
+      find.descendant(
+        of: _key('cash-box-id-field'),
+        matching: find.byType(TextField),
+      ),
+      'imbiss-2',
+    );
+    await t.pump();
+    await _tap(t, 'cash-box-id-save');
+    expect(_key('cash-box-id-sheet'), findsNothing);
+    expect(_value(t, 'setup-value-cashbox'), 'IMBISS-2');
+    expect(_aesLines(t), aes);
+    expect(_value(t, 'setup-value-checksum'), checksum);
+    expect((await secrets.pendingSetup())!.cashBoxId, 'IMBISS-2');
+    expect(_value(t, 'setup-value-kind'), setupKind);
+
+    await _tap(t, 'setup-go-live');
+    await _tap(t, 'go-live-confirm');
+    expect(await _liveChains(t), ['IMBISS-2']);
+  });
+
   testWidgets('große Schrift: nichts läuft über, jede Zeile des Schlüssels '
       'bleibt eine Zeile', (t) async {
     await _open(t, textScale: 1.3);

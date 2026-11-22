@@ -5,11 +5,13 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/app_info.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../rksv/card/card_facts.dart';
 import '../../rksv/online/atrust_client.dart' show AtrustSystem;
 import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
+import '../shell/shell_screen.dart' show openCredentials;
 import 'card_check_screen.dart';
 import 'card_panel.dart';
 import 'card_setup_screen.dart';
@@ -20,7 +22,9 @@ import 'printer_panel.dart';
 import 'reimport_panel.dart';
 import 'server_panel.dart';
 import 'settings_rows.dart';
+import 'setup_facts_screen.dart';
 import 'signature_panel.dart';
+import 'signer_choice_screen.dart';
 
 /// Der Bereich Einstellungen (nur Chef): links Signatur und Kassa, rechts
 /// Geräte, Anzeige und Server (Signatur oben links wie im Entwurf `s1b-2`).
@@ -39,6 +43,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onCredentials,
     required this.cardSetup,
     required this.onCardSetup,
+    this.choosingSigner = false,
+    this.onChoosingSigner,
+    this.cardFacts,
+    this.onCardFacts,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -66,6 +74,17 @@ class SettingsScreen extends ConsumerStatefulWidget {
   final CardSetupPurpose? cardSetup;
   final ValueChanged<CardSetupPurpose?> onCardSetup;
 
+  /// Die Wahl "Womit signiert die Kassa?" ersetzt die Karten. Auf dem Weg
+  /// mit der Karte bleibt sie unter "Karte und PIN" ([cardSetup] ist dann
+  /// [CardSetupPurpose.live]).
+  final bool choosingSigner;
+  final ValueChanged<bool>? onChoosingSigner;
+
+  /// "Angaben für FinanzOnline" mit dieser Karte steht über "Karte und PIN";
+  /// `null` ohne.
+  final CardFacts? cardFacts;
+  final ValueChanged<CardFacts?>? onCardFacts;
+
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -85,7 +104,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         widget.checkingCard ||
         widget.checkingConnection != null ||
         widget.credentials != null ||
-        widget.cardSetup != null) {
+        widget.cardSetup != null ||
+        widget.choosingSigner ||
+        widget.cardFacts != null) {
       _announcement = null;
     }
   }
@@ -128,11 +149,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onBack: () => widget.onCheckingConnection(null),
       );
     }
+    if (widget.cardFacts case final card?) {
+      return SetupFactsScreen.card(
+        key: const Key('setup-facts-card'),
+        card: card,
+        // Zurück zu "Karte und PIN", das darunter liegt.
+        onBack: () => widget.onCardFacts?.call(null),
+        onLive: () {
+          setState(() => _announcement = 'Die Kassa ist in Betrieb.');
+          widget.onCardFacts?.call(null);
+          widget.onCardSetup(null);
+          widget.onChoosingSigner?.call(false);
+        },
+      );
+    }
     if (widget.cardSetup case final purpose?) {
       return CardSetupScreen(
         key: const Key('card-setup-screen'),
         purpose: purpose,
+        // Auf dem Weg zum echten Betrieb liegt die Wahl darunter.
         onBack: () => widget.onCardSetup(null),
+        onLive: (facts) => widget.onCardFacts?.call(facts),
         onProbeStarted: (sentence) {
           setState(() => _announcement = sentence);
           widget.onCardSetup(null);
@@ -157,6 +194,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           widget.onCredentials(null);
         },
         onBack: () => widget.onCredentials(null),
+      );
+    }
+    if (widget.choosingSigner) {
+      return SignerChoiceScreen(
+        key: const Key('signer-choice-screen'),
+        onCard: () => widget.onCardSetup(CardSetupPurpose.live),
+        onOnline: () => openCredentials(context),
+        onBack: () => widget.onChoosingSigner?.call(false),
       );
     }
     final c = KassaColors.of(context);

@@ -62,7 +62,8 @@ class CardSetupScreen extends ConsumerStatefulWidget {
   /// "Weiter" bei [CardSetupPurpose.live], mit den Angaben der Karte.
   final void Function(CardFacts facts)? onLive;
 
-  /// Zurück zur Karte "Signatur" ("Zurück", "Fertig").
+  /// Zurück zur Karte "Signatur" ("Zurück", "Fertig"), bei
+  /// [CardSetupPurpose.live] zur Wahl "Womit signiert die Kassa?".
   final VoidCallback onBack;
 
   /// Nach "Probe starten": zurück in die Einstellungen mit diesem Satz. Ohne
@@ -381,7 +382,9 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
               Pressable(
                 key: const Key('card-setup-back'),
                 onTap: widget.onBack,
-                semanticLabel: 'Zurück zu den Einstellungen',
+                semanticLabel: widget.purpose == CardSetupPurpose.live
+                    ? 'Zurück zur Wahl der Signatur'
+                    : 'Zurück zu den Einstellungen',
                 minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

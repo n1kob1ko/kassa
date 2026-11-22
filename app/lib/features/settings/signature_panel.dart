@@ -18,7 +18,8 @@ import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import '../shell/irreversible_step.dart';
-import '../shell/shell_screen.dart' show openCardSetup, openCredentials;
+import '../shell/shell_screen.dart'
+    show openCardSetup, openCredentials, openSignerChoice;
 import 'card_setup_screen.dart' show CardSetupPurpose;
 import 'probe_question.dart';
 import 'protocol_export_sheet.dart';
@@ -75,9 +76,10 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 /// Zugangsdaten "Erneut anmelden"; alle drei rufen [onOpenConnectionCheck].
 /// Für die Karten-Probe "Mit Karte ausprobieren" (aus), das "Karte und PIN"
 /// öffnet ([openCardSetup]).
-/// Außer in Betrieb steht "Signatur einrichten" da, das die Zugangsdaten von
-/// A-Trust öffnet. In Betrieb: "Verbindung prüfen" am echten System,
-/// Nullbeleg, Protokoll, "Zugangsdaten" und "Kassa außer Betrieb nehmen",
+/// Außer in Betrieb steht "Signatur einrichten" da, das die Wahl "Womit
+/// signiert die Kassa?" öffnet ([openSignerChoice]). In Betrieb:
+/// "Verbindung prüfen" am echten System, Nullbeleg, Protokoll, "Zugangsdaten"
+/// und "Kassa außer Betrieb nehmen",
 /// bei abgelehnten Zugangsdaten "Zugangsdaten neu eingeben". Außer Betrieb
 /// bleiben die Aufgaben und "Protokoll ausgeben" (Q15).
 /// Dazu die Zeile "Karte prüfen" (`open-card-check`), die [onOpenCardCheck]
@@ -458,7 +460,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
                 'Für den echten Betrieb, mit Signaturkarte oder A-Trust '
                 'online.',
             label: 'Einrichten',
-            onPressed: () => openCredentials(context),
+            onPressed: () => openSignerChoice(context),
           ),
         // Ein Problem beim Erledigen einer Aufgabe oder beim Hinweis, oder
         // ein Stand, der sich inzwischen geändert hat.

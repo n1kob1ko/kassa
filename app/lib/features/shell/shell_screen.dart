@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../devices/device_providers.dart';
+import '../../rksv/card/card_facts.dart';
 import '../../ui/app_header.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart';
@@ -34,6 +35,12 @@ void openCredentials(BuildContext context, {bool edit = false}) => context
 void openCardSetup(BuildContext context, CardSetupPurpose purpose) => context
     .findAncestorStateOfType<_ShellScreenState>()
     ?._openCardSetup(purpose);
+
+/// Öffnet in den Einstellungen die Wahl "Womit signiert die Kassa?", nur
+/// für den Chef und unter denselben Bedingungen wie [openCredentials].
+/// [context] liegt unter der [ShellScreen].
+void openSignerChoice(BuildContext context) =>
+    context.findAncestorStateOfType<_ShellScreenState>()?._openSignerChoice();
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -68,38 +75,67 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// diesen Zweck; `null` ohne.
   CardSetupPurpose? _cardSetup;
 
+  /// Die Wahl "Womit signiert die Kassa?" ersetzt die Karten der
+  /// Einstellungen. Auf dem Weg mit der Karte bleibt sie darunter, damit
+  /// "Zurück" aus "Karte und PIN" zu ihr führt.
+  bool _choosingSigner = false;
+
+  /// "Angaben für FinanzOnline" mit den Angaben dieser Karte steht über
+  /// "Karte und PIN" ([_cardSetup] ist dann [CardSetupPurpose.live]); `null`
+  /// ohne.
+  CardFacts? _cardFacts;
+
+  /// Eine Seite der Einstellungen darf öffnen: nur für den Chef, nicht
+  /// während einer Kartenzahlung und nicht während eines Schritts, der sich
+  /// nicht zurücknehmen lässt.
+  bool get _mayOpenPage =>
+      (ref.read(sessionProvider)?.isChef ?? false) &&
+      ref.read(activeCardPaymentProvider) == null &&
+      !ref.read(irreversibleStepProvider);
+
+  /// Schließt jede Seite, die an Stelle der Karten der Einstellungen steht.
+  void _closePages() {
+    _testingDevices = false;
+    _checkingCard = false;
+    _checkingConnection = null;
+    _credentials = null;
+    _cardSetup = null;
+    _choosingSigner = false;
+    _cardFacts = null;
+  }
+
   void _openCardSetup(CardSetupPurpose purpose) {
-    if (!(ref.read(sessionProvider)?.isChef ?? false)) return;
-    if (ref.read(activeCardPaymentProvider) != null) return;
-    if (ref.read(irreversibleStepProvider)) return;
+    if (!_mayOpenPage) return;
     setState(() {
       _settingsOpen = true;
-      _testingDevices = false;
-      _checkingCard = false;
-      _checkingConnection = null;
-      _credentials = null;
+      _closePages();
       _cardSetup = purpose;
     });
   }
 
   void _openCredentials({required bool edit}) {
-    if (!(ref.read(sessionProvider)?.isChef ?? false)) return;
-    if (ref.read(activeCardPaymentProvider) != null) return;
-    if (ref.read(irreversibleStepProvider)) return;
+    if (!_mayOpenPage) return;
     setState(() {
       _settingsOpen = true;
-      _testingDevices = false;
-      _checkingCard = false;
-      _checkingConnection = null;
-      _cardSetup = null;
+      _closePages();
       _credentials = CredentialsRoute(edit: edit);
+    });
+  }
+
+  void _openSignerChoice() {
+    if (!_mayOpenPage) return;
+    setState(() {
+      _settingsOpen = true;
+      _closePages();
+      _choosingSigner = true;
     });
   }
 
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
   /// testen", "Karte prüfen", "Verbindung prüfen" oder "Karte und PIN" (bei
   /// den Zugangsdaten erst die Prüfung oder die Angaben für FinanzOnline,
-  /// dann die Zugangsdaten), dann die Einstellungen. An der
+  /// dann die Zugangsdaten; auf dem Weg mit der Karte erst die Angaben, dann
+  /// "Karte und PIN", dann die Wahl), dann die Einstellungen. An der
   /// Kassa tut es nichts, die App verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -115,8 +151,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _checkingCard = false);
     } else if (_checkingConnection != null) {
       setState(() => _checkingConnection = null);
+    } else if (_cardFacts != null) {
+      setState(() => _cardFacts = null);
     } else if (_cardSetup != null) {
       setState(() => _cardSetup = null);
+    } else if (_choosingSigner) {
+      setState(() => _choosingSigner = false);
     } else if (_credentials?.check != null || _credentials?.setup != null) {
       setState(() => _credentials = const CredentialsRoute());
     } else if (_credentials != null) {
@@ -164,11 +204,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                         setState(() {
                           _area = a;
                           _settingsOpen = false;
-                          _testingDevices = false;
-                          _checkingCard = false;
-                          _checkingConnection = null;
-                          _credentials = null;
-                          _cardSetup = null;
+                          _closePages();
                         });
                       },
                       staffName: staff.name,
@@ -181,11 +217,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                         if (paying) return;
                         setState(() {
                           _settingsOpen = !_settingsOpen;
-                          _testingDevices = false;
-                          _checkingCard = false;
-                          _checkingConnection = null;
-                          _credentials = null;
-                          _cardSetup = null;
+                          _closePages();
                         });
                       },
                       businessName: ref
@@ -202,11 +234,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           setState(() {
                             _area = AppArea.close;
                             _settingsOpen = false;
-                            _testingDevices = false;
-                            _checkingCard = false;
-                            _checkingConnection = null;
-                            _credentials = null;
-                            _cardSetup = null;
+                            _closePages();
                           });
                         },
                       ),
@@ -230,6 +258,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                                 cardSetup: _cardSetup,
                                 onCardSetup: (v) =>
                                     setState(() => _cardSetup = v),
+                                choosingSigner: _choosingSigner,
+                                onChoosingSigner: (v) =>
+                                    setState(() => _choosingSigner = v),
+                                cardFacts: _cardFacts,
+                                onCardFacts: (v) =>
+                                    setState(() => _cardFacts = v),
                               ),
                             )
                           : _areaWidget(

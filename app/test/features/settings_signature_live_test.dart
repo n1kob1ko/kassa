@@ -164,7 +164,8 @@ _GatedService _gatedOf(WidgetTester t) =>
 void main() {
   group('Signatur einrichten', () {
     testWidgets('steht in "Nicht eingerichtet", "Probe" und "Online-Probe" '
-        'vor "Karte prüfen" und öffnet die Zugangsdaten', (t) async {
+        'vor "Karte prüfen" und öffnet die Wahl, "A-Trust online" die '
+        'Zugangsdaten', (t) async {
       for (final unit in [null, RksvUnit.probe, RksvUnit.atrustTest]) {
         await _settings(t);
         if (unit != null) await seedProbe(t, unit: unit);
@@ -185,10 +186,29 @@ void main() {
         ]);
 
         await _tap(t, 'rksv-setup');
+        expect(_key('signer-choice'), findsOneWidget, reason: '$unit');
+        expect(_key('signature-card'), findsNothing);
+        await _tap(t, 'signer-choice-online');
         expect(_key('credentials'), findsOneWidget, reason: '$unit');
         expect(_key('credentials-user'), findsOneWidget);
         expect(_key('signature-card'), findsNothing);
       }
+    });
+
+    testWidgets('openSignerChoice tut für Mitarbeiter ohne Chef-Rolle nichts', (
+      t,
+    ) async {
+      await pumpKassa(
+        t,
+        overrides: [...await memoryOverrides(), ...onlineOverrides(_fake())],
+      );
+      openSignerChoice(t.element(_key('area-kassa')));
+      await t.pumpAndSettle();
+      await containerOf(t).read(sessionProvider.notifier).login('4711');
+      await t.pumpAndSettle();
+      expect(_key('signer-choice'), findsNothing);
+      expect(_key('area-settings'), findsNothing);
+      expect(_key('area-kassa'), findsOneWidget);
     });
 
     testWidgets('openCredentials tut für Mitarbeiter ohne Chef-Rolle nichts, '

@@ -558,6 +558,28 @@ void main() {
       expect(d.last, isA<PrintCut>());
     });
 
+    test('mit der Karte: die Zeile "Art der Sicherheitseinrichtung" trägt '
+        '"Signaturkarte"', () {
+      const card = SetupFacts(
+        kind: setupKindCard,
+        provider: 'AT1 = A-TRUST',
+        certSerialHex: '2159b9f6',
+        certSerialDecimal: '559528438',
+        cashBoxId: 'R4TW9KD2PX',
+        aesKeyBase64: 'k3Vt9mQe2Lx8RbY1uZp0Hfd6Wc4NsJ7aGiTo5EyPqMw=',
+        aesChecksum: 'Jq4T',
+      );
+      final t = texts(
+        layoutSetupFacts(card, business, DateTime(2026, 11, 22, 10, 15)),
+      );
+      final kind = t.indexOf('Art der Sicherheitseinrichtung');
+      expect(t.sublist(kind, kind + 3), [
+        'Art der Sicherheitseinrichtung',
+        'Signaturkarte',
+        'Anbieter',
+      ]);
+    });
+
     test('schmales Papier: lange Werte brechen um, der Schlüssel bleibt in '
         'zwei Zeilen zu je 22 Zeichen', () {
       const long = SetupFacts(

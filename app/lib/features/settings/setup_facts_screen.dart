@@ -5,6 +5,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../domain/receipt.dart';
+import '../../rksv/card/card_facts.dart';
+import '../../rksv/card/card_providers.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/atrust_session_keeper.dart';
 import '../../rksv/online/connection_check.dart';
@@ -19,12 +22,17 @@ import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import 'card_check_screen.dart' show checkCardDecoration;
+import 'cash_box_id_sheet.dart';
 import 'go_live_question.dart';
 import 'settings_rows.dart';
 import '../shell/irreversible_step.dart';
 import 'signature_panel.dart' show printRksvReceipt, staleSettingsSentence;
 
 const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
+
+/// So lange wartet "Jetzt in Betrieb nehmen" mit der Karte höchstens auf das
+/// Aufwärmen des Halters, dann kommt die Inbetriebnahme in jedem Fall.
+const cardWarmUpLimit = Duration(seconds: 20);
 
 const _steps = [
   'An der alten Kassa den Schlussbeleg erstellen und sie bei FinanzOnline '
@@ -39,10 +47,13 @@ const _steps = [
 /// links die Angaben, die der Chef bei FinanzOnline einträgt, rechts "Bevor
 /// du startest", "Angaben drucken" und "Jetzt in Betrieb nehmen".
 ///
-/// Beim Öffnen holt er die Angaben mit `prepareSetup` zu [facts]; bis sie da
+/// Beim Öffnen holt er die Angaben mit `prepareSetup` zu [facts] (A-Trust
+/// online) oder mit `prepareCardSetup` zu [card] (Signaturkarte); bis sie da
 /// sind, stehen ruhige Platzhalter, scheitert es, der Satz mit "Nochmal
 /// versuchen". Die Werte bleiben im geschützten Speicher (Q2), darum zeigt
-/// jedes Öffnen dieselben. Die Inbetriebnahme verwendet dieselben [facts]
+/// jedes Öffnen dieselben. "Ändern" bei der Kassenidentifikationsnummer
+/// öffnet "Kassen-ID ändern"; danach steht die neue Kennung da, Schlüssel und
+/// Prüfwert bleiben. Die Inbetriebnahme verwendet dieselben Angaben
 /// (dasselbe Zertifikat) ohne neue Prüfung, fragt einmal nach, druckt den
 /// Startbeleg wie den der Probe und ruft dann [onLive]. Scheitert sie, steht
 /// ihr Satz da, und der Bildschirm bleibt offen.
@@ -50,17 +61,29 @@ const _steps = [
 /// Der AES-Schlüssel ist ein Geheimnis: Er steht nur hier am Bildschirm und
 /// auf dem Zettel, nie in einer Fehlermeldung, und lässt sich nicht kopieren.
 class SetupFactsScreen extends ConsumerStatefulWidget {
+  /// Für A-Trust online.
   const SetupFactsScreen({
     super.key,
-    required this.facts,
+    required ConnectionFacts this.facts,
     required this.onBack,
     required this.onLive,
-  });
+  }) : card = null;
 
-  /// Die Angaben von "Verbindung prüfen" am echten System.
-  final ConnectionFacts facts;
+  /// Für die Signaturkarte.
+  const SetupFactsScreen.card({
+    super.key,
+    required CardFacts this.card,
+    required this.onBack,
+    required this.onLive,
+  }) : facts = null;
 
-  /// Zurück zu den Zugangsdaten.
+  /// Die Angaben von "Verbindung prüfen" am echten System; `null` mit Karte.
+  final ConnectionFacts? facts;
+
+  /// Die Angaben der Karte aus "Karte und PIN"; `null` für A-Trust online.
+  final CardFacts? card;
+
+  /// Zurück zu den Zugangsdaten (online) oder zu "Karte und PIN" (Karte).
   final VoidCallback onBack;
 
   /// Die Kassa ist in Betrieb.
@@ -85,7 +108,10 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
   bool _going = false;
   String? _goProblem;
 
-  bool get _busy => _working || _asking;
+  /// Das Blatt "Kassen-ID ändern" ist offen.
+  bool _editingId = false;
+
+  bool get _busy => _working || _asking || _editingId;
 
   /// Etwas läuft: Die Tasten sind gesperrt. Während der Nachfrage bleiben sie
   /// hell (die Abdunkelung liegt darüber), Tippen tut dann aber nichts.
@@ -107,9 +133,11 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     SetupFacts? setup;
     String? problem;
     try {
-      setup = await ref
-          .read(rksvServiceProvider)
-          .prepareSetup(facts: widget.facts);
+      final service = ref.read(rksvServiceProvider);
+      final card = widget.card;
+      setup = card == null
+          ? await service.prepareSetup(facts: widget.facts!)
+          : await service.prepareCardSetup(facts: card);
     } on RksvProblem catch (e) {
       problem = e.message;
     } on StateError {
@@ -151,6 +179,36 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     });
   }
 
+  /// "Ändern" bei der Kassenidentifikationsnummer: das Blatt, danach die
+  /// neue Kennung mit demselben Schlüssel (der Service behält ihn).
+  Future<void> _changeCashBoxId() async {
+    final setup = _setup;
+    if (_busy || setup == null) return;
+    setState(() {
+      _editingId = true;
+      _printProblem = null;
+      _goProblem = null;
+    });
+    String? id;
+    try {
+      id = await showCashBoxIdSheet(context, current: setup.cashBoxId);
+    } finally {
+      if (mounted) setState(() => _editingId = false);
+    }
+    if (id == null || !mounted) return;
+    setState(() {
+      _setup = SetupFacts(
+        kind: setup.kind,
+        provider: setup.provider,
+        certSerialHex: setup.certSerialHex,
+        certSerialDecimal: setup.certSerialDecimal,
+        cashBoxId: id!,
+        aesKeyBase64: setup.aesKeyBase64,
+        aesChecksum: setup.aesChecksum,
+      );
+    });
+  }
+
   Future<void> _goLive() async {
     if (_busy || _setup == null) return;
     final probe =
@@ -173,22 +231,38 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     final service = ref.read(rksvServiceProvider);
     final sales = ref.read(saleServiceProvider);
     final going = ref.read(irreversibleStepProvider.notifier);
-    final keeper = ref.read(atrustKeeperProvider(AtrustSystem.live));
+    final online = widget.facts;
+    final card = widget.card;
+    final keeper = online == null
+        ? null
+        : ref.read(atrustKeeperProvider(AtrustSystem.live));
+    final signer = card == null ? null : ref.read(cardSignerProvider);
     setState(() => _going = true);
     going.set(true);
     String? problem;
     try {
-      // Erst anmelden (B19): Nach einer langen Pause gingen sonst Anmeldung
-      // und Signatur des Startbelegs zusammen in die 5 Sekunden der Frist.
-      // Bei "abgelehnt" schickt der Halter nichts. Was hier scheitert, ändert
-      // nichts: goLive sagt dann seinen eigenen Satz.
-      await keeper.warmUp().timeout(
-        AtrustSessionKeeper.loginLimit,
-        onTimeout: () {},
-      );
-      // Dieselben Angaben wie für `prepareSetup`: Die Seriennummer bei
-      // FinanzOnline ist die der Kette.
-      final start = await service.goLive(staff: staff, facts: widget.facts);
+      final Receipt start;
+      if (online != null) {
+        // Erst anmelden (B19): Nach einer langen Pause gingen sonst Anmeldung
+        // und Signatur des Startbelegs zusammen in die 5 Sekunden der Frist.
+        // Bei "abgelehnt" schickt der Halter nichts. Was hier scheitert,
+        // ändert nichts: goLive sagt dann seinen eigenen Satz.
+        await keeper!.warmUp().timeout(
+          AtrustSessionKeeper.loginLimit,
+          onTimeout: () {},
+        );
+        // Dieselben Angaben wie für `prepareSetup`: Die Seriennummer bei
+        // FinanzOnline ist die der Kette.
+        start = await service.goLive(staff: staff, facts: online);
+      } else {
+        // Ebenso die Sitzung mit der Karte zuerst öffnen, hier darf Android
+        // nach der Erlaubnis fragen (C6). Steckt die Karte nicht, sagt
+        // goLiveWithCard seinen Satz.
+        await signer!
+            .warmUp(ask: true)
+            .timeout(cardWarmUpLimit, onTimeout: () {});
+        start = await service.goLiveWithCard(staff: staff, facts: card!);
+      }
       printRksvReceipt(sales, start);
     } on RksvProblem catch (e) {
       problem = e.message;
@@ -228,7 +302,9 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
               Pressable(
                 key: const Key('setup-facts-back'),
                 onTap: _going ? null : widget.onBack,
-                semanticLabel: 'Zurück zu den Zugangsdaten',
+                semanticLabel: widget.card == null
+                    ? 'Zurück zu den Zugangsdaten'
+                    : 'Zurück zu Karte und PIN',
                 minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -313,6 +389,16 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
             name: 'Kassenidentifikationsnummer',
             valueKey: const Key('setup-value-cashbox'),
             values: [setup.cashBoxId],
+            trailing: KeyedSubtree(
+              key: const Key('setup-cashbox-change'),
+              child: PrimaryButton(
+                label: 'Ändern',
+                filled: false,
+                height: KassaTokens.minTap,
+                labelSize: 16,
+                onPressed: _working ? null : _changeCashBoxId,
+              ),
+            ),
           ),
           _FactRow(
             name: 'AES-Schlüssel',
@@ -386,8 +472,11 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Diese Angaben trägst du bei FinanzOnline ein, wenn du die '
-            'Signatureinheit und die Kassa anmeldest.',
+            widget.card == null
+                ? 'Diese Angaben trägst du bei FinanzOnline ein, wenn du die '
+                      'Signatureinheit und die Kassa anmeldest.'
+                : 'Diese Angaben trägst du bei FinanzOnline ein, wenn du die '
+                      'Signaturkarte und die Kassa anmeldest.',
             style: text.bodyMedium!.copyWith(
               fontSize: 16,
               fontWeight: FontWeight.w400,
@@ -493,12 +582,16 @@ class _FactRow extends StatelessWidget {
     this.note,
     this.plain = false,
     this.placeholder,
+    this.trailing,
   });
 
   final String name;
   final Key? valueKey;
   final List<String> values;
   final String? note;
+
+  /// Rechts neben dem Wert, etwa die Taste "Ändern".
+  final Widget? trailing;
 
   /// Ein Wert aus Wörtern (die Art der Sicherheitseinrichtung): normale
   /// Schrift statt der Ziffern-Schrift.
@@ -554,14 +647,8 @@ class _FactRow extends StatelessWidget {
         ],
       );
     }
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64),
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: c.line, width: KassaTokens.borderThin),
-        ),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -578,11 +665,42 @@ class _FactRow extends StatelessWidget {
           ),
           const SizedBox(width: KassaTokens.spaceHuge),
           Expanded(child: value),
+          // Platz für die Taste rechts.
+          if (trailing != null)
+            const SizedBox(width: KassaTokens.spaceXl + _trailingWidth),
         ],
       ),
     );
+    return Container(
+      constraints: const BoxConstraints(minHeight: 64),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        ),
+      ),
+      child: switch (trailing) {
+        null => row,
+        // Die Taste steht mittig in der Zeile, ohne sie höher zu machen.
+        final trailing => Stack(
+          children: [
+            row,
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              child: Center(
+                child: SizedBox(width: _trailingWidth, child: trailing),
+              ),
+            ),
+          ],
+        ),
+      },
+    );
   }
 }
+
+/// Breite der Taste rechts in einer Zeile der Angaben.
+const double _trailingWidth = 104;
 
 /// Ein Punkt von "Bevor du startest": Nummer im Kreis und Satz.
 class _Step extends StatelessWidget {
