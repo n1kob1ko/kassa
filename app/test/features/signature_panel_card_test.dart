@@ -164,6 +164,40 @@ void main() {
     });
   });
 
+  for (final (name, unit, live) in [
+    ('Karten-Probe', RksvUnit.cardTest, false),
+    ('in Betrieb', RksvUnit.card, true),
+  ]) {
+    testWidgets('$name, Ausfall "Die PIN der Karte fehlt.": Hinweis einmal '
+        'mit diesem Satz und "PIN neu eingeben"', (t) async {
+      final missing = _sentence(CardSignProblem.pinMissing);
+      await _settings(t);
+      final since = DateTime(2026, 11, 17, 13, 5);
+      if (live) {
+        await seedLive(
+          t,
+          unit: unit,
+          outageSince: since,
+          outageReason: missing,
+        );
+      } else {
+        await seedProbe(
+          t,
+          unit: unit,
+          outageSince: since,
+          outageReason: missing,
+        );
+      }
+      expect(_inCard(find.text(missing)), findsOneWidget);
+      expect(find.text(_pinRejected), findsNothing);
+      expect(_key('rksv-card-rejected'), findsOneWidget);
+      expect(_key('rksv-card-repin'), findsOneWidget);
+      expect(_inCard(find.text('PIN neu eingeben')), findsOneWidget);
+      // Keine neue Zeile in der Probe.
+      if (!live) expect(_key('rksv-card-pin'), findsNothing);
+    });
+  }
+
   group('in Betrieb mit Karte', () {
     testWidgets('Hilfe, Pille und genau die Zeilen der Karte', (t) async {
       await _settings(t);

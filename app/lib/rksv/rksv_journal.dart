@@ -269,6 +269,12 @@ class RksvJournal {
           ),
         );
     final startsOutage = signed.failure != null && state.outageSince == null;
+    // Bei Ketten mit Karte folgt der Grund dem letzten Versuch (B1).
+    final followsAttempt =
+        signed.failure != null &&
+        trySign &&
+        state.outageSince != null &&
+        _isCard(chainRow);
     final endsOutage = kind == ReceiptKind.collective;
     await _writeState(
       RksvStateRowsCompanion(
@@ -280,7 +286,7 @@ class RksvJournal {
             : const Value.absent(),
         outageReason: endsOutage
             ? const Value(null)
-            : startsOutage
+            : startsOutage || followsAttempt
             ? Value(signed.failure)
             : const Value.absent(),
       ),
@@ -298,6 +304,28 @@ class RksvJournal {
       outageSince: state.outageSince ?? (startsOutage ? createdAt : null),
     );
   }
+
+  /// Ein Versuch zu signieren ist im Ausfall gescheitert, ohne dass ein
+  /// Eintrag blieb (der Sammelbeleg, auch über "Nochmal prüfen"): Bei Ketten
+  /// mit Karte wird [reason] der Grund des Ausfalls, der Beginn bleibt (B1).
+  /// Bei allen anderen Ketten und ohne Ausfall tut es nichts.
+  Future<void> noteFailedAttempt(String reason) async {
+    final state = await _state();
+    final chain = state.chain;
+    if (_mode(state) == RksvMode.off ||
+        chain == null ||
+        state.outageSince == null) {
+      return;
+    }
+    if (!_isCard(await _chainRow(chain))) return;
+    await _writeState(RksvStateRowsCompanion(outageReason: Value(reason)));
+  }
+
+  static bool _isCard(RksvChainRow chainRow) => switch (RksvUnit.values
+      .asNameMap()[chainRow.unit]) {
+    RksvUnit.cardTest || RksvUnit.card => true,
+    RksvUnit.probe || RksvUnit.atrustTest || RksvUnit.atrust || null => false,
+  };
 
   /// Neue Aufgaben nach dem Eintrag an [position]; jede nur, wenn es ihre Id
   /// noch nicht gibt. [outageSince]: Beginn des Ausfalls, der bis zu diesem

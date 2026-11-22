@@ -10,6 +10,7 @@ import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/rksv/card/card_signature_unit.dart';
 import 'package:kassa/rksv/card/reader_transport.dart';
 import 'package:kassa/rksv/rksv_journal.dart';
+import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_state.dart';
 import 'package:kassa/rksv/signature_unit.dart';
 
@@ -18,6 +19,7 @@ import '../support/rksv_rig.dart';
 import '../support/sales.dart' show cart;
 
 const _noCard = 'Keine Karte im Kartenleser.';
+const _pinRejected = 'Die Karte hat die PIN abgelehnt.';
 const _ground2 =
     'Grund: 2, Signatur- bzw. Siegelerstellung unmöglich oder fehlerhaft';
 const _probeEnded =
@@ -166,6 +168,63 @@ void main() {
       final state = await rig.stateRow();
       expect((state.outageSince, state.outageReason), (null, null));
       await rig.verifyChain(1);
+    });
+
+    test(
+      'B1: Der Grund folgt dem letzten Versuch, der Beginn bleibt: erst '
+      'keine Karte, dann die abgelehnte PIN (Nochmal prüfen und Bon)',
+      () async {
+        card().removed = true;
+        await rig.sell('s1', cart);
+        final since = (await rig.stateRow()).outageSince;
+        expect((await rig.stateRow()).outageReason, _noCard);
+
+        // Die Karte ist wieder da, aber die gespeicherte PIN gilt als
+        // abgelehnt (C4): Der Halter schickt keine PIN mehr.
+        card().removed = false;
+        await rig.secrets.writeCardPinStatus(
+          const CardPinStatus(rejected: true),
+        );
+        expect(await rig.service.retrySignature(staff: rig.chef), isFalse);
+        var state = await rig.stateRow();
+        expect(state.outageReason, _pinRejected);
+        expect(state.outageSince, since);
+
+        // Ein Bon: Der Sammelbeleg davor scheitert, der Grund bleibt wahr.
+        await rig.secrets.writeCardPinStatus(const CardPinStatus());
+        rig.cardSigner!.pinChanged();
+        card().removed = true;
+        rig.clock.value = rig.clock.value.add(const Duration(minutes: 5));
+        await rig.sell('s2', cart);
+        state = await rig.stateRow();
+        expect(state.outageReason, _noCard);
+        expect(state.outageSince, since);
+        expect(await rig.entryKinds(), ['start', 'sale', 'sale']);
+      },
+    );
+
+    test('B1: Leser abgezogen und ohne Erlaubnis wieder angesteckt: der Grund '
+        'nennt die Erlaubnis', () async {
+      final reader = rig.cardReader!;
+      final device = reader.devices.single;
+      reader.devices.clear();
+      await rig.cardSigner!.release();
+      await rig.sell('s1', cart);
+      expect((await rig.stateRow()).outageReason, 'Kein Kartenleser gefunden.');
+
+      reader.devices.add(FakeCardReader.readerDevice(granted: false));
+      expect(await rig.service.retrySignature(staff: rig.chef), isFalse);
+      expect(
+        (await rig.stateRow()).outageReason,
+        'Der Zugriff auf den Kartenleser ist nicht erlaubt.',
+      );
+
+      reader.devices
+        ..clear()
+        ..add(device);
+      expect(await rig.service.retrySignature(staff: rig.chef), isTrue);
+      final state = await rig.stateRow();
+      expect((state.outageSince, state.outageReason), (null, null));
     });
 
     test('ein unerwarteter Fehler beim Bauen der Einheit ist im Betrieb ein '

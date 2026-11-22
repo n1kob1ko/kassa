@@ -321,9 +321,18 @@ void main() {
     await t.tap(_key('card-pin-submit'));
     await t.pumpAndSettle();
     expect((await rig.secrets.cardPin())!.pin, '123456');
+    rig.events.clear();
     await t.tap(_key('card-setup-main'));
     await t.pumpAndSettle();
     expect(find.byType(CardSetupScreen), findsNothing);
+    // "Fertig" versucht den Sammelbeleg gleich (B1): Der Ausfall endet ohne
+    // Verkauf, der Hinweis nennt die alte Ablehnung nicht mehr.
+    expect(rig.events.where((e) => e == 'retrySignature'), hasLength(1));
+    expect((await _state(t)).outage, isFalse);
+    expect(await _kinds(t), ['start', 'sale', 'collective']);
+    await t.pump(const Duration(seconds: 4));
+    await t.pumpAndSettle();
+    expect(find.text(_sentence(CardSignProblem.pinRejected)), findsNothing);
 
     await sellCash(t);
     await t.pumpAndSettle();

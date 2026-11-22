@@ -526,7 +526,10 @@ class ReceiptRepository {
         ),
       );
       return true;
-    } on SignatureFailure {
+    } on SignatureFailure catch (e) {
+      // Nach dem Zurückrollen: Bei Ketten mit Karte nennt der Ausfall den
+      // Grund dieses Versuchs (B1).
+      await journal.noteFailedAttempt(e.reason);
       return false;
     } on Object {
       // Unerwartet (K9): Der Sammelbeleg ist zurückgerollt, die Probe

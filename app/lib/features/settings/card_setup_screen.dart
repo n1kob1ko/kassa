@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../data/providers.dart' show rksvRepositoryProvider;
 import '../../rksv/card/card_check.dart';
 import '../../rksv/card/card_facts.dart';
 import '../../rksv/card/card_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_service.dart';
+import '../../rksv/rksv_state.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
@@ -192,13 +194,50 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
   }
 
   Future<void> _main(CardFacts? facts) async {
+    final newPin = _entered && _storedPin;
     switch (widget.purpose) {
       case CardSetupPurpose.probe:
-        if (facts != null) await _startProbe(facts);
+        if (facts == null) return;
+        if (newPin) await _retryWhileStarting();
+        if (!mounted) return;
+        await _startProbe(facts);
       case CardSetupPurpose.live:
-        if (facts != null) widget.onLive?.call(facts);
+        if (facts == null) return;
+        if (newPin) await _retryWhileStarting();
+        if (!mounted) return;
+        widget.onLive?.call(facts);
       case CardSetupPurpose.repin:
+        // Wie "Nochmal prüfen", ohne darauf zu warten (B1).
+        if (newPin) unawaited(_retryAfterNewPin());
         widget.onBack();
+    }
+  }
+
+  /// Vor "Probe starten" und "Weiter": Erst endet ein Ausfall der laufenden
+  /// Kette mit Karte, dann geht es weiter; die Tasten sind solange gesperrt.
+  Future<void> _retryWhileStarting() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    await _retryAfterNewPin();
+    if (mounted) setState(() => _starting = false);
+  }
+
+  /// Eine neue PIN ist gespeichert: Läuft ein Ausfall einer Kette mit Karte,
+  /// versucht der Dienst einmal den Sammelbeleg (B1). Fehler gehen still
+  /// unter.
+  Future<void> _retryAfterNewPin() async {
+    try {
+      final staff = ref.read(sessionProvider);
+      if (staff == null) return;
+      final service = ref.read(rksvServiceProvider);
+      final state = await ref.read(rksvRepositoryProvider).current();
+      if (!state.outage ||
+          (state.unit != RksvUnit.card && state.unit != RksvUnit.cardTest)) {
+        return;
+      }
+      await service.retrySignature(staff: staff);
+    } catch (_) {
+      // Der nächste Bon oder "Nochmal prüfen" versucht es wieder.
     }
   }
 

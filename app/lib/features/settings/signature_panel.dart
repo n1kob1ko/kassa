@@ -367,15 +367,28 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
     final pinRejectedSentence = const CardSignException(
       CardSignProblem.pinRejected,
     ).sentence;
+    final pinMissingSentence = const CardSignException(
+      CardSignProblem.pinMissing,
+    ).sentence;
     final pinStatus = _pinStatus;
+    // Der Grund des Ausfalls, nach dem nur eine neue PIN hilft (wie im
+    // Hinweis der Kassa): abgelehnt oder fehlt.
+    final pinReason =
+        state.outage &&
+            (state.outageReason == pinRejectedSentence ||
+                state.outageReason == pinMissingSentence)
+        ? state.outageReason
+        : null;
     // Abgelehnt (C4): eine beantwortete Ablehnung, zwei Prüfungen ohne
     // Antwort oder der Grund des Ausfalls (auch, wenn der PIN-Wächter die
-    // PIN zurückhält).
+    // PIN zurückhält); oder die PIN fehlt (B2).
     final pinRejected =
         (cardProbe || cardLive) &&
         ((pinStatus != null &&
                 (pinStatus.rejected || pinStatus.unanswered >= 2)) ||
-            (state.outage && state.outageReason == pinRejectedSentence));
+            pinReason != null);
+    // Der Satz, der gilt: der des Ausfalls, sonst die Ablehnung.
+    final pinSentence = pinReason ?? pinRejectedSentence;
 
     final String help;
     final Widget pill;
@@ -423,10 +436,8 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         SettingsRow(
           title: 'Signatur der Bons',
           help: help,
-          // Der Satz der abgelehnten PIN steht nur einmal da, im Hinweis.
-          note:
-              state.outage &&
-                  !(pinRejected && state.outageReason == pinRejectedSentence)
+          // Der Satz zur PIN steht nur einmal da, im Hinweis.
+          note: state.outage && !(pinRejected && pinReason != null)
               ? state.outageReason
               : null,
           control: pill,
@@ -454,7 +465,7 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
         if (pinRejected)
           _WarnRow(
             key: const Key('rksv-card-rejected'),
-            text: pinRejectedSentence,
+            text: pinSentence,
             buttonKey: 'rksv-card-repin',
             label: 'PIN neu eingeben',
             showButton: isChef,
