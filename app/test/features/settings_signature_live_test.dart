@@ -48,6 +48,8 @@ Future<void> _tap(WidgetTester t, String key) async {
 
 const _setupHelp =
     'Für den echten Betrieb. Du brauchst die Zugangsdaten von A-Trust.';
+const _setupHelpOff =
+    'Für den echten Betrieb, mit Signaturkarte oder A-Trust online.';
 const _liveHelp = 'Signatur von A-Trust. Kassen-ID $fixedLiveCashBoxId.';
 const _offHelp = 'Die Kassa ist außer Betrieb. Neue Bons sind Testbons.';
 const _credentialsHelp = 'Benutzername und Passwort von A-Trust ändern.';
@@ -169,7 +171,11 @@ void main() {
         await _settings(t);
         if (unit != null) await seedProbe(t, unit: unit);
         expect(_inCard(find.text('Signatur einrichten')), findsOneWidget);
-        expect(_inCard(find.text(_setupHelp)), findsOneWidget);
+        // Aus hat die Zeile die Hilfe mit beiden Wegen (S2c Task 4).
+        expect(
+          _inCard(find.text(unit == null ? _setupHelpOff : _setupHelp)),
+          findsOneWidget,
+        );
         expect(
           find.descendant(
             of: _key('rksv-setup'),

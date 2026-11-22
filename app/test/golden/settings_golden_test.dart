@@ -40,6 +40,9 @@ void main() {
     t,
   ) async {
     await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
+    // Mit "Mit Karte ausprobieren" steht die Zeile unter dem Bildrand.
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);

@@ -18,7 +18,8 @@ import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import '../shell/irreversible_step.dart';
-import '../shell/shell_screen.dart' show openCredentials;
+import '../shell/shell_screen.dart' show openCardSetup, openCredentials;
+import 'card_setup_screen.dart' show CardSetupPurpose;
 import 'probe_question.dart';
 import 'protocol_export_sheet.dart';
 import 'rksv_task_row.dart';
@@ -53,6 +54,7 @@ enum _Action {
   export,
   disable,
   connection,
+  card,
   setup,
   credentials,
   decommission,
@@ -71,6 +73,8 @@ typedef _Message = ({_Action action, String text, _Tone tone});
 /// Nullbeleg, Protokoll ausgeben, Beenden). Für die Online-Probe dazu "Mit
 /// A-Trust ausprobieren" (aus), "Verbindung prüfen" und bei abgelehnten
 /// Zugangsdaten "Erneut anmelden"; alle drei rufen [onOpenConnectionCheck].
+/// Für die Karten-Probe "Mit Karte ausprobieren" (aus), das "Karte und PIN"
+/// öffnet ([openCardSetup]).
 /// Außer in Betrieb steht "Signatur einrichten" da, das die Zugangsdaten von
 /// A-Trust öffnet. In Betrieb: "Verbindung prüfen" am echten System,
 /// Nullbeleg, Protokoll, "Zugangsdaten" und "Kassa außer Betrieb nehmen",
@@ -434,14 +438,27 @@ class _SignaturePanelState extends ConsumerState<SignaturePanel> {
             label: 'Ausprobieren',
             onPressed: _tryOnline,
           ),
+        if (isChef && off)
+          _action(
+            _Action.card,
+            key: 'rksv-card-probe-on',
+            title: 'Mit Karte ausprobieren',
+            help:
+                'Die Signaturkarte im Kartenleser signiert die Bons. Ohne '
+                'Internet. Sie bleiben Testbons.',
+            label: 'Ausprobieren',
+            onPressed: () => openCardSetup(context, CardSetupPurpose.probe),
+          ),
         if (isChef && !live)
           _action(
             _Action.setup,
             key: 'rksv-setup',
             title: 'Signatur einrichten',
-            help:
-                'Für den echten Betrieb. Du brauchst die Zugangsdaten von '
-                'A-Trust.',
+            help: off
+                ? 'Für den echten Betrieb, mit Signaturkarte oder A-Trust '
+                      'online.'
+                : 'Für den echten Betrieb. Du brauchst die Zugangsdaten von '
+                      'A-Trust.',
             label: 'Einrichten',
             onPressed: () => openCredentials(context),
           ),

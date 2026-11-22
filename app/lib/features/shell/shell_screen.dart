@@ -14,6 +14,7 @@ import '../kassa/sale_service.dart';
 import '../kassa/unclear_card_payment.dart';
 import '../login/session.dart';
 import '../overview/overview_screen.dart';
+import '../settings/card_setup_screen.dart' show CardSetupPurpose;
 import '../settings/credentials_screen.dart' show CredentialsRoute;
 import '../settings/settings_screen.dart';
 import '../settings/signature_panel.dart' show ConnectionCheckOpening;
@@ -26,6 +27,13 @@ import 'irreversible_step.dart';
 void openCredentials(BuildContext context, {bool edit = false}) => context
     .findAncestorStateOfType<_ShellScreenState>()
     ?._openCredentials(edit: edit);
+
+/// Öffnet in den Einstellungen "Karte und PIN" für [purpose], nur für den
+/// Chef und unter denselben Bedingungen wie [openCredentials]. [context]
+/// liegt unter der [ShellScreen].
+void openCardSetup(BuildContext context, CardSetupPurpose purpose) => context
+    .findAncestorStateOfType<_ShellScreenState>()
+    ?._openCardSetup(purpose);
 
 /// Kopfleiste und der gewählte Bereich darunter.
 class ShellScreen extends ConsumerStatefulWidget {
@@ -56,6 +64,24 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// Einstellungen; `null` ohne.
   CredentialsRoute? _credentials;
 
+  /// Die Seite "Karte und PIN" ersetzt die Karten der Einstellungen, für
+  /// diesen Zweck; `null` ohne.
+  CardSetupPurpose? _cardSetup;
+
+  void _openCardSetup(CardSetupPurpose purpose) {
+    if (!(ref.read(sessionProvider)?.isChef ?? false)) return;
+    if (ref.read(activeCardPaymentProvider) != null) return;
+    if (ref.read(irreversibleStepProvider)) return;
+    setState(() {
+      _settingsOpen = true;
+      _testingDevices = false;
+      _checkingCard = false;
+      _checkingConnection = null;
+      _credentials = null;
+      _cardSetup = purpose;
+    });
+  }
+
   void _openCredentials({required bool edit}) {
     if (!(ref.read(sessionProvider)?.isChef ?? false)) return;
     if (ref.read(activeCardPaymentProvider) != null) return;
@@ -65,14 +91,15 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       _testingDevices = false;
       _checkingCard = false;
       _checkingConnection = null;
+      _cardSetup = null;
       _credentials = CredentialsRoute(edit: edit);
     });
   }
 
   /// "Zurück" des Tablets schließt die oberste offene Ebene: erst "Geräte
-  /// testen", "Karte prüfen" oder "Verbindung prüfen" (bei den Zugangsdaten
-  /// erst die Prüfung oder die Angaben für FinanzOnline, dann die
-  /// Zugangsdaten), dann die Einstellungen. An der
+  /// testen", "Karte prüfen", "Verbindung prüfen" oder "Karte und PIN" (bei
+  /// den Zugangsdaten erst die Prüfung oder die Angaben für FinanzOnline,
+  /// dann die Zugangsdaten), dann die Einstellungen. An der
   /// Kassa tut es nichts, die App verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -88,6 +115,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _checkingCard = false);
     } else if (_checkingConnection != null) {
       setState(() => _checkingConnection = null);
+    } else if (_cardSetup != null) {
+      setState(() => _cardSetup = null);
     } else if (_credentials?.check != null || _credentials?.setup != null) {
       setState(() => _credentials = const CredentialsRoute());
     } else if (_credentials != null) {
@@ -139,6 +168,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _checkingCard = false;
                           _checkingConnection = null;
                           _credentials = null;
+                          _cardSetup = null;
                         });
                       },
                       staffName: staff.name,
@@ -155,6 +185,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                           _checkingCard = false;
                           _checkingConnection = null;
                           _credentials = null;
+                          _cardSetup = null;
                         });
                       },
                       businessName: ref
@@ -175,6 +206,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                             _checkingCard = false;
                             _checkingConnection = null;
                             _credentials = null;
+                            _cardSetup = null;
                           });
                         },
                       ),
@@ -195,6 +227,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                                 credentials: _credentials,
                                 onCredentials: (v) =>
                                     setState(() => _credentials = v),
+                                cardSetup: _cardSetup,
+                                onCardSetup: (v) =>
+                                    setState(() => _cardSetup = v),
                               ),
                             )
                           : _areaWidget(

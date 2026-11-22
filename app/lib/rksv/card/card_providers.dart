@@ -1,5 +1,6 @@
-// Provider für "Karte prüfen" und den Halter der Signaturkarte. Tests
-// ersetzen Leser und Wächter durch FakeCardReader und MemoryPinGuard.
+// Provider für "Karte prüfen", "Karte und PIN" und den Halter der
+// Signaturkarte. Tests ersetzen Leser und Wächter durch FakeCardReader und
+// MemoryPinGuard.
 
 import 'dart:async';
 
@@ -9,6 +10,7 @@ import '../../core/app_info.dart';
 import '../../data/providers.dart' show clockProvider;
 import '../rksv_providers.dart' show rksvSecretsProvider;
 import 'card_check.dart';
+import 'card_setup.dart';
 import 'card_signer.dart';
 import 'pin_guard.dart';
 import 'reader_transport.dart';
@@ -53,3 +55,13 @@ final cardCheckProvider = Provider<CardCheck>((ref) {
   ref.onDispose(check.dispose);
   return check;
 });
+
+/// "Karte und PIN" über demselben Prüflauf wie "Karte prüfen", mit dem
+/// geschützten Speicher und dem einen Halter der App.
+final cardSetupProvider = Provider<CardSetup>(
+  (ref) => CardSetup(
+    check: ref.watch(cardCheckProvider),
+    secrets: ref.watch(rksvSecretsProvider),
+    signer: ref.watch(cardSignerProvider),
+  ),
+);

@@ -12,6 +12,7 @@ import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
 import 'card_check_screen.dart';
 import 'card_panel.dart';
+import 'card_setup_screen.dart';
 import 'connection_check_screen.dart';
 import 'credentials_screen.dart';
 import 'device_test_screen.dart';
@@ -36,6 +37,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onCheckingConnection,
     required this.credentials,
     required this.onCredentials,
+    required this.cardSetup,
+    required this.onCardSetup,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -58,6 +61,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
   final CredentialsRoute? credentials;
   final ValueChanged<CredentialsRoute?> onCredentials;
 
+  /// Die Seite "Karte und PIN" ersetzt die Karten wie "Karte prüfen", für
+  /// diesen Zweck; `null` zeigt die Karten.
+  final CardSetupPurpose? cardSetup;
+  final ValueChanged<CardSetupPurpose?> onCardSetup;
+
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -76,7 +84,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (widget.testingDevices ||
         widget.checkingCard ||
         widget.checkingConnection != null ||
-        widget.credentials != null) {
+        widget.credentials != null ||
+        widget.cardSetup != null) {
       _announcement = null;
     }
   }
@@ -117,6 +126,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ? AtrustSystem.live
             : AtrustSystem.test,
         onBack: () => widget.onCheckingConnection(null),
+      );
+    }
+    if (widget.cardSetup case final purpose?) {
+      return CardSetupScreen(
+        key: const Key('card-setup-screen'),
+        purpose: purpose,
+        onBack: () => widget.onCardSetup(null),
+        onProbeStarted: (sentence) {
+          setState(() => _announcement = sentence);
+          widget.onCardSetup(null);
+        },
       );
     }
     if (widget.credentials case final route?) {

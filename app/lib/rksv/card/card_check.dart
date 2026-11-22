@@ -126,6 +126,15 @@ class CardCheck {
   CardFacts? get facts =>
       _rows[CheckRow.signature]!.state == RowState.ok ? _signed : null;
 
+  /// Art (`CardKind.name`) und Nummer (wie `CardPin.numberHex`) der Karte,
+  /// die der letzte Lauf gelesen hat, solange Zeile 4 grün ist, schon vor
+  /// der Probe-Unterschrift; sonst `null`. Nur zum Lesen ("Karte und PIN").
+  ({String kind, String numberHex})? get readCard {
+    final ready = _ready;
+    if (ready == null) return null;
+    return (kind: ready.profile.kind.name, numberHex: ready.key);
+  }
+
   /// Jede Änderung von [state].
   Stream<CardCheckState> get changes => _changes.stream;
 

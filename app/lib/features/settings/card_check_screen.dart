@@ -44,7 +44,6 @@ class CardCheckScreen extends ConsumerStatefulWidget {
 class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
   StreamSubscription<CardCheckState>? _changes;
   bool _pinOpen = false;
-  bool _confirmReset = false;
   bool _sharing = false;
   bool _shareFailed = false;
 
@@ -67,10 +66,7 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
 
   void _run() {
     if (_check.state.busy) return;
-    setState(() {
-      _confirmReset = false;
-      _shareFailed = false;
-    });
+    setState(() => _shareFailed = false);
     unawaited(_check.run());
   }
 
@@ -86,11 +82,6 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
     }
     if (pin == null) return;
     unawaited(check.sign(pin));
-  }
-
-  Future<void> _resetGuard() async {
-    setState(() => _confirmReset = false);
-    await _check.resetGuard();
   }
 
   Future<void> _share() async {
@@ -114,11 +105,6 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
     });
   }
 
-  /// "Zähler ist wieder voll" hilft nur, wenn die Karte noch einen Versuch
-  /// hat; einer gesperrten Karte hilft es nicht.
-  static bool _canResetGuard(CardCheckState state) =>
-      state.guardBlocks && !state.cardLocked;
-
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
@@ -128,75 +114,11 @@ class _CardCheckScreenState extends ConsumerState<CardCheckScreen> {
     final reader = state.rows[CheckRow.reader]!.state;
     final started = reader != RowState.waiting;
     final finished = reader == RowState.ok || reader == RowState.problem;
-    final signature = state.rows[CheckRow.signature]!;
-    final showPin = state.canSign && signature.state != RowState.ok;
-    // Während ein Lauf den Leser hat, gibt es nichts zurückzusetzen.
-    final showReset = _canResetGuard(state) && !busy;
 
-    final rows = <Widget>[
-      for (final row in CheckRow.values)
-        CheckRowView(
-          key: Key('card-check-row-${row.name}'),
-          signKey: Key('card-check-sign-${row.name}'),
-          number: row.index + 1,
-          title: _titles[row]!,
-          result: state.rows[row]!,
-          trailing: row == CheckRow.signature && showPin
-              ? KeyedSubtree(
-                  key: const Key('card-check-pin'),
-                  child: PrimaryButton(
-                    label: 'PIN eingeben',
-                    height: 56,
-                    labelSize: 18,
-                    onPressed: busy ? null : _enterPin,
-                  ),
-                )
-              : null,
-          below: row == CheckRow.signature && showReset
-              ? (_confirmReset
-                    ? _ResetQuestion(
-                        onConfirm: _resetGuard,
-                        onCancel: () => setState(() => _confirmReset = false),
-                      )
-                    : UnconstrainedBox(
-                        alignment: Alignment.centerLeft,
-                        child: KeyedSubtree(
-                          key: const Key('card-check-reset-guard'),
-                          child: PrimaryButton(
-                            label: 'Zähler ist wieder voll',
-                            filled: false,
-                            height: 56,
-                            onPressed: () =>
-                                setState(() => _confirmReset = true),
-                          ),
-                        ),
-                      ))
-              : null,
-        ),
-    ];
-
-    final checks = Container(
-      padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceHuge),
-      decoration: checkCardDecoration(c),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < rows.length; i++)
-            DecoratedBox(
-              decoration: BoxDecoration(
-                border: i == 0
-                    ? null
-                    : Border(
-                        top: BorderSide(
-                          color: c.line,
-                          width: KassaTokens.borderThin,
-                        ),
-                      ),
-              ),
-              child: rows[i],
-            ),
-        ],
-      ),
+    final checks = CardCheckRows(
+      state: state,
+      onEnterPin: _enterPin,
+      onResetGuard: _check.resetGuard,
     );
 
     final about = Container(
@@ -346,6 +268,140 @@ BoxDecoration checkCardDecoration(KassaColors c) => BoxDecoration(
   border: Border.all(color: c.line, width: KassaTokens.borderThin),
   boxShadow: c.cardShadow,
 );
+
+/// Die fünf Zeilen eines Prüflaufs von [CardCheck] in ihrer Karte, für
+/// "Karte prüfen" und "Karte und PIN": bei Zeile 5 "PIN eingeben"
+/// ([onEnterPin]), solange eine Probe-Unterschrift möglich und noch nicht
+/// grün ist, und der PIN-Wächter mit "Zähler ist wieder voll" und seiner
+/// Rückfrage ([onResetGuard]). Die Texte kommen unverändert aus [state].
+///
+/// Mit [signature] steht statt Zeile 5 dieser Stand, rechts
+/// [signatureTrailing]; "PIN eingeben" und der Wächter fehlen dann.
+class CardCheckRows extends StatefulWidget {
+  const CardCheckRows({
+    super.key,
+    required this.state,
+    required this.onEnterPin,
+    required this.onResetGuard,
+    this.signature,
+    this.signatureTrailing,
+  });
+
+  final CardCheckState state;
+  final VoidCallback onEnterPin;
+  final Future<void> Function() onResetGuard;
+  final RowResult? signature;
+  final Widget? signatureTrailing;
+
+  @override
+  State<CardCheckRows> createState() => _CardCheckRowsState();
+}
+
+class _CardCheckRowsState extends State<CardCheckRows> {
+  bool _confirmReset = false;
+
+  /// "Zähler ist wieder voll" hilft nur, wenn die Karte noch einen Versuch
+  /// hat; einer gesperrten Karte hilft es nicht.
+  static bool _canResetGuard(CardCheckState state) =>
+      state.guardBlocks && !state.cardLocked;
+
+  @override
+  void didUpdateWidget(CardCheckRows old) {
+    super.didUpdateWidget(old);
+    // Ein neuer Lauf schließt die Rückfrage.
+    if (widget.state.busy) _confirmReset = false;
+  }
+
+  Future<void> _resetGuard() async {
+    setState(() => _confirmReset = false);
+    await widget.onResetGuard();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final state = widget.state;
+    final busy = state.busy;
+    final replaced = widget.signature;
+    final signature = state.rows[CheckRow.signature]!;
+    final showPin =
+        replaced == null && state.canSign && signature.state != RowState.ok;
+    // Während ein Lauf den Leser hat, gibt es nichts zurückzusetzen.
+    final showReset = replaced == null && _canResetGuard(state) && !busy;
+
+    final rows = <Widget>[
+      for (final row in CheckRow.values)
+        CheckRowView(
+          key: Key('card-check-row-${row.name}'),
+          signKey: Key('card-check-sign-${row.name}'),
+          number: row.index + 1,
+          title: _titles[row]!,
+          result: row == CheckRow.signature && replaced != null
+              ? replaced
+              : state.rows[row]!,
+          trailing: row != CheckRow.signature
+              ? null
+              : replaced != null
+              ? widget.signatureTrailing
+              : showPin
+              ? KeyedSubtree(
+                  key: const Key('card-check-pin'),
+                  child: PrimaryButton(
+                    label: 'PIN eingeben',
+                    height: 56,
+                    labelSize: 18,
+                    onPressed: busy ? null : widget.onEnterPin,
+                  ),
+                )
+              : null,
+          below: row == CheckRow.signature && showReset
+              ? (_confirmReset
+                    ? _ResetQuestion(
+                        onConfirm: _resetGuard,
+                        onCancel: () => setState(() => _confirmReset = false),
+                      )
+                    : UnconstrainedBox(
+                        alignment: Alignment.centerLeft,
+                        child: KeyedSubtree(
+                          key: const Key('card-check-reset-guard'),
+                          child: PrimaryButton(
+                            label: 'Zähler ist wieder voll',
+                            filled: false,
+                            height: 56,
+                            onPressed: () =>
+                                setState(() => _confirmReset = true),
+                          ),
+                        ),
+                      ))
+              : null,
+        ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceHuge),
+      decoration: checkCardDecoration(c),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < rows.length; i++)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: i == 0
+                    ? null
+                    : Border(
+                        top: BorderSide(
+                          color: c.line,
+                          width: KassaTokens.borderThin,
+                        ),
+                      ),
+              ),
+              child: rows[i],
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Eine Zeile eines Prüflaufs ("Karte prüfen", "Verbindung prüfen"): Zeichen
 /// für den Zustand (mit [signKey], wartend die [number]), [title], `message`

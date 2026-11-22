@@ -354,8 +354,11 @@ void main() {
     t,
   ) async {
     await pumpSettings(t, pickedFile: demoOhneTeigtaschen());
-    // Ohne Scrollen: Die Taste steht im Zustand "Nicht eingerichtet" unten im
-    // Bild.
+    // Die Taste steht im Zustand "Nicht eingerichtet" unter dem Bildrand
+    // (Zeile "Mit Karte ausprobieren"): erst hinrollen, gerade nur bis zum
+    // Rand. Die Rückfrage muss dann von selbst ganz ins Bild rollen.
+    await t.ensureVisible(find.byKey(const Key('reimport')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('reimport')));
     await t.pumpAndSettle();
     final visible = t.getRect(
