@@ -432,8 +432,10 @@ class RksvService {
 
   /// Wie [prepareSetup] (dasselbe PendingSetup), aber für die Signaturkarte
   /// aus [facts]: Art [setupKindCard], Anbieter `AT1 = A-TRUST`, die
-  /// Seriennummer des Zertifikats der Karte. Ist die Kassa schon in
-  /// Betrieb: [StateError].
+  /// Seriennummer des Zertifikats der Karte. Schreibt nichts in die
+  /// Datenbank. Liest oder schreibt der geschützte Speicher nicht:
+  /// [RksvProblem], und ein vorhandenes PendingSetup bleibt, wie es ist. Ist
+  /// die Kassa schon in Betrieb: [StateError].
   Future<SetupFacts> prepareCardSetup({required CardFacts facts}) {
     return _inSetupQueue(
       () => _prepareSetup(
@@ -498,12 +500,19 @@ class RksvService {
 
   /// "Kassen-ID ändern" (Plan C8): [id] ohne Leerzeichen am Rand und groß
   /// geschrieben wird die Kassen-Kennung des PendingSetup; der AES-Schlüssel
-  /// bleibt. Läuft in derselben Schlange wie [prepareSetup]. Passt [id] nicht
-  /// zur Regel ([cashBoxIdProblem]) oder trägt eine Kette dieser Kassa (auch
-  /// eine beendete) schon diese Kennung: [RksvProblem], und das PendingSetup
-  /// bleibt, wie es ist; ebenso, wenn der geschützte Speicher nicht liest
-  /// oder schreibt. Dieselbe Kennung wie bisher schreibt nichts. Ohne
-  /// PendingSetup oder in Betrieb: [StateError].
+  /// bleibt. Läuft in derselben Schlange wie [prepareSetup]. Die Prüfungen in
+  /// dieser Reihenfolge:
+  /// 1. In Betrieb: [StateError].
+  /// 2. Das PendingSetup lesen; liest der geschützte Speicher nicht:
+  ///    [RksvProblem] mit dem Satz dazu; gibt es keins: [StateError].
+  /// 3. Passt [id] nicht zur Regel ([cashBoxIdProblem]): [RksvProblem] mit
+  ///    dem Formsatz.
+  /// 4. Dieselbe Kennung wie bisher: fertig, nichts geschrieben.
+  /// 5. Trägt eine Kette dieser Kassa (auch eine beendete) diese Kennung:
+  ///    [RksvProblem] mit dem Satz dazu.
+  /// 6. Das neue PendingSetup schreiben und zurücklesen; scheitert das:
+  ///    [RksvProblem] mit dem Satz des Speichers.
+  /// In 1 bis 5 bleibt das PendingSetup, wie es ist.
   Future<void> changeCashBoxId(String id) =>
       _inSetupQueue(() => _changeCashBoxId(id));
 
@@ -845,14 +854,18 @@ class RksvService {
     return saved ? ExportOutcome.saved : ExportOutcome.cancelled;
   }
 
-  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette `live`
-  /// (mit A-Trust online oder mit der Karte); null, wenn keine läuft. Für
-  /// "Verbindung prüfen" am echten System.
+  /// Die Seriennummer (hex) des Zertifikats der laufenden Kette `live`, die
+  /// an A-Trust online signiert (Einheit `atrust`); null, wenn keine solche
+  /// läuft, auch bei einer Kette mit Karte ([cardChainSerial]). Für
+  /// "Verbindung prüfen" am echten System: Sonst hieße dort an einer Kassa
+  /// mit Karte jedes Konto ein anderes.
   Future<String?> liveChainSerial() async {
     final state = await _state();
     final chain = state.chain;
     if (state.mode != RksvMode.live.name || chain == null) return null;
-    return (await _chainRow(chain))?.certSerial;
+    final row = await _chainRow(chain);
+    if (row == null || _unitOf(row) != RksvUnit.atrust) return null;
+    return row.certSerial;
   }
 
   /// Die Seriennummer (hex) des Zertifikats der laufenden Kette, wenn ihre
@@ -862,10 +875,18 @@ class RksvService {
     if (chain == null) return null;
     final row = await _chainRow(chain);
     if (row == null) return null;
-    final unit = RksvUnit.values.asNameMap()[row.unit];
-    return unit == RksvUnit.card || unit == RksvUnit.cardTest
-        ? row.certSerial
-        : null;
+    return switch (_unitOf(row)) {
+      RksvUnit.card || RksvUnit.cardTest => row.certSerial,
+      RksvUnit.probe || RksvUnit.atrustTest || RksvUnit.atrust || null => null,
+    };
+  }
+
+  /// Die Einheit der Kette [row]; null bei einem unbekannten Namen (etwa aus
+  /// einer neueren Version).
+  static RksvUnit? _unitOf(RksvChainRow row) {
+    if (!RksvUnit.values.any((u) => u.name == row.unit)) return null;
+    // Der Name ist bekannt, der Ersatz kommt nie zum Zug.
+    return enumByNameOr(RksvUnit.values, row.unit, RksvUnit.probe);
   }
 
   Future<RksvChainRow?> _chainRow(int chain) => (_db.select(

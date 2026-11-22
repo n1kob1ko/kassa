@@ -145,7 +145,8 @@ void main() {
     });
 
     test('Karte fehlt: RksvProblem mit dem Satz der Einheit, nichts bleibt '
-        'zurück', () async {
+        'in der Datenbank; nur der AES-Schlüssel für Kette 1 bleibt im '
+        'geschützten Speicher (wie bei der Online-Probe)', () async {
       card().removed = true;
       await expectLater(
         rig.service.enableCardProbe(staff: rig.chef, facts: facts),
@@ -156,11 +157,16 @@ void main() {
       expect(await rig.count('rksv_chains'), 0);
       expect(await rig.count('rksv_entries'), 0);
       expect(await rig.count('receipts'), 0);
+      // Was wirklich bleibt: der AES-Schlüssel der nie entstandenen Kette 1.
+      // Ohne Folgen, der nächste Versuch überschreibt ihn.
+      final leftover = await rig.secrets.aesKey(1);
+      expect(leftover, hasLength(32));
 
-      // Danach mit Karte: wieder Kette 1.
+      // Danach mit Karte: wieder Kette 1, mit einem neuen Schlüssel.
       card().removed = false;
       await rig.service.enableCardProbe(staff: rig.chef, facts: facts);
       expect((await rig.stateRow()).chain, 1);
+      expect(await rig.secrets.aesKey(1), isNot(leftover));
       await rig.verifyChain(1);
     });
 
@@ -470,7 +476,9 @@ void main() {
         ]);
         expect(card().signCount, 4);
         await rig.verifyChain(chain);
-        expect(await rig.service.liveChainSerial(), _serial);
+        // "Verbindung prüfen" am echten System vergleicht nur mit einer
+        // Kette an A-Trust online.
+        expect(await rig.service.liveChainSerial(), isNull);
         expect(await rig.service.cardChainSerial(), _serial);
       });
 
@@ -554,6 +562,19 @@ void main() {
       await rig.service.enableCardProbe(staff: rig.chef, facts: facts);
       expect(await rig.service.cardChainSerial(), _serial);
       expect(await rig.service.liveChainSerial(), isNull);
+    });
+
+    test('bei einer live-Kette an A-Trust online: liveChainSerial ist ihre '
+        'Seriennummer, cardChainSerial null', () async {
+      final atrust = FakeAtrust();
+      final online = await RksvRig.open(atrust: atrust);
+      try {
+        await online.seedLive();
+        expect(await online.service.liveChainSerial(), '2159b9f6');
+        expect(await online.service.cardChainSerial(), isNull);
+      } finally {
+        await online.close();
+      }
     });
 
     test('null bei einer Kette am Testsystem', () async {
