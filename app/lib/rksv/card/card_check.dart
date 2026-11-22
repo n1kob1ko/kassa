@@ -122,6 +122,9 @@ class CardCheck {
   /// Siehe [lastSignCountedAgainstPin].
   bool _countedTry = false;
 
+  /// Siehe [signTrials].
+  int _signTrials = 0;
+
   CardCheckState get state => _state;
 
   /// Art, Nummer und Zertifikat der Karte, solange Zeile 5 des letzten Laufs
@@ -144,6 +147,13 @@ class CardCheck {
   /// VERIFY und nicht nach einem angenommenen VERIFY. Nur zum Lesen ("Karte
   /// und PIN").
   bool get lastSignCountedAgainstPin => _countedTry;
+
+  /// Wie oft [sign] eine Probe-Unterschrift begonnen hat (und dabei die
+  /// Angaben einer früheren vergessen hat). Ein [sign], das nichts tut
+  /// (falsches Muster der PIN, keine Karte, Wächter, läuft schon), zählt
+  /// nicht. Nur zum Lesen ("Karte und PIN": nur eine frische grüne Zeile 5
+  /// speichert die PIN).
+  int get signTrials => _signTrials;
 
   /// Jede Änderung von [state].
   Stream<CardCheckState> get changes => _changes.stream;
@@ -198,6 +208,7 @@ class CardCheck {
     final ready = _ready;
     if (ready == null || _busy || _guardBlocks) return;
     _busy = true;
+    _signTrials++;
     _signed = null;
     _publish();
     final int? left;

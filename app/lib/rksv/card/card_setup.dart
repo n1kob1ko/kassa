@@ -33,9 +33,15 @@ class CardSetup {
   /// grün, speichert es die PIN für Art und Nummer dieser Karte, liest sie
   /// zur Kontrolle zurück, sagt es dem Halter ([CardSigner.pinChanged]) und
   /// gibt `null` zurück. Nimmt der Speicher sie nicht: [storeProblem]. Ohne
-  /// grüne Zeile 5: `''` (der Bildschirm zeigt dann die Zeile).
+  /// grüne Zeile 5 aus genau diesem Aufruf: `''` (der Bildschirm zeigt dann
+  /// die Zeile); eine grüne Zeile 5 von früher zählt nicht.
   Future<String?> signAndStore(String pin) async {
+    final before = _check.signTrials;
     await _check.sign(pin);
+    // Nur eine Probe-Unterschrift dieses Aufrufs zählt: Tat sign nichts
+    // (PIN nicht 4 oder 6 Ziffern, Wächter, keine Karte, läuft schon),
+    // stammen die Angaben von früher, und diese PIN ist nie geprüft.
+    if (_check.signTrials == before) return '';
     final facts = _check.facts;
     if (facts == null) return '';
     try {
@@ -87,7 +93,9 @@ class CardSetup {
     if (read == null || !_check.state.canSign) return '';
     final stored = await _validPin(read.kind, read.numberHex);
     if (stored == null) return '';
+    final before = _check.signTrials;
     await _check.sign(stored.pin);
+    if (_check.signTrials == before) return '';
     if (_check.facts != null) return null;
     if (_check.lastSignCountedAgainstPin) {
       try {

@@ -3,6 +3,8 @@
 // Startbeleg der Karten-Probe wird mit dem echten Halter von der Karte
 // signiert. Die PINs stehen nur in den Körpern der Tests.
 
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -104,6 +106,22 @@ Future<void> _storePin(
     pin: pin,
   ),
 );
+
+/// Ein geschützter Speicher, dessen Lesen der PIN wartet, bis [release]
+/// gerufen wird.
+class _SlowSecrets extends MemoryRksvSecrets {
+  final _gate = Completer<void>();
+
+  void release() {
+    if (!_gate.isCompleted) _gate.complete();
+  }
+
+  @override
+  Future<CardPin?> cardPin() async {
+    await _gate.future;
+    return super.cardPin();
+  }
+}
 
 /// Ruft [RksvService.enableCardProbe] mit und zählt die Aufrufe.
 class _CountingService extends RksvService {
@@ -306,6 +324,23 @@ void main() {
       expect(chain['cert_serial'], serial);
     });
 
+    testWidgets('solange der Speicher nach der PIN sucht: Zeile 5 wartet, '
+        'kein "PIN eingeben"', (t) async {
+      final secrets = _SlowSecrets();
+      final reader = await _settings(t, secrets: secrets);
+      expect(_row(t, CheckRow.certificate).state, RowState.ok);
+      expect(_check(t).state.canSign, isTrue);
+      expect(t.getSemantics(_key('card-check-sign-signature')).label, 'wartet');
+      expect(_key('card-check-pin'), findsNothing);
+      expect(_key('card-setup-repin'), findsNothing);
+      expect(_enabled(t, 'card-setup-main'), isFalse);
+
+      secrets.release();
+      await t.pumpAndSettle();
+      expect(_key('card-check-pin'), findsOneWidget);
+      expect(reader.card!.verifyCount, 0);
+    });
+
     testWidgets('falsche PIN: Zeile 5 wie in "Karte prüfen", nichts '
         'gespeichert, Haupttaste aus', (t) async {
       final secrets = MemoryRksvSecrets();
@@ -359,7 +394,10 @@ void main() {
         // Die Probe-Unterschrift lief mit der gespeicherten PIN.
         expect(_row(t, CheckRow.signature).state, RowState.ok);
         expect(_check(t).facts, isNotNull);
-        expect(reader.card!.verifyCount, greaterThan(0));
+        // Genau die drei Runden der Probe-Unterschrift von "Karte prüfen"
+        // (eine zur Prüfung, zwei für die Dauer, K5), je mit VERIFY; die
+        // zweite und dritte nur nach einem angenommenen ersten.
+        expect(reader.card!.verifyCount, 3);
         expect(_enabled(t, 'card-setup-main'), isTrue);
 
         await _tap(t, 'card-setup-main');

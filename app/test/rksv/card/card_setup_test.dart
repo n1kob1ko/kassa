@@ -73,6 +73,12 @@ class _Rig {
   );
 }
 
+final _pinRejected = isA<CardSignException>().having(
+  (e) => e.problem,
+  'problem',
+  CardSignProblem.pinRejected,
+);
+
 /// Der Stand der gespeicherten PIN, wie ihn das Speichern hinterlässt.
 final _unchanged = isA<CardPinStatus>()
     .having((s) => s.rejected, 'rejected', isFalse)
@@ -160,6 +166,55 @@ void main() {
       await rig.check.run();
       expect(await rig.setup.signAndStore('123456'), _storeProblem);
     });
+    test('nach einer grünen Zeile 5: eine PIN, die nicht 4 oder 6 Ziffern '
+        'hat, speichert nichts und ruft pinChanged nicht', () async {
+      final rig = _Rig();
+      await rig.check.run();
+      expect(await rig.setup.signAndStore('123456'), isNull);
+      expect(rig.check.facts, isNotNull);
+      // Danach eine andere gespeicherte PIN, die der Halter ablehnt.
+      await rig.store('111111');
+      await expectLater(rig.signer.sign(_hash()), throwsA(_pinRejected));
+      final verifies = rig.card.verifyCount;
+      final status = await rig.secrets.cardPinStatus();
+      expect(status.rejected, isTrue);
+
+      expect(await rig.setup.signAndStore('123'), '');
+      expect(rig.card.verifyCount, verifies);
+      expect((await rig.secrets.cardPin())!.pin, '111111');
+      expect((await rig.secrets.cardPinStatus()).rejected, isTrue);
+      // Ohne pinChanged bleibt der Halter bei "abgelehnt", auch wenn der
+      // Speicher den Stand vergisst: kein VERIFY.
+      await rig.secrets.writeCardPinStatus(const CardPinStatus());
+      await expectLater(rig.signer.sign(_hash()), throwsA(_pinRejected));
+      expect(rig.card.verifyCount, verifies);
+      await rig.signer.release();
+    });
+
+    test('nach einer grünen Zeile 5: hält der Wächter zurück, speichert sie '
+        'nichts', () async {
+      final rig = _Rig();
+      await rig.check.run();
+      expect(await rig.setup.signAndStore('123456'), isNull);
+      await rig.store('111111');
+      await rig.guard.recordFailure(_cardNumber, 1);
+      final verifies = rig.card.verifyCount;
+
+      expect(await rig.setup.signAndStore('123456'), '');
+      expect(rig.card.verifyCount, verifies);
+      expect((await rig.secrets.cardPin())!.pin, '111111');
+      expect(rig.check.facts, isNull);
+    });
+
+    test('ohne Karte nach einer grünen Zeile 5: nichts gespeichert', () async {
+      final rig = _Rig();
+      await rig.check.run();
+      expect(await rig.setup.signAndStore('123456'), isNull);
+      await rig.store('111111');
+      rig.card.removed = true;
+      expect(await rig.setup.signAndStore('123456'), '');
+      expect((await rig.secrets.cardPin())!.pin, '111111');
+    });
   });
 
   group('storedFor', () {
@@ -211,7 +266,10 @@ void main() {
       await rig.check.run();
       expect(await rig.setup.signWithStored(), isNull);
       expect(rig.check.facts, isNotNull);
-      expect(rig.card.verifyCount, greaterThan(0));
+      // Genau die drei Runden der Probe-Unterschrift von "Karte prüfen"
+      // (eine zur Prüfung, zwei für die Dauer, K5), je mit VERIFY; die zweite
+      // und dritte nur nach einem angenommenen ersten.
+      expect(rig.card.verifyCount, 3);
       expect(await rig.setup.storedForReadCard(), isTrue);
     });
 

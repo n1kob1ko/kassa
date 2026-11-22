@@ -77,7 +77,8 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
   StreamSubscription<CardCheckState>? _changes;
   bool _pinOpen = false;
 
-  /// Der Lauf dieser Seite ist fertig (ob mit Haken oder Kreuz).
+  /// Der Lauf dieser Seite ist fertig (ob mit Haken oder Kreuz), und es
+  /// steht fest, ob für die gelesene Karte eine PIN gespeichert ist.
   bool _read = false;
 
   /// Für die gelesene Karte ist eine PIN gespeichert und nicht abgelehnt.
@@ -162,7 +163,9 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
   /// "PIN eingeben" und "PIN neu eingeben".
   Future<void> _enterPin() async {
     final check = _check;
-    if (_pinOpen || _working || !check.state.canSign) return;
+    // Erst wenn feststeht, ob eine PIN gespeichert ist (und ihre
+    // Probe-Unterschrift fertig ist), fragt die Seite nach einer PIN.
+    if (_pinOpen || !_read || _working || !check.state.canSign) return;
     _pinOpen = true;
     final String? pin;
     try {
@@ -269,8 +272,12 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
           state: state,
           onEnterPin: _enterPin,
           onResetGuard: check.resetGuard,
+          // Bis feststeht, ob eine PIN gespeichert ist, steht Zeile 5, wie
+          // sie ist, aber ohne "PIN eingeben".
           signature: storedRow
               ? RowResult(_working ? RowState.running : RowState.ok, _stored)
+              : !_read
+              ? state.rows[CheckRow.signature]
               : null,
           signatureTrailing: storedRow
               ? KeyedSubtree(
