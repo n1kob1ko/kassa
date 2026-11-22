@@ -76,8 +76,9 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   CardSetupPurpose? _cardSetup;
 
   /// Die Wahl "Womit signiert die Kassa?" ersetzt die Karten der
-  /// Einstellungen. Auf dem Weg mit der Karte bleibt sie darunter, damit
-  /// "Zurück" aus "Karte und PIN" zu ihr führt.
+  /// Einstellungen. Unter "Karte und PIN" und unter den Zugangsdaten, die von
+  /// ihr aus geöffnet wurden, bleibt sie, damit "Zurück" zu ihr führt.
+  /// [openCredentials] von anderswo schließt sie.
   bool _choosingSigner = false;
 
   /// "Angaben für FinanzOnline" mit den Angaben dieser Karte steht über
@@ -135,7 +136,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   /// testen", "Karte prüfen", "Verbindung prüfen" oder "Karte und PIN" (bei
   /// den Zugangsdaten erst die Prüfung oder die Angaben für FinanzOnline,
   /// dann die Zugangsdaten; auf dem Weg mit der Karte erst die Angaben, dann
-  /// "Karte und PIN", dann die Wahl), dann die Einstellungen. An der
+  /// "Karte und PIN"; danach die Wahl, wenn sie darunter liegt), dann die
+  /// Einstellungen. An der
   /// Kassa tut es nichts, die App verlässt man nur mit der Home-Geste. Das Blatt zur unklaren Kartenzahlung
   /// hat ein eigenes `PopScope`; jedes `PopScope` einer Route bekommt den Ruf,
   /// darum rührt dieser hier nichts an, solange das Blatt offen ist.
@@ -155,12 +157,12 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       setState(() => _cardFacts = null);
     } else if (_cardSetup != null) {
       setState(() => _cardSetup = null);
-    } else if (_choosingSigner) {
-      setState(() => _choosingSigner = false);
     } else if (_credentials?.check != null || _credentials?.setup != null) {
       setState(() => _credentials = const CredentialsRoute());
     } else if (_credentials != null) {
       setState(() => _credentials = null);
+    } else if (_choosingSigner) {
+      setState(() => _choosingSigner = false);
     } else if (_settingsOpen) {
       setState(() => _settingsOpen = false);
     }

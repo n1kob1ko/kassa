@@ -16,6 +16,7 @@ import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/shell/shell_screen.dart';
 import 'package:kassa/rksv/card/card_facts.dart';
 import 'package:kassa/rksv/card/card_providers.dart';
 import 'package:kassa/rksv/card/card_signer.dart';
@@ -54,6 +55,12 @@ const _introOnline =
     'Diese Angaben trägst du bei FinanzOnline ein, wenn du die '
     'Signatureinheit und die Kassa anmeldest.';
 const _done = 'Die Kassa ist in Betrieb.';
+const _stepCard =
+    'Signaturkarte und Kassa bei FinanzOnline anmelden, spätestens eine '
+    'Woche nach dem Start.';
+const _stepOnline =
+    'Signatureinheit und Kassa bei FinanzOnline anmelden, spätestens eine '
+    'Woche nach dem Start.';
 const _sheetTitle = 'Kassen-ID ändern';
 const _sheetHelp = 'Buchstaben, Ziffern und Bindestrich, höchstens 20 Zeichen.';
 const _hintRegistered =
@@ -287,7 +294,7 @@ void main() {
           reason: key,
         );
         final size = t.getSize(_key(key));
-        expect(size.height, greaterThanOrEqualTo(120), reason: key);
+        expect(size.height, 160, reason: key);
         expect(size.width, greaterThanOrEqualTo(300), reason: key);
       }
       // Die Karte zuerst, links.
@@ -326,6 +333,40 @@ void main() {
       expect(_key('signer-choice'), findsNothing);
       expect(_key('credentials'), findsOneWidget);
       expect(find.text('Zugangsdaten von A-Trust'), findsWidgets);
+    });
+
+    testWidgets('Zurück (Taste und Geste) aus den Zugangsdaten führt zur '
+        'Wahl, wenn sie von dort geöffnet wurden; sonst wie bisher', (t) async {
+      await _settings(t);
+      await _tap(t, 'rksv-setup');
+      await _tap(t, 'signer-choice-online');
+      await _tap(t, 'credentials-back');
+      expect(_key('credentials'), findsNothing);
+      expect(_key('signer-choice'), findsOneWidget);
+
+      await _tap(t, 'signer-choice-online');
+      expect(_key('credentials'), findsOneWidget);
+      await t.binding.handlePopRoute();
+      await t.pumpAndSettle();
+      expect(_key('credentials'), findsNothing);
+      expect(_key('signer-choice'), findsOneWidget);
+      await t.binding.handlePopRoute();
+      await t.pumpAndSettle();
+      expect(_key('signer-choice'), findsNothing);
+      expect(_key('signature-card'), findsOneWidget);
+
+      // Von anderswo geöffnet: zurück in die Einstellungen.
+      openCredentials(t.element(_key('area-settings')));
+      await t.pumpAndSettle();
+      await _tap(t, 'credentials-back');
+      expect(_key('signer-choice'), findsNothing);
+      expect(_key('signature-card'), findsOneWidget);
+      openCredentials(t.element(_key('area-settings')));
+      await t.pumpAndSettle();
+      await t.binding.handlePopRoute();
+      await t.pumpAndSettle();
+      expect(_key('signer-choice'), findsNothing);
+      expect(_key('signature-card'), findsOneWidget);
     });
 
     testWidgets('"Signaturkarte am Kartenleser" öffnet "Karte und PIN" mit '
@@ -378,6 +419,9 @@ void main() {
       expect(find.text('Angaben für FinanzOnline'), findsOneWidget);
       expect(find.text(_introCard), findsOneWidget);
       expect(find.text(_introOnline), findsNothing);
+      // Schritt 2 rechts nennt die Signaturkarte.
+      expect(find.text(_stepCard), findsOneWidget);
+      expect(find.text(_stepOnline), findsNothing);
       final facts = _expected();
       for (final name in [
         'Art der Sicherheitseinrichtung',
@@ -637,6 +681,38 @@ void main() {
       );
     });
 
+    testWidgets('erst drucken, dann ändern: neue Kennung am Bildschirm mit '
+        'demselben Schlüssel und Prüfwert, der zweite Zettel trägt sie', (
+      t,
+    ) async {
+      final rig = await _settings(t);
+      await _toCardFacts(t);
+      await _tap(t, 'setup-print');
+      final first = printerOf(t).setupSlips.single;
+      expect(first.cashBoxId, _cashBoxId);
+      final aes = _aesLines(t);
+      final checksum = _value(t, 'setup-value-checksum');
+      expect(aes.join(), first.aesKeyBase64);
+      expect(checksum, first.aesChecksum);
+
+      await _tap(t, 'setup-cashbox-change');
+      await t.enterText(_field, 'imbiss-neu');
+      await t.pump();
+      await _tap(t, 'cash-box-id-save');
+      expect(_value(t, 'setup-value-cashbox'), 'IMBISS-NEU');
+      expect(_aesLines(t), aes);
+      expect(_value(t, 'setup-value-checksum'), checksum);
+      expect((await rig.secrets.pendingSetup())!.aesKey, _aesKey);
+
+      await _tap(t, 'setup-print');
+      final slips = printerOf(t).setupSlips;
+      expect(slips, hasLength(2));
+      expect(slips.last.cashBoxId, 'IMBISS-NEU');
+      expect(slips.last.aesKeyBase64, first.aesKeyBase64);
+      expect(slips.last.aesChecksum, first.aesChecksum);
+      expect(slips.last.kind, 'Signaturkarte');
+    });
+
     testWidgets('Unterstrich und andere Zeichen lassen sich nicht tippen, '
         'höchstens 20 Zeichen', (t) async {
       await _settings(t);
@@ -709,15 +785,34 @@ void main() {
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);
       const keyboardTop = 800.0 - 360;
-      for (final key in [
-        'cash-box-id-field',
-        'cash-box-id-save',
-        'cash-box-id-cancel',
-      ]) {
-        final rect = t.getRect(_key(key));
-        expect(rect.bottom, lessThanOrEqualTo(keyboardTop), reason: key);
-        expect(rect.top, greaterThanOrEqualTo(0), reason: key);
+
+      /// Feld und Tasten liegen ganz im sichtbaren Teil des Blatts, und der
+      /// liegt ganz über der Tastatur.
+      void aboveKeyboard() {
+        final viewport = t.getRect(
+          find
+              .descendant(
+                of: _key('cash-box-id-sheet'),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        expect(viewport.top, greaterThanOrEqualTo(0));
+        expect(viewport.bottom, lessThanOrEqualTo(keyboardTop));
+        for (final key in [
+          'cash-box-id-field',
+          'cash-box-id-save',
+          'cash-box-id-cancel',
+        ]) {
+          final rect = t.getRect(_key(key));
+          expect(rect.top, greaterThanOrEqualTo(viewport.top), reason: key);
+          expect(rect.bottom, lessThanOrEqualTo(viewport.bottom), reason: key);
+          expect(rect.left, greaterThanOrEqualTo(viewport.left), reason: key);
+          expect(rect.right, lessThanOrEqualTo(viewport.right), reason: key);
+        }
       }
+
+      aboveKeyboard();
       // Auch mit einem Satz unter dem Feld.
       await seedProbe(t, ended: true);
       await t.enterText(_field, fixedCashBoxId);
@@ -726,17 +821,15 @@ void main() {
       await t.pumpAndSettle();
       expect(find.text(_used), findsOneWidget);
       expect(t.takeException(), isNull);
-      for (final key in [
-        'cash-box-id-field',
-        'cash-box-id-save',
-        'cash-box-id-cancel',
-      ]) {
-        expect(
-          t.getRect(_key(key)).bottom,
-          lessThanOrEqualTo(keyboardTop),
-          reason: key,
-        );
-      }
+      aboveKeyboard();
+      // Feld und Tasten nehmen Tipps an (ein verdecktes Ziel ließe tap()
+      // warnen und ginge daneben).
+      await t.tap(_key('cash-box-id-field'));
+      await t.pump();
+      expect(_key('cash-box-id-sheet'), findsOneWidget);
+      await t.tap(_key('cash-box-id-cancel'));
+      await t.pumpAndSettle();
+      expect(_key('cash-box-id-sheet'), findsNothing);
     });
   });
 }

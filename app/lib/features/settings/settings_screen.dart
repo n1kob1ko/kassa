@@ -11,7 +11,6 @@ import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
-import '../shell/shell_screen.dart' show openCredentials;
 import 'card_check_screen.dart';
 import 'card_panel.dart';
 import 'card_setup_screen.dart';
@@ -43,10 +42,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onCredentials,
     required this.cardSetup,
     required this.onCardSetup,
-    this.choosingSigner = false,
-    this.onChoosingSigner,
-    this.cardFacts,
-    this.onCardFacts,
+    required this.choosingSigner,
+    required this.onChoosingSigner,
+    required this.cardFacts,
+    required this.onCardFacts,
   });
 
   /// Die Seite "Geräte testen" ersetzt die Karten, bis sie geschlossen wird.
@@ -74,16 +73,17 @@ class SettingsScreen extends ConsumerStatefulWidget {
   final CardSetupPurpose? cardSetup;
   final ValueChanged<CardSetupPurpose?> onCardSetup;
 
-  /// Die Wahl "Womit signiert die Kassa?" ersetzt die Karten. Auf dem Weg
-  /// mit der Karte bleibt sie unter "Karte und PIN" ([cardSetup] ist dann
-  /// [CardSetupPurpose.live]).
+  /// Die Wahl "Womit signiert die Kassa?" ersetzt die Karten. Bleibt unter
+  /// "Karte und PIN" ([cardSetup] ist dann [CardSetupPurpose.live]) und unter
+  /// den Zugangsdaten, wenn sie von hier geöffnet wurden: "Zurück" führt
+  /// dann zu ihr.
   final bool choosingSigner;
-  final ValueChanged<bool>? onChoosingSigner;
+  final ValueChanged<bool> onChoosingSigner;
 
   /// "Angaben für FinanzOnline" mit dieser Karte steht über "Karte und PIN";
   /// `null` ohne.
   final CardFacts? cardFacts;
-  final ValueChanged<CardFacts?>? onCardFacts;
+  final ValueChanged<CardFacts?> onCardFacts;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -154,12 +154,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         key: const Key('setup-facts-card'),
         card: card,
         // Zurück zu "Karte und PIN", das darunter liegt.
-        onBack: () => widget.onCardFacts?.call(null),
+        onBack: () => widget.onCardFacts(null),
         onLive: () {
           setState(() => _announcement = 'Die Kassa ist in Betrieb.');
-          widget.onCardFacts?.call(null);
+          widget.onCardFacts(null);
           widget.onCardSetup(null);
-          widget.onChoosingSigner?.call(false);
+          widget.onChoosingSigner(false);
         },
       );
     }
@@ -169,7 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         purpose: purpose,
         // Auf dem Weg zum echten Betrieb liegt die Wahl darunter.
         onBack: () => widget.onCardSetup(null),
-        onLive: (facts) => widget.onCardFacts?.call(facts),
+        onLive: (facts) => widget.onCardFacts(facts),
         onProbeStarted: (sentence) {
           setState(() => _announcement = sentence);
           widget.onCardSetup(null);
@@ -192,7 +192,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onLive: () {
           setState(() => _announcement = 'Die Kassa ist in Betrieb.');
           widget.onCredentials(null);
+          widget.onChoosingSigner(false);
         },
+        // Von der Wahl geöffnet, liegt sie darunter, und "Zurück" führt zu
+        // ihr; sonst in die Einstellungen.
         onBack: () => widget.onCredentials(null),
       );
     }
@@ -200,8 +203,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return SignerChoiceScreen(
         key: const Key('signer-choice-screen'),
         onCard: () => widget.onCardSetup(CardSetupPurpose.live),
-        onOnline: () => openCredentials(context),
-        onBack: () => widget.onChoosingSigner?.call(false),
+        // Die Wahl bleibt unter den Zugangsdaten.
+        onOnline: () => widget.onCredentials(const CredentialsRoute()),
+        onBack: () => widget.onChoosingSigner(false),
       );
     }
     final c = KassaColors.of(context);

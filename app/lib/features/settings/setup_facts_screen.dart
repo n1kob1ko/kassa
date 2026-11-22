@@ -34,11 +34,16 @@ const _unexpected = 'Das hat nicht geklappt. Bitte noch einmal.';
 /// Aufwärmen des Halters, dann kommt die Inbetriebnahme in jedem Fall.
 const cardWarmUpLimit = Duration(seconds: 20);
 
-const _steps = [
+/// Die Punkte von "Bevor du startest"; mit [card] nennt Punkt 2 die
+/// Signaturkarte.
+List<String> _steps({required bool card}) => [
   'An der alten Kassa den Schlussbeleg erstellen und sie bei FinanzOnline '
       'abmelden.',
-  'Signatureinheit und Kassa bei FinanzOnline anmelden, spätestens eine '
-      'Woche nach dem Start.',
+  card
+      ? 'Signaturkarte und Kassa bei FinanzOnline anmelden, spätestens eine '
+            'Woche nach dem Start.'
+      : 'Signatureinheit und Kassa bei FinanzOnline anmelden, spätestens eine '
+            'Woche nach dem Start.',
   'Den Startbeleg mit der App "BMF Belegcheck" prüfen und den Ausdruck '
       'aufheben.',
 ];
@@ -512,9 +517,11 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  for (var i = 0; i < _steps.length; i++) ...[
+                  for (final (i, step) in _steps(
+                    card: widget.card != null,
+                  ).indexed) ...[
                     const SizedBox(height: KassaTokens.spaceXl),
-                    _Step(number: i + 1, text: _steps[i]),
+                    _Step(number: i + 1, text: step),
                   ],
                 ],
               ),
