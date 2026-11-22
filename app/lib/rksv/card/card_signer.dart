@@ -6,7 +6,8 @@
 // Schutz der Karte: VERIFY geht nur aus [CardSigner._verify] hinaus, nur an
 // die Karte, deren Art (aus der ATR) und Nummer der gespeicherten [CardPin]
 // gleichen, und nie, wenn die PIN abgelehnt ist oder zwei VERIFY ohne
-// Antwort blieben (Plan C4). Der Zähler "ohne Antwort" wird vor dem Senden
+// Antwort blieben (Plan C4), und nie, wenn der PIN-Wächter nur noch einen
+// Versuch kennt. Der Zähler "ohne Antwort" wird vor dem Senden
 // geschrieben. Die PIN steht in keinem Feld; sie wird für jedes VERIFY neu
 // aus dem geschützten Speicher gelesen.
 
@@ -258,6 +259,18 @@ class CardSigner {
     if (_rejected || stored.rejected || unanswered >= 2) {
       throw const CardSignException(CardSignProblem.pinRejected);
     }
+    // Die Schutzregeln von "Karte prüfen" gelten auch hier: Kennt der Wächter
+    // nur noch einen Versuch, geht keine PIN hinaus. Nicht gemerkt, denn der
+    // Chef kann den Wächter jederzeit zurücksetzen.
+    final int? guarded;
+    try {
+      guarded = await _guard.retriesLeft(held.numberHex);
+    } catch (_) {
+      throw const CardSignException(CardSignProblem.silent);
+    }
+    if (guarded != null && guarded <= 1) {
+      throw const CardSignException(CardSignProblem.pinRejected);
+    }
     final CardCommand command;
     try {
       command = CardCommand.verifyPin(held.profile, pin.pin);
@@ -283,6 +296,11 @@ class CardSigner {
         await _secrets.writeCardPinStatus(const CardPinStatus());
       } catch (_) {
         // Der Zähler bleibt im Speicher stehen: vorsichtig, nicht falsch.
+      }
+      try {
+        await _guard.clear(held.numberHex);
+      } catch (_) {
+        // Wie CardCheck: Die Unterschrift geht weiter.
       }
       return;
     }

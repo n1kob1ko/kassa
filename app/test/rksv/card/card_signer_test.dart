@@ -99,6 +99,26 @@ class DelayedReader implements ReaderTransport {
   Future<TabletInfo> info() => inner.info();
 }
 
+/// Ein Wächter, dessen Lesen oder Löschen scheitert.
+class BrokenGuard extends MemoryPinGuard {
+  BrokenGuard({this.failReads = false, this.failClears = false});
+
+  bool failReads;
+  bool failClears;
+
+  @override
+  Future<int?> retriesLeft(String cardNumber) async {
+    if (failReads) throw StateError('Wächter nicht lesbar');
+    return super.retriesLeft(cardNumber);
+  }
+
+  @override
+  Future<void> clear(String cardNumber) async {
+    if (failClears) throw StateError('Wächter löscht nicht');
+    return super.clear(cardNumber);
+  }
+}
+
 class Rig {
   Rig({
     FakeCard? card,
@@ -393,6 +413,83 @@ void main() {
       expect(rig.card.verifyCount, 0);
       expect(rig.card.received, isEmpty);
     });
+  });
+
+  group('Der PIN-Wächter vor jedem VERIFY', () {
+    test(
+      'Wächter kennt 1: kein VERIFY, pinRejected, Status unverändert',
+      () async {
+        final guard = MemoryPinGuard();
+        await guard.recordFailure(number, 1);
+        final rig = Rig(guard: guard);
+        await rig.store();
+        await expectLater(rig.sign(1), fails(CardSignProblem.pinRejected));
+        await pumpEventQueue();
+        expect(rig.card.verifyCount, 0);
+        final status = await rig.secrets.cardPinStatus();
+        expect(status.rejected, isFalse);
+        expect(status.unanswered, 0);
+        expect(await guard.retriesLeft(number), 1);
+
+        // Nicht gemerkt: Setzt der Chef den Wächter zurück, geht es.
+        await guard.clear(number);
+        expect(await rig.sign(2), testSigner(hashOf(2)));
+        expect(rig.card.verifyCount, 1);
+      },
+    );
+
+    test('Wächter kennt 0: kein VERIFY', () async {
+      final guard = MemoryPinGuard();
+      await guard.recordFailure(number, 0);
+      final rig = Rig(guard: guard);
+      await rig.store();
+      await expectLater(rig.sign(1), fails(CardSignProblem.pinRejected));
+      expect(rig.card.verifyCount, 0);
+    });
+
+    test('Wächter vor dem 6982-VERIFY gefragt', () async {
+      final guard = MemoryPinGuard();
+      final rig = Rig(guard: guard);
+      await rig.store();
+      await rig.sign(1);
+      await guard.recordFailure(number, 1);
+      await expectLater(rig.sign(2), fails(CardSignProblem.pinRejected));
+      expect(rig.card.verifyCount, 1);
+    });
+
+    test(
+      'Wächter kennt 2: VERIFY geht hinaus, danach ist der Eintrag weg',
+      () async {
+        final guard = MemoryPinGuard();
+        await guard.recordFailure(number, 2);
+        final rig = Rig(guard: guard);
+        await rig.store();
+        expect(await rig.sign(1), testSigner(hashOf(1)));
+        expect(rig.card.verifyCount, 1);
+        expect(await guard.retriesLeft(number), isNull);
+      },
+    );
+
+    test('Wächter nicht lesbar: kein VERIFY, silent', () async {
+      final rig = Rig(guard: BrokenGuard(failReads: true));
+      await rig.store();
+      await expectLater(rig.sign(1), fails(CardSignProblem.silent));
+      await pumpEventQueue();
+      expect(rig.card.verifyCount, 0);
+      expect((await rig.secrets.cardPinStatus()).unanswered, 0);
+    });
+
+    test(
+      'Ein Wächter, der nicht löscht, hält die Unterschrift nicht auf',
+      () async {
+        final guard = BrokenGuard(failClears: true);
+        await guard.recordFailure(number, 2);
+        final rig = Rig(guard: guard);
+        await rig.store();
+        expect(await rig.sign(1), testSigner(hashOf(1)));
+        expect(rig.card.verifyCount, 1);
+      },
+    );
   });
 
   group('Review Focus 3: die gespeicherte PIN stimmt nicht', () {
