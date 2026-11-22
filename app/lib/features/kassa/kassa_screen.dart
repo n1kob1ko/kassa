@@ -33,6 +33,13 @@ const _favoritesId = 'favorites';
 
 const _cardMessageStay = Duration(seconds: 6);
 
+/// Ob die Kassa seit dem Start der App schon einmal zu sehen war.
+class _KassaMounts {
+  bool seen = false;
+}
+
+final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
+
 /// Der Kassenbildschirm: Kategorien links, Artikel (oder das Zusammenstellen)
 /// in der Mitte, der offene Bon rechts. Mit "Bar" wird die Bon-Spalte zum
 /// Bezahlen, mit "Karte" zum Warten auf das Terminal, danach zur
@@ -86,7 +93,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     WidgetsBinding.instance.addObserver(this);
     _prepareTerminal();
     _preparePrinter();
-    _warmUpSignature();
+    // Nur das erste Bild der Kassa nach dem Start der App darf Android nach
+    // dem Kartenleser fragen lassen; ein Wechsel der Bereiche nicht (C5).
+    final first = ref.read(_kassaMountsProvider);
+    _warmUpSignature(ask: !first.seen);
+    first.seen = true;
   }
 
   @override
@@ -99,7 +110,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _preparePrinter();
-      _warmUpSignature();
+      _warmUpSignature(ask: true);
     }
   }
 
@@ -107,14 +118,14 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   /// A-Trust an, am Halter des Systems der laufenden Kette, damit der
   /// nächste Bon nicht auf die Anmeldung wartet. Läuft eine Kette mit Karte
   /// (Karten-Probe oder in Betrieb), öffnet der Halter der Karte die Sitzung
-  /// im Voraus; nur hier, beim Start und beim Fortsetzen, darf Android dafür
-  /// nach der Erlaubnis für den Kartenleser fragen (C6). In Betrieb liest das
+  /// im Voraus; nur hier, beim Start und beim Fortsetzen ([ask]), darf
+  /// Android dafür nach der Erlaubnis für den Kartenleser fragen (C6). In Betrieb liest das
   /// Journal dazu den AES-Schlüssel in den Speicher (Q17). Ohne laufende
   /// Kette von A-Trust entsteht weder Sitzungshalter noch Verbindung; nach
   /// einer Ablehnung schickt der Halter selbst nichts. Auf nichts davon
   /// wartet ein Verkauf oder das erste Bild: Wer das ruft, wartet nicht, und
   /// Fehler gehen still unter.
-  Future<void> _warmUpSignature() async {
+  Future<void> _warmUpSignature({required bool ask}) async {
     try {
       final state = await ref.read(rksvStateProvider.future);
       if (!mounted) return;
@@ -130,7 +141,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       if (system == null) {
         if (state.unit == RksvUnit.cardTest || state.unit == RksvUnit.card) {
           // Wirft nie.
-          ref.read(cardSignerProvider).warmUp(ask: true).ignore();
+          ref.read(cardSignerProvider).warmUp(ask: ask).ignore();
         }
         return;
       }

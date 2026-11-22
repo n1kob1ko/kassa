@@ -713,6 +713,24 @@ void main() {
       expect(slips.last.kind, 'Signaturkarte');
     });
 
+    testWidgets('C4: Das Blatt schließt ohne Ergebnis, obwohl der Dienst die '
+        'neue Kennung schon hat: die Seite und der Zettel zeigen die neue', (
+      t,
+    ) async {
+      final rig = await _settings(t);
+      await _toCardFacts(t);
+      await _tap(t, 'setup-cashbox-change');
+      // Wie "Speichern" und gleich danach die Geste Zurück: Der Dienst hat
+      // die Kennung, das Blatt gibt nichts zurück.
+      await containerOf(t).read(rksvServiceProvider).changeCashBoxId('NEU-1');
+      await _tap(t, 'cash-box-id-cancel');
+      expect(_key('cash-box-id-sheet'), findsNothing);
+      expect(_value(t, 'setup-value-cashbox'), 'NEU-1');
+      expect((await rig.secrets.pendingSetup())!.cashBoxId, 'NEU-1');
+      await _tap(t, 'setup-print');
+      expect(printerOf(t).setupSlips.single.cashBoxId, 'NEU-1');
+    });
+
     testWidgets('Unterstrich und andere Zeichen lassen sich nicht tippen, '
         'höchstens 20 Zeichen', (t) async {
       await _settings(t);

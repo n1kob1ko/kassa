@@ -211,6 +211,28 @@ void main() {
     });
   }
 
+  testWidgets('C5: Wechsel zwischen den Bereichen wärmt ohne Frage auf, '
+      'Fortsetzen fragt wieder', (t) async {
+    final rig = await _kassa(t);
+    await _startCardChain(t, rig);
+    rig.events.clear();
+    await pumpKassa(t, sameDatabase: true);
+    await t.pumpAndSettle();
+    expect(_warmUps(rig), 1);
+
+    await t.tap(_key('tab-Bons'));
+    await t.pumpAndSettle();
+    await t.tap(_key('tab-Kassa'));
+    await t.pumpAndSettle();
+    expect(_warmUps(rig), 1);
+    expect(rig.events.last, 'warmUp(ask: false)');
+
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await t.pumpAndSettle();
+    expect(_warmUps(rig), 2);
+  });
+
   testWidgets('ohne Kette mit Karte: kein Aufwärmen', (t) async {
     final rig = await _kassa(t);
     await seedProbe(t);

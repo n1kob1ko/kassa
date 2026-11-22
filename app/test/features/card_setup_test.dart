@@ -4,6 +4,7 @@
 // signiert. Die PINs stehen nur in den Körpern der Tests.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,7 @@ import 'package:kassa/rksv/card/card_facts.dart';
 import 'package:kassa/rksv/card/card_providers.dart';
 import 'package:kassa/rksv/card/certificate.dart';
 import 'package:kassa/rksv/card/pin_guard.dart';
+import 'package:kassa/rksv/card/reader_transport.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
@@ -170,6 +172,49 @@ Future<void> _enterPin(WidgetTester t, String key, String pin) async {
   await typePin(t, pin);
   await t.tap(_key('card-pin-submit'));
   await t.pumpAndSettle();
+}
+
+/// Ein Leser, dessen [list] wartet, solange [gate] zu ist.
+class _GatedReader implements ReaderTransport {
+  _GatedReader(this.inner);
+
+  final FakeCardReader inner;
+  Completer<void>? gate;
+
+  @override
+  Future<List<UsbDeviceInfo>> list() async {
+    final g = gate;
+    if (g != null) await g.future;
+    return inner.list();
+  }
+
+  @override
+  Future<Uint8List> open(String address) => inner.open(address);
+
+  @override
+  Future<Uint8List> exchange(Uint8List? out, {required Duration limit}) =>
+      inner.exchange(out, limit: limit);
+
+  @override
+  Future<void> close() => inner.close();
+
+  @override
+  Future<TabletInfo> info() => inner.info();
+}
+
+/// Der echte Dienst, dessen [cardChainSerial] wirft, solange [fail] gilt.
+class _SerialService extends RksvService {
+  _SerialService(super.db, super.secrets, super.receipts, super.clock);
+
+  bool fail = true;
+  int calls = 0;
+
+  @override
+  Future<String?> cardChainSerial() {
+    calls++;
+    if (fail) return Future.error(StateError('Datenbank liest nicht'));
+    return super.cardChainSerial();
+  }
 }
 
 void main() {
@@ -458,6 +503,63 @@ void main() {
       expect(reader.card!.verifyCount, 0);
     });
 
+    testWidgets('C2: nach "Zähler ist wieder voll" sucht die Seite die '
+        'gespeicherte PIN neu und zeigt sie, ohne selbst zu prüfen', (t) async {
+      final secrets = MemoryRksvSecrets();
+      await _storePin(secrets);
+      final reader = await _settings(
+        t,
+        secrets: secrets,
+        guard: MemoryPinGuard({_cardNumber: 1}),
+      );
+      expect(find.text(_stored), findsNothing);
+      await _tap(t, 'card-check-reset-guard');
+      await _tap(t, 'card-check-reset-confirm');
+      expect(_inScreen(find.text(_stored)), findsOneWidget);
+      expect(_key('card-setup-repin'), findsOneWidget);
+      expect(_key('card-check-pin'), findsNothing);
+      // Keine Probe-Unterschrift von selbst; die Haupttaste wartet auf
+      // Zeile 5.
+      expect(reader.card!.verifyCount, 0);
+      expect(_enabled(t, 'card-setup-main'), isFalse);
+    });
+
+    testWidgets('C1: läuft beim Öffnen schon ein Prüflauf, wartet die Seite '
+        'auf ihn und macht weiter, als hätte sie ihn gestartet', (t) async {
+      final secrets = MemoryRksvSecrets();
+      await _storePin(secrets);
+      final reader = FakeCardReader(card: testSignatureCard());
+      final gated = _GatedReader(reader);
+      await pumpSettings(
+        t,
+        reader: gated,
+        extra: signatureOverrides(secrets: secrets),
+      );
+      final gate = gated.gate = Completer<void>();
+      final running = _check(t).run();
+      await t.pump();
+      expect(_check(t).state.busy, isTrue);
+      // Kein pumpAndSettle: Der laufende Prüflauf dreht sich, bis er fertig
+      // ist, und liefe sonst in seine Frist.
+      await t.ensureVisible(_key('rksv-card-probe-on'));
+      await t.pump();
+      await t.tap(_key('rksv-card-probe-on'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      expect(_key('card-setup'), findsOneWidget);
+      expect(_check(t).state.busy, isTrue);
+      gated.gate = null;
+      gate.complete();
+      await running;
+      await t.pumpAndSettle();
+      expect(_inScreen(find.text(_stored)), findsOneWidget);
+      expect(_row(t, CheckRow.signature).state, RowState.ok);
+      // Die Probe-Unterschrift mit der gespeicherten PIN, kein Fehlversuch.
+      expect(_check(t).facts, isNotNull);
+      expect(reader.card!.retriesLeft, 3);
+      expect(_enabled(t, 'card-setup-main'), isTrue);
+    });
+
     testWidgets('Doppeltipp auf "Probe starten" ruft einmal', (t) async {
       late _CountingService service;
       final secrets = MemoryRksvSecrets();
@@ -545,6 +647,7 @@ void main() {
       required CardSetupPurpose purpose,
       required String chainSerial,
       MemoryRksvSecrets? secrets,
+      List<Override> extra = const [],
     }) async {
       final reader = FakeCardReader(card: testSignatureCard());
       final show = ValueNotifier(false);
@@ -563,6 +666,7 @@ void main() {
           readerTransportProvider.overrideWithValue(reader),
           pinGuardProvider.overrideWithValue(MemoryPinGuard()),
           shareSheetProvider.overrideWithValue(FakeShareSheet()),
+          ...extra,
         ],
       );
       final c = ProviderScope.containerOf(
@@ -633,6 +737,45 @@ void main() {
         findsOneWidget,
       );
       expect(_enabled(t, 'card-setup-main'), isFalse);
+    });
+
+    testWidgets('C3: Seriennummer der Kette nicht lesbar: kein Lauf, der '
+        'Satz, "Nochmal prüfen" versucht es wieder', (t) async {
+      late _SerialService service;
+      final reader = await pumpScreen(
+        t,
+        purpose: CardSetupPurpose.repin,
+        chainSerial: serialOfTestCard(),
+        extra: [
+          rksvServiceProvider.overrideWith(
+            (ref) => service = _SerialService(
+              ref.watch(databaseProvider),
+              ref.watch(rksvSecretsProvider),
+              ref.watch(receiptRepositoryProvider),
+              ref.watch(clockProvider),
+            ),
+          ),
+        ],
+      );
+      expect(service.calls, 1);
+      expect(reader.opened, isEmpty);
+      expect(
+        find.descendant(
+          of: _key('card-setup-problem'),
+          matching: find.text('Das hat nicht geklappt. Bitte noch einmal.'),
+        ),
+        findsOneWidget,
+      );
+      expect(_key('card-check-pin'), findsNothing);
+      expect(_enabled(t, 'card-setup-main'), isFalse);
+      expect(_enabled(t, 'card-setup-retry'), isTrue);
+
+      service.fail = false;
+      await _tap(t, 'card-setup-retry');
+      expect(service.calls, 2);
+      expect(reader.opened, isNotEmpty);
+      expect(_key('card-setup-problem'), findsNothing);
+      expect(_key('card-check-pin'), findsOneWidget);
     });
 
     testWidgets('richtige Seriennummer und neue PIN: "Fertig"', (t) async {

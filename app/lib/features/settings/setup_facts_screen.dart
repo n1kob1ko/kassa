@@ -158,6 +158,21 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     });
   }
 
+  /// Liest die Angaben neu, ohne den Bildschirm warten zu lassen; scheitert
+  /// das, bleiben die alten stehen.
+  Future<void> _refresh() async {
+    try {
+      final service = ref.read(rksvServiceProvider);
+      final card = widget.card;
+      final setup = card == null
+          ? await service.prepareSetup(facts: widget.facts!)
+          : await service.prepareCardSetup(facts: card);
+      if (mounted) setState(() => _setup = setup);
+    } catch (_) {
+      // Die Angaben von vorher bleiben.
+    }
+  }
+
   void _retry() {
     if (_busy) return;
     setState(() {
@@ -200,7 +215,10 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
     } finally {
       if (mounted) setState(() => _editingId = false);
     }
-    if (id == null || !mounted) return;
+    if (!mounted) return;
+    // Wie immer das Blatt zu ging (auch mit der Geste Zurück während des
+    // Speicherns): Die Angaben kommen neu vom Dienst (C4).
+    if (id == null) return _refresh();
     setState(() {
       _setup = SetupFacts(
         kind: setup.kind,
@@ -212,6 +230,7 @@ class _SetupFactsScreenState extends ConsumerState<SetupFactsScreen> {
         aesChecksum: setup.aesChecksum,
       );
     });
+    await _refresh();
   }
 
   Future<void> _goLive() async {

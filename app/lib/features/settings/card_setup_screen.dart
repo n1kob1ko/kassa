@@ -117,21 +117,40 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
   }
 
   /// Liest die Karte (Zeilen 1 bis 4) und schaut, ob für sie schon eine PIN
-  /// gespeichert ist.
+  /// gespeichert ist. Läuft schon ein Prüflauf, wartet die Seite auf ihn und
+  /// macht danach weiter, als hätte sie ihn gestartet (C1); bei
+  /// [CardSetupPurpose.repin] liest sie danach selbst, mit der Seriennummer
+  /// der Kette.
   Future<void> _readCard() async {
     final check = _check;
-    if (check.state.busy) return;
-    String? serial;
-    if (widget.purpose == CardSetupPurpose.repin) {
+    if (check.state.busy) {
       try {
-        serial = await ref.read(rksvServiceProvider).cardChainSerial();
+        await check.changes.firstWhere((s) => !s.busy);
       } catch (_) {
-        serial = null;
+        // Der Prüflauf ist verworfen.
+        return;
       }
       if (!mounted) return;
+      if (widget.purpose == CardSetupPurpose.repin) return _readCard();
+    } else {
+      String? serial;
+      if (widget.purpose == CardSetupPurpose.repin) {
+        // Ohne die Seriennummer der Kette läuft nichts zur Karte: Sonst
+        // könnte die PIN einer anderen Karte die gespeicherte ersetzen (C3).
+        try {
+          serial = await ref.read(rksvServiceProvider).cardChainSerial();
+        } catch (_) {
+          serial = null;
+        }
+        if (!mounted) return;
+        if (serial == null) {
+          setState(() => _problem = _unexpected);
+          return;
+        }
+      }
+      await check.run(expectSerialHex: serial);
+      if (!mounted) return;
     }
-    await check.run(expectSerialHex: serial);
-    if (!mounted) return;
     final setup = ref.read(cardSetupProvider);
     // Hält der PIN-Wächter zurück, zeigt Zeile 5 ihn, wie "Karte prüfen".
     var stored = await setup.storedForReadCard() && !check.state.guardBlocks;
@@ -148,6 +167,22 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
     setState(() {
       _working = false;
       _storedPin = stored;
+    });
+  }
+
+  /// "Zähler ist wieder voll": danach sucht die Seite die gespeicherte PIN
+  /// neu und zeigt, was sie findet. Eine Probe-Unterschrift macht sie nicht
+  /// von selbst; die macht "Nochmal prüfen" oder der Chef mit
+  /// "PIN eingeben" (C2).
+  Future<void> _resetGuard() async {
+    final check = _check;
+    await check.resetGuard();
+    if (!mounted || check.state.guardBlocks || !_read) return;
+    final stored = await ref.read(cardSetupProvider).storedForReadCard();
+    if (!mounted) return;
+    setState(() {
+      _storedPin = stored && !check.state.guardBlocks;
+      _entered = false;
     });
   }
 
@@ -311,7 +346,7 @@ class _CardSetupScreenState extends ConsumerState<CardSetupScreen> {
         CardCheckRows(
           state: state,
           onEnterPin: _enterPin,
-          onResetGuard: check.resetGuard,
+          onResetGuard: _resetGuard,
           // Bis feststeht, ob eine PIN gespeichert ist, steht Zeile 5, wie
           // sie ist, aber ohne "PIN eingeben".
           signature: storedRow
