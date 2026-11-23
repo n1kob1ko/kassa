@@ -1,6 +1,6 @@
 # Kassa: Monatsabrechnung und Ausdruck für Tag und Monat
 
-Stand: 23.11.2026. Entwurf von Claude, von Niko am 23.11.2026 freigegeben ("Passt, so bauen"). Bilder der Bildschirme und Zettel: https://claude.ai/artifact/63kcWgcCYNasZ3c2nh8FkL (Zahlen erfunden).
+Stand: 23.11.2026. Entwurf von Claude, von Niko am 23.11.2026 freigegeben ("Passt, so bauen"). Gebaut als Version 1.9.0 (Build 11), noch nicht ausgespielt. Bilder der Bildschirme und Zettel: https://claude.ai/artifact/63kcWgcCYNasZ3c2nh8FkL (Zahlen erfunden).
 
 Dieses Dokument ergänzt den Gesamtentwurf (`2026-11-17-kassa-design.md`, dort "Abschluss" und "Übersicht" in Abschnitt 5) und den Entwurf zum Abgleich (`2026-11-19-teil-c2-abgleich-design.md`, dort die Seiten Umsätze und Tagesabschlüsse). Wo sich die Dokumente widersprechen, gilt für dieses Thema dieses. Alles, was hier nicht steht, gilt weiter wie dort, in `PRODUCT.md`, `DESIGN.md` und `docs/design-regeln.md`.
 
