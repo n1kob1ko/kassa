@@ -12,9 +12,16 @@ Wichtig zum Test:
 
 - Die Zettel sind keine Belege. Unten steht "Kein Beleg". Sie haben keinen QR-Code und keine Bon-Nummer. Die Geldlade geht dabei nicht auf.
 - Es gibt nur abgeschlossene Monate. Im November 2026 ist der Oktober 2026 der neueste Monat, den du wählen kannst. Der laufende Monat fehlt immer, weil er noch nicht vorbei ist. Testest du später, nimm überall dort, wo "Oktober 2026" steht, den neuesten abgeschlossenen Monat. Bei "Jänner bis Oktober" ist das Ende dann dieser Monat.
-- Alle Bons sind noch Testbons. Darum steht auf Bildschirm und Zettel "Testbetrieb".
+- Alle Bons sind noch Testbons. Darum steht bei der Monatsabrechnung (am Bildschirm, auf dem Zettel und im Browser) "Testbetrieb". Beim Tagesabschluss steht es nicht.
 - Der Bereich "Abschluss" ist nur für den Chef. Melde dich als Chef an.
 - Die Kassa wartet beim Abschließen nie auf den Drucker. Der Tag ist auch dann abgeschlossen, wenn der Drucker nicht geht.
+
+Wann du was testen kannst:
+
+- Die Teile mit Monaten brauchen mindestens einen abgeschlossenen Monat, in dem diese Kassa Bons gemacht hat. Hat deine Kassa erst seit November 2026 Bons, gibt es noch keinen. Dann steht bei "Monat" der Satz "Die erste Monatsabrechnung gibt es ab 1. Dezember." Das ist richtig.
+- Dann kannst du jetzt testen: 0, A, B, den Tag in E1, E4 (mit dem Tageszettel), G1, den Tag in H und den ersten Punkt in C.
+- Diese Teile gehen erst ab 1. Dezember: der Rest von C, D, E2, E3, F, G2, G3 und die Monate in H. Sie sind unten gekennzeichnet.
+- Es sind nur Monate wählbar, von dem Monat deines ersten Bons bis zum letzten abgeschlossenen Monat. Alle Monate davor sind gesperrt. Wo unten "Jänner" steht, nimm den ältesten Monat, der nicht gesperrt ist.
 
 Du brauchst: das Tablet mit der Kassa in Version 1.9.0, den Bondrucker (mit Papier, am Strom), ein paar Test-Bons, einen Computer mit Browser und die Adresse der Verwaltung.
 
@@ -22,10 +29,12 @@ Du brauchst: das Tablet mit der Kassa in Version 1.9.0, den Bondrucker (mit Papi
 
 - [ ] Einstellungen öffnen (Regler-Symbol oben rechts) und ganz nach unten sehen.
   Unten links steht "Kassa Version 1.9.0". Steht dort noch 1.8.0, ist das Update nicht drauf. Hör dann hier auf und sag mir Bescheid.
-- [ ] In der Karte "Bondrucker" nachsehen, ob ein Drucker eingerichtet ist, und "Testdruck" tippen.
-  Der Testzettel kommt aus dem Drucker.
+- [ ] In den Einstellungen in der Karte "Geräte an dieser Kassa" auf die Zeile "Bondrucker" tippen. Sie klappt auf. Dann "Testdruck" tippen.
+  In der Zeile steht der Name deines Druckers. Der Testzettel kommt aus dem Drucker. Die Zeile kannst du wieder zuklappen.
 - [ ] Am Tablet drei, vier Artikel bonieren und bar bezahlen, damit es heute etwas zum Abschließen gibt.
   Die Bons kommen wie immer aus dem Drucker.
+- [ ] Am Tablet unter "Bons" einen Bon von heute öffnen, "Stornieren" tippen und "Ja, stornieren" tippen. (Ist "Storno nur durch den Chef" eingeschaltet, geht das nur als Chef. Du bist Chef.)
+  Es kommt ein Storno-Bon aus dem Drucker. Unter "Bons" stehen jetzt der Storno und der stornierte Bon. Dieser Storno zählt zu dem Tag und dem Monat, in dem du ihn machst, und macht "Gesamt" kleiner. Du brauchst ihn, damit "Storniert" in den Zahlen unten zu sehen ist. Danach noch einen Artikel bonieren und bar bezahlen, damit nach dem Storno noch etwas übrig ist.
 - [ ] Im Browser anmelden und deinen Betrieb öffnen.
   In der Leiste steht der Punkt "Abschlüsse" (am Handy "Abschluss"), nicht mehr "Tagesabschlüsse".
 
@@ -35,12 +44,14 @@ Du brauchst: das Tablet mit der Kassa in Version 1.9.0, den Bondrucker (mit Papi
 
 - [ ] Am Tablet oben auf "Abschluss" tippen.
   Du siehst "Tagesabschluss". Rechts oben stehen zwei Tasten: "Tag" und "Monat". "Tag" ist gewählt.
+- [ ] Fragt der Bildschirm "Wechselgeld" nach dem Betrag vom Morgen? Dann den Betrag eintippen und "Wechselgeld speichern" tippen. Sonst gleich weiter.
+  Danach siehst du den Tag mit Einnahmen und Steuer.
 - [ ] Das Bargeld zählen, den Betrag eintippen, "Weiter" tippen, das Wechselgeld für morgen eintippen und "Tag abschließen" tippen.
   Der Bildschirm sagt sofort "Tag abgeschlossen". Du musst nicht warten.
 - [ ] Zum Drucker sehen.
   Ein Zettel kommt von selbst heraus. Oben steht "TAGESABSCHLUSS" mit dem Datum.
 - [ ] Am Tablet in der Spalte "Tag abgeschlossen" nachsehen.
-  Es gibt die Taste "Bericht drucken" und darunter "Zur Kassa". Über den Tasten steht "Bericht gedruckt."
+  Es gibt die Taste "Bericht drucken" und darunter "Zur Kassa". Über den Tasten steht "Bericht gedruckt." Darüber steht, was entnommen wird ("Entnommen: …") und wie viel Wechselgeld morgen da ist.
 - [ ] Den Zettel ansehen.
   Unten steht "Gedruckt" mit Datum und Uhrzeit und darunter "Kein Beleg". Es gibt keinen QR-Code. Die Geldlade ist nicht aufgegangen.
 
@@ -48,14 +59,16 @@ Du brauchst: das Tablet mit der Kassa in Version 1.9.0, den Bondrucker (mit Papi
 
 Dafür nimmst du den Drucker kurz aus der Kassa. Danach richtest du ihn wieder ein. Du brauchst einen offenen Tag: Bonier vorher noch einen Artikel und bezahl bar.
 
-- [ ] Einstellungen öffnen und in der Karte "Bondrucker" auf "Drucker entfernen" tippen. Dann einen Artikel bonieren und bar bezahlen.
+- [ ] Einstellungen öffnen, in der Karte "Geräte an dieser Kassa" auf die Zeile "Bondrucker" tippen (sie klappt auf) und ganz unten auf "Drucker entfernen" tippen. Die Zeile zeigt jetzt "Nicht eingerichtet". Dann einen Artikel bonieren und bar bezahlen.
   Der Bon geht durch. Es kommt nichts aus dem Drucker, das ist richtig.
-- [ ] Unter "Abschluss" den Tag abschließen wie in A1.
+- [ ] Unter "Abschluss" den Tag abschließen wie in A1 (mit dem Wechselgeld vom Morgen, falls der Bildschirm danach fragt).
   Du siehst "Tag abgeschlossen". Es gibt keine Fehlermeldung, und es kommt kein Zettel.
 - [ ] In der Spalte "Tag abgeschlossen" nachsehen.
   Es gibt nur die Taste "Zur Kassa". "Bericht drucken" fehlt.
-- [ ] In den Einstellungen den Drucker wieder einrichten (Karte "Bondrucker", Drucker wählen) und "Testdruck" tippen.
-  Der Testzettel kommt. Der Drucker ist wieder da.
+- [ ] Nur wenn es schon einen abgeschlossenen Monat gibt: unter "Abschluss" auf "Monat" tippen.
+  Über der Taste "Drucken" steht "Kein Drucker eingerichtet." und die Taste ist gesperrt. Gibt es noch keinen abgeschlossenen Monat, siehst du diesen Satz nicht. Dann bleibt der Punkt offen ("nicht zu sehen").
+- [ ] In den Einstellungen den Drucker wieder einrichten: in der Karte "Geräte an dieser Kassa" die Zeile "Bondrucker" aufklappen, oben die Art wählen (Netzwerk, USB oder Bluetooth, wie vorher) und in der Liste deinen Drucker antippen. Dann "Testdruck" tippen.
+  In der Zeile steht wieder der Name des Druckers. Der Testzettel kommt.
 
 ### A3. Drucker ausgeschaltet
 
@@ -80,42 +93,46 @@ Dafür nimmst du den Drucker kurz aus der Kassa. Danach richtest du ihn wieder e
 ## C. Monat wählen
 
 - [ ] Unter "Abschluss" rechts oben auf "Monat" tippen.
-  Du siehst "Monatsabrechnung Oktober 2026". Rechts steht die Spalte "Zeitraum" mit "Ein Monat" und "Von bis". "Ein Monat" ist gewählt.
+  Hat die Kassa noch keinen abgeschlossenen Monat mit Bons: Statt der Karten steht "Die erste Monatsabrechnung gibt es ab 1. Dezember." Alle Monate sind gesperrt, und es gibt keine Taste "Drucken". Das ist richtig. Dann ist C für heute zu Ende, der Rest wartet bis 1. Dezember.
+  Hat sie einen: Du siehst "Monatsabrechnung" mit dem neuesten abgeschlossenen Monat (im November 2026 ist das der Oktober 2026). Rechts steht die Spalte "Zeitraum" mit "Ein Monat" und "Von bis". "Ein Monat" ist gewählt. Mach dann hier weiter.
+
+Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
+
 - [ ] Die Spalte "Zeitraum" ansehen.
-  Oben steht das Jahr 2026 mit zwei Pfeilen. Darunter die zwölf Monate als Tasten. November und Dezember sind gesperrt, weil sie nicht vorbei sind. Der Oktober ist gewählt. Unten steht "1.10. bis 31.10.2026" und die Taste "Drucken".
+  Oben steht das Jahr mit zwei Pfeilen. Darunter die zwölf Monate als Tasten. Gesperrt sind der laufende Monat und alle Monate danach, und alle Monate vor deinem ersten Bon. Der neueste abgeschlossene Monat ist gewählt. Unten steht sein Zeitraum von bis (im Oktober "1.10. bis 31.10.2026") und die Taste "Drucken".
 - [ ] Links die Karten ansehen.
-  Du siehst "Einnahmen" (Bar, Karte, Gesamt, Storniert), "Steuer" mit den Sätzen und die Karte "Tage" mit einer Zeile für jeden Tag mit Bons.
+  Du siehst "Einnahmen" (Bar, Karte, Gesamt, und "Storniert", wenn es in diesem Monat einen Storno gab), "Steuer" mit "Umsatz" und "davon MwSt" je Satz und die Karte "Tage" mit einer Zeile für jeden Tag mit Bons. Der Storno aus Teil 0 ist von heute. Er steht erst in dem Monat, in dem du ihn gemacht hast, also noch nicht im Oktober.
 - [ ] Neben der Überschrift nachsehen.
   Es steht "Testbetrieb".
 - [ ] Auf einen anderen Monat tippen, in dem es Bons gab.
   Die Zahlen wechseln. Die alten Zahlen bleiben kurz stehen, bis die neuen da sind. Die Karten springen nicht.
-- [ ] Auf einen gesperrten Monat tippen (November oder Dezember).
+- [ ] Auf einen gesperrten Monat tippen.
   Nichts passiert.
 - [ ] Einen Monat wählen, in dem es keinen Bon gab (falls es so einen gibt).
   Es steht "In diesem Zeitraum gibt es keine Bons." und "Drucken" ist gesperrt. Gibt es keinen solchen Monat: Punkt offen lassen und "nicht zu sehen" dazuschreiben.
-- [ ] Wenn deine Kassa noch keinen abgeschlossenen Monat hat, siehst du statt der Karten: "Die erste Monatsabrechnung gibt es ab 1. Dezember." Alle Monate sind gesperrt, "Drucken" gibt es nicht.
-  Sonst: Punkt offen lassen und "nicht zu sehen" dazuschreiben.
-- [ ] Beim Oktober die Taste "Drucken" tippen.
-  Ein Zettel "MONATSABRECHNUNG" mit "Oktober 2026" kommt. Über der Taste steht "Abrechnung gedruckt."
+- [ ] Beim neuesten Monat die Taste "Drucken" tippen.
+  Ein Zettel "MONATSABRECHNUNG" mit dem Monat kommt. Über der Taste steht "Abrechnung gedruckt."
 - [ ] Auf "Tag" und wieder auf "Monat" tippen.
-  Wieder ist der Oktober gewählt.
+  Wieder ist der neueste abgeschlossene Monat gewählt.
 
 ## D. Mehrere Monate ("Von bis")
 
+Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt. Für mehrere Monate brauchst du zwei oder mehr davon.
+
 - [ ] Unter "Monat" auf "Von bis" tippen.
   Darunter steht "Ersten Monat antippen, dann den letzten."
-- [ ] Im Jahr 2026 auf "Jän" tippen, dann auf "Okt".
-  Alle Monate von Jänner bis Oktober sind markiert. Die Überschrift ist "Abrechnung Jänner bis Oktober 2026". Unten steht "1.1. bis 31.10.2026".
+- [ ] Den ältesten Monat antippen, der nicht gesperrt ist, dann den neuesten abgeschlossenen Monat (im November 2026 ist das der Oktober).
+  Alle Monate dazwischen sind markiert. Die Überschrift ist "Abrechnung" mit dem ersten und letzten Monat, zum Beispiel "Abrechnung Jänner bis Oktober 2026". Unten steht der Zeitraum von bis.
 - [ ] Links die Karte ansehen, die vorher "Tage" hieß.
   Sie heißt jetzt "Monate". Es gibt eine Zeile für jeden Monat, auch für einen Monat ohne Bons (dann "0 Bons" und 0,00).
 - [ ] Einen späteren Monat tippen, dann einen früheren.
   Der frühere ist der neue Beginn. Es gibt nie ein Ende vor dem Beginn.
 - [ ] Nach dem ersten Tipp mit den Pfeilen das Jahr wechseln und dann den zweiten Monat tippen.
   Das geht auch über den Jahreswechsel, wenn es dafür Monate mit Bons gibt.
-- [ ] Der Fall für das Finanzamt: "Von bis" wählen, Jänner 2026 antippen, dann Oktober 2026 (der neueste abgeschlossene Monat). Dann "Drucken" tippen.
-  Ein Zettel "ABRECHNUNG" mit "Jänner bis Oktober 2026" kommt. Über der Taste steht "Abrechnung gedruckt."
-- [ ] Sind die Monate vor deinem ersten Bon gesperrt?
-  Dann kannst du den ersten freien Monat als Beginn nehmen. Gesperrte Monate lassen sich nicht wählen, das ist richtig. Schreib dazu, welcher Monat dein Beginn war.
+- [ ] Der Fall für das Finanzamt: "Von bis" wählen, den ältesten wählbaren Monat antippen (bei einem Betrieb, der im Jänner angefangen hat, der Jänner), dann den neuesten abgeschlossenen Monat. Dann "Drucken" tippen.
+  Ein Zettel "ABRECHNUNG" mit dem Zeitraum kommt. Über der Taste steht "Abrechnung gedruckt."
+- [ ] Schreib auf, welcher Monat dein Beginn war.
+  Monate vor deinem ersten Bon sind gesperrt und lassen sich nicht wählen. Das ist richtig.
 
 ## E. Zettel lesen
 
@@ -123,16 +140,20 @@ Nimm dazu die Zettel aus A1, C und D.
 
 ### E1. Tagesabschluss
 
+Den Tag kannst du jetzt testen.
+
 - [ ] Oben ansehen.
   Name und Adresse des Betriebs, dann "TAGESABSCHLUSS" mit dem Datum.
 - [ ] "Von" und "Bis" ansehen.
   Beginn und Abschluss des Tages, jeweils mit Datum und Uhrzeit. "Abgeschlossen von" nennt deinen Namen.
 - [ ] "EINNAHMEN", "STEUER" und "GELDLADE" ansehen.
-  Bar, Karte, Gesamt und Storniert stehen da, die Beträge rechts untereinander. Bei der Geldlade stehen das Wechselgeld am Morgen, die Bewegungen mit Uhrzeit, "Soll", "Gezählt", "Unterschied" und "In der Lade gelassen".
-- [ ] "Gezählt", "Unterschied" und "In der Lade gelassen" mit dem Bildschirm vergleichen.
-  Es sind dieselben Beträge.
+  Bar, Karte und Gesamt stehen da, die Beträge rechts untereinander. "Storniert" steht nur, wenn es an diesem Tag einen Storno gab. Das ist bei dir so (Teil 0). Der Betrag steht dann als positive Zahl da, und "Gesamt" ist um den Storno kleiner. Der Teil heißt "GELDLADE", oder "BARGELD", wenn die Geldlade in den Einstellungen ausgeschaltet ist. Dort stehen das Wechselgeld am Morgen, die Bewegungen mit Uhrzeit, "Soll", "Gezählt", "Unterschied", "In der Lade gelassen" und "Entnommen".
+- [ ] Am Tablet in der Spalte "Tag abgeschlossen" und in den Karten links vergleichen: "Gesamt", "Storniert", "Gezählt" und "Unterschied".
+  Es sind dieselben Beträge wie auf dem Zettel. Was am Bildschirm "Entnommen: …" und "Morgen liegen … Wechselgeld in der Lade." sagt, steht auf dem Zettel als "Entnommen" und "In der Lade gelassen". Die Beträge passen zusammen.
 
 ### E2. Monatsabrechnung
+
+Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
 
 - [ ] Oben ansehen.
   "MONATSABRECHNUNG" und darunter "Oktober 2026", dazu der Vermerk "Testbetrieb".
@@ -141,7 +162,7 @@ Nimm dazu die Zettel aus A1, C und D.
 - [ ] "Bons Nr." ansehen.
   Die kleinste und die größte Nummer der Bons im Monat.
 - [ ] Die Summen ansehen.
-  "EINNAHMEN" mit Bar, Karte, Gesamt, Storniert. "STEUER" mit jedem Satz und dort Brutto, Netto und Steuer (nur der Zettel zeigt Netto). Dazu "Pfand, ohne MwSt", wenn es Pfand gab.
+  "EINNAHMEN" mit Bar, Karte, Gesamt, und "Storniert" nur, wenn es in dem Monat einen Storno gab. "STEUER" mit jedem Satz und dort Brutto, Netto und Steuer (nur der Zettel zeigt Netto). Dazu "Pfand, ohne MwSt", wenn es Pfand gab.
 - [ ] Nach einer Liste der Tage suchen.
   Es gibt keine. Das ist richtig, die Tage stehen nur am Bildschirm.
 - [ ] Ganz unten ansehen.
@@ -149,8 +170,10 @@ Nimm dazu die Zettel aus A1, C und D.
 
 ### E3. Mehrere Monate
 
+Geht erst, wenn es mehrere abgeschlossene Monate mit Bons gibt.
+
 - [ ] Den Zettel aus D ansehen.
-  "ABRECHNUNG" mit "Jänner bis Oktober 2026" und der Zeile "Zeitraum" von 01.01.2026 bis 31.10.2026. Es gibt zusätzlich den Teil "MONATE".
+  "ABRECHNUNG" mit dem Zeitraum (zum Beispiel "Jänner bis Oktober 2026") und der Zeile "Zeitraum" mit dem ersten und letzten Tag. Es gibt zusätzlich den Teil "MONATE".
 - [ ] Den Teil "MONATE" ansehen.
   Eine Zeile pro Monat mit Name, Zahl der Bons und Betrag. Passt ein Monatsname nicht mehr in die Zeile, steht er darüber.
 - [ ] Mit dem Taschenrechner die Beträge der Zeilen unter "MONATE" zusammenzählen.
@@ -158,25 +181,27 @@ Nimm dazu die Zettel aus A1, C und D.
 
 ### E4. Breite "Normal" und "Schmal"
 
-- [ ] In den Einstellungen in der Karte "Bondrucker" bei "Breite" nachsehen und aufschreiben, ob "Normal" oder "Schmal" gewählt ist.
+- [ ] In den Einstellungen in der Karte "Geräte an dieser Kassa" die Zeile "Bondrucker" aufklappen und weiter unten bei "Breite" nachsehen. Aufschreiben, ob "Normal" oder "Schmal" gewählt ist. ("Breite" gibt es nur, wenn ein Drucker eingerichtet ist.)
   Eine der beiden Tasten ist gewählt.
-- [ ] Mit "Normal" die Monatsabrechnung für den Oktober drucken (Abschluss, Monat, "Drucken").
+- [ ] Mit "Normal" einen Zettel drucken: "Bericht drucken" für den Tag (Teil B), und wenn es einen abgeschlossenen Monat gibt, die Monatsabrechnung (Abschluss, Monat, "Drucken").
   Nichts bricht am Rand um. Die Beträge stehen rechts untereinander.
-- [ ] Bei "Breite" auf "Schmal" tippen und dieselbe Monatsabrechnung noch einmal drucken.
+- [ ] Bei "Breite" auf "Schmal" tippen und dieselben Zettel noch einmal drucken.
   Der Zettel ist schmaler, aber alles ist da. Nichts ist am Rand abgeschnitten, die Beträge stehen weiter rechts untereinander.
-- [ ] Mit "Schmal" auch den Zettel für Jänner bis Oktober und "Bericht drucken" für den Tag drucken.
+- [ ] Wenn es mehrere abgeschlossene Monate gibt: mit "Schmal" auch den Zettel für mehrere Monate drucken.
   Auch hier ist alles da und nichts bricht falsch um.
 - [ ] Die Breite wieder auf den Wert stellen, den du vorher hattest.
   Die Einstellung ist wie vorher.
 
 ## F. Monatsbeleg nachdrucken
 
+Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
+
 Das ist der Beleg der Signatur, nicht die Abrechnung. Er hat einen QR-Code und eine Bon-Nummer. Es gibt ihn nur, wenn die Kassa eine Signatur hat.
 
 - [ ] Unter "Abschluss", "Monat" und "Ein Monat" einen abgeschlossenen Monat wählen und links nach der Karte "Monatsbeleg der Signatur" suchen.
   Es gibt drei Möglichkeiten. Mit Beleg: In der Karte steht "Erstellt am … um …, Bon Nr. …" und die Taste "Drucken". Ohne Beleg: Es steht "Kommt von selbst mit dem nächsten Bon." und es gibt keine Taste. Hat die Kassa gar keine Signatur: Die Karte gibt es nicht. Alle drei sind richtig. Schreib auf, was du siehst. Steht dort "Jahresbeleg der Signatur", ist das auch richtig.
 - [ ] Wenn die Taste da ist: In dieser Karte "Drucken" tippen.
-  Der Beleg kommt noch einmal aus dem Drucker, mit QR-Code, wie ein Nachdruck im Bereich "Bons".
+  Der Beleg kommt noch einmal aus dem Drucker, mit QR-Code, wie ein Nachdruck im Bereich "Bons". Unten erscheint kurz "Bon gedruckt".
 - [ ] Unter "Bons" nachsehen.
   Es gibt keinen neuen Bon und keine neue Nummer.
 - [ ] Auf "Von bis" umschalten und zwei Monate wählen.
@@ -189,25 +214,29 @@ Das ist der Beleg der Signatur, nicht die Abrechnung. Er hat einen QR-Code und e
 - [ ] Im Browser auf "Abschlüsse" klicken.
   Oben stehen zwei Verweise: "Tage" und "Monate". Bei "Tage" siehst du die Tage wie bisher.
 - [ ] Den Tag anklicken, den du am Tablet abgeschlossen hast.
-  Das Blatt öffnet sich von rechts. Es zeigt auch "Bar", "Karte", "Storniert" und die Steuer nach Satz. Oben im Blatt ist die Taste "Drucken".
+  Das Blatt öffnet sich von rechts. Es zeigt auch "Bar", "Karte", "Storniert" (nur, wenn es an dem Tag einen Storno gab) und die Steuer nach Satz. Oben im Blatt ist die Taste "Drucken".
 - [ ] Einen offenen Tag anklicken (falls es einen gibt) und "Drucken" klicken.
   In der Vorschau steht "offen". Die Zahlen des Abschlusses (gezählt, Unterschied, in der Lade gelassen) fehlen.
 
 ### G2. Monate
 
+Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
+
 - [ ] Auf "Monate" klicken.
-  Eine Liste der abgeschlossenen Monate, der neueste zuerst. Oben steht der Oktober 2026, einen November gibt es nicht. Jede Zeile hat die Zahl der Bons und den Umsatz.
-- [ ] Den Oktober anklicken.
-  Das Blatt öffnet sich von rechts. Es zeigt "Testbetrieb", den Zeitraum von bis, die Einnahmen (Bar, Karte, Gesamt, Storniert), die Steuer nach Satz, das Pfand und die Tage. Oben im Blatt ist die Taste "Drucken".
+  Eine Liste der abgeschlossenen Monate, der neueste zuerst. Oben steht der neueste abgeschlossene Monat (im November 2026 der Oktober), den laufenden Monat gibt es nicht. Jede Zeile hat die Zahl der Bons und den Umsatz.
+- [ ] Den neuesten Monat anklicken.
+  Das Blatt öffnet sich von rechts. Es zeigt "Testbetrieb", den Zeitraum von bis, die Einnahmen (Bar, Karte, Gesamt, und Storniert, wenn es einen Storno gab), die Steuer nach Satz, das Pfand und die Tage. Oben im Blatt ist die Taste "Drucken".
 - [ ] Einen Monat ohne Bons anklicken (falls es einen gibt).
   Er steht auch in der Liste. Das Blatt sagt "In diesem Zeitraum gibt es keine Bons."
 
 ### G3. Mehrere Monate
 
+Geht erst, wenn es mehrere abgeschlossene Monate mit Bons gibt.
+
 - [ ] Über der Liste "Mehrere Monate" ansehen.
   Es gibt zwei Auswahlfelder "Von" und "Bis" und die Taste "Anzeigen".
-- [ ] Bei "Von" den Jänner 2026 wählen, bei "Bis" den Oktober 2026 und auf "Anzeigen" klicken.
-  Das Blatt zeigt Jänner bis Oktober. Statt der Tage steht die Liste "Monate", eine Zeile pro Monat.
+- [ ] Bei "Von" den ältesten Monat der Liste wählen, bei "Bis" den neuesten und auf "Anzeigen" klicken. Die Liste "Von" enthält nur Monate ab deinem ersten Bon.
+  Das Blatt zeigt diesen Zeitraum. Statt der Tage steht die Liste "Monate", eine Zeile pro Monat.
 - [ ] Bei "Bis" einen Monat vor "Von" wählen.
   Das geht nicht. Dieser Monat lässt sich nicht wählen.
 
@@ -226,18 +255,23 @@ Das ist der Beleg der Signatur, nicht die Abrechnung. Er hat einen QR-Code und e
 
 Der wichtigste Teil: Tablet, Zettel und Browser müssen auf den Cent dasselbe sagen. Der Server kennt die Bons erst, wenn das Tablet abgeglichen hat. Tipp in den Einstellungen in der Karte "Server" einmal auf "Jetzt abgleichen" und warte, bis "Zuletzt abgeglichen gerade eben" steht.
 
-- [ ] Den Oktober 2026 vergleichen: Tablet (Abschluss, Monat) gegen Browser (Abschlüsse, Monate, Oktober).
-  Bar, Karte, Gesamt und Storniert sind gleich, auch die Zahl der Bons.
+Eine Sache vorher: Der Browser zählt alle Kassen deines Betriebs zusammen, das Tablet nur seine eigenen Bons. Hat der Betrieb nur eine Kassa, sind die Zahlen gleich. Gibt es eine zweite Kassa, ist der Browser um deren Bons höher. Das ist dann kein Fehler.
+
+- [ ] Den Tag aus A1 vergleichen: Tablet ("Tag abgeschlossen" und die Karten links), Zettel und Blatt im Browser.
+  "Bar", "Karte", "Gesamt", "Storniert" (der Storno aus Teil 0, als positive Zahl), "Umsatz" und "davon MwSt" je Satz und das Pfand sind gleich. Auf dem Zettel ist "Brutto" der "Umsatz" vom Bildschirm und "Steuer" ist "davon MwSt". "Netto" gibt es nur auf dem Zettel.
+
+Der Rest geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
+
+- [ ] Den neuesten abgeschlossenen Monat vergleichen: Tablet (Abschluss, Monat) gegen Browser (Abschlüsse, Monate).
+  Bar, Karte, Gesamt und, wenn es einen Storno gab, Storniert sind gleich, auch die Zahl der Bons.
 - [ ] Die Steuer vergleichen: Am Tablet und im Browser steht je Satz "Umsatz" und "davon MwSt". Beide Zahlen je Satz vergleichen, dazu "Pfand, ohne MwSt".
   Alle Beträge sind gleich, auf den Cent.
-- [ ] Den Zettel aus E2 danebenlegen. Auf dem Zettel ist "Brutto" der "Umsatz" vom Bildschirm und "Steuer" ist "davon MwSt". "Netto" gibt es nur auf dem Zettel.
-  Bar, Karte, Gesamt, Storniert, Brutto und Steuer je Satz und das Pfand sind auf Zettel, Tablet und Browser gleich.
-- [ ] Jänner bis Oktober 2026 am Tablet ("Von bis") und im Browser ("Mehrere Monate") vergleichen, dazu den Zettel aus D.
-  Gesamt, Bar, Karte, Storniert, "Umsatz" und "davon MwSt" je Satz (auf dem Zettel "Brutto" und "Steuer") und die Zeile für jeden Monat sind überall gleich.
+- [ ] Den Zettel aus E2 danebenlegen.
+  Bar, Karte, Gesamt, Brutto und Steuer je Satz und das Pfand sind auf Zettel, Tablet und Browser gleich.
+- [ ] Mehrere Monate am Tablet ("Von bis") und im Browser ("Mehrere Monate") vergleichen, dazu den Zettel aus D.
+  Gesamt, Bar, Karte, "Umsatz" und "davon MwSt" je Satz (auf dem Zettel "Brutto" und "Steuer") und die Zeile für jeden Monat sind überall gleich.
 - [ ] Zwei einzelne Monate am Tablet ansehen und "Umsatz" und "davon MwSt" je Satz zusammenzählen. Dann dieselben zwei Monate zusammen wählen ("Von bis") und vergleichen.
   "Umsatz" und "davon MwSt" sind je Satz die Summe der zwei Monate, auf den Cent.
-- [ ] Den Tag aus A1 vergleichen: Tablet ("Tagesabschluss"), Zettel und Blatt im Browser.
-  "Bar", "Karte", "Storniert", die Steuer und der Betrag "Gezählt" sind gleich.
 - [ ] Gibt es einen Unterschied, auch nur 1 Cent: Nicht weitermachen und genau aufschreiben, wo (siehe unten).
 
 ## Wenn etwas nicht passt
@@ -252,6 +286,6 @@ Schreib mir bitte kurz:
 
 ## Zum Schluss
 
-- [ ] Prüfen, dass der Drucker wieder eingerichtet ist und die Breite wie vorher steht. Ein "Testdruck" kommt.
+- [ ] In den Einstellungen die Zeile "Bondrucker" aufklappen und prüfen, dass der Drucker wieder eingerichtet ist und die Breite wie vorher steht. "Testdruck" tippen.
   Die Kassa ist wie vor dem Test.
 - [ ] Eine kurze Rückmeldung an mich: Was war unklar, wo hast du gezögert, was hast du erwartet und nicht gesehen? Auch ein Punkt, der "nur komisch aussah", ist wichtig.
