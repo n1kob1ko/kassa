@@ -8,6 +8,7 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/day_repository.dart';
+import 'package:kassa/data/period_report_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/stats_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
@@ -36,6 +37,7 @@ class TestShop {
     this.days,
     this.receipts,
     this.stats,
+    this.periods,
     this.anna,
     this.chef,
   );
@@ -47,6 +49,7 @@ class TestShop {
   final DayRepository days;
   final ReceiptRepository receipts;
   final StatsRepository stats;
+  final PeriodReportRepository periods;
   final Staff anna;
   final Staff chef;
 
@@ -70,6 +73,7 @@ class TestShop {
     final days = DayRepository(db, clock);
     final receipts = ReceiptRepository(db, clock, days);
     final stats = StatsRepository(db, clock);
+    final periods = PeriodReportRepository(db, clock);
     return TestShop._(
       db,
       clock,
@@ -78,6 +82,7 @@ class TestShop {
       days,
       receipts,
       stats,
+      periods,
       anna,
       chef,
     );

@@ -294,6 +294,18 @@ void main() {
     expect(s.cardReceiptCount, 0);
   });
 
+  test('kleinste und größte Nummer der Verkaufs- und Storno-Bons', () async {
+    await days.openOrCreateDay();
+    expect((await days.summary())!.firstNumber, isNull);
+    expect((await days.summary())!.lastNumber, isNull);
+    final a = await sell('s1');
+    await sell('s2');
+    final v = await receipts.voidReceipt(a.id, staff: chef);
+    final s = (await days.summary())!;
+    expect(s.firstNumber, a.number);
+    expect(s.lastNumber, v.number);
+  });
+
   test('die Zusammenfassung des letzten abgeschlossenen Tages', () async {
     expect(await days.lastClosedSummary(), isNull);
     await days.setOpeningFloat(15000);

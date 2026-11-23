@@ -70,6 +70,8 @@ class DaySummary {
     required this.cashOutCents,
     required this.expectedCashCents,
     required this.movements,
+    this.firstNumber,
+    this.lastNumber,
   });
 
   final BusinessDay day;
@@ -100,6 +102,11 @@ class DaySummary {
 
   /// Nach Zeit aufsteigend.
   final List<CashMovement> movements;
+
+  /// Kleinste und größte Nummer der Verkaufs- und Storno-Bons des Tages,
+  /// `null` ohne Bon.
+  final int? firstNumber;
+  final int? lastNumber;
 }
 
 /// Ab dieser Uhrzeit (am Kalendertag nach dem Beginn des Tages) gilt der

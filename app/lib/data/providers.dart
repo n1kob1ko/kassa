@@ -20,6 +20,7 @@ import 'catalog_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
 import 'outbox_repository.dart';
+import 'period_report_repository.dart';
 import 'receipt_repository.dart';
 import 'report_repository.dart';
 import 'rksv_repository.dart';
@@ -68,6 +69,13 @@ final receiptRepositoryProvider = Provider(
 
 final cardPaymentRepositoryProvider = Provider(
   (ref) => CardPaymentRepository(
+    ref.watch(databaseProvider),
+    ref.watch(clockProvider),
+  ),
+);
+
+final periodReportRepositoryProvider = Provider<PeriodReportRepository>(
+  (ref) => PeriodReportRepository(
     ref.watch(databaseProvider),
     ref.watch(clockProvider),
   ),

@@ -223,7 +223,11 @@ class DayRepository {
     var cash = 0;
     var card = 0;
     var deposit = 0;
+    int? firstNumber;
+    int? lastNumber;
     for (final r in receipts) {
+      if (firstNumber == null || r.number < firstNumber) firstNumber = r.number;
+      if (lastNumber == null || r.number > lastNumber) lastNumber = r.number;
       final isVoid = r.kind == ReceiptKind.voided.name;
       final step = isVoid ? -1 : 1;
       count += step;
@@ -297,6 +301,8 @@ class DayRepository {
       cashOutCents: cashOut,
       expectedCashCents: float + cash + cashIn - cashOut,
       movements: movements,
+      firstNumber: firstNumber,
+      lastNumber: lastNumber,
     );
   }
 

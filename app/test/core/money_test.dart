@@ -41,4 +41,12 @@ void main() {
     expect(start.isEmpty, isTrue);
     expect(next.isEmpty, isFalse);
   });
+
+  test('groupThousands', () {
+    expect(groupThousands(1067), '1.067');
+    expect(groupThousands(-12285), '-12.285');
+    expect(groupThousands(96), '96');
+    expect(groupThousands(0), '0');
+    expect(groupThousands(1000000), '1.000.000');
+  });
 }
