@@ -1,18 +1,11 @@
 import '../../core/money.dart';
-import '../../domain/day.dart';
 
-/// Name eines Grundes, wie er in Tasten und Zeilen steht.
-String reasonLabel(CashReason r) => switch (r) {
-  CashReason.bank => 'Bank',
-  CashReason.purchase => 'Einkauf',
-  CashReason.change => 'Wechselgeld',
-  CashReason.other => 'Sonstiges',
-};
+export '../../domain/day.dart' show reasonLabel;
 
 String clockTime(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')} Uhr';
 
-String bonsLabel(int n) => n == 1 ? '1 Bon' : '$n Bons';
+String bonsLabel(int n) => n == 1 ? '1 Bon' : '${groupThousands(n)} Bons';
 
 /// Betrag mit Vorzeichen: "+1,00 €", "−0,20 €", "0,00 €".
 String signedEuro(int cents) =>

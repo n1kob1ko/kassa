@@ -6,6 +6,14 @@ enum CashMovementKind { deposit, withdrawal }
 
 enum CashReason { bank, purchase, change, other }
 
+/// Name eines Grundes, wie er in Tasten und Zeilen steht.
+String reasonLabel(CashReason r) => switch (r) {
+  CashReason.bank => 'Bank',
+  CashReason.purchase => 'Einkauf',
+  CashReason.change => 'Wechselgeld',
+  CashReason.other => 'Sonstiges',
+};
+
 class BusinessDay {
   const BusinessDay({
     required this.id,

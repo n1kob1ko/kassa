@@ -7,7 +7,6 @@ import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
-import 'close_format.dart' show reasonLabel;
 
 /// Zustand D: Bargeld einlegen oder entnehmen, mit Betrag und Grund. Speichern
 /// geht, wenn der Betrag über 0 ist und ein Grund gewählt ist.
