@@ -11,11 +11,10 @@ Was neu ist:
 Wichtig zum Test:
 
 - Die Zettel sind keine Belege. Unten steht "Kein Beleg". Sie haben keinen QR-Code und keine Bon-Nummer. Die Geldlade geht dabei nicht auf.
-- Es gibt nur abgeschlossene Monate. Heute ist der 23.11.2026, also ist der Oktober 2026 der neueste Monat, den du wählen kannst. Der November ist noch nicht vorbei.
+- Es gibt nur abgeschlossene Monate. Im November 2026 ist der Oktober 2026 der neueste Monat, den du wählen kannst. Der laufende Monat fehlt immer, weil er noch nicht vorbei ist. Testest du später, nimm überall dort, wo "Oktober 2026" steht, den neuesten abgeschlossenen Monat. Bei "Jänner bis Oktober" ist das Ende dann dieser Monat.
 - Alle Bons sind noch Testbons. Darum steht auf Bildschirm und Zettel "Testbetrieb".
 - Der Bereich "Abschluss" ist nur für den Chef. Melde dich als Chef an.
 - Die Kassa wartet beim Abschließen nie auf den Drucker. Der Tag ist auch dann abgeschlossen, wenn der Drucker nicht geht.
-- Verkaufe nur mit "Bar".
 
 Du brauchst: das Tablet mit der Kassa in Version 1.9.0, den Bondrucker (mit Papier, am Strom), ein paar Test-Bons, einen Computer mit Browser und die Adresse der Verwaltung.
 
@@ -142,7 +141,7 @@ Nimm dazu die Zettel aus A1, C und D.
 - [ ] "Bons Nr." ansehen.
   Die kleinste und die größte Nummer der Bons im Monat.
 - [ ] Die Summen ansehen.
-  "EINNAHMEN" mit Bar, Karte, Gesamt, Storniert. "STEUER" mit jedem Satz und dort Brutto, Netto und Steuer. Dazu "Pfand, ohne MwSt", wenn es Pfand gab.
+  "EINNAHMEN" mit Bar, Karte, Gesamt, Storniert. "STEUER" mit jedem Satz und dort Brutto, Netto und Steuer (nur der Zettel zeigt Netto). Dazu "Pfand, ohne MwSt", wenn es Pfand gab.
 - [ ] Nach einer Liste der Tage suchen.
   Es gibt keine. Das ist richtig, die Tage stehen nur am Bildschirm.
 - [ ] Ganz unten ansehen.
@@ -229,14 +228,14 @@ Der wichtigste Teil: Tablet, Zettel und Browser müssen auf den Cent dasselbe sa
 
 - [ ] Den Oktober 2026 vergleichen: Tablet (Abschluss, Monat) gegen Browser (Abschlüsse, Monate, Oktober).
   Bar, Karte, Gesamt und Storniert sind gleich, auch die Zahl der Bons.
-- [ ] Die Steuer vergleichen: Brutto, Netto und Steuer je Satz, dazu "Pfand, ohne MwSt".
+- [ ] Die Steuer vergleichen: Am Tablet und im Browser steht je Satz "Umsatz" und "davon MwSt". Beide Zahlen je Satz vergleichen, dazu "Pfand, ohne MwSt".
   Alle Beträge sind gleich, auf den Cent.
-- [ ] Den Zettel aus E2 danebenlegen.
-  Er zeigt dieselben Beträge wie Tablet und Browser.
+- [ ] Den Zettel aus E2 danebenlegen. Auf dem Zettel ist "Brutto" der "Umsatz" vom Bildschirm und "Steuer" ist "davon MwSt". "Netto" gibt es nur auf dem Zettel.
+  Bar, Karte, Gesamt, Storniert, Brutto und Steuer je Satz und das Pfand sind auf Zettel, Tablet und Browser gleich.
 - [ ] Jänner bis Oktober 2026 am Tablet ("Von bis") und im Browser ("Mehrere Monate") vergleichen, dazu den Zettel aus D.
-  Gesamt, Bar, Karte, Storniert, die Steuer je Satz und die Zeile für jeden Monat sind überall gleich.
-- [ ] Zwei einzelne Monate am Tablet ansehen und ihr Netto und ihre Steuer je Satz zusammenzählen. Dann dieselben zwei Monate zusammen wählen und vergleichen.
-  Netto und Steuer sind die Summe der zwei Monate, auf den Cent.
+  Gesamt, Bar, Karte, Storniert, "Umsatz" und "davon MwSt" je Satz (auf dem Zettel "Brutto" und "Steuer") und die Zeile für jeden Monat sind überall gleich.
+- [ ] Zwei einzelne Monate am Tablet ansehen und "Umsatz" und "davon MwSt" je Satz zusammenzählen. Dann dieselben zwei Monate zusammen wählen ("Von bis") und vergleichen.
+  "Umsatz" und "davon MwSt" sind je Satz die Summe der zwei Monate, auf den Cent.
 - [ ] Den Tag aus A1 vergleichen: Tablet ("Tagesabschluss"), Zettel und Blatt im Browser.
   "Bar", "Karte", "Storniert", die Steuer und der Betrag "Gezählt" sind gleich.
 - [ ] Gibt es einen Unterschied, auch nur 1 Cent: Nicht weitermachen und genau aufschreiben, wo (siehe unten).
