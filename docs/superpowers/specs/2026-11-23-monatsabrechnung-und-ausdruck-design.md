@@ -334,3 +334,29 @@ Namen von Klassen und Dateien über das Genannte hinaus, die Form der SQL-Abfrag
 1. **Niko**, zum Teil beantwortet am 23.11.2026: Die Abrechnung braucht der Chef als Ausdruck, zum Beispiel für das Finanzamt, auch über mehrere Monate. Ob zusätzlich eine Datei für die Buchhaltung gebraucht wird, ist weiter offen.
 2. **Steuerberatung von YICHI:** ob sie die Monatsabrechnung in einer bestimmten Form will.
 3. **Bekannt und nicht Teil dieser Arbeit:** Der Tagesabschluss und die Übersicht am Tablet zählen Testbons mit. Am Tag der Inbetriebnahme stehen deshalb Testbons von vorher im Tagesabschluss. Der Monat zählt sie nach R3 nicht.
+
+## 10. Abweichungen und Entscheidungen beim Bau
+
+Gebaut am 23.11.2026 als 1.9.0 (Build 11) in acht Aufgaben, jede einzeln gebaut und gegengelesen, am Ende eine Prüfung über den ganzen Bau. Diese Punkte hat Claude beim Bau entschieden. Niko kann jeden davon ändern lassen.
+
+1. **Steuer am Bildschirm:** Tablet und Browser zeigen je Satz "Umsatz" und "davon MwSt", wie in den freigegebenen Bildern. Brutto, Netto und Steuer stehen nur am Zettel. Wenn die Buchhaltung Netto auch am Bildschirm will, kommt eine Spalte dazu.
+2. **Datum im Browser:** "01.10.2026 bis 31.10.2026" wie am Zettel, nicht "1.10. bis 31.10.2026" wie im Bild.
+3. **Kopfzeile des Tages:** Der Umschalter "Tag | Monat" steht auch im Tagesabschluss. Sechs Vergleichsbilder des Abschlusses wurden deshalb neu erzeugt.
+4. **Ausdruck im Browser:** Über dem Blatt steht "Monatsabrechnung Oktober 2026", "Abrechnung Jänner bis Oktober 2026" oder "Tagesabschluss 17.11.2026, Theke", damit das Papier sagt, was es ist. Am Bildschirm bleibt der kurze Titel.
+5. **Zettel ohne Geldlade:** Statt "In der Lade gelassen" steht "Wechselgeld für morgen".
+6. **Schmale Zettel (32 Zeichen):** "Zeitraum" steht dann allein in der Zeile, das Datum darunter.
+7. **Adresse im Browser:** Ein Zeitraum hat die Adresse `/monate/2026-01..2026-10`. Der Server liefert dafür jetzt die Seite aus. Als Datei gilt nur noch, was mit Punkt und Buchstaben oder Ziffern endet (`server/src/web.ts`).
+8. **Wählbare Monate:** vom Monat des ersten Bons dieser Kassa bis zum letzten abgeschlossenen Monat. Monate davor sind gesperrt.
+9. **Tests:** Beim Bau liefen nur die betroffenen Testdateien, die ganzen Tests von App und Server liefen auf GitHub vom Zweig. Die Tests der Verwaltung im Browser mit echtem Browser (Playwright) laufen nicht auf GitHub, sie liefen hier am fertigen Stand.
+
+Bewusst nicht gemacht, weil klein oder selten:
+
+- Die Abfragen der Monate am Server nutzen den Index nicht. Das reicht für das erste Jahr eines Betriebs und gehört davor umgebaut.
+- Verlässt man den Abschluss genau in dem Moment, in dem der Tag abgeschlossen wird, druckt der Bericht nicht von selbst. "Bericht drucken" geht danach.
+- Bleibt "Monat" über Mitternacht am Monatsersten offen, erscheint der neue Monat erst, wenn man den Bereich neu öffnet.
+- Beim Wechsel des Zeitraums steht die große Summe kurz noch vom alten Zeitraum neben dem neuen Datum.
+
+Zu wissen für den Test:
+
+- Eine Kassa, die erst seit November 2026 Bons hat, hat noch keinen abgeschlossenen Monat. Die Monatsabrechnung lässt sich dort ab 1. Dezember prüfen. Bis dahin steht "Die erste Monatsabrechnung gibt es ab 1. Dezember."
+- Der Browser zählt alle Kassen eines Betriebs zusammen, das Tablet nur die eigenen Bons. Mit einer Kassa sind beide gleich.
