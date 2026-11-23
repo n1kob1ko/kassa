@@ -93,7 +93,7 @@ Sie gelten gleich am Tablet, am Zettel und am Server.
 - **R5 Storno.** Anzahl der Storno-Bons und ihre Summe als positive Zahl. Die Zeile fehlt, wenn es keinen gibt.
 - **R6 Steuer.** Je Satz die Summe brutto des Monats, daraus Netto und Steuer mit `taxBreakdown` aus `pricing.dart` (kaufmännisch gerundet, einmal auf der Monatssumme). Sätze ohne Betrag fehlen. Der Server rechnet mit derselben Formel in ganzen Cent.
 - **R7 Pfand.** Summe des Pfands als eigene Zeile "Pfand, ohne MwSt". Die Zeile fehlt bei 0.
-- **R8 Tage.** Eine Zeile je Kalendertag mit mindestens einem gezählten Bon: Datum, Anzahl Bons, Umsatz. Aufsteigend.
+- **R8 Tage.** Eine Zeile je Kalendertag mit mindestens einem gezählten Bon: Datum, Anzahl Bons, Umsatz. Aufsteigend. Die Tage stehen am Bildschirm des Tablets und im Browser, nicht am Zettel (Niko am 23.11.2026 als Kommentar am Bild des Zettels: "Gib die Tage weg").
 - **R9 Laufender Monat.** Lässt sich ansehen und drucken und trägt den Vermerk "Monat läuft noch" mit Datum und Uhrzeit des Stands.
 - **R10 Welche Monate.** Vom Monat des ältesten gezählten Bons bis zum laufenden Monat. Gibt es keinen gezählten Bon, gibt es nur den laufenden Monat, leer. Zukunft gibt es nicht.
 - **R11 Gleichheit.** Tablet und Server rechnen dieselben Prüfdaten (`shared/fixtures/stats/`, neue Datei für den Monat) und müssen auf den Cent dasselbe liefern.
@@ -222,18 +222,13 @@ MwSt 10 %
   Steuer                          1.464,78
 Pfand, ohne MwSt                    119,50
 ------------------------------------------
-TAGE
-So 01.11.        38 Bons            702,40
-Mo 02.11.        51 Bons            911,80
-...
-------------------------------------------
         Gedruckt 23.11.2026 14:06
                 Kein Beleg
 ```
 
 - Kopf: Name und Adresse des Betriebs wie am Bon, ohne UID und ohne Schlusssatz.
 - Tagesabschluss: Datum ist der Tag, an dem der Tag geöffnet wurde. Ohne Geldlade heißt der Teil "BARGELD". Bewegungen einzeln in der Reihenfolge der Zeit, mit Uhrzeit davor. "Bons Nr." nennt die kleinste und größte Nummer der gezählten Bons (auch am Monat); ohne Bon fehlt die Zeile.
-- Monatsabrechnung: "Monat läuft noch" und "Stand" nur beim laufenden Monat. "Testbetrieb" unter dem Titel, wenn R3 es sagt.
+- Monatsabrechnung: ohne die Liste der Tage (R8). "Monat läuft noch" und "Stand" nur beim laufenden Monat. "Testbetrieb" unter dem Titel, wenn R3 es sagt.
 - Passt eine Zeile nicht in 32 Zeichen, bricht sie wie am Bon um; Beträge stehen immer rechtsbündig.
 
 ### 5.4 Browser
