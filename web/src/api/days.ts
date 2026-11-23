@@ -26,11 +26,23 @@ export type CashMovement = {
   staffName: string;
 };
 
+/** Steuer eines Satzes (Prozent), aus der Summe brutto gerechnet; Sätze ohne Betrag fehlen. */
+export type TaxLine = { percent: number; grossCents: number; netCents: number; taxCents: number };
+
 export type DayDetail = DayHead & {
   openingFloatCents: number;
   leftInDrawerCents: number | null;
   movements: CashMovement[];
   receiptCount: number;
+  cashCents: number;
+  cardCents: number;
+  cashReceiptCount: number;
+  cardReceiptCount: number;
+  voidCount: number;
+  /** Summe der Stornos als positive Zahl. */
+  voidedCents: number;
+  depositCents: number;
+  taxLines: TaxLine[];
 };
 
 export const daysKey = (b: string) => ['days', b] as const;

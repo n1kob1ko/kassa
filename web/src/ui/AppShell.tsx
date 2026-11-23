@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
 import { Dialog } from './Dialog';
 import { toast } from './Toast';
@@ -11,10 +11,12 @@ export type NavItem = {
   to: string;
   label: string;
   icon: ReactNode;
-  /** Kürzere Beschriftung für die Leiste unten am Handy ("Tage" statt "Tagesabschlüsse"). */
+  /** Kürzere Beschriftung für die Leiste unten am Handy ("Abschluss" statt "Abschlüsse"). */
   shortLabel?: string;
   /** Am Rechner in der Reihe wie die anderen, am Handy immer unter "Mehr" (der Weg zu "Alle Betriebe"). */
   phoneInMore?: boolean;
+  /** Weitere Adressen, auf denen der Bereich als aktuell gilt ("Abschlüsse" auf den Tagen und den Monaten). */
+  also?: string[];
 };
 
 /** So viele Ziele passen in die Leiste unten. Sind es mehr Bereiche, zeigt sie vier und "Mehr". */
@@ -39,6 +41,10 @@ function isCurrent(pathname: string, to: string): boolean {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
+function itemCurrent(pathname: string, item: NavItem): boolean {
+  return [item.to, ...(item.also ?? [])].some((to) => isCurrent(pathname, to));
+}
+
 export type AppShellProps = {
   nav: NavItem[];
   children: ReactNode;
@@ -61,25 +67,29 @@ export function AppShell({ nav, children }: AppShellProps) {
   const { bar, more } = splitForPhone(nav);
   const moreOpen = (location.state as MoreState)?.more === PAGE_LOAD && more.length > 0;
   const moreButton = useRef<HTMLButtonElement>(null);
-  const moreCurrent = more.some((item) => isCurrent(location.pathname, item.to));
+  const moreCurrent = more.some((item) => itemCurrent(location.pathname, item));
 
   const openMore = () => navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { state: { more: PAGE_LOAD } });
   const closeMore = () => navigate(-1);
 
   const links = (items: NavItem[], className: string, short = false) =>
-    items.map((item) => (
-      <NavLink
-        key={item.to}
-        to={item.to}
-        className={({ isActive }) => [className, isActive ? styles.active : ''].filter(Boolean).join(' ')}
-        aria-label={short && item.shortLabel ? item.label : undefined}
-      >
-        <span className={styles.navIcon} aria-hidden="true">
-          {item.icon}
-        </span>
-        <span className={styles.navLabel}>{short ? (item.shortLabel ?? item.label) : item.label}</span>
-      </NavLink>
-    ));
+    items.map((item) => {
+      const current = itemCurrent(location.pathname, item);
+      return (
+        <Link
+          key={item.to}
+          to={item.to}
+          className={[className, current ? styles.active : ''].filter(Boolean).join(' ')}
+          aria-current={current ? 'page' : undefined}
+          aria-label={short && item.shortLabel ? item.label : undefined}
+        >
+          <span className={styles.navIcon} aria-hidden="true">
+            {item.icon}
+          </span>
+          <span className={styles.navLabel}>{short ? (item.shortLabel ?? item.label) : item.label}</span>
+        </Link>
+      );
+    });
 
   return (
     <div className={styles.shell}>

@@ -9,6 +9,8 @@ export type DialogProps = {
   children: ReactNode;
   /** Knöpfe unten, die Hauptaktion zuletzt. Ohne: kein Fuß (etwa ein Blatt, das nur zeigt). */
   actions?: ReactNode;
+  /** Knöpfe im Kopf neben "Schließen", etwa "Drucken" auf einem Blatt. */
+  headerActions?: ReactNode;
   /**
    * `center` (Vorgabe): Dialog in der Mitte, unter 640 px ein Blatt von unten.
    * `side`: ab 640 px ein Blatt von rechts über der abgedunkelten Seite, darunter eine ganze Seite mit "Zurück".
@@ -30,7 +32,7 @@ function isVisible(el: HTMLElement): boolean {
  * Der Fokus bleibt im Dialog, Escape schließt ihn, danach geht der Fokus zurück, wo er vorher war.
  * Unter 640 px kommt er als Blatt von unten.
  */
-export function Dialog({ title, open, onClose, children, actions, variant = 'center', returnFocus }: DialogProps) {
+export function Dialog({ title, open, onClose, children, actions, headerActions, variant = 'center', returnFocus }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const opener = useRef<Element | null>(null);
@@ -101,7 +103,8 @@ export function Dialog({ title, open, onClose, children, actions, variant = 'cen
     >
       {open && (
         <div className={styles.panel}>
-          <header className={styles.head}>
+          {/* Im Druck steht der Kopf nicht: das Blatt bringt dort seinen eigenen (print.css). */}
+          <header className={styles.head} data-print-hide>
             {variant === 'side' && (
               // Am Handy ist das Blatt eine eigene Seite: zurück statt schließen. Ab 640 px ist der Knopf versteckt.
               <button type="button" className={styles.back} onClick={onClose}>
@@ -112,6 +115,7 @@ export function Dialog({ title, open, onClose, children, actions, variant = 'cen
             <h2 id={titleId} className={styles.title}>
               {title}
             </h2>
+            {headerActions && <div className={styles.headActions}>{headerActions}</div>}
             <button type="button" className={styles.close} onClick={onClose} aria-label="Schließen">
               <CloseIcon size={20} />
             </button>

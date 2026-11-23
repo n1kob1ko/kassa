@@ -64,6 +64,11 @@
   white-space: nowrap;
 }
 
+.quiet dd {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
 .strong dt {
   color: var(--ink);
   font-weight: 700;

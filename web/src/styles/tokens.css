@@ -1,6 +1,6 @@
 /*
  * Farben, Schrift, Rundungen, Abstände und Bewegung aus DESIGN.md, mit denselben Namen wie ui/tokens.dart.
- * Helle und dunkle Ansicht nach Systemeinstellung, beide mit denselben Namen.
+ * Helle und dunkle Ansicht nach Systemeinstellung, beide mit denselben Namen. Gedruckt wird immer hell (print.css).
  */
 
 @font-face {
@@ -115,7 +115,7 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root {
     --accent: #0f766e;
     --accent-soft: #173233;

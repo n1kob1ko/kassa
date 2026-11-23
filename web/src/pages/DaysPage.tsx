@@ -8,7 +8,9 @@ import { PageHeader } from '../ui/PageHeader';
 import { RowGroup, RowLink, RowListSkeleton } from '../ui/RowList';
 import { StatusChip } from '../ui/StatusChip';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
+import { ClosingTabs } from './ClosingTabs';
 import { DayDetailView, Difference } from './DayDetail';
+import { PrintButton, PrintFrame } from './PrintFrame';
 import { useDetailRoute } from './useDetailRoute';
 import styles from './DaysPage.module.css';
 
@@ -83,10 +85,22 @@ export function DaysPage() {
 
   return (
     <>
-      <PageHeader title="Tagesabschlüsse" subtitle={<BusinessName />} />
+      <PageHeader title="Abschlüsse" subtitle={<BusinessName />} />
+      <ClosingTabs businessId={b.id} current="tage" />
       {body}
-      <Dialog variant="side" title={title} open={route.id !== null} onClose={route.close} returnFocus={route.rowOf}>
-        {route.id && <DayDetailView query={opened} />}
+      <Dialog
+        variant="side"
+        title={title}
+        open={route.id !== null}
+        onClose={route.close}
+        returnFocus={route.rowOf}
+        headerActions={opened.data ? <PrintButton /> : undefined}
+      >
+        {route.id && (
+          <PrintFrame title={title}>
+            <DayDetailView query={opened} />
+          </PrintFrame>
+        )}
       </Dialog>
     </>
   );

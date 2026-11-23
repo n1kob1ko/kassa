@@ -97,6 +97,18 @@ describe('Seiten aus dem gebauten Ordner', () => {
     }
   });
 
+  test('ein Punkt mitten in einer Seitenadresse ist keine Endung: der Zeitraum /monate/2026-01..2026-10 ist die Seite', async () => {
+    for (const url of ['/b/123/monate/2026-01..2026-10', '/b/123/monate/2025-11..2026-02?x=1']) {
+      const res = await t.app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(200);
+      expect(res.body, url).toBe(INDEX);
+    }
+    for (const url of ['/robots.txt', '/b/123/bild.png']) {
+      const res = await t.app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(404);
+    }
+  });
+
   test('ändernde Anfragen auf Seitenadressen bekommen nicht die Seite', async () => {
     const res = await t.app.inject({ method: 'POST', url: '/betriebe', payload: {} });
     expect(res.statusCode).toBe(404);

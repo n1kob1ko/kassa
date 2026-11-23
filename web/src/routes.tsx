@@ -8,6 +8,7 @@ import { DaysPage } from './pages/DaysPage';
 import { BusinessIndex, BusinessLayout } from './pages/BusinessLayout';
 import { LoginPage } from './pages/LoginPage';
 import { MenuPage } from './pages/MenuPage';
+import { MonthsPage } from './pages/MonthsPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
 import { RegistersPage } from './pages/RegistersPage';
@@ -27,14 +28,20 @@ export const providerNav: NavItem[] = [
 ];
 
 /**
- * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Tagesabschlüsse, Speisekarte, Kassen,
+ * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Abschlüsse, Speisekarte, Kassen,
  * Mitarbeiter, Betrieb. Der Anbieter hat davor den Weg zurück zu allen Betrieben (am Handy unter "Mehr").
  */
 export function businessNav(businessId: string, provider: boolean): NavItem[] {
   const own: NavItem[] = [
     { to: `/b/${businessId}/umsaetze`, label: 'Umsätze', icon: <ChartIcon size={22} /> },
     { to: `/b/${businessId}/bons`, label: 'Bons', icon: <ReceiptLinesIcon size={22} /> },
-    { to: `/b/${businessId}/tage`, label: 'Tagesabschlüsse', shortLabel: 'Tage', icon: <CalendarCheckIcon size={22} /> },
+    {
+      to: `/b/${businessId}/tage`,
+      label: 'Abschlüsse',
+      shortLabel: 'Abschluss',
+      icon: <CalendarCheckIcon size={22} />,
+      also: [`/b/${businessId}/monate`],
+    },
     { to: `/b/${businessId}/speisekarte`, label: 'Speisekarte', icon: <BookIcon size={22} /> },
     { to: `/b/${businessId}/kassen`, label: 'Kassen', icon: <TabletIcon size={22} /> },
     { to: `/b/${businessId}/mitarbeiter`, label: 'Mitarbeiter', icon: <UsersIcon size={22} /> },
@@ -137,6 +144,7 @@ export const router = createBrowserRouter([
           // Das Detail liegt über der Liste: die Seite bleibt dieselbe, sie liest die Kennung aus der Adresse.
           { path: 'bons', element: <ReceiptsPage />, children: [{ path: ':id', element: null }] },
           { path: 'tage', element: <DaysPage />, children: [{ path: ':id', element: null }] },
+          { path: 'monate', element: <MonthsPage />, children: [{ path: ':id', element: null }] },
           { path: 'kassen', element: <RegistersPage /> },
           { path: 'mitarbeiter', element: <StaffPage /> },
           { path: 'speisekarte', element: <MenuPage /> },

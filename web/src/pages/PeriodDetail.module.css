@@ -1,0 +1,222 @@
+/* Blatt eines Monats oder Zeitraums: Zeilen von 42 px mit feiner Linie darüber, Beträge rechts in Tabellenziffern. */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-xl);
+}
+
+.meta {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  padding-bottom: var(--space-sm);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink2);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  min-height: 42px;
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.amount {
+  flex: none;
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.note {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.row[data-tone='total'] .label {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.row[data-tone='total'] .amount {
+  font-weight: 800;
+}
+
+.row[data-tone='muted'] .amount {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+/* Steuer: Satz links, Umsatz und davon MwSt in zwei rechtsbündigen Spalten. */
+.tax {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.tax th,
+.tax td {
+  padding: var(--space-xs) 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tax thead th {
+  padding: 0 0 var(--space-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink2);
+  vertical-align: bottom;
+}
+
+.tax thead th + th,
+.tax td {
+  width: 110px;
+  padding-left: var(--space-md);
+}
+
+.tax .taxTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.tax tbody tr {
+  height: 42px;
+  border-top: 1px solid var(--line);
+}
+
+.tax tbody th {
+  font-weight: 600;
+  color: var(--ink2);
+  text-align: left;
+  white-space: normal;
+}
+
+.tax td {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.tax .strongCell {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Tage oder Monate: Bezeichnung, Anzahl Bons klein, Umsatz rechts. Die Spalten stehen über alle Zeilen gleich. */
+.list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: var(--space-xl);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 42px;
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.itemLabel {
+  min-width: 96px;
+  font-weight: 600;
+}
+
+.itemCount {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.itemAmount {
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.problem {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.problemBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xl);
+}
+
+.bone {
+  display: block;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--fill) 0%, var(--fill2) 50%, var(--fill) 100%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.bone:first-of-type {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+    background: var(--fill);
+  }
+}

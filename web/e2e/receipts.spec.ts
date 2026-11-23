@@ -415,7 +415,7 @@ test('Bons und Tage laden alle 60 Sekunden von selbst nach, die geladenen Seiten
   await expect(receiptRows(page).last()).toHaveAccessibleName(/^Bon 1\b/);
 
   await page.goto(`/b/${site.businessId}/tage`);
-  const rows = page.getByRole('main').getByRole('link');
+  const rows = page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link');
   await expect(rows).toHaveCount(1);
   await pushEntries(page, site, [{ kind: 'day', day: openDay({ openedAt: new Date() }) }]);
   await page.clock.fastForward(61_000);
@@ -533,8 +533,8 @@ test('Tage: offener Tag, abgeschlossener Tag mit Differenz und Bewegung', async 
   await pushEntries(page, site, [{ kind: 'day', day: closed }]);
 
   await page.goto(`/b/${site.businessId}/tage`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Tagesabschlüsse' })).toBeVisible();
-  const rows = page.getByRole('main').getByRole('link');
+  await expect(page.getByRole('heading', { level: 1, name: 'Abschlüsse' })).toBeVisible();
+  const rows = page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText('offen');
   await expect(rows.first()).toContainText('Theke');
@@ -556,7 +556,7 @@ test('Tage: offener Tag, abgeschlossener Tag mit Differenz und Bewegung', async 
   await expect(movements).toHaveCount(1);
   await expect(movements.first()).toContainText('Entnommen: Bank');
   await expect(movements.first()).toContainText(eur('−20,00'));
-  await expect(detail.getByRole('button')).toHaveCount(1);
+  await expect(detail.getByRole('button')).toHaveText(['Drucken', '']);
 
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/tage$`));
@@ -574,7 +574,7 @@ test.describe('Handy', () => {
     const site = await createSite(page, { name: 'Imbiss am Handy' });
     await page.goto(`/b/${site.businessId}/umsaetze`);
     const bar = bottomBar(page);
-    await expect(bar.getByRole('link')).toHaveText(['Umsätze', 'Bons', 'Tage', 'Speisekarte']);
+    await expect(bar.getByRole('link')).toHaveText(['Umsätze', 'Bons', 'Abschluss', 'Speisekarte']);
     const more = bar.getByRole('button', { name: 'Mehr' });
     await expect(more).toBeVisible();
     await expect(more).not.toHaveAttribute('aria-current');
@@ -723,10 +723,10 @@ test('360 px: Bons, Bon, Tage und Tag ohne waagrechtes Scrollen', async ({ page 
   await expect(page.getByRole('dialog', { name: 'Bon 1' })).toBeVisible();
   await noHorizontalScroll(page, 'Bon');
   await page.goto(`/b/${site.businessId}/tage`);
-  await expect(page.getByRole('main').getByRole('link')).toHaveCount(1);
-  await expect(page.getByRole('main').getByRole('link')).toContainText(`Differenz ${eur('+2,00')}`);
+  await expect(page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link')).toContainText(`Differenz ${eur('+2,00')}`);
   await noHorizontalScroll(page, 'Tage');
-  // Die Leiste unten: fünf Ziele, keine Beschriftung abgeschnitten ("Tage" statt "Tagesabschlüsse").
+  // Die Leiste unten: fünf Ziele, keine Beschriftung abgeschnitten ("Abschluss" statt "Abschlüsse").
   const labels = await bottomBar(page)
     .locator('a, button')
     .evaluateAll((els) =>
@@ -740,7 +740,7 @@ test('360 px: Bons, Bon, Tage und Tag ohne waagrechtes Scrollen', async ({ page 
         };
       }),
     );
-  expect(labels.map((l) => l.text)).toEqual(['Umsätze', 'Bons', 'Tage', 'Speisekarte', 'Mehr']);
+  expect(labels.map((l) => l.text)).toEqual(['Umsätze', 'Bons', 'Abschluss', 'Speisekarte', 'Mehr']);
   for (const l of labels) {
     expect(l.clipped, l.text ?? '').toBe(false);
     expect(l.height).toBeGreaterThanOrEqual(44);

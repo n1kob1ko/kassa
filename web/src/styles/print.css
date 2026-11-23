@@ -1,0 +1,111 @@
+/*
+ * Druckansicht: liegt ein Blatt (Dialog) offen, druckt nur das Blatt, schwarz auf weiß, A4 hoch. Oben stehen Betrieb
+ * und Titel, unten "Erstellt am" (PrintFrame); beides nur im Druck. Die dunklen Farben gelten nur am Bildschirm
+ * (tokens.css), im Druck gelten die hellen. Ohne offenes Blatt druckt die Seite, wie sie ist.
+ */
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 0;
+    background: var(--card);
+    color: var(--ink);
+  }
+
+  /* Alles, was das offene Blatt weder ist noch enthält, fällt weg; seine Vorfahren geben keine eigene Box. */
+  body:has(dialog[open]) *:not(dialog[open], dialog[open] *, :has(dialog[open])) {
+    display: none !important;
+  }
+
+  body:has(dialog[open]) *:has(dialog[open]) {
+    display: contents !important;
+  }
+
+  dialog[open] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: none;
+    overflow: visible;
+    /* Das Hereingleiten des Blatts (Dialog.module.css) hat die stärkere Regel; im Druck steht es still. */
+    animation: none !important;
+  }
+
+  dialog[open]::backdrop {
+    display: none;
+  }
+
+  dialog[open] > *,
+  dialog[open] > * > * {
+    min-height: 0;
+    padding: 0;
+  }
+
+  [data-print-hide],
+  dialog[open] button {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-huge);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .print-business {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .print-title {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .print-foot {
+    margin-top: var(--space-huge);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink2);
+  }
+
+  /* Zeilen und Tabellen brechen nicht mitten durch. */
+  li,
+  tr,
+  dl > div {
+    break-inside: avoid;
+  }
+}

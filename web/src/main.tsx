@@ -7,6 +7,7 @@ import { ApiError, setUnauthorizedHandler } from './api/client';
 import { router } from './routes';
 import './styles/tokens.css';
 import './styles/base.css';
+import './styles/print.css';
 import { Toaster } from './ui/Toast';
 
 // Daten bleiben sichtbar, während sie im Hintergrund neu geladen werden (stale-while-revalidate).

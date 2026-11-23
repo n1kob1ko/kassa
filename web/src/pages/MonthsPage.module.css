@@ -1,0 +1,124 @@
+/* Monate: oben "Mehrere Monate" mit Von, Bis und Anzeigen, darunter eine Karte mit einer Zeile je Monat. */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) var(--space-xxl);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xxl);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+
+.rangeTitle {
+  margin-right: var(--space-sm);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.select {
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-xl);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--duration-color) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .select:hover {
+    border-color: var(--ink2);
+  }
+}
+
+.select:focus-visible {
+  border-color: var(--accent);
+}
+
+/* Platzhalter in der Höhe der Zeile "Mehrere Monate", damit beim Laden nichts springt. */
+.rangeBone {
+  height: 70px;
+  border-radius: var(--radius-xxl);
+  background: var(--fill);
+}
+
+/* Am Handy: Von und Bis je eine Zeile, das Feld nimmt den Rest; Anzeigen über die ganze Breite. */
+@media (max-width: 639.98px) {
+  .range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .field {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .show {
+    width: 100%;
+  }
+}
+
+/* Eine Zeile: Monat, Anzahl Bons ruhig, Umsatz rechts. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.count {
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+  white-space: nowrap;
+}
+
+.revenue {
+  flex: none;
+  min-width: 110px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 639.98px) {
+  .revenue {
+    min-width: 0;
+  }
+}

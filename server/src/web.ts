@@ -10,6 +10,9 @@ const IMMUTABLE = 'public, max-age=31536000, immutable';
 /** Adressen, die der Server selbst beantwortet. Dort gibt es nie die Seite, sondern die eigene 404. */
 const SERVER_AREAS = ['/api', '/laden', '/healthz', '/assets'];
 
+/** Eine Datei hat eine Endung aus Buchstaben und Ziffern ("favicon.ico"); ein Zeitraum "2026-01..2026-10" nicht. */
+const FILE_ENDING = /\.[A-Za-z0-9]+$/;
+
 function inArea(path: string, area: string): boolean {
   return path === area || path.startsWith(`${area}/`);
 }
@@ -63,7 +66,7 @@ export async function registerWeb(app: FastifyInstance, webDir: string | undefin
   app.get('/*', async (req, reply) => {
     const path = req.url.split('?')[0]!;
     const lastSegment = path.slice(path.lastIndexOf('/') + 1);
-    if (SERVER_AREAS.some((area) => inArea(path, area)) || lastSegment.includes('.')) {
+    if (SERVER_AREAS.some((area) => inArea(path, area)) || FILE_ENDING.test(lastSegment)) {
       return reply.callNotFound();
     }
     reply.header('cache-control', 'no-cache');

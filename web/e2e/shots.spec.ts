@@ -669,13 +669,13 @@ for (const size of sizes) {
         await page.unroute(`**/api/admin/businesses/${businessId}/receipts?*`);
 
         await page.goto(`/b/${businessId}/tage`);
-        await expect(page.getByRole('main').getByRole('link').first()).toBeVisible();
+        await expect(page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link').first()).toBeVisible();
         await shoot(page, `tage-${suffix}`);
         await page.goto(`/b/${businessId}/tage/${day}`);
         await expect(page.getByRole('dialog').getByTestId('difference')).toBeVisible();
         await shoot(page, `tag-detail-${suffix}`, false);
         await page.keyboard.press('Escape');
-        await page.getByRole('main').getByRole('link').first().click();
+        await page.getByRole('main').getByRole('list', { name: 'Tage' }).getByRole('link').first().click();
         await expect(page.getByRole('dialog').getByText('offen')).toBeVisible();
         await shoot(page, `tag-detail-offen-${suffix}`, false);
       });

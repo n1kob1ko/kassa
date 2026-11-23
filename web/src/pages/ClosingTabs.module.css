@@ -1,0 +1,46 @@
+/* Wie der Umschalter (Segmented): fill2, 3 px Innenabstand, 2 px Abstand; das aktuelle Ziel ist eine Karte. */
+.tabs {
+  display: flex;
+  align-self: flex-start;
+  width: fit-content;
+  gap: var(--space-xxs);
+  margin-bottom: 20px;
+  padding: 3px;
+  border-radius: calc(var(--radius-md) + 3px);
+  background: var(--fill2);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  height: var(--control-height);
+  padding: 0 20px;
+  border-radius: var(--radius-md);
+  color: var(--ink2);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press) var(--ease),
+    background-color var(--duration-color) linear,
+    color var(--duration-color) linear;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[aria-current='page'] {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: var(--shadow-card);
+}
+
+.tab:active {
+  transform: scale(0.97);
+}

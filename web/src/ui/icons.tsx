@@ -180,12 +180,21 @@ export const ReceiptLinesIcon = icon(
   </>,
 );
 
-/** Kalender mit Haken: Tagesabschlüsse. */
+/** Kalender mit Haken: Abschlüsse. */
 export const CalendarCheckIcon = icon(
   <>
     <rect width="18" height="18" x="3" y="4" rx="2" />
     <path d="M16 2v4M8 2v4M3 10h18" />
     <path d="m9 16 2 2 4-4" />
+  </>,
+);
+
+/** Drucker: ein Blatt drucken. */
+export const PrinterIcon = icon(
+  <>
+    <path d="M7 9V4h10v5" />
+    <rect x="4" y="9" width="16" height="8" rx="2" />
+    <path d="M7 14h10v6H7z" />
   </>,
 );
 

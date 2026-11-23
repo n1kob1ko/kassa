@@ -4,6 +4,7 @@ import type { CashMovement, DayDetail } from '../api/days';
 import { count, money, signedMoney, timeText } from '../format';
 import { Button } from '../ui/Button';
 import { StatusChip } from '../ui/StatusChip';
+import { TaxTable } from './PeriodDetail';
 import styles from './DayDetail.module.css';
 
 /** Gründe einer Bewegung wie in der App (`close_format.dart`); Unbekanntes steht, wie es kommt. */
@@ -32,6 +33,18 @@ function Figure({ label, cents, testId, strong = false }: { label: string; cents
   );
 }
 
+/** Eine Zahl mit der Anzahl Bons klein daneben; `quiet` für Storniert. */
+function CountFigure(props: { label: string; receipts: number; cents: number; testId: string; quiet?: boolean }) {
+  return (
+    <div className={[styles.figure, props.quiet ? styles.quiet : ''].filter(Boolean).join(' ')}>
+      <dt>
+        {props.label} <span className={styles.note}>{count(props.receipts, 'Bon', 'Bons')}</span>
+      </dt>
+      <dd data-testid={props.testId}>{money(props.cents)}</dd>
+    </div>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className={styles.detail} role="status" aria-busy="true">
@@ -43,7 +56,10 @@ function DetailSkeleton() {
   );
 }
 
-/** Inhalt des Blatts eines Tages: Wechselgeld, Umsatz, Abschluss und Bewegungen. Nichts daran ist änderbar. */
+/**
+ * Inhalt des Blatts eines Tages: Wechselgeld und Umsatz, Bar, Karte und Storniert, Abschluss, Steuer und Pfand,
+ * Bewegungen. Nichts daran ist änderbar. Ein offener Tag zeigt (auch im Druck) "offen" und keine Zahlen des Abschlusses.
+ */
 export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiError> }) {
   // Scheitert nur ein Neuladen, bleibt der Tag stehen.
   if (query.isError && !query.data) {
@@ -77,7 +93,9 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
         {!closed && (
           <div className={styles.open}>
             <StatusChip tone="neutral">offen</StatusChip>
-            <p className={styles.openText}>Erwartet und gezählt stehen hier nach dem Abschluss.</p>
+            <p className={styles.openText} data-print-hide>
+              Erwartet und gezählt stehen hier nach dem Abschluss.
+            </p>
           </div>
         )}
       </div>
@@ -90,6 +108,9 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
           </dt>
           <dd data-testid="revenue">{money(d.revenueCents)}</dd>
         </div>
+        <CountFigure label="Bar" receipts={d.cashReceiptCount} cents={d.cashCents} testId="cash" />
+        <CountFigure label="Karte" receipts={d.cardReceiptCount} cents={d.cardCents} testId="card" />
+        {d.voidCount > 0 && <CountFigure label="Storniert" receipts={d.voidCount} cents={d.voidedCents} testId="voided" quiet />}
         {closed && d.expectedCents !== null && <Figure label="Erwartet" cents={d.expectedCents} testId="expected" />}
         {closed && d.countedCents !== null && <Figure label="Gezählt" cents={d.countedCents} testId="counted" strong />}
         {closed && d.differenceCents !== null && (
@@ -106,6 +127,8 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
           <Figure label="In der Lade gelassen" cents={d.leftInDrawerCents} testId="left-in-drawer" />
         )}
       </dl>
+
+      <TaxTable lines={d.taxLines} depositCents={d.depositCents} />
 
       <section className={styles.section} aria-labelledby="tag-bewegungen">
         <h3 id="tag-bewegungen" className={styles.sectionTitle}>
