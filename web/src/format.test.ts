@@ -69,6 +69,14 @@ test('count: Einzahl und Mehrzahl', () => {
   expect(count(3, 'Artikel')).toBe('3 Artikel');
 });
 
+test('count: Tausenderpunkt wie am Tablet', () => {
+  expect(count(999, 'Bon', 'Bons')).toBe('999 Bons');
+  expect(count(1067, 'Bon', 'Bons')).toBe('1.067 Bons');
+  expect(count(1_234_567, 'Bon', 'Bons')).toBe('1.234.567 Bons');
+  expect(count(1, 'Bon', 'Bons')).toBe('1 Bon');
+  expect(count(-1, 'Bon', 'Bons')).toBe('-1 Bons');
+});
+
 const NBSP = ' ';
 
 test('money: deutsch mit Tausenderpunkt, Komma, zwei Stellen und geschütztem Leerzeichen vor dem Euro', () => {

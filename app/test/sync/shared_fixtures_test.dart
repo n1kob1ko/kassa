@@ -83,10 +83,13 @@ Map<String, Object?> _overviewJson(Overview o) => {
 void main() {
   late TestShop shop;
 
-  setUp(() async => shop = await TestShop.open());
-  tearDown(() => shop.close());
-
   var dayCount = 0;
+
+  setUp(() async {
+    dayCount = 0;
+    shop = await TestShop.open();
+  });
+  tearDown(() => shop.close());
 
   /// Sorgt dafür, dass zur Zeit [at] der Tag dieses Kalendertags offen ist: ein
   /// offener Tag eines früheren Kalendertags wird abgeschlossen.

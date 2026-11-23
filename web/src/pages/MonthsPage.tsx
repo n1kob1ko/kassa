@@ -2,13 +2,14 @@ import { useId, useState } from 'react';
 import { useNavigate, type To } from 'react-router';
 import { useMonths, usePeriodSummary, type MonthHead } from '../api/months';
 import { count, money } from '../format';
-import { dayMonthText, monthLabel, parsePeriodId, periodId, periodTitle } from '../period';
+import { dayMonthText, monthLabel, parsePeriodId, periodId, periodPrintTitle, periodTitle } from '../period';
 import { Button } from '../ui/Button';
 import { LoadError } from '../ui/DataList';
 import { Dialog } from '../ui/Dialog';
 import { EmptyState } from '../ui/EmptyState';
 import { PageHeader } from '../ui/PageHeader';
 import { RowGroup, RowLink, RowListSkeleton } from '../ui/RowList';
+import { StatusChip } from '../ui/StatusChip';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
 import { ClosingTabs } from './ClosingTabs';
 import { PeriodDetailView } from './PeriodDetail';
@@ -110,6 +111,11 @@ export function MonthsPage() {
     const months = query.data.months;
     body = (
       <div className={styles.content}>
+        {query.data.testMode && (
+          <p className={styles.testMode}>
+            <StatusChip tone="neutral">Testbetrieb</StatusChip>
+          </p>
+        )}
         <RangePicker
           months={months}
           onShow={(from, to) => navigate(route.detailTo(periodId({ from, to })), { state: route.fromListState })}
@@ -154,7 +160,7 @@ export function MonthsPage() {
         headerActions={period && summary.data ? <PrintButton /> : undefined}
       >
         {route.id !== null && (
-          <PrintFrame title={title}>
+          <PrintFrame title={period ? periodPrintTitle(period) : title}>
             <PeriodDetailView period={period} query={summary} />
           </PrintFrame>
         )}

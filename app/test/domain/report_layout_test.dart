@@ -360,10 +360,20 @@ void main() {
           .firstWhere((t) => t.contains('12.285 Bons'));
       expect(gesamt.length, w);
       expect(gesamt.endsWith('224.959,60'), isTrue);
+      // Monatszeile: Betrag rechtsbündig, bei 32 Zeichen steht der Monat
+      // allein in der Zeile darüber.
       final lines = texts(period(manySample(), columns: w));
-      final i = lines.indexOf('Oktober 2026');
-      final oct = i >= 0 ? lines[i + 1] : lines.last;
-      expect(oct.length, lessThanOrEqualTo(w));
+      final oct = lines.firstWhere((t) => t.endsWith('19.412,10'));
+      expect(oct.length, w);
+      expect(oct, contains('1.067 Bons'));
+      if (w >= 42) {
+        expect(oct, startsWith('Oktober 2026'));
+      } else {
+        expect(lines[lines.indexOf(oct) - 1], 'Oktober 2026');
+      }
+      for (final t in lines.where((t) => RegExp(r'\d,\d\d$').hasMatch(t))) {
+        expect(t.length, w, reason: t);
+      }
     });
   }
 
@@ -381,6 +391,22 @@ void main() {
     final lines = texts(day(daySample(), drawer: false));
     expect(lines, contains('BARGELD'));
     expect(lines, isNot(contains('GELDLADE')));
+  });
+
+  test('ohne Geldlade heißt der Rest "Wechselgeld für morgen", mit Lade '
+      '"In der Lade gelassen"', () {
+    final ohne = texts(day(daySample(), drawer: false));
+    expect(
+      ohne.where((t) => t.startsWith('Wechselgeld für morgen')),
+      hasLength(1),
+    );
+    expect(ohne.where((t) => t.contains('In der Lade')), isEmpty);
+    final mit = texts(day(daySample()));
+    expect(
+      mit.where((t) => t.startsWith('In der Lade gelassen')),
+      hasLength(1),
+    );
+    expect(mit.where((t) => t.contains('Wechselgeld für morgen')), isEmpty);
   });
 
   test('ohne Namen der Kassa fehlt die Zeile Kassa', () {
@@ -524,5 +550,39 @@ void main() {
     expect(lines, contains('November 2025 bis Februar 2026'));
     expect(lines, contains('Zeitraum         01.11.2025 bis 28.02.2026'));
     expect(lines.where((t) => t.startsWith('Bons Nr.')), isEmpty);
+  });
+
+  test('32 Zeichen, Jahreswechsel: "Zeitraum" steht allein, das Datum '
+      'rechtsbündig darunter', () {
+    final r = PeriodReport(
+      range: MonthRange(YearMonth(2025, 11), YearMonth(2026, 2)),
+      testMode: false,
+      receiptCount: 0,
+      cashReceiptCount: 0,
+      cardReceiptCount: 0,
+      voidCount: 0,
+      voidedCents: 0,
+      revenueCents: 0,
+      cashRevenueCents: 0,
+      cardRevenueCents: 0,
+      depositCents: 0,
+      taxLines: const [],
+      firstNumber: null,
+      lastNumber: null,
+      rows: [
+        for (final m in [
+          DateTime(2025, 11),
+          DateTime(2025, 12),
+          DateTime(2026, 1),
+          DateTime(2026, 2),
+        ])
+          PeriodRow(start: m, receiptCount: 0, revenueCents: 0),
+      ],
+    );
+    final lines = texts(period(r, columns: 32));
+    final i = lines.indexOf('Zeitraum');
+    expect(i, greaterThan(0));
+    expect(lines[i + 1], '       01.11.2025 bis 28.02.2026');
+    expect(lines.where((t) => t.contains('Zeitra ')), isEmpty);
   });
 }

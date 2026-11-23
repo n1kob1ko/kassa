@@ -97,7 +97,7 @@ export function DaysPage() {
         headerActions={opened.data ? <PrintButton /> : undefined}
       >
         {route.id && (
-          <PrintFrame title={title}>
+          <PrintFrame title={head ? `Tagesabschluss ${title}` : title}>
             <DayDetailView query={opened} />
           </PrintFrame>
         )}

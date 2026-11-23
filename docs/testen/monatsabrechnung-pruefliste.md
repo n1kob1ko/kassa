@@ -147,9 +147,9 @@ Den Tag kannst du jetzt testen.
 - [ ] "Von" und "Bis" ansehen.
   Beginn und Abschluss des Tages, jeweils mit Datum und Uhrzeit. "Abgeschlossen von" nennt deinen Namen.
 - [ ] "EINNAHMEN", "STEUER" und "GELDLADE" ansehen.
-  Bar, Karte und Gesamt stehen da, die Beträge rechts untereinander. "Storniert" steht nur, wenn es an diesem Tag einen Storno gab. Das ist bei dir so (Teil 0). Der Betrag steht dann als positive Zahl da, und "Gesamt" ist um den Storno kleiner. Der Teil heißt "GELDLADE", oder "BARGELD", wenn die Geldlade in den Einstellungen ausgeschaltet ist. Dort stehen das Wechselgeld am Morgen, die Bewegungen mit Uhrzeit, "Soll", "Gezählt", "Unterschied", "In der Lade gelassen" und "Entnommen".
+  Bar, Karte und Gesamt stehen da, die Beträge rechts untereinander. "Storniert" steht nur, wenn es an diesem Tag einen Storno gab. Das ist bei dir so (Teil 0). Der Betrag steht dann als positive Zahl da, und "Gesamt" ist um den Storno kleiner. Der Teil heißt "GELDLADE", oder "BARGELD", wenn die Geldlade in den Einstellungen ausgeschaltet ist. Dort stehen das Wechselgeld am Morgen, die Bewegungen mit Uhrzeit, "Soll", "Gezählt", "Unterschied", "In der Lade gelassen" (ohne Geldlade "Wechselgeld für morgen") und "Entnommen".
 - [ ] Am Tablet in der Spalte "Tag abgeschlossen" und in den Karten links vergleichen: "Gesamt", "Storniert", "Gezählt" und "Unterschied".
-  Es sind dieselben Beträge wie auf dem Zettel. Was am Bildschirm "Entnommen: …" und "Morgen liegen … Wechselgeld in der Lade." sagt, steht auf dem Zettel als "Entnommen" und "In der Lade gelassen". Die Beträge passen zusammen.
+  Es sind dieselben Beträge wie auf dem Zettel. Was am Bildschirm "Entnommen: …" und "Morgen liegen … Wechselgeld in der Lade." (ohne Geldlade "Morgen sind … Wechselgeld da.") sagt, steht auf dem Zettel als "Entnommen" und "In der Lade gelassen" (ohne Geldlade "Wechselgeld für morgen"). Die Beträge passen zusammen.
 
 ### E2. Monatsabrechnung
 
@@ -223,7 +223,7 @@ Das ist der Beleg der Signatur, nicht die Abrechnung. Er hat einen QR-Code und e
 Geht erst, wenn es einen abgeschlossenen Monat mit Bons gibt.
 
 - [ ] Auf "Monate" klicken.
-  Eine Liste der abgeschlossenen Monate, der neueste zuerst. Oben steht der neueste abgeschlossene Monat (im November 2026 der Oktober), den laufenden Monat gibt es nicht. Jede Zeile hat die Zahl der Bons und den Umsatz.
+  Eine Liste der abgeschlossenen Monate, der neueste zuerst. Oben steht der neueste abgeschlossene Monat (im November 2026 der Oktober), den laufenden Monat gibt es nicht. Jede Zeile hat die Zahl der Bons (ab 1.000 mit Punkt, "1.067 Bons") und den Umsatz. Im Testbetrieb steht über der Liste einmal "Testbetrieb".
 - [ ] Den neuesten Monat anklicken.
   Das Blatt öffnet sich von rechts. Es zeigt "Testbetrieb", den Zeitraum von bis, die Einnahmen (Bar, Karte, Gesamt, und Storniert, wenn es einen Storno gab), die Steuer nach Satz, das Pfand und die Tage. Oben im Blatt ist die Taste "Drucken".
 - [ ] Einen Monat ohne Bons anklicken (falls es einen gibt).
@@ -243,7 +243,7 @@ Geht erst, wenn es mehrere abgeschlossene Monate mit Bons gibt.
 ### G4. Drucken und als PDF speichern
 
 - [ ] Im Blatt auf "Drucken" klicken.
-  Der Druckdialog des Browsers geht auf. Die Vorschau zeigt nur das Blatt, schwarz auf weiß, oben Betrieb und Zeitraum, unten "Erstellt am". Die Leiste und die Liste dahinter sind nicht dabei.
+  Der Druckdialog des Browsers geht auf. Die Vorschau zeigt nur das Blatt, schwarz auf weiß, oben Betrieb und Überschrift ("Monatsabrechnung Oktober 2026", bei mehreren Monaten "Abrechnung Jänner bis Oktober 2026", bei einem Tag "Tagesabschluss 17.11.2026, Theke"), unten "Erstellt am". Die Leiste und die Liste dahinter sind nicht dabei.
 - [ ] Im Druckdialog als Drucker "Als PDF speichern" wählen und speichern.
   Eine PDF-Datei liegt auf dem Computer. Sie hat dieselben Zahlen wie das Blatt.
 - [ ] Dasselbe für das Blatt eines Tages und für mehrere Monate.

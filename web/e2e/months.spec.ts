@@ -93,6 +93,8 @@ test('Abschlüsse: Tage und Monate, ein Monat mit Zahlen wie berechnet', async (
 
   const rows = monthRows(page);
   await expect(rows).toHaveCount(2);
+  // Testbetrieb: einmal auf der Seite, nicht je Zeile.
+  await expect(page.getByRole('main').getByText('Testbetrieb', { exact: true })).toHaveCount(1);
   await expect(rows.first()).toContainText(monthLabel(previous));
   await expect(rows.first()).toContainText('2 Bons');
   await expect(rows.first()).toContainText(eur('22,70'));
@@ -249,9 +251,18 @@ test('Druckansicht: nur das Blatt, Betrieb und Zeitraum oben, schwarz auf weiß 
   await expect(sheet.getByText('Imbiss Druck')).toBeVisible();
   // Der Kopf des Blatts (mit "Schließen") fällt weg, der Kopf des Drucks trägt den Titel.
   await expect(sheet.getByRole('heading', { name: monthLabel(previous) })).toBeHidden();
-  await expect(sheet.getByText(monthLabel(previous), { exact: true }).filter({ visible: true })).toHaveCount(1);
+  await expect(sheet.getByText(monthLabel(previous), { exact: true }).filter({ visible: true })).toHaveCount(0);
+  await expect(sheet.getByText(`Monatsabrechnung ${monthLabel(previous)}`, { exact: true }).filter({ visible: true })).toHaveCount(1);
   await expect(sheet.getByText(/^Erstellt am \d{2}\.\d{2}\.\d{4} um \d{2}:\d{2}$/)).toBeVisible();
   await expect(sheet.getByTestId('total')).toBeVisible();
+
+  // Mehrere Monate: "Abrechnung" mit dem Zeitraum.
+  const { before } = months();
+  await page.goto(`/b/${site.businessId}/monate/${before}..${previous}`);
+  await expect(sheet.getByTestId('total')).toBeVisible();
+  const head = sheet.getByText(/^Abrechnung .+ bis .+$/).filter({ visible: true });
+  await expect(head).toHaveCount(1);
+  await expect(head).toContainText(monthLabel(previous));
 
   // Das Blatt steht im Fluss über die ganze Breite, nicht als Blatt rechts mit eigener Höhe.
   const box = await sheet.evaluate((el) => {
@@ -304,6 +315,7 @@ test('Tag: Bar, Karte, Steuer und Drucken; offener Tag druckt mit "offen"', asyn
   await expect(sheet.getByTestId('voided')).toHaveCount(0);
   await page.emulateMedia({ media: 'print' });
   await expect(sheet.getByText('offen', { exact: true })).toBeVisible();
+  await expect(sheet.getByText(/^Tagesabschluss \d{2}\.\d{2}\.\d{4}(, .+)?$/).filter({ visible: true })).toHaveCount(1);
   await expect(sheet.getByText(/^Erstellt am /)).toBeVisible();
   for (const id of ['expected', 'counted', 'difference', 'left-in-drawer']) await expect(sheet.getByTestId(id)).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Bereiche' })).toBeHidden();
@@ -319,6 +331,7 @@ test.describe('Handy', () => {
 
     await page.goto(`/b/${site.businessId}/monate`);
     await expect(monthRows(page)).toHaveCount(2);
+    await expect(page.getByRole('main').getByText('Testbetrieb', { exact: true })).toBeVisible();
     await noHorizontalScroll(page, 'Monate');
     const bar = page.getByRole('navigation', { name: 'Bereiche' }).filter({ visible: true });
     await expect(bar.getByRole('link', { name: 'Abschlüsse' })).toHaveText('Abschluss');

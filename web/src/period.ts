@@ -46,6 +46,11 @@ export function periodTitle(p: Period): string {
   return `${monthLabel(p.from)} bis ${monthLabel(p.to)}`;
 }
 
+/** Kopf des Ausdrucks wie auf dem Bon: "Monatsabrechnung Oktober 2026" oder "Abrechnung Jänner bis Oktober 2026". */
+export function periodPrintTitle(p: Period): string {
+  return `${p.from === p.to ? 'Monatsabrechnung' : 'Abrechnung'} ${periodTitle(p)}`;
+}
+
 /** Erster Tag des ersten bis letzter Tag des letzten Monats: "01.10.2026 bis 31.10.2026". */
 export function periodDates(p: Period): string {
   const [fy, fm] = parts(p.from);

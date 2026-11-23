@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { dayLabel, dayMonthText, monthLabel, parsePeriodId, periodDates, periodId, periodTitle } from './period';
+import { dayLabel, dayMonthText, monthLabel, parsePeriodId, periodDates, periodId, periodPrintTitle, periodTitle } from './period';
 
 test('parsePeriodId', () => {
   expect(parsePeriodId('2026-10')).toEqual({ from: '2026-10', to: '2026-10' });
@@ -21,6 +21,12 @@ test('Titel und Daten', () => {
   expect(periodDates({ from: '2025-11', to: '2026-02' })).toBe('01.11.2025 bis 28.02.2026');
   expect(periodDates({ from: '2026-12', to: '2026-12' })).toBe('01.12.2026 bis 31.12.2026');
   expect(monthLabel('2026-01')).toBe('Jänner 2026');
+});
+
+test('periodPrintTitle: wie der Titel des Bons am Tablet', () => {
+  expect(periodPrintTitle({ from: '2026-10', to: '2026-10' })).toBe('Monatsabrechnung Oktober 2026');
+  expect(periodPrintTitle({ from: '2026-01', to: '2026-10' })).toBe('Abrechnung Jänner bis Oktober 2026');
+  expect(periodPrintTitle({ from: '2025-11', to: '2026-02' })).toBe('Abrechnung November 2025 bis Februar 2026');
 });
 
 test('dayLabel: Wochentag und Tag ohne Zeitzone', () => {

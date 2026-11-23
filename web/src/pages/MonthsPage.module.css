@@ -6,6 +6,11 @@
   gap: 20px;
 }
 
+.testMode {
+  display: flex;
+  margin: 0;
+}
+
 .range {
   display: flex;
   flex-wrap: wrap;

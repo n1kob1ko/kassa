@@ -42,9 +42,14 @@ export function dateText(date: Date): string {
   return DATE.format(date);
 }
 
+/** Ganze Zahl mit Punkt je drei Stellen: 999 bleibt "999", 1067 wird "1.067" (wie `groupThousands` am Tablet). */
+function groupThousands(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 /** "1 Artikel", "3 Artikel": Wörter, die im Plural gleich bleiben, und die mit eigener Mehrzahl. */
 export function count(n: number, one: string, many = one): string {
-  return `${n} ${n === 1 ? one : many}`;
+  return `${groupThousands(n)} ${n === 1 ? one : many}`;
 }
 
 /** Geschütztes Leerzeichen zwischen Betrag und Euro: "12,90 €" bricht nie um. */
@@ -56,7 +61,7 @@ const NBSP = ' ';
  */
 export function money(cents: number): string {
   const abs = Math.abs(Math.trunc(cents));
-  const euros = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const euros = groupThousands(Math.floor(abs / 100));
   const rest = String(abs % 100).padStart(2, '0');
   return `${cents < 0 && abs > 0 ? '−' : ''}${euros},${rest}${NBSP}€`;
 }

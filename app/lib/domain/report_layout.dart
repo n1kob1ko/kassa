@@ -133,7 +133,12 @@ List<PrintOp> layoutDayReport(
   final difference = day.differenceCents;
   if (counted != null) b.row('Gezählt', amount(counted));
   if (difference != null) b.row('Unterschied', amount(difference));
-  if (left != null) b.row('In der Lade gelassen', amount(left));
+  if (left != null) {
+    b.row(
+      drawer ? 'In der Lade gelassen' : 'Wechselgeld für morgen',
+      amount(left),
+    );
+  }
   if (counted != null && left != null) {
     b.row('Entnommen', amount(counted - left));
   }
@@ -158,10 +163,12 @@ List<PrintOp> layoutPeriodReport(
     periodTitle(r.range),
     testMode: r.testMode,
   );
-  b.row(
-    'Zeitraum',
-    '${dateText(r.range.from.start)} bis ${dateText(r.range.to.lastDay)}',
-  );
+  final span =
+      '${dateText(r.range.from.start)} bis ${dateText(r.range.to.lastDay)}';
+  // Passt die Zeile nicht, steht die Bezeichnung allein darüber (wie bei row3).
+  final stacked = 'Zeitraum'.length + 1 + span.length > columns;
+  if (stacked) b.row('Zeitraum', '');
+  b.row(stacked ? '' : 'Zeitraum', span);
   if (registerName != null) b.row('Kassa', registerName);
   final first = r.firstNumber;
   final last = r.lastNumber;
