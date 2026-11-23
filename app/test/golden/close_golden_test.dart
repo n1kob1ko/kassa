@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../features/close_print_test.dart' show setUpPrinter;
 import '../support/close_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
@@ -86,6 +88,39 @@ void main() {
     await expectLater(
       find.byType(KassaApp),
       matchesGoldenFile('goldens/abschluss_fertig_dunkel.png'),
+    );
+  });
+
+  Future<void> closedWithPrinter(WidgetTester t, {bool fails = false}) async {
+    await _ready(t);
+    await setUpPrinter(t);
+    if (fails) {
+      printerOf(t).next = const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+    await tapKeys(t, '2 1 8');
+    await t.tap(find.byKey(const Key('count-next')));
+    await t.pumpAndSettle();
+    await tapKeys(t, '1 5 0');
+    await t.tap(find.byKey(const Key('close-day')));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+  }
+
+  testWidgets('Abschluss, Tag abgeschlossen mit Bericht (hell)', (t) async {
+    await closedWithPrinter(t);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/abschluss_abgeschlossen_bericht_hell.png'),
+    );
+  });
+
+  testWidgets('Abschluss, Tag abgeschlossen mit Druckfehler (hell)', (t) async {
+    await closedWithPrinter(t, fails: true);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile(
+        'goldens/abschluss_abgeschlossen_druckfehler_hell.png',
+      ),
     );
   });
 

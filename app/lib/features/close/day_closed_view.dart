@@ -19,12 +19,27 @@ class DayClosedView extends StatelessWidget {
     required this.drawer,
     required this.justClosed,
     required this.onToKassa,
+    this.onPrint,
+    this.printing = false,
+    this.printMessage,
+    this.printFailed = false,
   });
 
   final BusinessDay day;
   final bool drawer;
   final bool justClosed;
   final VoidCallback onToKassa;
+
+  /// "Bericht drucken"; ohne Wert (kein Drucker eingerichtet) gibt es die
+  /// Taste und die Ergebniszeile nicht.
+  final VoidCallback? onPrint;
+
+  /// Ein Bericht ist unterwegs: die Taste ist gesperrt.
+  final bool printing;
+
+  /// Das Ergebnis des letzten Drucks ([printFailed]: der Fehlertext).
+  final String? printMessage;
+  final bool printFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -85,12 +100,78 @@ class DayClosedView extends StatelessWidget {
           ),
         ],
       ],
-      bottom: PrimaryButton(
-        key: const Key('to-kassa'),
-        label: 'Zur Kassa',
-        solid: true,
-        height: KassaTokens.mainActionHeight,
-        onPressed: onToKassa,
+      bottom: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (onPrint != null) ...[
+            if (printMessage != null) ...[
+              _PrintResult(message: printMessage!, failed: printFailed),
+              const SizedBox(height: KassaTokens.spaceXl),
+            ],
+            PrimaryButton(
+              key: const Key('print-day-report'),
+              label: 'Bericht drucken',
+              filled: false,
+              icon: LucideIcons.printer,
+              height: KassaTokens.mainActionHeight,
+              onPressed: printing ? null : onPrint,
+            ),
+            const SizedBox(height: KassaTokens.spaceXl),
+          ],
+          PrimaryButton(
+            key: const Key('to-kassa'),
+            label: 'Zur Kassa',
+            solid: true,
+            height: KassaTokens.mainActionHeight,
+            onPressed: onToKassa,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Das Ergebnis des Drucks über der Taste: grün "Bericht gedruckt.", sonst der
+/// Fehlertext in `red`.
+class _PrintResult extends StatelessWidget {
+  const _PrintResult({required this.message, required this.failed});
+
+  final String message;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final fg = failed ? c.red : c.veganFg;
+    return Container(
+      key: const Key('day-report-result'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: KassaTokens.spaceXxl,
+        vertical: KassaTokens.spaceXl,
+      ),
+      decoration: BoxDecoration(
+        color: failed ? c.spicyBg : c.veganBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            failed ? LucideIcons.triangleAlert : LucideIcons.check,
+            size: 20,
+            color: fg,
+          ),
+          const SizedBox(width: KassaTokens.spaceLg),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w700,
+                color: fg,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

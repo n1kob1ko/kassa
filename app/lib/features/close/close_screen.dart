@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -13,6 +15,7 @@ import '../settings/rksv_task_row.dart';
 import 'cash_movement_sheet.dart';
 import 'count_cash_sheet.dart';
 import 'day_closed_view.dart';
+import 'report_print.dart';
 import 'day_summary_cards.dart';
 import 'opening_float_sheet.dart';
 
@@ -45,6 +48,9 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
   bool _busy = false;
   bool _failed = false;
   bool _justClosed = false;
+  bool _printing = false;
+  String? _printMessage;
+  bool _printFailed = false;
 
   /// Führt einen Schreibvorgang aus, höchstens einen zugleich. Danach werden
   /// die Zahlen neu geholt. Antwort: ob es geklappt hat. Bei einem Fehler
@@ -100,6 +106,30 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
     }
   }
 
+  /// Druckt den Tagesbericht und merkt sich das Ergebnis für die Zeile in der
+  /// Spalte. Höchstens ein Druck zugleich; wirft nie.
+  Future<void> _printReport(DaySummary summary) async {
+    if (_printing) return;
+    setState(() {
+      _printing = true;
+      _printMessage = null;
+    });
+    final outcome = await ref.read(reportPrintProvider).printDay(summary);
+    if (!mounted) return;
+    setState(() {
+      _printing = false;
+      _printFailed = !outcome.ok;
+      _printMessage = outcome.ok ? 'Bericht gedruckt.' : outcome.message;
+    });
+  }
+
+  /// "Bericht drucken": der zuletzt abgeschlossene Tag noch einmal.
+  Future<void> _printAgain() async {
+    final summary = ref.read(closeSummaryProvider).value;
+    if (summary == null || summary.day.isOpen) return;
+    await _printReport(summary);
+  }
+
   Future<void> _closeDay() async {
     final staff = ref.read(sessionProvider);
     if (_busy || staff == null) return;
@@ -113,16 +143,20 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
           .read(dayRepositoryProvider)
           .close(countedCents: counted, leftInDrawerCents: left, staff: staff),
     );
-    if (mounted) {
-      setState(() {
-        if (!ok) _justClosed = false;
-        if (ok) {
-          _leaving = false;
-          _countInput = _entry;
-          _leaveInput = _entry;
-        }
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      if (!ok) _justClosed = false;
+      if (ok) {
+        _leaving = false;
+        _countInput = _entry;
+        _leaveInput = _entry;
+        _printMessage = null;
+      }
+    });
+    if (!ok || !ref.read(printerSetUpProvider)) return;
+    // Der Bericht druckt von selbst, der Abschluss wartet nicht darauf.
+    final summary = ref.read(closeSummaryProvider).value;
+    if (summary != null) unawaited(_printReport(summary));
   }
 
   void _toggleMove(CashMovementKind kind) => setState(() {
@@ -137,6 +171,7 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
     final async = ref.watch(closeSummaryProvider);
     final drawer =
         ref.watch(settingsStreamProvider).value?.cashDrawerEnabled ?? true;
+    final printerSetUp = ref.watch(printerSetUpProvider);
     final now = ref.watch(clockProvider).now();
     if (!async.hasValue) {
       return ColoredBox(
@@ -166,6 +201,10 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         drawer: drawer,
         justClosed: _justClosed,
         onToKassa: widget.onToKassa,
+        onPrint: printerSetUp ? _printAgain : null,
+        printing: _printing,
+        printMessage: printerSetUp ? _printMessage : null,
+        printFailed: _printFailed,
       );
     } else if (_move != null) {
       column = CashMovementSheet(
