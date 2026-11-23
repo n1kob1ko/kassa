@@ -60,7 +60,7 @@ Future<void> pumpOverviewWithSales(
   for (final s
       in sales ?? [OverviewSale(today(11, 5)), OverviewSale(today(13, 10))]) {
     clock.value = s.at;
-    await _closeForgottenDay(t);
+    await closeForgottenDay(t);
     final r = await sellCash(t, cart: s.cart ?? bowlCart());
     if (s.voided) {
       await containerOf(t)
@@ -69,7 +69,7 @@ Future<void> pumpOverviewWithSales(
     }
   }
   clock.value = now ?? today(13, 40);
-  await _closeForgottenDay(t);
+  await closeForgottenDay(t);
   await t.tap(find.byKey(const Key('tab-Übersicht')));
   await t.pumpAndSettle();
   if (openRange != null) {
@@ -82,7 +82,7 @@ Future<void> pumpOverviewWithSales(
 /// Verkäufe über mehrere Tage sollen aussehen wie in einem Betrieb, der jeden
 /// Abend abschließt (sonst zeigt die Kopfleiste den Hinweis auf den
 /// vergessenen Abschluss).
-Future<void> _closeForgottenDay(WidgetTester t) async {
+Future<void> closeForgottenDay(WidgetTester t) async {
   final days = containerOf(t).read(dayRepositoryProvider);
   if (await days.hasForgottenClose()) {
     await days.close(

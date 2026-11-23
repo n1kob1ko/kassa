@@ -37,7 +37,7 @@ class DaySummaryCards extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        IncomeCard(summary),
+        IncomeCard(IncomeFigures.ofDay(summary)),
         const SizedBox(height: KassaTokens.spaceXxl),
         DrawerCard(
           summary: summary,

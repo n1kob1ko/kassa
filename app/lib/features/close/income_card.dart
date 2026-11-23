@@ -2,15 +2,70 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/day.dart';
+import '../../domain/period_report.dart';
+import '../../domain/pricing.dart' show TaxLine;
 import '../../ui/tokens.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
 import 'close_format.dart';
 import 'summary_rows.dart';
 
-class IncomeCard extends StatelessWidget {
-  const IncomeCard(this.s, {super.key});
+/// Die Zahlen der Karte "Einnahmen | Steuer": ein Tag oder ein Zeitraum.
+class IncomeFigures {
+  const IncomeFigures({
+    required this.cashCount,
+    required this.cashCents,
+    required this.cardCount,
+    required this.cardCents,
+    required this.count,
+    required this.revenueCents,
+    required this.voidCount,
+    required this.voidedCents,
+    required this.taxLines,
+    required this.depositCents,
+  });
 
-  final DaySummary s;
+  factory IncomeFigures.ofDay(DaySummary s) => IncomeFigures(
+    cashCount: s.cashReceiptCount,
+    cashCents: s.cashRevenueCents,
+    cardCount: s.cardReceiptCount,
+    cardCents: s.cardRevenueCents,
+    count: s.receiptCount,
+    revenueCents: s.revenueCents,
+    voidCount: s.voidCount,
+    voidedCents: s.voidedCents,
+    taxLines: s.taxLines,
+    depositCents: s.depositCents,
+  );
+
+  factory IncomeFigures.ofPeriod(PeriodReport r) => IncomeFigures(
+    cashCount: r.cashReceiptCount,
+    cashCents: r.cashRevenueCents,
+    cardCount: r.cardReceiptCount,
+    cardCents: r.cardRevenueCents,
+    count: r.receiptCount,
+    revenueCents: r.revenueCents,
+    voidCount: r.voidCount,
+    voidedCents: r.voidedCents,
+    taxLines: r.taxLines,
+    depositCents: r.depositCents,
+  );
+
+  final int cashCount;
+  final int cashCents;
+  final int cardCount;
+  final int cardCents;
+  final int count;
+  final int revenueCents;
+  final int voidCount;
+  final int voidedCents;
+  final List<TaxLine> taxLines;
+  final int depositCents;
+}
+
+class IncomeCard extends StatelessWidget {
+  const IncomeCard(this.f, {super.key});
+
+  final IncomeFigures f;
 
   @override
   Widget build(BuildContext context) {
@@ -20,28 +75,28 @@ class IncomeCard extends StatelessWidget {
       rows: [
         SummaryLine(
           label: 'Bar',
-          middle: bonsLabel(s.cashReceiptCount),
-          amount: formatEuro(s.cashRevenueCents),
+          middle: bonsLabel(f.cashCount),
+          amount: formatEuro(f.cashCents),
           amountKey: const Key('income-cash'),
         ),
         SummaryLine(
           label: 'Karte',
-          middle: bonsLabel(s.cardReceiptCount),
-          amount: formatEuro(s.cardRevenueCents),
+          middle: bonsLabel(f.cardCount),
+          amount: formatEuro(f.cardCents),
           amountKey: const Key('income-card'),
         ),
         SummaryLine(
           label: 'Gesamt',
-          middle: bonsLabel(s.receiptCount),
-          amount: formatEuro(s.revenueCents),
+          middle: bonsLabel(f.count),
+          amount: formatEuro(f.revenueCents),
           bold: true,
           amountKey: const Key('income-total'),
         ),
-        if (s.voidCount > 0)
+        if (f.voidCount > 0)
           SummaryLine(
             label: 'Storniert',
-            middle: bonsLabel(s.voidCount),
-            amount: formatEuro(s.voidedCents),
+            middle: bonsLabel(f.voidCount),
+            amount: formatEuro(f.voidedCents),
             amountMuted: true,
             amountKey: const Key('left-voided'),
           ),
@@ -51,14 +106,14 @@ class IncomeCard extends StatelessWidget {
       title: 'Steuer',
       headers: const ['Umsatz', 'davon MwSt'],
       rows: [
-        for (final t in s.taxLines)
+        for (final t in f.taxLines)
           _TaxLine(
             'MwSt ${t.rate.percent} %',
             formatEuro(t.grossCents),
             formatEuro(t.taxCents),
           ),
-        if (s.depositCents != 0)
-          _TaxLine('Pfand, ohne MwSt', formatEuro(s.depositCents), null),
+        if (f.depositCents != 0)
+          _TaxLine('Pfand, ohne MwSt', formatEuro(f.depositCents), null),
       ],
     );
     return OverviewCard(

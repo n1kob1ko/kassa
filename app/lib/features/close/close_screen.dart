@@ -7,6 +7,7 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../domain/day.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import '../bons/bons_screen.dart' show germanMonths, germanWeekdays;
 import '../login/session.dart';
@@ -15,8 +16,9 @@ import '../settings/rksv_task_row.dart';
 import 'cash_movement_sheet.dart';
 import 'count_cash_sheet.dart';
 import 'day_closed_view.dart';
-import 'report_print.dart';
 import 'day_summary_cards.dart';
+import 'month_view.dart';
+import 'report_print.dart';
 import 'opening_float_sheet.dart';
 
 const _entry = KeypadInput(maxIntDigits: 6);
@@ -51,6 +53,10 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
   bool _printing = false;
   String? _printMessage;
   bool _printFailed = false;
+
+  /// "Monat" statt "Tag". Der Bereich wird beim Verlassen verworfen, beim
+  /// Öffnen ist also immer Tag gewählt.
+  bool _month = false;
 
   /// Führt einen Schreibvorgang aus, höchstens einen zugleich. Danach werden
   /// die Zahlen neu geholt. Antwort: ob es geklappt hat. Bei einem Fehler
@@ -173,6 +179,12 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         ref.watch(settingsStreamProvider).value?.cashDrawerEnabled ?? true;
     final printerSetUp = ref.watch(printerSetUpProvider);
     final now = ref.watch(clockProvider).now();
+    final switcher = Segmented<bool>(
+      segments: const [(false, 'Tag'), (true, 'Monat')],
+      selected: _month,
+      onSelected: (month) => setState(() => _month = month),
+    );
+    if (_month) return MonthView(switcher: switcher);
     if (!async.hasValue) {
       return ColoredBox(
         color: c.ground,
@@ -282,6 +294,8 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
                         ),
                       ),
                       if (day != null && !day.isOpen) const _ClosedPill(),
+                      const SizedBox(width: KassaTokens.spaceLg),
+                      switcher,
                     ],
                   ),
                 ),

@@ -6,7 +6,6 @@ import 'package:kassa/domain/day.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../features/close_print_test.dart' show setUpPrinter;
 import '../support/close_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';

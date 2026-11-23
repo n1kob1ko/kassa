@@ -12,6 +12,7 @@ class Segmented<T> extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     this.keyFor,
+    this.expand = false,
   });
 
   final List<(T, String)> segments;
@@ -20,6 +21,9 @@ class Segmented<T> extends StatelessWidget {
 
   /// Schlüssel eines Segments. Ohne Angabe `segment-<Beschriftung>`.
   final Key Function(T value)? keyFor;
+
+  /// Über die ganze Breite, alle Segmente gleich breit.
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -35,44 +39,50 @@ class Segmented<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(13),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           for (var i = 0; i < segments.length; i++) ...[
             if (i > 0) const SizedBox(width: KassaTokens.spaceXxs),
-            Builder(
-              builder: (context) {
-                final (value, label) = segments[i];
-                final active = value == selected;
-                return Pressable(
-                  key: keyFor?.call(value) ?? Key('segment-$label'),
-                  onTap: () => onSelected(value),
-                  minTapSize: const Size(0, KassaTokens.minTap),
-                  child: AnimatedContainer(
-                    duration: duration,
-                    curve: Curves.linear,
-                    height: KassaTokens.drawnControlHeight,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: active ? c.card : const Color(0x00000000),
-                      borderRadius: BorderRadius.circular(KassaTokens.radiusMd),
-                      boxShadow: active ? c.cardShadow : null,
-                    ),
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: active ? c.ink : c.ink2,
+            _fill(
+              Builder(
+                builder: (context) {
+                  final (value, label) = segments[i];
+                  final active = value == selected;
+                  return Pressable(
+                    key: keyFor?.call(value) ?? Key('segment-$label'),
+                    onTap: () => onSelected(value),
+                    minTapSize: const Size(0, KassaTokens.minTap),
+                    child: AnimatedContainer(
+                      duration: duration,
+                      curve: Curves.linear,
+                      height: KassaTokens.drawnControlHeight,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: active ? c.card : const Color(0x00000000),
+                        borderRadius: BorderRadius.circular(
+                          KassaTokens.radiusMd,
+                        ),
+                        boxShadow: active ? c.cardShadow : null,
+                      ),
+                      child: Text(
+                        label,
+                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: active ? c.ink : c.ink2,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ],
         ],
       ),
     );
   }
+
+  Widget _fill(Widget segment) => expand ? Expanded(child: segment) : segment;
 }

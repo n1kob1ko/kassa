@@ -106,7 +106,11 @@ class DayClosedView extends StatelessWidget {
         children: [
           if (onPrint != null) ...[
             if (printMessage != null) ...[
-              _PrintResult(message: printMessage!, failed: printFailed),
+              PrintResult(
+                key: const Key('day-report-result'),
+                message: printMessage!,
+                failed: printFailed,
+              ),
               const SizedBox(height: KassaTokens.spaceXl),
             ],
             PrimaryButton(
@@ -132,10 +136,11 @@ class DayClosedView extends StatelessWidget {
   }
 }
 
-/// Das Ergebnis des Drucks über der Taste: grün "Bericht gedruckt.", sonst der
-/// Fehlertext in `red`.
-class _PrintResult extends StatelessWidget {
-  const _PrintResult({required this.message, required this.failed});
+/// Das Ergebnis eines Berichtsdrucks über der Taste (Tag und Monat): grün
+/// "Bericht gedruckt." oder "Abrechnung gedruckt.", sonst der Fehlertext in
+/// `red`.
+class PrintResult extends StatelessWidget {
+  const PrintResult({super.key, required this.message, required this.failed});
 
   final String message;
   final bool failed;
@@ -145,7 +150,6 @@ class _PrintResult extends StatelessWidget {
     final c = KassaColors.of(context);
     final fg = failed ? c.red : c.veganFg;
     return Container(
-      key: const Key('day-report-result'),
       padding: const EdgeInsets.symmetric(
         horizontal: KassaTokens.spaceXxl,
         vertical: KassaTokens.spaceXl,

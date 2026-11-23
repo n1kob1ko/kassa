@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
-import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
@@ -14,18 +13,6 @@ import '../support/pump.dart';
 
 const _printKey = Key('print-day-report');
 const _resultKey = Key('day-report-result');
-
-/// Richtet in den Einstellungen einen Netzwerkdrucker ein.
-Future<void> setUpPrinter(WidgetTester t) async {
-  final repo = containerOf(t).read(settingsRepositoryProvider);
-  await repo.save(
-    (await repo.current()).copyWith(
-      printerKind: PrinterKind.network,
-      printerAddress: '192.168.0.50',
-    ),
-  );
-  await t.pump();
-}
 
 /// Öffnet den Abschluss mit Wechselgeld und einem Verkauf, optional mit
 /// Drucker.

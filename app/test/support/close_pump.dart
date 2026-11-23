@@ -63,6 +63,18 @@ Future<void> pumpClose(
   if (openArea) await openClose(t);
 }
 
+/// Richtet in den Einstellungen einen Netzwerkdrucker ein.
+Future<void> setUpPrinter(WidgetTester t) async {
+  final repo = containerOf(t).read(settingsRepositoryProvider);
+  await repo.save(
+    (await repo.current()).copyWith(
+      printerKind: PrinterKind.network,
+      printerAddress: '192.168.0.50',
+    ),
+  );
+  await t.pump();
+}
+
 Future<void> openClose(WidgetTester t) async {
   await t.tap(find.byKey(const Key('tab-Abschluss')));
   await t.pumpAndSettle();
