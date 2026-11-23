@@ -1,6 +1,6 @@
 # Kassa: Monatsabrechnung und Ausdruck für Tag und Monat
 
-Stand: 23.11.2026. Entwurf von Claude, wartet auf Nikos Freigabe. Bilder der Bildschirme und Zettel: https://claude.ai/artifact/63kcWgcCYNasZ3c2nh8FkL (Zahlen erfunden).
+Stand: 23.11.2026. Entwurf von Claude, von Niko am 23.11.2026 freigegeben ("Passt, so bauen"). Bilder der Bildschirme und Zettel: https://claude.ai/artifact/63kcWgcCYNasZ3c2nh8FkL (Zahlen erfunden).
 
 Dieses Dokument ergänzt den Gesamtentwurf (`2026-11-17-kassa-design.md`, dort "Abschluss" und "Übersicht" in Abschnitt 5) und den Entwurf zum Abgleich (`2026-11-19-teil-c2-abgleich-design.md`, dort die Seiten Umsätze und Tagesabschlüsse). Wo sich die Dokumente widersprechen, gilt für dieses Thema dieses. Alles, was hier nicht steht, gilt weiter wie dort, in `PRODUCT.md`, `DESIGN.md` und `docs/design-regeln.md`.
 
@@ -100,7 +100,7 @@ Sie gelten gleich am Tablet, am Zettel und am Server.
 - **R9 Nur abgeschlossene Monate.** Eine Monatsabrechnung gibt es erst, wenn der Monat vorbei ist, also ab dem Ersten des Folgemonats 0:00 (Tablet: Zeit des Geräts, Server: Zeitzone des Betriebs). Den laufenden Monat gibt es weder am Tablet noch am Zettel noch im Browser. Niko am 23.11.2026 als Kommentar am Bild des Zettels: "Wichtig ist, dass das Datum genau steht, also von bis. Monatsabschluss geht ja mitten im November nicht, da der Monat nicht vorbei ist." Dass der laufende Monat auch am Bildschirm fehlt, ist Claudes Lesart.
 - **R9a Zeitraum.** Jede Monatsabrechnung nennt ihren Zeitraum mit Datum von bis (erster und letzter Tag des Monats), jeder Tagesabschluss Beginn und Ende mit Datum und Uhrzeit.
 - **R10 Welche Monate.** Vom Monat des ältesten gezählten Bons bis zum letzten abgeschlossenen Monat. Gibt es keinen solchen Monat, gibt es keine Monatsabrechnung, und Tablet und Browser sagen, ab wann es die erste gibt.
-- **R12 Mehrere Monate.** Ein Zeitraum ist ein Monat oder mehrere aufeinanderfolgende abgeschlossene Monate, auch über den Jahreswechsel, vom ersten Tag des ersten bis zum letzten Tag des letzten Monats. Einnahmen, Storno, Pfand und Brutto je Satz sind die Summen über den Zeitraum. Netto und Steuer je Satz sind die Summen der Werte der einzelnen Monate (R6 je Monat), damit ein Ausdruck über mehrere Monate auf den Cent die Summe der einzelnen Monatsabrechnungen ist. Statt der Tage (R8) gibt es bei mehreren Monaten eine Zeile je Monat: Monat, Anzahl Bons, Umsatz. Diese Zeilen stehen auch am Zettel (Claudes Vorschlag; die Liste der Tage hat Niko vom Zettel gestrichen).
+- **R12 Mehrere Monate.** Ein Zeitraum ist ein Monat oder mehrere aufeinanderfolgende abgeschlossene Monate, auch über den Jahreswechsel, vom ersten Tag des ersten bis zum letzten Tag des letzten Monats. Einnahmen, Storno, Pfand und Brutto je Satz sind die Summen über den Zeitraum. Netto und Steuer je Satz sind die Summen der Werte der einzelnen Monate (R6 je Monat), damit ein Ausdruck über mehrere Monate auf den Cent die Summe der einzelnen Monatsabrechnungen ist. Statt der Tage (R8) gibt es bei mehreren Monaten eine Zeile je Monat: Monat, Anzahl Bons, Umsatz. Jeder Monat des Zeitraums hat seine Zeile, auch einer ohne Bons (0 Bons, 0,00), damit der Ausdruck lückenlos ist. Diese Zeilen stehen auch am Zettel (Claudes Vorschlag; die Liste der Tage hat Niko vom Zettel gestrichen).
 - **R11 Gleichheit.** Tablet und Server rechnen dieselben Prüfdaten (`shared/fixtures/stats/`, neue Datei für den Monat) und müssen auf den Cent dasselbe liefern.
 
 Die Zahlen des Tagesabschlusses bleiben, wie sie sind (`DayRepository._summarize`).
@@ -173,10 +173,10 @@ Abgeschlossen von                     Mira
 Bons Nr.                   13174 bis 13269
 ------------------------------------------
 EINNAHMEN
-Bar              38 Bons            488,10
-Karte            58 Bons            796,50
-Gesamt           96 Bons          1.284,60
-Storniert         2 Bons             20,50
+Bar                 38 Bons         488,10
+Karte               58 Bons         796,50
+Gesamt              96 Bons       1.284,60
+Storniert            2 Bons          20,50
 ------------------------------------------
 STEUER
 MwSt 20 %
@@ -219,10 +219,10 @@ Kassa                                Theke
 Bons Nr.                   11292 bis 12399
 ------------------------------------------
 EINNAHMEN
-Bar             412 Bons          6.930,40
-Karte           655 Bons         12.481,70
-Gesamt        1.067 Bons         19.412,10
-Storniert         9 Bons            141,20
+Bar                412 Bons       6.930,40
+Karte              655 Bons      12.481,70
+Gesamt           1.067 Bons      19.412,10
+Storniert            9 Bons         141,20
 ------------------------------------------
 STEUER
 MwSt 20 %
@@ -289,12 +289,13 @@ Oktober 2026     1.067 Bons      19.412,10
 - Kopf: Name und Adresse des Betriebs wie am Bon, ohne UID und ohne Schlusssatz.
 - Tagesabschluss: Datum in der Überschrift ist der Tag, an dem der Tag geöffnet wurde. "Von" und "Bis" nennen Beginn und Abschluss mit Datum und Uhrzeit, auch wenn der Tag über Mitternacht geht. Ohne Geldlade heißt der Teil "BARGELD". Bewegungen einzeln in der Reihenfolge der Zeit, mit Uhrzeit davor. "Bons Nr." nennt die kleinste und größte Nummer der gezählten Bons (auch am Monat); ohne Bon fehlt die Zeile.
 - Monatsabrechnung: ohne die Liste der Tage (R8). "Zeitraum" nennt den ersten und den letzten Tag des Monats (R9a). Bei mehreren Monaten heißt der Zettel "ABRECHNUNG" mit "Jänner bis Oktober 2026" darunter und bekommt den Teil "MONATE" (R12). "Testbetrieb" unter dem Titel, wenn R3 es sagt.
+- Zeilen mit Anzahl ("Bar  38 Bons  488,10"): Die Anzahl endet 15 Zeichen vor dem rechten Rand, der Betrag steht rechtsbündig. Passt die Beschriftung nicht davor (etwa "September 2026" bei 32 Zeichen), steht sie in einer eigenen Zeile darüber.
 - Passt eine Zeile nicht in 32 Zeichen, bricht sie wie am Bon um; Beträge stehen immer rechtsbündig.
 
 ### 5.4 Browser
 
 - Der Punkt "Tagesabschlüsse" in der Leiste heißt neu **Abschlüsse** (am Handy "Abschluss"). Oben auf der Seite ein Umschalter **Tage** und **Monate**. Die Adresse der Tage bleibt `/b/<Betrieb>/tage`, die Monate stehen unter `/b/<Betrieb>/monate`, ein Monat unter `/b/<Betrieb>/monate/2026-10`.
-- **Monate:** Liste der abgeschlossenen Monate (R9, R10), der neueste zuerst. Je Zeile der Monat, Anzahl Bons und Umsatz. Ein Tipp öffnet das Blatt von rechts wie bei einem Tag: Zeitraum von bis, Einnahmen, Storno, Steuer nach Satz, Pfand, Tage. Oben im Blatt die Taste **Drucken**.
+- **Monate:** Liste der abgeschlossenen Monate (R9, R10), der neueste zuerst, auch Monate ohne Bons. Je Zeile der Monat, Anzahl Bons und Umsatz. Ein Tipp öffnet das Blatt von rechts wie bei einem Tag: Zeitraum von bis, Einnahmen, Storno, Steuer nach Satz, Pfand, Tage. Oben im Blatt die Taste **Drucken**.
 - **Mehrere Monate:** Über der Liste zwei Auswahlfelder "Von" und "Bis" mit den abgeschlossenen Monaten und die Taste **Anzeigen**. Sie öffnet dasselbe Blatt für den Zeitraum (R12), mit "Monate" statt "Tage", unter `/b/<Betrieb>/monate/2026-01..2026-10`. "Bis" vor "Von" lässt sich nicht wählen.
 - **Tag:** Das Blatt eines Tages bekommt die Zeilen Bar, Karte, Storniert und die Steuer nach Satz dazu und ebenfalls **Drucken**. Ein offener Tag lässt sich drucken; der Ausdruck trägt dann "offen" und zeigt keine Zahlen des Abschlusses (gezählt, Unterschied, in der Lade gelassen).
 - **Drucken** öffnet den Druckdialog des Browsers (`window.print()`). Eine Druckansicht zeigt nur das Blatt: schwarz auf weiß, A4 hoch, oben Betrieb und Zeitraum, unten "Erstellt am". Als PDF sichert man über den Druckdialog. Keine neue Bibliothek.
