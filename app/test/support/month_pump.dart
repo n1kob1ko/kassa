@@ -4,6 +4,7 @@
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show OrderingTerm, Value;
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/database.dart';
@@ -48,7 +49,7 @@ class SignatureReceipt {
 /// [printer]: ein Netzwerkdrucker ist eingerichtet. [signature]: es gibt eine
 /// Kette der Signatur (Probe), die Karte zum Monatsbeleg erscheint. [live]:
 /// die Kette ist `live` und alle Bons stehen darin, also kein Testbetrieb.
-/// [belege] sind Monats- oder Jahresbelege.
+/// [belege] sind Monats- oder Jahresbelege, [extra] weitere Overrides.
 Future<void> pumpMonth(
   WidgetTester t, {
   List<OverviewSale>? sales,
@@ -61,6 +62,7 @@ Future<void> pumpMonth(
   Size size = const Size(1280, 800),
   Brightness brightness = Brightness.light,
   double textScale = 1.0,
+  List<Override> extra = const [],
 }) async {
   final list = sales ?? defaultMonthSales();
   final clock = FixedClock(
@@ -74,6 +76,7 @@ Future<void> pumpMonth(
     size: size,
     brightness: brightness,
     textScale: textScale,
+    extra: extra,
   );
   for (final s in list) {
     clock.value = s.at;

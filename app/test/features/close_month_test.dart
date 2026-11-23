@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/period_report_repository.dart';
+import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/printer.dart';
+import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/close/month_view.dart';
 import 'package:kassa/ui/pressable.dart';
@@ -9,6 +13,7 @@ import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/close_pump.dart';
+import '../support/kassa_pump.dart';
 import '../support/month_pump.dart';
 import '../support/overview_pump.dart';
 import '../support/pump.dart';
@@ -31,6 +36,43 @@ List<OverviewSale> _overNewYear() => [
   OverviewSale(DateTime(2026, 1, 10, 12)),
   OverviewSale(DateTime(2026, 10, 1, 12)),
 ];
+
+/// Rechnet wie das Original; September scheitert ([failSeptember]) oder der
+/// Beleg zum September wartet auf [septemberBeleg].
+class _Repo extends PeriodReportRepository {
+  _Repo(super.db, super.clock);
+
+  bool failSeptember = false;
+  Completer<void>? septemberBeleg;
+
+  static const _september = YearMonth(2026, 9);
+
+  @override
+  Future<PeriodReport> report(MonthRange range) async {
+    if (failSeptember && range.from == _september) {
+      throw StateError('Lesefehler');
+    }
+    return super.report(range);
+  }
+
+  @override
+  Future<String?> signatureReceiptId(YearMonth month) async {
+    final wait = septemberBeleg;
+    if (wait != null && month == _september) await wait.future;
+    return super.signatureReceiptId(month);
+  }
+}
+
+/// Ersetzt das Repository der Abrechnung durch [_Repo]; erreichbar über
+/// [_repoOf].
+List<Override> _repoOverride() => [
+  periodReportRepositoryProvider.overrideWith(
+    (ref) => _Repo(ref.watch(databaseProvider), ref.watch(clockProvider)),
+  ),
+];
+
+_Repo _repoOf(WidgetTester t) =>
+    containerOf(t).read(periodReportRepositoryProvider) as _Repo;
 
 void main() {
   testWidgets('Abschluss öffnet mit Tag; Monat zeigt den letzten '
@@ -426,5 +468,77 @@ void main() {
       'period-report:2026-09..2026-10',
     ]);
     expect(await rowCounts(t), before);
+  });
+
+  testWidgets('Von bis: keine Karte zum Monatsbeleg, auch mit nur dem Beginn', (
+    t,
+  ) async {
+    await pumpMonth(
+      t,
+      printer: true,
+      signature: true,
+      belege: [SignatureReceipt(DateTime(2026, 11, 1, 10, 2))],
+    );
+    final card = find.byKey(const Key('signature-receipt-card'));
+    expect(card, findsOneWidget);
+    await tapKey(t, 'segment-Von bis');
+    expect(_title(t), 'Monatsabrechnung Oktober 2026');
+    expect(card, findsNothing);
+    await tapKey(t, 'month-9');
+    expect(_title(t), 'Monatsabrechnung September 2026');
+    expect(card, findsNothing);
+    expect(find.byKey(const Key('print-signature-receipt')), findsNothing);
+  });
+
+  testWidgets('Fehler beim Rechnen: Hinweis statt alter Zahlen, Drucken '
+      'gesperrt', (t) async {
+    await pumpMonth(t, printer: true, extra: _repoOverride());
+    expect(textOf(t, const Key('income-total')), '54,60 €');
+    _repoOf(t).failSeptember = true;
+    await tapKey(t, 'month-9');
+    expect(
+      find.text('Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('income-total')), findsNothing);
+    expect(find.byKey(const Key('period-rows')), findsNothing);
+    expect(_printEnabled(t), isFalse);
+    // Zurück zu einem Monat, der sich rechnen lässt.
+    await tapKey(t, 'month-10');
+    expect(textOf(t, const Key('income-total')), '54,60 €');
+    expect(_printEnabled(t), isTrue);
+  });
+
+  testWidgets('Beleg des neuen Monats lädt noch: nie der Beleg eines anderen '
+      'Monats', (t) async {
+    await pumpMonth(
+      t,
+      printer: true,
+      signature: true,
+      extra: _repoOverride(),
+      belege: [
+        SignatureReceipt(
+          DateTime(2026, 10, 1, 9),
+          number: 900,
+          id: 'beleg-sep',
+        ),
+        SignatureReceipt(DateTime(2026, 11, 1, 10, 2), id: 'beleg-okt'),
+      ],
+    );
+    expect(find.text('Erstellt am 1.11. um 10:02, Bon Nr. 12400'), findsOne);
+    final wait = _repoOf(t).septemberBeleg = Completer<void>();
+    await tapKey(t, 'month-9');
+    expect(_title(t), 'Monatsabrechnung September 2026');
+    expect(
+      find.text('Erstellt am 1.11. um 10:02, Bon Nr. 12400'),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('print-signature-receipt')), findsNothing);
+
+    wait.complete();
+    await t.pumpAndSettle();
+    expect(find.text('Erstellt am 1.10. um 09:00, Bon Nr. 900'), findsOne);
+    await tapKey(t, 'print-signature-receipt');
+    expect(printerOf(t).printed, ['beleg-sep']);
   });
 }

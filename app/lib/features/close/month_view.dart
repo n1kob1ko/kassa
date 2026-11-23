@@ -38,7 +38,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
 
   /// Zuletzt geladene Zahlen und Beleg, bleiben beim Wechsel stehen.
   PeriodReport? _shown;
-  (YearMonth, Receipt?)? _beleg;
+
+  /// Geladene Monats- und Jahresbelege je Monat (null: keiner).
+  final Map<YearMonth, Receipt?> _belege = {};
 
   bool _printing = false;
   String? _printMessage;
@@ -127,23 +129,35 @@ class _MonthViewState extends ConsumerState<MonthView> {
     final year = _year ??= last?.year ?? now.year;
     final selection = _selection ?? const PeriodSelection();
     final range = selection.range;
-    final loaded = range == null
+    final report = range == null
         ? null
-        : ref.watch(periodReportProvider(range)).value;
+        : ref.watch(periodReportProvider(range));
+    final loaded = report?.value;
     if (loaded != null) _shown = loaded;
-    final shown = _shown;
+    // Scheitert die Rechnung, stehen keine alten Zahlen neben dem neuen
+    // Zeitraum.
+    final failed = report != null && report.hasError && loaded == null;
+    final shown = failed ? null : _shown;
     // Gedruckt werden nur die Zahlen des gewählten Zeitraums.
     final printable = shown != null && shown.range == range && !shown.isEmpty
         ? shown
         : null;
 
-    if (shown != null && shown.range.single && hasSignature) {
-      final month = shown.range.from;
+    // Die Karte zum Beleg gibt es nur bei "Ein Monat". Der Beleg wird schon
+    // mit der Wahl geholt und nur zu dem Monat gezeigt, zu dem er gehört.
+    final single = !selection.rangeMode && hasSignature;
+    if (single && range != null) {
+      final month = range.from;
       final beleg = ref.watch(signatureReceiptProvider(month));
-      if (beleg.hasValue) _beleg = (month, beleg.value);
+      if (beleg.hasValue) _belege[month] = beleg.value;
     }
-    final beleg = shown != null && shown.range.single && hasSignature
-        ? _beleg
+    final belegMonth = shown?.range.from;
+    final beleg =
+        single &&
+            shown != null &&
+            shown.range.single &&
+            _belege.containsKey(belegMonth)
+        ? (belegMonth!, _belege[belegMonth])
         : null;
 
     final next = choice.nextAvailable;
@@ -153,6 +167,12 @@ class _MonthViewState extends ConsumerState<MonthView> {
         'Die erste Monatsabrechnung gibt es ab ${next.day}. '
         '${germanMonths[next.month - 1]}.',
         key: const Key('no-month-yet'),
+      );
+    } else if (failed) {
+      body = Text(
+        'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.',
+        key: const Key('period-error'),
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c.red),
       );
     } else if (shown == null) {
       body = const SizedBox.shrink();
