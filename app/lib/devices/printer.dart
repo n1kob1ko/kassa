@@ -6,9 +6,12 @@ import 'dart:typed_data';
 
 import '../core/clock.dart';
 import '../domain/business_info.dart';
+import '../domain/day.dart';
+import '../domain/period_report.dart';
 import '../domain/print_document.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_layout.dart';
+import '../domain/report_layout.dart';
 import '../rksv/setup_facts.dart';
 import 'escpos.dart';
 
@@ -92,6 +95,20 @@ abstract interface class ReceiptPrinter {
 
   /// Druckt den Zettel "Angaben für FinanzOnline" ([layoutSetupFacts]).
   Future<PrintOutcome> printSetupFacts(SetupFacts facts);
+
+  /// Druckt den Tagesabschluss ([layoutDayReport]). Öffnet nie die Lade;
+  /// [drawer] sagt nur, ob der Zettel die Lade ausweist.
+  Future<PrintOutcome> printDayReport(
+    DaySummary summary, {
+    required String? registerName,
+    required bool drawer,
+  });
+
+  /// Druckt die Abrechnung für einen Monat oder mehrere ([layoutPeriodReport]).
+  Future<PrintOutcome> printPeriodReport(
+    PeriodReport report, {
+    required String? registerName,
+  });
 }
 
 /// Höchstdauer eines ganzen Aufrufs (Zustandsfragen und Senden).
@@ -174,6 +191,46 @@ class EscPosPrinter implements ReceiptPrinter {
     checkStatus: true,
     bytes: () async => encodeEscPos(
       layoutSetupFacts(facts, business, clock.now(), columns: columns),
+    ),
+  );
+
+  @override
+  Future<PrintOutcome> printDayReport(
+    DaySummary summary, {
+    required String? registerName,
+    required bool drawer,
+  }) => _run(
+    checkStatus: true,
+    bytes: () async => encodeEscPos(
+      layoutDayReport(
+        summary,
+        business,
+        registerName: registerName,
+        drawer: drawer,
+        printedAt: clock.now(),
+        columns: columns,
+      ),
+      qrAsImage: qrAsImage,
+      columns: columns,
+    ),
+  );
+
+  @override
+  Future<PrintOutcome> printPeriodReport(
+    PeriodReport report, {
+    required String? registerName,
+  }) => _run(
+    checkStatus: true,
+    bytes: () async => encodeEscPos(
+      layoutPeriodReport(
+        report,
+        business,
+        registerName: registerName,
+        printedAt: clock.now(),
+        columns: columns,
+      ),
+      qrAsImage: qrAsImage,
+      columns: columns,
     ),
   );
 

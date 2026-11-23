@@ -180,4 +180,15 @@ class _ThrowingPrinter implements ReceiptPrinter {
   Future<PrintOutcome> testPrint() async => throw StateError('x');
   @override
   Future<PrintOutcome> printSetupFacts(facts) async => throw StateError('x');
+  @override
+  Future<PrintOutcome> printDayReport(
+    summary, {
+    required registerName,
+    required drawer,
+  }) async => throw StateError('x');
+  @override
+  Future<PrintOutcome> printPeriodReport(
+    report, {
+    required registerName,
+  }) async => throw StateError('x');
 }

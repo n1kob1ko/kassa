@@ -6,13 +6,15 @@ import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
+import 'package:kassa/domain/day.dart';
+import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 
 class FakePrinter implements ReceiptPrinter {
   /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`,
   /// `print+drawer:<Bon-Id>` (Bon mit dem Befehl für die Lade im selben
-  /// Auftrag), `test`.
+  /// Auftrag), `test`, `day-report:<Tag-Id>`, `period-report:<Zeitraum>`.
   final List<String> log = [];
 
   /// Die Bon-Ids der gedruckten Bons, mit und ohne Lade.
@@ -67,6 +69,19 @@ class FakePrinter implements ReceiptPrinter {
     setupSlips.add(facts);
     return _call('setup');
   }
+
+  @override
+  Future<PrintOutcome> printDayReport(
+    DaySummary summary, {
+    required String? registerName,
+    required bool drawer,
+  }) => _call('day-report:${summary.day.id}');
+
+  @override
+  Future<PrintOutcome> printPeriodReport(
+    PeriodReport report, {
+    required String? registerName,
+  }) => _call('period-report:${report.range.key}');
 }
 
 /// Falsche Druckersuche: je Verbindung eine Liste, optional ein Fehler.

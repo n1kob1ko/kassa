@@ -9,7 +9,10 @@ import 'package:kassa/domain/business_info.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
+import 'package:kassa/domain/report_layout.dart';
 import 'package:kassa/rksv/setup_facts.dart';
+
+import '../support/report_samples.dart';
 
 const business = BusinessInfo(name: 'Beispiel-Imbiss');
 
@@ -457,4 +460,102 @@ void main() {
   test('Standardgrenze eines Aufrufs sind 5 Sekunden', () {
     expect(printCallLimit, const Duration(seconds: 5));
   });
+
+  group('Berichte', () {
+    test(
+      'printDayReport schickt den Zettel ohne Befehl für die Lade',
+      () async {
+        final t = RecordingTransport();
+        final s = sampleDay();
+        final outcome = await printerOf(t)
+            .printDayReport(s, registerName: 'Kassa 1', drawer: true);
+        expect(outcome.ok, isTrue);
+        expect(outcome.drawerSent, isFalse);
+        expect(t.asked, [escposStatusPrinter]);
+        expect(t.sent, [
+          encodeEscPos(
+            layoutDayReport(
+              s,
+              business,
+              registerName: 'Kassa 1',
+              drawer: true,
+              printedAt: DateTime(2026, 11, 17, 12),
+            ),
+          ),
+        ]);
+        expect(String.fromCharCodes(t.sent.single), contains('TAGESABSCHLUSS'));
+        expect(_contains(t.sent.single, encodeDrawerKick()), isFalse);
+      },
+    );
+
+    test(
+      'printPeriodReport läuft durch dieselbe Warteschlange wie ein Bon',
+      () async {
+        final t = RecordingTransport()..statusGate = Completer<void>();
+        final p = printerOf(t);
+        final r = samplePeriod();
+        final first = p.printReceipt(receipt(id: 'a'));
+        final second = p.printPeriodReport(r, registerName: null);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(t.started, hasLength(1)); // der Bericht wartet
+        expect(t.sent, isEmpty);
+        t.statusGate!.complete();
+        expect((await first).ok, isTrue);
+        expect((await second).ok, isTrue);
+        expect(t.sent, [
+          encodeEscPos(layoutReceipt(receipt(id: 'a'), business)),
+          encodeEscPos(
+            layoutPeriodReport(
+              r,
+              business,
+              registerName: null,
+              printedAt: DateTime(2026, 11, 17, 12),
+            ),
+          ),
+        ]);
+      },
+    );
+
+    test('Papier leer: failed(paperOut), nichts wird gesendet', () async {
+      final t = RecordingTransport()..answers.addAll([0x1A, 0x72, 0x1A, 0x72]);
+      final p = printerOf(t);
+      final a = await p.printDayReport(
+        sampleDay(),
+        registerName: null,
+        drawer: false,
+      );
+      final b = await p.printPeriodReport(samplePeriod(), registerName: null);
+      expect(a.problem, PrintProblem.paperOut);
+      expect(b.problem, PrintProblem.paperOut);
+      expect(t.sent, isEmpty);
+    });
+
+    test('Zeitgrenze: failed(timeout)', () async {
+      final t = RecordingTransport()..hang = true;
+      final p = printerOf(t, limit: const Duration(milliseconds: 100));
+      final a = await p.printDayReport(
+        sampleDay(),
+        registerName: null,
+        drawer: false,
+      );
+      expect(a.problem, PrintProblem.timeout);
+      t.hang = false;
+      final b = await p.printPeriodReport(samplePeriod(), registerName: null);
+      expect(b.ok, isTrue);
+    });
+  });
+}
+
+bool _contains(Uint8List data, Uint8List part) {
+  for (var i = 0; i + part.length <= data.length; i++) {
+    var same = true;
+    for (var j = 0; j < part.length; j++) {
+      if (data[i + j] != part[j]) {
+        same = false;
+        break;
+      }
+    }
+    if (same) return true;
+  }
+  return false;
 }
