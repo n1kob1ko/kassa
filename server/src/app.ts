@@ -5,6 +5,7 @@ import { installBusinessRoutes } from './admin/businesses.js';
 import { installDayRoutes } from './admin/days.js';
 import { installDepRoutes } from './admin/dep.js';
 import { installItemRoutes } from './admin/items.js';
+import { installMonthRoutes } from './admin/months.js';
 import { installOverviewRoutes } from './admin/overview.js';
 import { installReportRoutes } from './admin/reports.js';
 import { installReceiptRoutes } from './admin/receipts.js';
@@ -110,6 +111,7 @@ export async function buildApp(
   installOverviewRoutes(app);
   installReceiptRoutes(app);
   installDayRoutes(app);
+  installMonthRoutes(app);
   installItemRoutes(app);
   installDepRoutes(app);
   installReportRoutes(app);

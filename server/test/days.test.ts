@@ -127,4 +127,37 @@ describe('Tage', () => {
       expect([...allKeys(res.json())].filter((k) => FORBIDDEN_KEYS.includes(k))).toEqual([]);
     }
   });
+  test('Tag liefert Bar, Karte, Storno, Pfand und Steuer wie am Tablet', async () => {
+    const s = await siteFor(a, provider, 'Tagesabrechnung');
+    const day = sampleDay();
+    const line = (gross: Record<string, number>, quantity = 1) => [
+      { position: 0, itemId: 'x', name: 'X', info: null, unitPriceCents: 100, quantity, unitDepositCents: 0, gross: { '20': 0, '10': 0, '13': 0, '0': 0, '19': 0, ...gross }, options: [] },
+    ];
+    const bar1 = sampleReceipt({ businessDayId: day.id, number: 1, totalCents: 1190, goodsCents: 1190, lines: line({ '10': 1190 }) });
+    const card = sampleReceipt({
+      businessDayId: day.id, number: 2, totalCents: 605, goodsCents: 580, depositCents: 25, lines: line({ '20': 580 }),
+      payment: { kind: 'card', amountCents: 605, givenCents: 0, changeCents: 0, provider: 'sumup', providerTxCode: 'T', cardScheme: 'VISA', cardLast4: '4242' },
+    });
+    const bar2 = sampleReceipt({ businessDayId: day.id, number: 3, totalCents: 1190, goodsCents: 1190, lines: line({ '10': 1190 }) });
+    const storno = sampleReceipt({
+      businessDayId: day.id, number: 4, kind: 'voided', voidsReceiptId: bar1.id, totalCents: -1190, goodsCents: -1190, lines: line({ '10': -1190 }, -1),
+    });
+    const special = sampleReceipt({ businessDayId: day.id, number: 5, kind: 'zero', totalCents: 0, goodsCents: 0, lines: [], payment: null });
+    await send(a, s, [['day', day], ['receipt', bar1], ['receipt', card], ['receipt', bar2], ['receipt', storno], ['receipt', special]]);
+    const d = (await detail(s, day.id)).json();
+    expect(d).toMatchObject({
+      receiptCount: 2, revenueCents: 1795,
+      cashCents: 1190, cardCents: 605, cashReceiptCount: 1, cardReceiptCount: 1,
+      voidCount: 1, voidedCents: 1190, depositCents: 25,
+    });
+    expect(d.taxLines).toEqual([
+      { percent: 20, grossCents: 580, netCents: 483, taxCents: 97 },
+      { percent: 10, grossCents: 1190, netCents: 1082, taxCents: 108 },
+    ]);
+    const empty = sampleDay();
+    await send(a, s, [['day', empty]]);
+    expect((await detail(s, empty.id)).json()).toMatchObject({
+      cashCents: 0, cardCents: 0, cashReceiptCount: 0, cardReceiptCount: 0, voidCount: 0, voidedCents: 0, depositCents: 0, taxLines: [],
+    });
+  });
 });

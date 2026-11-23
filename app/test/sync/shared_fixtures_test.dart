@@ -13,6 +13,7 @@ import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/domain/stats.dart';
@@ -363,6 +364,145 @@ void main() {
         'expected': expected,
       };
       _checkFile('stats/overview.json', content);
+    },
+    skip: DateTime.now().timeZoneOffset == Duration.zero
+        ? false
+        : 'Dieser Test braucht ein Gerät in UTC (die Beispieldatei sagt '
+              '"timeZone": "UTC"). GitHub und die Entwicklungsumgebung laufen '
+              'in UTC.',
+  );
+
+  test(
+    'Monate: die Beispieldatei months.json stimmt mit der Rechnung der App',
+    () async {
+      final now = DateTime(2026, 3, 12, 15);
+      final bowl = const Cart.empty().add(huhnBowl, options: [normal, reis]);
+      final colas = const Cart.empty().add(cola).add(cola);
+
+      final ids = <String>[
+        await sellCash(_id('eeeeeeee', 1), DateTime(2025, 11, 3, 10), cart),
+        await sellCard(
+          _id('eeeeeeee', 2),
+          DateTime(2025, 11, 29, 12),
+          cartCard,
+        ),
+        await sellCash(
+          _id('eeeeeeee', 3),
+          DateTime(2025, 11, 30, 23, 30),
+          colas,
+        ),
+        await sellCash(_id('eeeeeeee', 4), DateTime(2025, 12, 5, 9), bowl),
+        // Der Storno kommt im Monat nach dem Bon.
+        await voidReceipt(
+          _id('eeeeeeee', 5),
+          _id('eeeeeeee', 3),
+          DateTime(2025, 12, 6, 10),
+        ),
+        await sellCard(
+          _id('eeeeeeee', 6),
+          DateTime(2025, 12, 31, 23, 59),
+          cartCard,
+        ),
+        // Jänner bleibt leer.
+        await sellCash(_id('eeeeeeee', 7), DateTime(2026, 2, 1, 0, 1), cart),
+        await sellCard(_id('eeeeeeee', 8), DateTime(2026, 2, 14, 18), cartCard),
+        await sellCash(_id('eeeeeeee', 9), DateTime(2026, 2, 14, 19), bowl),
+        await sellCash(_id('eeeeeeee', 10), DateTime(2026, 2, 28, 22), colas),
+      ];
+      // Ein Sonderbeleg im Dezember: kein Tag, keine Zahlung, zählt nicht.
+      await ensureDay(DateTime(2026, 3, 2, 8));
+      await insertSpecial(
+        _id('eeeeeeee', 11),
+        await nextNumber(),
+        ReceiptKind.zero,
+        at: DateTime(2025, 12, 15, 8),
+      );
+      ids.add(_id('eeeeeeee', 11));
+      // Im laufenden Monat: zählt nirgends mit.
+      ids.add(
+        await sellCash(_id('eeeeeeee', 12), DateTime(2026, 3, 2, 9), cart),
+      );
+      ids.add(
+        await sellCard(
+          _id('eeeeeeee', 13),
+          DateTime(2026, 3, 10, 12),
+          cartCard,
+        ),
+      );
+      expect(await shop.count('receipts'), 13);
+
+      shop.clock.value = now;
+      final choice = await shop.periods.choice();
+      final first = choice.first!;
+      final last = choice.last!;
+      expect(first.key, '2025-11');
+      expect(last.key, '2026-02');
+
+      String dayKey(DateTime t) =>
+          '${t.year}-${t.month.toString().padLeft(2, '0')}-'
+          '${t.day.toString().padLeft(2, '0')}';
+      Future<Map<String, Object?>> summary(YearMonth from, YearMonth to) async {
+        final r = await shop.periods.report(MonthRange(from, to));
+        return {
+          'from': from.key,
+          'to': to.key,
+          'testMode': r.testMode,
+          'receiptCount': r.receiptCount,
+          'cashReceiptCount': r.cashReceiptCount,
+          'cardReceiptCount': r.cardReceiptCount,
+          'voidCount': r.voidCount,
+          'voidedCents': r.voidedCents,
+          'revenueCents': r.revenueCents,
+          'cashRevenueCents': r.cashRevenueCents,
+          'cardRevenueCents': r.cardRevenueCents,
+          'depositCents': r.depositCents,
+          'taxLines': [
+            for (final t in r.taxLines)
+              {
+                'percent': t.rate.percent,
+                'grossCents': t.grossCents,
+                'netCents': t.netCents,
+                'taxCents': t.taxCents,
+              },
+          ],
+          'rows': [
+            for (final row in r.rows)
+              {
+                'key': from == to
+                    ? dayKey(row.start)
+                    : YearMonth.of(row.start).key,
+                'receiptCount': row.receiptCount,
+                'revenueCents': row.revenueCents,
+              },
+          ],
+        };
+      }
+
+      final all = await shop.periods.report(MonthRange(first, last));
+      final summaries = <String, Object?>{};
+      for (final m in MonthRange(first, last).months) {
+        summaries['${m.key}..${m.key}'] = await summary(m, m);
+      }
+      summaries['${first.key}..${last.key}'] = await summary(first, last);
+
+      final content = <String, Object?>{
+        'now': _iso(now),
+        'timeZone': 'UTC',
+        'receipts': [for (final id in ids) await payloadOf(id)]
+          ..sort((a, b) => (a['number'] as int).compareTo(b['number'] as int)),
+        'expected': {
+          'months': [
+            for (final row in all.rows.reversed)
+              {
+                'month': YearMonth.of(row.start).key,
+                'receiptCount': row.receiptCount,
+                'revenueCents': row.revenueCents,
+              },
+          ],
+          'summaries': summaries,
+        },
+      };
+      _checkFile('stats/months.json', content);
     },
     skip: DateTime.now().timeZoneOffset == Duration.zero
         ? false

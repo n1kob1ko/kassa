@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
+import { grossOf, GROSS_SUMS, RECEIPT_SUMS, type ReceiptSums } from './months.js';
+import { taxLinesOf } from './tax.js';
 
 const MAX_DAYS = 100;
 
@@ -75,12 +77,15 @@ export function installDayRoutes(app: FastifyInstance): void {
           [id],
         )
       ).rows;
-      // Wie in der Übersicht: Verkäufe zählen eins hoch, Stornos eins herunter, Sonderbelege zählen nicht.
+      // Wie am Tablet: alle Verkäufe und Stornos des Tages (auch Testbons). Verkäufe zählen eins hoch, Stornos eins
+      // herunter, Sonderbelege zählen nicht.
       const totals = (
-        await c.query<{ count: number; revenue: number }>(
-          `select coalesce(sum(case when kind = 'voided' then -1 else 1 end), 0)::int as count,
-                  coalesce(sum(total_cents), 0)::int as revenue
-             from receipts where business_day_id = $1 and ${REVENUE_KINDS}`,
+        await c.query<ReceiptSums>(`select ${RECEIPT_SUMS} from receipts where business_day_id = $1 and ${REVENUE_KINDS}`, [id])
+      ).rows[0]!;
+      const gross = (
+        await c.query<Record<string, number>>(
+          `select ${GROSS_SUMS} from receipts r join receipt_lines l on l.business_id = r.business_id and l.receipt_id = r.id
+            where r.business_day_id = $1 and r.kind in ('sale', 'voided')`,
           [id],
         )
       ).rows[0]!;
@@ -97,6 +102,14 @@ export function installDayRoutes(app: FastifyInstance): void {
         })),
         receiptCount: totals.count,
         revenueCents: totals.revenue,
+        cashCents: totals.cash,
+        cardCents: totals.card,
+        cashReceiptCount: totals.cash_count,
+        cardReceiptCount: totals.card_count,
+        voidCount: totals.void_count,
+        voidedCents: totals.voided,
+        depositCents: totals.deposit,
+        taxLines: taxLinesOf(grossOf(gross)),
       };
     });
   });
