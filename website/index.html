@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/Figtree-ExtraBold.woff2" as="font" type="font/woff2" crossorigin>
+<title>Kassa Kassensystem</title>
+<meta name="description" content="Kassa ist das Kassensystem für Imbiss, Stand und Lokal in Österreich. Karte, Bon und RKSV-Signatur laufen in einem Schritt.">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0F766E">
+<style>
+@font-face{font-family:"Figtree";src:url("fonts/Figtree-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Figtree";src:url("fonts/Figtree-SemiBold.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Figtree";src:url("fonts/Figtree-Bold.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Figtree";src:url("fonts/Figtree-ExtraBold.woff2") format("woff2");font-weight:800;font-style:normal;font-display:swap}
+
+:root{
+  color-scheme:light;
+  --accent:#0F766E;--accent-soft:#E7F1F1;--accent-ink:#0C615A;--accent-snack:#A4CBC8;--on-accent:#FFFFFF;
+  --ground:#F3F4F6;--card:#FFFFFF;--fill:#F1F2F4;--fill2:#E7E9ED;--line:#E2E5E9;--ink:#14171A;--ink2:#5B6470;
+  --solid:#14171A;--solid-ink:#FFFFFF;
+  --red:#B42318;--green:#15803D;--warn-bg:#FFF1CC;--warn-ink:#6B4200;--vegan-bg:#DDF3E4;--vegan-fg:#14592B;--ok-bg:#E3F4E8;--ok-ink:#14592B;
+  --block:#14171A;--block-ink:#F2F4F6;--block-ink2:#AEB6BF;--block-card:#1F2327;--block-line:#30353B;
+  --petrol:#0C615A;--petrol-ink2:#CFE4E2;--petrol-card:rgba(255,255,255,.10);--petrol-line:rgba(255,255,255,.20);
+  --paper:#FFFEFB;--paper-ink:#14171A;--paper-ink2:#5B6470;
+  --shadow-card:0 1px 2px rgba(16,24,40,.06),0 1px 1px rgba(16,24,40,.03);
+  
+  --shadow-toast:0 12px 32px rgba(16,24,40,.28);
+  --ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1);
+  --bon-w:clamp(348px,29vw,420px);
+  --gut:clamp(16px,3.2vw,44px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --accent-soft:#173233;--accent-ink:#9AC5C2;--accent-snack:#0D645E;
+    --ground:#0E1012;--card:#191C20;--fill:#22262B;--fill2:#2B3036;--line:#2C3138;--ink:#F2F4F6;--ink2:#A3ACB6;
+    --solid:#F2F4F6;--solid-ink:#14171A;
+    --red:#FF8A80;--green:#3DBB6E;--warn-bg:#3A2E0A;--warn-ink:#F5D27A;--vegan-bg:#163423;--vegan-fg:#8FD9A8;--ok-bg:#163423;--ok-ink:#8FD9A8;
+    --block:#191C20;--block-card:#22262B;--block-line:#2C3138;
+    --petrol:#0F4A46;
+    --shadow-card:none;--shadow-toast:0 12px 32px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --accent-soft:#173233;--accent-ink:#9AC5C2;--accent-snack:#0D645E;
+  --ground:#0E1012;--card:#191C20;--fill:#22262B;--fill2:#2B3036;--line:#2C3138;--ink:#F2F4F6;--ink2:#A3ACB6;
+  --solid:#F2F4F6;--solid-ink:#14171A;
+  --red:#FF8A80;--green:#3DBB6E;--warn-bg:#3A2E0A;--warn-ink:#F5D27A;--vegan-bg:#163423;--vegan-fg:#8FD9A8;--ok-bg:#163423;--ok-ink:#8FD9A8;
+  --block:#191C20;--block-card:#22262B;--block-line:#2C3138;
+  --petrol:#0F4A46;
+  --shadow-card:none;--shadow-toast:0 12px 32px rgba(0,0,0,.5);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:72px;scrollbar-color:var(--fill2) transparent}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:500;font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+::selection{background:var(--accent);color:#fff}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+h1,h2,h3,p,ul,ol,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+img{display:block;max-width:100%}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+a{color:inherit;-webkit-tap-highlight-color:transparent}
+.ic{width:1.25em;height:1.25em;flex:none}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+[hidden]{display:none!important}
+
+/* Kopfleiste und Reiter (Handy, Tablet hochkant) */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border-bottom:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:var(--card);z-index:41}
+.logo{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:22px;letter-spacing:-.02em;min-height:48px}
+.logo-mark{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center}
+.logo-mark .ic{width:20px;height:20px}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;border-radius:14px;border:0;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:15.5px;text-decoration:none;white-space:nowrap;transition:transform 140ms var(--ease-out),background-color 160ms ease}
+.cta:active{transform:scale(.97)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--ground);z-index:35}
+.chips::-webkit-scrollbar{display:none}
+.chips a{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow-card);font-weight:700;font-size:14.5px;text-decoration:none;color:var(--ink);transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,transform 140ms var(--ease-out)}
+.chips a:active{transform:scale(.97)}
+.chips a[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+@media (min-width:700px){html{scroll-padding-top:136px}.chips{position:sticky;top:calc(60px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--line)}}
+
+/* Kategorien-Leiste (Desktop, Tablet quer) */
+.rail{display:none}
+@media (min-width:1100px){
+  html{scroll-padding-top:24px}
+  .topbar,.chips{display:none}
+  .rail{display:flex;flex-direction:column;position:fixed;z-index:40;top:12px;bottom:12px;left:max(12px,env(safe-area-inset-left,0px));width:220px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-card);padding:12px 10px 10px;overflow-y:auto;scrollbar-width:none}
+  .rail .logo{padding:2px 6px 12px}
+  .rail-nav{position:relative;display:grid;gap:4px}
+  .rail-ind{position:absolute;left:0;right:0;top:0;height:52px;border-radius:14px;background:var(--accent-soft);border:1.5px solid var(--accent);transition:transform 320ms var(--ease-out),opacity 200ms ease;pointer-events:none}
+  .rail-nav a{position:relative;display:flex;align-items:center;gap:11px;height:52px;padding:0 12px;border-radius:14px;font-weight:700;font-size:15px;color:var(--ink2);text-decoration:none;transition:color 180ms ease,background-color 180ms ease,transform 140ms var(--ease-out)}
+  .rail-nav a:active{transform:scale(.97)}
+  .rail-nav a[aria-current="true"]{color:var(--accent-ink)}
+  .rail .cta{margin-top:auto;min-height:56px;padding:0 10px;font-size:15px}
+  .rail-note{margin:10px 6px 12px;font-size:13px;line-height:1.35;color:var(--ink2)}
+  main,.foot{margin-left:calc(max(12px,env(safe-area-inset-left,0px)) + 220px)}
+}
+@media (hover:hover) and (pointer:fine){
+  .cta:hover{background:var(--accent-ink)}
+  .rail-nav a:not([aria-current="true"]):hover{color:var(--ink);background:var(--fill)}
+  .chips a:not([aria-current="true"]):hover{border-color:var(--ink2)}
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cta:hover{background:#128579}}
+:root[data-theme="dark"] .cta:hover{background:#128579}
+
+.wrap{max-width:1280px;margin-inline:auto;padding-left:max(var(--gut),env(safe-area-inset-left,0px));padding-right:max(var(--gut),env(safe-area-inset-right,0px))}
+
+/* Kassa (erster Bildschirm) */
+.hero{padding-block:clamp(18px,2.4vw,28px) clamp(48px,6vw,80px)}
+.hero-grid{display:grid;gap:clamp(22px,2.6vw,36px)}
+.hero-main{display:grid;gap:clamp(22px,3vw,32px);align-content:space-between;min-width:0}
+h1{font-weight:800;font-size:clamp(36px,9.6vw,50px);line-height:1.02;letter-spacing:-.035em;text-wrap:balance}
+h1 span{display:inline}
+.lead{margin-top:clamp(14px,1.6vw,20px);font-size:clamp(17px,1.35vw,20px);line-height:1.45;color:var(--ink2);max-width:44ch;text-wrap:pretty}
+@media (min-width:900px){
+  .hero-grid{grid-template-columns:minmax(0,1fr) var(--bon-w);align-items:stretch}
+  h1{font-size:clamp(44px,5vw,80px)}
+  h1 span{display:block}
+}
+@media (min-width:1100px){.hero-grid{min-height:min(calc(100dvh - 60px),880px)}.hero-main{padding-top:clamp(8px,2vh,28px)}}
+
+.tiles-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:12px}
+.tiles-hint{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15.5px;line-height:1.3}
+.tiles-hint .ic{color:var(--accent);width:22px;height:22px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:13px;background:var(--fill2)}
+.seg button{height:44px;padding:0 14px;border-radius:10px;border:0;background:transparent;color:var(--ink2);font-weight:700;font-size:14px;transition:background-color 180ms ease,color 180ms ease,transform 140ms var(--ease-out)}
+.seg button:active{transform:scale(.97)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow-card)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:560px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tile{position:relative;display:flex;flex-direction:column;text-align:left;min-width:0;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow-card);transition:transform 140ms var(--ease-out),border-color 180ms ease}
+.tile:active{transform:scale(.97)}
+.tile[data-in]{border-color:var(--accent)}
+.tile-ph{aspect-ratio:16/10;border-radius:11px;background:var(--accent-soft);color:var(--accent-ink);overflow:hidden;display:grid;place-items:center}
+.tile-ph img{width:100%;height:100%;object-fit:cover}
+.tile-ph .ic{width:34px;height:34px;opacity:.55}
+.tile-name{font-weight:700;font-size:15.5px;line-height:1.2;padding:9px 6px 0}
+.tile-row{display:flex;align-items:center;gap:7px;padding:3px 6px 6px;min-height:28px}
+.tile-price{font-weight:800;font-size:15.5px;color:var(--accent-ink)}
+.tile-sub{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.tag{display:inline-grid;place-items:center;height:19px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:800;letter-spacing:.04em;background:var(--vegan-bg);color:var(--vegan-fg)}
+.tile-badge{position:absolute;top:11px;right:11px;min-width:28px;height:28px;padding:0 8px;border-radius:14px;background:var(--accent);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;box-shadow:0 0 0 2px var(--card);opacity:0;transform:scale(.8);transition:opacity 160ms ease,transform 220ms var(--ease-out)}
+.tile[data-in] .tile-badge{opacity:1;transform:scale(1)}
+.tiles[data-view="compact"] .tile-ph{display:none}
+.tiles[data-view="compact"] .tile{min-height:90px;justify-content:space-between;padding:6px 6px 4px}
+.tiles[data-view="compact"] .tile-badge{top:-7px;right:-7px;box-shadow:0 0 0 2px var(--ground)}
+@media (hover:hover) and (pointer:fine){.tile:hover{border-color:var(--accent)}}
+
+/* Bon */
+.bezel{background:var(--fill2);border:1px solid var(--line);border-radius:27px;padding:6px;min-width:0}
+.bon{position:relative;display:flex;flex-direction:column;height:100%;min-height:560px;background:var(--card);border:1px solid var(--line);border-radius:21px;overflow:hidden}
+.bon-main{display:flex;flex-direction:column;flex:1;min-height:0}
+@media (max-width:899px){.bon{min-height:640px}}
+.bon-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 8px 6px 18px}
+.bon-title{font-weight:800;font-size:21px;letter-spacing:-.01em}
+.bon-count{margin-left:8px;font-weight:600;font-size:14px;color:var(--ink2)}
+.bon-clear{display:inline-flex;align-items:center;gap:6px;height:48px;padding:0 12px;border-radius:12px;border:0;background:transparent;color:var(--red);font-weight:700;font-size:14px;transition:background-color 160ms ease,transform 140ms var(--ease-out),opacity 160ms ease}
+.bon-clear:active{transform:scale(.97)}
+.bon-clear:disabled{opacity:0;pointer-events:none}
+.bon-body{flex:1;min-height:0;overflow-y:auto;padding:0 10px;scrollbar-width:thin}
+.line{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 8px 6px 6px;border-radius:14px;transition:background-color 700ms ease}
+.line.flash{background:var(--accent-soft);transition:none}
+.stepper{display:inline-flex;align-items:center;background:var(--fill);border-radius:12px}
+.stepper button{width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:var(--ink);transition:background-color 140ms ease,transform 120ms var(--ease-out)}
+.stepper button:active{transform:scale(.92);background:var(--fill2)}
+.stepper .ic{width:16px;height:16px}
+.stepper output{min-width:22px;text-align:center;font-weight:800;font-size:15.5px}
+.line-name{font-weight:700;font-size:15.5px;line-height:1.2}
+.line-note{font-size:13.5px;line-height:1.25;color:var(--ink2)}
+.line-price{font-weight:700;font-size:15.5px;white-space:nowrap}
+.pfand{display:flex;justify-content:space-between;gap:12px;margin:4px 8px 10px;padding-top:10px;border-top:1px dashed var(--line);font-size:14.5px;font-weight:600;color:var(--ink2)}
+.bon-empty{display:grid;place-items:center;align-content:center;gap:4px;height:100%;min-height:220px;text-align:center;color:var(--ink2);padding:20px}
+.bon-empty .ic{width:40px;height:40px;color:var(--accent-ink);opacity:.5;margin-bottom:8px}
+.bon-empty b{color:var(--ink);font-size:17px}
+.bon-foot{border-top:1px solid var(--line);padding:14px 14px 14px}
+.sum{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 4px}
+.sum-label{font-weight:700;font-size:16px}
+.sum-val{font-weight:800;font-size:38px;line-height:1.05;letter-spacing:-.02em}
+.vat{padding:2px 4px 12px;text-align:right;font-size:13.5px;color:var(--ink2)}
+.pay-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pay-btn{display:flex;align-items:center;justify-content:center;gap:10px;height:72px;border-radius:16px;border:0;font-weight:800;font-size:19px;transition:transform 140ms var(--ease-out),opacity 180ms ease,filter 160ms ease}
+.pay-btn .ic{width:24px;height:24px}
+.pay-btn:active{transform:scale(.97)}
+.pay-btn:disabled{opacity:.38;pointer-events:none}
+.pay-bar{background:var(--accent);color:#fff}
+.pay-card{background:var(--solid);color:var(--solid-ink)}
+@media (hover:hover) and (pointer:fine){.pay-btn:hover{filter:brightness(1.08)}.bon-clear:hover{background:var(--fill)}.stepper button:hover{background:var(--fill2)}}
+
+/* Bezahlen (schiebt sich über den Bon) */
+.pay{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;background:var(--card);transform:translateY(102%);visibility:hidden;transition:transform 420ms var(--ease-drawer),visibility 0s linear 420ms}
+.pay.open{transform:none;visibility:visible;transition:transform 420ms var(--ease-drawer),visibility 0s}
+.pay-head{display:flex;align-items:center;gap:6px;padding:10px 8px 4px 18px}
+.pay-title{flex:1;font-weight:800;font-size:21px}
+.pay-x[data-off]{visibility:hidden}
+.pay-x{display:inline-flex;align-items:center;gap:6px;height:48px;padding:0 12px;border-radius:12px;border:0;background:transparent;color:var(--ink2);font-weight:700;font-size:14px}
+.pay-amount{padding:0 18px 10px;font-weight:800;font-size:38px;line-height:1.05;letter-spacing:-.02em}
+.given{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:2px 14px 10px}
+.given button{height:56px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);font-weight:800;font-size:15px;transition:transform 140ms var(--ease-out),border-color 160ms ease,background-color 160ms ease,color 160ms ease,opacity 160ms ease}
+.given button:active{transform:scale(.96)}
+.given button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.given button:disabled:not([aria-pressed="true"]){opacity:.45}
+.change{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 14px 8px;padding:12px 16px;border-radius:14px;background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
+.change b{font-weight:800;font-size:28px;letter-spacing:-.01em}
+.steps{display:grid;gap:2px;padding:0 14px 8px}
+.steps li{display:flex;align-items:center;gap:12px;min-height:38px;font-weight:600;font-size:15px;line-height:1.25;color:var(--ink2);transition:color 200ms ease}
+.steps li[data-s]{color:var(--ink)}
+.dot{position:relative;flex:none;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;color:#fff;transition:background-color 200ms ease,border-color 200ms ease}
+.dot .ic{width:14px;height:14px;opacity:0;transform:scale(.6);transition:opacity 160ms ease,transform 260ms var(--ease-out)}
+li[data-s="run"] .dot{border-color:var(--fill2);border-top-color:var(--accent);animation:spin 650ms linear infinite}
+li[data-s="ok"] .dot{background:var(--accent);border-color:var(--accent)}
+li[data-s="ok"] .dot .ic{opacity:1;transform:scale(1)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.slot{position:relative;flex:1;min-height:0;overflow:hidden;margin:0 14px;border-radius:12px 12px 0 0;-webkit-mask-image:linear-gradient(#000 calc(100% - 26px),transparent);mask-image:linear-gradient(#000 calc(100% - 26px),transparent)}
+.slot::before{content:"";position:absolute;z-index:1;top:0;left:0;right:0;height:10px;border-radius:6px;background:var(--solid);opacity:.9}
+.slot .paper-wrap{position:absolute;top:5px;left:14px;right:14px}
+.pay-foot{padding:10px 14px 14px}
+.pay-next{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:68px;border-radius:16px;border:0;background:var(--accent);color:#fff;font-weight:800;font-size:18px;transition:transform 140ms var(--ease-out),opacity 200ms ease}
+.pay-next:active{transform:scale(.97)}
+.pay-next:disabled{opacity:.3;pointer-events:none}
+
+/* Papier-Bon */
+.paper-wrap{filter:drop-shadow(0 8px 14px rgba(16,24,40,.16))}
+.paper{background:var(--paper);color:var(--paper-ink);padding:16px 16px 26px;font-size:13.5px;line-height:1.4;font-variant-numeric:tabular-nums;-webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%}
+.paper-shop{text-align:center;font-weight:800;font-size:17px}
+.paper-meta{text-align:center;color:var(--paper-ink2);font-size:12.5px}
+.paper hr{border:0;border-top:1.5px dashed #C9CED6;margin:9px 0}
+.paper-row{display:flex;justify-content:space-between;gap:12px}
+.paper-row small{display:block;color:var(--paper-ink2);font-size:12.5px}
+.paper-sum{font-weight:800;font-size:18px}
+.paper-sig{display:flex;align-items:center;gap:12px;margin-top:4px}
+.paper-sig svg{width:72px;height:72px;flex:none}
+.paper-sig p{font-size:12.5px;line-height:1.35;color:var(--paper-ink2)}
+.paper-sig b{display:block;color:var(--paper-ink);font-size:13.5px}
+.printing .paper-wrap{transform:translateY(-104%)}
+.printed .paper-wrap{transform:none;transition:transform 1500ms steps(22,end)}
+
+/* Abschnitte */
+.sec{padding-block:clamp(64px,8.5vw,128px)}
+h2{font-weight:800;font-size:clamp(31px,3.7vw,54px);line-height:1.05;letter-spacing:-.03em;text-wrap:balance;max-width:17ch}
+.sec-lead{margin-top:clamp(14px,1.5vw,20px);font-size:clamp(17px,1.3vw,19.5px);line-height:1.5;color:var(--ink2);max-width:54ch;text-wrap:pretty}
+.split{display:grid;gap:clamp(28px,3.4vw,48px)}
+@media (min-width:900px){.split{grid-template-columns:minmax(0,1fr) var(--bon-w);align-items:start}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:21px;overflow:hidden}
+
+.points{margin-top:clamp(28px,3.4vw,44px);border-bottom:1px solid var(--line)}
+.points li{display:grid;gap:4px 24px;padding:18px 0;border-top:1px solid var(--line)}
+.points h3{font-weight:700;font-size:20px;line-height:1.25;letter-spacing:-.005em}
+.points p{color:var(--ink2);max-width:46ch}
+@media (min-width:640px){.points li{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:baseline}}
+
+/* Schalter */
+.opt-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.opt-head img{width:56px;height:56px;border-radius:12px;object-fit:cover}
+.opt-head b{display:block;font-size:19px;font-weight:800;line-height:1.15}
+.opt-head span{font-size:14px;color:var(--ink2)}
+.opts{padding:6px 8px}
+.sw{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:0 10px 0 12px;border:0;border-radius:14px;background:transparent;text-align:left;font-weight:700;font-size:16.5px;transition:background-color 160ms ease,transform 140ms var(--ease-out)}
+.sw:active{transform:scale(.985);background:var(--fill)}
+.sw-plus{margin-left:auto;font-weight:700;font-size:14.5px;color:var(--ink2)}
+.sw-track{flex:none;margin-left:auto;width:54px;height:32px;border-radius:16px;background:var(--fill2);padding:3px;transition:background-color 220ms ease}
+.sw-plus + .sw-track{margin-left:0}
+.sw-thumb{display:block;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.25);transition:transform 260ms var(--ease-out)}
+.sw[aria-checked="true"] .sw-track{background:var(--accent)}
+.sw[aria-checked="true"] .sw-thumb{transform:translateX(22px)}
+.opt-foot{border-top:1px solid var(--line);background:var(--fill);padding:12px 16px 16px}
+.opt-foot-label{font-size:13.5px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.opt-line{display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:16.5px}
+.opt-note{min-height:21px;font-size:14.5px;color:var(--ink2);transition:opacity 200ms ease}
+
+/* Bezahlen (dunkler Block) */
+.block{margin-inline:clamp(8px,1.1vw,12px);border-radius:clamp(22px,2.4vw,30px);background:var(--block);color:var(--block-ink)}
+.block h2{max-width:14ch}
+.block .sec-lead{color:var(--block-ink2)}
+.block ::selection{background:#fff;color:var(--accent-ink)}
+.compare{margin-top:clamp(32px,4vw,56px);display:grid;gap:14px}
+@media (min-width:860px){.compare{grid-template-columns:minmax(0,7fr) minmax(0,5fr);align-items:stretch}}
+.way{border-radius:20px;padding:clamp(18px,2vw,26px)}
+.way-old{background:var(--block-card);border:1px solid var(--block-line)}
+.way-new{background:var(--accent);color:#fff;display:flex;flex-direction:column;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.way h3{font-weight:700;font-size:16px;color:var(--block-ink2);margin-bottom:10px}
+.way-new h3{color:rgba(255,255,255,.85)}
+.way-old li{display:grid;grid-template-columns:34px 1fr;align-items:baseline;gap:6px;padding:11px 0;border-top:1px solid var(--block-line);font-size:17px;line-height:1.35;color:var(--block-ink)}
+.way-old li b{font-weight:800;color:var(--block-ink2)}
+.way-old li:first-of-type{border-top:0}
+.way-new .way-one{margin-top:auto;padding-top:clamp(20px,5vw,72px);font-weight:800;font-size:clamp(34px,3.6vw,52px);line-height:1.02;letter-spacing:-.03em}
+.way-new p:last-child{margin-top:12px;font-size:17px;line-height:1.4;color:rgba(255,255,255,.9);max-width:30ch}
+.facts{margin-top:clamp(28px,3.4vw,44px);display:grid;gap:0 clamp(20px,3vw,40px)}
+.facts li{padding:18px 0;border-top:1px solid var(--block-line)}
+.facts h3{font-weight:700;font-size:20px;line-height:1.25;letter-spacing:-.005em}
+.facts p{margin-top:4px;color:var(--block-ink2);max-width:40ch}
+@media (min-width:860px){.facts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Finanzamt */
+.bento{margin-top:clamp(32px,4vw,56px);display:grid;gap:12px}
+.cell{border-radius:21px;padding:clamp(18px,2vw,26px);background:var(--card);border:1px solid var(--line)}
+.cell h3{font-weight:800;font-size:clamp(19px,1.6vw,23px);line-height:1.2;letter-spacing:-.01em}
+.cell p{margin-top:8px;color:var(--ink2);max-width:44ch}
+.cell-bon{background:var(--fill2);display:grid;place-items:start center;align-content:start;padding:0 clamp(16px,2vw,28px);overflow:hidden;min-height:420px}
+.cell-bon .slotbar{width:100%;height:12px;border-radius:0 0 8px 8px;background:var(--solid);opacity:.9}
+.cell-bon .paper-wrap{width:min(100%,340px);margin-top:-5px;margin-bottom:28px}
+.cell-sig{background:var(--accent-soft);border-color:transparent;display:grid;gap:16px;align-content:space-between}
+.cell-sig h3,.cell-sig .ic{color:var(--accent-ink)}
+.cell-sig p{color:var(--ink)}
+.cell-sig .ic{width:44px;height:44px}
+.count{margin-top:16px;border-top:1px solid var(--line)}
+.count div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15.5px;color:var(--ink2)}
+.count dd{margin:0;font-weight:700;color:var(--ink)}
+.count .ok dd{color:var(--green)}
+.eg{margin-top:8px;font-size:13px;color:var(--ink2)}
+.cell-docs{display:grid;gap:14px 40px}
+.cell-month{display:grid;gap:16px;align-content:space-between}
+.cell-month .ic{width:40px;height:40px;color:var(--ink2);opacity:.7}
+.cell h3{overflow-wrap:break-word}
+@media (min-width:760px){
+  .bento{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cell-bon{grid-row:1/4}
+  .cell-docs{grid-column:1/3;grid-template-columns:1fr 1fr}
+}
+@media (min-width:1280px){
+  .bento{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .cell-bon{grid-column:1/6;grid-row:1/3}
+  .cell-sig{grid-column:6/13}
+  .cell-day{grid-column:6/10}
+  .cell-month{grid-column:10/13}
+  .cell-docs{grid-column:1/13}
+}
+
+/* Ohne Internet */
+.net{margin-top:clamp(32px,4vw,56px);display:grid}
+.net-ctl{display:grid;gap:14px;align-content:center;justify-items:start;padding:clamp(20px,2.6vw,36px);background:var(--fill);border-bottom:1px solid var(--line)}
+.net-sw{display:flex;align-items:center;gap:16px;border:0;background:transparent;padding:6px 6px 6px 0;border-radius:20px;text-align:left}
+.net-sw .sw-track{margin:0;width:92px;height:52px;border-radius:26px;padding:4px;background:var(--ink2)}
+.net-sw .sw-thumb{width:44px;height:44px;display:grid;place-items:center;color:var(--ink2);transition:transform 320ms var(--ease-out),color 200ms ease}
+.net-sw .sw-thumb .ic{width:22px;height:22px}
+.net-sw[aria-checked="true"] .sw-track{background:var(--accent)}
+.net-sw[aria-checked="true"] .sw-thumb{transform:translateX(40px);color:var(--accent)}
+.net-sw .sw-thumb .ic:first-child,.net-sw[aria-checked="true"] .sw-thumb .ic:last-child{display:none}
+.net-sw[aria-checked="true"] .sw-thumb .ic:first-child{display:block}
+.net-state{font-weight:800;font-size:clamp(22px,2vw,28px);line-height:1.1;letter-spacing:-.015em}
+.net-ctl p{color:var(--ink2);max-width:30ch}
+.net-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:60px;padding:8px clamp(16px,2vw,26px);border-top:1px solid var(--line);font-weight:700;font-size:16.5px}
+.net-list li:first-child{border-top:0}
+.pill{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:15px;font-weight:700;font-size:13.5px;white-space:nowrap;background:var(--ok-bg);color:var(--ok-ink);transition:background-color 240ms ease,color 240ms ease}
+.pill .ic{width:15px;height:15px}
+.pill[data-s="wait"]{background:var(--warn-bg);color:var(--warn-ink)}
+.pill[data-s="sync"]{background:var(--accent-soft);color:var(--accent-ink)}
+.pill[data-s="plan"]{background:var(--fill2);color:var(--ink2)}
+.net-foot{margin-top:16px;color:var(--ink2);max-width:62ch}
+@media (min-width:860px){.net{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}.net-ctl{border-bottom:0;border-right:1px solid var(--line)}}
+
+/* Verwaltung */
+.shots{position:relative}
+.shot{border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#F3F4F6}
+.shot img{width:100%;height:auto}
+.shot-phone{margin:14px auto 0;width:min(64%,260px)}
+.shot-phone .shot{border:0;border-radius:22px;box-shadow:0 0 0 1px var(--line),0 12px 22px -12px rgba(16,24,40,.3)}
+@media (min-width:640px){
+  .shots{padding:0 8% 9% 0}
+  .shot-phone{position:absolute;right:0;bottom:0;margin:0;width:27%}
+}
+.cap{margin-top:12px;font-size:14px;color:var(--ink2)}
+.list-card h3{padding:16px 18px 12px;font-weight:800;font-size:19px;border-bottom:1px solid var(--line)}
+.rows li{display:flex;align-items:center;gap:13px;min-height:60px;padding:9px 16px;border-top:1px solid var(--line)}
+.rows li:first-child{border-top:0}
+.rows .ic{width:22px;height:22px;color:var(--accent-ink)}
+.rows b{display:block;font-weight:700;font-size:16px;line-height:1.25}
+.rows small{display:block;font-size:14px;line-height:1.3;color:var(--ink2)}
+.rows .pill{margin-left:auto}
+
+/* Geräte */
+.photo{border-radius:21px;overflow:hidden;aspect-ratio:16/11;background:var(--fill2)}
+.photo img{width:100%;height:100%;object-fit:cover;object-position:28% 50%}
+
+/* Loslegen */
+.stepsrow{margin-top:clamp(32px,4vw,56px);display:grid;gap:28px;counter-reset:s}
+.stepsrow li{counter-increment:s;position:relative;padding-top:18px;border-top:2px solid var(--ink)}
+.stepsrow li::before{content:counter(s);display:block;font-weight:800;font-size:clamp(48px,5vw,72px);line-height:1;letter-spacing:-.03em;color:var(--accent);font-variant-numeric:tabular-nums}
+.stepsrow h3{margin-top:12px;font-weight:800;font-size:clamp(20px,1.7vw,24px);line-height:1.2;letter-spacing:-.01em}
+.stepsrow p{margin-top:8px;color:var(--ink2);max-width:34ch}
+@media (min-width:760px){.stepsrow{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,3vw,40px)}}
+.honest{margin-top:clamp(28px,3.4vw,44px);display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:16px;background:var(--fill2);max-width:74ch}
+.honest .ic{width:22px;height:22px;margin-top:2px;color:var(--ink2)}
+
+/* Kontakt */
+.kontakt{background:var(--petrol);color:#fff;margin-bottom:12px}
+.kontakt h2{max-width:13ch}
+.kontakt .sec-lead{color:var(--petrol-ink2)}
+.kontakt ::selection{background:#fff;color:var(--accent-ink)}
+.kontakt :focus-visible{outline-color:#fff}
+.reach{display:grid;gap:10px}
+.reach li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:14px 14px 14px 18px;border-radius:18px;background:var(--petrol-card);border:1px solid var(--petrol-line)}
+.reach small{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--petrol-ink2)}
+.reach a{display:block;font-weight:800;font-size:clamp(19px,1.7vw,23px);line-height:1.25;text-decoration:none;overflow-wrap:anywhere;user-select:all}
+.ph{display:inline-grid;place-items:center;height:20px;padding:0 7px;border-radius:5px;background:rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff}
+.copy{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:0 16px;border-radius:14px;border:0;background:#fff;color:#0C615A;font-weight:800;font-size:15px;transition:transform 140ms var(--ease-out)}
+.copy:active{transform:scale(.96)}
+.reach-note{margin-top:14px;font-size:14.5px;color:var(--petrol-ink2)}
+
+.foot{padding:26px 0 calc(34px + env(safe-area-inset-bottom,0px));color:var(--ink2);font-size:14.5px}
+.foot .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px}
+.foot .logo{font-size:19px;color:var(--ink);min-height:0}
+.foot .logo-mark{width:28px;height:28px;border-radius:8px}
+.foot .logo-mark .ic{width:16px;height:16px}
+.foot span:last-child{margin-left:auto}
+
+/* Hinweis und Mini-Bon am Handy */
+.toast{position:fixed;z-index:60;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;max-width:calc(100vw - 32px);padding:6px 6px 6px 18px;border-radius:16px;background:var(--solid);color:var(--solid-ink);font-weight:700;font-size:15px;box-shadow:var(--shadow-toast);transform:translate(-50%,calc(100% + 40px));opacity:0;visibility:hidden;transition:transform 360ms var(--ease-out),opacity 200ms ease,visibility 0s linear 360ms}
+.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform 360ms var(--ease-out),opacity 200ms ease,visibility 0s}
+.toast span{padding:10px 0}
+.toast button{height:48px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:var(--accent-snack);font-weight:800}
+.toast button[hidden] + i{display:block;width:12px}
+.mini{position:fixed;z-index:50;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 24px -12px rgba(16,24,40,.18);transform:translateY(110%);visibility:hidden;transition:transform 320ms var(--ease-out),visibility 0s linear 320ms}
+.mini.show{transform:none;visibility:visible;transition:transform 320ms var(--ease-out),visibility 0s}
+.mini small{display:block;font-size:13.5px;font-weight:600;color:var(--ink2)}
+.mini b{font-weight:800;font-size:22px;line-height:1.1}
+@media (min-width:900px){.mini{display:none}}
+
+/* Bewegung */
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+  .tile{animation:rise 620ms var(--ease-out) backwards;animation-delay:calc(160ms + var(--i,0) * 55ms)}
+  .hero .bezel{animation:slide 720ms var(--ease-out) backwards;animation-delay:120ms}
+  h1,.hero .lead{animation:rise 620ms var(--ease-out) backwards}
+  .hero .lead{animation-delay:70ms}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+  @keyframes slide{from{opacity:0;transform:translateX(22px)}}
+  @supports (animation-timeline:view()){
+    .rv{animation:rv linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
+    @keyframes rv{from{opacity:0;transform:translateY(34px) scale(.985)}}
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .printed .paper-wrap{transition:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar" lang="de">
+  <a class="logo" href="#kassa"><span class="logo-mark"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z"/></svg></span>Kassa</a>
+  <a class="cta" href="#kontakt">Vorführung vereinbaren</a>
+</header>
+<nav class="chips" aria-label="Abschnitte" lang="de">
+  <a href="#kassa" data-nav="kassa"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228,156v36c0,13.85-1.63,26.52-4.58,35.68a12,12,0,1,1-22.84-7.36c2.14-6.65,3.42-17.24,3.42-28.32V156a8,8,0,0,0-16,0v4a12,12,0,0,1-24,0V140a8,8,0,0,0-16,0v12a12,12,0,0,1-24,0V84a8,8,0,0,0-16,0V192a12,12,0,0,1-22.18,6.34l-18.68-30-.21-.34A8,8,0,0,0,53,175.92L78.27,217.8a12,12,0,0,1-20.56,12.39l-25.31-42-.12-.2A32,32,0,0,1,84,150.83V84a32,32,0,0,1,64,0v25a32,32,0,0,1,36.78,17A32,32,0,0,1,228,156ZM56,96A12,12,0,0,0,68,84a48,48,0,0,1,96,0,12,12,0,0,0,24,0A72,72,0,0,0,44,84,12,12,0,0,0,56,96Z"/></svg>Ausprobieren</a>
+  <a href="#bonieren" data-nav="bonieren"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M40,92H70.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24H137.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24Zm64-24A12,12,0,1,1,92,80,12,12,0,0,1,104,68Zm112,96H201.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24h94.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24Zm-48,24a12,12,0,1,1,12-12A12,12,0,0,1,168,188Z"/></svg>Bonieren</a>
+  <a href="#bezahlen" data-nav="bezahlen"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A20,20,0,0,0,12,64V192a20,20,0,0,0,20,20H224a20,20,0,0,0,20-20V64A20,20,0,0,0,224,44Zm-4,24V88H36V68ZM36,188V112H220v76Zm172-24a12,12,0,0,1-12,12H164a12,12,0,0,1,0-24h32A12,12,0,0,1,208,164Zm-68,0a12,12,0,0,1-12,12H116a12,12,0,0,1,0-24h12A12,12,0,0,1,140,164Z"/></svg>Bezahlen</a>
+  <a href="#finanzamt" data-nav="finanzamt"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228.75,100.05c-3.52-3.67-7.15-7.46-8.34-10.33-1.06-2.56-1.14-7.83-1.21-12.47-.15-10-.34-22.44-9.18-31.27s-21.27-9-31.27-9.18c-4.64-.07-9.91-.15-12.47-1.21-2.87-1.19-6.66-4.82-10.33-8.34C148.87,20.46,140.05,12,128,12s-20.87,8.46-27.95,15.25c-3.67,3.52-7.46,7.15-10.33,8.34-2.56,1.06-7.83,1.14-12.47,1.21C67.25,37,54.81,37.14,46,46S37,67.25,36.8,77.25c-.07,4.64-.15,9.91-1.21,12.47-1.19,2.87-4.82,6.66-8.34,10.33C20.46,107.13,12,116,12,128S20.46,148.87,27.25,156c3.52,3.67,7.15,7.46,8.34,10.33,1.06,2.56,1.14,7.83,1.21,12.47.15,10,.34,22.44,9.18,31.27s21.27,9,31.27,9.18c4.64.07,9.91.15,12.47,1.21,2.87,1.19,6.66,4.82,10.33,8.34C107.13,235.54,116,244,128,244s20.87-8.46,27.95-15.25c3.67-3.52,7.46-7.15,10.33-8.34,2.56-1.06,7.83-1.14,12.47-1.21,10-.15,22.44-.34,31.27-9.18s9-21.27,9.18-31.27c.07-4.64.15-9.91,1.21-12.47,1.19-2.87,4.82-6.66,8.34-10.33C235.54,148.87,244,140.05,244,128S235.54,107.13,228.75,100.05Zm-17.32,39.29c-4.82,5-10.28,10.72-13.19,17.76-2.82,6.8-2.93,14.16-3,21.29-.08,5.36-.19,12.71-2.15,14.66s-9.3,2.07-14.66,2.15c-7.13.11-14.49.22-21.29,3-7,2.91-12.73,8.37-17.76,13.19C135.78,214.84,130.4,220,128,220s-7.78-5.16-11.34-8.57c-5-4.82-10.72-10.28-17.76-13.19-6.8-2.82-14.16-2.93-21.29-3-5.36-.08-12.71-.19-14.66-2.15s-2.07-9.3-2.15-14.66c-.11-7.13-.22-14.49-3-21.29-2.91-7-8.37-12.73-13.19-17.76C41.16,135.78,36,130.4,36,128s5.16-7.78,8.57-11.34c4.82-5,10.28-10.72,13.19-17.76,2.82-6.8,2.93-14.16,3-21.29C60.88,72.25,61,64.9,63,63s9.3-2.07,14.66-2.15c7.13-.11,14.49-.22,21.29-3,7-2.91,12.73-8.37,17.76-13.19C120.22,41.16,125.6,36,128,36s7.78,5.16,11.34,8.57c5,4.82,10.72,10.28,17.76,13.19,6.8,2.82,14.16,2.93,21.29,3,5.36.08,12.71.19,14.66,2.15s2.07,9.3,2.15,14.66c.11,7.13.22,14.49,3,21.29,2.91,7,8.37,12.73,13.19,17.76,3.41,3.56,8.57,8.94,8.57,11.34S214.84,135.78,211.43,139.34ZM176.49,95.51a12,12,0,0,1,0,17l-56,56a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L112,143l47.51-47.52A12,12,0,0,1,176.49,95.51Z"/></svg>Finanzamt</a>
+  <a href="#offline" data-nav="offline"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216.88,207.93a12,12,0,1,1-17.76,16.14L147.78,167.6a56.06,56.06,0,0,0-52.71,7.1,12,12,0,0,1-14.14-19.4,79.35,79.35,0,0,1,41.92-15.12L103.51,118.9a104.18,104.18,0,0,0-40.06,19.55,12,12,0,0,1-14.9-18.81A128.46,128.46,0,0,1,85.61,99.21l-17.31-19a151.14,151.14,0,0,0-36.68,22.28A12,12,0,1,1,16.39,83.91a175.52,175.52,0,0,1,35-22.38L39.12,48.07A12,12,0,1,1,56.88,31.93ZM128,188a16,16,0,1,0,16,16A16,16,0,0,0,128,188Zm64.55-49.55a12,12,0,0,0,14.9-18.81A127.27,127.27,0,0,0,170,99.05a12,12,0,0,0-7.87,22.67A103.62,103.62,0,0,1,192.55,138.45Zm47.06-54.54A176.33,176.33,0,0,0,128,44c-3.94,0-7.93.13-11.86.39a12,12,0,1,0,1.59,24c3.4-.23,6.86-.34,10.27-.34a152.24,152.24,0,0,1,96.38,34.46,12,12,0,1,0,15.23-18.55Z"/></svg>Ohne Internet</a>
+  <a href="#verwaltung" data-nav="verwaltung"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,196h-4V40a12,12,0,0,0-12-12H152a12,12,0,0,0-12,12V76H96A12,12,0,0,0,84,88v36H48a12,12,0,0,0-12,12v60H32a12,12,0,0,0,0,24H224a12,12,0,0,0,0-24ZM164,52h32V196H164Zm-56,48h32v96H108ZM60,148H84v48H60Z"/></svg>Verwaltung</a>
+  <a href="#geraete" data-nav="geraete"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,20H64A28,28,0,0,0,36,48V208a28,28,0,0,0,28,28H192a28,28,0,0,0,28-28V48A28,28,0,0,0,192,20Zm4,188a4,4,0,0,1-4,4H64a4,4,0,0,1-4-4V48a4,4,0,0,1,4-4H192a4,4,0,0,1,4,4ZM172,72a12,12,0,0,1-12,12H96a12,12,0,0,1,0-24h64A12,12,0,0,1,172,72Z"/></svg>Geräte</a>
+  <a href="#start" data-nav="start"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M227.85,46.89a20,20,0,0,0-18.74-18.74c-13.13-.77-46.65.42-74.48,28.24L131,60H74.36a19.83,19.83,0,0,0-14.14,5.86L25.87,100.19a20,20,0,0,0,11.35,33.95l37.14,5.18,42.32,42.32,5.19,37.18A19.88,19.88,0,0,0,135.34,235a20.13,20.13,0,0,0,6.37,1,19.9,19.9,0,0,0,14.1-5.87l34.34-34.35A19.85,19.85,0,0,0,196,181.64V125l3.6-3.59C227.43,93.54,228.62,60,227.85,46.89ZM76,84h31L75.75,115.28l-27.23-3.8ZM151.6,73.37A72.27,72.27,0,0,1,204,52a72.17,72.17,0,0,1-21.38,52.41L128,159,97,128ZM172,180l-27.49,27.49-3.8-27.23L172,149Zm-72,22c-8.71,11.85-26.19,26-60,26a12,12,0,0,1-12-12c0-33.84,14.12-51.32,26-60A12,12,0,1,1,68.18,175.3C62.3,179.63,55.51,187.8,53,203c15.21-2.51,23.37-9.3,27.7-15.18A12,12,0,1,1,100,202Z"/></svg>Loslegen</a>
+</nav>
+
+<aside class="rail" lang="de">
+  <a class="logo" href="#kassa"><span class="logo-mark"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z"/></svg></span>Kassa</a>
+  <nav class="rail-nav" aria-label="Abschnitte">
+    <span class="rail-ind" aria-hidden="true"></span>
+    <a href="#kassa" data-nav="kassa" aria-current="true"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228,156v36c0,13.85-1.63,26.52-4.58,35.68a12,12,0,1,1-22.84-7.36c2.14-6.65,3.42-17.24,3.42-28.32V156a8,8,0,0,0-16,0v4a12,12,0,0,1-24,0V140a8,8,0,0,0-16,0v12a12,12,0,0,1-24,0V84a8,8,0,0,0-16,0V192a12,12,0,0,1-22.18,6.34l-18.68-30-.21-.34A8,8,0,0,0,53,175.92L78.27,217.8a12,12,0,0,1-20.56,12.39l-25.31-42-.12-.2A32,32,0,0,1,84,150.83V84a32,32,0,0,1,64,0v25a32,32,0,0,1,36.78,17A32,32,0,0,1,228,156ZM56,96A12,12,0,0,0,68,84a48,48,0,0,1,96,0,12,12,0,0,0,24,0A72,72,0,0,0,44,84,12,12,0,0,0,56,96Z"/></svg>Ausprobieren</a>
+    <a href="#bonieren" data-nav="bonieren"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M40,92H70.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24H137.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24Zm64-24A12,12,0,1,1,92,80,12,12,0,0,1,104,68Zm112,96H201.94a36,36,0,0,0-67.88,0H40a12,12,0,0,0,0,24h94.06a36,36,0,0,0,67.88,0H216a12,12,0,0,0,0-24Zm-48,24a12,12,0,1,1,12-12A12,12,0,0,1,168,188Z"/></svg>Bonieren</a>
+    <a href="#bezahlen" data-nav="bezahlen"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A20,20,0,0,0,12,64V192a20,20,0,0,0,20,20H224a20,20,0,0,0,20-20V64A20,20,0,0,0,224,44Zm-4,24V88H36V68ZM36,188V112H220v76Zm172-24a12,12,0,0,1-12,12H164a12,12,0,0,1,0-24h32A12,12,0,0,1,208,164Zm-68,0a12,12,0,0,1-12,12H116a12,12,0,0,1,0-24h12A12,12,0,0,1,140,164Z"/></svg>Bezahlen</a>
+    <a href="#finanzamt" data-nav="finanzamt"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228.75,100.05c-3.52-3.67-7.15-7.46-8.34-10.33-1.06-2.56-1.14-7.83-1.21-12.47-.15-10-.34-22.44-9.18-31.27s-21.27-9-31.27-9.18c-4.64-.07-9.91-.15-12.47-1.21-2.87-1.19-6.66-4.82-10.33-8.34C148.87,20.46,140.05,12,128,12s-20.87,8.46-27.95,15.25c-3.67,3.52-7.46,7.15-10.33,8.34-2.56,1.06-7.83,1.14-12.47,1.21C67.25,37,54.81,37.14,46,46S37,67.25,36.8,77.25c-.07,4.64-.15,9.91-1.21,12.47-1.19,2.87-4.82,6.66-8.34,10.33C20.46,107.13,12,116,12,128S20.46,148.87,27.25,156c3.52,3.67,7.15,7.46,8.34,10.33,1.06,2.56,1.14,7.83,1.21,12.47.15,10,.34,22.44,9.18,31.27s21.27,9,31.27,9.18c4.64.07,9.91.15,12.47,1.21,2.87,1.19,6.66,4.82,10.33,8.34C107.13,235.54,116,244,128,244s20.87-8.46,27.95-15.25c3.67-3.52,7.46-7.15,10.33-8.34,2.56-1.06,7.83-1.14,12.47-1.21,10-.15,22.44-.34,31.27-9.18s9-21.27,9.18-31.27c.07-4.64.15-9.91,1.21-12.47,1.19-2.87,4.82-6.66,8.34-10.33C235.54,148.87,244,140.05,244,128S235.54,107.13,228.75,100.05Zm-17.32,39.29c-4.82,5-10.28,10.72-13.19,17.76-2.82,6.8-2.93,14.16-3,21.29-.08,5.36-.19,12.71-2.15,14.66s-9.3,2.07-14.66,2.15c-7.13.11-14.49.22-21.29,3-7,2.91-12.73,8.37-17.76,13.19C135.78,214.84,130.4,220,128,220s-7.78-5.16-11.34-8.57c-5-4.82-10.72-10.28-17.76-13.19-6.8-2.82-14.16-2.93-21.29-3-5.36-.08-12.71-.19-14.66-2.15s-2.07-9.3-2.15-14.66c-.11-7.13-.22-14.49-3-21.29-2.91-7-8.37-12.73-13.19-17.76C41.16,135.78,36,130.4,36,128s5.16-7.78,8.57-11.34c4.82-5,10.28-10.72,13.19-17.76,2.82-6.8,2.93-14.16,3-21.29C60.88,72.25,61,64.9,63,63s9.3-2.07,14.66-2.15c7.13-.11,14.49-.22,21.29-3,7-2.91,12.73-8.37,17.76-13.19C120.22,41.16,125.6,36,128,36s7.78,5.16,11.34,8.57c5,4.82,10.72,10.28,17.76,13.19,6.8,2.82,14.16,2.93,21.29,3,5.36.08,12.71.19,14.66,2.15s2.07,9.3,2.15,14.66c.11,7.13.22,14.49,3,21.29,2.91,7,8.37,12.73,13.19,17.76,3.41,3.56,8.57,8.94,8.57,11.34S214.84,135.78,211.43,139.34ZM176.49,95.51a12,12,0,0,1,0,17l-56,56a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L112,143l47.51-47.52A12,12,0,0,1,176.49,95.51Z"/></svg>Finanzamt</a>
+    <a href="#offline" data-nav="offline"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216.88,207.93a12,12,0,1,1-17.76,16.14L147.78,167.6a56.06,56.06,0,0,0-52.71,7.1,12,12,0,0,1-14.14-19.4,79.35,79.35,0,0,1,41.92-15.12L103.51,118.9a104.18,104.18,0,0,0-40.06,19.55,12,12,0,0,1-14.9-18.81A128.46,128.46,0,0,1,85.61,99.21l-17.31-19a151.14,151.14,0,0,0-36.68,22.28A12,12,0,1,1,16.39,83.91a175.52,175.52,0,0,1,35-22.38L39.12,48.07A12,12,0,1,1,56.88,31.93ZM128,188a16,16,0,1,0,16,16A16,16,0,0,0,128,188Zm64.55-49.55a12,12,0,0,0,14.9-18.81A127.27,127.27,0,0,0,170,99.05a12,12,0,0,0-7.87,22.67A103.62,103.62,0,0,1,192.55,138.45Zm47.06-54.54A176.33,176.33,0,0,0,128,44c-3.94,0-7.93.13-11.86.39a12,12,0,1,0,1.59,24c3.4-.23,6.86-.34,10.27-.34a152.24,152.24,0,0,1,96.38,34.46,12,12,0,1,0,15.23-18.55Z"/></svg>Ohne Internet</a>
+    <a href="#verwaltung" data-nav="verwaltung"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,196h-4V40a12,12,0,0,0-12-12H152a12,12,0,0,0-12,12V76H96A12,12,0,0,0,84,88v36H48a12,12,0,0,0-12,12v60H32a12,12,0,0,0,0,24H224a12,12,0,0,0,0-24ZM164,52h32V196H164Zm-56,48h32v96H108ZM60,148H84v48H60Z"/></svg>Verwaltung</a>
+    <a href="#geraete" data-nav="geraete"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,20H64A28,28,0,0,0,36,48V208a28,28,0,0,0,28,28H192a28,28,0,0,0,28-28V48A28,28,0,0,0,192,20Zm4,188a4,4,0,0,1-4,4H64a4,4,0,0,1-4-4V48a4,4,0,0,1,4-4H192a4,4,0,0,1,4,4ZM172,72a12,12,0,0,1-12,12H96a12,12,0,0,1,0-24h64A12,12,0,0,1,172,72Z"/></svg>Geräte</a>
+    <a href="#start" data-nav="start"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M227.85,46.89a20,20,0,0,0-18.74-18.74c-13.13-.77-46.65.42-74.48,28.24L131,60H74.36a19.83,19.83,0,0,0-14.14,5.86L25.87,100.19a20,20,0,0,0,11.35,33.95l37.14,5.18,42.32,42.32,5.19,37.18A19.88,19.88,0,0,0,135.34,235a20.13,20.13,0,0,0,6.37,1,19.9,19.9,0,0,0,14.1-5.87l34.34-34.35A19.85,19.85,0,0,0,196,181.64V125l3.6-3.59C227.43,93.54,228.62,60,227.85,46.89ZM76,84h31L75.75,115.28l-27.23-3.8ZM151.6,73.37A72.27,72.27,0,0,1,204,52a72.17,72.17,0,0,1-21.38,52.41L128,159,97,128ZM172,180l-27.49,27.49-3.8-27.23L172,149Zm-72,22c-8.71,11.85-26.19,26-60,26a12,12,0,0,1-12-12c0-33.84,14.12-51.32,26-60A12,12,0,1,1,68.18,175.3C62.3,179.63,55.51,187.8,53,203c15.21-2.51,23.37-9.3,27.7-15.18A12,12,0,1,1,100,202Z"/></svg>Loslegen</a>
+  </nav>
+  <a class="cta" href="#kontakt">Vorführung vereinbaren</a>
+</aside>
+
+<main lang="de">
+<section class="hero" id="kassa" data-sec="kassa">
+  <div class="wrap hero-grid">
+    <div class="hero-main">
+      <div>
+        <h1><span>Tippen. Kassieren. </span><span>Nächster, bitte.</span></h1>
+        <p class="lead">Kassa ist das Kassensystem für Imbiss, Stand und Lokal in Österreich. Karte, Bon und Signatur laufen in einem Schritt.</p>
+      </div>
+      <div>
+        <div class="tiles-head">
+          <p class="tiles-hint"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228,156v36c0,13.85-1.63,26.52-4.58,35.68a12,12,0,1,1-22.84-7.36c2.14-6.65,3.42-17.24,3.42-28.32V156a8,8,0,0,0-16,0v4a12,12,0,0,1-24,0V140a8,8,0,0,0-16,0v12a12,12,0,0,1-24,0V84a8,8,0,0,0-16,0V192a12,12,0,0,1-22.18,6.34l-18.68-30-.21-.34A8,8,0,0,0,53,175.92L78.27,217.8a12,12,0,0,1-20.56,12.39l-25.31-42-.12-.2A32,32,0,0,1,84,150.83V84a32,32,0,0,1,64,0v25a32,32,0,0,1,36.78,17A32,32,0,0,1,228,156ZM56,96A12,12,0,0,0,68,84a48,48,0,0,1,96,0,12,12,0,0,0,24,0A72,72,0,0,0,44,84,12,12,0,0,0,56,96Z"/></svg>Probier es aus: Bestellung antippen, dann auf Karte.</p>
+          <div class="seg" role="group" aria-label="Ansicht der Tasten">
+            <button type="button" data-view="photos" aria-pressed="true">Mit Bildern</button>
+            <button type="button" data-view="compact" aria-pressed="false">Kompakt</button>
+          </div>
+        </div>
+        <div class="tiles" id="tiles" data-view="photos">
+          <button type="button" class="tile" data-id="kebap" style="--i:0"><span class="tile-ph"><img src="img/kebap.jpg" alt="" width="600" height="400"></span><span class="tile-name">Kebap</span><span class="tile-row"><span class="tile-price num">6,50</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+          <button type="button" class="tile" data-id="dueruem" style="--i:1"><span class="tile-ph"><img src="img/dueruem.jpg" alt="" width="600" height="400"></span><span class="tile-name">Dürüm</span><span class="tile-row"><span class="tile-price num">7,50</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+          <button type="button" class="tile" data-id="falafel" style="--i:2"><span class="tile-ph"><img src="img/falafel.jpg" alt="" width="600" height="400"></span><span class="tile-name">Falafel-Teller</span><span class="tile-row"><span class="tile-price num">9,90</span><span class="tag">VEGAN</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+          <button type="button" class="tile" data-id="pommes" style="--i:3"><span class="tile-ph"><img src="img/pommes.jpg" alt="" width="600" height="400"></span><span class="tile-name">Pommes</span><span class="tile-row"><span class="tile-price num">3,50</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+          <button type="button" class="tile" data-id="baklava" style="--i:4"><span class="tile-ph"><img src="img/baklava.jpg" alt="" width="600" height="400"></span><span class="tile-name">Baklava</span><span class="tile-row"><span class="tile-price num">3,20</span><span class="tile-sub">2 Stück</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+          <button type="button" class="tile" data-id="cola" style="--i:5"><span class="tile-ph"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M209,24a12,12,0,0,0-9-4H56A12,12,0,0,0,44.09,33.43l23.15,193A20,20,0,0,0,87.1,244h81.8a20,20,0,0,0,19.86-17.62L211.91,33.43A12,12,0,0,0,209,24ZM186.47,44l-1.92,16H71.45L69.53,44ZM165.35,220H90.65L74.33,84H181.67Z"/></svg></span><span class="tile-name">Cola 0,33 l</span><span class="tile-row"><span class="tile-price num">2,80</span><span class="tile-sub">+ Pfand 0,25</span></span><span class="tile-badge num" aria-hidden="true"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bezel">
+      <div class="bon" id="bon">
+        <div class="bon-main" id="bonMain">
+          <div class="bon-head">
+            <p class="bon-title" role="heading" aria-level="2">Bon<span class="bon-count" id="bonCount"></span></p>
+            <button type="button" class="bon-clear" id="bonClear"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216,48H180V36A28,28,0,0,0,152,8H104A28,28,0,0,0,76,36V48H40a12,12,0,0,0,0,24h4V208a20,20,0,0,0,20,20H192a20,20,0,0,0,20-20V72h4a12,12,0,0,0,0-24ZM100,36a4,4,0,0,1,4-4h48a4,4,0,0,1,4,4V48H100Zm88,168H68V72H188ZM116,104v64a12,12,0,0,1-24,0V104a12,12,0,0,1,24,0Zm48,0v64a12,12,0,0,1-24,0V104a12,12,0,0,1,24,0Z"/></svg>Bon leeren</button>
+          </div>
+          <div class="bon-body">
+            <ul id="lines" aria-live="polite"></ul>
+            <div class="pfand num" id="pfand" hidden><span id="pfandText"></span><span id="pfandSum"></span></div>
+            <div class="bon-empty" id="bonEmpty" hidden><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z"/></svg><b>Noch nichts boniert</b><span>Tipp auf eine Taste, zum Beispiel Kebap.</span></div>
+          </div>
+          <div class="bon-foot">
+            <div class="sum"><span class="sum-label">Summe</span><span class="sum-val num" id="sumVal">0,00 €</span></div>
+            <p class="vat num" id="vat"></p>
+            <div class="pay-btns">
+              <button type="button" class="pay-btn pay-bar" data-pay="cash"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M240,52H16A12,12,0,0,0,4,64V192a12,12,0,0,0,12,12H240a12,12,0,0,0,12-12V64A12,12,0,0,0,240,52ZM181.21,180H74.79A60.18,60.18,0,0,0,28,133.21V122.79A60.18,60.18,0,0,0,74.79,76H181.21A60.18,60.18,0,0,0,228,122.79v10.42A60.18,60.18,0,0,0,181.21,180ZM228,97.94A36.23,36.23,0,0,1,206.06,76H228ZM49.94,76A36.23,36.23,0,0,1,28,97.94V76ZM28,158.06A36.23,36.23,0,0,1,49.94,180H28ZM206.06,180A36.23,36.23,0,0,1,228,158.06V180ZM128,88a40,40,0,1,0,40,40A40,40,0,0,0,128,88Zm0,56a16,16,0,1,1,16-16A16,16,0,0,1,128,144Z"/></svg>Bar</button>
+              <button type="button" class="pay-btn pay-card" data-pay="card"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A20,20,0,0,0,12,64V192a20,20,0,0,0,20,20H224a20,20,0,0,0,20-20V64A20,20,0,0,0,224,44Zm-4,24V88H36V68ZM36,188V112H220v76Zm172-24a12,12,0,0,1-12,12H164a12,12,0,0,1,0-24h32A12,12,0,0,1,208,164Zm-68,0a12,12,0,0,1-12,12H116a12,12,0,0,1,0-24h12A12,12,0,0,1,140,164Z"/></svg>Karte</button>
+            </div>
+          </div>
+        </div>
+        <div class="pay" id="pay" role="group" aria-label="Bezahlen" inert>
+          <div class="pay-head">
+            <h3 class="pay-title" id="payTitle" tabindex="-1">Kartenzahlung</h3>
+            <button type="button" class="pay-x" id="payX"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"/></svg>Abbrechen</button>
+          </div>
+          <p class="pay-amount num" id="payAmount"></p>
+          <div class="given" id="given" hidden></div>
+          <p class="change num" id="change" hidden><span>Rückgeld</span><b id="changeVal"></b></p>
+          <ol class="steps" id="steps" aria-live="polite"></ol>
+          <div class="slot printing" id="slot"><div class="paper-wrap"><div class="paper" id="payPaper"></div></div></div>
+          <div class="pay-foot"><button type="button" class="pay-next" id="payNext" disabled>Nächster Kunde<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="bonieren" data-sec="bonieren">
+  <div class="wrap split">
+    <div>
+      <h2>Sonderwünsche sind ein Schalter, kein Getippe.</h2>
+      <p class="sec-lead">Ohne Zwiebel, extra Käse, scharf: ein Tipp pro Wunsch. Der Aufpreis steht sofort am Bon, und niemand sucht eine Tastatur.</p>
+      <ul class="points">
+        <li><h3>Große Tasten nach Kategorien</h3><p>Mit Fotos oder kompakt. Auch mit nassen Fingern und wenn die Schlange lang ist.</p></li>
+        <li><h3>Menüs und Bowls zum Zusammenstellen</h3><p>Beilage, Sauce, Getränk: Kassa fragt nur, was zum Artikel gehört, und zeigt, was noch fehlt.</p></li>
+        <li><h3>Pfand kommt von selbst dazu</h3><p>Zum Getränk gehört das Pfand. Am Bon steht es als eigene Zeile.</p></li>
+      </ul>
+    </div>
+    <div class="bezel rv">
+      <div class="card" id="optCard">
+        <div class="opt-head"><img src="img/kebap.jpg" alt="" width="600" height="400"><div><b>Kebap</b><span>Tipp die Schalter an</span></div></div>
+        <div class="opts">
+          <button type="button" class="sw" role="switch" aria-checked="true" data-note="ohne Zwiebel">ohne Zwiebel<span class="sw-track"><span class="sw-thumb"></span></span></button>
+          <button type="button" class="sw" role="switch" aria-checked="false" data-note="ohne Tomaten">ohne Tomaten<span class="sw-track"><span class="sw-thumb"></span></span></button>
+          <button type="button" class="sw" role="switch" aria-checked="false" data-note="ohne Sauce">ohne Sauce<span class="sw-track"><span class="sw-thumb"></span></span></button>
+          <button type="button" class="sw" role="switch" aria-checked="true" data-note="scharf">scharf<span class="sw-track"><span class="sw-thumb"></span></span></button>
+          <button type="button" class="sw" role="switch" aria-checked="false" data-note="extra Käse" data-plus="70">extra Käse<span class="sw-plus num">+ 0,70</span><span class="sw-track"><span class="sw-thumb"></span></span></button>
+          <button type="button" class="sw" role="switch" aria-checked="false" data-note="extra Fleisch" data-plus="250">extra Fleisch<span class="sw-plus num">+ 2,50</span><span class="sw-track"><span class="sw-thumb"></span></span></button>
+        </div>
+        <div class="opt-foot" aria-live="polite">
+          <p class="opt-foot-label">So steht es am Bon</p>
+          <p class="opt-line num"><span>1 × Kebap</span><span id="optPrice">6,50 €</span></p>
+          <p class="opt-note" id="optNote">ohne Zwiebel, scharf</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec block" id="bezahlen" data-sec="bezahlen">
+  <div class="wrap">
+    <h2>Karte drücken. Fertig.</h2>
+    <p class="sec-lead">Der Betrag geht von der Kassa direkt ans Kartengerät. Ist bezahlt, druckt der Bon von selbst. Kein zweites Gerät, kein zweites Eintippen, kein Vertipper.</p>
+    <div class="compare">
+      <div class="way way-old rv">
+        <h3>Mit Kassa und Extra-Handy</h3>
+        <ol>
+          <li><b class="num">1</b>Bestellung in die Kassa tippen</li>
+          <li><b class="num">2</b>Handy nehmen, Betrag noch einmal eintippen</li>
+          <li><b class="num">3</b>Kunde zahlt am Kartengerät</li>
+          <li><b class="num">4</b>Zurück zur Kassa, Kartenzahlung drücken, damit der Bon druckt</li>
+        </ol>
+      </div>
+      <div class="way way-new rv">
+        <h3>Mit Kassa</h3>
+        <p class="way-one">Auf Karte tippen.</p>
+        <p>Den Rest erledigen Kassa, Kartengerät und Drucker untereinander.</p>
+      </div>
+    </div>
+    <ul class="facts">
+      <li><h3>Dein SumUp-Gerät bleibt</h3><p>Kassa arbeitet mit SumUp Solo, Solo Lite und Air.</p></li>
+      <li><h3>Bar mit Rückgeld</h3><p>Gegeben antippen, Rückgeld ablesen. Die Geldlade springt auf.</p></li>
+      <li><h3>Storno mit Rückfrage</h3><p>Ein Bon wird nie still gelöscht. Jedes Storno bleibt nachvollziehbar.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sec" id="finanzamt" data-sec="finanzamt">
+  <div class="wrap">
+    <h2>Das Finanzamt ist schon mit boniert.</h2>
+    <p class="sec-lead">Jeder Bon wird nach der Registrierkassen-Verordnung (RKSV) signiert und bekommt seinen QR-Code. Du musst dafür nichts drücken.</p>
+    <div class="bento">
+      <div class="cell cell-bon" id="finBon"><span class="slotbar" aria-hidden="true"></span><div class="paper-wrap"><div class="paper" id="finPaper"></div></div></div>
+      <div class="cell cell-sig rv"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M148,108a12,12,0,0,1,12-12h28a12,12,0,0,1,0,24H160A12,12,0,0,1,148,108Zm40,28H168a12,12,0,0,0,0,24h20a12,12,0,0,0,0-24Zm48-80V200a20,20,0,0,1-20,20H40a20,20,0,0,1-20-20V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V196H212ZM58.28,159.37A43.82,43.82,0,0,1,71.53,142a36,36,0,1,1,56.94,0,43.84,43.84,0,0,1,13.26,17.37,12,12,0,0,1-22.15,9.26C116.48,161.19,108.42,156,100,156s-16.47,5.2-19.59,12.63a12,12,0,1,1-22.13-9.26ZM88,120a12,12,0,1,0,12-12A12,12,0,0,0,88,120Z"/></svg><div><h3>Signiert am Gerät, mit deiner Signaturkarte</h3><p>Die Karte steckt im Leser am Tablet. Deshalb wird jeder Bon auch dann signiert, wenn das Internet gerade weg ist.</p></div></div>
+      <div class="cell cell-day rv">
+        <h3>Tagesabschluss</h3>
+        <p>Bargeld zählen, Differenz sehen, drucken.</p>
+        <dl class="count num">
+          <div><dt>Soll in der Lade</dt><dd>412,50 €</dd></div>
+          <div><dt>Gezählt</dt><dd>412,50 €</dd></div>
+          <div class="ok"><dt>Differenz</dt><dd>0,00 €</dd></div>
+        </dl>
+        <p class="eg">Zahlen als Beispiel</p>
+      </div>
+      <div class="cell cell-month rv"><div><h3>Monatsabrechnung</h3><p>Ein ganzer Monat oder von Tag bis Tag, auf einem Zettel für die Buchhaltung.</p></div><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,28H188V24a12,12,0,0,0-24,0v4H92V24a12,12,0,0,0-24,0v4H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28ZM68,52a12,12,0,0,0,24,0h72a12,12,0,0,0,24,0h16V76H52V52ZM52,204V100H204V204Zm92-76a16,16,0,1,1-16-16A16,16,0,0,1,144,128Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,192,128ZM96,176a16,16,0,1,1-16-16A16,16,0,0,1,96,176Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,144,176Zm48,0a16,16,0,1,1-16-16A16,16,0,0,1,192,176Z"/></svg></div>
+      <div class="cell cell-docs rv">
+        <div><h3>Startbeleg, Monatsbeleg, Jahresbeleg</h3><p>Die Pflichtbelege erstellst du unter Abschluss mit einem Tipp.</p></div>
+        <div><h3>Datenerfassungsprotokoll</h3><p>Wenn eine Prüfung kommt, gibst du das Protokoll aus der Kassa aus.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="offline" data-sec="offline" style="padding-top:0">
+  <div class="wrap">
+    <h2>Internet weg? Die Kassa läuft weiter.</h2>
+    <p class="sec-lead">Alles Wichtige liegt am Tablet. Schalte das Internet hier aus und sieh, was trotzdem geht.</p>
+    <div class="card net rv">
+      <div class="net-ctl">
+        <button type="button" class="net-sw" id="netSw" role="switch" aria-checked="true" aria-label="Internet">
+          <span class="sw-track"><span class="sw-thumb"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M144,204a16,16,0,1,1-16-16A16,16,0,0,1,144,204ZM239.61,83.91a176,176,0,0,0-223.22,0,12,12,0,1,0,15.23,18.55,152,152,0,0,1,192.76,0,12,12,0,1,0,15.23-18.55Zm-32.16,35.73a128,128,0,0,0-158.9,0,12,12,0,0,0,14.9,18.81,104,104,0,0,1,129.1,0,12,12,0,0,0,14.9-18.81ZM175.07,155.3a80.05,80.05,0,0,0-94.14,0,12,12,0,0,0,14.14,19.4,56,56,0,0,1,65.86,0,12,12,0,1,0,14.14-19.4Z"/></svg><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216.88,207.93a12,12,0,1,1-17.76,16.14L147.78,167.6a56.06,56.06,0,0,0-52.71,7.1,12,12,0,0,1-14.14-19.4,79.35,79.35,0,0,1,41.92-15.12L103.51,118.9a104.18,104.18,0,0,0-40.06,19.55,12,12,0,0,1-14.9-18.81A128.46,128.46,0,0,1,85.61,99.21l-17.31-19a151.14,151.14,0,0,0-36.68,22.28A12,12,0,1,1,16.39,83.91a175.52,175.52,0,0,1,35-22.38L39.12,48.07A12,12,0,1,1,56.88,31.93ZM128,188a16,16,0,1,0,16,16A16,16,0,0,0,128,188Zm64.55-49.55a12,12,0,0,0,14.9-18.81A127.27,127.27,0,0,0,170,99.05a12,12,0,0,0-7.87,22.67A103.62,103.62,0,0,1,192.55,138.45Zm47.06-54.54A176.33,176.33,0,0,0,128,44c-3.94,0-7.93.13-11.86.39a12,12,0,1,0,1.59,24c3.4-.23,6.86-.34,10.27-.34a152.24,152.24,0,0,1,96.38,34.46,12,12,0,1,0,15.23-18.55Z"/></svg></span></span>
+          <span class="net-state" id="netState">Internet ist an</span>
+        </button>
+        <p id="netHint">Tipp auf den Schalter.</p>
+      </div>
+      <ul class="net-list" aria-live="polite">
+        <li>Bar bonieren<span class="pill"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>geht</span></li>
+        <li>Bons signieren<span class="pill"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>geht</span></li>
+        <li>Bon drucken<span class="pill"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>geht</span></li>
+        <li>Kartenzahlung<span class="pill" id="netCard"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>geht</span></li>
+        <li>Sicherung am Server<span class="pill" id="netSync"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M160,36A92.09,92.09,0,0,0,79,84.36,68,68,0,1,0,72,220h88a92,92,0,0,0,0-184Zm0,160H72a44,44,0,0,1-1.82-88A91.86,91.86,0,0,0,68,128a12,12,0,0,0,24,0,68,68,0,1,1,68,68Zm40.49-92.49a12,12,0,0,1,0,17l-48,48a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L144,143l39.51-39.52A12,12,0,0,1,200.49,103.51Z"/></svg>alles gesichert</span></li>
+      </ul>
+    </div>
+    <p class="net-foot">Kartenzahlung braucht Netz, bar geht immer. Sobald das Internet zurück ist, gleicht Kassa alles ab. Jede Nacht wird zusätzlich gesichert.</p>
+  </div>
+</section>
+
+<section class="sec" id="verwaltung" data-sec="verwaltung" style="padding-top:0">
+  <div class="wrap">
+    <h2>Dein Lokal im Browser, von überall.</h2>
+    <p class="sec-lead">Am Handy auf der Couch oder am Laptop im Büro: du siehst, was heute boniert wurde, und änderst die Speisekarte selbst.</p>
+    <div class="split" style="margin-top:clamp(32px,4vw,56px)">
+      <figure class="rv">
+        <div class="shots">
+          <div class="bezel"><div class="shot"><img src="img/verwaltung.png" alt="Verwaltung im Browser: Umsatz der letzten sieben Tage, Anteil Bar und Karte, meistverkaufte Artikel" width="976" height="702"></div></div>
+          <div class="shot-phone"><div class="shot"><img src="img/verwaltung-handy.png" alt="Dieselbe Übersicht am Handy" width="374" height="482"></div></div>
+        </div>
+        <figcaption class="cap">So sieht die Verwaltung aus. Die Zahlen im Bild sind Beispiele.</figcaption>
+      </figure>
+      <div class="bezel">
+        <div class="card list-card">
+          <h3>Was du dort machst</h3>
+          <ul class="rows">
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,196h-4V40a12,12,0,0,0-12-12H152a12,12,0,0,0-12,12V76H96A12,12,0,0,0,84,88v36H48a12,12,0,0,0-12,12v60H32a12,12,0,0,0,0,24H224a12,12,0,0,0,0-24ZM164,52h32V196H164Zm-56,48h32v96H108ZM60,148H84v48H60Z"/></svg><div><b>Umsätze ansehen</b><small>pro Tag, Woche, Monat und Kategorie</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z"/></svg><div><b>Jeden Bon nachschauen</b><small>auch Stornos und Tagesabschlüsse</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232,44H160a43.86,43.86,0,0,0-32,13.85A43.86,43.86,0,0,0,96,44H24A12,12,0,0,0,12,56V200a12,12,0,0,0,12,12H96a20,20,0,0,1,20,20,12,12,0,0,0,24,0,20,20,0,0,1,20-20h72a12,12,0,0,0,12-12V56A12,12,0,0,0,232,44ZM96,188H36V68H96a20,20,0,0,1,20,20V192.81A43.79,43.79,0,0,0,96,188Zm124,0H160a43.71,43.71,0,0,0-20,4.83V88a20,20,0,0,1,20-20h60Z"/></svg><div><b>Speisekarte ändern</b><small>Preise, Artikel, Extras und Fotos</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M125.18,156.94a64,64,0,1,0-82.36,0,100.23,100.23,0,0,0-39.49,32,12,12,0,0,0,19.35,14.2,76,76,0,0,1,122.64,0,12,12,0,0,0,19.36-14.2A100.33,100.33,0,0,0,125.18,156.94ZM44,108a40,40,0,1,1,40,40A40,40,0,0,1,44,108Zm206.1,97.67a12,12,0,0,1-16.78-2.57A76.31,76.31,0,0,0,172,172a12,12,0,0,1,0-24,40,40,0,1,0-10.3-78.67,12,12,0,1,1-6.16-23.19,64,64,0,0,1,57.64,110.8,100.23,100.23,0,0,1,39.49,32A12,12,0,0,1,250.1,205.67Z"/></svg><div><b>Mitarbeiter anlegen</b><small>jeder mit eigener PIN</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,20H64A28,28,0,0,0,36,48V208a28,28,0,0,0,28,28H192a28,28,0,0,0,28-28V48A28,28,0,0,0,192,20Zm4,188a4,4,0,0,1-4,4H64a4,4,0,0,1-4-4V48a4,4,0,0,1,4-4H192a4,4,0,0,1,4,4ZM172,72a12,12,0,0,1-12,12H96a12,12,0,0,1,0-24h64A12,12,0,0,1,172,72Z"/></svg><div><b>Kassen verwalten</b><small>ein Tablet oder mehrere</small></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="geraete" data-sec="geraete" style="padding-top:0">
+  <div class="wrap">
+    <h2>Was auf deiner Theke steht.</h2>
+    <p class="sec-lead">Ein Tablet, ein Bondrucker, ein Kartengerät. Was du schon hast und was passt, verwenden wir weiter.</p>
+    <div class="split" style="margin-top:clamp(32px,4vw,56px)">
+      <figure class="rv">
+        <div class="photo"><img src="img/theke.jpg" alt="Hand an einem Tablet auf einer Theke" width="1400" height="875"></div>
+        <figcaption class="cap">Symbolfoto</figcaption>
+      </figure>
+      <div class="bezel">
+        <div class="card list-card">
+          <h3>Die Geräte</h3>
+          <ul class="rows">
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M192,20H64A28,28,0,0,0,36,48V208a28,28,0,0,0,28,28H192a28,28,0,0,0,28-28V48A28,28,0,0,0,192,20Zm4,188a4,4,0,0,1-4,4H64a4,4,0,0,1-4-4V48a4,4,0,0,1,4-4H192a4,4,0,0,1,4,4ZM172,72a12,12,0,0,1-12,12H96a12,12,0,0,1,0-24h64A12,12,0,0,1,172,72Z"/></svg><div><b>Tablet</b><small>Android, 10 bis 12 Zoll</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M214.67,68H204V40a12,12,0,0,0-12-12H64A12,12,0,0,0,52,40V68H41.33C25.16,68,12,80.56,12,96v80a12,12,0,0,0,12,12H52v28a12,12,0,0,0,12,12H192a12,12,0,0,0,12-12V188h28a12,12,0,0,0,12-12V96C244,80.56,230.84,68,214.67,68ZM76,52H180V68H76ZM180,204H76V172H180Zm40-40H204v-4a12,12,0,0,0-12-12H64a12,12,0,0,0-12,12v4H36V96c0-2.17,2.44-4,5.33-4H214.67c2.89,0,5.33,1.83,5.33,4Zm-16-44a16,16,0,1,1-16-16A16,16,0,0,1,204,120Z"/></svg><div><b>Bondrucker</b><small>über USB, Netzwerk oder Bluetooth</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M152.58,66.35a130.61,130.61,0,0,1,0,123.3,12,12,0,1,1-21.17-11.3,106.7,106.7,0,0,0,0-100.7,12,12,0,1,1,21.16-11.3ZM100.36,77.41a12,12,0,0,0-5,16.23,73,73,0,0,1,0,68.72,12,12,0,1,0,21.18,11.28,97,97,0,0,0,0-91.28A12,12,0,0,0,100.36,77.41ZM236,128A108,108,0,1,1,128,20,108.12,108.12,0,0,1,236,128Zm-24,0a84,84,0,1,0-84,84A84.09,84.09,0,0,0,212,128Z"/></svg><div><b>Kartengerät</b><small>SumUp Solo, Solo Lite oder Air</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M148,108a12,12,0,0,1,12-12h28a12,12,0,0,1,0,24H160A12,12,0,0,1,148,108Zm40,28H168a12,12,0,0,0,0,24h20a12,12,0,0,0,0-24Zm48-80V200a20,20,0,0,1-20,20H40a20,20,0,0,1-20-20V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V196H212ZM58.28,159.37A43.82,43.82,0,0,1,71.53,142a36,36,0,1,1,56.94,0,43.84,43.84,0,0,1,13.26,17.37,12,12,0,0,1-22.15,9.26C116.48,161.19,108.42,156,100,156s-16.47,5.2-19.59,12.63a12,12,0,1,1-22.13-9.26ZM88,120a12,12,0,1,0,12-12A12,12,0,0,0,88,120Z"/></svg><div><b>Signaturkarte mit Leser</b><small>für die Signatur nach RKSV</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,28H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28Zm-4,24v92H179.31a19.86,19.86,0,0,0-14.14,5.86L147,168H109L90.83,149.86A19.86,19.86,0,0,0,76.69,144H52V52ZM52,204V168H75l18.14,18.14A19.86,19.86,0,0,0,107.31,192h41.38a19.86,19.86,0,0,0,14.14-5.86L181,168h23v36Z"/></svg><div><b>Geldlade</b><small>wenn du eine willst, sonst abgeschaltet</small></div></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208,36H48A28,28,0,0,0,20,64V176a28,28,0,0,0,28,28H208a28,28,0,0,0,28-28V64A28,28,0,0,0,208,36Zm4,140a4,4,0,0,1-4,4H48a4,4,0,0,1-4-4V64a4,4,0,0,1,4-4H208a4,4,0,0,1,4,4Zm-40,52a12,12,0,0,1-12,12H96a12,12,0,0,1,0-24h64A12,12,0,0,1,172,228Z"/></svg><div><b>Kundenanzeige</b><small>zweiter Bildschirm zum Kunden</small></div><span class="pill" data-s="plan">in Arbeit</span></li>
+            <li><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M225.6,62.64l-88-48.17a19.91,19.91,0,0,0-19.2,0l-88,48.17A20,20,0,0,0,20,80.19v95.62a20,20,0,0,0,10.4,17.55l88,48.17a19.89,19.89,0,0,0,19.2,0l88-48.17A20,20,0,0,0,236,175.81V80.19A20,20,0,0,0,225.6,62.64ZM128,36.57,200,76,178.57,87.73l-72-39.42Zm0,78.83L56,76,81.56,62l72,39.41ZM44,96.79l72,39.4v76.67L44,173.44Zm96,116.07V136.19l24-13.13V152a12,12,0,0,0,24,0V109.92l24-13.13v76.65Z"/></svg><div><b>Alles aus einer Hand</b><small>Komplettgerät mit zwei Bildschirmen auf Anfrage</small></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="start" data-sec="start" style="padding-top:0">
+  <div class="wrap">
+    <h2>In drei Schritten zur neuen Kassa.</h2>
+    <ol class="stepsrow">
+      <li><h3>Du schickst Speisekarte und Logo.</h3><p>Ein Foto der Karte reicht. Fotos der Speisen dazu, wenn du welche hast.</p></li>
+      <li><h3>Wir richten alles ein.</h3><p>Artikel, Preise, Extras, Pfand, Steuersätze und Mitarbeiter. Du tippst nichts ab.</p></li>
+      <li><h3>Tablet aufstellen, loslegen.</h3><p>Wir zeigen dir und deinem Team die Kassa direkt an der Theke.</p></li>
+    </ol>
+    <p class="honest"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M236,96a12,12,0,0,0-.44-3.3L221.2,42.51A20.08,20.08,0,0,0,202,28H54A20.08,20.08,0,0,0,34.8,42.51L20.46,92.7A12,12,0,0,0,20,96h0v16a43.94,43.94,0,0,0,16,33.92V216a12,12,0,0,0,12,12H208a12,12,0,0,0,12-12V145.92A43.94,43.94,0,0,0,236,112V96ZM57.05,52H199l9.14,32H47.91Zm91,56v4a20,20,0,0,1-40,0v-4ZM53,128.71A20,20,0,0,1,44,112v-4H84v4a20,20,0,0,1-20,20,19.76,19.76,0,0,1-9.07-2.2A11.54,11.54,0,0,0,53,128.71ZM196,204H60V155.81c1.32.12,2.65.19,4,.19a43.86,43.86,0,0,0,32-13.85,43.89,43.89,0,0,0,64,0A43.86,43.86,0,0,0,192,156c1.35,0,2.68-.07,4-.19Zm16-92a20,20,0,0,1-9,16.71,11.66,11.66,0,0,0-1.88,1.09A20,20,0,0,1,172,112v-4h40Z"/></svg><span>Kassa ist heute für Imbiss, Stand und Theke gebaut. Tische, Handgeräte für Kellner und Küchenstationen für große Lokale sind in Arbeit.</span></p>
+  </div>
+</section>
+
+<section class="sec block kontakt" id="kontakt" data-sec="kontakt">
+  <div class="wrap split" style="align-items:center">
+    <div>
+      <h2>Sehen wir uns an deiner Theke?</h2>
+      <p class="sec-lead">Wir zeigen dir Kassa mit deiner eigenen Speisekarte. Unverbindlich, und du entscheidest danach in Ruhe.</p>
+    </div>
+    <div>
+      <ul class="reach">
+        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,154.8l-47.09-21.11-.18-.08a19.94,19.94,0,0,0-19,1.75,13.08,13.08,0,0,0-1.12.84l-22.31,19c-13-7.05-26.43-20.37-33.49-33.21l19.06-22.66a11.76,11.76,0,0,0,.85-1.15,20,20,0,0,0,1.66-18.83,1.42,1.42,0,0,1-.08-.18L101.2,32A20.06,20.06,0,0,0,80.42,20.15,60.27,60.27,0,0,0,28,80c0,81.61,66.39,148,148,148a60.27,60.27,0,0,0,59.85-52.42A20.06,20.06,0,0,0,224,154.8ZM176,204A124.15,124.15,0,0,1,52,80,36.29,36.29,0,0,1,80.48,44.46l18.82,42L80.14,109.28a12,12,0,0,0-.86,1.16A20,20,0,0,0,78,130.08c9.42,19.28,28.83,38.56,48.31,48A20,20,0,0,0,146,176.63a11.63,11.63,0,0,0,1.11-.85l22.43-19.07,42,18.81A36.29,36.29,0,0,1,176,204Z"/></svg>Telefon, WhatsApp<span class="ph">PLATZHALTER</span></small><a href="tel:+436600000000" class="num" id="tel">+43 660 000 00 00</a></div><button type="button" class="copy" data-copy="+43 660 000 00 00" data-done="Nummer kopiert"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>Kopieren</button></li>
+        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A12,12,0,0,0,20,56V192a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A12,12,0,0,0,224,44ZM193.15,68,128,127.72,62.85,68ZM44,188V83.28l75.89,69.57a12,12,0,0,0,16.22,0L212,83.28V188Z"/></svg>E-Mail<span class="ph">PLATZHALTER</span></small><a href="mailto:hallo@kassa.example" id="mail">hallo@kassa.example</a></div><button type="button" class="copy" data-copy="hallo@kassa.example" data-done="Adresse kopiert"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>Kopieren</button></li>
+      </ul>
+      <p class="reach-note">Schreib kurz, was du verkaufst und wo du stehst. Wir melden uns für einen Termin.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot" lang="de">
+  <div class="wrap">
+    <a class="logo" href="#kassa"><span class="logo-mark"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M68,100A12,12,0,0,1,80,88h96a12,12,0,0,1,0,24H80A12,12,0,0,1,68,100Zm12,52h96a12,12,0,0,0,0-24H80a12,12,0,0,0,0,24ZM236,56V208a12,12,0,0,1-17.37,10.73L192,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L128,205.42l-26.63,13.31a12,12,0,0,1-10.74,0L64,205.42,37.37,218.73A12,12,0,0,1,20,208V56A20,20,0,0,1,40,36H216A20,20,0,0,1,236,56Zm-24,4H44V188.58l14.63-7.31a12,12,0,0,1,10.74,0L96,194.58l26.63-13.31a12,12,0,0,1,10.74,0L160,194.58l26.63-13.31a12,12,0,0,1,10.74,0L212,188.58Z"/></svg></span>Kassa</a>
+    <span>Kassensystem für Imbiss, Stand und Lokal in Österreich</span>
+    <span>Impressum und Datenschutz folgen</span>
+  </div>
+</footer>
+
+<div class="mini" id="mini" lang="de" inert>
+  <div><small id="miniCount">0 Artikel</small><b class="num" id="miniSum">0,00 €</b></div>
+  <a class="cta" href="#bon">Zum Bon<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M208.49,152.49l-72,72a12,12,0,0,1-17,0l-72-72a12,12,0,0,1,17-17L116,187V40a12,12,0,0,1,24,0V187l51.51-51.52a12,12,0,0,1,17,17Z"/></svg></a>
+</div>
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" id="toastUndo" hidden>Rückgängig</button><i></i></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const num = c => (c / 100).toFixed(2).replace('.', ',');
+  const eur = c => num(c) + ' €';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Kassa ---------- */
+  const ITEMS = {
+    kebap: { name: 'Kebap', price: 650, vat: 10 },
+    dueruem: { name: 'Dürüm', price: 750, vat: 10 },
+    falafel: { name: 'Falafel-Teller', price: 990, vat: 10 },
+    pommes: { name: 'Pommes', price: 350, vat: 10 },
+    baklava: { name: 'Baklava', price: 320, vat: 10 },
+    cola: { name: 'Cola 0,33 l', price: 280, vat: 20, pfand: 25 },
+  };
+  let cart = [{ id: 'kebap', qty: 1, note: 'ohne Zwiebel, scharf' }, { id: 'cola', qty: 1 }];
+
+  const linesEl = $('#lines'), tilesEl = $('#tiles'), bonMain = $('#bonMain');
+  const pfandEl = $('#pfand'), emptyEl = $('#bonEmpty'), clearBtn = $('#bonClear');
+
+  function totals(list = cart) {
+    let goods = 0, pf = 0, pfn = 0, g10 = 0, g20 = 0, n = 0;
+    for (const l of list) {
+      const it = ITEMS[l.id];
+      goods += it.price * l.qty; n += l.qty;
+      if (it.pfand) { pf += it.pfand * l.qty; pfn += l.qty; }
+      if (it.vat === 20) g20 += it.price * l.qty; else g10 += it.price * l.qty;
+    }
+    const v10 = Math.round(g10 * 10 / 110), v20 = Math.round(g20 * 20 / 120);
+    return { sum: goods + pf, pf, pfn, n, v10, v20, vat: v10 + v20 };
+  }
+
+  function makeLine(id) {
+    const li = document.createElement('li');
+    li.className = 'line'; li.dataset.id = id;
+    li.innerHTML = `<span class="stepper"><button type="button" data-act="dec" aria-label="${ITEMS[id].name}: eins weniger"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228,128a12,12,0,0,1-12,12H40a12,12,0,0,1,0-24H216A12,12,0,0,1,228,128Z"/></svg></button><output class="num"></output><button type="button" data-act="inc" aria-label="${ITEMS[id].name}: eins mehr"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z"/></svg></button></span><span><span class="line-name">${ITEMS[id].name}</span><span class="line-note" hidden></span></span><span class="line-price num"></span>`;
+    $('.line-name', li).style.display = 'block';
+    $('.line-note', li).style.display = 'block';
+    return li;
+  }
+
+  function render(flashId) {
+    const t = totals();
+    const have = new Map($$('.line', linesEl).map(el => [el.dataset.id, el]));
+    for (const l of cart) {
+      const el = have.get(l.id) || makeLine(l.id);
+      have.delete(l.id);
+      $('output', el).textContent = l.qty;
+      $('.line-price', el).textContent = num(ITEMS[l.id].price * l.qty);
+      const note = $('.line-note', el);
+      note.hidden = !l.note; note.textContent = l.note || '';
+      linesEl.appendChild(el);
+      if (l.id === flashId) { el.classList.add('flash'); void el.offsetWidth; el.classList.remove('flash'); el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }
+    }
+    have.forEach(el => el.remove());
+    pfandEl.hidden = !t.pf;
+    $('#pfandText').textContent = `Pfand ${t.pfn} × 0,25`;
+    $('#pfandSum').textContent = num(t.pf);
+    emptyEl.hidden = cart.length > 0;
+    clearBtn.disabled = !cart.length;
+    $('#bonCount').textContent = t.n ? `${t.n} Artikel` : '';
+    $('#sumVal').textContent = eur(t.sum);
+    $('#vat').textContent = t.n ? `inkl. ${eur(t.vat)} MwSt` : 'Summe inkl. MwSt';
+    $$('.pay-btn').forEach(b => b.disabled = !cart.length);
+    $$('.tile', tilesEl).forEach(tile => {
+      const l = cart.find(x => x.id === tile.dataset.id);
+      tile.toggleAttribute('data-in', !!l);
+      if (l) $('.tile-badge', tile).textContent = l.qty;
+      tile.setAttribute('aria-label', `${ITEMS[tile.dataset.id].name}, ${num(ITEMS[tile.dataset.id].price)} Euro${l ? `, ${l.qty} im Bon` : ''}`);
+    });
+    $('#miniCount').textContent = `${t.n} Artikel`;
+    $('#miniSum').textContent = eur(t.sum);
+  }
+
+  function add(id, d = 1) {
+    const l = cart.find(x => x.id === id);
+    if (l) { l.qty += d; if (l.qty <= 0) cart = cart.filter(x => x !== l); }
+    else if (d > 0) cart.push({ id, qty: 1 });
+    render(d > 0 ? id : undefined);
+  }
+
+  tilesEl.addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if (tile) { if (pay.classList.contains('open')) return; add(tile.dataset.id); hideToast(); }
+  });
+  linesEl.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (b) add(b.closest('.line').dataset.id, b.dataset.act === 'inc' ? 1 : -1);
+  });
+  $$('.seg button').forEach(b => b.addEventListener('click', () => {
+    tilesEl.dataset.view = b.dataset.view;
+    $$('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+
+  /* Hinweis mit Rückgängig */
+  const toast = $('#toast'), toastUndo = $('#toastUndo');
+  let toastTimer, undoFn;
+  function showToast(text, undo) {
+    $('#toastText').textContent = text;
+    undoFn = undo; toastUndo.hidden = !undo;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, undo ? 6000 : 2400);
+  }
+  function hideToast() { toast.classList.remove('show'); clearTimeout(toastTimer); }
+  toastUndo.addEventListener('click', () => { undoFn?.(); hideToast(); });
+  clearBtn.addEventListener('click', () => {
+    const before = cart; cart = []; render();
+    showToast('Bon geleert', () => { cart = before; render(); });
+  });
+
+  /* ---------- Papier-Bon ---------- */
+  function qr(seed) {
+    const n = 25, cells = [];
+    let s = seed >>> 0;
+    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const finder = (x, y) => [[0, 0], [n - 7, 0], [0, n - 7]].some(([fx, fy]) => x >= fx - 1 && x < fx + 8 && y >= fy - 1 && y < fy + 8);
+    let d = '';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!finder(x, y) && rnd() > .5) d += `M${x} ${y}h1v1h-1z`;
+    for (const [fx, fy] of [[0, 0], [n - 7, 0], [0, n - 7]]) d += `M${fx} ${fy}h7v7h-7zM${fx + 1} ${fy + 1}v5h5v-5zM${fx + 2} ${fy + 2}h3v3h-3z`;
+    return `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" aria-hidden="true"><path fill="#14171A" fill-rule="evenodd" d="${d}"/></svg>`;
+  }
+  function stamp() {
+    const d = new Date(), p = v => String(v).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  function receipt(list, method, given) {
+    const t = totals(list);
+    const rows = list.map(l => `<div class="paper-row"><span>${l.qty} × ${ITEMS[l.id].name}${l.note ? `<small>${l.note}</small>` : ''}</span><span>${num(ITEMS[l.id].price * l.qty)}</span></div>`).join('');
+    const pf = t.pf ? `<div class="paper-row"><span>Pfand ${t.pfn} × 0,25</span><span>${num(t.pf)}</span></div>` : '';
+    const payRows = method === 'card'
+      ? `<div class="paper-row"><span>Karte</span><span>${num(t.sum)}</span></div>`
+      : `<div class="paper-row"><span>Bar gegeben</span><span>${num(given)}</span></div><div class="paper-row"><span>Rückgeld</span><span>${num(given - t.sum)}</span></div>`;
+    const vat = [t.v10 ? `10 % ${num(t.v10)}` : '', t.v20 ? `20 % ${num(t.v20)}` : ''].filter(Boolean).join(' · ');
+    return `<p class="paper-shop">Dein Imbiss</p><p class="paper-meta">Bon 1042 · ${stamp()}</p><hr>${rows}${pf}<hr><div class="paper-row paper-sum"><span>Summe</span><span>${eur(t.sum)}</span></div>${payRows}<div class="paper-row" style="color:var(--paper-ink2);font-size:12.5px"><span>enthaltene MwSt</span><span>${vat}</span></div><hr><div class="paper-sig">${qr(t.sum * 31 + list.length)}<p><b>Signiert nach RKSV</b>Muster. So sieht dein Bon aus, mit deinem Namen und deinem Logo.</p></div>`;
+  }
+
+  /* ---------- Bezahlen ---------- */
+  const pay = $('#pay'), stepsEl = $('#steps'), slot = $('#slot'), payNext = $('#payNext');
+  const givenEl = $('#given'), changeEl = $('#change');
+  let timers = [], lastPayBtn = null, paid = false;
+  const later = (fn, ms) => timers.push(setTimeout(fn, reduce ? Math.min(ms, 160) : ms));
+  const step = (i, s) => stepsEl.children[i]?.setAttribute('data-s', s);
+  function setSteps(texts) {
+    stepsEl.innerHTML = texts.map(t => `<li><span class="dot"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg></span><span>${t}</span></li>`).join('');
+  }
+  function printPaper(method, given, done) {
+    $('#payPaper').innerHTML = receipt(cart, method, given);
+    slot.classList.add('printing'); slot.classList.remove('printed');
+    void slot.offsetWidth;
+    slot.classList.remove('printing'); slot.classList.add('printed');
+    later(done, 1550);
+  }
+  function finish() { paid = true; payNext.disabled = false; $('#payX').setAttribute('data-off', ''); payNext.focus({ preventScroll: true }); }
+
+  function openPay(method, btn) {
+    if (!cart.length) return;
+    const t = totals();
+    lastPayBtn = btn; paid = false; hideToast();
+    timers.forEach(clearTimeout); timers = [];
+    $('#payTitle').textContent = method === 'card' ? 'Kartenzahlung' : 'Barzahlung';
+    $('#payAmount').textContent = eur(t.sum);
+    $('#payX').removeAttribute('data-off'); payNext.disabled = true;
+    $('#payPaper').innerHTML = '';
+    slot.classList.add('printing'); slot.classList.remove('printed');
+    givenEl.hidden = changeEl.hidden = method === 'card';
+    if (method === 'card') {
+      setSteps([`${eur(t.sum)} ans Kartengerät gesendet`, 'Kunde hält die Karte hin', 'Zahlung bestätigt', 'Bon gedruckt und signiert']);
+      step(0, 'run');
+      later(() => { step(0, 'ok'); step(1, 'run'); }, 750);
+      later(() => { step(1, 'ok'); step(2, 'run'); }, 2350);
+      later(() => { step(2, 'ok'); step(3, 'run'); printPaper('card', 0, () => { step(3, 'ok'); finish(); }); }, 3000);
+    } else {
+      const notes = [500, 1000, 2000, 5000, 10000, 20000].filter(v => v > t.sum).slice(0, 3);
+      givenEl.innerHTML = [`<button type="button" data-g="${t.sum}" aria-pressed="false">Passend</button>`, ...notes.map(v => `<button type="button" data-g="${v}" aria-pressed="false">${v / 100} €</button>`)].join('');
+      changeEl.hidden = true;
+      setSteps(['Geldlade springt auf', 'Bon gedruckt und signiert']);
+    }
+    pay.inert = false; bonMain.inert = true; pay.classList.add('open');
+    $('#payTitle').focus({ preventScroll: true });
+  }
+  givenEl.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    const g = +b.dataset.g, t = totals();
+    $$('button', givenEl).forEach(x => { x.disabled = true; x.setAttribute('aria-pressed', String(x === b)); });
+    $('#changeVal').textContent = eur(g - t.sum); changeEl.hidden = false;
+    step(0, 'run');
+    later(() => { step(0, 'ok'); step(1, 'run'); printPaper('cash', g, () => { step(1, 'ok'); finish(); }); }, 420);
+  });
+  function closePay(done) {
+    timers.forEach(clearTimeout); timers = [];
+    pay.classList.remove('open'); pay.inert = true; bonMain.inert = false;
+    if (done) { cart = []; render(); showToast('Fertig. Der nächste Kunde ist dran.'); $('.tile', tilesEl).focus({ preventScroll: true }); }
+    else lastPayBtn?.focus({ preventScroll: true });
+  }
+  $$('.pay-btn').forEach(b => b.addEventListener('click', () => openPay(b.dataset.pay, b)));
+  $('#payX').addEventListener('click', () => closePay(false));
+  payNext.addEventListener('click', () => closePay(true));
+  pay.addEventListener('keydown', e => { if (e.key === 'Escape') closePay(paid); });
+
+  render();
+
+  /* ---------- Schalter für Extras ---------- */
+  const optCard = $('#optCard');
+  function renderOpts() {
+    const on = $$('.sw[aria-checked="true"]', optCard);
+    const plus = on.reduce((a, b) => a + (+b.dataset.plus || 0), 0);
+    $('#optNote').textContent = on.map(b => b.dataset.note).join(', ') || 'ohne Änderung';
+    $('#optPrice').textContent = eur(650 + plus);
+  }
+  optCard.addEventListener('click', e => {
+    const b = e.target.closest('.sw'); if (!b) return;
+    b.setAttribute('aria-checked', String(b.getAttribute('aria-checked') !== 'true'));
+    renderOpts();
+  });
+
+  /* ---------- Ohne Internet ---------- */
+  const netSw = $('#netSw'), netCard = $('#netCard'), netSync = $('#netSync');
+  const ICON = { ok: `<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>`, wait: `<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20Zm0,192a84,84,0,1,1,84-84A84.09,84.09,0,0,1,128,212Zm68-84a12,12,0,0,1-12,12H128a12,12,0,0,1-12-12V72a12,12,0,0,1,24,0v44h44A12,12,0,0,1,196,128Z"/></svg>`, sync: `<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M196.49,151.51a12,12,0,0,1-17,17L168,157v51a12,12,0,0,1-24,0V157l-11.51,11.52a12,12,0,1,1-17-17l32-32a12,12,0,0,1,17,0ZM160,36A92.08,92.08,0,0,0,79,84.37,68,68,0,1,0,72,220h28a12,12,0,0,0,0-24H72a44,44,0,0,1-1.81-87.95A91.7,91.7,0,0,0,68,128a12,12,0,0,0,24,0,68,68,0,1,1,132.6,21.29,12,12,0,1,0,22.8,7.51A92.06,92.06,0,0,0,160,36Z"/></svg>`, done: `<svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M160,36A92.09,92.09,0,0,0,79,84.36,68,68,0,1,0,72,220h88a92,92,0,0,0,0-184Zm0,160H72a44,44,0,0,1-1.82-88A91.86,91.86,0,0,0,68,128a12,12,0,0,0,24,0,68,68,0,1,1,68,68Zm40.49-92.49a12,12,0,0,1,0,17l-48,48a12,12,0,0,1-17,0l-24-24a12,12,0,1,1,17-17L144,143l39.51-39.52A12,12,0,0,1,200.49,103.51Z"/></svg>` };
+  const setPill = (el, s, icon, text) => { el.dataset.s = s; el.innerHTML = icon + text; };
+  let netTimer;
+  netSw.addEventListener('click', () => {
+    const on = netSw.getAttribute('aria-checked') !== 'true';
+    netSw.setAttribute('aria-checked', String(on));
+    clearTimeout(netTimer);
+    $('#netState').textContent = on ? 'Internet ist an' : 'Internet ist aus';
+    $('#netHint').textContent = on ? 'Kassa gleicht jetzt von selbst ab.' : 'Bar, Signatur und Drucker laufen weiter. Schalte wieder ein.';
+    if (on) {
+      setPill(netCard, '', ICON.ok, 'geht');
+      setPill(netSync, 'sync', ICON.sync, 'Abgleich läuft');
+      netTimer = setTimeout(() => setPill(netSync, '', ICON.done, 'alles gesichert'), reduce ? 200 : 1500);
+    } else {
+      setPill(netCard, 'wait', ICON.wait, 'wartet auf Netz');
+      setPill(netSync, 'wait', ICON.wait, '3 Bons warten');
+    }
+  });
+
+  /* ---------- Muster-Bon beim Finanzamt ---------- */
+  const finBon = $('#finBon');
+  $('#finPaper').innerHTML = receipt([{ id: 'dueruem', qty: 2 }, { id: 'pommes', qty: 1 }, { id: 'cola', qty: 2 }], 'card', 0);
+  if ('IntersectionObserver' in window && !reduce) {
+    finBon.classList.add('printing');
+    new IntersectionObserver((es, io) => es.forEach(en => {
+      if (en.isIntersecting) { finBon.classList.remove('printing'); finBon.classList.add('printed'); io.disconnect(); }
+    }), { threshold: .35 }).observe(finBon);
+  }
+
+  /* ---------- Kopieren ---------- */
+  $$('.copy').forEach(b => b.addEventListener('click', () => {
+    const text = b.dataset.copy;
+    const ok = () => showToast(b.dataset.done);
+    const fail = () => showToast('Kopieren geht hier nicht. Bitte markieren und kopieren.');
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail();
+  }));
+
+  /* ---------- Navigation: aktiver Abschnitt ---------- */
+  const ind = $('.rail-ind'), chips = $('.chips');
+  function setActive(id) {
+    $$('[data-nav]').forEach(a => a.setAttribute('aria-current', String(a.dataset.nav === id)));
+    const r = $(`.rail-nav [data-nav="${id}"]`);
+    if (ind) { ind.style.opacity = r ? 1 : 0; if (r) ind.style.transform = `translateY(${r.offsetTop}px)`; }
+    const c = $(`.chips [data-nav="${id}"]`);
+    if (c && chips.scrollWidth > chips.clientWidth) chips.scrollTo({ left: c.offsetLeft - (chips.clientWidth - c.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+  }
+  if ('IntersectionObserver' in window) {
+    const seen = new Map();
+    const io = new IntersectionObserver(es => {
+      es.forEach(en => seen.set(en.target.dataset.sec, en.isIntersecting));
+      const first = $$('[data-sec]').find(s => seen.get(s.dataset.sec));
+      if (first) setActive(first.dataset.sec);
+    }, { rootMargin: '-38% 0px -58% 0px' });
+    $$('[data-sec]').forEach(s => io.observe(s));
+
+    /* Mini-Bon am Handy: sichtbar, solange die Tasten im Bild sind und der Bon nicht */
+    const mini = $('#mini'); let tilesIn = false, bonIn = false;
+    const upd = () => { const show = tilesIn && !bonIn && cart.length > 0; mini.classList.toggle('show', show); mini.inert = !show; };
+    new IntersectionObserver(es => { tilesIn = es[0].isIntersecting; upd(); }, { threshold: .15 }).observe(tilesEl);
+    new IntersectionObserver(es => { bonIn = es[0].isIntersecting; upd(); }, { threshold: .12 }).observe($('#bon'));
+    tilesEl.addEventListener('click', () => setTimeout(upd, 0));
+  }
+  setActive('kassa');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "kassa-website",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": { "@phosphor-icons/core": "2.1.1" }
+}
