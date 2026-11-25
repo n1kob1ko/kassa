@@ -1,0 +1,27 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		-Server
+	}
+
+	@assets path /fonts/* /img/*
+	header @assets Cache-Control "public, max-age=604800"
+
+	respond /healthz "ok" 200
+
+	@hidden path *.md /Caddyfile /Dockerfile
+	respond @hidden 404
+
+	file_server
+}

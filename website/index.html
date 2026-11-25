@@ -9,6 +9,7 @@
 <meta name="description" content="Kassa ist das Kassensystem für Imbiss, Stand und Lokal in Österreich. Karte, Bon und RKSV-Signatur laufen in einem Schritt.">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#0F766E">
+<meta name="robots" content="noindex">
 <style>
 @font-face{font-family:"Figtree";src:url("fonts/Figtree-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
 @font-face{font-family:"Figtree";src:url("fonts/Figtree-SemiBold.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
@@ -396,6 +397,7 @@ h2{font-weight:800;font-size:clamp(31px,3.7vw,54px);line-height:1.05;letter-spac
 .reach li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:14px 14px 14px 18px;border-radius:18px;background:var(--petrol-card);border:1px solid var(--petrol-line)}
 .reach small{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--petrol-ink2)}
 .reach a{display:block;font-weight:800;font-size:clamp(19px,1.7vw,23px);line-height:1.25;text-decoration:none;overflow-wrap:anywhere;user-select:all}
+.reach .soon{display:block;font-weight:800;font-size:clamp(19px,1.7vw,23px);line-height:1.25}
 .ph{display:inline-grid;place-items:center;height:20px;padding:0 7px;border-radius:5px;background:rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff}
 .copy{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:0 16px;border-radius:14px;border:0;background:#fff;color:#0C615A;font-weight:800;font-size:15px;transition:transform 140ms var(--ease-out)}
 .copy:active{transform:scale(.96)}
@@ -722,10 +724,10 @@ h2{font-weight:800;font-size:clamp(31px,3.7vw,54px);line-height:1.05;letter-spac
     </div>
     <div>
       <ul class="reach">
-        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,154.8l-47.09-21.11-.18-.08a19.94,19.94,0,0,0-19,1.75,13.08,13.08,0,0,0-1.12.84l-22.31,19c-13-7.05-26.43-20.37-33.49-33.21l19.06-22.66a11.76,11.76,0,0,0,.85-1.15,20,20,0,0,0,1.66-18.83,1.42,1.42,0,0,1-.08-.18L101.2,32A20.06,20.06,0,0,0,80.42,20.15,60.27,60.27,0,0,0,28,80c0,81.61,66.39,148,148,148a60.27,60.27,0,0,0,59.85-52.42A20.06,20.06,0,0,0,224,154.8ZM176,204A124.15,124.15,0,0,1,52,80,36.29,36.29,0,0,1,80.48,44.46l18.82,42L80.14,109.28a12,12,0,0,0-.86,1.16A20,20,0,0,0,78,130.08c9.42,19.28,28.83,38.56,48.31,48A20,20,0,0,0,146,176.63a11.63,11.63,0,0,0,1.11-.85l22.43-19.07,42,18.81A36.29,36.29,0,0,1,176,204Z"/></svg>Telefon, WhatsApp<span class="ph">PLATZHALTER</span></small><a href="tel:+436600000000" class="num" id="tel">+43 660 000 00 00</a></div><button type="button" class="copy" data-copy="+43 660 000 00 00" data-done="Nummer kopiert"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>Kopieren</button></li>
-        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A12,12,0,0,0,20,56V192a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A12,12,0,0,0,224,44ZM193.15,68,128,127.72,62.85,68ZM44,188V83.28l75.89,69.57a12,12,0,0,0,16.22,0L212,83.28V188Z"/></svg>E-Mail<span class="ph">PLATZHALTER</span></small><a href="mailto:hallo@kassa.example" id="mail">hallo@kassa.example</a></div><button type="button" class="copy" data-copy="hallo@kassa.example" data-done="Adresse kopiert"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>Kopieren</button></li>
+        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,154.8l-47.09-21.11-.18-.08a19.94,19.94,0,0,0-19,1.75,13.08,13.08,0,0,0-1.12.84l-22.31,19c-13-7.05-26.43-20.37-33.49-33.21l19.06-22.66a11.76,11.76,0,0,0,.85-1.15,20,20,0,0,0,1.66-18.83,1.42,1.42,0,0,1-.08-.18L101.2,32A20.06,20.06,0,0,0,80.42,20.15,60.27,60.27,0,0,0,28,80c0,81.61,66.39,148,148,148a60.27,60.27,0,0,0,59.85-52.42A20.06,20.06,0,0,0,224,154.8ZM176,204A124.15,124.15,0,0,1,52,80,36.29,36.29,0,0,1,80.48,44.46l18.82,42L80.14,109.28a12,12,0,0,0-.86,1.16A20,20,0,0,0,78,130.08c9.42,19.28,28.83,38.56,48.31,48A20,20,0,0,0,146,176.63a11.63,11.63,0,0,0,1.11-.85l22.43-19.07,42,18.81A36.29,36.29,0,0,1,176,204Z"/></svg>Telefon, WhatsApp</small><b class="soon">Nummer folgt in Kürze</b></div></li>
+        <li><div><small><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false"><path d="M224,44H32A12,12,0,0,0,20,56V192a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A12,12,0,0,0,224,44ZM193.15,68,128,127.72,62.85,68ZM44,188V83.28l75.89,69.57a12,12,0,0,0,16.22,0L212,83.28V188Z"/></svg>E-Mail</small><b class="soon">Adresse folgt in Kürze</b></div></li>
       </ul>
-      <p class="reach-note">Schreib kurz, was du verkaufst und wo du stehst. Wir melden uns für einen Termin.</p>
+      <p class="reach-note">Sag uns kurz, was du verkaufst und wo du stehst. Wir kommen mit dem Tablet vorbei.</p>
     </div>
   </div>
 </section>

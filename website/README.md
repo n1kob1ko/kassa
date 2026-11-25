@@ -22,8 +22,13 @@ Zum Hosten reichen `index.html`, `fonts/` und `img/`.
 
 Die Seite ist wie der Kassenbildschirm gebaut: Kategorien links, Inhalt in der Mitte, Bon rechts. Farben, Schrift und Rundungen kommen aus `DESIGN.md`. Ganz oben ist eine kleine Kassa zum Antippen (Bestellung, Bar oder Karte, Bon).
 
-## Noch offen (Platzhalter)
+## Online
 
-- Telefon und E-Mail im Abschnitt Kontakt (`+43 660 000 00 00`, `hallo@kassa.example`).
+Die Seite läuft als eigener Dienst `kassa-website` im Railway-Projekt `kassa` (Ordner `website/`, `Dockerfile` mit Caddy, liefert nur `index.html`, `fonts/` und `img/` aus). Der Dienst ist auf einen Commit festgelegt: ein Push stellt nichts online, ausgerollt wird bewusst.
+
+## Noch offen
+
+- Telefon und E-Mail im Abschnitt Kontakt (dort steht "folgt in Kürze").
 - Impressum und Datenschutz.
+- Solange das fehlt, steht im Kopf `<meta name="robots" content="noindex">`, damit Suchmaschinen die Seite noch nicht aufnehmen.
 - Preise stehen bewusst keine auf der Seite.

@@ -2,6 +2,7 @@
 <meta name="description" content="Kassa ist das Kassensystem für Imbiss, Stand und Lokal in Österreich. Karte, Bon und RKSV-Signatur laufen in einem Schritt.">
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#0F766E">
+<meta name="robots" content="noindex">
 <style>
 @font-face{font-family:"Figtree";src:url("fonts/Figtree-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
 @font-face{font-family:"Figtree";src:url("fonts/Figtree-SemiBold.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
@@ -389,6 +390,7 @@ h2{font-weight:800;font-size:clamp(31px,3.7vw,54px);line-height:1.05;letter-spac
 .reach li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 12px;padding:14px 14px 14px 18px;border-radius:18px;background:var(--petrol-card);border:1px solid var(--petrol-line)}
 .reach small{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--petrol-ink2)}
 .reach a{display:block;font-weight:800;font-size:clamp(19px,1.7vw,23px);line-height:1.25;text-decoration:none;overflow-wrap:anywhere;user-select:all}
+.reach .soon{display:block;font-weight:800;font-size:clamp(19px,1.7vw,23px);line-height:1.25}
 .ph{display:inline-grid;place-items:center;height:20px;padding:0 7px;border-radius:5px;background:rgba(255,255,255,.16);font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff}
 .copy{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:0 16px;border-radius:14px;border:0;background:#fff;color:#0C615A;font-weight:800;font-size:15px;transition:transform 140ms var(--ease-out)}
 .copy:active{transform:scale(.96)}
@@ -714,10 +716,10 @@ h2{font-weight:800;font-size:clamp(31px,3.7vw,54px);line-height:1.05;letter-spac
     </div>
     <div>
       <ul class="reach">
-        <li><div><small>{{i:phone}}Telefon, WhatsApp<span class="ph">PLATZHALTER</span></small><a href="tel:+436600000000" class="num" id="tel">+43 660 000 00 00</a></div><button type="button" class="copy" data-copy="+43 660 000 00 00" data-done="Nummer kopiert">{{i:copy}}Kopieren</button></li>
-        <li><div><small>{{i:envelope-simple}}E-Mail<span class="ph">PLATZHALTER</span></small><a href="mailto:hallo@kassa.example" id="mail">hallo@kassa.example</a></div><button type="button" class="copy" data-copy="hallo@kassa.example" data-done="Adresse kopiert">{{i:copy}}Kopieren</button></li>
+        <li><div><small>{{i:phone}}Telefon, WhatsApp</small><b class="soon">Nummer folgt in Kürze</b></div></li>
+        <li><div><small>{{i:envelope-simple}}E-Mail</small><b class="soon">Adresse folgt in Kürze</b></div></li>
       </ul>
-      <p class="reach-note">Schreib kurz, was du verkaufst und wo du stehst. Wir melden uns für einen Termin.</p>
+      <p class="reach-note">Sag uns kurz, was du verkaufst und wo du stehst. Wir kommen mit dem Tablet vorbei.</p>
     </div>
   </div>
 </section>
