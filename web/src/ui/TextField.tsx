@@ -7,10 +7,12 @@ export type TextFieldProps = ComponentPropsWithRef<'input'> & {
   /** Meldung am Feld: sagt, was nicht stimmt und was zu tun ist. */
   error?: ReactNode;
   hint?: ReactNode;
+  /** Die Beschriftung nur für Screenreader, etwa wenn ein Spaltenkopf oder der Name daneben sie schon zeigt. */
+  hideLabel?: boolean;
 };
 
 /** Eingabefeld, 44 px hoch, Beschriftung darüber, Hinweis oder Meldung darunter. */
-export function TextField({ label, error, hint, id, className, ref, ...input }: TextFieldProps) {
+export function TextField({ label, error, hint, hideLabel = false, id, className, ref, ...input }: TextFieldProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const hintId = `${inputId}-hinweis`;
@@ -19,7 +21,7 @@ export function TextField({ label, error, hint, id, className, ref, ...input }: 
 
   return (
     <div className={[styles.field, className].filter(Boolean).join(' ')}>
-      <label className={styles.label} htmlFor={inputId}>
+      <label className={hideLabel ? 'visually-hidden' : styles.label} htmlFor={inputId}>
         {label}
       </label>
       <input

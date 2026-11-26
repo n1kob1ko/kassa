@@ -12,8 +12,11 @@ export type FileDropProps = {
   /** Name der zuletzt gewählten Datei. */
   fileName?: string;
   disabled?: boolean;
-  /** `menu` (Vorgabe): die Speisekarten-Datei (.json). `image`: ein Bild (JPEG, PNG, WebP, bis 10 MB). */
-  kind?: 'menu' | 'image';
+  /**
+   * `menu` (Vorgabe): die Speisekarten-Datei (.json). `translations`: eine Datei nur mit Übersetzungen (.json).
+   * `image`: ein Bild (JPEG, PNG, WebP, bis 10 MB).
+   */
+  kind?: 'menu' | 'translations' | 'image';
   /** Wird eine Datei abgewiesen (dann mit dem Satz) oder angenommen (dann `null`). */
   onReject?: (problem: string | null) => void;
 };
@@ -24,6 +27,12 @@ const KINDS = {
     title: 'Speisekarten-Datei hierher ziehen oder auswählen',
     hint: 'Nur .json, bis 1 MB',
     problem: (file: File) => (file.name.toLowerCase().endsWith('.json') ? null : 'Das ist keine .json-Datei. Wähle die Speisekarten-Datei aus.'),
+  },
+  translations: {
+    accept: '.json,application/json',
+    title: 'Übersetzungs-Datei hierher ziehen oder auswählen',
+    hint: 'Nur .json, bis 1 MB',
+    problem: (file: File) => (file.name.toLowerCase().endsWith('.json') ? null : 'Das ist keine .json-Datei. Wähle die Übersetzungs-Datei aus.'),
   },
   image: {
     accept: IMAGE_TYPES.join(','),
@@ -87,9 +96,9 @@ export function FileDrop({ onFile, fileName, disabled = false, kind = 'menu', on
   );
 }
 
-/** Der Fehler einer Datei: bei `menu_invalid` die Zahl und jede Zeile der Probleme, sonst der Text des Servers. */
+/** Der Fehler einer Datei: bei `menu_invalid` und `translations_invalid` die Zahl und jede Zeile der Probleme, sonst der Text des Servers. */
 export function UploadError({ error }: { error: ApiError }) {
-  if (error.code === 'menu_invalid' && error.problems && error.problems.length > 0) {
+  if ((error.code === 'menu_invalid' || error.code === 'translations_invalid') && error.problems && error.problems.length > 0) {
     return (
       <div className={styles.problems} role="alert">
         <p className={styles.problemsTitle}>Die Datei hat {count(error.problems.length, 'Problem', 'Probleme')}</p>

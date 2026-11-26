@@ -581,7 +581,7 @@ test.describe('Handy', () => {
 
     await more.click();
     const sheet = page.getByRole('dialog', { name: 'Mehr' });
-    await expect(sheet.getByRole('link')).toHaveText(['Kassen', 'Mitarbeiter', 'Betrieb', 'Alle Betriebe']);
+    await expect(sheet.getByRole('link')).toHaveText(['Übersetzungen', 'Kassen', 'Mitarbeiter', 'Betrieb', 'Alle Betriebe']);
     await sheet.getByRole('link', { name: 'Kassen' }).click();
     await expect(page).toHaveURL(new RegExp(`/b/${site.businessId}/kassen$`));
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -607,6 +607,8 @@ test.describe('Handy', () => {
     await page.keyboard.press('Enter');
     const sheet2 = page.getByRole('dialog', { name: 'Mehr' });
     await expect(sheet2).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(sheet2.getByRole('link', { name: 'Übersetzungen' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(sheet2.getByRole('link', { name: 'Kassen' })).toBeFocused();
     await page.keyboard.press('Tab');

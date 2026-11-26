@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { count } from '../format';
 import { api, ApiError } from './client';
 import { isAbort, uploadImage, type Picture, type UploadedFile, type UploadOptions } from './files';
 import { itemsKey } from './items';
+import { translationsKey } from './translations';
 
 export type BusinessSummary = { id: string; name: string; counts: { items: number; staff: number; registers: number } };
 
@@ -20,7 +22,8 @@ export type Category = { id: string; name: string; itemCount: number; archived: 
 export type BusinessDetail = { business: Business; categories: Category[] };
 
 type Counts = { added: number; changed: number; archived: number };
-export type ImportSummary = { categories: Counts; items: Counts; templates: Counts };
+/** `translations`: wie viele Namen der Speisekarte durch die Datei eine andere Übersetzung bekamen. */
+export type ImportSummary = { categories: Counts; items: Counts; templates: Counts; translations: number };
 
 export const BUSINESSES_KEY = ['businesses'] as const;
 export const businessKey = (id: string) => ['business', id] as const;
@@ -58,15 +61,18 @@ export function useReimportMenu(id: string) {
         queryClient.invalidateQueries({ queryKey: BUSINESSES_KEY }),
         // Die Liste der Speisekarte: Preise, Namen und "Stillgelegt" kommen aus der Datei.
         queryClient.invalidateQueries({ queryKey: itemsKey(id), exact: true }),
+        // Die Datei kann Übersetzungen mitbringen, und neue Namen fehlen noch in jeder Sprache.
+        queryClient.invalidateQueries({ queryKey: translationsKey(id), exact: true }),
       ]);
     },
   });
 }
 
-/** Neu, geändert, stillgelegt: die Summe über Kategorien, Artikel und Vorlagen. */
+/** Neu, geändert, stillgelegt: die Summe über Kategorien, Artikel und Vorlagen; dazu die Übersetzungen, wenn welche kamen. */
 export function summaryText(s: ImportSummary): string {
   const sum = (key: keyof Counts) => s.categories[key] + s.items[key] + s.templates[key];
-  return `${sum('added')} neu, ${sum('changed')} geändert, ${sum('archived')} stillgelegt`;
+  const text = `${sum('added')} neu, ${sum('changed')} geändert, ${sum('archived')} stillgelegt`;
+  return s.translations > 0 ? `${text}, ${count(s.translations, 'Name', 'Namen')} übersetzt` : text;
 }
 
 const logoPath = (id: string) => `/api/admin/businesses/${encodeURIComponent(id)}/logo`;

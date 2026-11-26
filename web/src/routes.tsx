@@ -8,6 +8,7 @@ import { DaysPage } from './pages/DaysPage';
 import { BusinessIndex, BusinessLayout } from './pages/BusinessLayout';
 import { LoginPage } from './pages/LoginPage';
 import { MenuPage } from './pages/MenuPage';
+import { TranslationsPage } from './pages/TranslationsPage';
 import { MonthsPage } from './pages/MonthsPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ReceiptsPage } from './pages/ReceiptsPage';
@@ -17,7 +18,7 @@ import { ReleasesPage } from './pages/ReleasesPage';
 import { SetupPage } from './pages/SetupPage';
 import { StaffPage } from './pages/StaffPage';
 import { AppShell, type NavItem } from './ui/AppShell';
-import { BookIcon, BugIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
+import { BookIcon, BugIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, LanguagesIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
 import { Skeleton } from './ui/Skeleton';
 
 /** Bereiche des Anbieters außerhalb eines Betriebs. */
@@ -28,7 +29,7 @@ export const providerNav: NavItem[] = [
 ];
 
 /**
- * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Abschlüsse, Speisekarte, Kassen,
+ * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Abschlüsse, Speisekarte, Übersetzungen, Kassen,
  * Mitarbeiter, Betrieb. Der Anbieter hat davor den Weg zurück zu allen Betrieben (am Handy unter "Mehr").
  */
 export function businessNav(businessId: string, provider: boolean): NavItem[] {
@@ -43,6 +44,7 @@ export function businessNav(businessId: string, provider: boolean): NavItem[] {
       also: [`/b/${businessId}/monate`],
     },
     { to: `/b/${businessId}/speisekarte`, label: 'Speisekarte', icon: <BookIcon size={22} /> },
+    { to: `/b/${businessId}/uebersetzungen`, label: 'Übersetzungen', icon: <LanguagesIcon size={22} /> },
     { to: `/b/${businessId}/kassen`, label: 'Kassen', icon: <TabletIcon size={22} /> },
     { to: `/b/${businessId}/mitarbeiter`, label: 'Mitarbeiter', icon: <UsersIcon size={22} /> },
     { to: `/b/${businessId}/betrieb`, label: 'Betrieb', icon: <SlidersIcon size={22} /> },
@@ -148,6 +150,7 @@ export const router = createBrowserRouter([
           { path: 'kassen', element: <RegistersPage /> },
           { path: 'mitarbeiter', element: <StaffPage /> },
           { path: 'speisekarte', element: <MenuPage /> },
+          { path: 'uebersetzungen', element: <TranslationsPage /> },
           { path: 'betrieb', element: <BusinessPage /> },
         ],
       },

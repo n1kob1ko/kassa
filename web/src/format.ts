@@ -43,7 +43,7 @@ export function dateText(date: Date): string {
 }
 
 /** Ganze Zahl mit Punkt je drei Stellen: 999 bleibt "999", 1067 wird "1.067" (wie `groupThousands` am Tablet). */
-function groupThousands(n: number): string {
+export function groupThousands(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
