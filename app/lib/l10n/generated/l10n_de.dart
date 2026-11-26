@@ -769,4 +769,101 @@ class L10nDe extends L10n {
 
   @override
   String get itemsApply => 'Übernehmen';
+
+  @override
+  String get overviewTitle => 'Übersicht';
+
+  @override
+  String get overviewRangeToday => 'Heute';
+
+  @override
+  String get overviewRange7 => '7 Tage';
+
+  @override
+  String get overviewRange30 => '30 Tage';
+
+  @override
+  String get overviewLast7 => 'Letzte 7 Tage';
+
+  @override
+  String get overviewLast30 => 'Letzte 30 Tage';
+
+  @override
+  String overviewHourRange(int from, int to) {
+    return '$from bis $to Uhr';
+  }
+
+  @override
+  String overviewSameAsWeekday(String weekday) {
+    return 'Gleich wie letzten $weekday';
+  }
+
+  @override
+  String overviewMoreThanWeekday(int percent, String weekday) {
+    return '$percent % mehr als letzten $weekday';
+  }
+
+  @override
+  String overviewLessThanWeekday(int percent, String weekday) {
+    return '$percent % weniger als letzten $weekday';
+  }
+
+  @override
+  String overviewSameAsDaysBefore(int days) {
+    return 'Gleich wie in den $days Tagen davor';
+  }
+
+  @override
+  String overviewMoreThanDaysBefore(int percent, int days) {
+    return '$percent % mehr als in den $days Tagen davor';
+  }
+
+  @override
+  String overviewLessThanDaysBefore(int percent, int days) {
+    return '$percent % weniger als in den $days Tagen davor';
+  }
+
+  @override
+  String get overviewRevenue => 'Umsatz';
+
+  @override
+  String get overviewReceipts => 'Bons';
+
+  @override
+  String get overviewPerReceipt => 'Pro Bon';
+
+  @override
+  String get overviewVoids => 'Stornos';
+
+  @override
+  String get overviewPerHour => 'Umsatz pro Stunde';
+
+  @override
+  String get overviewPerDay => 'Umsatz pro Tag';
+
+  @override
+  String get overviewNoneInRange => 'Noch keine Bons in diesem Zeitraum.';
+
+  @override
+  String overviewBarLabel(String label, String amount) {
+    return '$label, $amount';
+  }
+
+  @override
+  String get overviewLoadFailed => 'Die Zahlen konnten nicht geladen werden.';
+
+  @override
+  String get overviewRetry => 'Nochmal versuchen';
+
+  @override
+  String get overviewPayments => 'Zahlungsarten';
+
+  @override
+  String get overviewNoReceipts => 'Noch keine Bons.';
+
+  @override
+  String get overviewTopItems => 'Meistverkauft';
+
+  @override
+  String get overviewByCategory => 'Nach Kategorie';
 }

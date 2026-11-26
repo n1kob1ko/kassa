@@ -1087,5 +1087,171 @@
   "itemsApply": "Übernehmen",
   "@itemsApply": {
     "description": "Taste: neuen Preis übernehmen."
+  },
+  "overviewTitle": "Übersicht",
+  "@overviewTitle": {
+    "description": "Überschrift des Bereichs Übersicht."
+  },
+  "overviewRangeToday": "Heute",
+  "@overviewRangeToday": {
+    "description": "Umschalter Zeitraum: heute."
+  },
+  "overviewRange7": "7 Tage",
+  "@overviewRange7": {
+    "description": "Umschalter Zeitraum: 7 Tage."
+  },
+  "overviewRange30": "30 Tage",
+  "@overviewRange30": {
+    "description": "Umschalter Zeitraum: 30 Tage."
+  },
+  "overviewLast7": "Letzte 7 Tage",
+  "@overviewLast7": {
+    "description": "Untertitel beim Zeitraum 7 Tage."
+  },
+  "overviewLast30": "Letzte 30 Tage",
+  "@overviewLast30": {
+    "description": "Untertitel beim Zeitraum 30 Tage."
+  },
+  "overviewHourRange": "{from} bis {to} Uhr",
+  "@overviewHourRange": {
+    "description": "Gewählter Balken am Tag: eine Stunde.",
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
+  "overviewSameAsWeekday": "Gleich wie letzten {weekday}",
+  "@overviewSameAsWeekday": {
+    "description": "Vergleich mit dem gleichen Wochentag der Vorwoche: gleich.",
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewMoreThanWeekday": "{percent} % mehr als letzten {weekday}",
+  "@overviewMoreThanWeekday": {
+    "description": "Vergleich mit dem gleichen Wochentag der Vorwoche: mehr.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewLessThanWeekday": "{percent} % weniger als letzten {weekday}",
+  "@overviewLessThanWeekday": {
+    "description": "Vergleich mit dem gleichen Wochentag der Vorwoche: weniger.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "weekday": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewSameAsDaysBefore": "Gleich wie in den {days} Tagen davor",
+  "@overviewSameAsDaysBefore": {
+    "description": "Vergleich mit den Tagen davor: gleich.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "overviewMoreThanDaysBefore": "{percent} % mehr als in den {days} Tagen davor",
+  "@overviewMoreThanDaysBefore": {
+    "description": "Vergleich mit den Tagen davor: mehr.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "overviewLessThanDaysBefore": "{percent} % weniger als in den {days} Tagen davor",
+  "@overviewLessThanDaysBefore": {
+    "description": "Vergleich mit den Tagen davor: weniger.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "overviewRevenue": "Umsatz",
+  "@overviewRevenue": {
+    "description": "Beschriftung Umsatz."
+  },
+  "overviewReceipts": "Bons",
+  "@overviewReceipts": {
+    "description": "Kennzahl: Anzahl Bons."
+  },
+  "overviewPerReceipt": "Pro Bon",
+  "@overviewPerReceipt": {
+    "description": "Kennzahl: Umsatz pro Bon."
+  },
+  "overviewVoids": "Stornos",
+  "@overviewVoids": {
+    "description": "Kennzahl: Anzahl Stornos."
+  },
+  "overviewPerHour": "Umsatz pro Stunde",
+  "@overviewPerHour": {
+    "description": "Überschrift des Diagramms am Tag."
+  },
+  "overviewPerDay": "Umsatz pro Tag",
+  "@overviewPerDay": {
+    "description": "Überschrift des Diagramms über Tage."
+  },
+  "overviewNoneInRange": "Noch keine Bons in diesem Zeitraum.",
+  "@overviewNoneInRange": {
+    "description": "Diagramm ohne Bons."
+  },
+  "overviewBarLabel": "{label}, {amount}",
+  "@overviewBarLabel": {
+    "description": "Vorlesehilfe eines Balkens: Zeit und Betrag.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "overviewLoadFailed": "Die Zahlen konnten nicht geladen werden.",
+  "@overviewLoadFailed": {
+    "description": "Die Zahlen konnten nicht geladen werden."
+  },
+  "overviewRetry": "Nochmal versuchen",
+  "@overviewRetry": {
+    "description": "Taste nach einem Ladefehler."
+  },
+  "overviewPayments": "Zahlungsarten",
+  "@overviewPayments": {
+    "description": "Karte Zahlungsarten."
+  },
+  "overviewNoReceipts": "Noch keine Bons.",
+  "@overviewNoReceipts": {
+    "description": "Karte ohne Bons."
+  },
+  "overviewTopItems": "Meistverkauft",
+  "@overviewTopItems": {
+    "description": "Karte Meistverkauft."
+  },
+  "overviewByCategory": "Nach Kategorie",
+  "@overviewByCategory": {
+    "description": "Umsatz nach Kategorie."
   }
 }

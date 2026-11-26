@@ -767,4 +767,101 @@ class L10nEn extends L10n {
 
   @override
   String get itemsApply => 'Apply';
+
+  @override
+  String get overviewTitle => 'Overview';
+
+  @override
+  String get overviewRangeToday => 'Today';
+
+  @override
+  String get overviewRange7 => '7 days';
+
+  @override
+  String get overviewRange30 => '30 days';
+
+  @override
+  String get overviewLast7 => 'Last 7 days';
+
+  @override
+  String get overviewLast30 => 'Last 30 days';
+
+  @override
+  String overviewHourRange(int from, int to) {
+    return '$from:00–$to:00';
+  }
+
+  @override
+  String overviewSameAsWeekday(String weekday) {
+    return 'Same as last $weekday';
+  }
+
+  @override
+  String overviewMoreThanWeekday(int percent, String weekday) {
+    return '$percent % more than last $weekday';
+  }
+
+  @override
+  String overviewLessThanWeekday(int percent, String weekday) {
+    return '$percent % less than last $weekday';
+  }
+
+  @override
+  String overviewSameAsDaysBefore(int days) {
+    return 'Same as the $days days before';
+  }
+
+  @override
+  String overviewMoreThanDaysBefore(int percent, int days) {
+    return '$percent % more than the $days days before';
+  }
+
+  @override
+  String overviewLessThanDaysBefore(int percent, int days) {
+    return '$percent % less than the $days days before';
+  }
+
+  @override
+  String get overviewRevenue => 'Revenue';
+
+  @override
+  String get overviewReceipts => 'Receipts';
+
+  @override
+  String get overviewPerReceipt => 'Per receipt';
+
+  @override
+  String get overviewVoids => 'Voids';
+
+  @override
+  String get overviewPerHour => 'Revenue per hour';
+
+  @override
+  String get overviewPerDay => 'Revenue per day';
+
+  @override
+  String get overviewNoneInRange => 'No receipts in this period yet.';
+
+  @override
+  String overviewBarLabel(String label, String amount) {
+    return '$label, $amount';
+  }
+
+  @override
+  String get overviewLoadFailed => 'The figures could not be loaded.';
+
+  @override
+  String get overviewRetry => 'Try again';
+
+  @override
+  String get overviewPayments => 'Payment methods';
+
+  @override
+  String get overviewNoReceipts => 'No receipts yet.';
+
+  @override
+  String get overviewTopItems => 'Best sellers';
+
+  @override
+  String get overviewByCategory => 'By category';
 }

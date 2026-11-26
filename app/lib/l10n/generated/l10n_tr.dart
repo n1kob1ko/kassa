@@ -761,4 +761,101 @@ class L10nTr extends L10n {
 
   @override
   String get itemsApply => 'Uygula';
+
+  @override
+  String get overviewTitle => 'Genel bakış';
+
+  @override
+  String get overviewRangeToday => 'Bugün';
+
+  @override
+  String get overviewRange7 => '7 gün';
+
+  @override
+  String get overviewRange30 => '30 gün';
+
+  @override
+  String get overviewLast7 => 'Son 7 gün';
+
+  @override
+  String get overviewLast30 => 'Son 30 gün';
+
+  @override
+  String overviewHourRange(int from, int to) {
+    return '$from:00–$to:00';
+  }
+
+  @override
+  String overviewSameAsWeekday(String weekday) {
+    return 'Geçen $weekday ile aynı';
+  }
+
+  @override
+  String overviewMoreThanWeekday(int percent, String weekday) {
+    return 'Geçen $weekday gününden $percent % fazla';
+  }
+
+  @override
+  String overviewLessThanWeekday(int percent, String weekday) {
+    return 'Geçen $weekday gününden $percent % az';
+  }
+
+  @override
+  String overviewSameAsDaysBefore(int days) {
+    return 'Önceki $days gün ile aynı';
+  }
+
+  @override
+  String overviewMoreThanDaysBefore(int percent, int days) {
+    return 'Önceki $days günden $percent % fazla';
+  }
+
+  @override
+  String overviewLessThanDaysBefore(int percent, int days) {
+    return 'Önceki $days günden $percent % az';
+  }
+
+  @override
+  String get overviewRevenue => 'Ciro';
+
+  @override
+  String get overviewReceipts => 'Fişler';
+
+  @override
+  String get overviewPerReceipt => 'Fiş başına';
+
+  @override
+  String get overviewVoids => 'İptaller';
+
+  @override
+  String get overviewPerHour => 'Saatlik ciro';
+
+  @override
+  String get overviewPerDay => 'Günlük ciro';
+
+  @override
+  String get overviewNoneInRange => 'Bu dönemde henüz fiş yok.';
+
+  @override
+  String overviewBarLabel(String label, String amount) {
+    return '$label, $amount';
+  }
+
+  @override
+  String get overviewLoadFailed => 'Rakamlar yüklenemedi.';
+
+  @override
+  String get overviewRetry => 'Tekrar dene';
+
+  @override
+  String get overviewPayments => 'Ödeme yöntemleri';
+
+  @override
+  String get overviewNoReceipts => 'Henüz fiş yok.';
+
+  @override
+  String get overviewTopItems => 'En çok satanlar';
+
+  @override
+  String get overviewByCategory => 'Kategoriye göre';
 }

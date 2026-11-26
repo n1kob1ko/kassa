@@ -769,4 +769,101 @@ class L10nAr extends L10n {
 
   @override
   String get itemsApply => 'تطبيق';
+
+  @override
+  String get overviewTitle => 'نظرة عامة';
+
+  @override
+  String get overviewRangeToday => 'اليوم';
+
+  @override
+  String get overviewRange7 => '7 أيام';
+
+  @override
+  String get overviewRange30 => '30 يومًا';
+
+  @override
+  String get overviewLast7 => 'آخر 7 أيام';
+
+  @override
+  String get overviewLast30 => 'آخر 30 يومًا';
+
+  @override
+  String overviewHourRange(int from, int to) {
+    return '$from:00–$to:00';
+  }
+
+  @override
+  String overviewSameAsWeekday(String weekday) {
+    return 'مثل $weekday الماضي';
+  }
+
+  @override
+  String overviewMoreThanWeekday(int percent, String weekday) {
+    return 'أكثر بنسبة $percent % من $weekday الماضي';
+  }
+
+  @override
+  String overviewLessThanWeekday(int percent, String weekday) {
+    return 'أقل بنسبة $percent % من $weekday الماضي';
+  }
+
+  @override
+  String overviewSameAsDaysBefore(int days) {
+    return 'مثل الأيام الـ $days السابقة';
+  }
+
+  @override
+  String overviewMoreThanDaysBefore(int percent, int days) {
+    return 'أكثر بنسبة $percent % من الأيام الـ $days السابقة';
+  }
+
+  @override
+  String overviewLessThanDaysBefore(int percent, int days) {
+    return 'أقل بنسبة $percent % من الأيام الـ $days السابقة';
+  }
+
+  @override
+  String get overviewRevenue => 'الإيرادات';
+
+  @override
+  String get overviewReceipts => 'الفواتير';
+
+  @override
+  String get overviewPerReceipt => 'لكل فاتورة';
+
+  @override
+  String get overviewVoids => 'الإلغاءات';
+
+  @override
+  String get overviewPerHour => 'الإيرادات لكل ساعة';
+
+  @override
+  String get overviewPerDay => 'الإيرادات لكل يوم';
+
+  @override
+  String get overviewNoneInRange => 'لا توجد فواتير في هذه الفترة بعد.';
+
+  @override
+  String overviewBarLabel(String label, String amount) {
+    return '$label، $amount';
+  }
+
+  @override
+  String get overviewLoadFailed => 'تعذّر تحميل الأرقام.';
+
+  @override
+  String get overviewRetry => 'حاول مرة أخرى';
+
+  @override
+  String get overviewPayments => 'طرق الدفع';
+
+  @override
+  String get overviewNoReceipts => 'لا توجد فواتير بعد.';
+
+  @override
+  String get overviewTopItems => 'الأكثر مبيعًا';
+
+  @override
+  String get overviewByCategory => 'حسب الفئة';
 }

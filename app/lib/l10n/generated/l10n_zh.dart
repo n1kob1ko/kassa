@@ -746,4 +746,101 @@ class L10nZh extends L10n {
 
   @override
   String get itemsApply => '确定';
+
+  @override
+  String get overviewTitle => '概览';
+
+  @override
+  String get overviewRangeToday => '今天';
+
+  @override
+  String get overviewRange7 => '7 天';
+
+  @override
+  String get overviewRange30 => '30 天';
+
+  @override
+  String get overviewLast7 => '最近 7 天';
+
+  @override
+  String get overviewLast30 => '最近 30 天';
+
+  @override
+  String overviewHourRange(int from, int to) {
+    return '$from:00–$to:00';
+  }
+
+  @override
+  String overviewSameAsWeekday(String weekday) {
+    return '与上$weekday持平';
+  }
+
+  @override
+  String overviewMoreThanWeekday(int percent, String weekday) {
+    return '比上$weekday多 $percent %';
+  }
+
+  @override
+  String overviewLessThanWeekday(int percent, String weekday) {
+    return '比上$weekday少 $percent %';
+  }
+
+  @override
+  String overviewSameAsDaysBefore(int days) {
+    return '与前 $days 天持平';
+  }
+
+  @override
+  String overviewMoreThanDaysBefore(int percent, int days) {
+    return '比前 $days 天多 $percent %';
+  }
+
+  @override
+  String overviewLessThanDaysBefore(int percent, int days) {
+    return '比前 $days 天少 $percent %';
+  }
+
+  @override
+  String get overviewRevenue => '营业额';
+
+  @override
+  String get overviewReceipts => '小票';
+
+  @override
+  String get overviewPerReceipt => '每张小票';
+
+  @override
+  String get overviewVoids => '作废';
+
+  @override
+  String get overviewPerHour => '每小时营业额';
+
+  @override
+  String get overviewPerDay => '每日营业额';
+
+  @override
+  String get overviewNoneInRange => '此期间还没有小票。';
+
+  @override
+  String overviewBarLabel(String label, String amount) {
+    return '$label，$amount';
+  }
+
+  @override
+  String get overviewLoadFailed => '无法加载数据。';
+
+  @override
+  String get overviewRetry => '重试';
+
+  @override
+  String get overviewPayments => '付款方式';
+
+  @override
+  String get overviewNoReceipts => '还没有小票。';
+
+  @override
+  String get overviewTopItems => '畅销商品';
+
+  @override
+  String get overviewByCategory => '按分类';
 }

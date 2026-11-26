@@ -5,17 +5,19 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../domain/stats.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
-import '../bons/bons_screen.dart' show germanMonths, germanWeekdays;
 import 'overview_cards.dart';
 import 'revenue_chart.dart';
 
-const _ranges = [
-  (StatsRange.today, 'Heute', 'today'),
-  (StatsRange.days7, '7 Tage', 'days7'),
-  (StatsRange.days30, '30 Tage', 'days30'),
+/// Zeiträume mit Text und dem Teil des Schlüssels `range-<id>`.
+List<(StatsRange, String, String)> _ranges(L10n l) => [
+  (StatsRange.today, l.overviewRangeToday, 'today'),
+  (StatsRange.days7, l.overviewRange7, 'days7'),
+  (StatsRange.days30, l.overviewRange30, 'days30'),
 ];
 
 /// Der Bereich Übersicht (nur Chef): Umsatz, Balkendiagramm, Kategorien links,
@@ -41,6 +43,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final now = ref.watch(clockProvider).now();
     final async = ref.watch(overviewProvider(_range));
     final loaded = async.value;
@@ -48,10 +51,9 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
     final data = _shown;
 
     final subtitle = switch (_range) {
-      StatsRange.today =>
-        '${germanWeekdays[now.weekday - 1]}, ${now.day}. ${germanMonths[now.month - 1]}',
-      StatsRange.days7 => 'Letzte 7 Tage',
-      StatsRange.days30 => 'Letzte 30 Tage',
+      StatsRange.today => weekdayDayMonth(l, now),
+      StatsRange.days7 => l.overviewLast7,
+      StatsRange.days30 => l.overviewLast30,
     };
 
     final Widget body;
@@ -80,7 +82,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
             height: KassaTokens.receiptHeaderHeight,
             child: Row(
               children: [
-                Text('Übersicht', style: text.headlineMedium),
+                Text(l.overviewTitle, style: text.headlineMedium),
                 const SizedBox(width: KassaTokens.spaceLg),
                 Expanded(
                   child: Padding(
@@ -98,10 +100,13 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
                 ),
                 const SizedBox(width: KassaTokens.spaceLg),
                 Segmented<StatsRange>(
-                  segments: [for (final (r, label, _) in _ranges) (r, label)],
+                  segments: [
+                    for (final (r, label, _) in _ranges(l)) (r, label),
+                  ],
                   selected: _range,
-                  keyFor: (r) =>
-                      Key('range-${_ranges.firstWhere((e) => e.$1 == r).$3}'),
+                  keyFor: (r) => Key(
+                    'range-${_ranges(l).firstWhere((e) => e.$1 == r).$3}',
+                  ),
                   onSelected: _selectRange,
                 ),
               ],
@@ -141,11 +146,11 @@ class _Content extends StatelessWidget {
     return best;
   }
 
-  String _bucketLabel(Bucket b) {
+  String _bucketLabel(L10n l, Bucket b) {
     if (range == StatsRange.today) {
-      return '${b.start.hour} bis ${b.start.hour + 1} Uhr';
+      return l.overviewHourRange(b.start.hour, b.start.hour + 1);
     }
-    return '${germanWeekdays[b.start.weekday - 1]}, ${b.start.day}. ${germanMonths[b.start.month - 1]}';
+    return weekdayDayMonth(l, b.start);
   }
 
   @override
@@ -175,17 +180,32 @@ class _Content extends StatelessWidget {
   }
 }
 
-/// Vergleichstext, oder `null` ohne Vergleichswert.
-String? comparisonText(Overview o, StatsRange range, DateTime now) {
+/// Unterschied zum Zeitraum davor in ganzen Prozent (halb auf), oder `null`
+/// ohne Vergleichswert.
+int? comparisonPercent(Overview o) {
   final prev = o.previousRevenueCents;
   if (prev <= 0) return null;
   final diff = (o.revenueCents - prev).abs();
-  final percent = (diff * 200 + prev) ~/ (2 * prev); // halb auf
-  final base = range == StatsRange.today
-      ? 'letzten ${germanWeekdays[now.weekday - 1]}'
-      : 'in den ${range == StatsRange.days7 ? 7 : 30} Tagen davor';
-  if (percent == 0) return 'Gleich wie $base';
-  return '$percent % ${o.revenueCents > prev ? 'mehr' : 'weniger'} als $base';
+  return (diff * 200 + prev) ~/ (2 * prev); // halb auf
+}
+
+/// Vergleichstext, oder `null` ohne Vergleichswert.
+String? comparisonText(L10n l, Overview o, StatsRange range, DateTime now) {
+  final percent = comparisonPercent(o);
+  if (percent == null) return null;
+  final more = o.revenueCents > o.previousRevenueCents;
+  if (range == StatsRange.today) {
+    final weekday = weekdayName(l, now.weekday);
+    if (percent == 0) return l.overviewSameAsWeekday(weekday);
+    return more
+        ? l.overviewMoreThanWeekday(percent, weekday)
+        : l.overviewLessThanWeekday(percent, weekday);
+  }
+  final days = range == StatsRange.days7 ? 7 : 30;
+  if (percent == 0) return l.overviewSameAsDaysBefore(days);
+  return more
+      ? l.overviewMoreThanDaysBefore(percent, days)
+      : l.overviewLessThanDaysBefore(percent, days);
 }
 
 /// Pro Bon in ganzen Cent, halb auf.
@@ -202,6 +222,7 @@ class _MainCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final data = v.data;
     final sel = v._selected;
     final selected = data.buckets.isEmpty || v._empty
@@ -221,7 +242,7 @@ class _MainCard extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          'Umsatz',
+                          l.overviewRevenue,
                           style: text.bodyLarge!.copyWith(
                             fontWeight: FontWeight.w600,
                             color: c.ink2,
@@ -252,18 +273,22 @@ class _MainCard extends StatelessWidget {
                 ),
               ),
               _Figure(
-                'Bons',
+                l.overviewReceipts,
                 '${data.receiptCount}',
                 const Key('receipt-count'),
               ),
               const SizedBox(width: 28),
               _Figure(
-                'Pro Bon',
+                l.overviewPerReceipt,
                 formatEuro(perReceiptCents(data)),
                 const Key('per-receipt'),
               ),
               const SizedBox(width: 28),
-              _Figure('Stornos', '${data.voidCount}', const Key('void-count')),
+              _Figure(
+                l.overviewVoids,
+                '${data.voidCount}',
+                const Key('void-count'),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -271,14 +296,14 @@ class _MainCard extends StatelessWidget {
             children: [
               Text(
                 v.range == StatsRange.today
-                    ? 'Umsatz pro Stunde'
-                    : 'Umsatz pro Tag',
+                    ? l.overviewPerHour
+                    : l.overviewPerDay,
                 style: text.titleMedium,
               ),
               const Spacer(),
               if (selected != null) ...[
                 Text(
-                  v._bucketLabel(selected),
+                  v._bucketLabel(l, selected),
                   key: const Key('bar-detail-label'),
                   style: text.bodyMedium!.copyWith(
                     fontWeight: FontWeight.w600,
@@ -299,7 +324,7 @@ class _MainCard extends StatelessWidget {
             child: v._empty
                 ? Center(
                     child: Text(
-                      'Noch keine Bons in diesem Zeitraum.',
+                      l.overviewNoneInRange,
                       style: text.bodyMedium!.copyWith(
                         fontWeight: FontWeight.w600,
                         color: c.ink2,
@@ -311,8 +336,10 @@ class _MainCard extends StatelessWidget {
                     buckets: data.buckets,
                     selected: sel,
                     onSelect: v.onPick,
-                    semanticLabelFor: (b) =>
-                        '${v._bucketLabel(b)}, ${formatEuro(b.cents)}',
+                    semanticLabelFor: (b) => l.overviewBarLabel(
+                      v._bucketLabel(l, b),
+                      formatEuro(b.cents),
+                    ),
                   ),
           ),
           if (!v._empty) ...[
@@ -374,12 +401,12 @@ class _ComparisonPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = comparisonText(data, range, now);
+    final label = comparisonText(L10n.of(context), data, range, now);
     if (label == null) return const SizedBox.shrink();
     final c = KassaColors.of(context);
     final more = data.revenueCents > data.previousRevenueCents;
     final less = data.revenueCents < data.previousRevenueCents;
-    final percentZero = label.startsWith('Gleich');
+    final percentZero = comparisonPercent(data) == 0;
     final arrow = percentZero
         ? null
         : more
@@ -475,19 +502,17 @@ class _LoadError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Die Zahlen konnten nicht geladen werden.',
-            style: text.titleMedium,
-          ),
+          Text(l.overviewLoadFailed, style: text.titleMedium),
           const SizedBox(height: 16),
           SizedBox(
             width: 280,
             child: PrimaryButton(
-              label: 'Nochmal versuchen',
+              label: l.overviewRetry,
               onPressed: onRetry,
               muted: true,
               height: KassaTokens.minTap + 16,

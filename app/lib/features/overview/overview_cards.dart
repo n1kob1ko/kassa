@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/stats.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/tokens.dart';
 
 /// Weiße Karte mit Linie und Schatten, wie in den anderen Bereichen.
@@ -100,6 +101,7 @@ class PaymentsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final card = cardCents > 0 ? cardCents : 0;
     final cash = cashCents > 0 ? cashCents : 0;
     final total = card + cash;
@@ -109,23 +111,23 @@ class PaymentsCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Zahlungsarten', style: text.titleMedium),
+          Text(l.overviewPayments, style: text.titleMedium),
           const SizedBox(height: 14),
           if (empty)
-            const _MutedLine('Noch keine Bons.')
+            _MutedLine(l.overviewNoReceipts)
           else ...[
             _SplitBar(card: card, cash: cash, total: total),
             const SizedBox(height: 14),
             _PaymentRow(
               color: c.solid,
-              label: 'Karte',
+              label: l.kassaCard,
               cents: cardCents,
               amountKey: const Key('payment-card-amount'),
             ),
             const SizedBox(height: 8),
             _PaymentRow(
               color: c.accent,
-              label: 'Bar',
+              label: l.kassaCash,
               cents: cashCents,
               amountKey: const Key('payment-cash-amount'),
             ),
@@ -252,6 +254,7 @@ class TopItemsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final c = KassaColors.of(context);
     final maxQuantity = items.fold<int>(
       0,
@@ -262,10 +265,10 @@ class TopItemsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Meistverkauft', style: text.titleMedium),
+          Text(l.overviewTopItems, style: text.titleMedium),
           const SizedBox(height: 10),
           if (items.isEmpty)
-            const _MutedLine('Noch keine Bons.')
+            _MutedLine(l.overviewNoReceipts)
           else
             Expanded(
               child: Column(
@@ -351,7 +354,7 @@ class CategoryGrid extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Nach Kategorie', style: text.titleMedium),
+        Text(L10n.of(context).overviewByCategory, style: text.titleMedium),
         const SizedBox(height: 10),
         for (final row in rows)
           Padding(

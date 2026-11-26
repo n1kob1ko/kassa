@@ -1381,6 +1381,168 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Übernehmen'**
   String get itemsApply;
+
+  /// Überschrift des Bereichs Übersicht.
+  ///
+  /// In de, this message translates to:
+  /// **'Übersicht'**
+  String get overviewTitle;
+
+  /// Umschalter Zeitraum: heute.
+  ///
+  /// In de, this message translates to:
+  /// **'Heute'**
+  String get overviewRangeToday;
+
+  /// Umschalter Zeitraum: 7 Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'7 Tage'**
+  String get overviewRange7;
+
+  /// Umschalter Zeitraum: 30 Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'30 Tage'**
+  String get overviewRange30;
+
+  /// Untertitel beim Zeitraum 7 Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte 7 Tage'**
+  String get overviewLast7;
+
+  /// Untertitel beim Zeitraum 30 Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte 30 Tage'**
+  String get overviewLast30;
+
+  /// Gewählter Balken am Tag: eine Stunde.
+  ///
+  /// In de, this message translates to:
+  /// **'{from} bis {to} Uhr'**
+  String overviewHourRange(int from, int to);
+
+  /// Vergleich mit dem gleichen Wochentag der Vorwoche: gleich.
+  ///
+  /// In de, this message translates to:
+  /// **'Gleich wie letzten {weekday}'**
+  String overviewSameAsWeekday(String weekday);
+
+  /// Vergleich mit dem gleichen Wochentag der Vorwoche: mehr.
+  ///
+  /// In de, this message translates to:
+  /// **'{percent} % mehr als letzten {weekday}'**
+  String overviewMoreThanWeekday(int percent, String weekday);
+
+  /// Vergleich mit dem gleichen Wochentag der Vorwoche: weniger.
+  ///
+  /// In de, this message translates to:
+  /// **'{percent} % weniger als letzten {weekday}'**
+  String overviewLessThanWeekday(int percent, String weekday);
+
+  /// Vergleich mit den Tagen davor: gleich.
+  ///
+  /// In de, this message translates to:
+  /// **'Gleich wie in den {days} Tagen davor'**
+  String overviewSameAsDaysBefore(int days);
+
+  /// Vergleich mit den Tagen davor: mehr.
+  ///
+  /// In de, this message translates to:
+  /// **'{percent} % mehr als in den {days} Tagen davor'**
+  String overviewMoreThanDaysBefore(int percent, int days);
+
+  /// Vergleich mit den Tagen davor: weniger.
+  ///
+  /// In de, this message translates to:
+  /// **'{percent} % weniger als in den {days} Tagen davor'**
+  String overviewLessThanDaysBefore(int percent, int days);
+
+  /// Beschriftung Umsatz.
+  ///
+  /// In de, this message translates to:
+  /// **'Umsatz'**
+  String get overviewRevenue;
+
+  /// Kennzahl: Anzahl Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Bons'**
+  String get overviewReceipts;
+
+  /// Kennzahl: Umsatz pro Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Pro Bon'**
+  String get overviewPerReceipt;
+
+  /// Kennzahl: Anzahl Stornos.
+  ///
+  /// In de, this message translates to:
+  /// **'Stornos'**
+  String get overviewVoids;
+
+  /// Überschrift des Diagramms am Tag.
+  ///
+  /// In de, this message translates to:
+  /// **'Umsatz pro Stunde'**
+  String get overviewPerHour;
+
+  /// Überschrift des Diagramms über Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'Umsatz pro Tag'**
+  String get overviewPerDay;
+
+  /// Diagramm ohne Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Bons in diesem Zeitraum.'**
+  String get overviewNoneInRange;
+
+  /// Vorlesehilfe eines Balkens: Zeit und Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'{label}, {amount}'**
+  String overviewBarLabel(String label, String amount);
+
+  /// Die Zahlen konnten nicht geladen werden.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Zahlen konnten nicht geladen werden.'**
+  String get overviewLoadFailed;
+
+  /// Taste nach einem Ladefehler.
+  ///
+  /// In de, this message translates to:
+  /// **'Nochmal versuchen'**
+  String get overviewRetry;
+
+  /// Karte Zahlungsarten.
+  ///
+  /// In de, this message translates to:
+  /// **'Zahlungsarten'**
+  String get overviewPayments;
+
+  /// Karte ohne Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Bons.'**
+  String get overviewNoReceipts;
+
+  /// Karte Meistverkauft.
+  ///
+  /// In de, this message translates to:
+  /// **'Meistverkauft'**
+  String get overviewTopItems;
+
+  /// Umsatz nach Kategorie.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach Kategorie'**
+  String get overviewByCategory;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {
