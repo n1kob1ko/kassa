@@ -195,7 +195,7 @@ Storno spiegelt den Bon samt Rabatten und Zahlungen mit umgekehrtem Vorzeichen, 
 
 - Der Storno-Bon spiegelt auch das Trinkgeld: Die Kartenzahlung steht mit Minus-Betrag und Minus-Trinkgeld darauf. Bei der Signatur zählt das Minus-Trinkgeld zum Satz 0.
 - Das Trinkgeld gehört der Person, die kassiert hat, nicht der Person, die storniert. Deshalb trägt jede Zahlung mit Trinkgeld eigene Felder "Trinkgeld für" (Id und Name). Beim Verkauf ist das die Bedienung des Bons, beim Storno die Bedienung des stornierten Bons. Alle Auswertungen pro Mitarbeiter lesen diese Felder.
-- Das Minus zählt zum Tag des Stornos, wie der Storno-Bon selbst (bestehende Regel R15).
+- Das Minus zählt zum Tag des Stornos, wie der Storno-Bon selbst (bestehende Regel seit Teil A, von Niko bestätigt).
 - Der Storno-Dialog nennt, was zurückzugeben ist: den Bar-Teil in bar und den Karten-Teil samt Trinkgeld über SumUp ("30,00 € bar zurückgeben. 20,00 € bei SumUp zurückbuchen, davon 3,20 € Trinkgeld."). Wurde das Trinkgeld schon ausbezahlt, regelt das der Betrieb selbst; die Kassa zeigt es im Abschluss als Minus bei der Person.
 
 ### 5.5 Freier Betrag
