@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/data/translation_repository.dart';
 import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/escpos.dart';
 import 'package:kassa/devices/mono_image.dart';
@@ -13,6 +14,7 @@ import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/kitchen_ticket.dart';
+import 'package:kassa/domain/menu_dictionary.dart';
 import 'package:kassa/domain/receipt_layout.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
@@ -183,6 +185,149 @@ void main() {
         expect(receiptT().sent, isEmpty);
       },
     );
+  });
+
+  group('ein Drucker, eine Warteschlange', () {
+    test('am Küchendrucker mit derselben Adresse wie der Bondrucker: '
+        'dieselbe Instanz', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          kitchenPrinterAddress: ' 192.168.0.50 ',
+        ),
+      );
+      await _until(
+        () =>
+            container
+                .read(settingsStreamProvider)
+                .value
+                ?.kitchenPrinterAddress ==
+            ' 192.168.0.50 ',
+      );
+      expect(
+        container.read(kitchenPrinterProvider),
+        same(container.read(receiptPrinterProvider)),
+      );
+      // Bon und Küchenbon gehen nacheinander hinaus, nie gleichzeitig.
+      receiptT().hang = true;
+      final r = await sell();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      receiptT().release.complete();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(r.receipt, catalog.business)),
+        raster,
+      ]);
+    });
+
+    test('gleiche Adresse, andere Art: eigener Drucker', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          kitchenPrinterKind: PrinterKind.bluetooth,
+          kitchenPrinterAddress: '192.168.0.50',
+        ),
+      );
+      await _until(
+        () =>
+            container.read(settingsStreamProvider).value?.kitchenPrinterKind ==
+            PrinterKind.bluetooth,
+      );
+      expect(
+        container.read(kitchenPrinterProvider),
+        isNot(same(container.read(receiptPrinterProvider))),
+      );
+    });
+
+    test('ändert sich die Adresse wirklich, kommt ein neuer Drucker, und der '
+        'nächste Auftrag geht an den neuen Transport', () async {
+      transports['192.168.0.70'] = _Transport();
+      await configure(KitchenMode.kitchenPrinter);
+      final before = container.read(kitchenPrinterProvider);
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(kitchenPrinterAddress: '192.168.0.70'),
+      );
+      await _until(
+        () =>
+            container
+                .read(settingsStreamProvider)
+                .value
+                ?.kitchenPrinterAddress ==
+            '192.168.0.70',
+      );
+      final after = container.read(kitchenPrinterProvider)!;
+      expect(after, isNot(same(before)));
+      expect((await after.printRaster(() async => raster)).ok, isTrue);
+      expect(transports['192.168.0.70']!.sent, [raster]);
+      expect(kitchenT().sent, isEmpty);
+
+      // Ebenso der Bondrucker.
+      final receiptBefore = container.read(receiptPrinterProvider);
+      await repo.save(
+        (await repo.current()).copyWith(printerAddress: '192.168.0.70'),
+      );
+      await _until(
+        () =>
+            container.read(settingsStreamProvider).value?.printerAddress ==
+            '192.168.0.70',
+      );
+      final receiptAfter = container.read(receiptPrinterProvider);
+      expect(receiptAfter, isNot(same(receiptBefore)));
+      await receiptAfter.testPrint();
+      expect(transports['192.168.0.70']!.sent, hasLength(2));
+      expect(receiptT().sent, isEmpty);
+    });
+
+    test(
+      'ändert sich der Ort des Küchenbons, kommt der passende Drucker',
+      () async {
+        await configure(KitchenMode.kitchenPrinter);
+        final own = container.read(kitchenPrinterProvider);
+        await configure(KitchenMode.receiptPrinter);
+        final shared = container.read(kitchenPrinterProvider);
+        expect(shared, isNot(same(own)));
+        expect(shared, same(container.read(receiptPrinterProvider)));
+        expect((await shared!.printRaster(() async => raster)).ok, isTrue);
+        expect(receiptT().sent, [raster]);
+        expect(kitchenT().sent, isEmpty);
+      },
+    );
+  });
+
+  group('Fehler beim Einreihen', () {
+    test('Drucker nicht zu lesen und Wörterbuch scheitert: unreachable, '
+        'kein unbehandelter Fehler', () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(shop.db),
+          clockProvider.overrideWithValue(shop.clock),
+          transportFactoryProvider.overrideWithValue(
+            (settings) => transports[settings.printerAddress],
+          ),
+          translationRepositoryProvider.overrideWithValue(
+            _BrokenTranslations(shop.db),
+          ),
+          kitchenPrinterProvider.overrideWith(
+            (ref) => throw StateError('Drucker'),
+          ),
+        ],
+      );
+      container.listen(settingsStreamProvider, (_, _) {});
+      container.listen(catalogStreamProvider, (_, _) {});
+      await configure(KitchenMode.kitchenPrinter);
+      final r = await sell();
+      final o = await container
+          .read(kitchenServiceProvider)
+          .printFor(r.receipt);
+      expect(o?.problem, PrintProblem.unreachable);
+      // Das Wörterbuch scheitert erst danach; niemand wartet mehr darauf.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+    });
   });
 
   group('am Transport', () {
@@ -380,6 +525,27 @@ void main() {
       expect(kitchenT().sent, isEmpty);
     });
   });
+}
+
+/// Wartet, bis [done] wahr ist (die Ströme der Einstellungen sind
+/// asynchron).
+Future<void> _until(bool Function() done) async {
+  for (var i = 0; i < 100; i++) {
+    if (done()) return;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  fail('Bedingung kam nicht');
+}
+
+/// Ein Wörterbuch, das beim Lesen scheitert.
+class _BrokenTranslations extends TranslationRepository {
+  _BrokenTranslations(super.db);
+
+  @override
+  Future<MenuDictionary> current() async {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    throw StateError('Wörterbuch');
+  }
 }
 
 /// Inhalt der Tabellen, die ein Druck verändern könnte.

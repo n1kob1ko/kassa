@@ -75,6 +75,8 @@ final transportFactoryProvider = Provider<TransportFactory>(
 /// ändert, und ein neuer Drucker hätte eine neue, leere Warteschlange (der
 /// Bon eines nächsten Verkaufs käme vor dem Küchenbon des vorigen).
 final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
+  // Jedes Feld, das der Bau unten liest, muss hier stehen: sonst bliebe nach
+  // einer Änderung der alte Drucker.
   final setup = ref.watch(
     settingsStreamProvider.select(
       (a) => switch (a.value) {
@@ -105,10 +107,16 @@ final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
 });
 
 /// Drucker für den Küchenbon: bei `receiptPrinter` der Bondrucker (dieselbe Instanz), bei `kitchenPrinter` ein
-/// eigener mit dem Küchen-Transport, bei `off` null.
+/// eigener mit dem Küchen-Transport, bei `off` null. Ist als Küchendrucker
+/// derselbe Drucker gewählt wie als Bondrucker (gleiche Art, gleiche
+/// Adresse), ist es ebenfalls der Bondrucker: eine Warteschlange, Bon und
+/// Küchenbon gehen nie gleichzeitig hinaus.
 ///
-/// Hört wie [receiptPrinterProvider] nur auf die eigenen Angaben.
+/// Hört wie [receiptPrinterProvider] nur auf die eigenen Angaben und auf Art
+/// und Adresse des Bondruckers (für den Vergleich).
 final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
+  // Jedes Feld, das der Bau unten liest, muss hier stehen: sonst bliebe nach
+  // einer Änderung der alte Drucker.
   final setup = ref.watch(
     settingsStreamProvider.select(
       (a) => switch (a.value) {
@@ -118,6 +126,8 @@ final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
           s.kitchenPrinterKind,
           s.kitchenPrinterAddress,
           s.kitchenPrinterColumns,
+          s.printerKind,
+          s.printerAddress,
         ),
       },
     ),
@@ -131,9 +141,12 @@ final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
       // Dieselbe Instanz: Bon und Küchenbon gehen durch eine Warteschlange.
       return ref.watch(receiptPrinterProvider);
     case KitchenMode.kitchenPrinter:
+      if (kitchenSharesReceiptPrinter(settings)) {
+        return ref.watch(receiptPrinterProvider);
+      }
+      final address = settings.kitchenPrinterAddress?.trim();
       final catalog = ref.watch(catalogStreamProvider).value;
       if (catalog == null) return const _NoPrinter();
-      final address = settings.kitchenPrinterAddress?.trim();
       // Ohne Adresse kein Transport, nie der des Bondruckers.
       final transport =
           settings.kitchenPrinterKind == PrinterKind.none ||
@@ -155,6 +168,25 @@ final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
       );
   }
 });
+
+/// Der Küchenbon geht durch die Warteschlange des Bondruckers: bei "Am
+/// Bondrucker", und bei "Am Küchendrucker", wenn dort derselbe Drucker
+/// gewählt ist (gleiche Art, gleiche Adresse ohne Leerzeichen am Rand).
+bool kitchenSharesReceiptPrinter(RegisterSettings settings) {
+  switch (settings.kitchenMode) {
+    case KitchenMode.off:
+      return false;
+    case KitchenMode.receiptPrinter:
+      return true;
+    case KitchenMode.kitchenPrinter:
+      final address = settings.kitchenPrinterAddress?.trim();
+      return settings.kitchenPrinterKind != PrinterKind.none &&
+          address != null &&
+          address.isNotEmpty &&
+          settings.kitchenPrinterKind == settings.printerKind &&
+          address == settings.printerAddress?.trim();
+  }
+}
 
 /// Zeichnet den Küchenbon als Bild; Tests setzen einen falschen Zeichner ein
 /// (das echte Zeichnen braucht `dart:ui` und echte Zeit).

@@ -528,10 +528,11 @@ class SaleService {
 
   /// Bon und Küchenbon zum eben gespeicherten Bon. [customer] stößt den Bon
   /// an und ruft `queued`, sobald sein Auftrag in der Warteschlange des
-  /// Bondruckers steht. Am Bondrucker kommt der Küchenbon direkt dahinter in
-  /// dieselbe Warteschlange (eigener Auftrag, eigener Schnitt), also vor den
-  /// Bon eines nächsten Verkaufs; am Küchendrucker geht er gleichzeitig los.
-  /// Bei "Aus" wird nichts gerufen. Der Küchenbon wirft nie.
+  /// Bondruckers steht. Am Bondrucker (auch wenn als Küchendrucker derselbe
+  /// Drucker gewählt ist) kommt der Küchenbon direkt dahinter in dieselbe
+  /// Warteschlange (eigener Auftrag, eigener Schnitt), also vor den Bon eines
+  /// nächsten Verkaufs; an einem eigenen Küchendrucker geht er gleichzeitig
+  /// los. Bei "Aus" wird nichts gerufen. Der Küchenbon wirft nie.
   (Future<PrintOutcome>, Future<PrintOutcome?>) _withKitchen(
     Receipt receipt,
     RegisterSettings settings,
@@ -540,9 +541,11 @@ class SaleService {
     switch (settings.kitchenMode) {
       case KitchenMode.off:
         return (customer(() {}), Future.value());
-      case KitchenMode.kitchenPrinter:
+      case KitchenMode.kitchenPrinter
+          when !kitchenSharesReceiptPrinter(settings):
         final print = customer(() {});
         return (print, _startKitchen(receipt, settings));
+      case KitchenMode.kitchenPrinter:
       case KitchenMode.receiptPrinter:
         final started = Completer<Future<PrintOutcome?>>();
         void queue() {

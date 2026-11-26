@@ -63,6 +63,9 @@ class KitchenService {
       return Future.value();
     }
     final ticket = _ticket(receipt, settings, copy: copy);
+    // Wirft das Einreihen, wartet niemand mehr auf den Zettel: sein Fehler
+    // gilt trotzdem als behandelt. Wer ihn später abwartet, bekommt ihn.
+    ticket.ignore();
     final job = _enqueue(ticket, settings);
     return _outcome(ticket, job);
   }
