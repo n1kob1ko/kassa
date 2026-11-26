@@ -1,7 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../l10n/generated/l10n.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -16,6 +18,9 @@ class CategoryEntry {
 
   /// Schlüssel der Taste ist `cat-<id>`.
   final String id;
+
+  /// Name aus der Speisekarte (angezeigt in der Bediensprache), bei den
+  /// Favoriten schon der Text der App.
   final String name;
   final int count;
   final bool isFavorites;
@@ -57,7 +62,7 @@ class CategoryRail extends StatelessWidget {
   }
 }
 
-class _CategoryButton extends StatelessWidget {
+class _CategoryButton extends ConsumerWidget {
   const _CategoryButton({
     super.key,
     required this.entry,
@@ -70,16 +75,18 @@ class _CategoryButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final instant = MediaQuery.disableAnimationsOf(context);
+    final name = entry.isFavorites
+        ? entry.name
+        : ref.watch(menuTextProvider)(entry.name);
     return Pressable(
       onTap: onTap,
-      semanticLabel: L10n.of(context).kassaCategoryLabel(
-        entry.name,
-        L10n.of(context).kassaItemCount(entry.count),
-      ),
+      semanticLabel: L10n.of(
+        context,
+      ).kassaCategoryLabel(name, L10n.of(context).kassaItemCount(entry.count)),
       child: AnimatedContainer(
         duration: instant ? Duration.zero : KassaTokens.motionFast,
         curve: Curves.linear,
@@ -110,7 +117,7 @@ class _CategoryButton extends StatelessWidget {
             ],
             Expanded(
               child: Text(
-                entry.name,
+                name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyLarge!.copyWith(

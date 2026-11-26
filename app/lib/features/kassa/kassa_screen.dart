@@ -17,6 +17,7 @@ import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import '../login/session.dart';
@@ -381,7 +382,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
                         },
                       )
                     : ItemArea(
-                        title: entry?.name ?? '',
+                        title: switch (entry) {
+                          null => '',
+                          CategoryEntry(isFavorites: true) => entry.name,
+                          _ => ref.watch(menuTextProvider)(entry.name),
+                        },
                         items: items,
                         quantities: quantities,
                         showImages: showImages,

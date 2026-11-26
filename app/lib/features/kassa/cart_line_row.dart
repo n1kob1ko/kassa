@@ -1,15 +1,19 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
 /// Eine Zeile des Bons: Name mit Zusatzzeile, Minus, Menge, Plus, Preis.
-/// Steigt [flash], leuchtet die Zeile einmal auf.
-class CartLineRow extends StatefulWidget {
+/// Steigt [flash], leuchtet die Zeile einmal auf. Die Namen stehen in der
+/// Bediensprache und brechen um, statt gekürzt zu werden; der Bon selbst hält
+/// die Namen der Speisekarte.
+class CartLineRow extends ConsumerStatefulWidget {
   const CartLineRow({
     super.key,
     required this.line,
@@ -22,10 +26,10 @@ class CartLineRow extends StatefulWidget {
   final ValueChanged<int> onQuantity;
 
   @override
-  State<CartLineRow> createState() => _CartLineRowState();
+  ConsumerState<CartLineRow> createState() => _CartLineRowState();
 }
 
-class _CartLineRowState extends State<CartLineRow>
+class _CartLineRowState extends ConsumerState<CartLineRow>
     with SingleTickerProviderStateMixin {
   late final AnimationController _glow = AnimationController(
     vsync: this,
@@ -69,9 +73,12 @@ class _CartLineRowState extends State<CartLineRow>
     final id = line.lineId;
     final instant = MediaQuery.disableAnimationsOf(context);
     final l = L10n.of(context);
+    final menuText = ref.watch(menuTextProvider);
+    final name = menuText(line.item.name);
+    final info = line.item.info;
     final sub = line.options.isNotEmpty
-        ? line.options.map((o) => o.name).join(l.uiListSeparator)
-        : line.item.info;
+        ? line.options.map((o) => menuText(o.name)).join(l.uiListSeparator)
+        : (info == null ? null : menuText(info));
     return AnimatedBuilder(
       animation: _glow,
       builder: (context, child) {
@@ -103,18 +110,11 @@ class _CartLineRowState extends State<CartLineRow>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    line.item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyLarge!.copyWith(height: 1.15),
-                  ),
+                  Text(name, style: text.bodyLarge!.copyWith(height: 1.15)),
                   if (sub != null && sub.isNotEmpty) ...[
                     const SizedBox(height: KassaTokens.spaceXxs),
                     Text(
                       sub,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: text.bodySmall!.copyWith(
                         fontWeight: FontWeight.w400,
                         height: 1.2,
@@ -129,7 +129,7 @@ class _CartLineRowState extends State<CartLineRow>
             _StepButton(
               key: Key('qty-minus-$id'),
               icon: LucideIcons.minus,
-              label: l.kassaOneLess(line.item.name),
+              label: l.kassaOneLess(name),
               onTap: () => widget.onQuantity(line.quantity - 1),
             ),
             ConstrainedBox(
@@ -147,7 +147,7 @@ class _CartLineRowState extends State<CartLineRow>
             _StepButton(
               key: Key('qty-plus-$id'),
               icon: LucideIcons.plus,
-              label: l.kassaOneMore(line.item.name),
+              label: l.kassaOneMore(name),
               onTap: () => widget.onQuantity(line.quantity + 1),
             ),
             const SizedBox(width: KassaTokens.spaceSm),

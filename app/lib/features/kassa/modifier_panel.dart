@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -5,14 +6,16 @@ import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 
 /// "Zusammenstellen": steht in der Mitte anstelle der Artikel. Eine Karte je
 /// Auswahlgruppe, unten "Abbrechen" und "Auf den Bon". Solange eine Pflicht-
-/// gruppe fehlt, ist die Taste ausgeschaltet und nennt sie.
-class ModifierPanel extends StatefulWidget {
+/// gruppe fehlt, ist die Taste ausgeschaltet und nennt sie. Namen von Artikel,
+/// Gruppen und Optionen stehen in der Bediensprache.
+class ModifierPanel extends ConsumerStatefulWidget {
   const ModifierPanel({
     super.key,
     required this.item,
@@ -27,10 +30,10 @@ class ModifierPanel extends StatefulWidget {
   final ValueChanged<List<ModifierOption>> onAdd;
 
   @override
-  State<ModifierPanel> createState() => _ModifierPanelState();
+  ConsumerState<ModifierPanel> createState() => _ModifierPanelState();
 }
 
-class _ModifierPanelState extends State<ModifierPanel> {
+class _ModifierPanelState extends ConsumerState<ModifierPanel> {
   late Selection _selection = Selection.defaults(widget.template);
 
   void _toggle(ModifierGroup g, ModifierOption o) =>
@@ -41,6 +44,7 @@ class _ModifierPanelState extends State<ModifierPanel> {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
+    final menuText = ref.watch(menuTextProvider);
     final missing = _selection.missing;
     final price = widget.item.priceCents + _selection.surchargeCents;
     return Column(
@@ -54,7 +58,7 @@ class _ModifierPanelState extends State<ModifierPanel> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.item.name,
+                    menuText(widget.item.name),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: text.headlineMedium,
@@ -114,7 +118,9 @@ class _ModifierPanelState extends State<ModifierPanel> {
                   label: missing.isEmpty
                       ? l.kassaAddToReceipt
                       : l.kassaStillToChoose(
-                          missing.map((g) => g.name).join(l.uiListSeparator),
+                          missing
+                              .map((g) => menuText(g.name))
+                              .join(l.uiListSeparator),
                         ),
                   muted: missing.isNotEmpty,
                   height: 68,
@@ -131,7 +137,7 @@ class _ModifierPanelState extends State<ModifierPanel> {
   }
 }
 
-class _GroupCard extends StatelessWidget {
+class _GroupCard extends ConsumerWidget {
   const _GroupCard({
     required this.group,
     required this.selection,
@@ -150,7 +156,7 @@ class _GroupCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
@@ -181,7 +187,7 @@ class _GroupCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          group.name,
+                          ref.watch(menuTextProvider)(group.name),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: text.titleMedium,
@@ -261,7 +267,7 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-class _OptionButton extends StatelessWidget {
+class _OptionButton extends ConsumerWidget {
   const _OptionButton({
     required this.option,
     required this.chosen,
@@ -275,18 +281,17 @@ class _OptionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final instant = MediaQuery.disableAnimationsOf(context);
     final fg = chosen ? c.accentInk : c.ink;
     final surcharge = option.surchargeCents;
+    final name = ref.watch(menuTextProvider)(option.name);
     return Pressable(
       key: Key('opt-${option.id}'),
       onTap: onTap,
-      semanticLabel: chosen
-          ? L10n.of(context).kassaOptionChosen(option.name)
-          : option.name,
+      semanticLabel: chosen ? L10n.of(context).kassaOptionChosen(name) : name,
       child: AnimatedContainer(
         duration: instant ? Duration.zero : KassaTokens.motionFast,
         curve: Curves.linear,
@@ -312,7 +317,7 @@ class _OptionButton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      option.name,
+                      name,
                       style: text.labelLarge!.copyWith(height: 1.12, color: fg),
                     ),
                     if (surcharge != 0 && showSurcharge)
