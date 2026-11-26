@@ -172,6 +172,17 @@ void main() {
     expect(t.lines.last.name, 'Tavuk şiş dürüm');
   });
 
+  test('Storno mit copy bleibt STORNO (kein KOPIE-Balken)', () {
+    final r = receipt(
+      [line('i1', 'Dürüm', -1)],
+      kind: ReceiptKind.voided,
+      number: 130,
+    );
+    final t = build(r, copy: true, voidedNumber: 128)!;
+    expect(t.kind, KitchenTicketKind.voided);
+    expect(t.banner, 'İPTAL');
+  });
+
   test('copy setzt Banner KOPIE', () {
     final t = build(receipt([line('i1', 'Dürüm', 1)]), copy: true)!;
     expect(t.kind, KitchenTicketKind.copy);
