@@ -208,6 +208,28 @@ class WireStaff {
   final bool archived;
 }
 
+/// Die Übersetzungen eines Namens aus der Speisekarte. Leere [values] heißen:
+/// der Eintrag ist gelöscht. Die Sprachkürzel prüft hier niemand.
+class WireTranslation {
+  const WireTranslation({required this.source, required this.values});
+
+  factory WireTranslation.fromJson(Map<String, dynamic> json) {
+    final values = _object(json['values'], 'values');
+    return WireTranslation(
+      source: _field(json, 'source'),
+      values: {
+        for (final e in values.entries)
+          e.key: e.value is String
+              ? e.value as String
+              : throw FormatException('Übersetzung ist kein Text: ${e.key}'),
+      },
+    );
+  }
+
+  final String source;
+  final Map<String, String> values;
+}
+
 /// Eine Seite der Änderungen vom Server.
 class PullResponse {
   const PullResponse({
@@ -218,6 +240,7 @@ class PullResponse {
     required this.items,
     required this.templates,
     required this.staff,
+    this.translations = const [],
   });
 
   factory PullResponse.fromJson(Map<String, dynamic> json) {
@@ -244,6 +267,10 @@ class PullResponse {
       items: _list(json, 'items', WireItem.fromJson),
       templates: _list(json, 'templates', WireTemplate.fromJson),
       staff: _list(json, 'staff', WireStaff.fromJson),
+      // Ein älterer Server schickt den Schlüssel nicht.
+      translations: json.containsKey('translations')
+          ? _list(json, 'translations', WireTranslation.fromJson)
+          : const [],
     );
   }
 
@@ -259,6 +286,9 @@ class PullResponse {
   final List<WireItem> items;
   final List<WireTemplate> templates;
   final List<WireStaff> staff;
+
+  /// Übersetzungen der Namen aus der Speisekarte.
+  final List<WireTranslation> translations;
 }
 
 /// Antwort auf das Koppeln. Der Schlüssel [token] geht nie in Texte oder

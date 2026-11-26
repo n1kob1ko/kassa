@@ -184,4 +184,46 @@ void main() {
     (role['staff'] as List).first['role'] = 'boss';
     expect(() => PullResponse.fromJson(role), throwsFormatException);
   });
+
+  group('translations', () {
+    test(
+      'Antwort ohne translations (älterer Server) ergibt eine leere Liste',
+      () {
+        final json = fixture('pull_full')..remove('translations');
+        expect(PullResponse.fromJson(json).translations, isEmpty);
+      },
+    );
+
+    test('translations werden gelesen, leere values bleiben leer', () {
+      final json = fixture('pull_full')
+        ..['translations'] = [
+          {
+            'source': 'Cola',
+            'values': {'en': 'Cola', 'tr': 'Kola'},
+          },
+          {'source': 'Wasser', 'values': <String, Object?>{}},
+        ];
+      final t = PullResponse.fromJson(json).translations;
+      expect(t.map((e) => e.source), ['Cola', 'Wasser']);
+      expect(t.first.values, {'en': 'Cola', 'tr': 'Kola'});
+      expect(t.last.values, isEmpty);
+    });
+
+    test('values ohne Objekt oder mit Zahl ist eine FormatException', () {
+      for (final bad in <Object?>[
+        {'source': 'Cola', 'values': 'en'},
+        {'source': 'Cola'},
+        {
+          'source': 'Cola',
+          'values': {'en': 3},
+        },
+        {
+          'values': {'en': 'Cola'},
+        },
+      ]) {
+        final json = fixture('pull_full')..['translations'] = [bad];
+        expect(() => PullResponse.fromJson(json), throwsFormatException);
+      }
+    });
+  });
 }

@@ -59,6 +59,10 @@ class FakeServer extends http.BaseClient {
 
   int pageSize;
 
+  /// `false`: wie ein älterer Server, die Antwort hat keinen Schlüssel
+  /// `translations`.
+  bool sendsTranslations = true;
+
   /// Gilt für jede folgende Anfrage, bis es jemand ändert.
   FakeMode mode = FakeMode.online;
 
@@ -138,6 +142,17 @@ class FakeServer extends http.BaseClient {
     _rows[key] = (seq: ++_seq, kind: kind, row: Map.of(row));
   }
 
+  /// Trägt die Übersetzungen eines Namens ein; leere [values] heißen gelöscht.
+  void putTranslation(String source, Map<String, String> values) {
+    final key = 'translations/$source';
+    _rows.remove(key);
+    _rows[key] = (
+      seq: ++_seq,
+      kind: 'translations',
+      row: {'source': source, 'values': values},
+    );
+  }
+
   /// Ändert einzelne Felder der Betriebsdaten, sie bekommen eine neue Nummer.
   void changeBusiness(Map<String, Object?> fields) =>
       putBusiness({..._rows['business']!.row, ...fields});
@@ -183,6 +198,7 @@ class FakeServer extends http.BaseClient {
       'items': [],
       'templates': [],
       'staff': [],
+      if (sendsTranslations) 'translations': [],
     };
     Map<String, Object?>? business;
     for (final r in page) {

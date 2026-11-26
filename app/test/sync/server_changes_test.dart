@@ -9,6 +9,8 @@ import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/data/translation_repository.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/login/session.dart';
@@ -55,6 +57,39 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   group('replaceAll', () {
+    test(
+      'replaceAll leert die Übersetzungen und schreibt die der Seiten',
+      () async {
+        final db = KassaDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        final repo = TranslationRepository(db);
+        await repo.upsert({
+          'Alt': {'en': 'Old'},
+        });
+        final server = FakeServer.beispiel()
+          ..putTranslation('Cola', {'en': 'Cola', 'tr': 'Kola'});
+        await ServerChanges(db).replaceAll(server.pages(), at: at);
+        expect((await repo.current()).entries, {
+          'Cola': {'en': 'Cola', 'tr': 'Kola'},
+        });
+      },
+    );
+
+    test(
+      'replaceAll mit einem älteren Server (ohne translations) leert sie',
+      () async {
+        final db = KassaDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+        final repo = TranslationRepository(db);
+        await repo.upsert({
+          'Alt': {'en': 'Old'},
+        });
+        final server = FakeServer.beispiel()..sendsTranslations = false;
+        await ServerChanges(db).replaceAll(server.pages(), at: at);
+        expect((await repo.current()).entries, isEmpty);
+      },
+    );
+
     test('replaceAll auf leerem Tablet: Speisekarte, Chefin, Betriebsdaten sind da, Cursor = next', () async {
       final db = KassaDatabase(NativeDatabase.memory());
       addTearDown(db.close);
@@ -291,6 +326,99 @@ void main() {
 
     Future<ItemRow> item(String id) =>
         (db.select(db.itemRows)..where((t) => t.id.equals(id))).getSingle();
+
+    group('Übersetzungen', () {
+      test(
+        'Einträge kommen an und menuDictionaryProvider meldet sie',
+        () async {
+          final container = ProviderContainer(
+            overrides: [databaseProvider.overrideWithValue(db)],
+          );
+          addTearDown(container.dispose);
+          final seen = <Map<String, Map<String, String>>>[];
+          container.listen(
+            menuDictionaryProvider,
+            (_, next) => next.whenData((d) => seen.add(d.entries)),
+            fireImmediately: true,
+          );
+          server.putTranslation('Cola', {'en': 'Cola', 'tr': 'Kola'});
+          await pullAll(at);
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          final d = await container.read(menuDictionaryProvider.future);
+          expect(d.text('Cola', AppLanguage.tr), 'Kola');
+          expect(seen.last, {
+            'Cola': {'en': 'Cola', 'tr': 'Kola'},
+          });
+        },
+      );
+
+      test(
+        'der Server ersetzt die Zeile, mischt nicht mit dem Alten',
+        () async {
+          final repo = TranslationRepository(db);
+          await repo.upsert({
+            'Cola': {'en': 'Cola', 'zh': '可乐'},
+          });
+          server.putTranslation('Cola', {'tr': 'Kola'});
+          await pullAll(at);
+          expect((await repo.current()).entries, {
+            'Cola': {'tr': 'Kola'},
+          });
+        },
+      );
+
+      test('leere values löschen die Zeile', () async {
+        final repo = TranslationRepository(db);
+        server.putTranslation('Cola', {'en': 'Cola'});
+        server.putTranslation('Wasser', {'en': 'Water'});
+        await pullAll(at);
+        server.putTranslation('Cola', {});
+        await pullAll(at);
+        expect((await repo.current()).entries.keys, ['Wasser']);
+      });
+
+      test(
+        'Seite ohne translations (älterer Server) lässt das Wörterbuch stehen',
+        () async {
+          final repo = TranslationRepository(db);
+          await repo.upsert({
+            'Cola': {'en': 'Cola'},
+          });
+          server
+            ..sendsTranslations = false
+            ..change('items', 'cola', {'priceCents': 310});
+          await pullAll(at);
+          expect((await repo.current()).entries.keys, ['Cola']);
+        },
+      );
+
+      test('Holen ab Cursor 0 lässt den offenen Bon und wartende Artikel-Felder stehen', () async {
+        final tablet = CatalogRepository(db, clock: FixedClock(at));
+        await tablet.updateItem('huhn-bowl', priceCents: 1234);
+        await SettingsRepository(db)
+            .writeDraft('{"lines":[{"itemId":"cola"}]}');
+        server.putTranslation('Cola', {'en': 'Cola'});
+        // So steht es nach dem Schritt auf Version 7.
+        await (db.update(db.syncStateRows)..where((t) => t.id.equals(1))).write(
+          const SyncStateRowsCompanion(pullCursor: Value(0)),
+        );
+
+        await pullAll(at);
+
+        expect((await item('huhn-bowl')).priceCents, 1234);
+        expect(await OutboxRepository(db).pendingItemFields(), {
+          'huhn-bowl': {'priceCents'},
+        });
+        expect(
+          await SettingsRepository(db).readDraft(),
+          '{"lines":[{"itemId":"cola"}]}',
+        );
+        expect((await TranslationRepository(db).current()).entries, {
+          'Cola': {'en': 'Cola'},
+        });
+        expect((await sync.current()).pullCursor, server.seq);
+      });
+    });
 
     group('Fotos und Logo', () {
       Map<String, Object?> photo(String id) => {'id': id, 'color': '#a1b2c3'};

@@ -12,6 +12,7 @@ import '../data/catalog_repository.dart';
 import '../data/database.dart';
 import '../data/outbox_repository.dart';
 import '../data/settings_repository.dart';
+import '../data/translation_repository.dart';
 import '../domain/catalog.dart';
 import '../domain/staff.dart';
 import 'wire.dart';
@@ -55,6 +56,7 @@ class ServerChanges {
       await _db.delete(_db.modifierGroupRows).go();
       await _db.delete(_db.modifierTemplateRows).go();
       await _db.delete(_db.staffRows).go();
+      await _db.delete(_db.translationRows).go();
       await _apply(merged);
       // Der Stand des Servers gilt, so wie es die Rückfrage beim Koppeln
       // sagt: Artikel-Änderungen, die noch warten, gehen nie nachträglich
@@ -161,6 +163,9 @@ class ServerChanges {
     _Changes c, {
     Map<String, Set<String>> keep = const {},
   }) async {
+    await upsertIn(_db, {
+      for (final t in c.translations.values) t.source: t.values,
+    });
     final business = c.business;
     if (business != null) {
       await _db
@@ -390,6 +395,9 @@ class _Changes {
       for (final s in p.staff) {
         c.staff[s.id] = s;
       }
+      for (final t in p.translations) {
+        c.translations[t.source] = t;
+      }
     }
     return c;
   }
@@ -399,4 +407,5 @@ class _Changes {
   final templates = <String, WireTemplate>{};
   final items = <String, WireItem>{};
   final staff = <String, WireStaff>{};
+  final translations = <String, WireTranslation>{};
 }

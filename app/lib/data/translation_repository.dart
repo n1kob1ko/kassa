@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
 
 import '../domain/menu_dictionary.dart';
 import 'database.dart';
@@ -12,25 +11,33 @@ class TranslationRepository {
 
   final KassaDatabase _db;
 
-  Stream<MenuDictionary> watch() async* {
-    yield await current();
-    await for (final _ in _db.tableUpdates(
-      TableUpdateQuery.onTable(_db.translationRows),
-    )) {
-      yield await current();
-    }
-  }
+  /// Meldet das Wörterbuch bei jeder Änderung der Tabelle (drifts eigenes
+  /// `watch`, damit zwischen Lesen und Abonnieren nichts verloren geht).
+  Stream<MenuDictionary> watch() =>
+      _db.select(_db.translationRows).watch().map(_toDictionary);
 
-  Future<MenuDictionary> current() async {
-    final rows = await _db.select(_db.translationRows).get();
-    return MenuDictionary({
-      for (final r in rows)
-        r.source: {
-          for (final e
-              in (jsonDecode(r.valuesJson) as Map<String, dynamic>).entries)
-            e.key: e.value as String,
-        },
-    });
+  Future<MenuDictionary> current() async =>
+      _toDictionary(await _db.select(_db.translationRows).get());
+
+  /// Liest tolerant: eine Zeile, die kein JSON-Objekt hält, und ein Wert, der
+  /// kein Text ist, fallen weg. Der Name aus der Speisekarte gilt dann.
+  static MenuDictionary _toDictionary(List<TranslationRow> rows) {
+    final entries = <String, Map<String, String>>{};
+    for (final r in rows) {
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(r.valuesJson);
+      } on FormatException {
+        continue;
+      }
+      if (decoded is! Map<String, dynamic>) continue;
+      final values = {
+        for (final e in decoded.entries)
+          if (e.value case final String text) e.key: text,
+      };
+      if (values.isNotEmpty) entries[r.source] = values;
+    }
+    return MenuDictionary(entries);
   }
 
   /// Schreibt Einträge; ein Eintrag ohne Sprachen löscht die Zeile.
@@ -41,6 +48,8 @@ class TranslationRepository {
 }
 
 /// Wie [TranslationRepository.upsert], aber in einer laufenden Transaktion.
+/// Die Zeile einer Quelle wird ganz durch [entries] ersetzt (kein Mischen mit
+/// dem, was dort stand); der Abgleich mit dem Server braucht genau das.
 Future<void> upsertIn(
   KassaDatabase db,
   Map<String, Map<String, String>> entries,

@@ -74,4 +74,38 @@ void main() {
     });
     await emitted;
   });
+
+  test('watch verpasst keinen Schreibvorgang vor dem ersten Lesen', () async {
+    final values = <Map<String, Map<String, String>>>[];
+    final sub = repo.watch().listen((d) => values.add(d.entries));
+    // Kein Warten: das Schreiben läuft, bevor der erste Wert angekommen ist.
+    await repo.upsert({
+      'Cola': {'en': 'Cola'},
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await sub.cancel();
+    expect(values.last, {
+      'Cola': {'en': 'Cola'},
+    });
+  });
+
+  test('current liest tolerant: kaputte Zeilen und Werte fallen weg', () async {
+    Future<void> raw(String source, String json) => db
+        .into(db.translationRows)
+        .insert(
+          TranslationRowsCompanion.insert(source: source, valuesJson: json),
+        );
+    await raw('Gut', '{"en":"Good"}');
+    await raw('Zahl', '{"en":3,"tr":"Kola"}');
+    await raw('Liste', '["en"]');
+    await raw('Kaputt', 'kein json');
+    await raw('Nur Zahl', '{"en":null}');
+    final d = await repo.current();
+    expect(d.entries, {
+      'Gut': {'en': 'Good'},
+      'Zahl': {'tr': 'Kola'},
+    });
+    expect(d.text('Zahl', AppLanguage.en), 'Zahl');
+    expect(d.text('Kaputt', AppLanguage.en), 'Kaputt');
+  });
 }
