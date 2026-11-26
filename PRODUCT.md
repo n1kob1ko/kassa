@@ -57,7 +57,7 @@ Offen: genaues Framework, Fiskalisierungsdienst für die RKSV, steuerliche Behan
 
 ## Brand Commitments
 
-Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Niko hat als Vorbilder Square POS, Clover POS und Toast genannt und ein Foto einer klassischen Kasse gezeigt, bei der Kategorien links, Artikel in der Mitte und der Bon rechts stehen. Dieser Aufbau ist der Ausgangspunkt.
+Name: Kassa. Sprache der Oberfläche: Deutsch, österreichische Begriffe. Ab 1.10.0 kann die Bedienung auch Englisch, Chinesisch, Türkisch oder Arabisch (von rechts nach links) wählen; Einrichtung, Kundenbon und Berichte bleiben Deutsch, der Küchenbon hat seine eigene Sprache. Niko hat als Vorbilder Square POS, Clover POS und Toast genannt und ein Foto einer klassischen Kasse gezeigt, bei der Kategorien links, Artikel in der Mitte und der Bon rechts stehen. Dieser Aufbau ist der Ausgangspunkt.
 
 Stil, von Niko am 17.11.2026 über Beispielbilder vorgegeben (Tasty Station, Restroq, DineDash, ByteCaisse): hell, viel Weißraum, weiche weiße Karten mit runden Ecken, eine einzige Akzentfarbe, Produktfotos auf den Artikeltasten. Bunte Tasten pro Kategorie sind damit verworfen. Fotos sind pro Artikel freiwillig, jede Kassa kann zwischen "Mit Bildern" und "Kompakt" umschalten, Artikel ohne Foto bekommen einen ruhigen Platzhalter. Die Kundenanzeige folgt demselben Stil.
 
