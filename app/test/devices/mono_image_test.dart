@@ -88,4 +88,38 @@ void main() {
     expect(image.bits, [0x00, 0x80]);
     expect(image.at(0, 1), isTrue);
   });
+
+  test('Durchsichtig zählt als weiß, halb durchsichtig auf Weiß gemischt', () {
+    final rgba = Uint8List.fromList([
+      0, 0, 0, 0, // ganz durchsichtig: weiß
+      0, 0, 0, 128, // schwarz zur Hälfte: Grau 127, unter 160
+      0, 0, 0, 64, // schwarz zu einem Viertel: Grau 191, weiß
+      0, 0, 0, 255, // deckend schwarz
+    ]);
+    final image = MonoImage.fromRgba(rgba, 4, 1);
+    expect(
+      [for (var x = 0; x < 4; x++) image.at(x, 0)],
+      [false, true, false, true],
+    );
+  });
+
+  test('eigene Schwelle macht schwarz, was bei 160 weiß bleibt', () {
+    final rgba = _rgba([
+      [200],
+    ]);
+    expect(MonoImage.fromRgba(rgba, 1, 1).at(0, 0), isFalse);
+    expect(MonoImage.fromRgba(rgba, 1, 1, threshold: 220).at(0, 0), isTrue);
+  });
+
+  test(
+    'Füllbits am Zeilenende bleiben 0, auch wenn der letzte Punkt schwarz ist',
+    () {
+      final image = MonoImage.fromRgba(
+        _rgba([List.filled(10, 0), List.filled(10, 0)]),
+        10,
+        2,
+      );
+      expect(image.bits, [0xFF, 0xC0, 0xFF, 0xC0]);
+    },
+  );
 }

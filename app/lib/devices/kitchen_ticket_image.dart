@@ -21,11 +21,16 @@ Future<ui.Image> paintKitchenTicket(
     widthDots.toDouble(),
     layout.height.toDouble(),
   );
-  final canvas = ui.Canvas(recorder, size)
-    ..drawRect(size, ui.Paint()..color = _white);
-  layout.paint(canvas);
-  final picture = recorder.endRecording();
-  layout.dispose();
+  final ui.Picture picture;
+  try {
+    layout.paint(
+      ui.Canvas(recorder, size)..drawRect(size, ui.Paint()..color = _white),
+    );
+  } finally {
+    // Auch wenn das Zeichnen scheitert: Aufnahme beenden, Texte freigeben.
+    picture = recorder.endRecording();
+    layout.dispose();
+  }
   try {
     return await picture.toImage(widthDots, layout.height);
   } finally {
