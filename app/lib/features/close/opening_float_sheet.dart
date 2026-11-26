@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
@@ -27,21 +28,18 @@ class OpeningFloatSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
     return CloseColumn(
-      title: 'Wechselgeld',
+      title: l.closeFloatTitle,
       failed: failed,
       content: [
-        FieldLabel(
-          drawer
-              ? 'Wie viel Wechselgeld war am Morgen in der Lade?'
-              : 'Wie viel Wechselgeld war am Morgen da?',
-        ),
+        FieldLabel(drawer ? l.closeFloatQuestionDrawer : l.closeFloatQuestion),
         const SizedBox(height: KassaTokens.spaceMd),
         AmountEntry(input: input, onKey: onKey),
       ],
       bottom: PrimaryButton(
         key: const Key('set-float'),
-        label: 'Wechselgeld speichern',
+        label: l.closeSaveFloat,
         height: KassaTokens.mainActionHeight,
         onPressed: input.isEmpty ? null : onSave,
       ),

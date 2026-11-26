@@ -3,10 +3,12 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/day.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
+import 'close_format.dart' show cashReasonText;
 
 /// Zustand D: Bargeld einlegen oder entnehmen, mit Betrag und Grund. Speichern
 /// geht, wenn der Betrag über 0 ist und ein Grund gewählt ist.
@@ -37,12 +39,13 @@ class CashMovementSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deposit = kind == CashMovementKind.deposit;
+    final l = L10n.of(context);
     return CloseColumn(
-      title: deposit ? 'Bargeld einlegen' : 'Bargeld entnehmen',
+      title: deposit ? l.closeCashIn : l.closeCashOut,
       trailing: Pressable(
         key: const Key('close-movement'),
         onTap: onClose,
-        semanticLabel: 'Schließen',
+        semanticLabel: l.closeCloseSheet,
         minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
         child: SizedBox(
           width: KassaTokens.minTap,
@@ -56,11 +59,11 @@ class CashMovementSheet extends StatelessWidget {
       ),
       failed: failed,
       content: [
-        const FieldLabel('Betrag'),
+        FieldLabel(l.closeAmount),
         const SizedBox(height: KassaTokens.spaceMd),
         AmountEntry(input: input, onKey: onKey),
         const SizedBox(height: KassaTokens.spaceXxl),
-        const FieldLabel('Grund'),
+        FieldLabel(l.closeReason),
         const SizedBox(height: KassaTokens.spaceMd),
         Row(
           children: [
@@ -80,7 +83,7 @@ class CashMovementSheet extends StatelessWidget {
       ],
       bottom: PrimaryButton(
         key: const Key('save-movement'),
-        label: deposit ? 'Einlage speichern' : 'Entnahme speichern',
+        label: deposit ? l.closeSaveCashIn : l.closeSaveCashOut,
         height: KassaTokens.mainActionHeight,
         onPressed: onSave,
       ),
@@ -120,7 +123,7 @@ class _ReasonKey extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                reasonLabel(reason),
+                cashReasonText(L10n.of(context), reason),
                 maxLines: 1,
                 style: Theme.of(context).textTheme.titleMedium!.copyWith(
                   fontSize: 17,

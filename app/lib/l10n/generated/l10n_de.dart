@@ -866,4 +866,385 @@ class L10nDe extends L10n {
 
   @override
   String get overviewByCategory => 'Nach Kategorie';
+
+  @override
+  String closeClockTime(String time) {
+    return '$time Uhr';
+  }
+
+  @override
+  String closeBonCount(int count, String formatted) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formatted Bons',
+      one: '1 Bon',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get closeReasonBank => 'Bank';
+
+  @override
+  String get closeReasonPurchase => 'Einkauf';
+
+  @override
+  String get closeReasonChange => 'Wechselgeld';
+
+  @override
+  String get closeReasonOther => 'Sonstiges';
+
+  @override
+  String get closeCashIn => 'Bargeld einlegen';
+
+  @override
+  String get closeCashOut => 'Bargeld entnehmen';
+
+  @override
+  String get closeCloseSheet => 'Schließen';
+
+  @override
+  String get closeAmount => 'Betrag';
+
+  @override
+  String get closeReason => 'Grund';
+
+  @override
+  String get closeSaveCashIn => 'Einlage speichern';
+
+  @override
+  String get closeSaveCashOut => 'Entnahme speichern';
+
+  @override
+  String get closeFloatTitle => 'Wechselgeld';
+
+  @override
+  String get closeFloatQuestionDrawer =>
+      'Wie viel Wechselgeld war am Morgen in der Lade?';
+
+  @override
+  String get closeFloatQuestion => 'Wie viel Wechselgeld war am Morgen da?';
+
+  @override
+  String get closeSaveFloat => 'Wechselgeld speichern';
+
+  @override
+  String get closeNothingTyped => 'Noch nichts eingetippt';
+
+  @override
+  String get closeExact => 'Stimmt genau';
+
+  @override
+  String get closeMissing => 'Es fehlen';
+
+  @override
+  String get closeTooMuchDrawer => 'Zu viel in der Lade';
+
+  @override
+  String get closeTooMuchCash => 'Zu viel Bargeld';
+
+  @override
+  String get closeCountDrawer => 'Geldlade zählen';
+
+  @override
+  String get closeCountCash => 'Bargeld zählen';
+
+  @override
+  String closeStep(int step, int total) {
+    return 'Schritt $step von $total';
+  }
+
+  @override
+  String get closeExpectedDrawer => 'Soll in der Lade';
+
+  @override
+  String get closeExpectedCash => 'Soll in bar';
+
+  @override
+  String get closeCounted => 'Gezählt';
+
+  @override
+  String get closeNext => 'Weiter';
+
+  @override
+  String get closeLeaveInDrawer => 'In der Lade lassen';
+
+  @override
+  String get closeFloatForTomorrow => 'Wechselgeld für morgen';
+
+  @override
+  String get closeDifferenceToExpected => 'Unterschied zum Soll';
+
+  @override
+  String get closeLeaveQuestionDrawer =>
+      'Wie viel bleibt als Wechselgeld in der Lade?';
+
+  @override
+  String get closeLeaveQuestion => 'Wie viel bleibt als Wechselgeld?';
+
+  @override
+  String get closeMoreThanCounted =>
+      'Mehr als gezählt kann nicht in der Lade bleiben.';
+
+  @override
+  String get closeYouTakeOut => 'Du nimmst heraus';
+
+  @override
+  String get closeBack => 'Zurück';
+
+  @override
+  String get closeCloseDay => 'Tag abschließen';
+
+  @override
+  String get closeDayClosed => 'Tag abgeschlossen';
+
+  @override
+  String get closeDayIsClosed => 'Der Tag ist abgeschlossen.';
+
+  @override
+  String get closeNoOpenDay => 'Es gibt keinen offenen Tag.';
+
+  @override
+  String get closeNextDayStarts =>
+      'Der nächste Tag beginnt mit dem ersten Bon.';
+
+  @override
+  String closeTakenOut(String amount) {
+    return 'Entnommen: $amount';
+  }
+
+  @override
+  String closeTomorrowDrawer(String amount) {
+    return 'Morgen liegen $amount Wechselgeld in der Lade.';
+  }
+
+  @override
+  String closeTomorrow(String amount) {
+    return 'Morgen sind $amount Wechselgeld da.';
+  }
+
+  @override
+  String closeClosedBy(String name, String time) {
+    return 'Abgeschlossen von $name um $time';
+  }
+
+  @override
+  String get closePrintReport => 'Bericht drucken';
+
+  @override
+  String get closeToKassa => 'Zur Kassa';
+
+  @override
+  String get closeReportPrinted => 'Bericht gedruckt.';
+
+  @override
+  String get closeTitle => 'Tagesabschluss';
+
+  @override
+  String get closeDay => 'Tag';
+
+  @override
+  String get closeMonth => 'Monat';
+
+  @override
+  String get closeClosedPill => 'Abgeschlossen';
+
+  @override
+  String get closeLoadFailed =>
+      'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.';
+
+  @override
+  String get closeDrawer => 'Geldlade';
+
+  @override
+  String get closeCash => 'Bargeld';
+
+  @override
+  String get closeFloatMorning => 'Wechselgeld am Morgen';
+
+  @override
+  String get closeStillOpen => 'Noch offen';
+
+  @override
+  String get closeCashTakings => 'Bar-Einnahmen';
+
+  @override
+  String closeDeposited(String reason) {
+    return 'Eingelegt: $reason';
+  }
+
+  @override
+  String closeWithdrawn(String reason) {
+    return 'Entnommen: $reason';
+  }
+
+  @override
+  String get closeDifference => 'Unterschied';
+
+  @override
+  String get closeIncome => 'Einnahmen';
+
+  @override
+  String get closeTotal => 'Gesamt';
+
+  @override
+  String get closeTax => 'Steuer';
+
+  @override
+  String get closeRevenue => 'Umsatz';
+
+  @override
+  String get closeOfWhichVat => 'davon MwSt';
+
+  @override
+  String closeVatRate(int percent) {
+    return 'MwSt $percent %';
+  }
+
+  @override
+  String get closeDepositNoVat => 'Pfand, ohne MwSt';
+
+  @override
+  String get closeForgotten => 'Der letzte Tag ist noch nicht abgeschlossen.';
+
+  @override
+  String get closeNow => 'Jetzt abschließen';
+
+  @override
+  String get dateMonthShortJanuary => 'Jän';
+
+  @override
+  String get dateMonthShortFebruary => 'Feb';
+
+  @override
+  String get dateMonthShortMarch => 'März';
+
+  @override
+  String get dateMonthShortApril => 'Apr';
+
+  @override
+  String get dateMonthShortMay => 'Mai';
+
+  @override
+  String get dateMonthShortJune => 'Juni';
+
+  @override
+  String get dateMonthShortJuly => 'Juli';
+
+  @override
+  String get dateMonthShortAugust => 'Aug';
+
+  @override
+  String get dateMonthShortSeptember => 'Sep';
+
+  @override
+  String get dateMonthShortOctober => 'Okt';
+
+  @override
+  String get dateMonthShortNovember => 'Nov';
+
+  @override
+  String get dateMonthShortDecember => 'Dez';
+
+  @override
+  String closeMonthYear(String month, int year) {
+    return '$month $year';
+  }
+
+  @override
+  String closePeriodSameYear(String from, String to, int year) {
+    return '$from bis $to $year';
+  }
+
+  @override
+  String closePeriodTwoYears(String from, String to) {
+    return '$from bis $to';
+  }
+
+  @override
+  String closePeriodDates(String from, String to) {
+    return '$from bis $to';
+  }
+
+  @override
+  String get closeMonthlyReport => 'Monatsabrechnung';
+
+  @override
+  String get closeReport => 'Abrechnung';
+
+  @override
+  String get closePeriod => 'Zeitraum';
+
+  @override
+  String closeFirstMonthlyReport(String date) {
+    return 'Die erste Monatsabrechnung gibt es ab $date.';
+  }
+
+  @override
+  String closeDayMonth(int day, String month) {
+    return '$day. $month';
+  }
+
+  @override
+  String get closeNoReceiptsInPeriod =>
+      'In diesem Zeitraum gibt es keine Bons.';
+
+  @override
+  String get closeRangeHint => 'Ersten Monat antippen, dann den letzten.';
+
+  @override
+  String closeMonthAvailableHint(String month, String date) {
+    return '$month geht ab $date, wenn der Monat vorbei ist.';
+  }
+
+  @override
+  String get closeTestMode => 'Testbetrieb';
+
+  @override
+  String get closePeriodPrinted => 'Abrechnung gedruckt.';
+
+  @override
+  String get closeSignatureYear => 'Jahresbeleg der Signatur';
+
+  @override
+  String get closeSignatureMonth => 'Monatsbeleg der Signatur';
+
+  @override
+  String get closeSignatureComes => 'Kommt von selbst mit dem nächsten Bon.';
+
+  @override
+  String closeSignatureCreated(String date, String time, int number) {
+    return 'Erstellt am $date um $time, Bon Nr. $number';
+  }
+
+  @override
+  String get closePrint => 'Drucken';
+
+  @override
+  String get closeDays => 'Tage';
+
+  @override
+  String get closeMonths => 'Monate';
+
+  @override
+  String get closeScreenOnly => 'nur am Bildschirm, nicht am Zettel';
+
+  @override
+  String get closeAlsoOnPaper => 'stehen auch am Zettel';
+
+  @override
+  String get closeOneMonth => 'Ein Monat';
+
+  @override
+  String get closeFromTo => 'Von bis';
+
+  @override
+  String get closeYearBefore => 'Jahr davor';
+
+  @override
+  String get closeYearAfter => 'Jahr danach';
+
+  @override
+  String get closeNoPrinter => 'Kein Drucker eingerichtet.';
 }

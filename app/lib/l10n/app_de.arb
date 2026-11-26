@@ -1253,5 +1253,575 @@
   "overviewByCategory": "Nach Kategorie",
   "@overviewByCategory": {
     "description": "Umsatz nach Kategorie."
+  },
+  "closeClockTime": "{time} Uhr",
+  "@closeClockTime": {
+    "description": "Uhrzeit im Abschluss; time ist \"14:32\".",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "closeBonCount": "{count, plural, one{1 Bon} other{{formatted} Bons}}",
+  "@closeBonCount": {
+    "description": "Anzahl Bons; formatted ist die Zahl mit Tausenderpunkt.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "formatted": {
+        "type": "String"
+      }
+    }
+  },
+  "closeReasonBank": "Bank",
+  "@closeReasonBank": {
+    "description": "Grund einer Bargeld-Bewegung: Bank."
+  },
+  "closeReasonPurchase": "Einkauf",
+  "@closeReasonPurchase": {
+    "description": "Grund einer Bargeld-Bewegung: Einkauf."
+  },
+  "closeReasonChange": "Wechselgeld",
+  "@closeReasonChange": {
+    "description": "Grund einer Bargeld-Bewegung: Wechselgeld."
+  },
+  "closeReasonOther": "Sonstiges",
+  "@closeReasonOther": {
+    "description": "Grund einer Bargeld-Bewegung: Sonstiges."
+  },
+  "closeCashIn": "Bargeld einlegen",
+  "@closeCashIn": {
+    "description": "Titel und Taste: Bargeld einlegen."
+  },
+  "closeCashOut": "Bargeld entnehmen",
+  "@closeCashOut": {
+    "description": "Titel und Taste: Bargeld entnehmen."
+  },
+  "closeCloseSheet": "Schließen",
+  "@closeCloseSheet": {
+    "description": "Vorlesehilfe der Taste X."
+  },
+  "closeAmount": "Betrag",
+  "@closeAmount": {
+    "description": "Feld Betrag."
+  },
+  "closeReason": "Grund",
+  "@closeReason": {
+    "description": "Feld Grund."
+  },
+  "closeSaveCashIn": "Einlage speichern",
+  "@closeSaveCashIn": {
+    "description": "Taste: Einlage speichern."
+  },
+  "closeSaveCashOut": "Entnahme speichern",
+  "@closeSaveCashOut": {
+    "description": "Taste: Entnahme speichern."
+  },
+  "closeFloatTitle": "Wechselgeld",
+  "@closeFloatTitle": {
+    "description": "Titel: Wechselgeld am Morgen."
+  },
+  "closeFloatQuestionDrawer": "Wie viel Wechselgeld war am Morgen in der Lade?",
+  "@closeFloatQuestionDrawer": {
+    "description": "Frage nach dem Wechselgeld, mit Geldlade."
+  },
+  "closeFloatQuestion": "Wie viel Wechselgeld war am Morgen da?",
+  "@closeFloatQuestion": {
+    "description": "Frage nach dem Wechselgeld, ohne Geldlade."
+  },
+  "closeSaveFloat": "Wechselgeld speichern",
+  "@closeSaveFloat": {
+    "description": "Taste: Wechselgeld speichern."
+  },
+  "closeNothingTyped": "Noch nichts eingetippt",
+  "@closeNothingTyped": {
+    "description": "Noch kein Betrag getippt."
+  },
+  "closeExact": "Stimmt genau",
+  "@closeExact": {
+    "description": "Gezählt stimmt mit dem Soll."
+  },
+  "closeMissing": "Es fehlen",
+  "@closeMissing": {
+    "description": "Es fehlt Geld (Betrag daneben)."
+  },
+  "closeTooMuchDrawer": "Zu viel in der Lade",
+  "@closeTooMuchDrawer": {
+    "description": "Zu viel Geld in der Lade (Betrag daneben)."
+  },
+  "closeTooMuchCash": "Zu viel Bargeld",
+  "@closeTooMuchCash": {
+    "description": "Zu viel Bargeld (Betrag daneben)."
+  },
+  "closeCountDrawer": "Geldlade zählen",
+  "@closeCountDrawer": {
+    "description": "Titel: Geldlade zählen."
+  },
+  "closeCountCash": "Bargeld zählen",
+  "@closeCountCash": {
+    "description": "Titel: Bargeld zählen (ohne Geldlade)."
+  },
+  "closeStep": "Schritt {step} von {total}",
+  "@closeStep": {
+    "description": "Schritt im Abschluss.",
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "closeExpectedDrawer": "Soll in der Lade",
+  "@closeExpectedDrawer": {
+    "description": "Soll in der Geldlade."
+  },
+  "closeExpectedCash": "Soll in bar",
+  "@closeExpectedCash": {
+    "description": "Soll in bar (ohne Geldlade)."
+  },
+  "closeCounted": "Gezählt",
+  "@closeCounted": {
+    "description": "Gezählter Betrag."
+  },
+  "closeNext": "Weiter",
+  "@closeNext": {
+    "description": "Taste: weiter zu Schritt 2."
+  },
+  "closeLeaveInDrawer": "In der Lade lassen",
+  "@closeLeaveInDrawer": {
+    "description": "Titel Schritt 2, mit Geldlade."
+  },
+  "closeFloatForTomorrow": "Wechselgeld für morgen",
+  "@closeFloatForTomorrow": {
+    "description": "Titel Schritt 2, ohne Geldlade."
+  },
+  "closeDifferenceToExpected": "Unterschied zum Soll",
+  "@closeDifferenceToExpected": {
+    "description": "Unterschied von Gezählt zum Soll."
+  },
+  "closeLeaveQuestionDrawer": "Wie viel bleibt als Wechselgeld in der Lade?",
+  "@closeLeaveQuestionDrawer": {
+    "description": "Frage, wie viel in der Lade bleibt."
+  },
+  "closeLeaveQuestion": "Wie viel bleibt als Wechselgeld?",
+  "@closeLeaveQuestion": {
+    "description": "Frage, wie viel als Wechselgeld bleibt (ohne Geldlade)."
+  },
+  "closeMoreThanCounted": "Mehr als gezählt kann nicht in der Lade bleiben.",
+  "@closeMoreThanCounted": {
+    "description": "Mehr getippt als gezählt."
+  },
+  "closeYouTakeOut": "Du nimmst heraus",
+  "@closeYouTakeOut": {
+    "description": "Was herausgenommen wird (Betrag daneben)."
+  },
+  "closeBack": "Zurück",
+  "@closeBack": {
+    "description": "Taste: zurück zu Schritt 1."
+  },
+  "closeCloseDay": "Tag abschließen",
+  "@closeCloseDay": {
+    "description": "Taste: Tag abschließen."
+  },
+  "closeDayClosed": "Tag abgeschlossen",
+  "@closeDayClosed": {
+    "description": "Titel nach dem Abschluss."
+  },
+  "closeDayIsClosed": "Der Tag ist abgeschlossen.",
+  "@closeDayIsClosed": {
+    "description": "Bestätigung direkt nach dem Abschluss."
+  },
+  "closeNoOpenDay": "Es gibt keinen offenen Tag.",
+  "@closeNoOpenDay": {
+    "description": "Es gibt keinen offenen Tag."
+  },
+  "closeNextDayStarts": "Der nächste Tag beginnt mit dem ersten Bon.",
+  "@closeNextDayStarts": {
+    "description": "Hinweis ohne offenen Tag."
+  },
+  "closeTakenOut": "Entnommen: {amount}",
+  "@closeTakenOut": {
+    "description": "Was beim Abschluss entnommen wurde.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "closeTomorrowDrawer": "Morgen liegen {amount} Wechselgeld in der Lade.",
+  "@closeTomorrowDrawer": {
+    "description": "Wechselgeld für morgen, mit Geldlade.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "closeTomorrow": "Morgen sind {amount} Wechselgeld da.",
+  "@closeTomorrow": {
+    "description": "Wechselgeld für morgen, ohne Geldlade.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "closeClosedBy": "Abgeschlossen von {name} um {time}",
+  "@closeClosedBy": {
+    "description": "Wer wann abgeschlossen hat; time ist closeClockTime.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "closePrintReport": "Bericht drucken",
+  "@closePrintReport": {
+    "description": "Taste: Tagesbericht drucken."
+  },
+  "closeToKassa": "Zur Kassa",
+  "@closeToKassa": {
+    "description": "Taste: zurück zur Kassa."
+  },
+  "closeReportPrinted": "Bericht gedruckt.",
+  "@closeReportPrinted": {
+    "description": "Tagesbericht gedruckt."
+  },
+  "closeTitle": "Tagesabschluss",
+  "@closeTitle": {
+    "description": "Überschrift des Tagesabschlusses."
+  },
+  "closeDay": "Tag",
+  "@closeDay": {
+    "description": "Umschalter: Tag."
+  },
+  "closeMonth": "Monat",
+  "@closeMonth": {
+    "description": "Umschalter: Monat."
+  },
+  "closeClosedPill": "Abgeschlossen",
+  "@closeClosedPill": {
+    "description": "Pille: Tag abgeschlossen."
+  },
+  "closeLoadFailed": "Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.",
+  "@closeLoadFailed": {
+    "description": "Der Bereich konnte nicht geladen werden."
+  },
+  "closeDrawer": "Geldlade",
+  "@closeDrawer": {
+    "description": "Karte Geldlade."
+  },
+  "closeCash": "Bargeld",
+  "@closeCash": {
+    "description": "Karte Bargeld (ohne Geldlade)."
+  },
+  "closeFloatMorning": "Wechselgeld am Morgen",
+  "@closeFloatMorning": {
+    "description": "Zeile Wechselgeld am Morgen."
+  },
+  "closeStillOpen": "Noch offen",
+  "@closeStillOpen": {
+    "description": "Betrag noch nicht bekannt."
+  },
+  "closeCashTakings": "Bar-Einnahmen",
+  "@closeCashTakings": {
+    "description": "Zeile Bar-Einnahmen."
+  },
+  "closeDeposited": "Eingelegt: {reason}",
+  "@closeDeposited": {
+    "description": "Zeile Einlage mit Grund.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "closeWithdrawn": "Entnommen: {reason}",
+  "@closeWithdrawn": {
+    "description": "Zeile Entnahme mit Grund.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "closeDifference": "Unterschied",
+  "@closeDifference": {
+    "description": "Zeile Unterschied."
+  },
+  "closeIncome": "Einnahmen",
+  "@closeIncome": {
+    "description": "Abschnitt Einnahmen."
+  },
+  "closeTotal": "Gesamt",
+  "@closeTotal": {
+    "description": "Zeile Gesamt."
+  },
+  "closeTax": "Steuer",
+  "@closeTax": {
+    "description": "Abschnitt Steuer."
+  },
+  "closeRevenue": "Umsatz",
+  "@closeRevenue": {
+    "description": "Spaltenkopf Umsatz in der Steuer."
+  },
+  "closeOfWhichVat": "davon MwSt",
+  "@closeOfWhichVat": {
+    "description": "Spaltenkopf davon MwSt."
+  },
+  "closeVatRate": "MwSt {percent} %",
+  "@closeVatRate": {
+    "description": "Zeile eines Steuersatzes.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "closeDepositNoVat": "Pfand, ohne MwSt",
+  "@closeDepositNoVat": {
+    "description": "Zeile Pfand in der Steuer."
+  },
+  "closeForgotten": "Der letzte Tag ist noch nicht abgeschlossen.",
+  "@closeForgotten": {
+    "description": "Hinweis: der letzte Tag ist nicht abgeschlossen."
+  },
+  "closeNow": "Jetzt abschließen",
+  "@closeNow": {
+    "description": "Taste: jetzt abschließen."
+  },
+  "dateMonthShortJanuary": "Jän",
+  "@dateMonthShortJanuary": {
+    "description": "Kurzform des 1. Monats (Monatstasten)."
+  },
+  "dateMonthShortFebruary": "Feb",
+  "@dateMonthShortFebruary": {
+    "description": "Kurzform des 2. Monats (Monatstasten)."
+  },
+  "dateMonthShortMarch": "März",
+  "@dateMonthShortMarch": {
+    "description": "Kurzform des 3. Monats (Monatstasten)."
+  },
+  "dateMonthShortApril": "Apr",
+  "@dateMonthShortApril": {
+    "description": "Kurzform des 4. Monats (Monatstasten)."
+  },
+  "dateMonthShortMay": "Mai",
+  "@dateMonthShortMay": {
+    "description": "Kurzform des 5. Monats (Monatstasten)."
+  },
+  "dateMonthShortJune": "Juni",
+  "@dateMonthShortJune": {
+    "description": "Kurzform des 6. Monats (Monatstasten)."
+  },
+  "dateMonthShortJuly": "Juli",
+  "@dateMonthShortJuly": {
+    "description": "Kurzform des 7. Monats (Monatstasten)."
+  },
+  "dateMonthShortAugust": "Aug",
+  "@dateMonthShortAugust": {
+    "description": "Kurzform des 8. Monats (Monatstasten)."
+  },
+  "dateMonthShortSeptember": "Sep",
+  "@dateMonthShortSeptember": {
+    "description": "Kurzform des 9. Monats (Monatstasten)."
+  },
+  "dateMonthShortOctober": "Okt",
+  "@dateMonthShortOctober": {
+    "description": "Kurzform des 10. Monats (Monatstasten)."
+  },
+  "dateMonthShortNovember": "Nov",
+  "@dateMonthShortNovember": {
+    "description": "Kurzform des 11. Monats (Monatstasten)."
+  },
+  "dateMonthShortDecember": "Dez",
+  "@dateMonthShortDecember": {
+    "description": "Kurzform des 12. Monats (Monatstasten)."
+  },
+  "closeMonthYear": "{month} {year}",
+  "@closeMonthYear": {
+    "description": "Monat mit Jahr, z. B. \"Oktober 2026\".",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "closePeriodSameYear": "{from} bis {to} {year}",
+  "@closePeriodSameYear": {
+    "description": "Zeitraum im selben Jahr, z. B. \"Jänner bis Oktober 2026\".",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "closePeriodTwoYears": "{from} bis {to}",
+  "@closePeriodTwoYears": {
+    "description": "Zeitraum über den Jahreswechsel; from und to sind closeMonthYear.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "closePeriodDates": "{from} bis {to}",
+  "@closePeriodDates": {
+    "description": "Zeitraum mit Datum, z. B. \"1.10. bis 31.10.2026\".",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "closeMonthlyReport": "Monatsabrechnung",
+  "@closeMonthlyReport": {
+    "description": "Überschrift: Abrechnung eines Monats."
+  },
+  "closeReport": "Abrechnung",
+  "@closeReport": {
+    "description": "Überschrift: Abrechnung mehrerer Monate."
+  },
+  "closePeriod": "Zeitraum",
+  "@closePeriod": {
+    "description": "Spalte Zeitraum."
+  },
+  "closeFirstMonthlyReport": "Die erste Monatsabrechnung gibt es ab {date}.",
+  "@closeFirstMonthlyReport": {
+    "description": "Noch kein abrechenbarer Monat; date ist \"1. Dezember\".",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "closeDayMonth": "{day}. {month}",
+  "@closeDayMonth": {
+    "description": "Tag mit Monatsnamen, z. B. \"1. Dezember\".",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "closeNoReceiptsInPeriod": "In diesem Zeitraum gibt es keine Bons.",
+  "@closeNoReceiptsInPeriod": {
+    "description": "Zeitraum ohne Bons."
+  },
+  "closeRangeHint": "Ersten Monat antippen, dann den letzten.",
+  "@closeRangeHint": {
+    "description": "Hinweis bei \"Von bis\"."
+  },
+  "closeMonthAvailableHint": "{month} geht ab {date}, wenn der Monat vorbei ist.",
+  "@closeMonthAvailableHint": {
+    "description": "Wann der laufende Monat abrechenbar ist; date ist closeDayMonth.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "closeTestMode": "Testbetrieb",
+  "@closeTestMode": {
+    "description": "Pille: noch kein echt signierter Beleg."
+  },
+  "closePeriodPrinted": "Abrechnung gedruckt.",
+  "@closePeriodPrinted": {
+    "description": "Abrechnung gedruckt."
+  },
+  "closeSignatureYear": "Jahresbeleg der Signatur",
+  "@closeSignatureYear": {
+    "description": "Karte: Jahresbeleg der Signatur."
+  },
+  "closeSignatureMonth": "Monatsbeleg der Signatur",
+  "@closeSignatureMonth": {
+    "description": "Karte: Monatsbeleg der Signatur."
+  },
+  "closeSignatureComes": "Kommt von selbst mit dem nächsten Bon.",
+  "@closeSignatureComes": {
+    "description": "Beleg der Signatur noch nicht da."
+  },
+  "closeSignatureCreated": "Erstellt am {date} um {time}, Bon Nr. {number}",
+  "@closeSignatureCreated": {
+    "description": "Wann der Beleg der Signatur entstand; date \"1.10.\", time \"14:32\".",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "closePrint": "Drucken",
+  "@closePrint": {
+    "description": "Taste: drucken."
+  },
+  "closeDays": "Tage",
+  "@closeDays": {
+    "description": "Karte: Tage."
+  },
+  "closeMonths": "Monate",
+  "@closeMonths": {
+    "description": "Karte: Monate."
+  },
+  "closeScreenOnly": "nur am Bildschirm, nicht am Zettel",
+  "@closeScreenOnly": {
+    "description": "Hinweis zur Karte Tage."
+  },
+  "closeAlsoOnPaper": "stehen auch am Zettel",
+  "@closeAlsoOnPaper": {
+    "description": "Hinweis zur Karte Monate."
+  },
+  "closeOneMonth": "Ein Monat",
+  "@closeOneMonth": {
+    "description": "Umschalter: ein Monat."
+  },
+  "closeFromTo": "Von bis",
+  "@closeFromTo": {
+    "description": "Umschalter: von bis."
+  },
+  "closeYearBefore": "Jahr davor",
+  "@closeYearBefore": {
+    "description": "Vorlesehilfe: Jahr davor."
+  },
+  "closeYearAfter": "Jahr danach",
+  "@closeYearAfter": {
+    "description": "Vorlesehilfe: Jahr danach."
+  },
+  "closeNoPrinter": "Kein Drucker eingerichtet.",
+  "@closeNoPrinter": {
+    "description": "Kein Drucker eingerichtet."
   }
 }

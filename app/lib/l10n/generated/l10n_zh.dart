@@ -843,4 +843,378 @@ class L10nZh extends L10n {
 
   @override
   String get overviewByCategory => '按分类';
+
+  @override
+  String closeClockTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String closeBonCount(int count, String formatted) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formatted 张小票',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get closeReasonBank => '银行';
+
+  @override
+  String get closeReasonPurchase => '采购';
+
+  @override
+  String get closeReasonChange => '备用零钱';
+
+  @override
+  String get closeReasonOther => '其他';
+
+  @override
+  String get closeCashIn => '存入现金';
+
+  @override
+  String get closeCashOut => '取出现金';
+
+  @override
+  String get closeCloseSheet => '关闭';
+
+  @override
+  String get closeAmount => '金额';
+
+  @override
+  String get closeReason => '原因';
+
+  @override
+  String get closeSaveCashIn => '保存存入';
+
+  @override
+  String get closeSaveCashOut => '保存取出';
+
+  @override
+  String get closeFloatTitle => '备用零钱';
+
+  @override
+  String get closeFloatQuestionDrawer => '今早钱箱里有多少备用零钱？';
+
+  @override
+  String get closeFloatQuestion => '今早有多少备用零钱？';
+
+  @override
+  String get closeSaveFloat => '保存备用零钱';
+
+  @override
+  String get closeNothingTyped => '尚未输入';
+
+  @override
+  String get closeExact => '完全一致';
+
+  @override
+  String get closeMissing => '短缺';
+
+  @override
+  String get closeTooMuchDrawer => '钱箱多出';
+
+  @override
+  String get closeTooMuchCash => '现金多出';
+
+  @override
+  String get closeCountDrawer => '清点钱箱';
+
+  @override
+  String get closeCountCash => '清点现金';
+
+  @override
+  String closeStep(int step, int total) {
+    return '第 $step 步，共 $total 步';
+  }
+
+  @override
+  String get closeExpectedDrawer => '钱箱应有';
+
+  @override
+  String get closeExpectedCash => '现金应有';
+
+  @override
+  String get closeCounted => '清点金额';
+
+  @override
+  String get closeNext => '下一步';
+
+  @override
+  String get closeLeaveInDrawer => '留在钱箱';
+
+  @override
+  String get closeFloatForTomorrow => '明天的备用零钱';
+
+  @override
+  String get closeDifferenceToExpected => '与应有差额';
+
+  @override
+  String get closeLeaveQuestionDrawer => '留多少备用零钱在钱箱里？';
+
+  @override
+  String get closeLeaveQuestion => '留多少备用零钱？';
+
+  @override
+  String get closeMoreThanCounted => '留存金额不能超过清点金额。';
+
+  @override
+  String get closeYouTakeOut => '取出';
+
+  @override
+  String get closeBack => '返回';
+
+  @override
+  String get closeCloseDay => '完成日结';
+
+  @override
+  String get closeDayClosed => '已日结';
+
+  @override
+  String get closeDayIsClosed => '今日已完成日结。';
+
+  @override
+  String get closeNoOpenDay => '没有未结的营业日。';
+
+  @override
+  String get closeNextDayStarts => '下一个营业日从第一张小票开始。';
+
+  @override
+  String closeTakenOut(String amount) {
+    return '已取出：$amount';
+  }
+
+  @override
+  String closeTomorrowDrawer(String amount) {
+    return '明天钱箱里有 $amount 备用零钱。';
+  }
+
+  @override
+  String closeTomorrow(String amount) {
+    return '明天有 $amount 备用零钱。';
+  }
+
+  @override
+  String closeClosedBy(String name, String time) {
+    return '$name 于 $time 完成日结';
+  }
+
+  @override
+  String get closePrintReport => '打印报表';
+
+  @override
+  String get closeToKassa => '返回收银';
+
+  @override
+  String get closeReportPrinted => '报表已打印。';
+
+  @override
+  String get closeTitle => '日结';
+
+  @override
+  String get closeDay => '日';
+
+  @override
+  String get closeMonth => '月';
+
+  @override
+  String get closeClosedPill => '已日结';
+
+  @override
+  String get closeLoadFailed => '未成功，请重新打开此页面。';
+
+  @override
+  String get closeDrawer => '钱箱';
+
+  @override
+  String get closeCash => '现金';
+
+  @override
+  String get closeFloatMorning => '今早备用零钱';
+
+  @override
+  String get closeStillOpen => '待定';
+
+  @override
+  String get closeCashTakings => '现金收入';
+
+  @override
+  String closeDeposited(String reason) {
+    return '存入：$reason';
+  }
+
+  @override
+  String closeWithdrawn(String reason) {
+    return '取出：$reason';
+  }
+
+  @override
+  String get closeDifference => '差额';
+
+  @override
+  String get closeIncome => '收入';
+
+  @override
+  String get closeTotal => '合计';
+
+  @override
+  String get closeTax => '税';
+
+  @override
+  String get closeRevenue => '营业额';
+
+  @override
+  String get closeOfWhichVat => '其中增值税';
+
+  @override
+  String closeVatRate(int percent) {
+    return '增值税 $percent %';
+  }
+
+  @override
+  String get closeDepositNoVat => '押金，不含增值税';
+
+  @override
+  String get closeForgotten => '上一个营业日尚未日结。';
+
+  @override
+  String get closeNow => '立即日结';
+
+  @override
+  String get dateMonthShortJanuary => '1月';
+
+  @override
+  String get dateMonthShortFebruary => '2月';
+
+  @override
+  String get dateMonthShortMarch => '3月';
+
+  @override
+  String get dateMonthShortApril => '4月';
+
+  @override
+  String get dateMonthShortMay => '5月';
+
+  @override
+  String get dateMonthShortJune => '6月';
+
+  @override
+  String get dateMonthShortJuly => '7月';
+
+  @override
+  String get dateMonthShortAugust => '8月';
+
+  @override
+  String get dateMonthShortSeptember => '9月';
+
+  @override
+  String get dateMonthShortOctober => '10月';
+
+  @override
+  String get dateMonthShortNovember => '11月';
+
+  @override
+  String get dateMonthShortDecember => '12月';
+
+  @override
+  String closeMonthYear(String month, int year) {
+    return '$year年$month';
+  }
+
+  @override
+  String closePeriodSameYear(String from, String to, int year) {
+    return '$year年$from至$to';
+  }
+
+  @override
+  String closePeriodTwoYears(String from, String to) {
+    return '$from至$to';
+  }
+
+  @override
+  String closePeriodDates(String from, String to) {
+    return '$from 至 $to';
+  }
+
+  @override
+  String get closeMonthlyReport => '月度结算';
+
+  @override
+  String get closeReport => '结算';
+
+  @override
+  String get closePeriod => '期间';
+
+  @override
+  String closeFirstMonthlyReport(String date) {
+    return '首份月度结算从 $date 起可用。';
+  }
+
+  @override
+  String closeDayMonth(int day, String month) {
+    return '$month$day日';
+  }
+
+  @override
+  String get closeNoReceiptsInPeriod => '此期间没有小票。';
+
+  @override
+  String get closeRangeHint => '先点按第一个月，再点按最后一个月。';
+
+  @override
+  String closeMonthAvailableHint(String month, String date) {
+    return '$month在月底结束后、自 $date 起可用。';
+  }
+
+  @override
+  String get closeTestMode => '测试模式';
+
+  @override
+  String get closePeriodPrinted => '结算已打印。';
+
+  @override
+  String get closeSignatureYear => '签名年度小票';
+
+  @override
+  String get closeSignatureMonth => '签名月度小票';
+
+  @override
+  String get closeSignatureComes => '将随下一张小票自动生成。';
+
+  @override
+  String closeSignatureCreated(String date, String time, int number) {
+    return '创建于 $date $time，小票号 $number';
+  }
+
+  @override
+  String get closePrint => '打印';
+
+  @override
+  String get closeDays => '天';
+
+  @override
+  String get closeMonths => '月份';
+
+  @override
+  String get closeScreenOnly => '仅在屏幕上显示，不打印';
+
+  @override
+  String get closeAlsoOnPaper => '也会打印在纸上';
+
+  @override
+  String get closeOneMonth => '单月';
+
+  @override
+  String get closeFromTo => '起止';
+
+  @override
+  String get closeYearBefore => '上一年';
+
+  @override
+  String get closeYearAfter => '下一年';
+
+  @override
+  String get closeNoPrinter => '未设置打印机。';
 }

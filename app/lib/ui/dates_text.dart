@@ -20,6 +20,23 @@ String monthName(L10n l, int month) => switch (month) {
   _ => throw RangeError.range(month, 1, 12, 'month'),
 };
 
+/// Kurzform des Monats [month] für die Monatstasten ("Jän", "Jan").
+String monthShortName(L10n l, int month) => switch (month) {
+  1 => l.dateMonthShortJanuary,
+  2 => l.dateMonthShortFebruary,
+  3 => l.dateMonthShortMarch,
+  4 => l.dateMonthShortApril,
+  5 => l.dateMonthShortMay,
+  6 => l.dateMonthShortJune,
+  7 => l.dateMonthShortJuly,
+  8 => l.dateMonthShortAugust,
+  9 => l.dateMonthShortSeptember,
+  10 => l.dateMonthShortOctober,
+  11 => l.dateMonthShortNovember,
+  12 => l.dateMonthShortDecember,
+  _ => throw RangeError.range(month, 1, 12, 'month'),
+};
+
 /// Name des Wochentags [weekday] (1 Montag bis 7 Sonntag, wie
 /// [DateTime.weekday]).
 String weekdayName(L10n l, int weekday) => switch (weekday) {

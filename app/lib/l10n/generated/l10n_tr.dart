@@ -858,4 +858,380 @@ class L10nTr extends L10n {
 
   @override
   String get overviewByCategory => 'Kategoriye göre';
+
+  @override
+  String closeClockTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String closeBonCount(int count, String formatted) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formatted fiş',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get closeReasonBank => 'Banka';
+
+  @override
+  String get closeReasonPurchase => 'Alışveriş';
+
+  @override
+  String get closeReasonChange => 'Bozuk para';
+
+  @override
+  String get closeReasonOther => 'Diğer';
+
+  @override
+  String get closeCashIn => 'Para girişi';
+
+  @override
+  String get closeCashOut => 'Para çıkışı';
+
+  @override
+  String get closeCloseSheet => 'Kapat';
+
+  @override
+  String get closeAmount => 'Tutar';
+
+  @override
+  String get closeReason => 'Neden';
+
+  @override
+  String get closeSaveCashIn => 'Girişi kaydet';
+
+  @override
+  String get closeSaveCashOut => 'Çıkışı kaydet';
+
+  @override
+  String get closeFloatTitle => 'Bozuk para';
+
+  @override
+  String get closeFloatQuestionDrawer =>
+      'Sabah çekmecede ne kadar bozuk para vardı?';
+
+  @override
+  String get closeFloatQuestion => 'Sabah ne kadar bozuk para vardı?';
+
+  @override
+  String get closeSaveFloat => 'Bozuk parayı kaydet';
+
+  @override
+  String get closeNothingTyped => 'Henüz bir şey girilmedi';
+
+  @override
+  String get closeExact => 'Tam tutuyor';
+
+  @override
+  String get closeMissing => 'Eksik';
+
+  @override
+  String get closeTooMuchDrawer => 'Çekmecede fazla';
+
+  @override
+  String get closeTooMuchCash => 'Fazla nakit';
+
+  @override
+  String get closeCountDrawer => 'Çekmeceyi say';
+
+  @override
+  String get closeCountCash => 'Nakdi say';
+
+  @override
+  String closeStep(int step, int total) {
+    return 'Adım $step/$total';
+  }
+
+  @override
+  String get closeExpectedDrawer => 'Çekmecede beklenen';
+
+  @override
+  String get closeExpectedCash => 'Beklenen nakit';
+
+  @override
+  String get closeCounted => 'Sayılan';
+
+  @override
+  String get closeNext => 'İleri';
+
+  @override
+  String get closeLeaveInDrawer => 'Çekmecede bırak';
+
+  @override
+  String get closeFloatForTomorrow => 'Yarın için bozuk para';
+
+  @override
+  String get closeDifferenceToExpected => 'Beklenenle fark';
+
+  @override
+  String get closeLeaveQuestionDrawer =>
+      'Çekmecede ne kadar bozuk para kalsın?';
+
+  @override
+  String get closeLeaveQuestion => 'Ne kadar bozuk para kalsın?';
+
+  @override
+  String get closeMoreThanCounted => 'Sayılandan fazlası çekmecede kalamaz.';
+
+  @override
+  String get closeYouTakeOut => 'Çıkardığınız';
+
+  @override
+  String get closeBack => 'Geri';
+
+  @override
+  String get closeCloseDay => 'Günü kapat';
+
+  @override
+  String get closeDayClosed => 'Gün kapatıldı';
+
+  @override
+  String get closeDayIsClosed => 'Gün kapatıldı.';
+
+  @override
+  String get closeNoOpenDay => 'Açık gün yok.';
+
+  @override
+  String get closeNextDayStarts => 'Sonraki gün ilk fişle başlar.';
+
+  @override
+  String closeTakenOut(String amount) {
+    return 'Çıkarılan: $amount';
+  }
+
+  @override
+  String closeTomorrowDrawer(String amount) {
+    return 'Yarın çekmecede $amount bozuk para olacak.';
+  }
+
+  @override
+  String closeTomorrow(String amount) {
+    return 'Yarın $amount bozuk para olacak.';
+  }
+
+  @override
+  String closeClosedBy(String name, String time) {
+    return '$name tarafından $time saatinde kapatıldı';
+  }
+
+  @override
+  String get closePrintReport => 'Raporu yazdır';
+
+  @override
+  String get closeToKassa => 'Kasaya dön';
+
+  @override
+  String get closeReportPrinted => 'Rapor yazdırıldı.';
+
+  @override
+  String get closeTitle => 'Gün sonu';
+
+  @override
+  String get closeDay => 'Gün';
+
+  @override
+  String get closeMonth => 'Ay';
+
+  @override
+  String get closeClosedPill => 'Kapatıldı';
+
+  @override
+  String get closeLoadFailed => 'Olmadı. Lütfen bu bölümü yeniden açın.';
+
+  @override
+  String get closeDrawer => 'Para çekmecesi';
+
+  @override
+  String get closeCash => 'Nakit';
+
+  @override
+  String get closeFloatMorning => 'Sabahki bozuk para';
+
+  @override
+  String get closeStillOpen => 'Henüz açık';
+
+  @override
+  String get closeCashTakings => 'Nakit gelir';
+
+  @override
+  String closeDeposited(String reason) {
+    return 'Giriş: $reason';
+  }
+
+  @override
+  String closeWithdrawn(String reason) {
+    return 'Çıkış: $reason';
+  }
+
+  @override
+  String get closeDifference => 'Fark';
+
+  @override
+  String get closeIncome => 'Gelirler';
+
+  @override
+  String get closeTotal => 'Toplam';
+
+  @override
+  String get closeTax => 'Vergi';
+
+  @override
+  String get closeRevenue => 'Ciro';
+
+  @override
+  String get closeOfWhichVat => 'KDV tutarı';
+
+  @override
+  String closeVatRate(int percent) {
+    return 'KDV $percent %';
+  }
+
+  @override
+  String get closeDepositNoVat => 'Depozito, KDV\'siz';
+
+  @override
+  String get closeForgotten => 'Son gün henüz kapatılmadı.';
+
+  @override
+  String get closeNow => 'Şimdi kapat';
+
+  @override
+  String get dateMonthShortJanuary => 'Oca';
+
+  @override
+  String get dateMonthShortFebruary => 'Şub';
+
+  @override
+  String get dateMonthShortMarch => 'Mar';
+
+  @override
+  String get dateMonthShortApril => 'Nis';
+
+  @override
+  String get dateMonthShortMay => 'May';
+
+  @override
+  String get dateMonthShortJune => 'Haz';
+
+  @override
+  String get dateMonthShortJuly => 'Tem';
+
+  @override
+  String get dateMonthShortAugust => 'Ağu';
+
+  @override
+  String get dateMonthShortSeptember => 'Eyl';
+
+  @override
+  String get dateMonthShortOctober => 'Eki';
+
+  @override
+  String get dateMonthShortNovember => 'Kas';
+
+  @override
+  String get dateMonthShortDecember => 'Ara';
+
+  @override
+  String closeMonthYear(String month, int year) {
+    return '$month $year';
+  }
+
+  @override
+  String closePeriodSameYear(String from, String to, int year) {
+    return '$from – $to $year';
+  }
+
+  @override
+  String closePeriodTwoYears(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String closePeriodDates(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String get closeMonthlyReport => 'Aylık rapor';
+
+  @override
+  String get closeReport => 'Rapor';
+
+  @override
+  String get closePeriod => 'Dönem';
+
+  @override
+  String closeFirstMonthlyReport(String date) {
+    return 'İlk aylık rapor $date tarihinden itibaren hazır.';
+  }
+
+  @override
+  String closeDayMonth(int day, String month) {
+    return '$day $month';
+  }
+
+  @override
+  String get closeNoReceiptsInPeriod => 'Bu dönemde fiş yok.';
+
+  @override
+  String get closeRangeHint => 'Önce ilk aya, sonra son aya dokunun.';
+
+  @override
+  String closeMonthAvailableHint(String month, String date) {
+    return '$month, ay bittiğinde $date tarihinden itibaren hazır.';
+  }
+
+  @override
+  String get closeTestMode => 'Test modu';
+
+  @override
+  String get closePeriodPrinted => 'Rapor yazdırıldı.';
+
+  @override
+  String get closeSignatureYear => 'İmzanın yıllık fişi';
+
+  @override
+  String get closeSignatureMonth => 'İmzanın aylık fişi';
+
+  @override
+  String get closeSignatureComes => 'Sonraki fişle kendiliğinden gelir.';
+
+  @override
+  String closeSignatureCreated(String date, String time, int number) {
+    return '$date tarihinde $time saatinde oluşturuldu, Fiş No. $number';
+  }
+
+  @override
+  String get closePrint => 'Yazdır';
+
+  @override
+  String get closeDays => 'Günler';
+
+  @override
+  String get closeMonths => 'Aylar';
+
+  @override
+  String get closeScreenOnly => 'yalnızca ekranda, kâğıtta değil';
+
+  @override
+  String get closeAlsoOnPaper => 'kâğıtta da yer alır';
+
+  @override
+  String get closeOneMonth => 'Tek ay';
+
+  @override
+  String get closeFromTo => 'Başlangıç – bitiş';
+
+  @override
+  String get closeYearBefore => 'Önceki yıl';
+
+  @override
+  String get closeYearAfter => 'Sonraki yıl';
+
+  @override
+  String get closeNoPrinter => 'Yazıcı kurulmadı.';
 }

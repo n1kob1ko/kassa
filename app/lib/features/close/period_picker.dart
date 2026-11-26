@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/period_report.dart';
 import '../../domain/period_selection.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/segmented.dart';
@@ -11,29 +13,30 @@ import '../../ui/tokens.dart';
 import 'amount_entry.dart';
 import 'day_closed_view.dart' show PrintResult;
 
-const _monthLabels = [
-  'Jän',
-  'Feb',
-  'März',
-  'Apr',
-  'Mai',
-  'Juni',
-  'Juli',
-  'Aug',
-  'Sep',
-  'Okt',
-  'Nov',
-  'Dez',
-];
-
 /// "1.10. bis 31.10.2026", über den Jahreswechsel "1.11.2025 bis 28.2.2026".
-String periodDates(MonthRange r) {
+String periodDates(L10n l, MonthRange r) {
   final from = r.from.start;
   final to = r.to.lastDay;
   final start = from.year == to.year
       ? '${from.day}.${from.month}.'
       : '${from.day}.${from.month}.${from.year}';
-  return '$start bis ${to.day}.${to.month}.${to.year}';
+  return l.closePeriodDates(start, '${to.day}.${to.month}.${to.year}');
+}
+
+/// Überschrift eines Zeitraums am Bildschirm: "Oktober 2026", "Jänner bis
+/// Oktober 2026", "November 2025 bis Februar 2026" ([periodTitle] bleibt die
+/// Fassung des Zettels).
+String periodTitleText(L10n l, MonthRange r) {
+  final from = monthName(l, r.from.month);
+  final to = monthName(l, r.to.month);
+  if (r.single) return l.closeMonthYear(from, r.from.year);
+  if (r.from.year == r.to.year) {
+    return l.closePeriodSameYear(from, to, r.to.year);
+  }
+  return l.closePeriodTwoYears(
+    l.closeMonthYear(from, r.from.year),
+    l.closeMonthYear(to, r.to.year),
+  );
 }
 
 /// Die feste Spalte "Zeitraum" der Monatsabrechnung: Ein Monat oder Von bis,
@@ -81,15 +84,16 @@ class PeriodPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final first = choice.first;
     final last = choice.last;
     final range = selection.range;
     return CloseColumn(
-      title: 'Zeitraum',
+      title: l.closePeriod,
       content: [
         Segmented<bool>(
           expand: true,
-          segments: const [(false, 'Ein Monat'), (true, 'Von bis')],
+          segments: [(false, l.closeOneMonth), (true, l.closeFromTo)],
           selected: selection.rangeMode,
           onSelected: onMode,
         ),
@@ -99,7 +103,7 @@ class PeriodPicker extends StatelessWidget {
             _YearArrow(
               keyName: 'year-prev',
               icon: LucideIcons.chevronLeft,
-              label: 'Jahr davor',
+              label: l.closeYearBefore,
               onTap: first != null && year > first.year
                   ? () => onYear(year - 1)
                   : null,
@@ -115,7 +119,7 @@ class PeriodPicker extends StatelessWidget {
             _YearArrow(
               keyName: 'year-next',
               icon: LucideIcons.chevronRight,
-              label: 'Jahr danach',
+              label: l.closeYearAfter,
               onTap: last != null && year < last.year
                   ? () => onYear(year + 1)
                   : null,
@@ -130,7 +134,7 @@ class PeriodPicker extends StatelessWidget {
               for (var col = 0; col < 3; col++) ...[
                 if (col > 0) const SizedBox(width: KassaTokens.spaceMd),
                 Expanded(
-                  child: _monthButton(YearMonth(year, row * 3 + col + 1)),
+                  child: _monthButton(l, YearMonth(year, row * 3 + col + 1)),
                 ),
               ],
             ],
@@ -139,7 +143,7 @@ class PeriodPicker extends StatelessWidget {
         if (range != null) ...[
           const SizedBox(height: KassaTokens.spaceXl),
           Text(
-            periodDates(range),
+            periodDates(l, range),
             key: const Key('period-text'),
             style: text.bodyMedium!.copyWith(
               fontSize: 15,
@@ -179,7 +183,7 @@ class PeriodPicker extends StatelessWidget {
               children: [
                 if (!printerSetUp) ...[
                   Text(
-                    'Kein Drucker eingerichtet.',
+                    l.closeNoPrinter,
                     key: const Key('period-no-printer'),
                     style: text.bodyMedium!.copyWith(
                       fontWeight: FontWeight.w600,
@@ -197,7 +201,7 @@ class PeriodPicker extends StatelessWidget {
                 ],
                 PrimaryButton(
                   key: const Key('print-period'),
-                  label: 'Drucken',
+                  label: l.closePrint,
                   icon: LucideIcons.printer,
                   height: KassaTokens.mainActionHeight,
                   onPressed: onPrint,
@@ -207,12 +211,12 @@ class PeriodPicker extends StatelessWidget {
     );
   }
 
-  Widget _monthButton(YearMonth m) {
+  Widget _monthButton(L10n l, YearMonth m) {
     final range = selection.range;
     final end = range != null && (m == range.from || m == range.to);
     return _MonthButton(
       number: m.month,
-      label: _monthLabels[m.month - 1],
+      label: monthShortName(l, m.month),
       state: end
           ? _MonthState.end
           : selection.marks(m)

@@ -5,11 +5,14 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../data/providers.dart';
+import '../../devices/printer.dart';
 import '../../domain/day.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/dates_text.dart';
+import '../../ui/print_problem_text.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
-import '../bons/bons_screen.dart' show germanMonths, germanWeekdays;
 import '../login/session.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
 import '../settings/rksv_task_row.dart';
@@ -51,8 +54,9 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
   bool _failed = false;
   bool _justClosed = false;
   bool _printing = false;
-  String? _printMessage;
-  bool _printFailed = false;
+
+  /// Ergebnis des letzten Berichtsdrucks, `null` ohne.
+  PrintOutcome? _printOutcome;
 
   /// "Monat" statt "Tag". Der Bereich wird beim Verlassen verworfen, beim
   /// Öffnen ist also immer Tag gewählt.
@@ -118,14 +122,13 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
     if (_printing) return;
     setState(() {
       _printing = true;
-      _printMessage = null;
+      _printOutcome = null;
     });
     final outcome = await ref.read(reportPrintProvider).printDay(summary);
     if (!mounted) return;
     setState(() {
       _printing = false;
-      _printFailed = !outcome.ok;
-      _printMessage = outcome.ok ? 'Bericht gedruckt.' : outcome.message;
+      _printOutcome = outcome;
     });
   }
 
@@ -156,7 +159,7 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         _leaving = false;
         _countInput = _entry;
         _leaveInput = _entry;
-        _printMessage = null;
+        _printOutcome = null;
       }
     });
     if (!ok || !ref.read(printerSetUpProvider)) return;
@@ -174,13 +177,14 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final async = ref.watch(closeSummaryProvider);
     final drawer =
         ref.watch(settingsStreamProvider).value?.cashDrawerEnabled ?? true;
     final printerSetUp = ref.watch(printerSetUpProvider);
     final now = ref.watch(clockProvider).now();
     final switcher = Segmented<bool>(
-      segments: const [(false, 'Tag'), (true, 'Monat')],
+      segments: [(false, l.closeDay), (true, l.closeMonth)],
       selected: _month,
       onSelected: (month) => setState(() => _month = month),
     );
@@ -215,8 +219,14 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
         onToKassa: widget.onToKassa,
         onPrint: printerSetUp ? _printAgain : null,
         printing: _printing,
-        printMessage: printerSetUp ? _printMessage : null,
-        printFailed: _printFailed,
+        printMessage: printerSetUp
+            ? switch (_printOutcome) {
+                null => null,
+                PrintOutcome(:final problem?) => printProblemText(l, problem),
+                _ => l.closeReportPrinted,
+              }
+            : null,
+        printFailed: _printOutcome?.ok == false,
       );
     } else if (_move != null) {
       column = CashMovementSheet(
@@ -277,13 +287,13 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
                   height: KassaTokens.receiptHeaderHeight,
                   child: Row(
                     children: [
-                      Text('Tagesabschluss', style: text.headlineMedium),
+                      Text(l.closeTitle, style: text.headlineMedium),
                       const SizedBox(width: KassaTokens.spaceLg),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(
-                            '${germanWeekdays[shown.weekday - 1]}, ${shown.day}. ${germanMonths[shown.month - 1]}',
+                            weekdayDayMonth(l, shown),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.labelLarge!.copyWith(
@@ -392,7 +402,7 @@ class _ClosedPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
       ),
       child: Text(
-        'Abgeschlossen',
+        L10n.of(context).closeClosedPill,
         style: Theme.of(context).textTheme.labelLarge!
             .copyWith(fontSize: 12.5, color: c.veganFg),
       ),
@@ -407,7 +417,7 @@ class _LoadError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.',
+        L10n.of(context).closeLoadFailed,
         style: Theme.of(context).textTheme.bodyMedium!
             .copyWith(color: KassaColors.of(context).red),
       ),

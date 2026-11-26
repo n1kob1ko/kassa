@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
@@ -30,6 +31,7 @@ class CountCashSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final diff = input.cents - expectedCents;
     final Color bg;
     final Color fg;
@@ -38,22 +40,22 @@ class CountCashSheet extends StatelessWidget {
     if (input.isEmpty) {
       bg = c.fill;
       fg = c.ink2;
-      label = 'Noch nichts eingetippt';
+      label = l.closeNothingTyped;
     } else if (diff == 0) {
       bg = c.veganBg;
       fg = c.veganFg;
-      label = 'Stimmt genau';
+      label = l.closeExact;
     } else {
       bg = c.warnBg;
       fg = c.warnInk;
       label = diff < 0
-          ? 'Es fehlen'
-          : (drawer ? 'Zu viel in der Lade' : 'Zu viel Bargeld');
+          ? l.closeMissing
+          : (drawer ? l.closeTooMuchDrawer : l.closeTooMuchCash);
       amount = formatEuro(diff.abs());
     }
     return CloseColumn(
-      title: drawer ? 'Geldlade zählen' : 'Bargeld zählen',
-      trailing: const _StepLabel('Schritt 1 von 2'),
+      title: drawer ? l.closeCountDrawer : l.closeCountCash,
+      trailing: _StepLabel(l.closeStep(1, 2)),
       failed: failed,
       content: [
         Row(
@@ -61,7 +63,7 @@ class CountCashSheet extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                drawer ? 'Soll in der Lade' : 'Soll in bar',
+                drawer ? l.closeExpectedDrawer : l.closeExpectedCash,
                 style: text.bodyLarge!.copyWith(fontSize: 17),
               ),
             ),
@@ -79,7 +81,7 @@ class CountCashSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: KassaTokens.spaceXl),
-        const FieldLabel('Gezählt'),
+        FieldLabel(l.closeCounted),
         const SizedBox(height: KassaTokens.spaceMd),
         AmountEntry(input: input, onKey: onKey),
         const SizedBox(height: KassaTokens.spaceMd),
@@ -111,7 +113,7 @@ class CountCashSheet extends StatelessWidget {
       ],
       bottom: PrimaryButton(
         key: const Key('count-next'),
-        label: 'Weiter',
+        label: l.closeNext,
         height: KassaTokens.mainActionHeight,
         onPressed: input.isEmpty ? null : onNext,
       ),
@@ -149,26 +151,26 @@ class LeaveInDrawerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final diff = countedCents - expectedCents;
     final over = input.cents > countedCents;
     return CloseColumn(
-      title: drawer ? 'In der Lade lassen' : 'Wechselgeld für morgen',
-      trailing: const _StepLabel('Schritt 2 von 2'),
+      title: drawer ? l.closeLeaveInDrawer : l.closeFloatForTomorrow,
+      trailing: _StepLabel(l.closeStep(2, 2)),
       failed: failed,
       content: [
-        ColumnAmountRow(label: 'Gezählt', amount: formatEuro(countedCents)),
         ColumnAmountRow(
-          label: 'Unterschied zum Soll',
+          label: l.closeCounted,
+          amount: formatEuro(countedCents),
+        ),
+        ColumnAmountRow(
+          label: l.closeDifferenceToExpected,
           amount: diff == 0 ? formatEuro(0) : signedEuro(diff),
           amountKey: const Key('difference-signed'),
           amountColor: diff == 0 ? c.green : c.red,
         ),
         const SizedBox(height: KassaTokens.spaceMd),
-        FieldLabel(
-          drawer
-              ? 'Wie viel bleibt als Wechselgeld in der Lade?'
-              : 'Wie viel bleibt als Wechselgeld?',
-        ),
+        FieldLabel(drawer ? l.closeLeaveQuestionDrawer : l.closeLeaveQuestion),
         const SizedBox(height: KassaTokens.spaceMd),
         AmountEntry(input: input, onKey: onKey, over: over),
         const SizedBox(height: KassaTokens.spaceMd),
@@ -181,18 +183,18 @@ class LeaveInDrawerSheet extends StatelessWidget {
           ),
           child: over
               ? Text(
-                  'Mehr als gezählt kann nicht in der Lade bleiben.',
+                  l.closeMoreThanCounted,
                   style: text.bodyLarge!.copyWith(color: c.warnInk),
                 )
               : input.isEmpty
               ? Text(
-                  'Noch nichts eingetippt',
+                  l.closeNothingTyped,
                   style: text.bodyLarge!.copyWith(color: c.ink2),
                 )
               : Row(
                   children: [
                     Expanded(
-                      child: Text('Du nimmst heraus', style: text.bodyLarge),
+                      child: Text(l.closeYouTakeOut, style: text.bodyLarge),
                     ),
                     Text(
                       formatEuro(countedCents - input.cents),
@@ -209,7 +211,7 @@ class LeaveInDrawerSheet extends StatelessWidget {
             flex: 2,
             child: PrimaryButton(
               key: const Key('count-back'),
-              label: 'Zurück',
+              label: l.closeBack,
               filled: false,
               height: KassaTokens.mainActionHeight,
               onPressed: onBack,
@@ -220,7 +222,7 @@ class LeaveInDrawerSheet extends StatelessWidget {
             flex: 5,
             child: PrimaryButton(
               key: const Key('close-day'),
-              label: 'Tag abschließen',
+              label: l.closeCloseDay,
               height: KassaTokens.mainActionHeight,
               onPressed: input.isEmpty || over ? null : onClose,
             ),

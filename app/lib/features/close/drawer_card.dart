@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/day.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
@@ -31,6 +32,7 @@ class DrawerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final s = summary;
     final day = s.day;
     final closed = !day.isOpen;
@@ -44,7 +46,10 @@ class DrawerCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               children: [
-                Text(drawer ? 'Geldlade' : 'Bargeld', style: text.titleLarge),
+                Text(
+                  drawer ? l.closeDrawer : l.closeCash,
+                  style: text.titleLarge,
+                ),
                 if (canMove)
                   Expanded(
                     child: Wrap(
@@ -54,14 +59,14 @@ class DrawerCard extends StatelessWidget {
                       children: [
                         _MoveButton(
                           key: const Key('cash-in'),
-                          label: 'Bargeld einlegen',
+                          label: l.closeCashIn,
                           icon: LucideIcons.plus,
                           open: movement == CashMovementKind.deposit,
                           onTap: onCashIn,
                         ),
                         _MoveButton(
                           key: const Key('cash-out'),
-                          label: 'Bargeld entnehmen',
+                          label: l.closeCashOut,
                           icon: LucideIcons.minus,
                           open: movement == CashMovementKind.withdrawal,
                           onTap: onCashOut,
@@ -73,23 +78,24 @@ class DrawerCard extends StatelessWidget {
             ),
           ),
           SummaryLine(
-            label: 'Wechselgeld am Morgen',
+            label: l.closeFloatMorning,
             amount: floatKnown
                 ? formatEuro(day.openingFloatCents!)
-                : 'Noch offen',
+                : l.closeStillOpen,
             amountMuted: !floatKnown,
             amountKey: const Key('left-float'),
           ),
           SummaryLine(
-            label: 'Bar-Einnahmen',
+            label: l.closeCashTakings,
             amount: formatEuro(s.cashRevenueCents),
             amountKey: const Key('left-cash'),
           ),
           for (final m in s.movements)
             SummaryLine(
-              label:
-                  '${m.kind == CashMovementKind.deposit ? 'Eingelegt' : 'Entnommen'}: ${reasonLabel(m.reason)}',
-              middle: clockTime(m.createdAt),
+              label: m.kind == CashMovementKind.deposit
+                  ? l.closeDeposited(cashReasonText(l, m.reason))
+                  : l.closeWithdrawn(cashReasonText(l, m.reason)),
+              middle: clockTime(l, m.createdAt),
               amount: formatEuro(
                 m.kind == CashMovementKind.deposit
                     ? m.amountCents
@@ -97,19 +103,21 @@ class DrawerCard extends StatelessWidget {
               ),
             ),
           SummaryLine(
-            label: drawer ? 'Soll in der Lade' : 'Soll in bar',
+            label: drawer ? l.closeExpectedDrawer : l.closeExpectedCash,
             amount: formatEuro(s.expectedCashCents),
             bold: true,
             amountKey: const Key('left-expected'),
           ),
           SummaryLine(
-            label: 'Gezählt',
-            amount: closed ? formatEuro(day.countedCents ?? 0) : 'Noch offen',
+            label: l.closeCounted,
+            amount: closed
+                ? formatEuro(day.countedCents ?? 0)
+                : l.closeStillOpen,
             amountMuted: !closed,
             amountKey: const Key('left-counted'),
           ),
           SummaryLine(
-            label: 'Unterschied',
+            label: l.closeDifference,
             amount: closed && diff != null
                 ? (diff == 0 ? formatEuro(0) : signedEuro(diff))
                 : null,

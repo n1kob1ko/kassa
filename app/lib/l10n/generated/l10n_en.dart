@@ -864,4 +864,384 @@ class L10nEn extends L10n {
 
   @override
   String get overviewByCategory => 'By category';
+
+  @override
+  String closeClockTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String closeBonCount(int count, String formatted) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formatted receipts',
+      one: '1 receipt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get closeReasonBank => 'Bank';
+
+  @override
+  String get closeReasonPurchase => 'Purchase';
+
+  @override
+  String get closeReasonChange => 'Float';
+
+  @override
+  String get closeReasonOther => 'Other';
+
+  @override
+  String get closeCashIn => 'Cash in';
+
+  @override
+  String get closeCashOut => 'Cash out';
+
+  @override
+  String get closeCloseSheet => 'Close';
+
+  @override
+  String get closeAmount => 'Amount';
+
+  @override
+  String get closeReason => 'Reason';
+
+  @override
+  String get closeSaveCashIn => 'Save cash in';
+
+  @override
+  String get closeSaveCashOut => 'Save cash out';
+
+  @override
+  String get closeFloatTitle => 'Float';
+
+  @override
+  String get closeFloatQuestionDrawer =>
+      'How much float was in the drawer this morning?';
+
+  @override
+  String get closeFloatQuestion => 'How much float was there this morning?';
+
+  @override
+  String get closeSaveFloat => 'Save float';
+
+  @override
+  String get closeNothingTyped => 'Nothing entered yet';
+
+  @override
+  String get closeExact => 'Exactly right';
+
+  @override
+  String get closeMissing => 'Short by';
+
+  @override
+  String get closeTooMuchDrawer => 'Too much in the drawer';
+
+  @override
+  String get closeTooMuchCash => 'Too much cash';
+
+  @override
+  String get closeCountDrawer => 'Count cash drawer';
+
+  @override
+  String get closeCountCash => 'Count cash';
+
+  @override
+  String closeStep(int step, int total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get closeExpectedDrawer => 'Expected in drawer';
+
+  @override
+  String get closeExpectedCash => 'Expected in cash';
+
+  @override
+  String get closeCounted => 'Counted';
+
+  @override
+  String get closeNext => 'Next';
+
+  @override
+  String get closeLeaveInDrawer => 'Leave in drawer';
+
+  @override
+  String get closeFloatForTomorrow => 'Float for tomorrow';
+
+  @override
+  String get closeDifferenceToExpected => 'Difference to expected';
+
+  @override
+  String get closeLeaveQuestionDrawer =>
+      'How much stays in the drawer as float?';
+
+  @override
+  String get closeLeaveQuestion => 'How much stays as float?';
+
+  @override
+  String get closeMoreThanCounted => 'You cannot leave more than was counted.';
+
+  @override
+  String get closeYouTakeOut => 'You take out';
+
+  @override
+  String get closeBack => 'Back';
+
+  @override
+  String get closeCloseDay => 'Close day';
+
+  @override
+  String get closeDayClosed => 'Day closed';
+
+  @override
+  String get closeDayIsClosed => 'The day is closed.';
+
+  @override
+  String get closeNoOpenDay => 'There is no open day.';
+
+  @override
+  String get closeNextDayStarts =>
+      'The next day starts with the first receipt.';
+
+  @override
+  String closeTakenOut(String amount) {
+    return 'Taken out: $amount';
+  }
+
+  @override
+  String closeTomorrowDrawer(String amount) {
+    return 'Tomorrow there will be $amount float in the drawer.';
+  }
+
+  @override
+  String closeTomorrow(String amount) {
+    return 'Tomorrow there will be $amount float.';
+  }
+
+  @override
+  String closeClosedBy(String name, String time) {
+    return 'Closed by $name at $time';
+  }
+
+  @override
+  String get closePrintReport => 'Print report';
+
+  @override
+  String get closeToKassa => 'To the register';
+
+  @override
+  String get closeReportPrinted => 'Report printed.';
+
+  @override
+  String get closeTitle => 'Closing';
+
+  @override
+  String get closeDay => 'Day';
+
+  @override
+  String get closeMonth => 'Month';
+
+  @override
+  String get closeClosedPill => 'Closed';
+
+  @override
+  String get closeLoadFailed =>
+      'That didn\'t work. Please open this area again.';
+
+  @override
+  String get closeDrawer => 'Cash drawer';
+
+  @override
+  String get closeCash => 'Cash';
+
+  @override
+  String get closeFloatMorning => 'Float this morning';
+
+  @override
+  String get closeStillOpen => 'Still open';
+
+  @override
+  String get closeCashTakings => 'Cash takings';
+
+  @override
+  String closeDeposited(String reason) {
+    return 'Cash in: $reason';
+  }
+
+  @override
+  String closeWithdrawn(String reason) {
+    return 'Cash out: $reason';
+  }
+
+  @override
+  String get closeDifference => 'Difference';
+
+  @override
+  String get closeIncome => 'Income';
+
+  @override
+  String get closeTotal => 'Total';
+
+  @override
+  String get closeTax => 'Tax';
+
+  @override
+  String get closeRevenue => 'Revenue';
+
+  @override
+  String get closeOfWhichVat => 'of which VAT';
+
+  @override
+  String closeVatRate(int percent) {
+    return 'VAT $percent %';
+  }
+
+  @override
+  String get closeDepositNoVat => 'Deposit, no VAT';
+
+  @override
+  String get closeForgotten => 'The last day has not been closed yet.';
+
+  @override
+  String get closeNow => 'Close now';
+
+  @override
+  String get dateMonthShortJanuary => 'Jan';
+
+  @override
+  String get dateMonthShortFebruary => 'Feb';
+
+  @override
+  String get dateMonthShortMarch => 'Mar';
+
+  @override
+  String get dateMonthShortApril => 'Apr';
+
+  @override
+  String get dateMonthShortMay => 'May';
+
+  @override
+  String get dateMonthShortJune => 'Jun';
+
+  @override
+  String get dateMonthShortJuly => 'Jul';
+
+  @override
+  String get dateMonthShortAugust => 'Aug';
+
+  @override
+  String get dateMonthShortSeptember => 'Sep';
+
+  @override
+  String get dateMonthShortOctober => 'Oct';
+
+  @override
+  String get dateMonthShortNovember => 'Nov';
+
+  @override
+  String get dateMonthShortDecember => 'Dec';
+
+  @override
+  String closeMonthYear(String month, int year) {
+    return '$month $year';
+  }
+
+  @override
+  String closePeriodSameYear(String from, String to, int year) {
+    return '$from to $to $year';
+  }
+
+  @override
+  String closePeriodTwoYears(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String closePeriodDates(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get closeMonthlyReport => 'Monthly report';
+
+  @override
+  String get closeReport => 'Report';
+
+  @override
+  String get closePeriod => 'Period';
+
+  @override
+  String closeFirstMonthlyReport(String date) {
+    return 'The first monthly report is available from $date.';
+  }
+
+  @override
+  String closeDayMonth(int day, String month) {
+    return '$day $month';
+  }
+
+  @override
+  String get closeNoReceiptsInPeriod => 'There are no receipts in this period.';
+
+  @override
+  String get closeRangeHint => 'Tap the first month, then the last.';
+
+  @override
+  String closeMonthAvailableHint(String month, String date) {
+    return '$month is available from $date, once the month is over.';
+  }
+
+  @override
+  String get closeTestMode => 'Test mode';
+
+  @override
+  String get closePeriodPrinted => 'Report printed.';
+
+  @override
+  String get closeSignatureYear => 'Annual signature receipt';
+
+  @override
+  String get closeSignatureMonth => 'Monthly signature receipt';
+
+  @override
+  String get closeSignatureComes =>
+      'Comes automatically with the next receipt.';
+
+  @override
+  String closeSignatureCreated(String date, String time, int number) {
+    return 'Created on $date at $time, receipt no. $number';
+  }
+
+  @override
+  String get closePrint => 'Print';
+
+  @override
+  String get closeDays => 'Days';
+
+  @override
+  String get closeMonths => 'Months';
+
+  @override
+  String get closeScreenOnly => 'on screen only, not on paper';
+
+  @override
+  String get closeAlsoOnPaper => 'also on paper';
+
+  @override
+  String get closeOneMonth => 'One month';
+
+  @override
+  String get closeFromTo => 'From – to';
+
+  @override
+  String get closeYearBefore => 'Previous year';
+
+  @override
+  String get closeYearAfter => 'Next year';
+
+  @override
+  String get closeNoPrinter => 'No printer set up.';
 }

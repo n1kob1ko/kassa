@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/day.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
@@ -45,13 +46,14 @@ class DayClosedView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final counted = day.countedCents ?? 0;
     final left = day.leftInDrawerCents ?? 0;
     final by = day.closedByName;
     final at = day.closedAt;
     final body = text.bodyLarge!.copyWith(fontSize: 17);
     return CloseColumn(
-      title: 'Tag abgeschlossen',
+      title: l.closeDayClosed,
       content: [
         const SizedBox(height: KassaTokens.spaceHuge),
         Align(
@@ -65,15 +67,13 @@ class DayClosedView extends StatelessWidget {
         ),
         const SizedBox(height: KassaTokens.spaceXxl),
         Text(
-          justClosed
-              ? 'Der Tag ist abgeschlossen.'
-              : 'Es gibt keinen offenen Tag.',
+          justClosed ? l.closeDayIsClosed : l.closeNoOpenDay,
           style: text.headlineLarge!.copyWith(fontSize: 28),
         ),
         if (!justClosed) ...[
           const SizedBox(height: KassaTokens.spaceMd),
           Text(
-            'Der nächste Tag beginnt mit dem ersten Bon.',
+            l.closeNextDayStarts,
             style: text.bodyMedium!.copyWith(
               fontWeight: FontWeight.w600,
               color: c.ink2,
@@ -81,18 +81,18 @@ class DayClosedView extends StatelessWidget {
           ),
         ],
         const SizedBox(height: KassaTokens.spaceHuge),
-        Text('Entnommen: ${formatEuro(counted - left)}', style: body),
+        Text(l.closeTakenOut(formatEuro(counted - left)), style: body),
         const SizedBox(height: KassaTokens.spaceMd),
         Text(
           drawer
-              ? 'Morgen liegen ${formatEuro(left)} Wechselgeld in der Lade.'
-              : 'Morgen sind ${formatEuro(left)} Wechselgeld da.',
+              ? l.closeTomorrowDrawer(formatEuro(left))
+              : l.closeTomorrow(formatEuro(left)),
           style: body,
         ),
         if (by != null && at != null) ...[
           const SizedBox(height: KassaTokens.spaceXxl),
           Text(
-            'Abgeschlossen von $by um ${clockTime(at)}',
+            l.closeClosedBy(by, clockTime(l, at)),
             style: text.bodySmall!.copyWith(
               fontWeight: FontWeight.w600,
               color: c.ink2,
@@ -115,7 +115,7 @@ class DayClosedView extends StatelessWidget {
             ],
             PrimaryButton(
               key: const Key('print-day-report'),
-              label: 'Bericht drucken',
+              label: l.closePrintReport,
               filled: false,
               icon: LucideIcons.printer,
               height: KassaTokens.mainActionHeight,
@@ -125,7 +125,7 @@ class DayClosedView extends StatelessWidget {
           ],
           PrimaryButton(
             key: const Key('to-kassa'),
-            label: 'Zur Kassa',
+            label: l.closeToKassa,
             solid: true,
             height: KassaTokens.mainActionHeight,
             onPressed: onToKassa,
@@ -169,10 +169,8 @@ class PrintResult extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w700,
-                color: fg,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium!
+                  .copyWith(fontWeight: FontWeight.w700, color: fg),
             ),
           ),
         ],

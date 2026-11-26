@@ -1543,6 +1543,672 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Nach Kategorie'**
   String get overviewByCategory;
+
+  /// Uhrzeit im Abschluss; time ist "14:32".
+  ///
+  /// In de, this message translates to:
+  /// **'{time} Uhr'**
+  String closeClockTime(String time);
+
+  /// Anzahl Bons; formatted ist die Zahl mit Tausenderpunkt.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, one{1 Bon} other{{formatted} Bons}}'**
+  String closeBonCount(int count, String formatted);
+
+  /// Grund einer Bargeld-Bewegung: Bank.
+  ///
+  /// In de, this message translates to:
+  /// **'Bank'**
+  String get closeReasonBank;
+
+  /// Grund einer Bargeld-Bewegung: Einkauf.
+  ///
+  /// In de, this message translates to:
+  /// **'Einkauf'**
+  String get closeReasonPurchase;
+
+  /// Grund einer Bargeld-Bewegung: Wechselgeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Wechselgeld'**
+  String get closeReasonChange;
+
+  /// Grund einer Bargeld-Bewegung: Sonstiges.
+  ///
+  /// In de, this message translates to:
+  /// **'Sonstiges'**
+  String get closeReasonOther;
+
+  /// Titel und Taste: Bargeld einlegen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bargeld einlegen'**
+  String get closeCashIn;
+
+  /// Titel und Taste: Bargeld entnehmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bargeld entnehmen'**
+  String get closeCashOut;
+
+  /// Vorlesehilfe der Taste X.
+  ///
+  /// In de, this message translates to:
+  /// **'Schließen'**
+  String get closeCloseSheet;
+
+  /// Feld Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Betrag'**
+  String get closeAmount;
+
+  /// Feld Grund.
+  ///
+  /// In de, this message translates to:
+  /// **'Grund'**
+  String get closeReason;
+
+  /// Taste: Einlage speichern.
+  ///
+  /// In de, this message translates to:
+  /// **'Einlage speichern'**
+  String get closeSaveCashIn;
+
+  /// Taste: Entnahme speichern.
+  ///
+  /// In de, this message translates to:
+  /// **'Entnahme speichern'**
+  String get closeSaveCashOut;
+
+  /// Titel: Wechselgeld am Morgen.
+  ///
+  /// In de, this message translates to:
+  /// **'Wechselgeld'**
+  String get closeFloatTitle;
+
+  /// Frage nach dem Wechselgeld, mit Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel Wechselgeld war am Morgen in der Lade?'**
+  String get closeFloatQuestionDrawer;
+
+  /// Frage nach dem Wechselgeld, ohne Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel Wechselgeld war am Morgen da?'**
+  String get closeFloatQuestion;
+
+  /// Taste: Wechselgeld speichern.
+  ///
+  /// In de, this message translates to:
+  /// **'Wechselgeld speichern'**
+  String get closeSaveFloat;
+
+  /// Noch kein Betrag getippt.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nichts eingetippt'**
+  String get closeNothingTyped;
+
+  /// Gezählt stimmt mit dem Soll.
+  ///
+  /// In de, this message translates to:
+  /// **'Stimmt genau'**
+  String get closeExact;
+
+  /// Es fehlt Geld (Betrag daneben).
+  ///
+  /// In de, this message translates to:
+  /// **'Es fehlen'**
+  String get closeMissing;
+
+  /// Zu viel Geld in der Lade (Betrag daneben).
+  ///
+  /// In de, this message translates to:
+  /// **'Zu viel in der Lade'**
+  String get closeTooMuchDrawer;
+
+  /// Zu viel Bargeld (Betrag daneben).
+  ///
+  /// In de, this message translates to:
+  /// **'Zu viel Bargeld'**
+  String get closeTooMuchCash;
+
+  /// Titel: Geldlade zählen.
+  ///
+  /// In de, this message translates to:
+  /// **'Geldlade zählen'**
+  String get closeCountDrawer;
+
+  /// Titel: Bargeld zählen (ohne Geldlade).
+  ///
+  /// In de, this message translates to:
+  /// **'Bargeld zählen'**
+  String get closeCountCash;
+
+  /// Schritt im Abschluss.
+  ///
+  /// In de, this message translates to:
+  /// **'Schritt {step} von {total}'**
+  String closeStep(int step, int total);
+
+  /// Soll in der Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Soll in der Lade'**
+  String get closeExpectedDrawer;
+
+  /// Soll in bar (ohne Geldlade).
+  ///
+  /// In de, this message translates to:
+  /// **'Soll in bar'**
+  String get closeExpectedCash;
+
+  /// Gezählter Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Gezählt'**
+  String get closeCounted;
+
+  /// Taste: weiter zu Schritt 2.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter'**
+  String get closeNext;
+
+  /// Titel Schritt 2, mit Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'In der Lade lassen'**
+  String get closeLeaveInDrawer;
+
+  /// Titel Schritt 2, ohne Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Wechselgeld für morgen'**
+  String get closeFloatForTomorrow;
+
+  /// Unterschied von Gezählt zum Soll.
+  ///
+  /// In de, this message translates to:
+  /// **'Unterschied zum Soll'**
+  String get closeDifferenceToExpected;
+
+  /// Frage, wie viel in der Lade bleibt.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel bleibt als Wechselgeld in der Lade?'**
+  String get closeLeaveQuestionDrawer;
+
+  /// Frage, wie viel als Wechselgeld bleibt (ohne Geldlade).
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel bleibt als Wechselgeld?'**
+  String get closeLeaveQuestion;
+
+  /// Mehr getippt als gezählt.
+  ///
+  /// In de, this message translates to:
+  /// **'Mehr als gezählt kann nicht in der Lade bleiben.'**
+  String get closeMoreThanCounted;
+
+  /// Was herausgenommen wird (Betrag daneben).
+  ///
+  /// In de, this message translates to:
+  /// **'Du nimmst heraus'**
+  String get closeYouTakeOut;
+
+  /// Taste: zurück zu Schritt 1.
+  ///
+  /// In de, this message translates to:
+  /// **'Zurück'**
+  String get closeBack;
+
+  /// Taste: Tag abschließen.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag abschließen'**
+  String get closeCloseDay;
+
+  /// Titel nach dem Abschluss.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag abgeschlossen'**
+  String get closeDayClosed;
+
+  /// Bestätigung direkt nach dem Abschluss.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Tag ist abgeschlossen.'**
+  String get closeDayIsClosed;
+
+  /// Es gibt keinen offenen Tag.
+  ///
+  /// In de, this message translates to:
+  /// **'Es gibt keinen offenen Tag.'**
+  String get closeNoOpenDay;
+
+  /// Hinweis ohne offenen Tag.
+  ///
+  /// In de, this message translates to:
+  /// **'Der nächste Tag beginnt mit dem ersten Bon.'**
+  String get closeNextDayStarts;
+
+  /// Was beim Abschluss entnommen wurde.
+  ///
+  /// In de, this message translates to:
+  /// **'Entnommen: {amount}'**
+  String closeTakenOut(String amount);
+
+  /// Wechselgeld für morgen, mit Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Morgen liegen {amount} Wechselgeld in der Lade.'**
+  String closeTomorrowDrawer(String amount);
+
+  /// Wechselgeld für morgen, ohne Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Morgen sind {amount} Wechselgeld da.'**
+  String closeTomorrow(String amount);
+
+  /// Wer wann abgeschlossen hat; time ist closeClockTime.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen von {name} um {time}'**
+  String closeClosedBy(String name, String time);
+
+  /// Taste: Tagesbericht drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Bericht drucken'**
+  String get closePrintReport;
+
+  /// Taste: zurück zur Kassa.
+  ///
+  /// In de, this message translates to:
+  /// **'Zur Kassa'**
+  String get closeToKassa;
+
+  /// Tagesbericht gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bericht gedruckt.'**
+  String get closeReportPrinted;
+
+  /// Überschrift des Tagesabschlusses.
+  ///
+  /// In de, this message translates to:
+  /// **'Tagesabschluss'**
+  String get closeTitle;
+
+  /// Umschalter: Tag.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag'**
+  String get closeDay;
+
+  /// Umschalter: Monat.
+  ///
+  /// In de, this message translates to:
+  /// **'Monat'**
+  String get closeMonth;
+
+  /// Pille: Tag abgeschlossen.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen'**
+  String get closeClosedPill;
+
+  /// Der Bereich konnte nicht geladen werden.
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.'**
+  String get closeLoadFailed;
+
+  /// Karte Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Geldlade'**
+  String get closeDrawer;
+
+  /// Karte Bargeld (ohne Geldlade).
+  ///
+  /// In de, this message translates to:
+  /// **'Bargeld'**
+  String get closeCash;
+
+  /// Zeile Wechselgeld am Morgen.
+  ///
+  /// In de, this message translates to:
+  /// **'Wechselgeld am Morgen'**
+  String get closeFloatMorning;
+
+  /// Betrag noch nicht bekannt.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch offen'**
+  String get closeStillOpen;
+
+  /// Zeile Bar-Einnahmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar-Einnahmen'**
+  String get closeCashTakings;
+
+  /// Zeile Einlage mit Grund.
+  ///
+  /// In de, this message translates to:
+  /// **'Eingelegt: {reason}'**
+  String closeDeposited(String reason);
+
+  /// Zeile Entnahme mit Grund.
+  ///
+  /// In de, this message translates to:
+  /// **'Entnommen: {reason}'**
+  String closeWithdrawn(String reason);
+
+  /// Zeile Unterschied.
+  ///
+  /// In de, this message translates to:
+  /// **'Unterschied'**
+  String get closeDifference;
+
+  /// Abschnitt Einnahmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Einnahmen'**
+  String get closeIncome;
+
+  /// Zeile Gesamt.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt'**
+  String get closeTotal;
+
+  /// Abschnitt Steuer.
+  ///
+  /// In de, this message translates to:
+  /// **'Steuer'**
+  String get closeTax;
+
+  /// Spaltenkopf Umsatz in der Steuer.
+  ///
+  /// In de, this message translates to:
+  /// **'Umsatz'**
+  String get closeRevenue;
+
+  /// Spaltenkopf davon MwSt.
+  ///
+  /// In de, this message translates to:
+  /// **'davon MwSt'**
+  String get closeOfWhichVat;
+
+  /// Zeile eines Steuersatzes.
+  ///
+  /// In de, this message translates to:
+  /// **'MwSt {percent} %'**
+  String closeVatRate(int percent);
+
+  /// Zeile Pfand in der Steuer.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand, ohne MwSt'**
+  String get closeDepositNoVat;
+
+  /// Hinweis: der letzte Tag ist nicht abgeschlossen.
+  ///
+  /// In de, this message translates to:
+  /// **'Der letzte Tag ist noch nicht abgeschlossen.'**
+  String get closeForgotten;
+
+  /// Taste: jetzt abschließen.
+  ///
+  /// In de, this message translates to:
+  /// **'Jetzt abschließen'**
+  String get closeNow;
+
+  /// Kurzform des 1. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Jän'**
+  String get dateMonthShortJanuary;
+
+  /// Kurzform des 2. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Feb'**
+  String get dateMonthShortFebruary;
+
+  /// Kurzform des 3. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'März'**
+  String get dateMonthShortMarch;
+
+  /// Kurzform des 4. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Apr'**
+  String get dateMonthShortApril;
+
+  /// Kurzform des 5. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Mai'**
+  String get dateMonthShortMay;
+
+  /// Kurzform des 6. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Juni'**
+  String get dateMonthShortJune;
+
+  /// Kurzform des 7. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Juli'**
+  String get dateMonthShortJuly;
+
+  /// Kurzform des 8. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Aug'**
+  String get dateMonthShortAugust;
+
+  /// Kurzform des 9. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Sep'**
+  String get dateMonthShortSeptember;
+
+  /// Kurzform des 10. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Okt'**
+  String get dateMonthShortOctober;
+
+  /// Kurzform des 11. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Nov'**
+  String get dateMonthShortNovember;
+
+  /// Kurzform des 12. Monats (Monatstasten).
+  ///
+  /// In de, this message translates to:
+  /// **'Dez'**
+  String get dateMonthShortDecember;
+
+  /// Monat mit Jahr, z. B. "Oktober 2026".
+  ///
+  /// In de, this message translates to:
+  /// **'{month} {year}'**
+  String closeMonthYear(String month, int year);
+
+  /// Zeitraum im selben Jahr, z. B. "Jänner bis Oktober 2026".
+  ///
+  /// In de, this message translates to:
+  /// **'{from} bis {to} {year}'**
+  String closePeriodSameYear(String from, String to, int year);
+
+  /// Zeitraum über den Jahreswechsel; from und to sind closeMonthYear.
+  ///
+  /// In de, this message translates to:
+  /// **'{from} bis {to}'**
+  String closePeriodTwoYears(String from, String to);
+
+  /// Zeitraum mit Datum, z. B. "1.10. bis 31.10.2026".
+  ///
+  /// In de, this message translates to:
+  /// **'{from} bis {to}'**
+  String closePeriodDates(String from, String to);
+
+  /// Überschrift: Abrechnung eines Monats.
+  ///
+  /// In de, this message translates to:
+  /// **'Monatsabrechnung'**
+  String get closeMonthlyReport;
+
+  /// Überschrift: Abrechnung mehrerer Monate.
+  ///
+  /// In de, this message translates to:
+  /// **'Abrechnung'**
+  String get closeReport;
+
+  /// Spalte Zeitraum.
+  ///
+  /// In de, this message translates to:
+  /// **'Zeitraum'**
+  String get closePeriod;
+
+  /// Noch kein abrechenbarer Monat; date ist "1. Dezember".
+  ///
+  /// In de, this message translates to:
+  /// **'Die erste Monatsabrechnung gibt es ab {date}.'**
+  String closeFirstMonthlyReport(String date);
+
+  /// Tag mit Monatsnamen, z. B. "1. Dezember".
+  ///
+  /// In de, this message translates to:
+  /// **'{day}. {month}'**
+  String closeDayMonth(int day, String month);
+
+  /// Zeitraum ohne Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'In diesem Zeitraum gibt es keine Bons.'**
+  String get closeNoReceiptsInPeriod;
+
+  /// Hinweis bei "Von bis".
+  ///
+  /// In de, this message translates to:
+  /// **'Ersten Monat antippen, dann den letzten.'**
+  String get closeRangeHint;
+
+  /// Wann der laufende Monat abrechenbar ist; date ist closeDayMonth.
+  ///
+  /// In de, this message translates to:
+  /// **'{month} geht ab {date}, wenn der Monat vorbei ist.'**
+  String closeMonthAvailableHint(String month, String date);
+
+  /// Pille: noch kein echt signierter Beleg.
+  ///
+  /// In de, this message translates to:
+  /// **'Testbetrieb'**
+  String get closeTestMode;
+
+  /// Abrechnung gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Abrechnung gedruckt.'**
+  String get closePeriodPrinted;
+
+  /// Karte: Jahresbeleg der Signatur.
+  ///
+  /// In de, this message translates to:
+  /// **'Jahresbeleg der Signatur'**
+  String get closeSignatureYear;
+
+  /// Karte: Monatsbeleg der Signatur.
+  ///
+  /// In de, this message translates to:
+  /// **'Monatsbeleg der Signatur'**
+  String get closeSignatureMonth;
+
+  /// Beleg der Signatur noch nicht da.
+  ///
+  /// In de, this message translates to:
+  /// **'Kommt von selbst mit dem nächsten Bon.'**
+  String get closeSignatureComes;
+
+  /// Wann der Beleg der Signatur entstand; date "1.10.", time "14:32".
+  ///
+  /// In de, this message translates to:
+  /// **'Erstellt am {date} um {time}, Bon Nr. {number}'**
+  String closeSignatureCreated(String date, String time, int number);
+
+  /// Taste: drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucken'**
+  String get closePrint;
+
+  /// Karte: Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'Tage'**
+  String get closeDays;
+
+  /// Karte: Monate.
+  ///
+  /// In de, this message translates to:
+  /// **'Monate'**
+  String get closeMonths;
+
+  /// Hinweis zur Karte Tage.
+  ///
+  /// In de, this message translates to:
+  /// **'nur am Bildschirm, nicht am Zettel'**
+  String get closeScreenOnly;
+
+  /// Hinweis zur Karte Monate.
+  ///
+  /// In de, this message translates to:
+  /// **'stehen auch am Zettel'**
+  String get closeAlsoOnPaper;
+
+  /// Umschalter: ein Monat.
+  ///
+  /// In de, this message translates to:
+  /// **'Ein Monat'**
+  String get closeOneMonth;
+
+  /// Umschalter: von bis.
+  ///
+  /// In de, this message translates to:
+  /// **'Von bis'**
+  String get closeFromTo;
+
+  /// Vorlesehilfe: Jahr davor.
+  ///
+  /// In de, this message translates to:
+  /// **'Jahr davor'**
+  String get closeYearBefore;
+
+  /// Vorlesehilfe: Jahr danach.
+  ///
+  /// In de, this message translates to:
+  /// **'Jahr danach'**
+  String get closeYearAfter;
+
+  /// Kein Drucker eingerichtet.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Drucker eingerichtet.'**
+  String get closeNoPrinter;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

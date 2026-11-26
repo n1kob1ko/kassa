@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/german_dates.dart';
 import '../../data/providers.dart';
 import '../../devices/printer.dart';
 import '../../domain/period_report.dart';
 import '../../domain/period_selection.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
+import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import '../kassa/sale_service.dart';
@@ -43,14 +45,15 @@ class _MonthViewState extends ConsumerState<MonthView> {
   final Map<YearMonth, Receipt?> _belege = {};
 
   bool _printing = false;
-  String? _printMessage;
-  bool _printFailed = false;
+
+  /// Ergebnis des letzten Drucks der Abrechnung, `null` ohne.
+  PrintOutcome? _printOutcome;
   bool _reprinting = false;
 
   /// Ein neuer Zeitraum löscht das Ergebnis des letzten Drucks.
   void _select(PeriodSelection s) => setState(() {
     _selection = s;
-    _printMessage = null;
+    _printOutcome = null;
   });
 
   /// Höchstens ein Druck zugleich. Das Ergebnis erscheint nur, wenn noch
@@ -59,15 +62,14 @@ class _MonthViewState extends ConsumerState<MonthView> {
     if (_printing) return;
     setState(() {
       _printing = true;
-      _printMessage = null;
+      _printOutcome = null;
     });
     final outcome = await ref.read(reportPrintProvider).printPeriod(report);
     if (!mounted) return;
     setState(() {
       _printing = false;
       if (_selection?.range != report.range) return;
-      _printFailed = !outcome.ok;
-      _printMessage = outcome.ok ? 'Abrechnung gedruckt.' : outcome.message;
+      _printOutcome = outcome;
     });
   }
 
@@ -85,15 +87,19 @@ class _MonthViewState extends ConsumerState<MonthView> {
     if (!mounted) return;
     setState(() => _reprinting = false);
     if (outcome.problem == PrintProblem.notSetUp) return;
+    final l = L10n.of(context);
     showUndoToast(
       context,
-      message: outcome.ok ? 'Bon gedruckt' : outcome.message,
+      message: outcome.ok
+          ? l.kassaPrinted
+          : printProblemText(l, outcome.problem!),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     final choiceAsync = ref.watch(monthChoiceProvider);
     final printerSetUp = ref.watch(printerSetUpProvider);
     final hasSignature = ref.watch(hasSignatureProvider).value ?? false;
@@ -105,19 +111,19 @@ class _MonthViewState extends ConsumerState<MonthView> {
         children: [
           Expanded(
             child: _Left(
-              title: 'Monatsabrechnung',
+              title: l.closeMonthlyReport,
               testMode: false,
               switcher: widget.switcher,
               body: choiceAsync.hasError
                   ? Text(
-                      'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.',
+                      l.closeLoadFailed,
                       style: Theme.of(context).textTheme.bodyMedium!
                           .copyWith(color: c.red),
                     )
                   : const SizedBox.shrink(),
             ),
           ),
-          const CloseColumn(title: 'Zeitraum', content: []),
+          CloseColumn(title: l.closePeriod, content: const []),
         ],
       );
     }
@@ -161,25 +167,25 @@ class _MonthViewState extends ConsumerState<MonthView> {
         : null;
 
     final next = choice.nextAvailable;
+    final nextDate = l.closeDayMonth(next.day, monthName(l, next.month));
     final Widget body;
     if (last == null) {
       body = PeriodNote(
-        'Die erste Monatsabrechnung gibt es ab ${next.day}. '
-        '${germanMonths[next.month - 1]}.',
+        l.closeFirstMonthlyReport(nextDate),
         key: const Key('no-month-yet'),
       );
     } else if (failed) {
       body = Text(
-        'Das hat nicht geklappt. Bitte den Bereich nochmal öffnen.',
+        l.closeLoadFailed,
         key: const Key('period-error'),
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c.red),
       );
     } else if (shown == null) {
       body = const SizedBox.shrink();
     } else if (shown.isEmpty) {
-      body = const PeriodNote(
-        'In diesem Zeitraum gibt es keine Bons.',
-        key: Key('period-empty'),
+      body = PeriodNote(
+        l.closeNoReceiptsInPeriod,
+        key: const Key('period-empty'),
       );
     } else {
       body = Column(
@@ -207,11 +213,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
     if (last == null) {
       hint = null;
     } else if (selection.rangeMode) {
-      hint = 'Ersten Monat antippen, dann den letzten.';
+      hint = l.closeRangeHint;
     } else {
-      hint =
-          '${germanMonths[now.month - 1]} geht ab ${next.day}. '
-          '${germanMonths[next.month - 1]}, wenn der Monat vorbei ist.';
+      hint = l.closeMonthAvailableHint(monthName(l, now.month), nextDate);
     }
 
     return Row(
@@ -220,9 +224,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
         Expanded(
           child: _Left(
             title: titled == null || titled.single
-                ? 'Monatsabrechnung'
-                : 'Abrechnung',
-            subtitle: titled == null ? null : periodTitle(titled),
+                ? l.closeMonthlyReport
+                : l.closeReport,
+            subtitle: titled == null ? null : periodTitleText(l, titled),
             testMode: shown?.testMode ?? false,
             switcher: widget.switcher,
             body: body,
@@ -244,8 +248,12 @@ class _MonthViewState extends ConsumerState<MonthView> {
           onPrint: printerSetUp && !_printing && printable != null
               ? () => _print(printable)
               : null,
-          printMessage: _printMessage,
-          printFailed: _printFailed,
+          printMessage: switch (_printOutcome) {
+            null => null,
+            PrintOutcome(:final problem?) => printProblemText(l, problem),
+            _ => l.closePeriodPrinted,
+          },
+          printFailed: _printOutcome?.ok == false,
         ),
       ],
     );
@@ -350,7 +358,7 @@ class _TestModePill extends StatelessWidget {
         border: Border.all(color: c.line, width: KassaTokens.borderThin),
       ),
       child: Text(
-        'Testbetrieb',
+        L10n.of(context).closeTestMode,
         style: Theme.of(context).textTheme.labelLarge!.copyWith(
           fontSize: 12.5,
           fontWeight: FontWeight.w700,

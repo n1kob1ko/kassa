@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -73,7 +74,7 @@ class _ForgottenCloseBannerState extends ConsumerState<ForgottenCloseBanner>
           const SizedBox(width: KassaTokens.spaceLg),
           Expanded(
             child: Text(
-              'Der letzte Tag ist noch nicht abgeschlossen.',
+              L10n.of(context).closeForgotten,
               style: text.bodyMedium!.copyWith(color: c.warnInk),
             ),
           ),
@@ -91,7 +92,7 @@ class _ForgottenCloseBannerState extends ConsumerState<ForgottenCloseBanner>
                   borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
                 ),
                 child: Text(
-                  'Jetzt abschließen',
+                  L10n.of(context).closeNow,
                   maxLines: 1,
                   style: text.bodyMedium!.copyWith(
                     fontWeight: FontWeight.w800,

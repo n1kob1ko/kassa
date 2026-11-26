@@ -1,7 +1,8 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/german_dates.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
 import '../../core/money.dart';
 import '../../domain/period_report.dart';
 import '../../domain/receipt.dart';
@@ -30,16 +31,21 @@ class SignatureReceiptCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final r = receipt;
     final year = r != null ? r.kind == ReceiptKind.year : month.month == 12;
     final String line;
     if (r == null) {
-      line = 'Kommt von selbst mit dem nächsten Bon.';
+      line = l.closeSignatureComes;
     } else {
       final t = r.createdAt;
       final mm = t.minute.toString().padLeft(2, '0');
       final hh = t.hour.toString().padLeft(2, '0');
-      line = 'Erstellt am ${t.day}.${t.month}. um $hh:$mm, Bon Nr. ${r.number}';
+      line = l.closeSignatureCreated(
+        '${t.day}.${t.month}.',
+        '$hh:$mm',
+        r.number,
+      );
     }
     return OverviewCard(
       key: const Key('signature-receipt-card'),
@@ -61,9 +67,7 @@ class SignatureReceiptCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    year
-                        ? 'Jahresbeleg der Signatur'
-                        : 'Monatsbeleg der Signatur',
+                    year ? l.closeSignatureYear : l.closeSignatureMonth,
                     style: text.titleMedium!.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -85,7 +89,7 @@ class SignatureReceiptCard extends StatelessWidget {
               const SizedBox(width: KassaTokens.spaceXxl),
               PrimaryButton(
                 key: const Key('print-signature-receipt'),
-                label: 'Drucken',
+                label: l.closePrint,
                 filled: false,
                 icon: LucideIcons.printer,
                 height: KassaTokens.keypadKeyHeight,
@@ -110,6 +114,7 @@ class PeriodRowsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final days = report.range.single;
     return OverviewCard(
       key: const Key('period-rows'),
@@ -129,12 +134,13 @@ class PeriodRowsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  child: Text(days ? 'Tage' : 'Monate', style: text.titleLarge),
+                  child: Text(
+                    days ? l.closeDays : l.closeMonths,
+                    style: text.titleLarge,
+                  ),
                 ),
                 Text(
-                  days
-                      ? 'nur am Bildschirm, nicht am Zettel'
-                      : 'stehen auch am Zettel',
+                  days ? l.closeScreenOnly : l.closeAlsoOnPaper,
                   textAlign: TextAlign.end,
                   style: text.bodySmall!.copyWith(
                     fontSize: 12.5,
@@ -147,9 +153,9 @@ class PeriodRowsCard extends StatelessWidget {
           ),
           for (final row in report.rows)
             _Row(
-              label: days ? _dayLabel(row.start) : _monthLabel(row.start),
+              label: days ? _dayLabel(l, row.start) : _monthLabel(l, row.start),
               labelWidth: days ? 150 : 190,
-              count: bonsLabel(row.receiptCount),
+              count: bonsLabel(l, row.receiptCount),
               amount: formatEuro(row.revenueCents),
             ),
         ],
@@ -158,12 +164,12 @@ class PeriodRowsCard extends StatelessWidget {
   }
 
   /// "Do., 1.10."
-  static String _dayLabel(DateTime d) =>
-      '${germanWeekdays[d.weekday - 1].substring(0, 2)}., ${d.day}.${d.month}.';
+  static String _dayLabel(L10n l, DateTime d) =>
+      '${weekdayShortName(l, d.weekday)}, ${d.day}.${d.month}.';
 
   /// "Jänner 2026"
-  static String _monthLabel(DateTime d) =>
-      '${germanMonths[d.month - 1]} ${d.year}';
+  static String _monthLabel(L10n l, DateTime d) =>
+      l.closeMonthYear(monthName(l, d.month), d.year);
 }
 
 class _Row extends StatelessWidget {

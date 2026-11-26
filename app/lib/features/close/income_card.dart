@@ -4,6 +4,7 @@ import '../../core/money.dart';
 import '../../domain/day.dart';
 import '../../domain/period_report.dart';
 import '../../domain/pricing.dart' show TaxLine;
+import '../../l10n/generated/l10n.dart';
 import '../../ui/tokens.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
 import 'close_format.dart';
@@ -70,32 +71,33 @@ class IncomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     final income = _Section(
-      title: 'Einnahmen',
+      title: l.closeIncome,
       rows: [
         SummaryLine(
-          label: 'Bar',
-          middle: bonsLabel(f.cashCount),
+          label: l.kassaCash,
+          middle: bonsLabel(l, f.cashCount),
           amount: formatEuro(f.cashCents),
           amountKey: const Key('income-cash'),
         ),
         SummaryLine(
-          label: 'Karte',
-          middle: bonsLabel(f.cardCount),
+          label: l.kassaCard,
+          middle: bonsLabel(l, f.cardCount),
           amount: formatEuro(f.cardCents),
           amountKey: const Key('income-card'),
         ),
         SummaryLine(
-          label: 'Gesamt',
-          middle: bonsLabel(f.count),
+          label: l.closeTotal,
+          middle: bonsLabel(l, f.count),
           amount: formatEuro(f.revenueCents),
           bold: true,
           amountKey: const Key('income-total'),
         ),
         if (f.voidCount > 0)
           SummaryLine(
-            label: 'Storniert',
-            middle: bonsLabel(f.voidCount),
+            label: l.bonsVoided,
+            middle: bonsLabel(l, f.voidCount),
             amount: formatEuro(f.voidedCents),
             amountMuted: true,
             amountKey: const Key('left-voided'),
@@ -103,17 +105,17 @@ class IncomeCard extends StatelessWidget {
       ],
     );
     final tax = _Section(
-      title: 'Steuer',
-      headers: const ['Umsatz', 'davon MwSt'],
+      title: l.closeTax,
+      headers: [l.closeRevenue, l.closeOfWhichVat],
       rows: [
         for (final t in f.taxLines)
           _TaxLine(
-            'MwSt ${t.rate.percent} %',
+            l.closeVatRate(t.rate.percent),
             formatEuro(t.grossCents),
             formatEuro(t.taxCents),
           ),
         if (f.depositCents != 0)
-          _TaxLine('Pfand, ohne MwSt', formatEuro(f.depositCents), null),
+          _TaxLine(l.closeDepositNoVat, formatEuro(f.depositCents), null),
       ],
     );
     return OverviewCard(

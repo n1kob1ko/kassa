@@ -10,8 +10,6 @@ import '../../ui/tokens.dart';
 import 'receipt_detail.dart';
 import 'receipt_list.dart';
 
-export '../../core/german_dates.dart';
-
 /// Der Bereich Bons: die Bons des offenen Tages links (neuester zuerst, mit
 /// Filter), der gewählte Bon rechts in der festen Spalte. Ein Bon wird hier
 /// nie geändert, nur durch einen Storno-Bon storniert.

@@ -866,4 +866,383 @@ class L10nAr extends L10n {
 
   @override
   String get overviewByCategory => 'حسب الفئة';
+
+  @override
+  String closeClockTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String closeBonCount(int count, String formatted) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$formatted فاتورة',
+      many: '$formatted فاتورة',
+      few: '$formatted فواتير',
+      two: 'فاتورتان',
+      one: 'فاتورة واحدة',
+      zero: '$formatted فاتورة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get closeReasonBank => 'البنك';
+
+  @override
+  String get closeReasonPurchase => 'مشتريات';
+
+  @override
+  String get closeReasonChange => 'الفكة';
+
+  @override
+  String get closeReasonOther => 'أخرى';
+
+  @override
+  String get closeCashIn => 'إيداع نقد';
+
+  @override
+  String get closeCashOut => 'سحب نقد';
+
+  @override
+  String get closeCloseSheet => 'إغلاق';
+
+  @override
+  String get closeAmount => 'المبلغ';
+
+  @override
+  String get closeReason => 'السبب';
+
+  @override
+  String get closeSaveCashIn => 'حفظ الإيداع';
+
+  @override
+  String get closeSaveCashOut => 'حفظ السحب';
+
+  @override
+  String get closeFloatTitle => 'الفكة';
+
+  @override
+  String get closeFloatQuestionDrawer => 'كم كانت الفكة في الدرج صباحًا؟';
+
+  @override
+  String get closeFloatQuestion => 'كم كانت الفكة صباحًا؟';
+
+  @override
+  String get closeSaveFloat => 'حفظ الفكة';
+
+  @override
+  String get closeNothingTyped => 'لم يُدخل شيء بعد';
+
+  @override
+  String get closeExact => 'مطابق تمامًا';
+
+  @override
+  String get closeMissing => 'ناقص';
+
+  @override
+  String get closeTooMuchDrawer => 'زيادة في الدرج';
+
+  @override
+  String get closeTooMuchCash => 'زيادة في النقد';
+
+  @override
+  String get closeCountDrawer => 'عدّ درج النقود';
+
+  @override
+  String get closeCountCash => 'عدّ النقد';
+
+  @override
+  String closeStep(int step, int total) {
+    return 'الخطوة $step من $total';
+  }
+
+  @override
+  String get closeExpectedDrawer => 'المتوقع في الدرج';
+
+  @override
+  String get closeExpectedCash => 'النقد المتوقع';
+
+  @override
+  String get closeCounted => 'المعدود';
+
+  @override
+  String get closeNext => 'التالي';
+
+  @override
+  String get closeLeaveInDrawer => 'الإبقاء في الدرج';
+
+  @override
+  String get closeFloatForTomorrow => 'فكة الغد';
+
+  @override
+  String get closeDifferenceToExpected => 'الفرق عن المتوقع';
+
+  @override
+  String get closeLeaveQuestionDrawer => 'كم يبقى في الدرج كفكة؟';
+
+  @override
+  String get closeLeaveQuestion => 'كم يبقى كفكة؟';
+
+  @override
+  String get closeMoreThanCounted => 'لا يمكن إبقاء أكثر من المبلغ المعدود.';
+
+  @override
+  String get closeYouTakeOut => 'تسحب';
+
+  @override
+  String get closeBack => 'رجوع';
+
+  @override
+  String get closeCloseDay => 'إقفال اليوم';
+
+  @override
+  String get closeDayClosed => 'تم إقفال اليوم';
+
+  @override
+  String get closeDayIsClosed => 'تم إقفال اليوم.';
+
+  @override
+  String get closeNoOpenDay => 'لا يوجد يوم مفتوح.';
+
+  @override
+  String get closeNextDayStarts => 'يبدأ اليوم التالي مع أول فاتورة.';
+
+  @override
+  String closeTakenOut(String amount) {
+    return 'المسحوب: $amount';
+  }
+
+  @override
+  String closeTomorrowDrawer(String amount) {
+    return 'غدًا سيكون في الدرج $amount فكة.';
+  }
+
+  @override
+  String closeTomorrow(String amount) {
+    return 'غدًا ستكون هناك $amount فكة.';
+  }
+
+  @override
+  String closeClosedBy(String name, String time) {
+    return 'أقفله $name الساعة $time';
+  }
+
+  @override
+  String get closePrintReport => 'طباعة التقرير';
+
+  @override
+  String get closeToKassa => 'العودة إلى البيع';
+
+  @override
+  String get closeReportPrinted => 'تمت طباعة التقرير.';
+
+  @override
+  String get closeTitle => 'إقفال اليوم';
+
+  @override
+  String get closeDay => 'اليوم';
+
+  @override
+  String get closeMonth => 'الشهر';
+
+  @override
+  String get closeClosedPill => 'مُقفل';
+
+  @override
+  String get closeLoadFailed => 'لم ينجح ذلك. يرجى فتح هذا القسم مرة أخرى.';
+
+  @override
+  String get closeDrawer => 'درج النقود';
+
+  @override
+  String get closeCash => 'النقد';
+
+  @override
+  String get closeFloatMorning => 'فكة الصباح';
+
+  @override
+  String get closeStillOpen => 'لم يُحدد بعد';
+
+  @override
+  String get closeCashTakings => 'المقبوضات النقدية';
+
+  @override
+  String closeDeposited(String reason) {
+    return 'إيداع: $reason';
+  }
+
+  @override
+  String closeWithdrawn(String reason) {
+    return 'سحب: $reason';
+  }
+
+  @override
+  String get closeDifference => 'الفرق';
+
+  @override
+  String get closeIncome => 'المقبوضات';
+
+  @override
+  String get closeTotal => 'الإجمالي';
+
+  @override
+  String get closeTax => 'الضريبة';
+
+  @override
+  String get closeRevenue => 'الإيرادات';
+
+  @override
+  String get closeOfWhichVat => 'منها الضريبة';
+
+  @override
+  String closeVatRate(int percent) {
+    return 'الضريبة $percent %';
+  }
+
+  @override
+  String get closeDepositNoVat => 'التأمين، بدون ضريبة';
+
+  @override
+  String get closeForgotten => 'لم يُقفل اليوم الأخير بعد.';
+
+  @override
+  String get closeNow => 'الإقفال الآن';
+
+  @override
+  String get dateMonthShortJanuary => 'يناير';
+
+  @override
+  String get dateMonthShortFebruary => 'فبراير';
+
+  @override
+  String get dateMonthShortMarch => 'مارس';
+
+  @override
+  String get dateMonthShortApril => 'أبريل';
+
+  @override
+  String get dateMonthShortMay => 'مايو';
+
+  @override
+  String get dateMonthShortJune => 'يونيو';
+
+  @override
+  String get dateMonthShortJuly => 'يوليو';
+
+  @override
+  String get dateMonthShortAugust => 'أغسطس';
+
+  @override
+  String get dateMonthShortSeptember => 'سبتمبر';
+
+  @override
+  String get dateMonthShortOctober => 'أكتوبر';
+
+  @override
+  String get dateMonthShortNovember => 'نوفمبر';
+
+  @override
+  String get dateMonthShortDecember => 'ديسمبر';
+
+  @override
+  String closeMonthYear(String month, int year) {
+    return '$month $year';
+  }
+
+  @override
+  String closePeriodSameYear(String from, String to, int year) {
+    return '$from إلى $to $year';
+  }
+
+  @override
+  String closePeriodTwoYears(String from, String to) {
+    return '$from إلى $to';
+  }
+
+  @override
+  String closePeriodDates(String from, String to) {
+    return '$from إلى $to';
+  }
+
+  @override
+  String get closeMonthlyReport => 'التقرير الشهري';
+
+  @override
+  String get closeReport => 'التقرير';
+
+  @override
+  String get closePeriod => 'الفترة';
+
+  @override
+  String closeFirstMonthlyReport(String date) {
+    return 'يتوفر أول تقرير شهري ابتداءً من $date.';
+  }
+
+  @override
+  String closeDayMonth(int day, String month) {
+    return '$day $month';
+  }
+
+  @override
+  String get closeNoReceiptsInPeriod => 'لا توجد فواتير في هذه الفترة.';
+
+  @override
+  String get closeRangeHint => 'اضغط على الشهر الأول ثم على الأخير.';
+
+  @override
+  String closeMonthAvailableHint(String month, String date) {
+    return 'يتوفر $month ابتداءً من $date بعد انتهاء الشهر.';
+  }
+
+  @override
+  String get closeTestMode => 'وضع التجربة';
+
+  @override
+  String get closePeriodPrinted => 'تمت طباعة التقرير.';
+
+  @override
+  String get closeSignatureYear => 'فاتورة التوقيع السنوية';
+
+  @override
+  String get closeSignatureMonth => 'فاتورة التوقيع الشهرية';
+
+  @override
+  String get closeSignatureComes => 'تصدر تلقائيًا مع الفاتورة التالية.';
+
+  @override
+  String closeSignatureCreated(String date, String time, int number) {
+    return 'أُنشئت في $date الساعة $time، رقم الفاتورة $number';
+  }
+
+  @override
+  String get closePrint => 'طباعة';
+
+  @override
+  String get closeDays => 'الأيام';
+
+  @override
+  String get closeMonths => 'الأشهر';
+
+  @override
+  String get closeScreenOnly => 'على الشاشة فقط، لا على الورق';
+
+  @override
+  String get closeAlsoOnPaper => 'تظهر أيضًا على الورق';
+
+  @override
+  String get closeOneMonth => 'شهر واحد';
+
+  @override
+  String get closeFromTo => 'من – إلى';
+
+  @override
+  String get closeYearBefore => 'السنة السابقة';
+
+  @override
+  String get closeYearAfter => 'السنة التالية';
+
+  @override
+  String get closeNoPrinter => 'لم يتم إعداد طابعة.';
 }
