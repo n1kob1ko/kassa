@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 
-
 import '../domain/menu_dictionary.dart';
 import 'database.dart';
 

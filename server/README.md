@@ -30,6 +30,10 @@ Für den Betrieb des Servers ändert sich mit Stufe 2 (Abgleich, Fotos, Umsätze
 - **Koppeln:** Über alle Adressen zusammen nimmt der Server höchstens 200 falsche Kopplungscodes in 15 Minuten an. Danach geht für den Rest dieser Zeit auch ein richtiger Code nicht.
 - **Zurückspielen einer Sicherung:** `docs/betrieb/sicherung-zurueckspielen.md`.
 
+## Was die Übersetzungen dazubringen
+
+Mit den Sprachen am Tablet kommt eine Tabelle für das Wörterbuch der Speisekarte dazu (`translations`). Der Server legt sie beim Start selbst an (Migration `0003_translations.sql`), wie die Tabellen vorher. Nach dem Ausrollen ist nichts von Hand zu tun, neue Variablen gibt es nicht. Ein Tablet mit einer älteren Version gleicht weiter ab; es bekommt die Übersetzungen nur nicht.
+
 ## Sicherung
 
 Der Server sichert die Datenbank jede Nacht (nach 3 Uhr Wiener Zeit) mit `pg_dump` in die Ablage, unter `backups/kassa-<Tag>.dump`. Die Dateien der letzten 14 gelungenen Sicherungen bleiben; bei älteren löscht der Server die Datei, die Zeile in der Tabelle `backups` bleibt als Verlauf. Beim Start prüft der Server, ob `pg_dump` mindestens so neu ist wie die Datenbank (sonst steht ein Hinweis im Protokoll); nach einer Minute und dann jede Stunde schaut er, ob eine Sicherung fällig ist.

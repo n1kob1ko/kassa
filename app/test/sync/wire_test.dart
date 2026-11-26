@@ -209,21 +209,49 @@ void main() {
       expect(t.last.values, isEmpty);
     });
 
-    test('values ohne Objekt oder mit Zahl ist eine FormatException', () {
-      for (final bad in <Object?>[
+    test('ein Wert, der kein Text ist, fällt weg; die anderen Sprachen '
+        'der Zeile bleiben', () {
+      final json = fixture('pull_full')
+        ..['translations'] = [
+          {
+            'source': 'Cola',
+            'values': {'en': 3, 'tr': 'Kola', 'ar': null, 'zh': <String>[]},
+          },
+          {
+            'source': 'Wasser',
+            'values': {'en': 'Water'},
+          },
+        ];
+      final t = PullResponse.fromJson(json).translations;
+      expect(t.map((e) => e.source), ['Cola', 'Wasser']);
+      expect(t.first.values, {'tr': 'Kola'});
+      expect(t.last.values, {'en': 'Water'});
+    });
+
+    test('values ohne Objekt oder ohne Text: die Zeile gilt als leer', () {
+      for (final bad in <Map<String, Object?>>[
         {'source': 'Cola', 'values': 'en'},
         {'source': 'Cola'},
         {
           'source': 'Cola',
           'values': {'en': 3},
         },
-        {
-          'values': {'en': 'Cola'},
-        },
       ]) {
         final json = fixture('pull_full')..['translations'] = [bad];
-        expect(() => PullResponse.fromJson(json), throwsFormatException);
+        final t = PullResponse.fromJson(json).translations.single;
+        expect(t.source, 'Cola');
+        expect(t.values, isEmpty);
       }
+    });
+
+    test('eine Zeile ohne source ist eine FormatException', () {
+      final json = fixture('pull_full')
+        ..['translations'] = [
+          {
+            'values': {'en': 'Cola'},
+          },
+        ];
+      expect(() => PullResponse.fromJson(json), throwsFormatException);
     });
   });
 }

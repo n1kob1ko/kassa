@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { TranslationSection } from '../api/translations';
-import { LANGUAGES, languageOf, progressOf, progressText, storedLanguage, visibleSections } from './translations';
+import { LANGUAGES, languageOf, progressOf, progressText, sectionKeys, storedLanguage, visibleSections } from './translations';
 
 const SECTIONS: TranslationSection[] = [
   { kind: 'categories', title: 'Kategorien', rows: [{ source: 'Bowls', values: { en: 'Bowls', tr: 'Kâseler' } }] },
@@ -76,4 +76,17 @@ test('storedLanguage: gemerkte Sprache, sonst English', () => {
   expect(storedLanguage(null)).toBe('en');
   expect(storedLanguage('de')).toBe('en');
   expect(storedLanguage('xx')).toBe('en');
+});
+
+test('sectionKeys: zwei Kategorien mit gleichem Namen haben verschiedene Schlüssel', () => {
+  const twice: TranslationSection[] = [
+    { kind: 'category', title: 'Bowls', rows: [{ source: 'Huhn Bowl', values: {} }] },
+    { kind: 'categories', title: 'Bowls', rows: [{ source: 'Bowls', values: {} }] },
+    { kind: 'category', title: 'Bowls', rows: [{ source: 'Tofu Bowl', values: {} }] },
+  ];
+  const keys = sectionKeys(twice);
+  expect(new Set(keys).size).toBe(3);
+  // Der erste Abschnitt eines Namens behält seinen Schlüssel, wie ohne Doppel.
+  expect(keys[0]).toBe('category/Bowls');
+  expect(sectionKeys(SECTIONS)).toEqual(['categories/Kategorien', 'category/Bowls', 'extras/Auswahl und Extras']);
 });

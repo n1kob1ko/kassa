@@ -23,7 +23,7 @@ import { TextField } from '../ui/TextField';
 import { toast } from '../ui/Toast';
 import { useDialogState } from '../ui/useDialogState';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
-import { LANGUAGES, languageOf, progressOf, progressText, storedLanguage, visibleSections, type Language } from './translations';
+import { LANGUAGES, languageOf, progressOf, progressText, sectionKeys, storedLanguage, visibleSections, type Language } from './translations';
 import { useSyncHint } from './useSyncHint';
 import styles from './TranslationsPage.module.css';
 
@@ -274,13 +274,14 @@ export function TranslationsPage() {
       );
     } else {
       const shown = visibleSections(sections, lang, onlyMissing, keep);
+      const keys = sectionKeys(shown);
       content =
         shown.length === 0 ? (
           <EmptyState title="Nichts fehlt." text={`Jeder Name hat eine Übersetzung in ${language.name}.`} />
         ) : (
           <div className={styles.groups}>
-            {shown.map((section) => (
-              <SectionGroup key={`${section.kind}/${section.title}`} section={section} language={language}>
+            {shown.map((section, i) => (
+              <SectionGroup key={keys[i]} section={section} language={language}>
                 {section.rows.map((row) => {
                   const missing = (row.values[lang] ?? '') === '';
                   return (

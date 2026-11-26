@@ -39,6 +39,20 @@ export function visibleSections(
   return shown.filter((s) => s.rows.length > 0);
 }
 
+/**
+ * Ein Schlüssel je Abschnitt für React: Art und Titel, ab dem zweiten Abschnitt mit gleichem Titel mit einer Nummer
+ * (zwei Kategorien dürfen gleich heißen). So mischen sich die Entwürfe der Felder nicht, wenn der Filter wechselt.
+ */
+export function sectionKeys(sections: TranslationSection[]): string[] {
+  const seen = new Map<string, number>();
+  return sections.map((s) => {
+    const base = `${s.kind}/${s.title}`;
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return n === 1 ? base : `${base}#${n}`;
+  });
+}
+
 /** Wie viele Namen in `lang` übersetzt sind, von allen. */
 export function progressOf(sections: TranslationSection[], lang: TranslationLang): { done: number; total: number } {
   const rows = sections.flatMap((s) => s.rows);

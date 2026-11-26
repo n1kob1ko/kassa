@@ -210,18 +210,22 @@ class WireStaff {
 
 /// Die Übersetzungen eines Namens aus der Speisekarte. Leere [values] heißen:
 /// der Eintrag ist gelöscht. Die Sprachkürzel prüft hier niemand.
+///
+/// Liest tolerant wie das Wörterbuch am Tablet: ein Wert, der kein Text ist,
+/// fällt weg, die anderen Sprachen der Zeile bleiben; ist `values` kein
+/// Objekt, gilt die Zeile als leer. Eine kaputte Zeile hält so nie den
+/// ganzen Abgleich auf (Speisekarte und Personal kämen sonst auch nicht an).
 class WireTranslation {
   const WireTranslation({required this.source, required this.values});
 
   factory WireTranslation.fromJson(Map<String, dynamic> json) {
-    final values = _object(json['values'], 'values');
+    final values = json['values'];
     return WireTranslation(
       source: _field(json, 'source'),
       values: {
-        for (final e in values.entries)
-          e.key: e.value is String
-              ? e.value as String
-              : throw FormatException('Übersetzung ist kein Text: ${e.key}'),
+        if (values is Map<String, dynamic>)
+          for (final e in values.entries)
+            if (e.value case final String text) e.key: text,
       },
     );
   }
