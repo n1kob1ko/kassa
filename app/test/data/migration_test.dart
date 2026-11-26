@@ -409,7 +409,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      7,
+      8,
     );
     expect(await count(db, 'business_days'), 2);
     expect(await count(db, 'cash_movements'), 1);
@@ -643,7 +643,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      7,
+      8,
     );
     await db.close();
   });

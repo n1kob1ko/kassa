@@ -81,7 +81,7 @@ void main() {
 
     final db = KassaDatabase(NativeDatabase(file));
     addTearDown(db.close);
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
 
     // Alte Werte bleiben, die neuen haben ihre Vorgaben.
     final s = await SettingsRepository(db).current();
@@ -131,7 +131,7 @@ void main() {
       'auf Version 7 und der Abgleich-Stand bleibt', () async {
     final file = await copyFixture('kassa_v6.sqlite');
     final first = KassaDatabase(NativeDatabase(file));
-    expect(await userVersion(first), 7);
+    expect(await userVersion(first), 8);
     await SettingsRepository(first).save(
       const RegisterSettings(
         language: AppLanguage.tr,
@@ -148,7 +148,7 @@ void main() {
 
     final db = KassaDatabase(NativeDatabase(file));
     addTearDown(db.close);
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
     final s = await SettingsRepository(db).current();
     expect(s.language, AppLanguage.tr);
     expect(s.kitchenMode, KitchenMode.receiptPrinter);
@@ -162,7 +162,7 @@ void main() {
     () async {
       final db = KassaDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      expect(await userVersion(db), 7);
+      expect(await userVersion(db), 8);
       expect(await count(db, 'translations'), 0);
       expect(
         await SettingsRepository(db).current(),

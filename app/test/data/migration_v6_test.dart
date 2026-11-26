@@ -84,7 +84,7 @@ void main() {
       NativeDatabase(await copyFixture('kassa_v5.sqlite')),
     );
     addTearDown(db.close);
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
 
     // Nichts ging verloren.
     expect(await count(db, 'receipts'), 305);
@@ -254,7 +254,7 @@ void main() {
     addTearDown(db.close);
     expect(await count(db, 'receipts'), 305);
     expect(await count(db, 'outbox'), 3 + 3 + 5 + 5 + 305 + 30);
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
     expect((await db.select(db.rksvChainRows).get()).map((c) => c.unit), [
       'probe',
       'atrustTest',
@@ -283,7 +283,7 @@ void main() {
     );
     addTearDown(db.close);
 
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
     final chains = await (db.select(
       db.rksvChainRows,
     )..orderBy([(t) => OrderingTerm.asc(t.chain)])).get();
@@ -326,7 +326,7 @@ void main() {
         'öffnet auf Version 6, die Liste ist nicht doppelt', () async {
       final file = await copyFixture(fixture);
       final first = KassaDatabase(NativeDatabase(file));
-      expect(await userVersion(first), 7);
+      expect(await userVersion(first), 8);
       final listed = await count(first, 'outbox');
       final receipts = await count(first, 'receipts');
       await first.close();
@@ -335,7 +335,7 @@ void main() {
       final db = KassaDatabase(NativeDatabase(file));
       addTearDown(db.close);
       expect(await db.select(db.syncStateRows).get(), isNotNull);
-      expect(await userVersion(db), 7);
+      expect(await userVersion(db), 8);
       expect(await count(db, 'outbox'), listed);
       expect(await count(db, 'receipts'), receipts);
       expect(await outboxTriggers(db), triggers);
@@ -393,7 +393,7 @@ void main() {
   test('neue Datenbank: Version 6 mit Liste, Index und Triggern', () async {
     final db = KassaDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(await userVersion(db), 7);
+    expect(await userVersion(db), 8);
     expect(await outboxTriggers(db), triggers);
     expect(await count(db, 'outbox'), 0);
     final columns = [
