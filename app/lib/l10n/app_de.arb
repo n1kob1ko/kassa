@@ -97,5 +97,514 @@
   "uiListSeparator": ", ",
   "@uiListSeparator": {
     "description": "Trennt Namen in einer Aufzählung (Optionen, fehlende Gruppen)."
+  },
+  "kassaItemCount": "{count, plural, other{{count} Artikel}}",
+  "@kassaItemCount": {
+    "description": "Anzahl Artikel (Bon, Artikelfläche).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaCategoryLabel": "{name}, {items}",
+  "@kassaCategoryLabel": {
+    "description": "Vorlesehilfe einer Kategorie; items ist kassaItemCount.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "items": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaFavorites": "Favoriten",
+  "@kassaFavorites": {
+    "description": "Kategorie mit den Lieblingsartikeln."
+  },
+  "kassaWithImages": "Mit Bildern",
+  "@kassaWithImages": {
+    "description": "Umschalter der Artikelfläche."
+  },
+  "kassaCompact": "Kompakt",
+  "@kassaCompact": {
+    "description": "Umschalter der Artikelfläche."
+  },
+  "kassaPlusDeposit": "+ Pfand",
+  "@kassaPlusDeposit": {
+    "description": "Zusatz auf der Artikeltaste bei Pfand."
+  },
+  "kassaNotForSale": "Nicht im Verkauf",
+  "@kassaNotForSale": {
+    "description": "Artikel ist ausgeschaltet."
+  },
+  "kassaOnReceipt": "{count} auf dem Bon",
+  "@kassaOnReceipt": {
+    "description": "Vorlesehilfe: so oft liegt er auf dem Bon.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaTagVegan": "VEGAN",
+  "@kassaTagVegan": {
+    "description": "Kennzeichen auf der Artikeltaste."
+  },
+  "kassaTagSpicy": "SCHARF",
+  "@kassaTagSpicy": {
+    "description": "Kennzeichen auf der Artikeltaste."
+  },
+  "kassaOneLess": "Eins weniger: {name}",
+  "@kassaOneLess": {
+    "description": "Vorlesehilfe der Minus-Taste einer Bonzeile.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaOneMore": "Eins mehr: {name}",
+  "@kassaOneMore": {
+    "description": "Vorlesehilfe der Plus-Taste einer Bonzeile.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaReceipt": "Bon",
+  "@kassaReceipt": {
+    "description": "Titel der Bon-Spalte."
+  },
+  "kassaClearCart": "Bon leeren",
+  "@kassaClearCart": {
+    "description": "Taste im Kopf der Bon-Spalte."
+  },
+  "kassaCartCleared": "Bon geleert",
+  "@kassaCartCleared": {
+    "description": "Hinweis nach \"Bon leeren\"."
+  },
+  "kassaEmptyTitle": "Noch nichts boniert",
+  "@kassaEmptyTitle": {
+    "description": "Leerer Bon, Überschrift."
+  },
+  "kassaEmptyHint": "Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.",
+  "@kassaEmptyHint": {
+    "description": "Leerer Bon, Erklärung. Ohne Richtung, wo die Artikel stehen (in Arabisch rechts)."
+  },
+  "kassaTotal": "Summe",
+  "@kassaTotal": {
+    "description": "Summenzeile des Bons."
+  },
+  "kassaDepositIncluded": "davon Pfand {amount}",
+  "@kassaDepositIncluded": {
+    "description": "Pfand in der Summe; amount wie \"0,50 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaTaxIncluded": "inkl. {amount} MwSt",
+  "@kassaTaxIncluded": {
+    "description": "Steuer in der Summe; amount wie \"1,20 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaCash": "Bar",
+  "@kassaCash": {
+    "description": "Große Taste: bar bezahlen."
+  },
+  "kassaCard": "Karte",
+  "@kassaCard": {
+    "description": "Große Taste: mit Karte bezahlen."
+  },
+  "kassaCardNotSetUp": "nicht eingerichtet",
+  "@kassaCardNotSetUp": {
+    "description": "Zeile unter \"Karte\": kein Terminal."
+  },
+  "kassaCardLoggedOut": "nicht angemeldet",
+  "@kassaCardLoggedOut": {
+    "description": "Zeile unter \"Karte\": nicht angemeldet."
+  },
+  "kassaCardNoInternet": "kein Internet",
+  "@kassaCardNoInternet": {
+    "description": "Zeile unter \"Karte\": kein Internet."
+  },
+  "kassaCardFrom": "ab {amount}",
+  "@kassaCardFrom": {
+    "description": "Zeile unter \"Karte\": Kleinstbetrag.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaCancel": "Abbrechen",
+  "@kassaCancel": {
+    "description": "Zusammenstellen abbrechen."
+  },
+  "kassaAddToReceipt": "Auf den Bon",
+  "@kassaAddToReceipt": {
+    "description": "Zusammengestellten Artikel auf den Bon."
+  },
+  "kassaStillToChoose": "Noch wählen: {groups}",
+  "@kassaStillToChoose": {
+    "description": "Taste, solange Pflichtgruppen fehlen; groups sind deren Namen.",
+    "placeholders": {
+      "groups": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaPickOne": "eine Wahl",
+  "@kassaPickOne": {
+    "description": "Gruppe: genau eine Wahl."
+  },
+  "kassaAtMostOne": "höchstens eine",
+  "@kassaAtMostOne": {
+    "description": "Gruppe: keine oder eine Wahl."
+  },
+  "kassaAtLeast": "mindestens {min}",
+  "@kassaAtLeast": {
+    "description": "Gruppe: Mindestzahl.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaUpTo": "bis zu {max}",
+  "@kassaUpTo": {
+    "description": "Gruppe: Höchstzahl.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaPleaseChoose": "Bitte wählen",
+  "@kassaPleaseChoose": {
+    "description": "Gruppe: Pflichtwahl fehlt."
+  },
+  "kassaChosenCount": "{count} gewählt",
+  "@kassaChosenCount": {
+    "description": "Gruppe: so viele gewählt.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaOptionChosen": "{name}, gewählt",
+  "@kassaOptionChosen": {
+    "description": "Vorlesehilfe einer gewählten Option.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaPayCashTitle": "Bar bezahlen",
+  "@kassaPayCashTitle": {
+    "description": "Titel der Spalte beim Barzahlen."
+  },
+  "kassaBackToReceipt": "Zurück zum Bon",
+  "@kassaBackToReceipt": {
+    "description": "Vorlesehilfe des Pfeils zurück."
+  },
+  "kassaAmountDue": "Zu zahlen",
+  "@kassaAmountDue": {
+    "description": "Betrag, der zu zahlen ist."
+  },
+  "kassaGiven": "Gegeben",
+  "@kassaGiven": {
+    "description": "Betrag, den der Kunde gibt."
+  },
+  "kassaExact": "Passend",
+  "@kassaExact": {
+    "description": "Vorschlag: genau der Betrag."
+  },
+  "kassaOtherAmount": "Anderer Betrag",
+  "@kassaOtherAmount": {
+    "description": "Taste zum Zahlenfeld."
+  },
+  "kassaShowSuggestions": "Vorschläge zeigen",
+  "@kassaShowSuggestions": {
+    "description": "Zurück zu den Vorschlägen."
+  },
+  "kassaStillMissing": "Fehlt noch",
+  "@kassaStillMissing": {
+    "description": "Zu wenig gegeben: so viel fehlt."
+  },
+  "kassaChange": "Rückgeld",
+  "@kassaChange": {
+    "description": "Rückgeld beim Bezahlen."
+  },
+  "kassaSaveFailed": "Der Bon konnte nicht gespeichert werden. Bitte noch einmal.",
+  "@kassaSaveFailed": {
+    "description": "Der Bon wurde nicht gespeichert."
+  },
+  "kassaFinish": "Abschließen",
+  "@kassaFinish": {
+    "description": "Verkauf abschließen, ohne Drucker."
+  },
+  "kassaFinishAndPrint": "Abschließen und Bon drucken",
+  "@kassaFinishAndPrint": {
+    "description": "Verkauf abschließen, mit Drucker."
+  },
+  "kassaWaitingForCard": "Warte auf Karte",
+  "@kassaWaitingForCard": {
+    "description": "Titel, solange das Terminal arbeitet."
+  },
+  "kassaCardHint": "Der Kunde hält Karte oder Handy an das Gerät.",
+  "@kassaCardHint": {
+    "description": "Erklärung, solange das Terminal arbeitet."
+  },
+  "kassaPaid": "Bezahlt",
+  "@kassaPaid": {
+    "description": "Verkauf fertig: Überschrift."
+  },
+  "kassaReceiptNumber": "Bon Nr. {number}",
+  "@kassaReceiptNumber": {
+    "description": "Verkauf fertig: Nummer des Bons.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaPaidExact": "Passend bezahlt",
+  "@kassaPaidExact": {
+    "description": "Verkauf fertig: kein Rückgeld."
+  },
+  "kassaGiveChange": "Rückgeld geben",
+  "@kassaGiveChange": {
+    "description": "Verkauf fertig: Rückgeld herausgeben."
+  },
+  "kassaGiveChangeFromDrawer": "Rückgeld aus der Lade geben",
+  "@kassaGiveChangeFromDrawer": {
+    "description": "Verkauf fertig: Rückgeld, mit Geldlade."
+  },
+  "kassaPaidByCard": "Mit Karte bezahlt",
+  "@kassaPaidByCard": {
+    "description": "Verkauf fertig: mit Karte bezahlt."
+  },
+  "kassaNextCustomer": "Nächster Kunde",
+  "@kassaNextCustomer": {
+    "description": "Verkauf fertig: zurück zur leeren Kassa."
+  },
+  "kassaPrinting": "Bon wird gedruckt …",
+  "@kassaPrinting": {
+    "description": "Der Bon wird gerade gedruckt."
+  },
+  "kassaPrinted": "Bon gedruckt",
+  "@kassaPrinted": {
+    "description": "Der Bon ist gedruckt."
+  },
+  "kassaPrintAgain": "Nochmal drucken",
+  "@kassaPrintAgain": {
+    "description": "Taste nach einem Druckfehler."
+  },
+  "cardAlreadyRunning": "Es läuft schon eine Kartenzahlung.",
+  "@cardAlreadyRunning": {
+    "description": "Kartenzahlung: es läuft schon eine."
+  },
+  "cardEmptyReceipt": "Der Bon ist leer.",
+  "@cardEmptyReceipt": {
+    "description": "Kartenzahlung: der Bon ist leer."
+  },
+  "cardMinimum": "Kartenzahlung geht erst ab {amount}.",
+  "@cardMinimum": {
+    "description": "Kartenzahlung: unter dem Kleinstbetrag.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "cardNotStarted": "Die Kartenzahlung konnte nicht gestartet werden.",
+  "@cardNotStarted": {
+    "description": "Kartenzahlung: ließ sich nicht starten."
+  },
+  "cardDeclined": "Die Kartenzahlung wurde nicht abgeschlossen.",
+  "@cardDeclined": {
+    "description": "Kartenzahlung: nicht abgeschlossen."
+  },
+  "cardCancelled": "Kartenzahlung abgebrochen.",
+  "@cardCancelled": {
+    "description": "Kartenzahlung: abgebrochen."
+  },
+  "cardNoInternet": "Kein Internet. Kartenzahlung geht gerade nicht.",
+  "@cardNoInternet": {
+    "description": "Kartenzahlung: kein Internet."
+  },
+  "cardNotLoggedIn": "SumUp ist nicht angemeldet. Bitte in den Einstellungen anmelden.",
+  "@cardNotLoggedIn": {
+    "description": "Kartenzahlung: SumUp nicht angemeldet."
+  },
+  "cardNoReader": "Kein Kartenleser verbunden. Bitte in den Einstellungen verbinden.",
+  "@cardNoReader": {
+    "description": "Kartenzahlung: kein Kartenleser."
+  },
+  "cardPermission": "Kassa braucht die Erlaubnis für Bluetooth und Standort.",
+  "@cardPermission": {
+    "description": "Kartenzahlung: Erlaubnis fehlt."
+  },
+  "cardFailed": "Die Kartenzahlung hat nicht geklappt.",
+  "@cardFailed": {
+    "description": "Kartenzahlung: anderer Fehler."
+  },
+  "cardFailedDetail": "Die Kartenzahlung hat nicht geklappt. ({detail})",
+  "@cardFailedDetail": {
+    "description": "Kartenzahlung: anderer Fehler; detail ist der Text des Anbieters.",
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "printNotSetUp": "Kein Bondrucker eingerichtet.",
+  "@printNotSetUp": {
+    "description": "Drucker: keiner eingerichtet."
+  },
+  "printUnreachable": "Drucker nicht bereit. Ist er eingeschaltet und verbunden?",
+  "@printUnreachable": {
+    "description": "Drucker: nicht erreichbar."
+  },
+  "printNoPermission": "Kassa darf den Drucker nicht verwenden. Bitte die Erlaubnis geben.",
+  "@printNoPermission": {
+    "description": "Drucker: Erlaubnis fehlt."
+  },
+  "printPaperOut": "Drucker nicht bereit. Das Papier ist leer.",
+  "@printPaperOut": {
+    "description": "Drucker: Papier leer."
+  },
+  "printCoverOpen": "Drucker nicht bereit. Der Deckel ist offen.",
+  "@printCoverOpen": {
+    "description": "Drucker: Deckel offen."
+  },
+  "printTimeout": "Drucker nicht bereit. Er antwortet nicht.",
+  "@printTimeout": {
+    "description": "Drucker: antwortet nicht."
+  },
+  "outageTitle": "Signatur ausgefallen seit {since}",
+  "@outageTitle": {
+    "description": "Überschrift; since ist \"13:05\" oder an einem anderen Tag \"16.11. 18:30\".",
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "outageSellOn": "Du kannst normal weiterverkaufen.",
+  "@outageSellOn": {
+    "description": "Fester Satz unter dem Grund, wenn der Grund in der Bediensprache steht."
+  },
+  "outageKeepsWorking": "Die Kassa läuft weiter. Bitte dem Chef Bescheid geben.",
+  "@outageKeepsWorking": {
+    "description": "Fester Satz unter dem Grund, wenn der Grund (aus der Signatur, immer Deutsch) nicht in der Bediensprache steht."
+  },
+  "outageRejected": "A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.",
+  "@outageRejected": {
+    "description": "Statt des Grunds: A-Trust lehnt ab."
+  },
+  "outageNotYet": "Geht noch nicht.",
+  "@outageNotYet": {
+    "description": "Ergebnis von \"Nochmal prüfen\": geht nicht."
+  },
+  "outageBack": "Die Signatur geht wieder.",
+  "@outageBack": {
+    "description": "Ergebnis von \"Nochmal prüfen\": geht wieder."
+  },
+  "outageRetry": "Nochmal prüfen",
+  "@outageRetry": {
+    "description": "Taste im Hinweis."
+  },
+  "outageRepin": "PIN neu eingeben",
+  "@outageRepin": {
+    "description": "Taste im Hinweis für den Chef."
+  },
+  "unclearTitle": "War diese Kartenzahlung erfolgreich?",
+  "@unclearTitle": {
+    "description": "Blatt zur unklaren Kartenzahlung: Frage."
+  },
+  "unclearStarted": "Gestartet um {time} von {name}",
+  "@unclearStarted": {
+    "description": "Wann und von wem; time wie \"14:32\".",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unclearMore": "{count, plural, other{und {count} weitere}}",
+  "@unclearMore": {
+    "description": "Weitere Zeilen des Bons, die nicht dastehen.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unclearNoAnswer": "Die Kassa hat von SumUp keine Antwort bekommen. Schau in der SumUp-App unter Verkäufe nach, ob {amount} um {time} angekommen ist.",
+  "@unclearNoAnswer": {
+    "description": "Hinweis; \"Verkäufe\" ist der Menüpunkt der SumUp-App in ihrer Sprache.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "unclearUnreadable": "Der Bon lässt sich nicht mehr zusammenstellen, weil sich die Speisekarte geändert hat. Wähle Nein. Ist das Geld bei SumUp angekommen, buche es in der SumUp-App zurück und kassiere neu.",
+  "@unclearUnreadable": {
+    "description": "Der Bon lässt sich nicht mehr bauen."
+  },
+  "unclearFailed": "Das hat nicht geklappt. Bitte noch einmal.",
+  "@unclearFailed": {
+    "description": "Entscheiden ist gescheitert."
+  },
+  "unclearYes": "Ja, ist angekommen",
+  "@unclearYes": {
+    "description": "Taste: das Geld ist angekommen."
+  },
+  "unclearNo": "Nein, nicht angekommen",
+  "@unclearNo": {
+    "description": "Taste: das Geld ist nicht angekommen."
+  },
+  "unclearEffectPaidPrint": "Die Kassa schreibt den Bon als Kartenzahlung und druckt ihn.",
+  "@unclearEffectPaidPrint": {
+    "description": "Folge von \"Ja\", mit Drucker."
+  },
+  "unclearEffectPaid": "Die Kassa schreibt den Bon als Kartenzahlung.",
+  "@unclearEffectPaid": {
+    "description": "Folge von \"Ja\", ohne Drucker."
+  },
+  "unclearEffectRestore": "Die Kassa verwirft die Zahlung und legt die Artikel wieder auf den Bon.",
+  "@unclearEffectRestore": {
+    "description": "Folge von \"Nein\": Artikel zurück."
+  },
+  "unclearEffectDiscard": "Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist.",
+  "@unclearEffectDiscard": {
+    "description": "Folge von \"Nein\": Bon bleibt."
+  },
+  "unclearConfirm": "Bestätigen",
+  "@unclearConfirm": {
+    "description": "Taste: Entscheidung bestätigen."
+  },
+  "unclearBack": "Zurück",
+  "@unclearBack": {
+    "description": "Taste: zurück zur Frage."
   }
 }

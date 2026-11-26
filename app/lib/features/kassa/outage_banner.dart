@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../rksv/card/card_providers.dart';
 import '../../rksv/card/card_signer.dart';
 import '../../rksv/online/atrust_client.dart';
@@ -20,23 +21,18 @@ import '../shell/shell_screen.dart' show openCardSetup;
 /// So lange bleibt "Die Signatur geht wieder." stehen, dann geht der Hinweis.
 const outageBackStay = Duration(seconds: 4);
 
-const _notYet = 'Geht noch nicht.';
-
-const _rejectedText =
-    'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.';
-
 /// "Signatur ausgefallen seit 13:05", an einem anderen Tag
-/// "seit 16.11. 18:30".
-String outageSinceText(DateTime since, DateTime now) {
+/// "seit 16.11. 18:30". Datum und Uhrzeit sehen in jeder Sprache so aus.
+String outageSinceText(L10n l, DateTime since, DateTime now) {
   String two(int n) => n.toString().padLeft(2, '0');
   final time = '${two(since.hour)}:${two(since.minute)}';
   final sameDay =
       since.year == now.year &&
       since.month == now.month &&
       since.day == now.day;
-  return sameDay
-      ? 'Signatur ausgefallen seit $time'
-      : 'Signatur ausgefallen seit ${two(since.day)}.${two(since.month)}. $time';
+  return l.outageTitle(
+    sameDay ? time : '${two(since.day)}.${two(since.month)}. $time',
+  );
 }
 
 /// Ruhiger Hinweis über dem Bon, solange die Signatur ausgefallen ist
@@ -69,7 +65,9 @@ class OutageBanner extends ConsumerStatefulWidget {
 
 class _OutageBannerState extends ConsumerState<OutageBanner> {
   bool _busy = false;
-  String? _result;
+
+  /// "Nochmal prüfen" hat ergeben: geht noch nicht.
+  bool _notYet = false;
 
   /// Wahr, solange "Die Signatur geht wieder." stehen bleibt.
   bool _back = false;
@@ -103,7 +101,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     if (staff == null) return;
     setState(() {
       _busy = true;
-      _result = null;
+      _notYet = false;
     });
     var back = false;
     try {
@@ -121,7 +119,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     setState(() {
       _busy = false;
       _back = back;
-      _result = back ? null : _notYet;
+      _notYet = !back;
     });
     if (back) {
       _backTimer?.cancel();
@@ -134,9 +132,8 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
   @override
   Widget build(BuildContext context) {
     ref.listen(rksvStateProvider, (previous, next) {
-      if (_result != null &&
-          _outageKey(previous?.value) != _outageKey(next.value)) {
-        setState(() => _result = null);
+      if (_notYet && _outageKey(previous?.value) != _outageKey(next.value)) {
+        setState(() => _notYet = false);
       }
     });
     final state = ref.watch(rksvStateProvider).value ?? const RksvState();
@@ -177,18 +174,26 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final now = ref.read(clockProvider).now();
+    final l = L10n.of(context);
     final ink = text.bodyMedium!.copyWith(color: c.warnInk);
     final line = ink.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       height: 1.3,
     );
-    final reason = rejected ? _rejectedText : state.outageReason ?? '';
+    final reason = rejected ? l.outageRejected : state.outageReason ?? '';
+    // Der Grund kommt aus der Signatur und steht immer auf Deutsch. Wer die
+    // Kassa in einer anderen Sprache bedient, liest darunter, dass sie
+    // weiterläuft und der Chef Bescheid wissen muss.
+    final germanReason =
+        !rejected &&
+        reason.isNotEmpty &&
+        Localizations.localeOf(context).languageCode != 'de';
     // Abgelehnt gilt ein altes Ergebnis nicht mehr, auch nicht, wenn der Chef
     // das Kennzeichen später aufhebt. Kein setState: Dieses Bild zeigt es
     // ohnehin nicht.
-    if (rejected) _result = null;
-    final result = _result;
+    if (rejected) _notYet = false;
+    final result = _notYet ? l.outageNotYet : null;
     return Container(
       key: const Key('rksv-outage'),
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -204,7 +209,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  outageSinceText(since, now),
+                  outageSinceText(l, since, now),
                   key: const Key('rksv-outage-title'),
                   style: ink.copyWith(
                     fontSize: 16,
@@ -219,7 +224,11 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
                     key: const Key('rksv-outage-reason'),
                     style: line,
                   ),
-                Text('Du kannst normal weiterverkaufen.', style: line),
+                Text(
+                  germanReason ? l.outageKeepsWorking : l.outageSellOn,
+                  key: const Key('rksv-outage-hint'),
+                  style: line,
+                ),
                 if (result != null) ...[
                   const SizedBox(height: KassaTokens.spaceXs),
                   Text(
@@ -240,13 +249,13 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
             if (repin)
               _BannerButton(
                 buttonKey: const Key('rksv-repin'),
-                label: 'PIN neu eingeben',
+                label: l.outageRepin,
                 onTap: () => openCardSetup(context, CardSetupPurpose.repin),
               )
             else
               _BannerButton(
                 buttonKey: const Key('rksv-retry'),
-                label: 'Nochmal prüfen',
+                label: l.outageRetry,
                 onTap: _busy ? null : _retry,
               ),
           ],
@@ -317,7 +326,7 @@ class _BackNotice extends StatelessWidget {
           const SizedBox(width: KassaTokens.spaceLg),
           Expanded(
             child: Text(
-              'Die Signatur geht wieder.',
+              L10n.of(context).outageBack,
               key: const Key('rksv-retry-result'),
               style: Theme.of(context).textTheme.bodyMedium!
                   .copyWith(fontWeight: FontWeight.w800, color: c.veganFg),

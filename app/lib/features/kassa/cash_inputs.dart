@@ -2,6 +2,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/keypad.dart';
 import '../../ui/pressable.dart';
 import '../../ui/theme.dart';
@@ -27,11 +28,12 @@ class Suggestions extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Gegeben',
+          l.kassaGiven,
           style: text.bodySmall!.copyWith(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -52,7 +54,7 @@ class Suggestions extends StatelessWidget {
                     child: GivenKey(
                       key: Key('given-${amounts[i]}'),
                       label: i == 0
-                          ? 'Passend'
+                          ? l.kassaExact
                           : formatEuro(amounts[i]).replaceFirst(',00', ''),
                       selected: given == amounts[i],
                       onTap: () => onGiven(amounts[i]),
@@ -79,7 +81,7 @@ class Suggestions extends StatelessWidget {
                 Icon(LucideIcons.calculator, size: 22, color: c.ink),
                 const SizedBox(width: KassaTokens.spaceLg),
                 Text(
-                  'Anderer Betrag',
+                  l.kassaOtherAmount,
                   style: text.titleLarge!.copyWith(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -162,6 +164,7 @@ class TypedAmount extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final empty = input.isEmpty;
+    final l = L10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -171,7 +174,7 @@ class TypedAmount extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Gegeben',
+                l.kassaGiven,
                 style: text.bodySmall!.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -187,7 +190,7 @@ class TypedAmount extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   alignment: Alignment.center,
                   child: Text(
-                    'Vorschläge zeigen',
+                    l.kassaShowSuggestions,
                     style: text.labelLarge!.copyWith(color: c.accentInk),
                   ),
                 ),
@@ -259,7 +262,9 @@ class ChangeField extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            missing ? 'Fehlt noch' : 'Rückgeld',
+            missing
+                ? L10n.of(context).kassaStillMissing
+                : L10n.of(context).kassaChange,
             style: text.bodyLarge!.copyWith(color: labelColor),
           ),
           const SizedBox(width: KassaTokens.spaceMd),

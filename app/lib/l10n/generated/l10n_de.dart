@@ -80,4 +80,370 @@ class L10nDe extends L10n {
 
   @override
   String get uiListSeparator => ', ';
+
+  @override
+  String kassaItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Artikel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String kassaCategoryLabel(String name, String items) {
+    return '$name, $items';
+  }
+
+  @override
+  String get kassaFavorites => 'Favoriten';
+
+  @override
+  String get kassaWithImages => 'Mit Bildern';
+
+  @override
+  String get kassaCompact => 'Kompakt';
+
+  @override
+  String get kassaPlusDeposit => '+ Pfand';
+
+  @override
+  String get kassaNotForSale => 'Nicht im Verkauf';
+
+  @override
+  String kassaOnReceipt(int count) {
+    return '$count auf dem Bon';
+  }
+
+  @override
+  String get kassaTagVegan => 'VEGAN';
+
+  @override
+  String get kassaTagSpicy => 'SCHARF';
+
+  @override
+  String kassaOneLess(String name) {
+    return 'Eins weniger: $name';
+  }
+
+  @override
+  String kassaOneMore(String name) {
+    return 'Eins mehr: $name';
+  }
+
+  @override
+  String get kassaReceipt => 'Bon';
+
+  @override
+  String get kassaClearCart => 'Bon leeren';
+
+  @override
+  String get kassaCartCleared => 'Bon geleert';
+
+  @override
+  String get kassaEmptyTitle => 'Noch nichts boniert';
+
+  @override
+  String get kassaEmptyHint =>
+      'Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.';
+
+  @override
+  String get kassaTotal => 'Summe';
+
+  @override
+  String kassaDepositIncluded(String amount) {
+    return 'davon Pfand $amount';
+  }
+
+  @override
+  String kassaTaxIncluded(String amount) {
+    return 'inkl. $amount MwSt';
+  }
+
+  @override
+  String get kassaCash => 'Bar';
+
+  @override
+  String get kassaCard => 'Karte';
+
+  @override
+  String get kassaCardNotSetUp => 'nicht eingerichtet';
+
+  @override
+  String get kassaCardLoggedOut => 'nicht angemeldet';
+
+  @override
+  String get kassaCardNoInternet => 'kein Internet';
+
+  @override
+  String kassaCardFrom(String amount) {
+    return 'ab $amount';
+  }
+
+  @override
+  String get kassaCancel => 'Abbrechen';
+
+  @override
+  String get kassaAddToReceipt => 'Auf den Bon';
+
+  @override
+  String kassaStillToChoose(String groups) {
+    return 'Noch wählen: $groups';
+  }
+
+  @override
+  String get kassaPickOne => 'eine Wahl';
+
+  @override
+  String get kassaAtMostOne => 'höchstens eine';
+
+  @override
+  String kassaAtLeast(int min) {
+    return 'mindestens $min';
+  }
+
+  @override
+  String kassaUpTo(int max) {
+    return 'bis zu $max';
+  }
+
+  @override
+  String get kassaPleaseChoose => 'Bitte wählen';
+
+  @override
+  String kassaChosenCount(int count) {
+    return '$count gewählt';
+  }
+
+  @override
+  String kassaOptionChosen(String name) {
+    return '$name, gewählt';
+  }
+
+  @override
+  String get kassaPayCashTitle => 'Bar bezahlen';
+
+  @override
+  String get kassaBackToReceipt => 'Zurück zum Bon';
+
+  @override
+  String get kassaAmountDue => 'Zu zahlen';
+
+  @override
+  String get kassaGiven => 'Gegeben';
+
+  @override
+  String get kassaExact => 'Passend';
+
+  @override
+  String get kassaOtherAmount => 'Anderer Betrag';
+
+  @override
+  String get kassaShowSuggestions => 'Vorschläge zeigen';
+
+  @override
+  String get kassaStillMissing => 'Fehlt noch';
+
+  @override
+  String get kassaChange => 'Rückgeld';
+
+  @override
+  String get kassaSaveFailed =>
+      'Der Bon konnte nicht gespeichert werden. Bitte noch einmal.';
+
+  @override
+  String get kassaFinish => 'Abschließen';
+
+  @override
+  String get kassaFinishAndPrint => 'Abschließen und Bon drucken';
+
+  @override
+  String get kassaWaitingForCard => 'Warte auf Karte';
+
+  @override
+  String get kassaCardHint => 'Der Kunde hält Karte oder Handy an das Gerät.';
+
+  @override
+  String get kassaPaid => 'Bezahlt';
+
+  @override
+  String kassaReceiptNumber(int number) {
+    return 'Bon Nr. $number';
+  }
+
+  @override
+  String get kassaPaidExact => 'Passend bezahlt';
+
+  @override
+  String get kassaGiveChange => 'Rückgeld geben';
+
+  @override
+  String get kassaGiveChangeFromDrawer => 'Rückgeld aus der Lade geben';
+
+  @override
+  String get kassaPaidByCard => 'Mit Karte bezahlt';
+
+  @override
+  String get kassaNextCustomer => 'Nächster Kunde';
+
+  @override
+  String get kassaPrinting => 'Bon wird gedruckt …';
+
+  @override
+  String get kassaPrinted => 'Bon gedruckt';
+
+  @override
+  String get kassaPrintAgain => 'Nochmal drucken';
+
+  @override
+  String get cardAlreadyRunning => 'Es läuft schon eine Kartenzahlung.';
+
+  @override
+  String get cardEmptyReceipt => 'Der Bon ist leer.';
+
+  @override
+  String cardMinimum(String amount) {
+    return 'Kartenzahlung geht erst ab $amount.';
+  }
+
+  @override
+  String get cardNotStarted =>
+      'Die Kartenzahlung konnte nicht gestartet werden.';
+
+  @override
+  String get cardDeclined => 'Die Kartenzahlung wurde nicht abgeschlossen.';
+
+  @override
+  String get cardCancelled => 'Kartenzahlung abgebrochen.';
+
+  @override
+  String get cardNoInternet =>
+      'Kein Internet. Kartenzahlung geht gerade nicht.';
+
+  @override
+  String get cardNotLoggedIn =>
+      'SumUp ist nicht angemeldet. Bitte in den Einstellungen anmelden.';
+
+  @override
+  String get cardNoReader =>
+      'Kein Kartenleser verbunden. Bitte in den Einstellungen verbinden.';
+
+  @override
+  String get cardPermission =>
+      'Kassa braucht die Erlaubnis für Bluetooth und Standort.';
+
+  @override
+  String get cardFailed => 'Die Kartenzahlung hat nicht geklappt.';
+
+  @override
+  String cardFailedDetail(String detail) {
+    return 'Die Kartenzahlung hat nicht geklappt. ($detail)';
+  }
+
+  @override
+  String get printNotSetUp => 'Kein Bondrucker eingerichtet.';
+
+  @override
+  String get printUnreachable =>
+      'Drucker nicht bereit. Ist er eingeschaltet und verbunden?';
+
+  @override
+  String get printNoPermission =>
+      'Kassa darf den Drucker nicht verwenden. Bitte die Erlaubnis geben.';
+
+  @override
+  String get printPaperOut => 'Drucker nicht bereit. Das Papier ist leer.';
+
+  @override
+  String get printCoverOpen => 'Drucker nicht bereit. Der Deckel ist offen.';
+
+  @override
+  String get printTimeout => 'Drucker nicht bereit. Er antwortet nicht.';
+
+  @override
+  String outageTitle(String since) {
+    return 'Signatur ausgefallen seit $since';
+  }
+
+  @override
+  String get outageSellOn => 'Du kannst normal weiterverkaufen.';
+
+  @override
+  String get outageKeepsWorking =>
+      'Die Kassa läuft weiter. Bitte dem Chef Bescheid geben.';
+
+  @override
+  String get outageRejected =>
+      'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.';
+
+  @override
+  String get outageNotYet => 'Geht noch nicht.';
+
+  @override
+  String get outageBack => 'Die Signatur geht wieder.';
+
+  @override
+  String get outageRetry => 'Nochmal prüfen';
+
+  @override
+  String get outageRepin => 'PIN neu eingeben';
+
+  @override
+  String get unclearTitle => 'War diese Kartenzahlung erfolgreich?';
+
+  @override
+  String unclearStarted(String time, String name) {
+    return 'Gestartet um $time von $name';
+  }
+
+  @override
+  String unclearMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'und $count weitere',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String unclearNoAnswer(String amount, String time) {
+    return 'Die Kassa hat von SumUp keine Antwort bekommen. Schau in der SumUp-App unter Verkäufe nach, ob $amount um $time angekommen ist.';
+  }
+
+  @override
+  String get unclearUnreadable =>
+      'Der Bon lässt sich nicht mehr zusammenstellen, weil sich die Speisekarte geändert hat. Wähle Nein. Ist das Geld bei SumUp angekommen, buche es in der SumUp-App zurück und kassiere neu.';
+
+  @override
+  String get unclearFailed => 'Das hat nicht geklappt. Bitte noch einmal.';
+
+  @override
+  String get unclearYes => 'Ja, ist angekommen';
+
+  @override
+  String get unclearNo => 'Nein, nicht angekommen';
+
+  @override
+  String get unclearEffectPaidPrint =>
+      'Die Kassa schreibt den Bon als Kartenzahlung und druckt ihn.';
+
+  @override
+  String get unclearEffectPaid =>
+      'Die Kassa schreibt den Bon als Kartenzahlung.';
+
+  @override
+  String get unclearEffectRestore =>
+      'Die Kassa verwirft die Zahlung und legt die Artikel wieder auf den Bon.';
+
+  @override
+  String get unclearEffectDiscard =>
+      'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist.';
+
+  @override
+  String get unclearConfirm => 'Bestätigen';
+
+  @override
+  String get unclearBack => 'Zurück';
 }

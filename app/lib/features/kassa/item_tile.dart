@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/hex_color.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
@@ -26,19 +27,20 @@ class ItemTile extends StatelessWidget {
   final bool showImage;
   final VoidCallback onTap;
 
-  static String? extraText(Item item) =>
-      item.info ?? (item.depositCents > 0 ? '+ Pfand' : null);
+  static String? extraText(L10n l, Item item) =>
+      item.info ?? (item.depositCents > 0 ? l.kassaPlusDeposit : null);
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final instant = MediaQuery.disableAnimationsOf(context);
     final selected = quantity > 0;
+    final l = L10n.of(context);
     final label = [
       item.name,
-      if (item.inSale) formatEuro(item.priceCents) else 'Nicht im Verkauf',
-      if (selected) '$quantity auf dem Bon',
-    ].join(', ');
+      if (item.inSale) formatEuro(item.priceCents) else l.kassaNotForSale,
+      if (selected) l.kassaOnReceipt(quantity),
+    ].join(l.uiListSeparator);
     final radius = showImage ? KassaTokens.radiusXxl : KassaTokens.radiusXl;
     final body = showImage
         ? _ImageBody(item: item, selected: selected)
@@ -146,7 +148,7 @@ class _TagPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(small ? KassaTokens.radiusXs : 6),
       ),
       child: Text(
-        vegan ? 'VEGAN' : 'SCHARF',
+        vegan ? L10n.of(context).kassaTagVegan : L10n.of(context).kassaTagSpicy,
         maxLines: 1,
         // Die Marke hat eine feste Höhe und wächst nicht mit der Schrift.
         textScaler: TextScaler.noScaling,
@@ -269,7 +271,8 @@ class _PriceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
-    final extra = item.inSale ? ItemTile.extraText(item) : 'Nicht im Verkauf';
+    final l = L10n.of(context);
+    final extra = item.inSale ? ItemTile.extraText(l, item) : l.kassaNotForSale;
     // Preis und Marke behalten ihre Größe. Der Zusatz weicht zuerst: erst
     // gekürzt, dann ganz abgeschnitten.
     return Row(

@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/cart.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -67,8 +68,9 @@ class _CartLineRowState extends State<CartLineRow>
     final line = widget.line;
     final id = line.lineId;
     final instant = MediaQuery.disableAnimationsOf(context);
+    final l = L10n.of(context);
     final sub = line.options.isNotEmpty
-        ? line.options.map((o) => o.name).join(', ')
+        ? line.options.map((o) => o.name).join(l.uiListSeparator)
         : line.item.info;
     return AnimatedBuilder(
       animation: _glow,
@@ -127,7 +129,7 @@ class _CartLineRowState extends State<CartLineRow>
             _StepButton(
               key: Key('qty-minus-$id'),
               icon: LucideIcons.minus,
-              label: 'Eins weniger: ${line.item.name}',
+              label: l.kassaOneLess(line.item.name),
               onTap: () => widget.onQuantity(line.quantity - 1),
             ),
             ConstrainedBox(
@@ -145,7 +147,7 @@ class _CartLineRowState extends State<CartLineRow>
             _StepButton(
               key: Key('qty-plus-$id'),
               icon: LucideIcons.plus,
-              label: 'Eins mehr: ${line.item.name}',
+              label: l.kassaOneMore(line.item.name),
               onTap: () => widget.onQuantity(line.quantity + 1),
             ),
             const SizedBox(width: KassaTokens.spaceSm),

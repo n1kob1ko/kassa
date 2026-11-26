@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
@@ -39,6 +40,7 @@ class _ModifierPanelState extends State<ModifierPanel> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final missing = _selection.missing;
     final price = widget.item.priceCents + _selection.surchargeCents;
     return Column(
@@ -99,7 +101,7 @@ class _ModifierPanelState extends State<ModifierPanel> {
                 width: 180,
                 child: PrimaryButton(
                   key: const Key('cancel-build'),
-                  label: 'Abbrechen',
+                  label: l.kassaCancel,
                   filled: false,
                   height: 68,
                   onPressed: widget.onCancel,
@@ -110,8 +112,10 @@ class _ModifierPanelState extends State<ModifierPanel> {
                 child: PrimaryButton(
                   key: const Key('add-to-cart'),
                   label: missing.isEmpty
-                      ? 'Auf den Bon'
-                      : 'Noch wählen: ${missing.map((g) => g.name).join(', ')}',
+                      ? l.kassaAddToReceipt
+                      : l.kassaStillToChoose(
+                          missing.map((g) => g.name).join(l.uiListSeparator),
+                        ),
                   muted: missing.isNotEmpty,
                   height: 68,
                   onPressed: missing.isEmpty
@@ -138,22 +142,24 @@ class _GroupCard extends StatelessWidget {
   final Selection selection;
   final ValueChanged<ModifierOption> onToggle;
 
-  String get _hint {
+  String _hint(L10n l) {
     final max = group.max;
-    if (max == 1) return group.min >= 1 ? 'eine Wahl' : 'höchstens eine';
-    if (max == null) return group.min >= 1 ? 'mindestens ${group.min}' : '';
-    return 'bis zu $max';
+    if (max == 1) return group.min >= 1 ? l.kassaPickOne : l.kassaAtMostOne;
+    if (max == null) return group.min >= 1 ? l.kassaAtLeast(group.min) : '';
+    return l.kassaUpTo(max);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final count = group.options.where(selection.isChosen).length;
     final short = count < group.min;
     final status = short
-        ? 'Bitte wählen'
-        : (group.max != 1 && count > 0 ? '$count gewählt' : '');
+        ? l.kassaPleaseChoose
+        : (group.max != 1 && count > 0 ? l.kassaChosenCount(count) : '');
+    final hint = _hint(l);
     return Container(
       key: Key('group-${group.id}'),
       padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
@@ -181,11 +187,11 @@ class _GroupCard extends StatelessWidget {
                           style: text.titleMedium,
                         ),
                       ),
-                      if (_hint.isNotEmpty) ...[
+                      if (hint.isNotEmpty) ...[
                         const SizedBox(width: KassaTokens.spaceLg),
                         Flexible(
                           child: Text(
-                            _hint,
+                            hint,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodySmall!.copyWith(color: c.ink2),
@@ -278,7 +284,9 @@ class _OptionButton extends StatelessWidget {
     return Pressable(
       key: Key('opt-${option.id}'),
       onTap: onTap,
-      semanticLabel: chosen ? '${option.name}, gewählt' : option.name,
+      semanticLabel: chosen
+          ? L10n.of(context).kassaOptionChosen(option.name)
+          : option.name,
       child: AnimatedContainer(
         duration: instant ? Duration.zero : KassaTokens.motionFast,
         curve: Curves.linear,

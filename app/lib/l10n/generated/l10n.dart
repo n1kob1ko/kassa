@@ -235,6 +235,606 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **', '**
   String get uiListSeparator;
+
+  /// Anzahl Artikel (Bon, Artikelfläche).
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, other{{count} Artikel}}'**
+  String kassaItemCount(int count);
+
+  /// Vorlesehilfe einer Kategorie; items ist kassaItemCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}, {items}'**
+  String kassaCategoryLabel(String name, String items);
+
+  /// Kategorie mit den Lieblingsartikeln.
+  ///
+  /// In de, this message translates to:
+  /// **'Favoriten'**
+  String get kassaFavorites;
+
+  /// Umschalter der Artikelfläche.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Bildern'**
+  String get kassaWithImages;
+
+  /// Umschalter der Artikelfläche.
+  ///
+  /// In de, this message translates to:
+  /// **'Kompakt'**
+  String get kassaCompact;
+
+  /// Zusatz auf der Artikeltaste bei Pfand.
+  ///
+  /// In de, this message translates to:
+  /// **'+ Pfand'**
+  String get kassaPlusDeposit;
+
+  /// Artikel ist ausgeschaltet.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht im Verkauf'**
+  String get kassaNotForSale;
+
+  /// Vorlesehilfe: so oft liegt er auf dem Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} auf dem Bon'**
+  String kassaOnReceipt(int count);
+
+  /// Kennzeichen auf der Artikeltaste.
+  ///
+  /// In de, this message translates to:
+  /// **'VEGAN'**
+  String get kassaTagVegan;
+
+  /// Kennzeichen auf der Artikeltaste.
+  ///
+  /// In de, this message translates to:
+  /// **'SCHARF'**
+  String get kassaTagSpicy;
+
+  /// Vorlesehilfe der Minus-Taste einer Bonzeile.
+  ///
+  /// In de, this message translates to:
+  /// **'Eins weniger: {name}'**
+  String kassaOneLess(String name);
+
+  /// Vorlesehilfe der Plus-Taste einer Bonzeile.
+  ///
+  /// In de, this message translates to:
+  /// **'Eins mehr: {name}'**
+  String kassaOneMore(String name);
+
+  /// Titel der Bon-Spalte.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon'**
+  String get kassaReceipt;
+
+  /// Taste im Kopf der Bon-Spalte.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon leeren'**
+  String get kassaClearCart;
+
+  /// Hinweis nach "Bon leeren".
+  ///
+  /// In de, this message translates to:
+  /// **'Bon geleert'**
+  String get kassaCartCleared;
+
+  /// Leerer Bon, Überschrift.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch nichts boniert'**
+  String get kassaEmptyTitle;
+
+  /// Leerer Bon, Erklärung. Ohne Richtung, wo die Artikel stehen (in Arabisch rechts).
+  ///
+  /// In de, this message translates to:
+  /// **'Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.'**
+  String get kassaEmptyHint;
+
+  /// Summenzeile des Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Summe'**
+  String get kassaTotal;
+
+  /// Pfand in der Summe; amount wie "0,50 €".
+  ///
+  /// In de, this message translates to:
+  /// **'davon Pfand {amount}'**
+  String kassaDepositIncluded(String amount);
+
+  /// Steuer in der Summe; amount wie "1,20 €".
+  ///
+  /// In de, this message translates to:
+  /// **'inkl. {amount} MwSt'**
+  String kassaTaxIncluded(String amount);
+
+  /// Große Taste: bar bezahlen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar'**
+  String get kassaCash;
+
+  /// Große Taste: mit Karte bezahlen.
+  ///
+  /// In de, this message translates to:
+  /// **'Karte'**
+  String get kassaCard;
+
+  /// Zeile unter "Karte": kein Terminal.
+  ///
+  /// In de, this message translates to:
+  /// **'nicht eingerichtet'**
+  String get kassaCardNotSetUp;
+
+  /// Zeile unter "Karte": nicht angemeldet.
+  ///
+  /// In de, this message translates to:
+  /// **'nicht angemeldet'**
+  String get kassaCardLoggedOut;
+
+  /// Zeile unter "Karte": kein Internet.
+  ///
+  /// In de, this message translates to:
+  /// **'kein Internet'**
+  String get kassaCardNoInternet;
+
+  /// Zeile unter "Karte": Kleinstbetrag.
+  ///
+  /// In de, this message translates to:
+  /// **'ab {amount}'**
+  String kassaCardFrom(String amount);
+
+  /// Zusammenstellen abbrechen.
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get kassaCancel;
+
+  /// Zusammengestellten Artikel auf den Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf den Bon'**
+  String get kassaAddToReceipt;
+
+  /// Taste, solange Pflichtgruppen fehlen; groups sind deren Namen.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch wählen: {groups}'**
+  String kassaStillToChoose(String groups);
+
+  /// Gruppe: genau eine Wahl.
+  ///
+  /// In de, this message translates to:
+  /// **'eine Wahl'**
+  String get kassaPickOne;
+
+  /// Gruppe: keine oder eine Wahl.
+  ///
+  /// In de, this message translates to:
+  /// **'höchstens eine'**
+  String get kassaAtMostOne;
+
+  /// Gruppe: Mindestzahl.
+  ///
+  /// In de, this message translates to:
+  /// **'mindestens {min}'**
+  String kassaAtLeast(int min);
+
+  /// Gruppe: Höchstzahl.
+  ///
+  /// In de, this message translates to:
+  /// **'bis zu {max}'**
+  String kassaUpTo(int max);
+
+  /// Gruppe: Pflichtwahl fehlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte wählen'**
+  String get kassaPleaseChoose;
+
+  /// Gruppe: so viele gewählt.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} gewählt'**
+  String kassaChosenCount(int count);
+
+  /// Vorlesehilfe einer gewählten Option.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}, gewählt'**
+  String kassaOptionChosen(String name);
+
+  /// Titel der Spalte beim Barzahlen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar bezahlen'**
+  String get kassaPayCashTitle;
+
+  /// Vorlesehilfe des Pfeils zurück.
+  ///
+  /// In de, this message translates to:
+  /// **'Zurück zum Bon'**
+  String get kassaBackToReceipt;
+
+  /// Betrag, der zu zahlen ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu zahlen'**
+  String get kassaAmountDue;
+
+  /// Betrag, den der Kunde gibt.
+  ///
+  /// In de, this message translates to:
+  /// **'Gegeben'**
+  String get kassaGiven;
+
+  /// Vorschlag: genau der Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Passend'**
+  String get kassaExact;
+
+  /// Taste zum Zahlenfeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Anderer Betrag'**
+  String get kassaOtherAmount;
+
+  /// Zurück zu den Vorschlägen.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorschläge zeigen'**
+  String get kassaShowSuggestions;
+
+  /// Zu wenig gegeben: so viel fehlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Fehlt noch'**
+  String get kassaStillMissing;
+
+  /// Rückgeld beim Bezahlen.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgeld'**
+  String get kassaChange;
+
+  /// Der Bon wurde nicht gespeichert.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Bon konnte nicht gespeichert werden. Bitte noch einmal.'**
+  String get kassaSaveFailed;
+
+  /// Verkauf abschließen, ohne Drucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Abschließen'**
+  String get kassaFinish;
+
+  /// Verkauf abschließen, mit Drucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Abschließen und Bon drucken'**
+  String get kassaFinishAndPrint;
+
+  /// Titel, solange das Terminal arbeitet.
+  ///
+  /// In de, this message translates to:
+  /// **'Warte auf Karte'**
+  String get kassaWaitingForCard;
+
+  /// Erklärung, solange das Terminal arbeitet.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Kunde hält Karte oder Handy an das Gerät.'**
+  String get kassaCardHint;
+
+  /// Verkauf fertig: Überschrift.
+  ///
+  /// In de, this message translates to:
+  /// **'Bezahlt'**
+  String get kassaPaid;
+
+  /// Verkauf fertig: Nummer des Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon Nr. {number}'**
+  String kassaReceiptNumber(int number);
+
+  /// Verkauf fertig: kein Rückgeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Passend bezahlt'**
+  String get kassaPaidExact;
+
+  /// Verkauf fertig: Rückgeld herausgeben.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgeld geben'**
+  String get kassaGiveChange;
+
+  /// Verkauf fertig: Rückgeld, mit Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgeld aus der Lade geben'**
+  String get kassaGiveChangeFromDrawer;
+
+  /// Verkauf fertig: mit Karte bezahlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Karte bezahlt'**
+  String get kassaPaidByCard;
+
+  /// Verkauf fertig: zurück zur leeren Kassa.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächster Kunde'**
+  String get kassaNextCustomer;
+
+  /// Der Bon wird gerade gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon wird gedruckt …'**
+  String get kassaPrinting;
+
+  /// Der Bon ist gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon gedruckt'**
+  String get kassaPrinted;
+
+  /// Taste nach einem Druckfehler.
+  ///
+  /// In de, this message translates to:
+  /// **'Nochmal drucken'**
+  String get kassaPrintAgain;
+
+  /// Kartenzahlung: es läuft schon eine.
+  ///
+  /// In de, this message translates to:
+  /// **'Es läuft schon eine Kartenzahlung.'**
+  String get cardAlreadyRunning;
+
+  /// Kartenzahlung: der Bon ist leer.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Bon ist leer.'**
+  String get cardEmptyReceipt;
+
+  /// Kartenzahlung: unter dem Kleinstbetrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Kartenzahlung geht erst ab {amount}.'**
+  String cardMinimum(String amount);
+
+  /// Kartenzahlung: ließ sich nicht starten.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kartenzahlung konnte nicht gestartet werden.'**
+  String get cardNotStarted;
+
+  /// Kartenzahlung: nicht abgeschlossen.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kartenzahlung wurde nicht abgeschlossen.'**
+  String get cardDeclined;
+
+  /// Kartenzahlung: abgebrochen.
+  ///
+  /// In de, this message translates to:
+  /// **'Kartenzahlung abgebrochen.'**
+  String get cardCancelled;
+
+  /// Kartenzahlung: kein Internet.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Internet. Kartenzahlung geht gerade nicht.'**
+  String get cardNoInternet;
+
+  /// Kartenzahlung: SumUp nicht angemeldet.
+  ///
+  /// In de, this message translates to:
+  /// **'SumUp ist nicht angemeldet. Bitte in den Einstellungen anmelden.'**
+  String get cardNotLoggedIn;
+
+  /// Kartenzahlung: kein Kartenleser.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Kartenleser verbunden. Bitte in den Einstellungen verbinden.'**
+  String get cardNoReader;
+
+  /// Kartenzahlung: Erlaubnis fehlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa braucht die Erlaubnis für Bluetooth und Standort.'**
+  String get cardPermission;
+
+  /// Kartenzahlung: anderer Fehler.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kartenzahlung hat nicht geklappt.'**
+  String get cardFailed;
+
+  /// Kartenzahlung: anderer Fehler; detail ist der Text des Anbieters.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kartenzahlung hat nicht geklappt. ({detail})'**
+  String cardFailedDetail(String detail);
+
+  /// Drucker: keiner eingerichtet.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Bondrucker eingerichtet.'**
+  String get printNotSetUp;
+
+  /// Drucker: nicht erreichbar.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucker nicht bereit. Ist er eingeschaltet und verbunden?'**
+  String get printUnreachable;
+
+  /// Drucker: Erlaubnis fehlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa darf den Drucker nicht verwenden. Bitte die Erlaubnis geben.'**
+  String get printNoPermission;
+
+  /// Drucker: Papier leer.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucker nicht bereit. Das Papier ist leer.'**
+  String get printPaperOut;
+
+  /// Drucker: Deckel offen.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucker nicht bereit. Der Deckel ist offen.'**
+  String get printCoverOpen;
+
+  /// Drucker: antwortet nicht.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucker nicht bereit. Er antwortet nicht.'**
+  String get printTimeout;
+
+  /// Überschrift; since ist "13:05" oder an einem anderen Tag "16.11. 18:30".
+  ///
+  /// In de, this message translates to:
+  /// **'Signatur ausgefallen seit {since}'**
+  String outageTitle(String since);
+
+  /// Fester Satz unter dem Grund, wenn der Grund in der Bediensprache steht.
+  ///
+  /// In de, this message translates to:
+  /// **'Du kannst normal weiterverkaufen.'**
+  String get outageSellOn;
+
+  /// Fester Satz unter dem Grund, wenn der Grund (aus der Signatur, immer Deutsch) nicht in der Bediensprache steht.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa läuft weiter. Bitte dem Chef Bescheid geben.'**
+  String get outageKeepsWorking;
+
+  /// Statt des Grunds: A-Trust lehnt ab.
+  ///
+  /// In de, this message translates to:
+  /// **'A-Trust hat die Zugangsdaten abgelehnt. Bitte den Chef holen.'**
+  String get outageRejected;
+
+  /// Ergebnis von "Nochmal prüfen": geht nicht.
+  ///
+  /// In de, this message translates to:
+  /// **'Geht noch nicht.'**
+  String get outageNotYet;
+
+  /// Ergebnis von "Nochmal prüfen": geht wieder.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Signatur geht wieder.'**
+  String get outageBack;
+
+  /// Taste im Hinweis.
+  ///
+  /// In de, this message translates to:
+  /// **'Nochmal prüfen'**
+  String get outageRetry;
+
+  /// Taste im Hinweis für den Chef.
+  ///
+  /// In de, this message translates to:
+  /// **'PIN neu eingeben'**
+  String get outageRepin;
+
+  /// Blatt zur unklaren Kartenzahlung: Frage.
+  ///
+  /// In de, this message translates to:
+  /// **'War diese Kartenzahlung erfolgreich?'**
+  String get unclearTitle;
+
+  /// Wann und von wem; time wie "14:32".
+  ///
+  /// In de, this message translates to:
+  /// **'Gestartet um {time} von {name}'**
+  String unclearStarted(String time, String name);
+
+  /// Weitere Zeilen des Bons, die nicht dastehen.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, other{und {count} weitere}}'**
+  String unclearMore(int count);
+
+  /// Hinweis; "Verkäufe" ist der Menüpunkt der SumUp-App in ihrer Sprache.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa hat von SumUp keine Antwort bekommen. Schau in der SumUp-App unter Verkäufe nach, ob {amount} um {time} angekommen ist.'**
+  String unclearNoAnswer(String amount, String time);
+
+  /// Der Bon lässt sich nicht mehr bauen.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Bon lässt sich nicht mehr zusammenstellen, weil sich die Speisekarte geändert hat. Wähle Nein. Ist das Geld bei SumUp angekommen, buche es in der SumUp-App zurück und kassiere neu.'**
+  String get unclearUnreadable;
+
+  /// Entscheiden ist gescheitert.
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte noch einmal.'**
+  String get unclearFailed;
+
+  /// Taste: das Geld ist angekommen.
+  ///
+  /// In de, this message translates to:
+  /// **'Ja, ist angekommen'**
+  String get unclearYes;
+
+  /// Taste: das Geld ist nicht angekommen.
+  ///
+  /// In de, this message translates to:
+  /// **'Nein, nicht angekommen'**
+  String get unclearNo;
+
+  /// Folge von "Ja", mit Drucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa schreibt den Bon als Kartenzahlung und druckt ihn.'**
+  String get unclearEffectPaidPrint;
+
+  /// Folge von "Ja", ohne Drucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa schreibt den Bon als Kartenzahlung.'**
+  String get unclearEffectPaid;
+
+  /// Folge von "Nein": Artikel zurück.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa verwirft die Zahlung und legt die Artikel wieder auf den Bon.'**
+  String get unclearEffectRestore;
+
+  /// Folge von "Nein": Bon bleibt.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist.'**
+  String get unclearEffectDiscard;
+
+  /// Taste: Entscheidung bestätigen.
+  ///
+  /// In de, this message translates to:
+  /// **'Bestätigen'**
+  String get unclearConfirm;
+
+  /// Taste: zurück zur Frage.
+  ///
+  /// In de, this message translates to:
+  /// **'Zurück'**
+  String get unclearBack;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

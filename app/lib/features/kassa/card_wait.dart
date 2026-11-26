@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
 
@@ -16,6 +17,7 @@ class CardWait extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     return PayColumnFrame(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -39,7 +41,7 @@ class CardWait extends StatelessWidget {
                     const SizedBox(width: KassaTokens.spaceLg),
                     Flexible(
                       child: Text(
-                        'Warte auf Karte',
+                        l.kassaWaitingForCard,
                         style: text.headlineMedium!.copyWith(
                           color: c.accentInk,
                         ),
@@ -63,7 +65,7 @@ class CardWait extends StatelessWidget {
                 ),
                 const SizedBox(height: KassaTokens.spaceXxl),
                 Text(
-                  'Der Kunde hält Karte oder Handy an das Gerät.',
+                  l.kassaCardHint,
                   style: text.bodyLarge!.copyWith(
                     fontWeight: FontWeight.w600,
                     height: 1.35,

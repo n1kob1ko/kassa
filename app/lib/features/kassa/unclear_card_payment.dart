@@ -11,7 +11,9 @@ import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/primary_button.dart';
+import '../../ui/print_problem_text.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
@@ -81,9 +83,12 @@ Future<void> _announcePrint(
 ) async {
   final outcome = await print;
   if (!context.mounted || outcome.problem == PrintProblem.notSetUp) return;
+  final l = L10n.of(context);
   showUndoToast(
     context,
-    message: outcome.ok ? 'Bon gedruckt' : outcome.message,
+    message: outcome.ok
+        ? l.kassaPrinted
+        : printProblemText(l, outcome.problem!),
   );
 }
 
@@ -170,6 +175,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
     final time = receiptTime(p.startedAt);
     final amount = formatEuro(p.amountCents);
     final still = MediaQuery.disableAnimationsOf(context);
+    final l = L10n.of(context);
 
     return Semantics(
       scopesRoute: true,
@@ -189,10 +195,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'War diese Kartenzahlung erfolgreich?',
-                    style: text.headlineMedium,
-                  ),
+                  Text(l.unclearTitle, style: text.headlineMedium),
                   const SizedBox(height: KassaTokens.spaceXl),
                   FittedBox(
                     fit: BoxFit.scaleDown,
@@ -206,7 +209,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                   ),
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
-                    'Gestartet um $time von ${p.staffName}',
+                    l.unclearStarted(time, p.staffName),
                     style: text.bodyLarge!.copyWith(color: c.ink2),
                   ),
                   if (shown.isNotEmpty) ...[
@@ -232,7 +235,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                             ),
                           if (more > 0)
                             Text(
-                              'und $more weitere',
+                              l.unclearMore(more),
                               style: text.bodyMedium!.copyWith(color: c.ink2),
                             ),
                         ],
@@ -243,10 +246,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                   _Note(
                     background: c.warnBg,
                     foreground: c.warnInk,
-                    message:
-                        'Die Kassa hat von SumUp keine Antwort bekommen. Schau '
-                        'in der SumUp-App unter Verkäufe nach, ob $amount um '
-                        '$time angekommen ist.',
+                    message: l.unclearNoAnswer(amount, time),
                   ),
                   if (unreadable) ...[
                     const SizedBox(height: KassaTokens.spaceMd),
@@ -254,11 +254,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                       key: const Key('unclear-unreadable'),
                       background: c.spicyBg,
                       foreground: c.spicyFg,
-                      message:
-                          'Der Bon lässt sich nicht mehr zusammenstellen, weil '
-                          'sich die Speisekarte geändert hat. Wähle Nein. Ist '
-                          'das Geld bei SumUp angekommen, buche es in der '
-                          'SumUp-App zurück und kassiere neu.',
+                      message: l.unclearUnreadable,
                     ),
                   ],
                   if (_failed) ...[
@@ -267,7 +263,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                       key: const Key('unclear-failed'),
                       background: c.spicyBg,
                       foreground: c.spicyFg,
-                      message: 'Das hat nicht geklappt. Bitte noch einmal.',
+                      message: l.unclearFailed,
                     ),
                   ],
                   const SizedBox(height: KassaTokens.spaceXxl),
@@ -290,13 +286,14 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
   }
 
   Widget _choice(bool unreadable) {
+    final l = L10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (!unreadable) ...[
           PrimaryButton(
             key: const Key('unclear-paid'),
-            label: 'Ja, ist angekommen',
+            label: l.unclearYes,
             height: KassaTokens.mainActionHeight,
             onPressed: () => setState(() => _stage = _Stage.confirmPaid),
           ),
@@ -304,7 +301,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
         ],
         PrimaryButton(
           key: const Key('unclear-not-paid'),
-          label: 'Nein, nicht angekommen',
+          label: l.unclearNo,
           height: KassaTokens.mainActionHeight,
           filled: unreadable,
           solid: !unreadable,
@@ -316,6 +313,7 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
 
   Widget _confirm() {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     final paid = _stage == _Stage.confirmPaid;
     final settings =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
@@ -335,27 +333,20 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
           background: c.accentSoft,
           foreground: c.accentInk,
           message: paid
-              ? (printing
-                    ? 'Die Kassa schreibt den Bon als Kartenzahlung und druckt '
-                          'ihn.'
-                    : 'Die Kassa schreibt den Bon als Kartenzahlung.')
-              : (comesBack
-                    ? 'Die Kassa verwirft die Zahlung und legt die Artikel '
-                          'wieder auf den Bon.'
-                    : 'Die Kassa verwirft die Zahlung. Der Bon auf der Kassa '
-                          'bleibt, wie er ist.'),
+              ? (printing ? l.unclearEffectPaidPrint : l.unclearEffectPaid)
+              : (comesBack ? l.unclearEffectRestore : l.unclearEffectDiscard),
         ),
         const SizedBox(height: KassaTokens.spaceXxl),
         PrimaryButton(
           key: const Key('unclear-confirm'),
-          label: 'Bestätigen',
+          label: l.unclearConfirm,
           height: KassaTokens.mainActionHeight,
           onPressed: _busy ? null : () => _decide(paid: paid),
         ),
         const SizedBox(height: KassaTokens.spaceLg),
         PrimaryButton(
           key: const Key('unclear-back'),
-          label: 'Zurück',
+          label: l.unclearBack,
           filled: false,
           height: KassaTokens.secondaryActionHeight,
           onPressed: _busy

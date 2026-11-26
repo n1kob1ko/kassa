@@ -7,6 +7,7 @@ import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/pricing.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
@@ -74,7 +75,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     _clearedCart = ref.read(cartProvider);
     _closeToast = showUndoToast(
       context,
-      message: 'Bon geleert',
+      message: L10n.of(context).kassaCartCleared,
       onUndo: () {
         _closeToast = null;
         _clearedCart = null;
@@ -102,7 +103,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       }
     });
     final controller = ref.read(cartProvider.notifier);
-    final card = _cardAvailability(cart);
+    final l = L10n.of(context);
+    final card = _cardAvailability(l, cart);
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final tax = taxBreakdown(grossByRate(cart))
         .fold<int>(0, (s, t) => s + t.taxCents);
@@ -156,7 +158,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                 Expanded(
                   child: PrimaryButton(
                     key: const Key('pay-cash'),
-                    label: 'Bar',
+                    label: l.kassaCash,
                     icon: LucideIcons.banknote,
                     labelSize: 22,
                     height: KassaTokens.mainActionHeight,
@@ -167,7 +169,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                 Expanded(
                   child: PrimaryButton(
                     key: const Key('pay-card'),
-                    label: 'Karte',
+                    label: l.kassaCard,
                     sublabel: card.reason,
                     icon: LucideIcons.creditCard,
                     solid: true,
@@ -187,7 +189,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     );
   }
 
-  ({bool enabled, String? reason}) _cardAvailability(Cart cart) {
+  ({bool enabled, String? reason}) _cardAvailability(L10n l, Cart cart) {
     if (cart.isEmpty) return (enabled: false, reason: null);
     final status = ref.watch(cardStatusProvider).value;
     // Solange der Stand noch nicht da ist, bleibt die Taste still aus.
@@ -197,19 +199,19 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     return switch (status.state) {
       CardTerminalState.notConfigured => (
         enabled: false,
-        reason: 'nicht eingerichtet',
+        reason: l.kassaCardNotSetUp,
       ),
       CardTerminalState.loggedOut => (
         enabled: false,
-        reason: 'nicht angemeldet',
+        reason: l.kassaCardLoggedOut,
       ),
       CardTerminalState.ready when !online => (
         enabled: false,
-        reason: 'kein Internet',
+        reason: l.kassaCardNoInternet,
       ),
       CardTerminalState.ready when cart.totalCents < minimum => (
         enabled: false,
-        reason: 'ab ${formatEuro(minimum)}',
+        reason: l.kassaCardFrom(formatEuro(minimum)),
       ),
       CardTerminalState.ready => (enabled: true, reason: null),
     };
@@ -231,6 +233,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     return SizedBox(
       height: KassaTokens.receiptHeaderHeight,
       child: Padding(
@@ -242,11 +245,11 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Text('Bon', style: text.headlineMedium),
+                  Text(l.kassaReceipt, style: text.headlineMedium),
                   const SizedBox(width: KassaTokens.spaceLg),
                   Flexible(
                     child: Text(
-                      '$count Artikel',
+                      l.kassaItemCount(count),
                       key: const Key('cart-count'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -268,7 +271,7 @@ class _Header extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 alignment: Alignment.center,
                 child: Text(
-                  'Bon leeren',
+                  l.kassaClearCart,
                   style: text.labelLarge!.copyWith(color: c.red),
                 ),
               ),
@@ -287,16 +290,17 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Noch nichts boniert', style: text.titleLarge),
+          Text(l.kassaEmptyTitle, style: text.titleLarge),
           const SizedBox(height: KassaTokens.spaceMd),
           Text(
-            'Tippe links auf einen Artikel. Jeder Tipp legt ihn einmal auf den Bon.',
+            l.kassaEmptyHint,
             style: text.bodyMedium!.copyWith(
               fontWeight: FontWeight.w400,
               height: 1.4,
@@ -323,6 +327,7 @@ class _Totals extends StatelessWidget {
       fontWeight: FontWeight.w400,
       color: c.ink2,
     );
+    final l = L10n.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
@@ -338,7 +343,7 @@ class _Totals extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Summe', style: text.bodyLarge),
+              Text(l.kassaTotal, style: text.bodyLarge),
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -359,7 +364,7 @@ class _Totals extends StatelessWidget {
               if (cart.depositCents != 0)
                 Flexible(
                   child: Text(
-                    'davon Pfand ${formatEuro(cart.depositCents)}',
+                    l.kassaDepositIncluded(formatEuro(cart.depositCents)),
                     key: const Key('cart-deposit'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -371,7 +376,7 @@ class _Totals extends StatelessWidget {
               const SizedBox(width: KassaTokens.spaceXl),
               Flexible(
                 child: Text(
-                  'inkl. ${formatEuro(taxCents)} MwSt',
+                  l.kassaTaxIncluded(formatEuro(taxCents)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: small,

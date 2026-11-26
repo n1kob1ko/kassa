@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../rksv/card/card_providers.dart';
 import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
@@ -32,6 +34,30 @@ import 'sale_service.dart';
 const _favoritesId = 'favorites';
 
 const _cardMessageStay = Duration(seconds: 6);
+
+/// Warum die Kartenzahlung nicht zustande kam, in der Bediensprache. Ein
+/// Text des Anbieters ([CardFailed.detail]) bleibt, wie er kommt.
+String cardSaleFailedText(L10n l, CardSaleFailed f) => switch (f.problem) {
+  CardSaleProblem.alreadyRunning => l.cardAlreadyRunning,
+  CardSaleProblem.emptyCart => l.cardEmptyReceipt,
+  CardSaleProblem.belowMinimum => l.cardMinimum(formatEuro(f.minimumCents)),
+  CardSaleProblem.notStarted => l.cardNotStarted,
+  CardSaleProblem.terminal => switch (f.terminal) {
+    null => l.cardFailed,
+    CardFailed(:final failure, :final detail) => switch (failure) {
+      CardFailure.declined => l.cardDeclined,
+      CardFailure.cancelled => l.cardCancelled,
+      CardFailure.noInternet => l.cardNoInternet,
+      CardFailure.notLoggedIn => l.cardNotLoggedIn,
+      CardFailure.noReader => l.cardNoReader,
+      CardFailure.permission => l.cardPermission,
+      CardFailure.other =>
+        detail == null || detail.isEmpty
+            ? l.cardFailed
+            : l.cardFailedDetail(detail),
+    },
+  },
+};
 
 /// Ob die Kassa seit dem Start der App schon einmal zu sehen war.
 class _KassaMounts {
@@ -245,11 +271,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     switch (outcome) {
       case CardSaleDone(:final sale):
         _onPaid(sale);
-      case CardSaleFailed(:final message):
+      case CardSaleFailed():
         setState(() => _side = _Side.cart);
         showUndoToast(
           context,
-          message: message,
+          message: cardSaleFailedText(L10n.of(context), outcome),
           stay: _cardMessageStay,
           viewKey: const Key('card-message'),
         );
@@ -289,7 +315,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       if (favorites.isNotEmpty)
         CategoryEntry(
           id: _favoritesId,
-          name: 'Favoriten',
+          name: L10n.of(context).kassaFavorites,
           count: favorites.length,
           isFavorites: true,
         ),

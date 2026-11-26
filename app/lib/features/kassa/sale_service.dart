@@ -40,11 +40,46 @@ class CardSaleDone extends CardSaleOutcome {
   final SaleResult sale;
 }
 
-/// Es wurde sicher nicht bezahlt; der Bon ist noch offen.
-class CardSaleFailed extends CardSaleOutcome {
-  const CardSaleFailed(this.message);
+/// Warum eine Kartenzahlung sicher nicht zustande kam.
+enum CardSaleProblem {
+  /// Es läuft schon eine Kartenzahlung.
+  alreadyRunning,
 
-  final String message;
+  /// Der Bon ist leer.
+  emptyCart,
+
+  /// Die Summe liegt unter dem Kleinstbetrag des Terminals.
+  belowMinimum,
+
+  /// Die Zahlung ließ sich nicht starten (vor dem Aufruf des Terminals).
+  notStarted,
+
+  /// Das Terminal meldet, dass nicht bezahlt wurde ([CardSaleFailed.terminal]).
+  terminal,
+}
+
+/// Es wurde sicher nicht bezahlt; der Bon ist noch offen. Die Oberfläche
+/// übersetzt [problem]; [message] ist die deutsche Fassung.
+class CardSaleFailed extends CardSaleOutcome {
+  const CardSaleFailed(this.problem, {this.minimumCents = 0, this.terminal});
+
+  final CardSaleProblem problem;
+
+  /// Der Kleinstbetrag des Terminals, bei [CardSaleProblem.belowMinimum].
+  final int minimumCents;
+
+  /// Die Antwort des Terminals, bei [CardSaleProblem.terminal].
+  final CardFailed? terminal;
+
+  String get message => switch (problem) {
+    CardSaleProblem.alreadyRunning => 'Es läuft schon eine Kartenzahlung.',
+    CardSaleProblem.emptyCart => 'Der Bon ist leer.',
+    CardSaleProblem.belowMinimum =>
+      'Kartenzahlung geht erst ab ${SaleService._euro(minimumCents)}.',
+    CardSaleProblem.notStarted =>
+      'Die Kartenzahlung konnte nicht gestartet werden.',
+    CardSaleProblem.terminal => terminal?.message ?? '',
+  };
 }
 
 /// Ob bezahlt wurde, ist unklar; die offene Zahlung steht in der Datenbank.
@@ -144,15 +179,16 @@ class SaleService {
     required Staff staff,
   }) async {
     if (_ref.read(activeCardPaymentProvider) != null) {
-      return const CardSaleFailed('Es läuft schon eine Kartenzahlung.');
+      return const CardSaleFailed(CardSaleProblem.alreadyRunning);
     }
     final terminal = _ref.read(cardTerminalProvider);
     if (cart.isEmpty || cart.totalCents < terminal.minimumCents) {
-      return CardSaleFailed(
-        cart.isEmpty
-            ? 'Der Bon ist leer.'
-            : 'Kartenzahlung geht erst ab ${_euro(terminal.minimumCents)}.',
-      );
+      return cart.isEmpty
+          ? const CardSaleFailed(CardSaleProblem.emptyCart)
+          : CardSaleFailed(
+              CardSaleProblem.belowMinimum,
+              minimumCents: terminal.minimumCents,
+            );
     }
     final active = _ref.read(activeCardPaymentProvider.notifier)
       ..set(paymentId);
@@ -177,16 +213,12 @@ class SaleService {
           return await _unclear(paymentId);
         }
       } catch (_) {
-        return const CardSaleFailed(
-          'Die Kartenzahlung konnte nicht gestartet werden.',
-        );
+        return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       try {
         await pending.begin(paymentId: paymentId, cart: cart, staff: staff);
       } catch (_) {
-        return const CardSaleFailed(
-          'Die Kartenzahlung konnte nicht gestartet werden.',
-        );
+        return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       final CardPaymentResult result;
       terminalAsked = true;
@@ -227,15 +259,13 @@ class SaleService {
             // Die Zeile bleibt stehen; das Blatt fragt danach, sobald diese
             // Zahlung nicht mehr läuft. Bezahlt wurde sicher nicht.
           }
-          return CardSaleFailed(result.message);
+          return CardSaleFailed(CardSaleProblem.terminal, terminal: result);
         case CardUnknown():
           return await _unclear(paymentId);
       }
     } catch (_) {
       if (!terminalAsked) {
-        return const CardSaleFailed(
-          'Die Kartenzahlung konnte nicht gestartet werden.',
-        );
+        return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       return await _unclear(paymentId);
     } finally {

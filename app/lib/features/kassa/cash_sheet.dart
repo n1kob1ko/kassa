@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../domain/cart.dart';
 import '../../domain/cash.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
@@ -16,9 +17,6 @@ import '../login/session.dart';
 import 'cart_controller.dart';
 import 'cash_inputs.dart';
 import 'sale_service.dart';
-
-const saveFailedMessage =
-    'Der Bon konnte nicht gespeichert werden. Bitte noch einmal.';
 
 /// Die Spalte rechts, in der die Bon-Spalte, das Bezahlen und die
 /// Fertig-Ansicht wechseln: gleiche Breite, gleicher Rand.
@@ -139,6 +137,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final typing = _typing;
     final short = _given < _total;
     final suggestions = cashSuggestions(_total);
@@ -165,7 +164,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
                 Pressable(
                   key: const Key('cash-back'),
                   onTap: _saving ? null : widget.onBack,
-                  semanticLabel: 'Zurück zum Bon',
+                  semanticLabel: l.kassaBackToReceipt,
                   minTapSize: const Size(
                     KassaTokens.minTap,
                     KassaTokens.minTap,
@@ -175,7 +174,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
                 const SizedBox(width: KassaTokens.spaceXs),
                 Expanded(
                   child: Text(
-                    'Bar bezahlen',
+                    l.kassaPayCashTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: text.headlineMedium,
@@ -195,7 +194,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
                     textBaseline: TextBaseline.alphabetic,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Zu zahlen', style: text.bodyLarge),
+                      Text(l.kassaAmountDue, style: text.bodyLarge),
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -236,7 +235,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
               child: Semantics(
                 liveRegion: true,
                 child: Text(
-                  saveFailedMessage,
+                  l.kassaSaveFailed,
                   style: text.bodyMedium!.copyWith(color: c.red),
                 ),
               ),
@@ -245,7 +244,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
             padding: const EdgeInsets.all(12),
             child: PrimaryButton(
               key: const Key('finish-sale'),
-              label: hasPrinter ? 'Abschließen und Bon drucken' : 'Abschließen',
+              label: hasPrinter ? l.kassaFinishAndPrint : l.kassaFinish,
               height: KassaTokens.mainActionHeight,
               onPressed: short || _saving ? null : _finish,
             ),

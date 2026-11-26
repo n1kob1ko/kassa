@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import 'item_tile.dart';
@@ -40,6 +41,7 @@ class ItemArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final rowHeight = showImages
         ? KassaTokens.gridRowHeightImage
         : KassaTokens.gridRowHeightCompact;
@@ -74,7 +76,7 @@ class ItemArea extends StatelessWidget {
                           if (box.maxWidth >= 520) ...[
                             const SizedBox(width: KassaTokens.spaceLg),
                             Text(
-                              '${items.length} Artikel',
+                              l.kassaItemCount(items.length),
                               maxLines: 1,
                               style: text.bodySmall!.copyWith(
                                 fontSize: 14,
@@ -90,10 +92,14 @@ class ItemArea extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 3),
                     child: Segmented<bool>(
-                      segments: const [
-                        (true, 'Mit Bildern'),
-                        (false, 'Kompakt'),
+                      segments: [
+                        (true, l.kassaWithImages),
+                        (false, l.kassaCompact),
                       ],
+                      // In jeder Sprache dieselben Schlüssel.
+                      keyFor: (images) => Key(
+                        images ? 'segment-Mit Bildern' : 'segment-Kompakt',
+                      ),
                       selected: showImages,
                       onSelected: onShowImages,
                     ),

@@ -41,7 +41,9 @@ class PrintOutcome {
 
   bool get ok => problem == null;
 
-  /// Text für die Bedienerin; leer, wenn alles gut ging.
+  /// Text für die Bedienerin auf Deutsch; leer, wenn alles gut ging. Die
+  /// übersetzten Bildschirme nehmen `printProblemText` aus
+  /// `ui/print_problem_text.dart` (gleiche Sätze in der Bediensprache).
   String get message => switch (problem) {
     null => '',
     PrintProblem.notSetUp => 'Kein Bondrucker eingerichtet.',

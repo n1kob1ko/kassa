@@ -1,6 +1,7 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -75,7 +76,10 @@ class _CategoryButton extends StatelessWidget {
     final instant = MediaQuery.disableAnimationsOf(context);
     return Pressable(
       onTap: onTap,
-      semanticLabel: '${entry.name}, ${entry.count} Artikel',
+      semanticLabel: L10n.of(context).kassaCategoryLabel(
+        entry.name,
+        L10n.of(context).kassaItemCount(entry.count),
+      ),
       child: AnimatedContainer(
         duration: instant ? Duration.zero : KassaTokens.motionFast,
         curve: Curves.linear,

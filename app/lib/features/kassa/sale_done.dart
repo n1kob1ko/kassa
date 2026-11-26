@@ -7,7 +7,9 @@ import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/primary_button.dart';
+import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
 import 'sale_service.dart';
@@ -52,6 +54,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final settings =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final drawer = settings.cashDrawerEnabled;
@@ -93,12 +96,12 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Bezahlt',
+                      l.kassaPaid,
                       style: text.headlineLarge!.copyWith(fontSize: 30),
                     ),
                     const SizedBox(height: KassaTokens.spaceXs),
                     Text(
-                      'Bon Nr. $number',
+                      l.kassaReceiptNumber(number),
                       key: const Key('receipt-number'),
                       style: text.bodyLarge!.copyWith(
                         fontWeight: FontWeight.w400,
@@ -125,7 +128,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                             )
                           : changeCents == 0
                           ? Text(
-                              'Passend bezahlt',
+                              l.kassaPaidExact,
                               style: text.titleLarge!.copyWith(
                                 color: c.accentInk,
                               ),
@@ -135,8 +138,8 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               children: [
                                 Text(
                                   drawer
-                                      ? 'Rückgeld aus der Lade geben'
-                                      : 'Rückgeld geben',
+                                      ? l.kassaGiveChangeFromDrawer
+                                      : l.kassaGiveChange,
                                   style: text.bodyLarge!.copyWith(
                                     color: c.accentInk,
                                   ),
@@ -169,7 +172,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
             padding: const EdgeInsets.all(12),
             child: PrimaryButton(
               key: const Key('next-customer'),
-              label: 'Nächster Kunde',
+              label: l.kassaNextCustomer,
               filled: false,
               solid: true,
               height: KassaTokens.mainActionHeight,
@@ -202,7 +205,7 @@ class _CardPaid extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Mit Karte bezahlt',
+          L10n.of(context).kassaPaidByCard,
           key: const Key('paid-by-card'),
           style: text.titleLarge!.copyWith(color: c.accentInk),
         ),
@@ -236,16 +239,13 @@ class _PrintState extends StatelessWidget {
       fontWeight: FontWeight.w600,
       color: c.ink2,
     );
+    final l = L10n.of(context);
     final o = outcome;
     if (o == null) {
-      return Text(
-        'Bon wird gedruckt …',
-        key: const Key('print-state'),
-        style: line,
-      );
+      return Text(l.kassaPrinting, key: const Key('print-state'), style: line);
     }
     if (o.ok) {
-      return Text('Bon gedruckt', key: const Key('print-state'), style: line);
+      return Text(l.kassaPrinted, key: const Key('print-state'), style: line);
     }
     return Container(
       padding: const EdgeInsets.all(14),
@@ -257,7 +257,7 @@ class _PrintState extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            o.message,
+            printProblemText(l, o.problem!),
             key: const Key('print-state'),
             style: text.bodyLarge!.copyWith(
               fontWeight: FontWeight.w700,
@@ -267,7 +267,7 @@ class _PrintState extends StatelessWidget {
           const SizedBox(height: KassaTokens.spaceMd),
           PrimaryButton(
             key: const Key('reprint'),
-            label: 'Nochmal drucken',
+            label: l.kassaPrintAgain,
             icon: LucideIcons.printer,
             filled: false,
             height: 64,
