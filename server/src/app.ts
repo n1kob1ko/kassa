@@ -12,6 +12,7 @@ import { installReceiptRoutes } from './admin/receipts.js';
 import { installReleaseRoutes } from './admin/releases.js';
 import { installRegisterRoutes } from './admin/registers.js';
 import { installStaffRoutes } from './admin/staff.js';
+import { installTranslationRoutes } from './admin/translations.js';
 import { installAuth } from './auth/routes.js';
 import { installPairRoutes } from './device/pair.js';
 import { installFileRoutes } from './files/routes.js';
@@ -113,6 +114,7 @@ export async function buildApp(
   installDayRoutes(app);
   installMonthRoutes(app);
   installItemRoutes(app);
+  installTranslationRoutes(app);
   installDepRoutes(app);
   installReportRoutes(app);
   installBackupRoutes(app);

@@ -90,7 +90,7 @@ export function parseTranslations(raw: unknown, names: Set<string>, problems: st
 }
 
 /** Gleicher Inhalt gleich, egal in welcher Reihenfolge jsonb die Schlüssel liefert. */
-const same = (a: Json, b: Json) => {
+export const same = (a: Json, b: Json) => {
   const ka = Object.keys(a).sort();
   const kb = Object.keys(b).sort();
   return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k]);
