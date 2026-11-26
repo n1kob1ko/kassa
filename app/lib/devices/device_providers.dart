@@ -1,16 +1,22 @@
 // Provider für die Geräte der Kassa.
 
+import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/app_language.dart';
 import '../data/providers.dart';
 import '../data/settings_repository.dart';
+import '../domain/kitchen_ticket.dart';
 import '../domain/receipt.dart';
 import '../domain/day.dart';
 import '../domain/period_report.dart';
 import '../rksv/setup_facts.dart';
 import 'card_terminal.dart';
 import 'channel_transport.dart';
+import 'kitchen_ticket_image.dart';
+import 'mono_image.dart';
 import 'network_transport.dart';
 import 'printer.dart';
 import 'sumup_terminal.dart';
@@ -78,6 +84,54 @@ final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
   );
 });
 
+/// Drucker für den Küchenbon: bei `receiptPrinter` der Bondrucker (dieselbe Instanz), bei `kitchenPrinter` ein
+/// eigener mit dem Küchen-Transport, bei `off` null.
+final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
+  final settings = ref.watch(settingsStreamProvider).value;
+  if (settings == null) return const _NoPrinter();
+  switch (settings.kitchenMode) {
+    case KitchenMode.off:
+      return null;
+    case KitchenMode.receiptPrinter:
+      // Dieselbe Instanz: Bon und Küchenbon gehen durch eine Warteschlange.
+      return ref.watch(receiptPrinterProvider);
+    case KitchenMode.kitchenPrinter:
+      final catalog = ref.watch(catalogStreamProvider).value;
+      if (catalog == null) return const _NoPrinter();
+      final address = settings.kitchenPrinterAddress?.trim();
+      // Ohne Adresse kein Transport, nie der des Bondruckers.
+      final transport =
+          settings.kitchenPrinterKind == PrinterKind.none ||
+              address == null ||
+              address.isEmpty
+          ? null
+          : ref.watch(transportFactoryProvider)(
+              settings.copyWith(
+                printerKind: settings.kitchenPrinterKind,
+                printerAddress: address,
+              ),
+            );
+      return EscPosPrinter(
+        transport: transport,
+        business: catalog.business,
+        columns: settings.kitchenPrinterColumns,
+        clock: ref.watch(clockProvider),
+        numberOfReceipt: (_) async => null,
+      );
+  }
+});
+
+/// Zeichnet den Küchenbon als Bild; Tests setzen einen falschen Zeichner ein
+/// (das echte Zeichnen braucht `dart:ui` und echte Zeit).
+typedef KitchenImageRenderer = Future<MonoImage> Function(
+  KitchenTicket, {
+  required int widthDots,
+});
+
+final kitchenImageRendererProvider = Provider<KitchenImageRenderer>(
+  (ref) => renderKitchenTicket,
+);
+
 class _NoPrinter implements ReceiptPrinter {
   const _NoPrinter();
 
@@ -110,4 +164,8 @@ class _NoPrinter implements ReceiptPrinter {
     PeriodReport report, {
     required String? registerName,
   }) async => _outcome;
+
+  @override
+  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) async =>
+      _outcome;
 }

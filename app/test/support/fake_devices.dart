@@ -1,6 +1,7 @@
 // Falsche Geräte für Tests.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
@@ -14,7 +15,8 @@ import 'package:kassa/rksv/setup_facts.dart';
 class FakePrinter implements ReceiptPrinter {
   /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`,
   /// `print+drawer:<Bon-Id>` (Bon mit dem Befehl für die Lade im selben
-  /// Auftrag), `test`, `day-report:<Tag-Id>`, `period-report:<Zeitraum>`.
+  /// Auftrag), `test`, `day-report:<Tag-Id>`, `period-report:<Zeitraum>`,
+  /// `raster` (Rasterdaten, zum Beispiel ein Küchenbon).
   final List<String> log = [];
 
   /// Die Bon-Ids der gedruckten Bons, mit und ohne Lade.
@@ -82,6 +84,24 @@ class FakePrinter implements ReceiptPrinter {
     PeriodReport report, {
     required String? registerName,
   }) => _call('period-report:${report.range.key}');
+
+  /// Die Rasterdaten jedes Aufrufs von [printRaster], in der Reihenfolge.
+  final List<Uint8List> rasters = [];
+
+  /// Solange gesetzt, wirft [printRaster] diesen Fehler (statt eines
+  /// Ergebnisses), wie ein unerwarteter Fehler im Drucker.
+  Object? rasterError;
+
+  @override
+  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) async {
+    log.add('raster');
+    final error = rasterError;
+    if (error != null) throw error;
+    final h = hold;
+    if (h != null) await h.future;
+    rasters.add(await bytes());
+    return next;
+  }
 }
 
 /// Falsche Druckersuche: je Verbindung eine Liste, optional ein Fehler.

@@ -86,6 +86,7 @@ EscPosPrinter printerOf(
   PrinterTransport? t, {
   Future<int?> Function(String)? number,
   Duration limit = printCallLimit,
+  Duration rasterLimit = rasterCallLimit,
   bool qrAsImage = false,
 }) => EscPosPrinter(
   transport: t,
@@ -95,6 +96,7 @@ EscPosPrinter printerOf(
   clock: FixedClock(DateTime(2026, 11, 17, 12)),
   numberOfReceipt: number ?? (_) async => null,
   limit: limit,
+  rasterLimit: rasterLimit,
 );
 
 /// Erfundene Angaben für FinanzOnline.
@@ -459,6 +461,88 @@ void main() {
 
   test('Standardgrenze eines Aufrufs sind 5 Sekunden', () {
     expect(printCallLimit, const Duration(seconds: 5));
+  });
+
+  group('printRaster', () {
+    final raster = Uint8List.fromList([0x1D, 0x76, 0x30, 0, 1, 2, 3]);
+
+    test('schickt die fertigen Rasterdaten, nach der Zustandsfrage', () async {
+      final t = RecordingTransport();
+      final outcome = await printerOf(t).printRaster(() async => raster);
+      expect(outcome.ok, isTrue);
+      expect(outcome.drawerSent, isFalse);
+      expect(t.asked, [escposStatusPrinter]);
+      expect(t.sent, [raster]);
+    });
+
+    test('Zeitlimit des Aufrufs sind 20 Sekunden', () async {
+      expect(rasterCallLimit, const Duration(seconds: 20));
+      final t = RecordingTransport();
+      await printerOf(t).printRaster(() async => raster);
+      await printerOf(t).printReceipt(receipt());
+      expect(t.started, [rasterCallLimit, printCallLimit]);
+    });
+
+    test('läuft in der Warteschlange hinter einem laufenden Bon', () async {
+      final t = RecordingTransport()..statusGate = Completer<void>();
+      final p = printerOf(t);
+      final first = p.printReceipt(receipt(id: 'a'));
+      final second = p.printRaster(() async => raster);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(t.started, [printCallLimit]); // das Raster wartet
+      expect(t.sent, isEmpty);
+      t.statusGate!.complete();
+      expect((await first).ok, isTrue);
+      expect((await second).ok, isTrue);
+      expect(t.sent, [
+        encodeEscPos(layoutReceipt(receipt(id: 'a'), business)),
+        raster,
+      ]);
+    });
+
+    test('bricht nach dem Limit ab; der nächste Bon druckt danach', () async {
+      final t = RecordingTransport()..hang = true;
+      final p = printerOf(t, rasterLimit: const Duration(milliseconds: 100));
+      final watch = Stopwatch()..start();
+      final first = p.printRaster(() async => raster);
+      final second = p.printReceipt(receipt());
+      expect((await first).problem, PrintProblem.timeout);
+      expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+      expect(t.abandoned, isTrue);
+      t.hang = false;
+      expect((await second).ok, isTrue);
+    });
+
+    test('das Erzeugen der Daten zählt zum Limit', () async {
+      final t = RecordingTransport();
+      final never = Completer<Uint8List>();
+      final outcome = await printerOf(
+        t,
+        rasterLimit: const Duration(milliseconds: 100),
+      ).printRaster(() => never.future);
+      expect(outcome.problem, PrintProblem.timeout);
+      expect(t.sendCalls, 0);
+    });
+
+    test('Fehler beim Erzeugen der Daten: unreachable, wirft nie', () async {
+      final t = RecordingTransport();
+      final outcome = await printerOf(t)
+          .printRaster(() async => throw StateError('kaputt'));
+      expect(outcome.problem, PrintProblem.unreachable);
+      expect(t.sendCalls, 0);
+    });
+
+    test('Papier leer: paperOut, nichts wird gesendet', () async {
+      final t = RecordingTransport()..answers.addAll([0x1A, 0x72]);
+      final outcome = await printerOf(t).printRaster(() async => raster);
+      expect(outcome.problem, PrintProblem.paperOut);
+      expect(t.sent, isEmpty);
+    });
+
+    test('ohne Drucker: notSetUp', () async {
+      final outcome = await printerOf(null).printRaster(() async => raster);
+      expect(outcome.problem, PrintProblem.notSetUp);
+    });
   });
 
   group('Berichte', () {

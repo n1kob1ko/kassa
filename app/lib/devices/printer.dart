@@ -111,10 +111,17 @@ abstract interface class ReceiptPrinter {
     PeriodReport report, {
     required String? registerName,
   });
+
+  /// Schickt fertige Rasterdaten durch dieselbe Warteschlange wie die Bons. Zeitlimit [rasterCallLimit].
+  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes);
 }
 
 /// Höchstdauer eines ganzen Aufrufs (Zustandsfragen und Senden).
 const printCallLimit = Duration(seconds: 5);
+
+/// Höchstdauer eines Aufrufs mit Rasterdaten (Küchenbon): das Bild entsteht
+/// im Aufruf und ist viel größer als ein Textbon.
+const rasterCallLimit = Duration(seconds: 20);
 
 class EscPosPrinter implements ReceiptPrinter {
   EscPosPrinter({
@@ -125,6 +132,7 @@ class EscPosPrinter implements ReceiptPrinter {
     required this.clock,
     required this.numberOfReceipt,
     this.limit = printCallLimit,
+    this.rasterLimit = rasterCallLimit,
   });
 
   final PrinterTransport? transport;
@@ -140,6 +148,10 @@ class EscPosPrinter implements ReceiptPrinter {
 
   /// Höchstdauer eines Aufrufs; nur Tests setzen einen anderen Wert.
   final Duration limit;
+
+  /// Höchstdauer eines Aufrufs von [printRaster]; nur Tests setzen einen
+  /// anderen Wert.
+  final Duration rasterLimit;
 
   @override
   Future<PrintOutcome> printReceipt(
@@ -236,6 +248,10 @@ class EscPosPrinter implements ReceiptPrinter {
     ),
   );
 
+  @override
+  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) =>
+      _run(checkStatus: true, limit: rasterLimit, bytes: bytes);
+
   /// Ende des letzten Aufrufs. Das Limit gilt je Transport für einen Aufruf,
   /// darum läuft immer nur einer: der nächste beginnt, wenn der vorige zu Ende
   /// ist oder aufgegeben wurde.
@@ -246,6 +262,7 @@ class EscPosPrinter implements ReceiptPrinter {
   Future<PrintOutcome> _run({
     required bool checkStatus,
     bool openDrawer = false,
+    Duration? limit,
     required Future<Uint8List> Function() bytes,
   }) {
     final previous = _last;
@@ -256,6 +273,7 @@ class EscPosPrinter implements ReceiptPrinter {
           (_) => _runNow(
             checkStatus: checkStatus,
             openDrawer: openDrawer,
+            limit: limit ?? this.limit,
             bytes: bytes,
           ),
         )
@@ -265,6 +283,7 @@ class EscPosPrinter implements ReceiptPrinter {
   Future<PrintOutcome> _runNow({
     required bool checkStatus,
     required bool openDrawer,
+    required Duration limit,
     required Future<Uint8List> Function() bytes,
   }) async {
     final transport = this.transport;

@@ -276,6 +276,12 @@ class CatalogRepository {
     );
   }
 
+  /// Die Kategorie je Artikel-Id, auch der stillgelegten Artikel: ein
+  /// gespeicherter Bon kann einen Artikel nennen, den es nicht mehr gibt.
+  Future<Map<String, String>> categoryOfItems() async => {
+    for (final r in await _db.select(_db.itemRows).get()) r.id: r.categoryId,
+  };
+
   /// Ändert nur die angegebenen Felder. Wirft [StateError], wenn es den
   /// Artikel nicht gibt.
   ///

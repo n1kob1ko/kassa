@@ -191,4 +191,6 @@ class _ThrowingPrinter implements ReceiptPrinter {
     report, {
     required registerName,
   }) async => throw StateError('x');
+  @override
+  Future<PrintOutcome> printRaster(bytes) async => throw StateError('x');
 }

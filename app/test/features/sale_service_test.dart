@@ -1,19 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Variable;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/device_providers.dart';
+import 'package:kassa/devices/escpos.dart';
+import 'package:kassa/devices/mono_image.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/kitchen_ticket.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
@@ -26,6 +31,8 @@ import '../support/sales.dart';
 void main() {
   late TestShop shop;
   late FakePrinter printer;
+  late FakePrinter kitchen;
+  late List<(KitchenTicket, int)> rendered;
   late FakeCardTerminal terminal;
   late CardPaymentRepository cardPayments;
   late ProviderContainer container;
@@ -48,15 +55,37 @@ void main() {
   setUp(() async {
     shop = await TestShop.open();
     printer = FakePrinter();
+    kitchen = FakePrinter();
+    rendered = [];
     terminal = FakeCardTerminal();
     container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(shop.db),
         clockProvider.overrideWithValue(shop.clock),
         receiptPrinterProvider.overrideWithValue(printer),
+        // Wie der echte Provider: am Bondrucker dieselbe Instanz, sonst
+        // ein eigener Drucker.
+        kitchenPrinterProvider.overrideWith(
+          (ref) =>
+              switch (ref.watch(settingsStreamProvider).value?.kitchenMode) {
+                KitchenMode.receiptPrinter => printer,
+                KitchenMode.kitchenPrinter => kitchen,
+                _ => null,
+              },
+        ),
+        kitchenImageRendererProvider.overrideWithValue((
+          ticket, {
+          required widthDots,
+        }) async {
+          rendered.add((ticket, widthDots));
+          return _tinyImage;
+        }),
         cardTerminalProvider.overrideWithValue(terminal),
       ],
     );
+    // Hält den Strom der Einstellungen offen, damit der Küchendrucker ihnen
+    // folgt.
+    container.listen(settingsStreamProvider, (_, _) {});
     service = container.read(saleServiceProvider);
     cardPayments = container.read(cardPaymentRepositoryProvider);
   });
@@ -127,6 +156,284 @@ void main() {
     expect(await shop.count('receipts'), 1);
     expect(printer.printed, ['s1']);
     expect(printer.log, ['print+drawer:s1']);
+  });
+
+  group('Küchenbon', () {
+    Future<void> configureKitchen(
+      KitchenMode mode, {
+      PrinterKind kind = PrinterKind.network,
+      Set<String> skip = const {},
+      AppLanguage language = AppLanguage.de,
+    }) async {
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          kitchenMode: mode,
+          kitchenLanguage: language,
+          kitchenPrinterKind: kind,
+          kitchenPrinterAddress: kind == PrinterKind.none
+              ? null
+              : '192.168.0.60',
+          kitchenPrinterColumns: 32,
+          kitchenSkipCategories: skip,
+        ),
+      );
+      // Der Strom der Einstellungen hat die Änderung gebracht.
+      for (var i = 0; i < 100; i++) {
+        final now = container.read(settingsStreamProvider).value;
+        if (now?.kitchenMode == mode && now?.kitchenLanguage == language) {
+          return;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      fail('Einstellungen kamen nicht an');
+    }
+
+    final raster = encodeRasterTicket(_tinyImage);
+
+    test('aus: der Küchendrucker wird nie gerufen, kitchen ist null', () async {
+      await configure();
+      await configureKitchen(KitchenMode.off);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect(await r.kitchen, isNull);
+      expect(printer.log, ['print+drawer:s1']);
+      expect(kitchen.log, isEmpty);
+      expect(rendered, isEmpty);
+    });
+
+    test('am Bondrucker: erst der Kundenbon, dann das Raster', () async {
+      await configure();
+      await configureKitchen(KitchenMode.receiptPrinter);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(printer.log, ['print+drawer:s1', 'raster']);
+      expect(printer.rasters, [raster]);
+      expect(kitchen.log, isEmpty);
+      final (ticket, width) = rendered.single;
+      expect(width, 48 * 12); // Papier des Bondruckers
+      expect(ticket.kind, KitchenTicketKind.order);
+      expect(ticket.number, r.receipt.number);
+      expect(ticket.title, 'KÜCHE');
+      expect(ticket.banner, isNull);
+      // Ohne Wörterbuch die Namen des Bons.
+      expect(
+        [for (final l in ticket.lines) l.name],
+        [for (final l in r.receipt.lines) l.name],
+      );
+      expect(ticket.lines, hasLength(2));
+    });
+
+    test('am Bondrucker: der Küchenbon wartet auf den Kundenbon', () async {
+      await configure();
+      await configureKitchen(KitchenMode.receiptPrinter);
+      printer.hold = Completer<void>();
+      final r = await sell();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(printer.log, ['print+drawer:s1']);
+      printer.hold!.complete();
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(printer.log, ['print+drawer:s1', 'raster']);
+    });
+
+    test('am Küchendrucker: Raster dorthin, Bon an den Bondrucker, beide '
+        'gleichzeitig', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      printer.hold = Completer<void>(); // Bondrucker hängt
+      final r = await sell();
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(kitchen.log, ['raster']);
+      expect(kitchen.rasters, [raster]);
+      expect(rendered.single.$2, 32 * 12); // Papier des Küchendruckers
+      printer.hold!.complete();
+      expect((await r.print).ok, isTrue);
+      expect(printer.log, ['print+drawer:s1']);
+    });
+
+    test('Küchendrucker hängt: der Kundenbon kommt trotzdem', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      kitchen.hold = Completer<void>();
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      var kitchenDone = false;
+      unawaited(r.kitchen.then((_) => kitchenDone = true));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(kitchenDone, isFalse);
+      // Der nächste Verkauf druckt seinen Bon, der Küchendrucker hängt noch.
+      final next = await sell('s2');
+      expect((await next.print).ok, isTrue);
+      kitchen.hold!.complete();
+      expect((await r.kitchen)!.ok, isTrue);
+      expect((await next.kitchen)!.ok, isTrue);
+    });
+
+    test('Küchendrucker wirft: Verkauf gespeichert, print ok, kitchen '
+        'gescheitert', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      kitchen.rasterError = StateError('kaputt');
+      final r = await sell();
+      expect(await shop.count('receipts'), 1);
+      expect(r.receipt.number, 1);
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.problem, PrintProblem.unreachable);
+    });
+
+    test('Zeichnen wirft: kitchen gescheitert, der Bon ist gedruckt', () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(shop.db),
+          clockProvider.overrideWithValue(shop.clock),
+          receiptPrinterProvider.overrideWithValue(printer),
+          kitchenPrinterProvider.overrideWithValue(printer),
+          kitchenImageRendererProvider.overrideWithValue(
+            (ticket, {required widthDots}) async => throw StateError('x'),
+          ),
+        ],
+      );
+      service = container.read(saleServiceProvider);
+      container.listen(settingsStreamProvider, (_, _) {});
+      await configure();
+      await configureKitchen(KitchenMode.receiptPrinter);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.problem, PrintProblem.unreachable);
+      expect(printer.log, ['print+drawer:s1', 'raster']);
+    });
+
+    test('Bondrucker scheitert, Küchendrucker druckt', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      printer.next = const PrintOutcome.failed(PrintProblem.paperOut);
+      final r = await sell();
+      expect((await r.print).problem, PrintProblem.paperOut);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(kitchen.rasters, [raster]);
+    });
+
+    test('am Küchendrucker, aber keiner eingerichtet: notSetUp', () async {
+      await configure();
+      await configureKitchen(
+        KitchenMode.kitchenPrinter,
+        kind: PrinterKind.none,
+      );
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.problem, PrintProblem.notSetUp);
+      expect(kitchen.log, isEmpty);
+    });
+
+    test('nur Getränke: kitchen ist null, nichts gedruckt', () async {
+      await configure();
+      await configureKitchen(
+        KitchenMode.kitchenPrinter,
+        skip: {cola.categoryId},
+      );
+      final r = await service.completeCash(
+        saleId: 's1',
+        cart: const Cart.empty().add(cola).add(leitungswasser),
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      expect((await r.print).ok, isTrue);
+      expect(await r.kitchen, isNull);
+      expect(kitchen.log, isEmpty);
+      expect(rendered, isEmpty);
+    });
+
+    test(
+      'Getränke abgeschaltet: nur die Speisen stehen am Küchenbon',
+      () async {
+        await configure();
+        await configureKitchen(
+          KitchenMode.kitchenPrinter,
+          skip: {cola.categoryId},
+        );
+        final r = await sell();
+        expect((await r.kitchen)!.ok, isTrue);
+        final ticket = rendered.single.$1;
+        expect([for (final l in ticket.lines) l.name], ['Huhn Bowl']);
+        expect(ticket.lines.single.options, ['XXL', 'Nudeln']);
+      },
+    );
+
+    test('in der Küchensprache, unabhängig von der Bediensprache', () async {
+      await configure();
+      await configureKitchen(
+        KitchenMode.kitchenPrinter,
+        language: AppLanguage.tr,
+      );
+      final r = await sell();
+      await r.kitchen;
+      expect(rendered.single.$1.language, AppLanguage.tr);
+      expect(rendered.single.$1.title, 'MUTFAK');
+    });
+
+    test('Storno: Küchenbon mit STORNO und der Nummer des Bons', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      final sale = await sell();
+      await sale.kitchen;
+      rendered.clear();
+      final v = await service.voidReceipt(sale.receipt.id, staff: shop.chef);
+      expect((await v.print).ok, isTrue);
+      expect((await v.kitchen)!.ok, isTrue);
+      final ticket = rendered.single.$1;
+      expect(ticket.kind, KitchenTicketKind.voided);
+      expect(ticket.banner, 'STORNO');
+      expect(ticket.number, sale.receipt.number);
+      expect([for (final l in ticket.lines) l.quantity], [2, 1]);
+      expect(kitchen.log, ['raster', 'raster']);
+    });
+
+    test(
+      'Storno am Bondrucker: erst der Storno-Bon, dann das Raster',
+      () async {
+        await configure();
+        final sale = await sell();
+        await sale.print;
+        await configureKitchen(KitchenMode.receiptPrinter);
+        printer.log.clear();
+        final v = await service.voidReceipt(sale.receipt.id, staff: shop.chef);
+        expect((await v.kitchen)!.ok, isTrue);
+        expect(printer.log, ['print:${v.receipt.id}', 'raster']);
+      },
+    );
+
+    test('Storno mit aus: kitchen ist null', () async {
+      await configure();
+      final sale = await sell();
+      final v = await service.voidReceipt(sale.receipt.id, staff: shop.chef);
+      expect(await v.kitchen, isNull);
+      expect(printer.log.where((e) => e == 'raster'), isEmpty);
+    });
+
+    test('zweimal dieselbe saleId: ein Küchenbon', () async {
+      await configure();
+      await configureKitchen(KitchenMode.kitchenPrinter);
+      final a = await sell();
+      final b = await sell();
+      await a.kitchen;
+      await b.kitchen;
+      expect(kitchen.log, ['raster']);
+    });
+
+    test('Kartenzahlung: Küchenbon nach dem Bon', () async {
+      await configure();
+      await configureKitchen(KitchenMode.receiptPrinter);
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+      );
+      final sale = (o as CardSaleDone).sale;
+      expect((await sale.kitchen)!.ok, isTrue);
+      expect(printer.log, ['print:p1', 'raster']);
+    });
   });
 
   group('Nochmal drucken nach dem Verkauf', () {
@@ -805,3 +1112,7 @@ class _FailingReceipts extends ReceiptRepository {
     String? cardLast4,
   }) async => throw StateError('Datenbank voll');
 }
+
+/// Ein winziges Bild statt eines gezeichneten Küchenbons (Zeichnen braucht
+/// `dart:ui` und echte Zeit).
+final MonoImage _tinyImage = MonoImage(8, 2, Uint8List.fromList([0x81, 0x18]));

@@ -1,0 +1,332 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
+import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/devices/device_providers.dart';
+import 'package:kassa/devices/escpos.dart';
+import 'package:kassa/devices/mono_image.dart';
+import 'package:kassa/devices/printer.dart';
+import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/kitchen_ticket.dart';
+import 'package:kassa/domain/receipt_layout.dart';
+import 'package:kassa/features/kassa/kitchen_service.dart';
+import 'package:kassa/features/kassa/sale_service.dart';
+
+import '../support/demo_fixtures.dart';
+import '../support/sales.dart';
+
+/// Ein winziges Bild statt eines gezeichneten Küchenbons.
+final MonoImage _tinyImage = MonoImage(8, 2, Uint8List.fromList([0x81, 0x18]));
+
+/// Transport, der mitschreibt; mit [hang] kommt `send` erst nach [release]
+/// zurück.
+class _Transport implements PrinterTransport {
+  final sent = <Uint8List>[];
+  final started = <Duration>[];
+  bool hang = false;
+  final release = Completer<void>();
+
+  @override
+  void startCall(Duration limit) => started.add(limit);
+
+  @override
+  void abandon() {}
+
+  @override
+  Future<int?> status(List<int> request) async => null;
+
+  @override
+  Future<void> send(Uint8List bytes) async {
+    if (hang) await release.future;
+    sent.add(bytes);
+  }
+}
+
+void main() {
+  late TestShop shop;
+  late ProviderContainer container;
+  late List<KitchenTicket> rendered;
+  late Map<String, _Transport> transports;
+
+  final raster = encodeRasterTicket(_tinyImage);
+
+  setUp(() async {
+    shop = await TestShop.open();
+    rendered = [];
+    transports = {
+      '192.168.0.50': _Transport(), // Bondrucker
+      '192.168.0.60': _Transport(), // Küchendrucker
+    };
+    container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(shop.db),
+        clockProvider.overrideWithValue(shop.clock),
+        transportFactoryProvider.overrideWithValue(
+          (settings) => transports[settings.printerAddress],
+        ),
+        kitchenImageRendererProvider.overrideWithValue((
+          ticket, {
+          required widthDots,
+        }) async {
+          rendered.add(ticket);
+          return _tinyImage;
+        }),
+      ],
+    );
+    // Die Drucker folgen den Strömen der Einstellungen und der Speisekarte.
+    container.listen(receiptPrinterProvider, (_, _) {});
+    container.listen(kitchenPrinterProvider, (_, _) {});
+  });
+  tearDown(() async {
+    container.dispose();
+    await shop.close();
+  });
+
+  _Transport receiptT() => transports['192.168.0.50']!;
+  _Transport kitchenT() => transports['192.168.0.60']!;
+
+  Future<void> configure(
+    KitchenMode mode, {
+    PrinterKind kitchenKind = PrinterKind.network,
+    Set<String> skip = const {},
+  }) async {
+    final repo = container.read(settingsRepositoryProvider);
+    await repo.save(
+      (await repo.current()).copyWith(
+        printerKind: PrinterKind.network,
+        printerAddress: '192.168.0.50',
+        cashDrawerEnabled: false,
+        kitchenMode: mode,
+        kitchenPrinterKind: kitchenKind,
+        kitchenPrinterAddress: kitchenKind == PrinterKind.none
+            ? null
+            : '192.168.0.60',
+        kitchenSkipCategories: skip,
+      ),
+    );
+    for (var i = 0; i < 100; i++) {
+      final now = container.read(settingsStreamProvider).value;
+      final catalog = container.read(catalogStreamProvider).value;
+      if (now?.kitchenMode == mode &&
+          now?.kitchenPrinterKind == kitchenKind &&
+          now?.printerKind == PrinterKind.network &&
+          catalog != null) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    fail('Einstellungen kamen nicht an');
+  }
+
+  Future<SaleResult> sell([String id = 's1']) => container
+      .read(saleServiceProvider)
+      .completeCash(saleId: id, cart: cart, givenCents: 2000, staff: shop.anna);
+
+  group('kitchenPrinterProvider', () {
+    test('aus: null', () async {
+      await configure(KitchenMode.off);
+      expect(container.read(kitchenPrinterProvider), isNull);
+    });
+
+    test('am Bondrucker: dieselbe Instanz wie der Bondrucker', () async {
+      await configure(KitchenMode.receiptPrinter);
+      expect(
+        container.read(kitchenPrinterProvider),
+        same(container.read(receiptPrinterProvider)),
+      );
+    });
+
+    test('am Küchendrucker: ein eigener Drucker', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final p = container.read(kitchenPrinterProvider);
+      expect(p, isNotNull);
+      expect(p, isNot(same(container.read(receiptPrinterProvider))));
+    });
+
+    test(
+      'am Küchendrucker ohne Adresse: notSetUp, nicht der Bondrucker',
+      () async {
+        await configure(
+          KitchenMode.kitchenPrinter,
+          kitchenKind: PrinterKind.none,
+        );
+        final p = container.read(kitchenPrinterProvider)!;
+        final o = await p.printRaster(() async => raster);
+        expect(o.problem, PrintProblem.notSetUp);
+        expect(receiptT().sent, isEmpty);
+      },
+    );
+  });
+
+  group('am Transport', () {
+    test('am Bondrucker: Kundenbon, dann Raster, je eigener Auftrag', () async {
+      await configure(KitchenMode.receiptPrinter);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(r.receipt, catalog.business)),
+        raster,
+      ]);
+      expect(receiptT().started, [printCallLimit, rasterCallLimit]);
+      expect(kitchenT().sent, isEmpty);
+    });
+
+    test('am Küchendrucker: Raster an den Küchendrucker, Bon an den '
+        'Bondrucker', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(r.receipt, catalog.business)),
+      ]);
+      expect(kitchenT().sent, [raster]);
+      expect(kitchenT().started, [rasterCallLimit]);
+    });
+
+    test(
+      'Küchendrucker hängt: der Bon des nächsten Verkaufs kommt sofort',
+      () async {
+        await configure(KitchenMode.kitchenPrinter);
+        kitchenT().hang = true;
+        final first = await sell('s1');
+        expect((await first.print).ok, isTrue);
+        final second = await sell('s2');
+        expect((await second.print).ok, isTrue);
+        expect(receiptT().sent, hasLength(2));
+        kitchenT().release.complete();
+        expect((await first.kitchen)!.ok, isTrue);
+        expect((await second.kitchen)!.ok, isTrue);
+        expect(kitchenT().sent, [raster, raster]);
+      },
+    );
+  });
+
+  group('printFor', () {
+    test('aus: null, nichts gezeichnet', () async {
+      await configure(KitchenMode.off);
+      final r = await sell();
+      await r.print;
+      final o = await container
+          .read(kitchenServiceProvider)
+          .printFor(r.receipt);
+      expect(o, isNull);
+      expect(rendered, isEmpty);
+    });
+
+    test('copy: true druckt den Vermerk KOPIE', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final r = await sell();
+      await r.kitchen;
+      rendered.clear();
+      final o = await container
+          .read(kitchenServiceProvider)
+          .printFor(r.receipt, copy: true);
+      expect(o!.ok, isTrue);
+      expect(rendered.single.kind, KitchenTicketKind.copy);
+      expect(rendered.single.banner, 'KOPIE');
+      expect(rendered.single.number, r.receipt.number);
+      expect(kitchenT().sent, [raster, raster]);
+    });
+
+    test(
+      'ein inzwischen stillgelegter Artikel zählt mit seiner Kategorie',
+      () async {
+        await configure(
+          KitchenMode.kitchenPrinter,
+          skip: {cola.categoryId, huhnBowl.categoryId},
+        );
+        final r = await sell();
+        expect(await r.kitchen, isNull);
+        // Huhn Bowl wird stillgelegt: der Bon nennt sie weiter.
+        await shop.catalogRepo.importCatalog(
+          Catalog(
+            business: catalog.business,
+            categories: catalog.categories,
+            items: [
+              for (final i in catalog.items)
+                if (i.id != huhnBowl.id) i,
+            ],
+            templates: catalog.templates,
+          ),
+        );
+        final o = await container
+            .read(kitchenServiceProvider)
+            .printFor(r.receipt, copy: true);
+        expect(o, isNull);
+        expect(rendered, isEmpty);
+      },
+    );
+
+    test('nichts davon landet in der Datenbank', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final r = await sell();
+      await r.kitchen;
+      final before = await _dump(shop);
+      await container.read(kitchenServiceProvider).printFor(r.receipt);
+      expect(await _dump(shop), before);
+    });
+  });
+
+  group('printSample', () {
+    test('druckt den Beispiel-Küchenbon am gewählten Drucker', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final o = await container.read(kitchenServiceProvider).printSample();
+      expect(o.ok, isTrue);
+      expect(rendered.single.kind, KitchenTicketKind.sample);
+      expect(rendered.single.banner, 'PROBE');
+      expect(rendered.single.lines, isNotEmpty);
+      expect(kitchenT().sent, [raster]);
+      expect(receiptT().sent, isEmpty);
+    });
+
+    test('aus: notSetUp, nichts gedruckt', () async {
+      await configure(KitchenMode.off);
+      final o = await container.read(kitchenServiceProvider).printSample();
+      expect(o.problem, PrintProblem.notSetUp);
+      expect(rendered, isEmpty);
+    });
+
+    test('Zeichnen wirft: unreachable', () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(shop.db),
+          clockProvider.overrideWithValue(shop.clock),
+          transportFactoryProvider.overrideWithValue(
+            (settings) => transports[settings.printerAddress],
+          ),
+          kitchenImageRendererProvider.overrideWithValue(
+            (ticket, {required widthDots}) async => throw StateError('x'),
+          ),
+        ],
+      );
+      container.listen(kitchenPrinterProvider, (_, _) {});
+      await configure(KitchenMode.kitchenPrinter);
+      final o = await container.read(kitchenServiceProvider).printSample();
+      expect(o.problem, PrintProblem.unreachable);
+      expect(kitchenT().sent, isEmpty);
+    });
+  });
+}
+
+/// Inhalt der Tabellen, die ein Druck verändern könnte.
+Future<Map<String, List<Map<String, Object?>>>> _dump(TestShop shop) async => {
+  for (final t in [
+    'receipts',
+    'receipt_lines',
+    'settings',
+    'translations',
+    'outbox',
+    'reports',
+  ])
+    t: [
+      for (final row in await shop.db.customSelect('SELECT * FROM $t').get())
+        row.data,
+    ],
+};

@@ -1,10 +1,11 @@
-// Der Verkauf: Bon speichern, Lade öffnen, Bon drucken. Der Drucker hält
-// nie einen Verkauf auf: gewartet wird nur auf die Datenbank.
+// Der Verkauf: Bon speichern, Lade öffnen, Bon und Küchenbon drucken. Der
+// Drucker hält nie einen Verkauf auf: gewartet wird nur auf die Datenbank.
 
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_language.dart';
 import '../../data/card_payment_repository.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
@@ -17,9 +18,14 @@ import '../../domain/receipt.dart';
 import '../../domain/staff.dart';
 import '../../rksv/setup_facts.dart';
 import 'cart_controller.dart';
+import 'kitchen_service.dart';
 
 class SaleResult {
-  const SaleResult({required this.receipt, required this.print});
+  SaleResult({
+    required this.receipt,
+    required this.print,
+    Future<PrintOutcome?>? kitchen,
+  }) : kitchen = kitchen ?? Future.value();
 
   /// Der gespeicherte Bon.
   final Receipt receipt;
@@ -28,6 +34,13 @@ class SaleResult {
   /// Druckaufruf (5 Sekunden, Lade und Bon zusammen), steht davor ein
   /// Jahresbeleg, nach zweien. Wirft nie.
   final Future<PrintOutcome> print;
+
+  /// Das Ergebnis des Küchenbons; `null`, wenn keiner fällig ist (aus,
+  /// keine Zeile für die Küche). Am Bondrucker kommt er nach dem Bon, am
+  /// Küchendrucker gleichzeitig. Jeder Fehler endet hier als gescheitertes
+  /// Ergebnis; [print] und der gespeicherte Bon bleiben davon unberührt.
+  /// Wirft nie.
+  final Future<PrintOutcome?> kitchen;
 }
 
 sealed class CardSaleOutcome {
@@ -139,6 +152,9 @@ class SaleService {
   /// noch einmal, sondern gibt das erste Ergebnis zurück.
   final Map<String, Future<PrintOutcome>> _prints = {};
 
+  /// Der Küchenbon je `saleId`, wie [_prints].
+  final Map<String, Future<PrintOutcome?>> _kitchenPrints = {};
+
   /// Barverkäufe, bei denen der Befehl für die Lade nicht beim Drucker
   /// angekommen ist: "Nochmal drucken" in der Fertig-Ansicht holt ihn nach.
   final Set<String> _drawerMissing = {};
@@ -168,7 +184,12 @@ class SaleService {
       settings,
       openDrawer: settings.cashDrawerEnabled,
     );
-    return SaleResult(receipt: receipt, print: print);
+    final kitchen = _kitchenPrints[saleId] ??= _kitchen(
+      receipt,
+      settings,
+      after: print,
+    );
+    return SaleResult(receipt: receipt, print: print, kitchen: kitchen);
   }
 
   /// Nimmt die Kartenzahlung für [cart] am Terminal an. Die offene Zahlung
@@ -206,7 +227,13 @@ class SaleService {
         if (known != null) {
           final print =
               _prints[paymentId] ?? Future.value(const PrintOutcome.ok());
-          return CardSaleDone(SaleResult(receipt: known, print: print));
+          return CardSaleDone(
+            SaleResult(
+              receipt: known,
+              print: print,
+              kitchen: _kitchenPrints[paymentId],
+            ),
+          );
         }
         final open = await pending.pending();
         if (open.any((p) => p.id == paymentId)) {
@@ -394,7 +421,12 @@ class SaleService {
       settings,
       openDrawer: false,
     );
-    return SaleResult(receipt: receipt, print: print);
+    final kitchen = _kitchenPrints[receipt.id] ??= _kitchen(
+      receipt,
+      settings,
+      after: print,
+    );
+    return SaleResult(receipt: receipt, print: print, kitchen: kitchen);
   }
 
   Future<String> _businessName() async {
@@ -468,8 +500,33 @@ class SaleService {
     final receipt = await _ref
         .read(receiptRepositoryProvider)
         .voidReceipt(receiptId, staff: staff);
-    final print = _output(receipt, await _settings(), openDrawer: false);
-    return SaleResult(receipt: receipt, print: print);
+    final settings = await _settings();
+    final print = _output(receipt, settings, openDrawer: false);
+    final kitchen = _kitchen(receipt, settings, after: print);
+    return SaleResult(receipt: receipt, print: print, kitchen: kitchen);
+  }
+
+  /// Der Küchenbon zum eben gespeicherten Bon. Am Bondrucker erst nach dem
+  /// Bon [after] (eigener Auftrag, eigener Schnitt), am Küchendrucker
+  /// gleichzeitig mit ihm. Bei "Aus" wird nichts gerufen. Wirft nie.
+  Future<PrintOutcome?> _kitchen(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required Future<PrintOutcome> after,
+  }) async {
+    switch (settings.kitchenMode) {
+      case KitchenMode.off:
+        return null;
+      case KitchenMode.receiptPrinter:
+        await after;
+      case KitchenMode.kitchenPrinter:
+        break;
+    }
+    try {
+      return await _ref.read(kitchenServiceProvider).printFor(receipt);
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
   }
 
   Future<RegisterSettings> _settings() async {
