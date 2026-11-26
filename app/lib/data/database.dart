@@ -159,8 +159,41 @@ class SettingsRows extends Table {
   BoolColumn get printerQrAsImage =>
       boolean().withDefault(const Constant(false))();
 
+  /// Kürzel der Sprache der Oberfläche (`de`, `en`, `zh`, `tr`, `ar`).
+  TextColumn get language => text().withDefault(const Constant('de'))();
+
+  /// `off`, `receiptPrinter` oder `kitchenPrinter`.
+  TextColumn get kitchenMode => text().withDefault(const Constant('off'))();
+  TextColumn get kitchenLanguage => text().withDefault(const Constant('de'))();
+
+  /// `none`, `network`, `usb` oder `bluetooth`.
+  TextColumn get kitchenPrinterKind =>
+      text().withDefault(const Constant('none'))();
+  TextColumn get kitchenPrinterAddress => text().nullable()();
+  TextColumn get kitchenPrinterName => text().nullable()();
+  IntColumn get kitchenPrinterColumns =>
+      integer().withDefault(const Constant(48))();
+
+  /// Kategorie-Kennungen, deren Artikel nicht auf den Küchenbon kommen, als
+  /// JSON-Liste von Texten.
+  TextColumn get kitchenSkipCategories =>
+      text().withDefault(const Constant('[]'))();
+
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Übersetzungen der Artikel-, Kategorie- und Auswahlnamen: `source` ist der
+/// Name aus der Speisekarte, `valuesJson` ein JSON-Objekt Kürzel zu Name.
+class TranslationRows extends Table {
+  @override
+  String get tableName => 'translations';
+
+  TextColumn get source => text()();
+  TextColumn get valuesJson => text().named('values_json')();
+
+  @override
+  Set<Column> get primaryKey => {source};
 }
 
 /// Ein Geschäftstag: offen, solange `closedAt` leer ist. Die Felder zum
@@ -522,6 +555,7 @@ class ReportRows extends Table {
     ModifierOptionRows,
     StaffRows,
     SettingsRows,
+    TranslationRows,
     BusinessDayRows,
     CashMovementRows,
     ReceiptRows,
@@ -542,7 +576,7 @@ class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -684,6 +718,15 @@ class KassaDatabase extends _$KassaDatabase {
         ).get();
         if (done.isEmpty) await _stepTo6(m);
       }
+      if (from < 7 && to >= 7) {
+        // Wie Schritt 6: ganz oder gar nicht, und wiederholbar, falls die App
+        // vor dem Schreiben von user_version beendet wurde.
+        final done = await customSelect(
+          "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'translations'",
+        ).get();
+        if (done.isEmpty) await _stepTo7(m);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -706,6 +749,24 @@ class KassaDatabase extends _$KassaDatabase {
       await _createOutboxIndex();
       await _createOutboxTriggers();
       await _fillOutboxWithExisting();
+    });
+  }
+
+  /// Schritt 7 in einer Transaktion: Sprache und Küchenbon in den
+  /// Einstellungen, die Tabelle der Übersetzungen, und der Abgleich holt
+  /// einmal alles neu (die Übersetzungen kommen vom Server).
+  Future<void> _stepTo7(Migrator m) async {
+    await transaction(() async {
+      await m.addColumn(settingsRows, settingsRows.language);
+      await m.addColumn(settingsRows, settingsRows.kitchenMode);
+      await m.addColumn(settingsRows, settingsRows.kitchenLanguage);
+      await m.addColumn(settingsRows, settingsRows.kitchenPrinterKind);
+      await m.addColumn(settingsRows, settingsRows.kitchenPrinterAddress);
+      await m.addColumn(settingsRows, settingsRows.kitchenPrinterName);
+      await m.addColumn(settingsRows, settingsRows.kitchenPrinterColumns);
+      await m.addColumn(settingsRows, settingsRows.kitchenSkipCategories);
+      await m.createTable(translationRows);
+      await customStatement('UPDATE sync_state SET pull_cursor = 0');
     });
   }
 

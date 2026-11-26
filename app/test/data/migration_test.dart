@@ -409,7 +409,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      6,
+      7,
     );
     expect(await count(db, 'business_days'), 2);
     expect(await count(db, 'cash_movements'), 1);
@@ -423,7 +423,8 @@ void main() {
     expect(await count(db, 'reports'), 0);
     final sync = await SyncStateRepository(db).current();
     expect(sync.registerId, 'test-register');
-    expect(sync.pullCursor, 12);
+    // Schritt 7 setzt den Stand zurück: der Abgleich holt alles neu.
+    expect(sync.pullCursor, 0);
     expect(sync.lastPushAt, isNull);
     final row = await db.select(db.syncStateRows).getSingle();
     expect((row.deviceId, row.photosAutoEnabled), (null, false));
@@ -642,7 +643,7 @@ void main() {
       (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
         'user_version',
       ),
-      6,
+      7,
     );
     await db.close();
   });

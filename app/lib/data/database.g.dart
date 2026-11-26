@@ -3451,6 +3451,99 @@ class $SettingsRowsTable extends SettingsRows
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _languageMeta = const VerificationMeta(
+    'language',
+  );
+  @override
+  late final GeneratedColumn<String> language = GeneratedColumn<String>(
+    'language',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('de'),
+  );
+  static const VerificationMeta _kitchenModeMeta = const VerificationMeta(
+    'kitchenMode',
+  );
+  @override
+  late final GeneratedColumn<String> kitchenMode = GeneratedColumn<String>(
+    'kitchen_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('off'),
+  );
+  static const VerificationMeta _kitchenLanguageMeta = const VerificationMeta(
+    'kitchenLanguage',
+  );
+  @override
+  late final GeneratedColumn<String> kitchenLanguage = GeneratedColumn<String>(
+    'kitchen_language',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('de'),
+  );
+  static const VerificationMeta _kitchenPrinterKindMeta =
+      const VerificationMeta('kitchenPrinterKind');
+  @override
+  late final GeneratedColumn<String> kitchenPrinterKind =
+      GeneratedColumn<String>(
+        'kitchen_printer_kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('none'),
+      );
+  static const VerificationMeta _kitchenPrinterAddressMeta =
+      const VerificationMeta('kitchenPrinterAddress');
+  @override
+  late final GeneratedColumn<String> kitchenPrinterAddress =
+      GeneratedColumn<String>(
+        'kitchen_printer_address',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _kitchenPrinterNameMeta =
+      const VerificationMeta('kitchenPrinterName');
+  @override
+  late final GeneratedColumn<String> kitchenPrinterName =
+      GeneratedColumn<String>(
+        'kitchen_printer_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _kitchenPrinterColumnsMeta =
+      const VerificationMeta('kitchenPrinterColumns');
+  @override
+  late final GeneratedColumn<int> kitchenPrinterColumns = GeneratedColumn<int>(
+    'kitchen_printer_columns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(48),
+  );
+  static const VerificationMeta _kitchenSkipCategoriesMeta =
+      const VerificationMeta('kitchenSkipCategories');
+  @override
+  late final GeneratedColumn<String> kitchenSkipCategories =
+      GeneratedColumn<String>(
+        'kitchen_skip_categories',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3464,6 +3557,14 @@ class $SettingsRowsTable extends SettingsRows
     printerName,
     printerColumns,
     printerQrAsImage,
+    language,
+    kitchenMode,
+    kitchenLanguage,
+    kitchenPrinterKind,
+    kitchenPrinterAddress,
+    kitchenPrinterName,
+    kitchenPrinterColumns,
+    kitchenSkipCategories,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3564,6 +3665,75 @@ class $SettingsRowsTable extends SettingsRows
         ),
       );
     }
+    if (data.containsKey('language')) {
+      context.handle(
+        _languageMeta,
+        language.isAcceptableOrUnknown(data['language']!, _languageMeta),
+      );
+    }
+    if (data.containsKey('kitchen_mode')) {
+      context.handle(
+        _kitchenModeMeta,
+        kitchenMode.isAcceptableOrUnknown(
+          data['kitchen_mode']!,
+          _kitchenModeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_language')) {
+      context.handle(
+        _kitchenLanguageMeta,
+        kitchenLanguage.isAcceptableOrUnknown(
+          data['kitchen_language']!,
+          _kitchenLanguageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_printer_kind')) {
+      context.handle(
+        _kitchenPrinterKindMeta,
+        kitchenPrinterKind.isAcceptableOrUnknown(
+          data['kitchen_printer_kind']!,
+          _kitchenPrinterKindMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_printer_address')) {
+      context.handle(
+        _kitchenPrinterAddressMeta,
+        kitchenPrinterAddress.isAcceptableOrUnknown(
+          data['kitchen_printer_address']!,
+          _kitchenPrinterAddressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_printer_name')) {
+      context.handle(
+        _kitchenPrinterNameMeta,
+        kitchenPrinterName.isAcceptableOrUnknown(
+          data['kitchen_printer_name']!,
+          _kitchenPrinterNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_printer_columns')) {
+      context.handle(
+        _kitchenPrinterColumnsMeta,
+        kitchenPrinterColumns.isAcceptableOrUnknown(
+          data['kitchen_printer_columns']!,
+          _kitchenPrinterColumnsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('kitchen_skip_categories')) {
+      context.handle(
+        _kitchenSkipCategoriesMeta,
+        kitchenSkipCategories.isAcceptableOrUnknown(
+          data['kitchen_skip_categories']!,
+          _kitchenSkipCategoriesMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3617,6 +3787,38 @@ class $SettingsRowsTable extends SettingsRows
         DriftSqlType.bool,
         data['${effectivePrefix}printer_qr_as_image'],
       )!,
+      language: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language'],
+      )!,
+      kitchenMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_mode'],
+      )!,
+      kitchenLanguage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_language'],
+      )!,
+      kitchenPrinterKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_printer_kind'],
+      )!,
+      kitchenPrinterAddress: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_printer_address'],
+      ),
+      kitchenPrinterName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_printer_name'],
+      ),
+      kitchenPrinterColumns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}kitchen_printer_columns'],
+      )!,
+      kitchenSkipCategories: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kitchen_skip_categories'],
+      )!,
     );
   }
 
@@ -3642,6 +3844,23 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 
   /// Den QR-Code als Bild drucken statt mit dem QR-Befehl des Druckers.
   final bool printerQrAsImage;
+
+  /// Kürzel der Sprache der Oberfläche (`de`, `en`, `zh`, `tr`, `ar`).
+  final String language;
+
+  /// `off`, `receiptPrinter` oder `kitchenPrinter`.
+  final String kitchenMode;
+  final String kitchenLanguage;
+
+  /// `none`, `network`, `usb` oder `bluetooth`.
+  final String kitchenPrinterKind;
+  final String? kitchenPrinterAddress;
+  final String? kitchenPrinterName;
+  final int kitchenPrinterColumns;
+
+  /// Kategorie-Kennungen, deren Artikel nicht auf den Küchenbon kommen, als
+  /// JSON-Liste von Texten.
+  final String kitchenSkipCategories;
   const SettingsRow({
     required this.id,
     required this.cashDrawerEnabled,
@@ -3654,6 +3873,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.printerName,
     required this.printerColumns,
     required this.printerQrAsImage,
+    required this.language,
+    required this.kitchenMode,
+    required this.kitchenLanguage,
+    required this.kitchenPrinterKind,
+    this.kitchenPrinterAddress,
+    this.kitchenPrinterName,
+    required this.kitchenPrinterColumns,
+    required this.kitchenSkipCategories,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3675,6 +3902,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     }
     map['printer_columns'] = Variable<int>(printerColumns);
     map['printer_qr_as_image'] = Variable<bool>(printerQrAsImage);
+    map['language'] = Variable<String>(language);
+    map['kitchen_mode'] = Variable<String>(kitchenMode);
+    map['kitchen_language'] = Variable<String>(kitchenLanguage);
+    map['kitchen_printer_kind'] = Variable<String>(kitchenPrinterKind);
+    if (!nullToAbsent || kitchenPrinterAddress != null) {
+      map['kitchen_printer_address'] = Variable<String>(kitchenPrinterAddress);
+    }
+    if (!nullToAbsent || kitchenPrinterName != null) {
+      map['kitchen_printer_name'] = Variable<String>(kitchenPrinterName);
+    }
+    map['kitchen_printer_columns'] = Variable<int>(kitchenPrinterColumns);
+    map['kitchen_skip_categories'] = Variable<String>(kitchenSkipCategories);
     return map;
   }
 
@@ -3697,6 +3936,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           : Value(printerName),
       printerColumns: Value(printerColumns),
       printerQrAsImage: Value(printerQrAsImage),
+      language: Value(language),
+      kitchenMode: Value(kitchenMode),
+      kitchenLanguage: Value(kitchenLanguage),
+      kitchenPrinterKind: Value(kitchenPrinterKind),
+      kitchenPrinterAddress: kitchenPrinterAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(kitchenPrinterAddress),
+      kitchenPrinterName: kitchenPrinterName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(kitchenPrinterName),
+      kitchenPrinterColumns: Value(kitchenPrinterColumns),
+      kitchenSkipCategories: Value(kitchenSkipCategories),
     );
   }
 
@@ -3717,6 +3968,24 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       printerName: serializer.fromJson<String?>(json['printerName']),
       printerColumns: serializer.fromJson<int>(json['printerColumns']),
       printerQrAsImage: serializer.fromJson<bool>(json['printerQrAsImage']),
+      language: serializer.fromJson<String>(json['language']),
+      kitchenMode: serializer.fromJson<String>(json['kitchenMode']),
+      kitchenLanguage: serializer.fromJson<String>(json['kitchenLanguage']),
+      kitchenPrinterKind: serializer.fromJson<String>(
+        json['kitchenPrinterKind'],
+      ),
+      kitchenPrinterAddress: serializer.fromJson<String?>(
+        json['kitchenPrinterAddress'],
+      ),
+      kitchenPrinterName: serializer.fromJson<String?>(
+        json['kitchenPrinterName'],
+      ),
+      kitchenPrinterColumns: serializer.fromJson<int>(
+        json['kitchenPrinterColumns'],
+      ),
+      kitchenSkipCategories: serializer.fromJson<String>(
+        json['kitchenSkipCategories'],
+      ),
     );
   }
   @override
@@ -3734,6 +4003,16 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'printerName': serializer.toJson<String?>(printerName),
       'printerColumns': serializer.toJson<int>(printerColumns),
       'printerQrAsImage': serializer.toJson<bool>(printerQrAsImage),
+      'language': serializer.toJson<String>(language),
+      'kitchenMode': serializer.toJson<String>(kitchenMode),
+      'kitchenLanguage': serializer.toJson<String>(kitchenLanguage),
+      'kitchenPrinterKind': serializer.toJson<String>(kitchenPrinterKind),
+      'kitchenPrinterAddress': serializer.toJson<String?>(
+        kitchenPrinterAddress,
+      ),
+      'kitchenPrinterName': serializer.toJson<String?>(kitchenPrinterName),
+      'kitchenPrinterColumns': serializer.toJson<int>(kitchenPrinterColumns),
+      'kitchenSkipCategories': serializer.toJson<String>(kitchenSkipCategories),
     };
   }
 
@@ -3749,6 +4028,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> printerName = const Value.absent(),
     int? printerColumns,
     bool? printerQrAsImage,
+    String? language,
+    String? kitchenMode,
+    String? kitchenLanguage,
+    String? kitchenPrinterKind,
+    Value<String?> kitchenPrinterAddress = const Value.absent(),
+    Value<String?> kitchenPrinterName = const Value.absent(),
+    int? kitchenPrinterColumns,
+    String? kitchenSkipCategories,
   }) => SettingsRow(
     id: id ?? this.id,
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
@@ -3763,6 +4050,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     printerName: printerName.present ? printerName.value : this.printerName,
     printerColumns: printerColumns ?? this.printerColumns,
     printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
+    language: language ?? this.language,
+    kitchenMode: kitchenMode ?? this.kitchenMode,
+    kitchenLanguage: kitchenLanguage ?? this.kitchenLanguage,
+    kitchenPrinterKind: kitchenPrinterKind ?? this.kitchenPrinterKind,
+    kitchenPrinterAddress: kitchenPrinterAddress.present
+        ? kitchenPrinterAddress.value
+        : this.kitchenPrinterAddress,
+    kitchenPrinterName: kitchenPrinterName.present
+        ? kitchenPrinterName.value
+        : this.kitchenPrinterName,
+    kitchenPrinterColumns: kitchenPrinterColumns ?? this.kitchenPrinterColumns,
+    kitchenSkipCategories: kitchenSkipCategories ?? this.kitchenSkipCategories,
   );
   SettingsRow copyWithCompanion(SettingsRowsCompanion data) {
     return SettingsRow(
@@ -3795,6 +4094,28 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       printerQrAsImage: data.printerQrAsImage.present
           ? data.printerQrAsImage.value
           : this.printerQrAsImage,
+      language: data.language.present ? data.language.value : this.language,
+      kitchenMode: data.kitchenMode.present
+          ? data.kitchenMode.value
+          : this.kitchenMode,
+      kitchenLanguage: data.kitchenLanguage.present
+          ? data.kitchenLanguage.value
+          : this.kitchenLanguage,
+      kitchenPrinterKind: data.kitchenPrinterKind.present
+          ? data.kitchenPrinterKind.value
+          : this.kitchenPrinterKind,
+      kitchenPrinterAddress: data.kitchenPrinterAddress.present
+          ? data.kitchenPrinterAddress.value
+          : this.kitchenPrinterAddress,
+      kitchenPrinterName: data.kitchenPrinterName.present
+          ? data.kitchenPrinterName.value
+          : this.kitchenPrinterName,
+      kitchenPrinterColumns: data.kitchenPrinterColumns.present
+          ? data.kitchenPrinterColumns.value
+          : this.kitchenPrinterColumns,
+      kitchenSkipCategories: data.kitchenSkipCategories.present
+          ? data.kitchenSkipCategories.value
+          : this.kitchenSkipCategories,
     );
   }
 
@@ -3811,7 +4132,15 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('printerAddress: $printerAddress, ')
           ..write('printerName: $printerName, ')
           ..write('printerColumns: $printerColumns, ')
-          ..write('printerQrAsImage: $printerQrAsImage')
+          ..write('printerQrAsImage: $printerQrAsImage, ')
+          ..write('language: $language, ')
+          ..write('kitchenMode: $kitchenMode, ')
+          ..write('kitchenLanguage: $kitchenLanguage, ')
+          ..write('kitchenPrinterKind: $kitchenPrinterKind, ')
+          ..write('kitchenPrinterAddress: $kitchenPrinterAddress, ')
+          ..write('kitchenPrinterName: $kitchenPrinterName, ')
+          ..write('kitchenPrinterColumns: $kitchenPrinterColumns, ')
+          ..write('kitchenSkipCategories: $kitchenSkipCategories')
           ..write(')'))
         .toString();
   }
@@ -3829,6 +4158,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     printerName,
     printerColumns,
     printerQrAsImage,
+    language,
+    kitchenMode,
+    kitchenLanguage,
+    kitchenPrinterKind,
+    kitchenPrinterAddress,
+    kitchenPrinterName,
+    kitchenPrinterColumns,
+    kitchenSkipCategories,
   );
   @override
   bool operator ==(Object other) =>
@@ -3844,7 +4181,15 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.printerAddress == this.printerAddress &&
           other.printerName == this.printerName &&
           other.printerColumns == this.printerColumns &&
-          other.printerQrAsImage == this.printerQrAsImage);
+          other.printerQrAsImage == this.printerQrAsImage &&
+          other.language == this.language &&
+          other.kitchenMode == this.kitchenMode &&
+          other.kitchenLanguage == this.kitchenLanguage &&
+          other.kitchenPrinterKind == this.kitchenPrinterKind &&
+          other.kitchenPrinterAddress == this.kitchenPrinterAddress &&
+          other.kitchenPrinterName == this.kitchenPrinterName &&
+          other.kitchenPrinterColumns == this.kitchenPrinterColumns &&
+          other.kitchenSkipCategories == this.kitchenSkipCategories);
 }
 
 class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
@@ -3859,6 +4204,14 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> printerName;
   final Value<int> printerColumns;
   final Value<bool> printerQrAsImage;
+  final Value<String> language;
+  final Value<String> kitchenMode;
+  final Value<String> kitchenLanguage;
+  final Value<String> kitchenPrinterKind;
+  final Value<String?> kitchenPrinterAddress;
+  final Value<String?> kitchenPrinterName;
+  final Value<int> kitchenPrinterColumns;
+  final Value<String> kitchenSkipCategories;
   const SettingsRowsCompanion({
     this.id = const Value.absent(),
     this.cashDrawerEnabled = const Value.absent(),
@@ -3871,6 +4224,14 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.printerName = const Value.absent(),
     this.printerColumns = const Value.absent(),
     this.printerQrAsImage = const Value.absent(),
+    this.language = const Value.absent(),
+    this.kitchenMode = const Value.absent(),
+    this.kitchenLanguage = const Value.absent(),
+    this.kitchenPrinterKind = const Value.absent(),
+    this.kitchenPrinterAddress = const Value.absent(),
+    this.kitchenPrinterName = const Value.absent(),
+    this.kitchenPrinterColumns = const Value.absent(),
+    this.kitchenSkipCategories = const Value.absent(),
   });
   SettingsRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -3884,6 +4245,14 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.printerName = const Value.absent(),
     this.printerColumns = const Value.absent(),
     this.printerQrAsImage = const Value.absent(),
+    this.language = const Value.absent(),
+    this.kitchenMode = const Value.absent(),
+    this.kitchenLanguage = const Value.absent(),
+    this.kitchenPrinterKind = const Value.absent(),
+    this.kitchenPrinterAddress = const Value.absent(),
+    this.kitchenPrinterName = const Value.absent(),
+    this.kitchenPrinterColumns = const Value.absent(),
+    this.kitchenSkipCategories = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
     Expression<int>? id,
@@ -3897,6 +4266,14 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? printerName,
     Expression<int>? printerColumns,
     Expression<bool>? printerQrAsImage,
+    Expression<String>? language,
+    Expression<String>? kitchenMode,
+    Expression<String>? kitchenLanguage,
+    Expression<String>? kitchenPrinterKind,
+    Expression<String>? kitchenPrinterAddress,
+    Expression<String>? kitchenPrinterName,
+    Expression<int>? kitchenPrinterColumns,
+    Expression<String>? kitchenSkipCategories,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3910,6 +4287,19 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       if (printerName != null) 'printer_name': printerName,
       if (printerColumns != null) 'printer_columns': printerColumns,
       if (printerQrAsImage != null) 'printer_qr_as_image': printerQrAsImage,
+      if (language != null) 'language': language,
+      if (kitchenMode != null) 'kitchen_mode': kitchenMode,
+      if (kitchenLanguage != null) 'kitchen_language': kitchenLanguage,
+      if (kitchenPrinterKind != null)
+        'kitchen_printer_kind': kitchenPrinterKind,
+      if (kitchenPrinterAddress != null)
+        'kitchen_printer_address': kitchenPrinterAddress,
+      if (kitchenPrinterName != null)
+        'kitchen_printer_name': kitchenPrinterName,
+      if (kitchenPrinterColumns != null)
+        'kitchen_printer_columns': kitchenPrinterColumns,
+      if (kitchenSkipCategories != null)
+        'kitchen_skip_categories': kitchenSkipCategories,
     });
   }
 
@@ -3925,6 +4315,14 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? printerName,
     Value<int>? printerColumns,
     Value<bool>? printerQrAsImage,
+    Value<String>? language,
+    Value<String>? kitchenMode,
+    Value<String>? kitchenLanguage,
+    Value<String>? kitchenPrinterKind,
+    Value<String?>? kitchenPrinterAddress,
+    Value<String?>? kitchenPrinterName,
+    Value<int>? kitchenPrinterColumns,
+    Value<String>? kitchenSkipCategories,
   }) {
     return SettingsRowsCompanion(
       id: id ?? this.id,
@@ -3938,6 +4336,17 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
       printerName: printerName ?? this.printerName,
       printerColumns: printerColumns ?? this.printerColumns,
       printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
+      language: language ?? this.language,
+      kitchenMode: kitchenMode ?? this.kitchenMode,
+      kitchenLanguage: kitchenLanguage ?? this.kitchenLanguage,
+      kitchenPrinterKind: kitchenPrinterKind ?? this.kitchenPrinterKind,
+      kitchenPrinterAddress:
+          kitchenPrinterAddress ?? this.kitchenPrinterAddress,
+      kitchenPrinterName: kitchenPrinterName ?? this.kitchenPrinterName,
+      kitchenPrinterColumns:
+          kitchenPrinterColumns ?? this.kitchenPrinterColumns,
+      kitchenSkipCategories:
+          kitchenSkipCategories ?? this.kitchenSkipCategories,
     );
   }
 
@@ -3977,6 +4386,36 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     if (printerQrAsImage.present) {
       map['printer_qr_as_image'] = Variable<bool>(printerQrAsImage.value);
     }
+    if (language.present) {
+      map['language'] = Variable<String>(language.value);
+    }
+    if (kitchenMode.present) {
+      map['kitchen_mode'] = Variable<String>(kitchenMode.value);
+    }
+    if (kitchenLanguage.present) {
+      map['kitchen_language'] = Variable<String>(kitchenLanguage.value);
+    }
+    if (kitchenPrinterKind.present) {
+      map['kitchen_printer_kind'] = Variable<String>(kitchenPrinterKind.value);
+    }
+    if (kitchenPrinterAddress.present) {
+      map['kitchen_printer_address'] = Variable<String>(
+        kitchenPrinterAddress.value,
+      );
+    }
+    if (kitchenPrinterName.present) {
+      map['kitchen_printer_name'] = Variable<String>(kitchenPrinterName.value);
+    }
+    if (kitchenPrinterColumns.present) {
+      map['kitchen_printer_columns'] = Variable<int>(
+        kitchenPrinterColumns.value,
+      );
+    }
+    if (kitchenSkipCategories.present) {
+      map['kitchen_skip_categories'] = Variable<String>(
+        kitchenSkipCategories.value,
+      );
+    }
     return map;
   }
 
@@ -3993,7 +4432,233 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
           ..write('printerAddress: $printerAddress, ')
           ..write('printerName: $printerName, ')
           ..write('printerColumns: $printerColumns, ')
-          ..write('printerQrAsImage: $printerQrAsImage')
+          ..write('printerQrAsImage: $printerQrAsImage, ')
+          ..write('language: $language, ')
+          ..write('kitchenMode: $kitchenMode, ')
+          ..write('kitchenLanguage: $kitchenLanguage, ')
+          ..write('kitchenPrinterKind: $kitchenPrinterKind, ')
+          ..write('kitchenPrinterAddress: $kitchenPrinterAddress, ')
+          ..write('kitchenPrinterName: $kitchenPrinterName, ')
+          ..write('kitchenPrinterColumns: $kitchenPrinterColumns, ')
+          ..write('kitchenSkipCategories: $kitchenSkipCategories')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TranslationRowsTable extends TranslationRows
+    with TableInfo<$TranslationRowsTable, TranslationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TranslationRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valuesJsonMeta = const VerificationMeta(
+    'valuesJson',
+  );
+  @override
+  late final GeneratedColumn<String> valuesJson = GeneratedColumn<String>(
+    'values_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [source, valuesJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'translations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TranslationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('values_json')) {
+      context.handle(
+        _valuesJsonMeta,
+        valuesJson.isAcceptableOrUnknown(data['values_json']!, _valuesJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valuesJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {source};
+  @override
+  TranslationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TranslationRow(
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      valuesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}values_json'],
+      )!,
+    );
+  }
+
+  @override
+  $TranslationRowsTable createAlias(String alias) {
+    return $TranslationRowsTable(attachedDatabase, alias);
+  }
+}
+
+class TranslationRow extends DataClass implements Insertable<TranslationRow> {
+  final String source;
+  final String valuesJson;
+  const TranslationRow({required this.source, required this.valuesJson});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['source'] = Variable<String>(source);
+    map['values_json'] = Variable<String>(valuesJson);
+    return map;
+  }
+
+  TranslationRowsCompanion toCompanion(bool nullToAbsent) {
+    return TranslationRowsCompanion(
+      source: Value(source),
+      valuesJson: Value(valuesJson),
+    );
+  }
+
+  factory TranslationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TranslationRow(
+      source: serializer.fromJson<String>(json['source']),
+      valuesJson: serializer.fromJson<String>(json['valuesJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'source': serializer.toJson<String>(source),
+      'valuesJson': serializer.toJson<String>(valuesJson),
+    };
+  }
+
+  TranslationRow copyWith({String? source, String? valuesJson}) =>
+      TranslationRow(
+        source: source ?? this.source,
+        valuesJson: valuesJson ?? this.valuesJson,
+      );
+  TranslationRow copyWithCompanion(TranslationRowsCompanion data) {
+    return TranslationRow(
+      source: data.source.present ? data.source.value : this.source,
+      valuesJson: data.valuesJson.present
+          ? data.valuesJson.value
+          : this.valuesJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TranslationRow(')
+          ..write('source: $source, ')
+          ..write('valuesJson: $valuesJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(source, valuesJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TranslationRow &&
+          other.source == this.source &&
+          other.valuesJson == this.valuesJson);
+}
+
+class TranslationRowsCompanion extends UpdateCompanion<TranslationRow> {
+  final Value<String> source;
+  final Value<String> valuesJson;
+  final Value<int> rowid;
+  const TranslationRowsCompanion({
+    this.source = const Value.absent(),
+    this.valuesJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TranslationRowsCompanion.insert({
+    required String source,
+    required String valuesJson,
+    this.rowid = const Value.absent(),
+  }) : source = Value(source),
+       valuesJson = Value(valuesJson);
+  static Insertable<TranslationRow> custom({
+    Expression<String>? source,
+    Expression<String>? valuesJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (source != null) 'source': source,
+      if (valuesJson != null) 'values_json': valuesJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TranslationRowsCompanion copyWith({
+    Value<String>? source,
+    Value<String>? valuesJson,
+    Value<int>? rowid,
+  }) {
+    return TranslationRowsCompanion(
+      source: source ?? this.source,
+      valuesJson: valuesJson ?? this.valuesJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (valuesJson.present) {
+      map['values_json'] = Variable<String>(valuesJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TranslationRowsCompanion(')
+          ..write('source: $source, ')
+          ..write('valuesJson: $valuesJson, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -8457,7 +9122,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
   /// Wann zuletzt etwas an den Server gesendet wurde.
   final DateTime? lastPushAt;
 
-  /// Fotos von selbst laden, nicht nur auf Knopfdruck.
+  /// Ob "Bilder anzeigen" schon einmal von selbst eingeschaltet wurde (beim
+  /// ersten Foto vom Server, siehe `FileSync`). Das geschieht nur ein Mal;
+  /// danach gilt, was am Tablet eingestellt wird.
   final bool photosAutoEnabled;
   const SyncStateRow({
     required this.id,
@@ -11694,6 +12361,9 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
       $ModifierOptionRowsTable(this);
   late final $StaffRowsTable staffRows = $StaffRowsTable(this);
   late final $SettingsRowsTable settingsRows = $SettingsRowsTable(this);
+  late final $TranslationRowsTable translationRows = $TranslationRowsTable(
+    this,
+  );
   late final $BusinessDayRowsTable businessDayRows = $BusinessDayRowsTable(
     this,
   );
@@ -11730,6 +12400,7 @@ abstract class _$KassaDatabase extends GeneratedDatabase {
     modifierOptionRows,
     staffRows,
     settingsRows,
+    translationRows,
     businessDayRows,
     cashMovementRows,
     receiptRows,
@@ -14180,6 +14851,14 @@ typedef $$SettingsRowsTableCreateCompanionBuilder =
       Value<String?> printerName,
       Value<int> printerColumns,
       Value<bool> printerQrAsImage,
+      Value<String> language,
+      Value<String> kitchenMode,
+      Value<String> kitchenLanguage,
+      Value<String> kitchenPrinterKind,
+      Value<String?> kitchenPrinterAddress,
+      Value<String?> kitchenPrinterName,
+      Value<int> kitchenPrinterColumns,
+      Value<String> kitchenSkipCategories,
     });
 typedef $$SettingsRowsTableUpdateCompanionBuilder =
     SettingsRowsCompanion Function({
@@ -14194,6 +14873,14 @@ typedef $$SettingsRowsTableUpdateCompanionBuilder =
       Value<String?> printerName,
       Value<int> printerColumns,
       Value<bool> printerQrAsImage,
+      Value<String> language,
+      Value<String> kitchenMode,
+      Value<String> kitchenLanguage,
+      Value<String> kitchenPrinterKind,
+      Value<String?> kitchenPrinterAddress,
+      Value<String?> kitchenPrinterName,
+      Value<int> kitchenPrinterColumns,
+      Value<String> kitchenSkipCategories,
     });
 
 class $$SettingsRowsTableFilterComposer
@@ -14257,6 +14944,46 @@ class $$SettingsRowsTableFilterComposer
 
   ColumnFilters<bool> get printerQrAsImage => $composableBuilder(
     column: $table.printerQrAsImage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenMode => $composableBuilder(
+    column: $table.kitchenMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenLanguage => $composableBuilder(
+    column: $table.kitchenLanguage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenPrinterKind => $composableBuilder(
+    column: $table.kitchenPrinterKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenPrinterAddress => $composableBuilder(
+    column: $table.kitchenPrinterAddress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenPrinterName => $composableBuilder(
+    column: $table.kitchenPrinterName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get kitchenPrinterColumns => $composableBuilder(
+    column: $table.kitchenPrinterColumns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kitchenSkipCategories => $composableBuilder(
+    column: $table.kitchenSkipCategories,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -14324,6 +15051,46 @@ class $$SettingsRowsTableOrderingComposer
     column: $table.printerQrAsImage,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenMode => $composableBuilder(
+    column: $table.kitchenMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenLanguage => $composableBuilder(
+    column: $table.kitchenLanguage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenPrinterKind => $composableBuilder(
+    column: $table.kitchenPrinterKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenPrinterAddress => $composableBuilder(
+    column: $table.kitchenPrinterAddress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenPrinterName => $composableBuilder(
+    column: $table.kitchenPrinterName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get kitchenPrinterColumns => $composableBuilder(
+    column: $table.kitchenPrinterColumns,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kitchenSkipCategories => $composableBuilder(
+    column: $table.kitchenSkipCategories,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsRowsTableAnnotationComposer
@@ -14385,6 +15152,44 @@ class $$SettingsRowsTableAnnotationComposer
     column: $table.printerQrAsImage,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => column);
+
+  GeneratedColumn<String> get kitchenMode => $composableBuilder(
+    column: $table.kitchenMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kitchenLanguage => $composableBuilder(
+    column: $table.kitchenLanguage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kitchenPrinterKind => $composableBuilder(
+    column: $table.kitchenPrinterKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kitchenPrinterAddress => $composableBuilder(
+    column: $table.kitchenPrinterAddress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kitchenPrinterName => $composableBuilder(
+    column: $table.kitchenPrinterName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get kitchenPrinterColumns => $composableBuilder(
+    column: $table.kitchenPrinterColumns,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get kitchenSkipCategories => $composableBuilder(
+    column: $table.kitchenSkipCategories,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsRowsTableTableManager
@@ -14429,6 +15234,14 @@ class $$SettingsRowsTableTableManager
                 Value<String?> printerName = const Value.absent(),
                 Value<int> printerColumns = const Value.absent(),
                 Value<bool> printerQrAsImage = const Value.absent(),
+                Value<String> language = const Value.absent(),
+                Value<String> kitchenMode = const Value.absent(),
+                Value<String> kitchenLanguage = const Value.absent(),
+                Value<String> kitchenPrinterKind = const Value.absent(),
+                Value<String?> kitchenPrinterAddress = const Value.absent(),
+                Value<String?> kitchenPrinterName = const Value.absent(),
+                Value<int> kitchenPrinterColumns = const Value.absent(),
+                Value<String> kitchenSkipCategories = const Value.absent(),
               }) => SettingsRowsCompanion(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -14441,6 +15254,14 @@ class $$SettingsRowsTableTableManager
                 printerName: printerName,
                 printerColumns: printerColumns,
                 printerQrAsImage: printerQrAsImage,
+                language: language,
+                kitchenMode: kitchenMode,
+                kitchenLanguage: kitchenLanguage,
+                kitchenPrinterKind: kitchenPrinterKind,
+                kitchenPrinterAddress: kitchenPrinterAddress,
+                kitchenPrinterName: kitchenPrinterName,
+                kitchenPrinterColumns: kitchenPrinterColumns,
+                kitchenSkipCategories: kitchenSkipCategories,
               ),
           createCompanionCallback:
               ({
@@ -14455,6 +15276,14 @@ class $$SettingsRowsTableTableManager
                 Value<String?> printerName = const Value.absent(),
                 Value<int> printerColumns = const Value.absent(),
                 Value<bool> printerQrAsImage = const Value.absent(),
+                Value<String> language = const Value.absent(),
+                Value<String> kitchenMode = const Value.absent(),
+                Value<String> kitchenLanguage = const Value.absent(),
+                Value<String> kitchenPrinterKind = const Value.absent(),
+                Value<String?> kitchenPrinterAddress = const Value.absent(),
+                Value<String?> kitchenPrinterName = const Value.absent(),
+                Value<int> kitchenPrinterColumns = const Value.absent(),
+                Value<String> kitchenSkipCategories = const Value.absent(),
               }) => SettingsRowsCompanion.insert(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -14467,6 +15296,14 @@ class $$SettingsRowsTableTableManager
                 printerName: printerName,
                 printerColumns: printerColumns,
                 printerQrAsImage: printerQrAsImage,
+                language: language,
+                kitchenMode: kitchenMode,
+                kitchenLanguage: kitchenLanguage,
+                kitchenPrinterKind: kitchenPrinterKind,
+                kitchenPrinterAddress: kitchenPrinterAddress,
+                kitchenPrinterName: kitchenPrinterName,
+                kitchenPrinterColumns: kitchenPrinterColumns,
+                kitchenSkipCategories: kitchenSkipCategories,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -14500,6 +15337,166 @@ typedef $$SettingsRowsTableProcessedTableManager =
         BaseReferences<_$KassaDatabase, $SettingsRowsTable, SettingsRow>,
       ),
       SettingsRow,
+      PrefetchHooks Function()
+    >;
+typedef $$TranslationRowsTableCreateCompanionBuilder =
+    TranslationRowsCompanion Function({
+      required String source,
+      required String valuesJson,
+      Value<int> rowid,
+    });
+typedef $$TranslationRowsTableUpdateCompanionBuilder =
+    TranslationRowsCompanion Function({
+      Value<String> source,
+      Value<String> valuesJson,
+      Value<int> rowid,
+    });
+
+class $$TranslationRowsTableFilterComposer
+    extends Composer<_$KassaDatabase, $TranslationRowsTable> {
+  $$TranslationRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get valuesJson => $composableBuilder(
+    column: $table.valuesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TranslationRowsTableOrderingComposer
+    extends Composer<_$KassaDatabase, $TranslationRowsTable> {
+  $$TranslationRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get valuesJson => $composableBuilder(
+    column: $table.valuesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TranslationRowsTableAnnotationComposer
+    extends Composer<_$KassaDatabase, $TranslationRowsTable> {
+  $$TranslationRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get valuesJson => $composableBuilder(
+    column: $table.valuesJson,
+    builder: (column) => column,
+  );
+}
+
+class $$TranslationRowsTableTableManager
+    extends
+        RootTableManager<
+          _$KassaDatabase,
+          $TranslationRowsTable,
+          TranslationRow,
+          $$TranslationRowsTableFilterComposer,
+          $$TranslationRowsTableOrderingComposer,
+          $$TranslationRowsTableAnnotationComposer,
+          $$TranslationRowsTableCreateCompanionBuilder,
+          $$TranslationRowsTableUpdateCompanionBuilder,
+          (
+            TranslationRow,
+            BaseReferences<
+              _$KassaDatabase,
+              $TranslationRowsTable,
+              TranslationRow
+            >,
+          ),
+          TranslationRow,
+          PrefetchHooks Function()
+        > {
+  $$TranslationRowsTableTableManager(
+    _$KassaDatabase db,
+    $TranslationRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TranslationRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TranslationRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TranslationRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> source = const Value.absent(),
+                Value<String> valuesJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TranslationRowsCompanion(
+                source: source,
+                valuesJson: valuesJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String source,
+                required String valuesJson,
+                Value<int> rowid = const Value.absent(),
+              }) => TranslationRowsCompanion.insert(
+                source: source,
+                valuesJson: valuesJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TranslationRowsTable, TranslationRow>(table),
+                  BaseReferences<
+                    _$KassaDatabase,
+                    $TranslationRowsTable,
+                    TranslationRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TranslationRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KassaDatabase,
+      $TranslationRowsTable,
+      TranslationRow,
+      $$TranslationRowsTableFilterComposer,
+      $$TranslationRowsTableOrderingComposer,
+      $$TranslationRowsTableAnnotationComposer,
+      $$TranslationRowsTableCreateCompanionBuilder,
+      $$TranslationRowsTableUpdateCompanionBuilder,
+      (
+        TranslationRow,
+        BaseReferences<_$KassaDatabase, $TranslationRowsTable, TranslationRow>,
+      ),
+      TranslationRow,
       PrefetchHooks Function()
     >;
 typedef $$BusinessDayRowsTableCreateCompanionBuilder =
@@ -19994,6 +20991,8 @@ class $KassaDatabaseManager {
       $$StaffRowsTableTableManager(_db, _db.staffRows);
   $$SettingsRowsTableTableManager get settingsRows =>
       $$SettingsRowsTableTableManager(_db, _db.settingsRows);
+  $$TranslationRowsTableTableManager get translationRows =>
+      $$TranslationRowsTableTableManager(_db, _db.translationRows);
   $$BusinessDayRowsTableTableManager get businessDayRows =>
       $$BusinessDayRowsTableTableManager(_db, _db.businessDayRows);
   $$CashMovementRowsTableTableManager get cashMovementRows =>

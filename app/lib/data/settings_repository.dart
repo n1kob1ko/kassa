@@ -1,7 +1,10 @@
 // Einstellungen der Kassa und der Entwurf des offenen Bons.
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
+import '../core/app_language.dart';
 import '../core/enums.dart';
 import 'database.dart';
 
@@ -20,6 +23,14 @@ class RegisterSettings {
     this.printerName,
     this.printerColumns = 48,
     this.printerQrAsImage = false,
+    this.language = AppLanguage.de,
+    this.kitchenMode = KitchenMode.off,
+    this.kitchenLanguage = AppLanguage.de,
+    this.kitchenPrinterKind = PrinterKind.none,
+    this.kitchenPrinterAddress,
+    this.kitchenPrinterName,
+    this.kitchenPrinterColumns = 48,
+    this.kitchenSkipCategories = const {},
   });
 
   final bool cashDrawerEnabled;
@@ -34,6 +45,20 @@ class RegisterSettings {
   /// Den QR-Code als Bild drucken statt mit dem QR-Befehl des Druckers.
   final bool printerQrAsImage;
 
+  /// Sprache der Oberfläche.
+  final AppLanguage language;
+
+  /// Wohin der Küchenbon geht und in welcher Sprache er gedruckt wird.
+  final KitchenMode kitchenMode;
+  final AppLanguage kitchenLanguage;
+  final PrinterKind kitchenPrinterKind;
+  final String? kitchenPrinterAddress;
+  final String? kitchenPrinterName;
+  final int kitchenPrinterColumns;
+
+  /// Kennungen der Kategorien, die nicht auf den Küchenbon kommen.
+  final Set<String> kitchenSkipCategories;
+
   RegisterSettings copyWith({
     bool? cashDrawerEnabled,
     bool? showImages,
@@ -44,6 +69,14 @@ class RegisterSettings {
     String? printerName,
     int? printerColumns,
     bool? printerQrAsImage,
+    AppLanguage? language,
+    KitchenMode? kitchenMode,
+    AppLanguage? kitchenLanguage,
+    PrinterKind? kitchenPrinterKind,
+    String? kitchenPrinterAddress,
+    String? kitchenPrinterName,
+    int? kitchenPrinterColumns,
+    Set<String>? kitchenSkipCategories,
   }) => RegisterSettings(
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
     showImages: showImages ?? this.showImages,
@@ -54,6 +87,14 @@ class RegisterSettings {
     printerName: printerName ?? this.printerName,
     printerColumns: printerColumns ?? this.printerColumns,
     printerQrAsImage: printerQrAsImage ?? this.printerQrAsImage,
+    language: language ?? this.language,
+    kitchenMode: kitchenMode ?? this.kitchenMode,
+    kitchenLanguage: kitchenLanguage ?? this.kitchenLanguage,
+    kitchenPrinterKind: kitchenPrinterKind ?? this.kitchenPrinterKind,
+    kitchenPrinterAddress: kitchenPrinterAddress ?? this.kitchenPrinterAddress,
+    kitchenPrinterName: kitchenPrinterName ?? this.kitchenPrinterName,
+    kitchenPrinterColumns: kitchenPrinterColumns ?? this.kitchenPrinterColumns,
+    kitchenSkipCategories: kitchenSkipCategories ?? this.kitchenSkipCategories,
   );
 
   /// Kein Drucker mehr: Art `none`, Adresse und Name leer (`copyWith` kann
@@ -65,6 +106,32 @@ class RegisterSettings {
     voidRequiresChef: voidRequiresChef,
     printerColumns: printerColumns,
     printerQrAsImage: printerQrAsImage,
+    language: language,
+    kitchenMode: kitchenMode,
+    kitchenLanguage: kitchenLanguage,
+    kitchenPrinterKind: kitchenPrinterKind,
+    kitchenPrinterAddress: kitchenPrinterAddress,
+    kitchenPrinterName: kitchenPrinterName,
+    kitchenPrinterColumns: kitchenPrinterColumns,
+    kitchenSkipCategories: kitchenSkipCategories,
+  );
+
+  /// Kein Küchendrucker mehr: Art `none`, Adresse und Name leer.
+  RegisterSettings withoutKitchenPrinter() => RegisterSettings(
+    cashDrawerEnabled: cashDrawerEnabled,
+    showImages: showImages,
+    themeMode: themeMode,
+    voidRequiresChef: voidRequiresChef,
+    printerKind: printerKind,
+    printerAddress: printerAddress,
+    printerName: printerName,
+    printerColumns: printerColumns,
+    printerQrAsImage: printerQrAsImage,
+    language: language,
+    kitchenMode: kitchenMode,
+    kitchenLanguage: kitchenLanguage,
+    kitchenPrinterColumns: kitchenPrinterColumns,
+    kitchenSkipCategories: kitchenSkipCategories,
   );
 }
 
@@ -94,6 +161,16 @@ class SettingsRepository {
           printerName: Value(s.printerName),
           printerColumns: Value(s.printerColumns),
           printerQrAsImage: Value(s.printerQrAsImage),
+          language: Value(s.language.name),
+          kitchenMode: Value(s.kitchenMode.name),
+          kitchenLanguage: Value(s.kitchenLanguage.name),
+          kitchenPrinterKind: Value(s.kitchenPrinterKind.name),
+          kitchenPrinterAddress: Value(s.kitchenPrinterAddress),
+          kitchenPrinterName: Value(s.kitchenPrinterName),
+          kitchenPrinterColumns: Value(s.kitchenPrinterColumns),
+          kitchenSkipCategories: Value(
+            jsonEncode((s.kitchenSkipCategories.toList()..sort())),
+          ),
         ),
       );
 
@@ -132,5 +209,32 @@ class SettingsRepository {
           printerName: r.printerName,
           printerColumns: r.printerColumns,
           printerQrAsImage: r.printerQrAsImage,
+          language: AppLanguage.byCode(r.language),
+          kitchenMode: enumByNameOr(
+            KitchenMode.values,
+            r.kitchenMode,
+            KitchenMode.off,
+          ),
+          kitchenLanguage: AppLanguage.byCode(r.kitchenLanguage),
+          kitchenPrinterKind: enumByNameOr(
+            PrinterKind.values,
+            r.kitchenPrinterKind,
+            PrinterKind.none,
+          ),
+          kitchenPrinterAddress: r.kitchenPrinterAddress,
+          kitchenPrinterName: r.kitchenPrinterName,
+          kitchenPrinterColumns: r.kitchenPrinterColumns,
+          kitchenSkipCategories: _skipCategories(r.kitchenSkipCategories),
         );
+
+  /// Kaputtes JSON oder etwas anderes als eine Liste: leere Menge.
+  static Set<String> _skipCategories(String json) {
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is List) return {...decoded.whereType<String>()};
+    } on FormatException {
+      // fällt auf die leere Menge zurück
+    }
+    return const {};
+  }
 }

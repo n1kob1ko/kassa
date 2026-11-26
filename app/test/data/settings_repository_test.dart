@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/settings_repository.dart';
 
@@ -37,6 +38,88 @@ void main() {
       (s.cashDrawerEnabled, s.showImages, s.themeMode, s.voidRequiresChef),
       (false, true, AppThemeMode.dark, true),
     );
+  });
+
+  test('Sprache und Küchenbon: Vorgaben', () async {
+    final s = await settings.current();
+    expect(s.language, AppLanguage.de);
+    expect(s.kitchenMode, KitchenMode.off);
+    expect(s.kitchenLanguage, AppLanguage.de);
+    expect(s.kitchenPrinterKind, PrinterKind.none);
+    expect(s.kitchenPrinterAddress, isNull);
+    expect(s.kitchenPrinterName, isNull);
+    expect(s.kitchenPrinterColumns, 48);
+    expect(s.kitchenSkipCategories, isEmpty);
+  });
+
+  test('Sprache und Küchenbon: alle Felder werden gespeichert', () async {
+    await settings.save(
+      const RegisterSettings(
+        language: AppLanguage.ar,
+        kitchenMode: KitchenMode.kitchenPrinter,
+        kitchenLanguage: AppLanguage.tr,
+        kitchenPrinterKind: PrinterKind.network,
+        kitchenPrinterAddress: '192.168.1.60:9100',
+        kitchenPrinterName: 'Küche',
+        kitchenPrinterColumns: 32,
+        kitchenSkipCategories: {'getraenke', 'dessert'},
+      ),
+    );
+    final s = await settings.current();
+    expect(s.language, AppLanguage.ar);
+    expect(s.kitchenMode, KitchenMode.kitchenPrinter);
+    expect(s.kitchenLanguage, AppLanguage.tr);
+    expect(s.kitchenPrinterKind, PrinterKind.network);
+    expect(s.kitchenPrinterAddress, '192.168.1.60:9100');
+    expect(s.kitchenPrinterName, 'Küche');
+    expect(s.kitchenPrinterColumns, 32);
+    expect(s.kitchenSkipCategories, {'getraenke', 'dessert'});
+  });
+
+  test('withoutKitchenPrinter lässt den Rest stehen', () {
+    final s = const RegisterSettings(
+      language: AppLanguage.en,
+      kitchenMode: KitchenMode.kitchenPrinter,
+      kitchenPrinterKind: PrinterKind.usb,
+      kitchenPrinterAddress: 'x',
+      kitchenPrinterName: 'y',
+      kitchenPrinterColumns: 42,
+      kitchenSkipCategories: {'a'},
+      printerKind: PrinterKind.network,
+      printerAddress: 'z',
+    ).withoutKitchenPrinter();
+    expect(s.kitchenPrinterKind, PrinterKind.none);
+    expect(s.kitchenPrinterAddress, isNull);
+    expect(s.kitchenPrinterName, isNull);
+    expect(s.kitchenPrinterColumns, 42);
+    expect(s.kitchenMode, KitchenMode.kitchenPrinter);
+    expect(s.kitchenSkipCategories, {'a'});
+    expect(s.language, AppLanguage.en);
+    expect(s.printerKind, PrinterKind.network);
+    expect(s.printerAddress, 'z');
+  });
+
+  test('unbekannter Text und kaputtes JSON geben die Vorgaben', () async {
+    await settings.save(const RegisterSettings());
+    Future<void> set(String sql) => db.customStatement(sql);
+    await set(
+      "UPDATE settings SET language = 'xx', kitchen_mode = 'bogus', "
+      "kitchen_language = '', kitchen_printer_kind = 'laser', "
+      "kitchen_skip_categories = '{kaputt'",
+    );
+    var s = await settings.current();
+    expect(s.language, AppLanguage.de);
+    expect(s.kitchenMode, KitchenMode.off);
+    expect(s.kitchenLanguage, AppLanguage.de);
+    expect(s.kitchenPrinterKind, PrinterKind.none);
+    expect(s.kitchenSkipCategories, isEmpty);
+    // Gültiges JSON, aber keine Liste von Texten.
+    await set("UPDATE settings SET kitchen_skip_categories = '{\"a\":1}'");
+    s = await settings.current();
+    expect(s.kitchenSkipCategories, isEmpty);
+    await set("UPDATE settings SET kitchen_skip_categories = '[\"a\", 3]'");
+    s = await settings.current();
+    expect(s.kitchenSkipCategories, {'a'});
   });
 
   test('watch gibt zuerst den Stand und danach jede Änderung', () async {
