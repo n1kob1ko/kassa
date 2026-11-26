@@ -180,6 +180,8 @@ Mach die folgenden Punkte einmal in jeder der fünf Sprachen.
   Der Hinweis zeigt den neueren Bon und darunter "Weitere Küchenbons nicht gedruckt: 1". Mit dem Kreuz oben in der Ecke geht er weg, dann steht der ältere da.
 - [ ] Den Drucker einschalten und im Hinweis "Küchenbon drucken" tippen.
   Der Küchenbon kommt, der Hinweis geht weg.
+- [ ] Noch einmal so einen Hinweis erzeugen und den Verkauf dann unter "Bons" stornieren. Zurück zur Kassa.
+  Der Hinweis zu diesem Bon ist weg. Ein stornierter Verkauf kommt nicht mehr in die Küche.
 
 ### C5. Eigener Drucker in der Küche
 

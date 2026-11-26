@@ -19,6 +19,7 @@ import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import '../kassa/kitchen_service.dart';
+import '../kassa/late_kitchen.dart';
 import '../kassa/sale_done.dart' show KitchenStateBox;
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
@@ -77,10 +78,15 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       _busy = true;
       _failure = null;
     });
+    // Vor dem Warten gelesen: danach kann das Detail schon weg sein.
+    final lateKitchen = ref.read(lateKitchenProvider.notifier);
     try {
       final result = await ref
           .read(saleServiceProvider)
           .voidReceipt(receipt.id, staff: staff);
+      // Ein abgesagter Verkauf kommt nicht mehr in die Küche: ein Hinweis
+      // der Kassa zu ihm geht weg (der STORNO-Zettel hat seinen eigenen Weg).
+      lateKitchen.dismiss(receipt.id);
       _announce(result.print);
       _followVoidKitchen(result.receipt, result.kitchen, retry: false);
       if (!mounted) return;
@@ -182,10 +188,13 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
   Future<void> _printKitchen(Receipt receipt, KitchenMode mode) async {
     if (_printingKitchen) return;
     _printingKitchen = true;
+    final lateKitchen = ref.read(lateKitchenProvider.notifier);
     try {
       final outcome = await ref
           .read(kitchenServiceProvider)
           .printFor(receipt, copy: true);
+      // Gedruckt: der Hinweis der Kassa zu diesem Bon ist erledigt.
+      if (outcome != null && outcome.ok) lateKitchen.dismiss(receipt.id);
       if (!mounted) return;
       final l = L10n.of(context);
       showUndoToast(

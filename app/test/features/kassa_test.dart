@@ -24,6 +24,7 @@ import 'package:kassa/ui/primary_button.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/cash_pump.dart' show queryRows;
 import '../support/demo_fixtures.dart';
 import '../support/fake_server.dart';
 import '../support/files_pump.dart';
@@ -1190,6 +1191,35 @@ void kuechenbonNachDemVerkaufTests() {
     await t.tap(find.byKey(const Key('next-customer')));
     await t.pumpAndSettle();
     expect(late('Bon Nr. 1'), findsOneWidget);
+  });
+
+  testWidgets('inzwischen storniert: "Küchenbon drucken" druckt nichts, der '
+      'Hinweis geht weg', (t) async {
+    final hold = Completer<void>();
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+      hold: hold,
+    );
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    kitchen.hold = null;
+    hold.complete();
+    await t.pumpAndSettle();
+    expect(late('Bon Nr. 1'), findsOneWidget);
+    // Der Gast sagt ab: Bon 1 wird storniert (anderswo als im Bon-Detail).
+    final c = containerOf(t);
+    final staff = c.read(sessionProvider)!;
+    final rows = await queryRows(t, 'SELECT id FROM receipts WHERE number = 1');
+    await c
+        .read(receiptRepositoryProvider)
+        .voidReceipt(rows.single['id']! as String, staff: staff);
+    await t.pumpAndSettle();
+    kitchen.next = const PrintOutcome.ok();
+    await t.tap(find.byKey(const Key('late-kitchen-reprint')));
+    await t.pumpAndSettle();
+    expect(kitchen.calls, ['for:1']);
+    expect(find.byKey(const Key('late-kitchen')), findsNothing);
   });
 
   testWidgets('Küchenbon gedruckt, dann weiter: kein Hinweis', (t) async {

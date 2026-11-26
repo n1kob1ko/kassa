@@ -66,6 +66,7 @@ class LateKitchen extends Notifier<List<LateKitchenTicket>> {
 
   /// Druckt den Küchenbon noch einmal. Gedruckt (oder nichts mehr für die
   /// Küche): der Hinweis geht. Gescheitert: er bleibt mit dem neuen Grund.
+  /// Ist der Verkauf inzwischen storniert, geht der Hinweis ohne Druck.
   Future<void> reprint(String receiptId) async {
     final ticket = state.where((t) => t.receipt.id == receiptId).firstOrNull;
     if (ticket == null || ticket.printing) return;
@@ -78,7 +79,22 @@ class LateKitchen extends Notifier<List<LateKitchenTicket>> {
     );
     PrintOutcome? outcome;
     try {
-      outcome = await ref.read(kitchenServiceProvider).printFor(ticket.receipt);
+      // Der Bon, wie er jetzt ist: inzwischen storniert, käme eine abgesagte
+      // Bestellung noch einmal in die Küche. Dann geht nur der Hinweis weg.
+      Receipt current;
+      try {
+        current = await ref
+            .read(receiptRepositoryProvider)
+            .byId(ticket.receipt.id);
+      } catch (_) {
+        current = ticket.receipt;
+      }
+      if (!ref.mounted) return;
+      if (current.isVoided) {
+        dismiss(receiptId);
+        return;
+      }
+      outcome = await ref.read(kitchenServiceProvider).printFor(current);
     } catch (_) {
       outcome = const PrintOutcome.failed(PrintProblem.unreachable);
     }

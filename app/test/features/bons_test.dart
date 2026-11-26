@@ -14,6 +14,7 @@ import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
+import 'package:kassa/features/kassa/late_kitchen.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/tokens.dart';
@@ -749,6 +750,52 @@ void main() {
       );
       expect(button, findsNothing);
       expect(t.takeException(), isNull);
+    });
+
+    /// Bon [number] steht als nicht gedruckter Küchenbon im Hinweis der Kassa.
+    Future<void> lateFailure(WidgetTester t, int number) async {
+      final c = containerOf(t);
+      final rows = await queryRows(
+        t,
+        'SELECT id FROM receipts WHERE number = $number',
+      );
+      final receipt = await c
+          .read(receiptRepositoryProvider)
+          .byId(rows.single['id']! as String);
+      c
+          .read(lateKitchenProvider.notifier)
+          .follow(
+            receipt,
+            Future.value(const PrintOutcome.failed(PrintProblem.paperOut)),
+          );
+      await t.pumpAndSettle();
+      expect(c.read(lateKitchenProvider), hasLength(1));
+    }
+
+    testWidgets('Storno eines Verkaufs aus dem Hinweis der Kassa: der Hinweis '
+        'geht weg', (t) async {
+      await pumpWithKitchen(t, 1);
+      await lateFailure(t, 1);
+      await _startVoid(t, 1);
+      await t.tap(find.byKey(const Key('confirm-void')));
+      await t.pumpAndSettle();
+      expect(containerOf(t).read(lateKitchenProvider), isEmpty);
+    });
+
+    testWidgets('hier gedruckt: der Hinweis der Kassa geht weg; gescheitert '
+        'bleibt er', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      await lateFailure(t, 1);
+      await openReceipt(t, 1);
+      kitchen.next = const PrintOutcome.failed(PrintProblem.coverOpen);
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(containerOf(t).read(lateKitchenProvider), hasLength(1));
+      kitchen.next = const PrintOutcome.ok();
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(kitchen.calls, ['for:1:copy', 'for:1:copy']);
+      expect(containerOf(t).read(lateKitchenProvider), isEmpty);
     });
 
     testWidgets('Storno, der Küchenbon kommt: kein Hinweis', (t) async {
