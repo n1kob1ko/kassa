@@ -23,6 +23,9 @@ class AppToggle extends StatelessWidget {
     final instant = MediaQuery.disableAnimationsOf(context);
     final duration = instant ? Duration.zero : KassaTokens.motionSwitch;
     final onChanged = this.onChanged;
+    // Eingeschaltet liegt der Knopf am Ende der Zeile, in Arabisch links.
+    final knobRight =
+        value != (Directionality.of(context) == TextDirection.rtl);
 
     final track = SizedBox(
       key: const Key('toggle-hit'),
@@ -43,7 +46,7 @@ class AppToggle extends StatelessWidget {
               AnimatedPositioned(
                 duration: duration,
                 curve: KassaTokens.motionCurve,
-                left: value ? 23 : 3,
+                left: knobRight ? 23 : 3,
                 top: 3,
                 child: Container(
                   width: 26,

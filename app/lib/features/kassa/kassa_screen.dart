@@ -17,6 +17,7 @@ import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
@@ -37,28 +38,34 @@ const _favoritesId = 'favorites';
 const _cardMessageStay = Duration(seconds: 6);
 
 /// Warum die Kartenzahlung nicht zustande kam, in der Bediensprache. Ein
-/// Text des Anbieters ([CardFailed.detail]) bleibt, wie er kommt.
-String cardSaleFailedText(L10n l, CardSaleFailed f) => switch (f.problem) {
-  CardSaleProblem.alreadyRunning => l.cardAlreadyRunning,
-  CardSaleProblem.emptyCart => l.cardEmptyReceipt,
-  CardSaleProblem.belowMinimum => l.cardMinimum(formatEuro(f.minimumCents)),
-  CardSaleProblem.notStarted => l.cardNotStarted,
-  CardSaleProblem.terminal => switch (f.terminal) {
-    null => l.cardFailed,
-    CardFailed(:final failure, :final detail) => switch (failure) {
-      CardFailure.declined => l.cardDeclined,
-      CardFailure.cancelled => l.cardCancelled,
-      CardFailure.noInternet => l.cardNoInternet,
-      CardFailure.notLoggedIn => l.cardNotLoggedIn,
-      CardFailure.noReader => l.cardNoReader,
-      CardFailure.permission => l.cardPermission,
-      CardFailure.other =>
-        detail == null || detail.isEmpty
-            ? l.cardFailed
-            : l.cardFailedDetail(detail),
+/// Text des Anbieters ([CardFailed.detail]) bleibt, wie er kommt. Der
+/// Kleinstbetrag steht auch in einem arabischen Satz von links nach rechts.
+String cardSaleFailedText(BuildContext context, CardSaleFailed f) {
+  final l = L10n.of(context);
+  return switch (f.problem) {
+    CardSaleProblem.alreadyRunning => l.cardAlreadyRunning,
+    CardSaleProblem.emptyCart => l.cardEmptyReceipt,
+    CardSaleProblem.belowMinimum => l.cardMinimum(
+      ltrIsolate(context, formatEuro(f.minimumCents)),
+    ),
+    CardSaleProblem.notStarted => l.cardNotStarted,
+    CardSaleProblem.terminal => switch (f.terminal) {
+      null => l.cardFailed,
+      CardFailed(:final failure, :final detail) => switch (failure) {
+        CardFailure.declined => l.cardDeclined,
+        CardFailure.cancelled => l.cardCancelled,
+        CardFailure.noInternet => l.cardNoInternet,
+        CardFailure.notLoggedIn => l.cardNotLoggedIn,
+        CardFailure.noReader => l.cardNoReader,
+        CardFailure.permission => l.cardPermission,
+        CardFailure.other =>
+          detail == null || detail.isEmpty
+              ? l.cardFailed
+              : l.cardFailedDetail(detail),
+      },
     },
-  },
-};
+  };
+}
 
 /// Ob die Kassa seit dem Start der App schon einmal zu sehen war.
 class _KassaMounts {
@@ -68,7 +75,7 @@ class _KassaMounts {
 final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 
 /// Der Kassenbildschirm: Kategorien links, Artikel (oder das Zusammenstellen)
-/// in der Mitte, der offene Bon rechts. Mit "Bar" wird die Bon-Spalte zum
+/// in der Mitte, der offene Bon rechts (in Arabisch gespiegelt). Mit "Bar" wird die Bon-Spalte zum
 /// Bezahlen, mit "Karte" zum Warten auf das Terminal, danach zur
 /// Fertig-Ansicht; die Artikelfläche ist dabei halb ausgeblendet und reagiert
 /// nicht.
@@ -276,7 +283,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         setState(() => _side = _Side.cart);
         showUndoToast(
           context,
-          message: cardSaleFailedText(L10n.of(context), outcome),
+          message: cardSaleFailedText(context, outcome),
           stay: _cardMessageStay,
           viewKey: const Key('card-message'),
         );

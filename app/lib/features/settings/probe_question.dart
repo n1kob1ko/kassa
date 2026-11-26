@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 
@@ -35,7 +36,7 @@ Future<T?> showSettingsSheet<T>(
     barrierDismissible: false,
     barrierColor: KassaTokens.scrim,
     transitionDuration: instant ? Duration.zero : KassaTokens.motionFade,
-    pageBuilder: (context, _, _) => builder(context),
+    pageBuilder: (context, _, _) => Ltr(child: builder(context)),
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: CurvedAnimation(
         parent: animation,

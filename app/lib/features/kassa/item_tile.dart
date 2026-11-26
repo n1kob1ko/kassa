@@ -8,6 +8,7 @@ import '../../core/money.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/hex_color.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
@@ -80,15 +81,15 @@ class ItemTile extends ConsumerWidget {
           ),
           if (showImage)
             for (final t in _tags(item).take(1))
-              Positioned(
+              PositionedDirectional(
                 top: 11,
-                left: 11,
+                start: 11,
                 child: _TagPill(tag: t, small: false),
               ),
           if (selected)
-            Positioned(
+            PositionedDirectional(
               top: showImage ? 11 : -7,
-              right: showImage ? 11 : -7,
+              end: showImage ? 11 : -7,
               child: _QuantityBadge(
                 quantity: quantity,
                 ring: showImage ? c.card : c.ground,
@@ -223,7 +224,7 @@ class _ImageBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: _TileName(
+                  child: FittingName(
                     name,
                     maxLines: lines,
                     style: text.bodyLarge!.copyWith(
@@ -263,7 +264,7 @@ class _CompactBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: _TileName(
+          child: FittingName(
             name,
             maxLines: 2,
             style: text.bodyMedium!.copyWith(
@@ -305,13 +306,15 @@ class _PriceRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (item.inSale)
-          Text(
-            formatEuro(item.priceCents),
-            maxLines: 1,
-            style: text.titleMedium!.copyWith(
-              fontSize: 15,
-              height: 1.0,
-              color: c.accentInk,
+          Ltr(
+            child: Text(
+              formatEuro(item.priceCents),
+              maxLines: 1,
+              style: text.titleMedium!.copyWith(
+                fontSize: 15,
+                height: 1.0,
+                color: c.accentInk,
+              ),
             ),
           ),
         if (tag != null && item.inSale) ...[
@@ -322,16 +325,18 @@ class _PriceRow extends StatelessWidget {
           child: extra == null
               ? const SizedBox.shrink()
               : Padding(
-                  padding: const EdgeInsets.only(left: KassaTokens.spaceSm),
+                  padding: const EdgeInsetsDirectional.only(
+                    start: KassaTokens.spaceSm,
+                  ),
                   child: ClipRect(
                     child: Align(
-                      alignment: Alignment.centerRight,
+                      alignment: AlignmentDirectional.centerEnd,
                       child: Text(
                         extra,
                         maxLines: 1,
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
+                        textAlign: TextAlign.end,
                         style: text.bodySmall!.copyWith(
                           fontSize: 12,
                           height: 1.0,
@@ -343,76 +348,6 @@ class _PriceRow extends StatelessWidget {
                 ),
         ),
       ],
-    );
-  }
-}
-
-/// Name auf der Taste, oben im Feld [maxLines] Zeilen in voller Größe. Passt
-/// er so nicht ganz (lange Namen, andere Sprachen), wird die Schrift kleiner
-/// und er darf so viele Zeilen nehmen, wie das Feld hoch ist: gekürzt wird
-/// er erst, wenn er auch in der kleinsten Stufe nicht passt.
-class _TileName extends StatelessWidget {
-  const _TileName(this.name, {required this.maxLines, required this.style});
-
-  final String name;
-  final int maxLines;
-  final TextStyle style;
-
-  /// Stufen der Schrift, die volle Größe zuerst.
-  static const _steps = [1.0, 0.9, 0.8];
-
-  @override
-  Widget build(BuildContext context) {
-    final scaler = MediaQuery.textScalerOf(context);
-    final direction = Directionality.of(context);
-    final locale = Localizations.maybeLocaleOf(context);
-    return LayoutBuilder(
-      builder: (context, box) {
-        bool fits(TextStyle s, int? lines) {
-          final painter = TextPainter(
-            text: TextSpan(text: name, style: s),
-            textDirection: direction,
-            textScaler: scaler,
-            locale: locale,
-            maxLines: lines,
-          )..layout(maxWidth: box.maxWidth);
-          final ok =
-              !painter.didExceedMaxLines && painter.height <= box.maxHeight;
-          painter.dispose();
-          return ok;
-        }
-
-        var shown = style;
-        int? lines = maxLines;
-        if (!fits(style, maxLines)) {
-          final smaller = [
-            for (final f in _steps.skip(1))
-              style.copyWith(fontSize: style.fontSize! * f),
-          ];
-          final fitting = smaller.where((s) => fits(s, null)).firstOrNull;
-          if (fitting != null) {
-            shown = fitting;
-            lines = null;
-          } else {
-            // Auch in der kleinsten Stufe zu lang: so viele Zeilen, wie
-            // Platz haben, der Rest wird gekürzt.
-            shown = smaller.last;
-            final line = scaler.scale(shown.fontSize!) * (shown.height ?? 1);
-            lines = (box.maxHeight / line).floor().clamp(1, 99);
-          }
-        }
-        // Oben am Anfang der Zeile, wie zuvor in der gestreckten Spalte.
-        return Align(
-          alignment: AlignmentDirectional.topStart,
-          child: Text(
-            name,
-            maxLines: lines,
-            // Ellipse ohne Zeilengrenze hieße: nur eine Zeile.
-            overflow: lines == null ? TextOverflow.clip : TextOverflow.ellipsis,
-            style: shown,
-          ),
-        );
-      },
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
@@ -56,19 +57,22 @@ class _ModifierPanelState extends ConsumerState<ModifierPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
+                // Lange Namen (andere Sprachen): kleiner und in zwei Zeilen.
                 Expanded(
-                  child: Text(
+                  child: FittingName(
                     menuText(widget.item.name),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.headlineMedium,
+                    alignment: AlignmentDirectional.centerStart,
+                    style: text.headlineMedium!,
                   ),
                 ),
                 const SizedBox(width: KassaTokens.spaceXxl),
-                Text(
-                  formatEuro(price),
-                  key: const Key('builder-price'),
-                  style: text.headlineMedium!.copyWith(color: c.accentInk),
+                Ltr(
+                  child: Text(
+                    formatEuro(price),
+                    key: const Key('builder-price'),
+                    style: text.headlineMedium!.copyWith(color: c.accentInk),
+                  ),
                 ),
               ],
             ),
@@ -188,7 +192,7 @@ class _GroupCard extends ConsumerWidget {
                       Flexible(
                         child: Text(
                           ref.watch(menuTextProvider)(group.name),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: text.titleMedium,
                         ),
@@ -309,9 +313,9 @@ class _OptionButton extends ConsumerWidget {
           clipBehavior: Clip.none,
           children: [
             Padding(
-              padding: const EdgeInsets.only(right: 14),
+              padding: const EdgeInsetsDirectional.only(end: 14),
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,11 +325,13 @@ class _OptionButton extends ConsumerWidget {
                       style: text.labelLarge!.copyWith(height: 1.12, color: fg),
                     ),
                     if (surcharge != 0 && showSurcharge)
-                      Text(
-                        '${surcharge > 0 ? '+' : ''}${formatEuro(surcharge)}',
-                        style: text.bodySmall!.copyWith(
-                          fontSize: 12.5,
-                          color: fg.withValues(alpha: 0.8),
+                      Ltr(
+                        child: Text(
+                          '${surcharge > 0 ? '+' : ''}${formatEuro(surcharge)}',
+                          style: text.bodySmall!.copyWith(
+                            fontSize: 12.5,
+                            color: fg.withValues(alpha: 0.8),
+                          ),
                         ),
                       ),
                   ],
@@ -333,9 +339,9 @@ class _OptionButton extends ConsumerWidget {
               ),
             ),
             if (chosen)
-              Positioned(
+              PositionedDirectional(
                 top: 0,
-                right: -6,
+                end: -6,
                 child: Container(
                   width: 18,
                   height: 18,

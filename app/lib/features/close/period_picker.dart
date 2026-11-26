@@ -6,6 +6,7 @@ import '../../domain/period_report.dart';
 import '../../domain/period_selection.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/dates_text.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/segmented.dart';
@@ -14,13 +15,17 @@ import 'amount_entry.dart';
 import 'day_closed_view.dart' show PrintResult;
 
 /// "1.10. bis 31.10.2026", über den Jahreswechsel "1.11.2025 bis 28.2.2026".
-String periodDates(L10n l, MonthRange r) {
+/// Die Daten stehen auch in einem arabischen Satz von links nach rechts.
+String periodDates(BuildContext context, MonthRange r) {
   final from = r.from.start;
   final to = r.to.lastDay;
   final start = from.year == to.year
       ? '${from.day}.${from.month}.'
       : '${from.day}.${from.month}.${from.year}';
-  return l.closePeriodDates(start, '${to.day}.${to.month}.${to.year}');
+  return L10n.of(context).closePeriodDates(
+    ltrIsolate(context, start),
+    ltrIsolate(context, '${to.day}.${to.month}.${to.year}'),
+  );
 }
 
 /// Überschrift eines Zeitraums am Bildschirm: "Oktober 2026", "Jänner bis
@@ -102,7 +107,11 @@ class PeriodPicker extends StatelessWidget {
           children: [
             _YearArrow(
               keyName: 'year-prev',
-              icon: LucideIcons.chevronLeft,
+              icon: directionalIcon(
+                context,
+                ltr: LucideIcons.chevronLeft,
+                rtl: LucideIcons.chevronRight,
+              ),
               label: l.closeYearBefore,
               onTap: first != null && year > first.year
                   ? () => onYear(year - 1)
@@ -118,7 +127,11 @@ class PeriodPicker extends StatelessWidget {
             ),
             _YearArrow(
               keyName: 'year-next',
-              icon: LucideIcons.chevronRight,
+              icon: directionalIcon(
+                context,
+                ltr: LucideIcons.chevronRight,
+                rtl: LucideIcons.chevronLeft,
+              ),
               label: l.closeYearAfter,
               onTap: last != null && year < last.year
                   ? () => onYear(year + 1)
@@ -143,7 +156,7 @@ class PeriodPicker extends StatelessWidget {
         if (range != null) ...[
           const SizedBox(height: KassaTokens.spaceXl),
           Text(
-            periodDates(l, range),
+            periodDates(context, range),
             key: const Key('period-text'),
             style: text.bodyMedium!.copyWith(
               fontSize: 15,
@@ -151,15 +164,18 @@ class PeriodPicker extends StatelessWidget {
             ),
           ),
           const SizedBox(height: KassaTokens.spaceXxs),
-          Text(
-            totalCents == null ? '' : formatEuro(totalCents!),
-            key: const Key('period-total'),
-            maxLines: 1,
-            style: text.headlineLarge!.copyWith(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              height: 1.15,
+          Ltr(
+            child: Text(
+              totalCents == null ? '' : formatEuro(totalCents!),
+              key: const Key('period-total'),
+              maxLines: 1,
+              textAlign: ltrAlign(context, TextAlign.start),
+              style: text.headlineLarge!.copyWith(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                height: 1.15,
+              ),
             ),
           ),
         ],

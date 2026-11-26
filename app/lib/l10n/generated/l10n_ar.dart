@@ -187,7 +187,7 @@ class L10nAr extends L10n {
   }
 
   @override
-  String get kassaCancel => 'إغلاق';
+  String get kassaCancel => 'إلغاء';
 
   @override
   String get kassaAddToReceipt => 'أضف إلى الفاتورة';

@@ -5,9 +5,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../app.dart' show appLanguageProvider;
 import '../../data/providers.dart';
 import '../../l10n/generated/l10n.dart';
-import '../../ui/keypad.dart';
 import '../../ui/business_logo.dart';
+import '../../ui/keypad.dart';
 import '../../ui/language_picker.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import 'session.dart';
@@ -251,33 +252,36 @@ class _Dots extends StatelessWidget {
     return Semantics(
       label: L10n.of(context).loginDigitsEntered(filled),
       excludeSemantics: true,
-      child: SizedBox(
-        height: 24,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < 4; i++) ...[
-              if (i > 0) const SizedBox(width: 18),
-              AnimatedContainer(
-                duration: instant ? Duration.zero : KassaTokens.motionFast,
-                curve: Curves.linear,
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i < filled ? c.accent : const Color(0x00000000),
-                  border: Border.all(
-                    color: error
-                        ? c.red
-                        : i < filled
-                        ? c.accent
-                        : c.ink2,
-                    width: KassaTokens.borderStrong,
+      // Die Punkte füllen sich in jeder Sprache von links, wie die Ziffern.
+      child: Ltr(
+        child: SizedBox(
+          height: 24,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < 4; i++) ...[
+                if (i > 0) const SizedBox(width: 18),
+                AnimatedContainer(
+                  duration: instant ? Duration.zero : KassaTokens.motionFast,
+                  curve: Curves.linear,
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i < filled ? c.accent : const Color(0x00000000),
+                    border: Border.all(
+                      color: error
+                          ? c.red
+                          : i < filled
+                          ? c.accent
+                          : c.ink2,
+                      width: KassaTokens.borderStrong,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

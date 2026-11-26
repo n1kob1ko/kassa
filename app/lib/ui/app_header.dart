@@ -72,7 +72,7 @@ class AppHeader extends StatelessWidget {
     final statusBar = MediaQuery.paddingOf(context).top;
     return Container(
       height: KassaTokens.headerHeight + statusBar,
-      padding: EdgeInsets.only(left: 16, right: 12, top: statusBar),
+      padding: EdgeInsetsDirectional.only(start: 16, end: 12, top: statusBar),
       decoration: BoxDecoration(
         color: c.card,
         border: Border(
@@ -87,7 +87,7 @@ class AppHeader extends StatelessWidget {
           if (businessName != null) ...[
             const SizedBox(width: KassaTokens.spaceXxl),
             // Kein Anteil am freien Platz: die Reiter nehmen den Rest, die
-            // Knöpfe rechts bleiben am rechten Rand.
+            // Knöpfe am Ende bleiben am Rand.
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 220),
               child: Text(
@@ -234,7 +234,7 @@ class _StaffButton extends StatelessWidget {
       semanticLabel: L10n.of(context).shellSwitchStaff(name),
       child: Container(
         height: KassaTokens.minTap,
-        padding: const EdgeInsets.only(left: 7, right: 14),
+        padding: const EdgeInsetsDirectional.only(start: 7, end: 14),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
         child: Row(
           mainAxisSize: MainAxisSize.min,

@@ -2,6 +2,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../l10n/generated/l10n.dart';
+import 'ltr.dart';
 import 'pressable.dart';
 import 'tokens.dart';
 
@@ -70,17 +71,20 @@ class Keypad extends StatelessWidget {
       ),
     );
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        row([digit(1), digit(2), digit(3)]),
-        const SizedBox(height: KassaTokens.spaceMd),
-        row([digit(4), digit(5), digit(6)]),
-        const SizedBox(height: KassaTokens.spaceMd),
-        row([digit(7), digit(8), digit(9)]),
-        const SizedBox(height: KassaTokens.spaceMd),
-        row([comma, digit(0), back]),
-      ],
+    // In jeder Sprache 1 2 3 oben links, wie auf jedem Zahlenfeld.
+    return Ltr(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          row([digit(1), digit(2), digit(3)]),
+          const SizedBox(height: KassaTokens.spaceMd),
+          row([digit(4), digit(5), digit(6)]),
+          const SizedBox(height: KassaTokens.spaceMd),
+          row([digit(7), digit(8), digit(9)]),
+          const SizedBox(height: KassaTokens.spaceMd),
+          row([comma, digit(0), back]),
+        ],
+      ),
     );
   }
 

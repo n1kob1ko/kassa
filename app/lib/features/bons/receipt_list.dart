@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -54,12 +55,12 @@ String signedCount(int n) => n < 0 ? '−${-n}' : '$n';
 
 /// Die Zeilen einzeilig: "2 × Cola, Pommes". Die Namen sind die des
 /// gespeicherten Bons, wie er gedruckt wurde.
-String receiptSummary(L10n l, Receipt r) => [
+String receiptSummary(BuildContext context, Receipt r) => [
   for (final line in r.lines)
     line.quantity.abs() > 1
-        ? '${line.quantity.abs()} × ${line.name}'
-        : line.name,
-].join(l.uiListSeparator);
+        ? '${line.quantity.abs()} × ${nameIsolateIn(context, line.name)}'
+        : nameIsolateIn(context, line.name),
+].join(L10n.of(context).uiListSeparator);
 
 /// Bezeichnung eines Sonderbelegs am Bildschirm, sonst `null`
 /// ([ReceiptKindX.specialTitle] bleibt die deutsche Fassung des Zettels).
@@ -149,7 +150,7 @@ class ReceiptList extends StatelessWidget {
         borderRadius: radius,
         child: receipts.isEmpty
             ? Align(
-                alignment: Alignment.topLeft,
+                alignment: AlignmentDirectional.topStart,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
@@ -227,20 +228,23 @@ class _ReceiptRow extends StatelessWidget {
             gap,
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 46),
-              child: Text(
-                receiptTime(receipt.createdAt),
-                maxLines: 1,
-                style: text.bodyMedium!.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: c.ink2,
+              child: Ltr(
+                child: Text(
+                  receiptTime(receipt.createdAt),
+                  maxLines: 1,
+                  textAlign: ltrAlign(context, TextAlign.start),
+                  style: text.bodyMedium!.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: c.ink2,
+                  ),
                 ),
               ),
             ),
             gap,
             Expanded(
               child: Text(
-                receiptSummary(l, receipt),
+                receiptSummary(context, receipt),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyMedium!.copyWith(
@@ -254,14 +258,16 @@ class _ReceiptRow extends StatelessWidget {
             gap,
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 78),
-              child: Text(
-                formatEuro(receipt.totalCents),
-                maxLines: 1,
-                textAlign: TextAlign.right,
-                style: text.bodyLarge!.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: ink,
-                  decoration: struck ? TextDecoration.lineThrough : null,
+              child: Ltr(
+                child: Text(
+                  formatEuro(receipt.totalCents),
+                  maxLines: 1,
+                  textAlign: ltrAlign(context, TextAlign.end),
+                  style: text.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: ink,
+                    decoration: struck ? TextDecoration.lineThrough : null,
+                  ),
                 ),
               ),
             ),

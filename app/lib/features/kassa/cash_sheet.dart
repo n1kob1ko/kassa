@@ -9,6 +9,7 @@ import '../../data/settings_repository.dart';
 import '../../domain/cart.dart';
 import '../../domain/cash.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
@@ -32,8 +33,8 @@ class PayColumnFrame extends StatelessWidget {
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(
-          left: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        border: BorderDirectional(
+          start: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
       child: child,
@@ -150,7 +151,7 @@ class _CashSheetState extends ConsumerState<CashSheet> {
         children: [
           Container(
             height: KassaTokens.receiptHeaderHeight,
-            padding: const EdgeInsets.only(left: 6, right: 16),
+            padding: const EdgeInsetsDirectional.only(start: 6, end: 16),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -169,7 +170,15 @@ class _CashSheetState extends ConsumerState<CashSheet> {
                     KassaTokens.minTap,
                     KassaTokens.minTap,
                   ),
-                  child: Icon(LucideIcons.chevronLeft, size: 28, color: c.ink),
+                  child: Icon(
+                    directionalIcon(
+                      context,
+                      ltr: LucideIcons.chevronLeft,
+                      rtl: LucideIcons.chevronRight,
+                    ),
+                    size: 28,
+                    color: c.ink,
+                  ),
                 ),
                 const SizedBox(width: KassaTokens.spaceXs),
                 Expanded(
@@ -198,11 +207,13 @@ class _CashSheetState extends ConsumerState<CashSheet> {
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text(
-                            formatEuro(_total),
-                            key: const Key('cash-total'),
-                            maxLines: 1,
-                            style: KassaText.amount(context),
+                          child: Ltr(
+                            child: Text(
+                              formatEuro(_total),
+                              key: const Key('cash-total'),
+                              maxLines: 1,
+                              style: KassaText.amount(context),
+                            ),
                           ),
                         ),
                       ),

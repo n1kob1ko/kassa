@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/day.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'amount_entry.dart';
@@ -57,7 +58,7 @@ class DayClosedView extends StatelessWidget {
       content: [
         const SizedBox(height: KassaTokens.spaceHuge),
         Align(
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           child: Container(
             width: 64,
             height: 64,
@@ -81,18 +82,21 @@ class DayClosedView extends StatelessWidget {
           ),
         ],
         const SizedBox(height: KassaTokens.spaceHuge),
-        Text(l.closeTakenOut(formatEuro(counted - left)), style: body),
+        Text(
+          l.closeTakenOut(ltrIsolate(context, formatEuro(counted - left))),
+          style: body,
+        ),
         const SizedBox(height: KassaTokens.spaceMd),
         Text(
           drawer
-              ? l.closeTomorrowDrawer(formatEuro(left))
-              : l.closeTomorrow(formatEuro(left)),
+              ? l.closeTomorrowDrawer(ltrIsolate(context, formatEuro(left)))
+              : l.closeTomorrow(ltrIsolate(context, formatEuro(left))),
           style: body,
         ),
         if (by != null && at != null) ...[
           const SizedBox(height: KassaTokens.spaceXxl),
           Text(
-            l.closeClosedBy(by, clockTime(l, at)),
+            l.closeClosedBy(by, clockTime(context, at)),
             style: text.bodySmall!.copyWith(
               fontWeight: FontWeight.w600,
               color: c.ink2,

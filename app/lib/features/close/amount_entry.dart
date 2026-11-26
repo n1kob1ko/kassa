@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../ui/keypad.dart';
+import '../../ui/ltr.dart';
 import '../../ui/tokens.dart';
 import '../items/item_detail.dart' show FailedHint;
 
@@ -32,8 +33,8 @@ class CloseColumn extends StatelessWidget {
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(
-          left: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        border: BorderDirectional(
+          start: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
       child: Column(
@@ -55,7 +56,7 @@ class CloseColumn extends StatelessWidget {
                 Expanded(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
+                    alignment: AlignmentDirectional.centerStart,
                     child: Text(title, maxLines: 1, style: text.headlineMedium),
                   ),
                 ),
@@ -131,6 +132,7 @@ class AmountEntry extends StatelessWidget {
         Container(
           height: KassaTokens.keypadInputHeight,
           padding: const EdgeInsets.symmetric(horizontal: 16),
+          // Die Anzeige gehört zum Zahlenfeld: in jeder Sprache rechts.
           alignment: Alignment.centerRight,
           decoration: BoxDecoration(
             color: c.card,
@@ -144,14 +146,16 @@ class AmountEntry extends StatelessWidget {
             liveRegion: true,
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                '${empty ? '0' : input.text} €',
-                key: const Key('amount-field'),
-                maxLines: 1,
-                style: text.titleLarge!.copyWith(
-                  fontSize: 30,
-                  letterSpacing: -0.3,
-                  color: over ? c.red : (empty ? c.ink2 : c.ink),
+              child: Ltr(
+                child: Text(
+                  '${empty ? '0' : input.text} €',
+                  key: const Key('amount-field'),
+                  maxLines: 1,
+                  style: text.titleLarge!.copyWith(
+                    fontSize: 30,
+                    letterSpacing: -0.3,
+                    color: over ? c.red : (empty ? c.ink2 : c.ink),
+                  ),
                 ),
               ),
             ),
@@ -200,12 +204,14 @@ class ColumnAmountRow extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            amount,
-            key: amountKey,
-            style: text.bodyLarge!.copyWith(
-              fontWeight: FontWeight.w800,
-              color: amountColor ?? c.ink,
+          Ltr(
+            child: Text(
+              amount,
+              key: amountKey,
+              style: text.bodyLarge!.copyWith(
+                fontWeight: FontWeight.w800,
+                color: amountColor ?? c.ink,
+              ),
             ),
           ),
         ],

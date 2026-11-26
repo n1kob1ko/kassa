@@ -9,6 +9,7 @@ import '../../data/providers.dart';
 import '../../data/sync_state_repository.dart';
 import '../../sync/pairing_service.dart';
 import '../../sync/server_api.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import '../kassa/sale_service.dart';
@@ -96,10 +97,11 @@ class _ServerPanelState extends ConsumerState<ServerPanel> {
     if (ref.read(activeCardPaymentProvider) != null) return;
     switch (intent) {
       case _Intent.pair:
-        await Navigator.of(
-          context,
-          rootNavigator: true,
-        ).push(MaterialPageRoute<void>(builder: (_) => const PairingScreen()));
+        await Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Ltr(child: PairingScreen()),
+          ),
+        );
       case _Intent.load:
         await _load();
       case null:

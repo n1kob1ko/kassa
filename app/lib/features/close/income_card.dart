@@ -5,6 +5,7 @@ import '../../domain/day.dart';
 import '../../domain/period_report.dart';
 import '../../domain/pricing.dart' show TaxLine;
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/tokens.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
 import 'close_format.dart';
@@ -182,23 +183,27 @@ class _TaxLine extends StatelessWidget {
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 100),
-            child: Text(
-              gross,
-              textAlign: TextAlign.end,
-              style: text.bodyMedium!.copyWith(
-                fontWeight: FontWeight.w600,
-                color: c.ink2,
+            child: Ltr(
+              child: Text(
+                gross,
+                textAlign: ltrAlign(context, TextAlign.end),
+                style: text.bodyMedium!.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: c.ink2,
+                ),
               ),
             ),
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 96),
-            child: Text(
-              tax ?? '',
-              textAlign: TextAlign.end,
-              style: text.bodyLarge!.copyWith(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
+            child: Ltr(
+              child: Text(
+                tax ?? '',
+                textAlign: ltrAlign(context, TextAlign.end),
+                style: text.bodyLarge!.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -230,7 +235,7 @@ class _Section extends StatelessWidget {
       children: [
         Container(
           constraints: const BoxConstraints(minHeight: 40),
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,

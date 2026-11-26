@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/keypad.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'item_detail.dart';
@@ -53,7 +54,9 @@ class _PriceEntryState extends State<PriceEntry> {
                 widget.header,
                 const SizedBox(height: KassaTokens.spaceXxl),
                 Text(
-                  l.itemsNewPrice(formatEuro(widget.currentCents)),
+                  l.itemsNewPrice(
+                    ltrIsolate(context, formatEuro(widget.currentCents)),
+                  ),
                   style: text.bodySmall!.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -64,6 +67,7 @@ class _PriceEntryState extends State<PriceEntry> {
                 Container(
                   height: KassaTokens.keypadInputHeight,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
+                  // Die Anzeige gehört zum Zahlenfeld: in jeder Sprache rechts.
                   alignment: Alignment.centerRight,
                   decoration: BoxDecoration(
                     color: c.card,
@@ -77,14 +81,16 @@ class _PriceEntryState extends State<PriceEntry> {
                     liveRegion: true,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${empty ? '0' : _input.text} €',
-                        key: const Key('price-field'),
-                        maxLines: 1,
-                        style: text.titleLarge!.copyWith(
-                          fontSize: 30,
-                          letterSpacing: -0.3,
-                          color: empty ? c.ink2 : c.ink,
+                      child: Ltr(
+                        child: Text(
+                          '${empty ? '0' : _input.text} €',
+                          key: const Key('price-field'),
+                          maxLines: 1,
+                          style: text.titleLarge!.copyWith(
+                            fontSize: 30,
+                            letterSpacing: -0.3,
+                            color: empty ? c.ink2 : c.ink,
+                          ),
                         ),
                       ),
                     ),

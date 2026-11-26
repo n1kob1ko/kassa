@@ -1,9 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../ui/ltr.dart';
 import '../../ui/tokens.dart';
 
 /// Eine Zeile mit Linie darüber (Mindesthöhe 44): Beschriftung, in der Mitte
-/// ein ruhiger Text, rechts der Betrag (mindestens 110 dp breit, damit die
+/// ein ruhiger Text, am Ende der Betrag (mindestens 110 dp breit, damit die
 /// Beträge untereinander am selben Rand stehen).
 class SummaryLine extends StatelessWidget {
   const SummaryLine({
@@ -60,14 +61,16 @@ class SummaryLine extends StatelessWidget {
           ],
           ConstrainedBox(
             constraints: BoxConstraints(minWidth: 110),
-            child: Text(
-              amount ?? '',
-              key: amountKey,
-              textAlign: TextAlign.end,
-              style: text.bodyLarge!.copyWith(
-                fontSize: 17,
-                fontWeight: amountMuted ? FontWeight.w700 : FontWeight.w800,
-                color: amountColor ?? (amountMuted ? c.ink2 : c.ink),
+            child: Ltr(
+              child: Text(
+                amount ?? '',
+                key: amountKey,
+                textAlign: ltrAlign(context, TextAlign.end),
+                style: text.bodyLarge!.copyWith(
+                  fontSize: 17,
+                  fontWeight: amountMuted ? FontWeight.w700 : FontWeight.w800,
+                  color: amountColor ?? (amountMuted ? c.ink2 : c.ink),
+                ),
               ),
             ),
           ),

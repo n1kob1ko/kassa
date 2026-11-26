@@ -8,6 +8,7 @@ import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
@@ -79,7 +80,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: AlignmentDirectional.centerStart,
                       child: Container(
                         width: 64,
                         height: 64,
@@ -147,16 +148,18 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                                 const SizedBox(height: KassaTokens.spaceXs),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    formatEuro(changeCents),
-                                    key: const Key('change-done'),
-                                    maxLines: 1,
-                                    style: text.displayLarge!.copyWith(
-                                      color: c.ink,
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures(),
-                                      ],
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Ltr(
+                                    child: Text(
+                                      formatEuro(changeCents),
+                                      key: const Key('change-done'),
+                                      maxLines: 1,
+                                      style: text.displayLarge!.copyWith(
+                                        color: c.ink,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -211,10 +214,13 @@ class _CardPaid extends StatelessWidget {
         ),
         if (detail.isNotEmpty) ...[
           const SizedBox(height: KassaTokens.spaceXs),
-          Text(
-            detail,
-            key: const Key('card-detail'),
-            style: text.bodyLarge!.copyWith(color: c.ink),
+          // "VISA **** 4242" wie auf der Karte.
+          Ltr(
+            child: Text(
+              detail,
+              key: const Key('card-detail'),
+              style: text.bodyLarge!.copyWith(color: c.ink),
+            ),
           ),
         ],
       ],

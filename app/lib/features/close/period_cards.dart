@@ -1,11 +1,12 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../l10n/generated/l10n.dart';
-import '../../ui/dates_text.dart';
 import '../../core/money.dart';
 import '../../domain/period_report.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import '../overview/overview_cards.dart' show OverviewCard;
@@ -42,14 +43,14 @@ class SignatureReceiptCard extends StatelessWidget {
       final mm = t.minute.toString().padLeft(2, '0');
       final hh = t.hour.toString().padLeft(2, '0');
       line = l.closeSignatureCreated(
-        '${t.day}.${t.month}.',
-        '$hh:$mm',
+        ltrIsolate(context, '${t.day}.${t.month}.'),
+        ltrIsolate(context, '$hh:$mm'),
         r.number,
       );
     }
     return OverviewCard(
       key: const Key('signature-receipt-card'),
-      padding: const EdgeInsets.fromLTRB(
+      padding: const EdgeInsetsDirectional.fromSTEB(
         KassaTokens.spaceHuge,
         KassaTokens.spaceXl,
         KassaTokens.spaceXl,
@@ -153,7 +154,9 @@ class PeriodRowsCard extends StatelessWidget {
           ),
           for (final row in report.rows)
             _Row(
-              label: days ? _dayLabel(l, row.start) : _monthLabel(l, row.start),
+              label: days
+                  ? _dayLabel(context, row.start)
+                  : _monthLabel(l, row.start),
               labelWidth: days ? 150 : 190,
               count: bonsLabel(l, row.receiptCount),
               amount: formatEuro(row.revenueCents),
@@ -163,9 +166,10 @@ class PeriodRowsCard extends StatelessWidget {
     );
   }
 
-  /// "Do., 1.10."
-  static String _dayLabel(L10n l, DateTime d) =>
-      '${weekdayShortName(l, d.weekday)}, ${d.day}.${d.month}.';
+  /// "Do., 1.10." (das Datum auch in Arabisch von links nach rechts)
+  static String _dayLabel(BuildContext context, DateTime d) =>
+      '${weekdayShortName(L10n.of(context), d.weekday)}, '
+      '${ltrIsolate(context, '${d.day}.${d.month}.')}';
 
   /// "Jänner 2026"
   static String _monthLabel(L10n l, DateTime d) =>
@@ -216,12 +220,14 @@ class _Row extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            amount,
-            textAlign: TextAlign.end,
-            style: text.bodyLarge!.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+          Ltr(
+            child: Text(
+              amount,
+              textAlign: TextAlign.end,
+              style: text.bodyLarge!.copyWith(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

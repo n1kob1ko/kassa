@@ -1,11 +1,14 @@
 // Die kleineren Teile der Übersicht: Kartenrahmen, Zahlungsarten,
 // Meistverkauft, Kategorien und die ruhigen Platzhalter.
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/stats.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/tokens.dart';
 
 /// Weiße Karte mit Linie und Schatten, wie in den anderen Bereichen.
@@ -17,7 +20,7 @@ class OverviewCard extends StatelessWidget {
   });
 
   final Widget child;
-  final EdgeInsets padding;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +56,7 @@ class ThinBar extends StatelessWidget {
             Positioned.fill(child: ColoredBox(color: c.fill2)),
             Positioned.fill(
               child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 widthFactor: fraction.clamp(0.0, 1.0),
                 child: ColoredBox(color: c.accent),
               ),
@@ -171,16 +174,19 @@ class _SplitBar extends StatelessWidget {
               flex: cents,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 decoration: BoxDecoration(color: fill, borderRadius: radius),
                 child: width >= 56
-                    ? Text(
-                        '$percent %',
-                        maxLines: 1,
-                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: ink,
+                    ? Ltr(
+                        child: Text(
+                          '$percent %',
+                          maxLines: 1,
+                          style: Theme.of(context).textTheme.labelLarge!
+                              .copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: ink,
+                              ),
                         ),
                       )
                     : null,
@@ -234,10 +240,12 @@ class _PaymentRow extends StatelessWidget {
             style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
-        Text(
-          formatEuro(cents),
-          key: amountKey,
-          style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w800),
+        Ltr(
+          child: Text(
+            formatEuro(cents),
+            key: amountKey,
+            style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );
@@ -245,14 +253,15 @@ class _PaymentRow extends StatelessWidget {
 }
 
 /// Meistverkauft: Name, dünner Balken relativ zur größten Menge, "21 ×" und
-/// Betrag.
-class TopItemsCard extends StatelessWidget {
+/// Betrag. Die Namen stehen in der Bediensprache.
+class TopItemsCard extends ConsumerWidget {
   const TopItemsCard({super.key, required this.items});
 
   final List<ItemStat> items;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final menuText = ref.watch(menuTextProvider);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
     final c = KassaColors.of(context);
@@ -284,7 +293,7 @@ class TopItemsCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                item.name,
+                                menuText(item.name),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: text.bodyLarge!.copyWith(
@@ -309,11 +318,13 @@ class TopItemsCard extends StatelessWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            Text(
-                              formatEuro(item.cents),
-                              style: text.labelMedium!.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: c.ink2,
+                            Ltr(
+                              child: Text(
+                                formatEuro(item.cents),
+                                style: text.labelMedium!.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: c.ink2,
+                                ),
                               ),
                             ),
                           ],
@@ -330,7 +341,8 @@ class TopItemsCard extends StatelessWidget {
 }
 
 /// "Nach Kategorie": drei Spalten, jeder Eintrag mit Name, Betrag und
-/// dünnem Balken relativ zum größten Eintrag.
+/// dünnem Balken relativ zum größten Eintrag. Die Namen stehen in der
+/// Bediensprache.
 class CategoryGrid extends StatelessWidget {
   const CategoryGrid({super.key, required this.categories});
 
@@ -378,14 +390,14 @@ class CategoryGrid extends StatelessWidget {
   }
 }
 
-class _CategoryEntry extends StatelessWidget {
+class _CategoryEntry extends ConsumerWidget {
   const _CategoryEntry(this.stat, this.maxCents);
 
   final CategoryStat stat;
   final int maxCents;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -394,16 +406,18 @@ class _CategoryEntry extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                stat.name,
+                ref.watch(menuTextProvider)(stat.name),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyMedium!.copyWith(fontWeight: FontWeight.w500),
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              formatEuro(stat.cents),
-              style: text.bodyMedium!.copyWith(fontWeight: FontWeight.w800),
+            Ltr(
+              child: Text(
+                formatEuro(stat.cents),
+                style: text.bodyMedium!.copyWith(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         ),

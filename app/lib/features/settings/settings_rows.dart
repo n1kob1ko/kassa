@@ -33,7 +33,7 @@ class SettingsCard extends StatelessWidget {
         children: [
           Container(
             height: 56,
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: Row(
               children: [
                 Expanded(

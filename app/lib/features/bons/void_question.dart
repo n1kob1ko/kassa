@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -66,7 +67,7 @@ class VoidQuestion extends StatelessWidget {
           const SizedBox(height: KassaTokens.spaceXxs),
           if (!byCard)
             Text(
-              l.bonsVoidCashBack(amount),
+              l.bonsVoidCashBack(ltrIsolate(context, amount)),
               style: text.bodyMedium!.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

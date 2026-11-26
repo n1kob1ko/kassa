@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../ui/keypad.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import 'settings_rows.dart';
@@ -19,7 +20,7 @@ Future<String?> showCardPinSheet(BuildContext context) {
     barrierDismissible: false,
     barrierColor: KassaTokens.scrim,
     transitionDuration: instant ? Duration.zero : KassaTokens.motionFade,
-    pageBuilder: (context, _, _) => const _CardPinSheet(),
+    pageBuilder: (context, _, _) => const Ltr(child: _CardPinSheet()),
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: CurvedAnimation(
         parent: animation,

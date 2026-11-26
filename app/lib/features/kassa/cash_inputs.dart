@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/keypad.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
@@ -132,11 +133,16 @@ class GivenKey extends StatelessWidget {
           ),
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              style: Theme.of(context).textTheme.titleLarge!
-                  .copyWith(fontSize: 19, color: selected ? c.onAccent : c.ink),
+            // Meist ein Betrag; ein Wort in einer Zeile steht so gleich.
+            child: Ltr(
+              child: Text(
+                label,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                  fontSize: 19,
+                  color: selected ? c.onAccent : c.ink,
+                ),
+              ),
             ),
           ),
         ),
@@ -202,6 +208,7 @@ class TypedAmount extends StatelessWidget {
         Container(
           height: KassaTokens.keypadInputHeight,
           padding: const EdgeInsets.symmetric(horizontal: 16),
+          // Die Anzeige gehört zum Zahlenfeld: in jeder Sprache rechts.
           alignment: Alignment.centerRight,
           decoration: BoxDecoration(
             color: c.card,
@@ -215,15 +222,17 @@ class TypedAmount extends StatelessWidget {
             liveRegion: true,
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                '${empty ? '0' : input.text} €',
-                key: const Key('given-field'),
-                maxLines: 1,
-                style: text.titleLarge!.copyWith(
-                  fontSize: 30,
-                  letterSpacing: -0.3,
-                  color: empty ? c.ink2 : c.ink,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              child: Ltr(
+                child: Text(
+                  '${empty ? '0' : input.text} €',
+                  key: const Key('given-field'),
+                  maxLines: 1,
+                  style: text.titleLarge!.copyWith(
+                    fontSize: 30,
+                    letterSpacing: -0.3,
+                    color: empty ? c.ink2 : c.ink,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ),
@@ -271,12 +280,14 @@ class ChangeField extends StatelessWidget {
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                formatEuro(cents),
-                key: const Key('change'),
-                maxLines: 1,
-                style: KassaText.amount(context)
-                    .copyWith(color: missing ? c.warnInk : c.ink),
+              child: Ltr(
+                child: Text(
+                  formatEuro(cents),
+                  key: const Key('change'),
+                  maxLines: 1,
+                  style: KassaText.amount(context)
+                      .copyWith(color: missing ? c.warnInk : c.ink),
+                ),
               ),
             ),
           ),

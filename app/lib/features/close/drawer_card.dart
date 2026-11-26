@@ -95,7 +95,7 @@ class DrawerCard extends StatelessWidget {
               label: m.kind == CashMovementKind.deposit
                   ? l.closeDeposited(cashReasonText(l, m.reason))
                   : l.closeWithdrawn(cashReasonText(l, m.reason)),
-              middle: clockTime(l, m.createdAt),
+              middle: clockTime(context, m.createdAt),
               amount: formatEuro(
                 m.kind == CashMovementKind.deposit
                     ? m.amountCents

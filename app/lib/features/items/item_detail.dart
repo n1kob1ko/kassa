@@ -5,6 +5,7 @@ import '../../core/money.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/app_toggle.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
@@ -52,8 +53,8 @@ class ItemDetail extends StatelessWidget {
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(
-          left: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        border: BorderDirectional(
+          start: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
       child: item == null
@@ -87,7 +88,7 @@ class _Normal extends ConsumerWidget {
     final hasDeposit = item.depositCents > 0;
     Widget row(Widget child) => Container(
       constraints: const BoxConstraints(minHeight: 56),
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: c.line, width: KassaTokens.borderThin),
@@ -112,7 +113,7 @@ class _Normal extends ConsumerWidget {
                 _Header(item: item, categoryName: d.categoryName),
                 const SizedBox(height: KassaTokens.spaceXxl),
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 12, 12),
                   decoration: BoxDecoration(
                     color: c.fill,
                     borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
@@ -132,14 +133,16 @@ class _Normal extends ConsumerWidget {
                             ),
                             FittedBox(
                               fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                formatEuro(item.priceCents),
-                                key: const Key('detail-price'),
-                                maxLines: 1,
-                                style: text.titleLarge!.copyWith(
-                                  fontSize: 30,
-                                  letterSpacing: -0.3,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Ltr(
+                                child: Text(
+                                  formatEuro(item.priceCents),
+                                  key: const Key('detail-price'),
+                                  maxLines: 1,
+                                  style: text.titleLarge!.copyWith(
+                                    fontSize: 30,
+                                    letterSpacing: -0.3,
+                                  ),
                                 ),
                               ),
                             ),
@@ -177,8 +180,11 @@ class _Normal extends ConsumerWidget {
                   AppToggle(
                     key: const Key('toggle-deposit'),
                     label: l.itemsDepositToggle(
-                      formatEuro(
-                        hasDeposit ? item.depositCents : standardDepositCents,
+                      ltrIsolate(
+                        context,
+                        formatEuro(
+                          hasDeposit ? item.depositCents : standardDepositCents,
+                        ),
                       ),
                     ),
                     value: hasDeposit,
@@ -206,10 +212,12 @@ class _Normal extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(child: Text(l.itemsTaxRate, style: labelStyle)),
-                      Text(
-                        '${item.taxRate.percent} %',
-                        style: text.bodyMedium!.copyWith(
-                          fontWeight: FontWeight.w800,
+                      Ltr(
+                        child: Text(
+                          '${item.taxRate.percent} %',
+                          style: text.bodyMedium!.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],

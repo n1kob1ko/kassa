@@ -145,7 +145,10 @@ class UndoToastView extends StatelessWidget {
     final text = Theme.of(context).textTheme.bodyLarge!;
     return Container(
       constraints: const BoxConstraints(minHeight: 60),
-      padding: EdgeInsets.only(left: 20, right: onUndo == null ? 20 : 6),
+      padding: EdgeInsetsDirectional.only(
+        start: 20,
+        end: onUndo == null ? 20 : 6,
+      ),
       decoration: BoxDecoration(
         color: c.solid,
         borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),

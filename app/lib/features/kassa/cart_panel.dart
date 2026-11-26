@@ -8,6 +8,7 @@ import '../../devices/device_providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/pricing.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
@@ -112,8 +113,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(
-          left: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        border: BorderDirectional(
+          start: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
       child: Column(
@@ -147,7 +148,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
           ),
           _Totals(cart: cart, taxCents: tax),
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsetsDirectional.fromSTEB(
               12,
               0,
               12,
@@ -211,7 +212,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       ),
       CardTerminalState.ready when cart.totalCents < minimum => (
         enabled: false,
-        reason: l.kassaCardFrom(formatEuro(minimum)),
+        reason: l.kassaCardFrom(ltrIsolate(context, formatEuro(minimum))),
       ),
       CardTerminalState.ready => (enabled: true, reason: null),
     };
@@ -237,7 +238,7 @@ class _Header extends StatelessWidget {
     return SizedBox(
       height: KassaTokens.receiptHeaderHeight,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 0),
         child: Row(
           children: [
             Expanded(
@@ -347,11 +348,13 @@ class _Totals extends StatelessWidget {
               Flexible(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    formatEuro(cart.totalCents),
-                    key: const Key('cart-total'),
-                    maxLines: 1,
-                    style: KassaText.amount(context),
+                  child: Ltr(
+                    child: Text(
+                      formatEuro(cart.totalCents),
+                      key: const Key('cart-total'),
+                      maxLines: 1,
+                      style: KassaText.amount(context),
+                    ),
                   ),
                 ),
               ),
@@ -364,7 +367,9 @@ class _Totals extends StatelessWidget {
               if (cart.depositCents != 0)
                 Flexible(
                   child: Text(
-                    l.kassaDepositIncluded(formatEuro(cart.depositCents)),
+                    l.kassaDepositIncluded(
+                      ltrIsolate(context, formatEuro(cart.depositCents)),
+                    ),
                     key: const Key('cart-deposit'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -376,7 +381,7 @@ class _Totals extends StatelessWidget {
               const SizedBox(width: KassaTokens.spaceXl),
               Flexible(
                 child: Text(
-                  l.kassaTaxIncluded(formatEuro(taxCents)),
+                  l.kassaTaxIncluded(ltrIsolate(context, formatEuro(taxCents))),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: small,

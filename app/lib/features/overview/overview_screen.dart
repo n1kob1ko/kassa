@@ -7,6 +7,7 @@ import '../../data/providers.dart';
 import '../../domain/stats.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/dates_text.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
@@ -146,9 +147,14 @@ class _Content extends StatelessWidget {
     return best;
   }
 
-  String _bucketLabel(L10n l, Bucket b) {
+  /// Die Stunden ("11 bis 12 Uhr") stehen auch in Arabisch von links nach
+  /// rechts.
+  String _bucketLabel(BuildContext context, L10n l, Bucket b) {
     if (range == StatsRange.today) {
-      return l.overviewHourRange(b.start.hour, b.start.hour + 1);
+      return ltrIsolate(
+        context,
+        l.overviewHourRange(b.start.hour, b.start.hour + 1),
+      );
     }
     return weekdayDayMonth(l, b.start);
   }
@@ -259,14 +265,16 @@ class _MainCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      formatEuro(data.revenueCents),
-                      key: const Key('revenue'),
-                      maxLines: 1,
-                      style: text.displayLarge!.copyWith(
-                        fontSize: 56,
-                        letterSpacing: -0.03 * 56,
-                        fontFeatures: const [],
+                    Ltr(
+                      child: Text(
+                        formatEuro(data.revenueCents),
+                        key: const Key('revenue'),
+                        maxLines: 1,
+                        style: text.displayLarge!.copyWith(
+                          fontSize: 56,
+                          letterSpacing: -0.03 * 56,
+                          fontFeatures: const [],
+                        ),
                       ),
                     ),
                   ],
@@ -303,7 +311,7 @@ class _MainCard extends StatelessWidget {
               const Spacer(),
               if (selected != null) ...[
                 Text(
-                  v._bucketLabel(l, selected),
+                  v._bucketLabel(context, l, selected),
                   key: const Key('bar-detail-label'),
                   style: text.bodyMedium!.copyWith(
                     fontWeight: FontWeight.w600,
@@ -311,10 +319,12 @@ class _MainCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  formatEuro(selected.cents),
-                  key: const Key('bar-detail'),
-                  style: text.titleLarge,
+                Ltr(
+                  child: Text(
+                    formatEuro(selected.cents),
+                    key: const Key('bar-detail'),
+                    style: text.titleLarge,
+                  ),
                 ),
               ],
             ],
@@ -331,14 +341,17 @@ class _MainCard extends StatelessWidget {
                       ),
                     ),
                   )
-                : RevenueChart(
-                    key: ValueKey(v.range),
-                    buckets: data.buckets,
-                    selected: sel,
-                    onSelect: v.onPick,
-                    semanticLabelFor: (b) => l.overviewBarLabel(
-                      v._bucketLabel(l, b),
-                      formatEuro(b.cents),
+                // Die Zeit läuft in jeder Sprache von links nach rechts.
+                : Ltr(
+                    child: RevenueChart(
+                      key: ValueKey(v.range),
+                      buckets: data.buckets,
+                      selected: sel,
+                      onSelect: v.onPick,
+                      semanticLabelFor: (b) => l.overviewBarLabel(
+                        v._bucketLabel(context, l, b),
+                        formatEuro(b.cents),
+                      ),
                     ),
                   ),
           ),
@@ -378,10 +391,13 @@ class _Figure extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          key: valueKey,
-          style: text.headlineLarge!.copyWith(fontSize: 30),
+        // Eine Zahl oder ein Betrag.
+        Ltr(
+          child: Text(
+            value,
+            key: valueKey,
+            style: text.headlineLarge!.copyWith(fontSize: 30),
+          ),
         ),
       ],
     );
@@ -463,7 +479,7 @@ class _Placeholders extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: AlignmentDirectional.centerStart,
                   child: SizedBox(
                     width: 260,
                     child: PlaceholderBlock(height: 56),

@@ -48,7 +48,7 @@
   "kassaCardLoggedOut": "غير مسجَّلة",
   "kassaCardNoInternet": "لا إنترنت",
   "kassaCardFrom": "من {amount}",
-  "kassaCancel": "إغلاق",
+  "kassaCancel": "إلغاء",
   "kassaAddToReceipt": "أضف إلى الفاتورة",
   "kassaStillToChoose": "يجب اختيار: {groups}",
   "kassaPickOne": "اختيار واحد",

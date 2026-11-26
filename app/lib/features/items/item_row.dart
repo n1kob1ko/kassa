@@ -9,6 +9,7 @@ import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/app_toggle.dart';
 import '../../ui/hex_color.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
@@ -114,15 +115,18 @@ class ItemTagPills extends StatelessWidget {
 /// Zweite Zeile einer Zeile: nicht im Verkauf, sonst Vorlage, Pfand, Zusatz
 /// ([info]: die Zusatzangabe in der Bediensprache).
 String? itemSecondLine(
-  L10n l,
+  BuildContext context,
   Item item,
   ModifierTemplate? template,
   String? info,
 ) {
+  final l = L10n.of(context);
   if (!item.inSale) return l.kassaNotForSale;
   if (template != null) return l.itemsWithChoice;
   if (item.depositCents > 0) {
-    return l.itemsPlusDeposit(formatEuro(item.depositCents));
+    return l.itemsPlusDeposit(
+      ltrIsolate(context, formatEuro(item.depositCents)),
+    );
   }
   return info;
 }
@@ -137,14 +141,15 @@ class ItemListHeader extends StatelessWidget {
     final l = L10n.of(context);
     final style = Theme.of(context).textTheme.bodySmall!
         .copyWith(fontSize: 12.5, fontWeight: FontWeight.w700, color: c.ink2);
-    Widget cell(String label, double width, Alignment alignment) => SizedBox(
-      width: width,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: alignment,
-        child: Text(label, maxLines: 1, style: style),
-      ),
-    );
+    Widget cell(String label, double width, AlignmentGeometry alignment) =>
+        SizedBox(
+          width: width,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignment,
+            child: Text(label, maxLines: 1, style: style),
+          ),
+        );
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
@@ -156,7 +161,7 @@ class ItemListHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(l.itemsColumnItem, style: style)),
-          cell(l.itemsPrice, _priceWidth, Alignment.centerRight),
+          cell(l.itemsPrice, _priceWidth, AlignmentDirectional.centerEnd),
           cell(l.itemsFavorite, _starWidth, Alignment.center),
           cell(l.itemsInSale, _toggleWidth, Alignment.center),
         ],
@@ -195,7 +200,7 @@ class ItemRow extends ConsumerWidget {
     final name = menuText(item.name);
     final info = item.info == null ? null : menuText(item.info!);
     final ink = item.inSale ? c.ink : c.ink2;
-    final second = itemSecondLine(l, item, template, info);
+    final second = itemSecondLine(context, item, template, info);
     return Container(
       height: _rowHeight,
       padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
@@ -271,11 +276,13 @@ class ItemRow extends ConsumerWidget {
                         ),
                         SizedBox(
                           width: _priceWidth,
-                          child: Text(
-                            formatEuro(item.priceCents),
-                            maxLines: 1,
-                            textAlign: TextAlign.right,
-                            style: text.titleMedium!.copyWith(color: ink),
+                          child: Ltr(
+                            child: Text(
+                              formatEuro(item.priceCents),
+                              maxLines: 1,
+                              textAlign: ltrAlign(context, TextAlign.end),
+                              style: text.titleMedium!.copyWith(color: ink),
+                            ),
                           ),
                         ),
                       ],

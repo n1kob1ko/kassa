@@ -45,7 +45,7 @@ class CategoryRail extends StatelessWidget {
     return SizedBox(
       width: KassaTokens.categoryColumnWidth,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 0, 12),
         itemCount: entries.length,
         separatorBuilder: (_, _) => const SizedBox(height: KassaTokens.spaceSm),
         itemBuilder: (context, i) {
@@ -91,7 +91,10 @@ class _CategoryButton extends ConsumerWidget {
         duration: instant ? Duration.zero : KassaTokens.motionFast,
         curve: Curves.linear,
         height: KassaTokens.categoryButtonHeight,
-        padding: EdgeInsets.only(left: entry.isFavorites ? 8 : 12, right: 10),
+        padding: EdgeInsetsDirectional.only(
+          start: entry.isFavorites ? 8 : 12,
+          end: 10,
+        ),
         decoration: BoxDecoration(
           color: active ? c.accentSoft : c.card,
           borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
@@ -115,11 +118,12 @@ class _CategoryButton extends ConsumerWidget {
               ),
               const SizedBox(width: KassaTokens.spaceLg),
             ],
+            // Lange Namen (andere Sprachen): zwei Zeilen, dann kleiner.
             Expanded(
-              child: Text(
+              child: FittingName(
                 name,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                alignment: AlignmentDirectional.centerStart,
                 style: text.bodyLarge!.copyWith(
                   fontSize: 14.5,
                   height: 1.12,

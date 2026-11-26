@@ -12,6 +12,7 @@ import '../../rksv/online/atrust_client.dart';
 import '../../rksv/online/online_providers.dart';
 import '../../rksv/rksv_providers.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import '../login/session.dart';
@@ -22,16 +23,20 @@ import '../shell/shell_screen.dart' show openCardSetup;
 const outageBackStay = Duration(seconds: 4);
 
 /// "Signatur ausgefallen seit 13:05", an einem anderen Tag
-/// "seit 16.11. 18:30". Datum und Uhrzeit sehen in jeder Sprache so aus.
-String outageSinceText(L10n l, DateTime since, DateTime now) {
+/// "seit 16.11. 18:30". Datum und Uhrzeit sehen in jeder Sprache so aus und
+/// stehen auch in einem arabischen Satz von links nach rechts.
+String outageSinceText(BuildContext context, DateTime since, DateTime now) {
   String two(int n) => n.toString().padLeft(2, '0');
   final time = '${two(since.hour)}:${two(since.minute)}';
   final sameDay =
       since.year == now.year &&
       since.month == now.month &&
       since.day == now.day;
-  return l.outageTitle(
-    sameDay ? time : '${two(since.day)}.${two(since.month)}. $time',
+  return L10n.of(context).outageTitle(
+    ltrIsolate(
+      context,
+      sameDay ? time : '${two(since.day)}.${two(since.month)}. $time',
+    ),
   );
 }
 
@@ -197,7 +202,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
     return Container(
       key: const Key('rksv-outage'),
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      padding: EdgeInsets.fromLTRB(16, 14, rejected ? 16 : 12, 14),
+      padding: EdgeInsetsDirectional.fromSTEB(16, 14, rejected ? 16 : 12, 14),
       decoration: BoxDecoration(
         color: c.warnBg,
         borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
@@ -209,7 +214,7 @@ class _OutageBannerState extends ConsumerState<OutageBanner> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  outageSinceText(l, since, now),
+                  outageSinceText(context, since, now),
                   key: const Key('rksv-outage-title'),
                   style: ink.copyWith(
                     fontSize: 16,

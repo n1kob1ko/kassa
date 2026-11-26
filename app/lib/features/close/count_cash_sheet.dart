@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
@@ -70,11 +71,13 @@ class CountCashSheet extends StatelessWidget {
             Flexible(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(
-                  formatEuro(expectedCents),
-                  key: const Key('expected-cash'),
-                  maxLines: 1,
-                  style: KassaText.amount(context),
+                child: Ltr(
+                  child: Text(
+                    formatEuro(expectedCents),
+                    key: const Key('expected-cash'),
+                    maxLines: 1,
+                    style: KassaText.amount(context),
+                  ),
                 ),
               ),
             ),
@@ -102,10 +105,12 @@ class CountCashSheet extends StatelessWidget {
                 ),
               ),
               if (amount != null)
-                Text(
-                  amount,
-                  key: const Key('difference'),
-                  style: text.titleLarge!.copyWith(fontSize: 24, color: fg),
+                Ltr(
+                  child: Text(
+                    amount,
+                    key: const Key('difference'),
+                    style: text.titleLarge!.copyWith(fontSize: 24, color: fg),
+                  ),
                 ),
             ],
           ),
@@ -196,10 +201,12 @@ class LeaveInDrawerSheet extends StatelessWidget {
                     Expanded(
                       child: Text(l.closeYouTakeOut, style: text.bodyLarge),
                     ),
-                    Text(
-                      formatEuro(countedCents - input.cents),
-                      key: const Key('take-out'),
-                      style: text.titleLarge!.copyWith(fontSize: 28),
+                    Ltr(
+                      child: Text(
+                        formatEuro(countedCents - input.cents),
+                        key: const Key('take-out'),
+                        style: text.titleLarge!.copyWith(fontSize: 28),
+                      ),
                     ),
                   ],
                 ),

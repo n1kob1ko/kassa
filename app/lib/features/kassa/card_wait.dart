@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
 
@@ -52,14 +53,16 @@ class CardWait extends StatelessWidget {
                 const SizedBox(height: KassaTokens.spaceXxl),
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    formatEuro(amountCents),
-                    key: const Key('card-wait-amount'),
-                    maxLines: 1,
-                    style: text.displayLarge!.copyWith(
-                      color: c.ink,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Ltr(
+                    child: Text(
+                      formatEuro(amountCents),
+                      key: const Key('card-wait-amount'),
+                      maxLines: 1,
+                      style: text.displayLarge!.copyWith(
+                        color: c.ink,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ),

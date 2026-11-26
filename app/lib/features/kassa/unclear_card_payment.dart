@@ -12,6 +12,7 @@ import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/theme.dart';
@@ -199,17 +200,19 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                   const SizedBox(height: KassaTokens.spaceXl),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      amount,
-                      key: const Key('unclear-amount'),
-                      maxLines: 1,
-                      style: KassaText.amount(context),
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Ltr(
+                      child: Text(
+                        amount,
+                        key: const Key('unclear-amount'),
+                        maxLines: 1,
+                        style: KassaText.amount(context),
+                      ),
                     ),
                   ),
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
-                    l.unclearStarted(time, p.staffName),
+                    l.unclearStarted(ltrIsolate(context, time), p.staffName),
                     style: text.bodyLarge!.copyWith(color: c.ink2),
                   ),
                   if (shown.isNotEmpty) ...[
@@ -246,7 +249,10 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                   _Note(
                     background: c.warnBg,
                     foreground: c.warnInk,
-                    message: l.unclearNoAnswer(amount, time),
+                    message: l.unclearNoAnswer(
+                      ltrIsolate(context, amount),
+                      ltrIsolate(context, time),
+                    ),
                   ),
                   if (unreadable) ...[
                     const SizedBox(height: KassaTokens.spaceMd),

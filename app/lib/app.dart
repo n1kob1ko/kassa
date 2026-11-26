@@ -10,6 +10,7 @@ import 'features/login/session.dart';
 import 'features/setup/setup_screen.dart';
 import 'features/shell/shell_screen.dart';
 import 'l10n/generated/l10n.dart';
+import 'ui/ltr.dart';
 import 'ui/primary_button.dart';
 import 'ui/system_bars.dart';
 import 'ui/theme.dart';
@@ -158,7 +159,8 @@ class _Home extends ConsumerWidget {
         },
       );
     }
-    if (!complete) return const SetupScreen();
+    // Die Einrichtung bleibt Deutsch: von links nach rechts.
+    if (!complete) return const Ltr(child: SetupScreen());
     if (ref.watch(sessionProvider) == null) return const PinScreen();
     return const ShellScreen();
   }

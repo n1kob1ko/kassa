@@ -9,6 +9,7 @@ import '../../l10n/generated/l10n.dart';
 import '../../rksv/card/card_facts.dart';
 import '../../rksv/online/atrust_client.dart' show AtrustSystem;
 import '../../ui/language_picker.dart';
+import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
@@ -129,87 +130,104 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Die Seiten der Einrichtung bleiben Deutsch und stehen darum in jeder
+    // Sprache von links nach rechts (wie die Abschnitte Signatur, Drucker,
+    // Karte, Server und Neu einspielen unten).
     if (widget.testingDevices) {
-      return DeviceTestScreen(
-        key: const Key('device-test'),
-        onBack: () => widget.onTestingDevices(false),
+      return Ltr(
+        child: DeviceTestScreen(
+          key: const Key('device-test'),
+          onBack: () => widget.onTestingDevices(false),
+        ),
       );
     }
     if (widget.checkingCard) {
-      return CardCheckScreen(
-        key: const Key('card-check'),
-        onBack: () => widget.onCheckingCard(false),
+      return Ltr(
+        child: CardCheckScreen(
+          key: const Key('card-check'),
+          onBack: () => widget.onCheckingCard(false),
+        ),
       );
     }
     if (widget.checkingConnection case final opening?) {
-      return ConnectionCheckScreen(
-        key: const Key('connection-check-screen'),
-        opening: opening,
-        // In Betrieb prüft "Verbindung prüfen" das echte System, ohne
-        // "Weiter": Es gibt keinen nächsten Schritt.
-        system: opening == ConnectionCheckOpening.checkLive
-            ? AtrustSystem.live
-            : AtrustSystem.test,
-        onBack: () => widget.onCheckingConnection(null),
+      return Ltr(
+        child: ConnectionCheckScreen(
+          key: const Key('connection-check-screen'),
+          opening: opening,
+          // In Betrieb prüft "Verbindung prüfen" das echte System, ohne
+          // "Weiter": Es gibt keinen nächsten Schritt.
+          system: opening == ConnectionCheckOpening.checkLive
+              ? AtrustSystem.live
+              : AtrustSystem.test,
+          onBack: () => widget.onCheckingConnection(null),
+        ),
       );
     }
     if (widget.cardFacts case final card?) {
-      return SetupFactsScreen.card(
-        key: const Key('setup-facts-card'),
-        card: card,
-        // Zurück zu "Karte und PIN", das darunter liegt.
-        onBack: () => widget.onCardFacts(null),
-        onLive: () {
-          setState(() => _announcement = 'Die Kassa ist in Betrieb.');
-          widget.onCardFacts(null);
-          widget.onCardSetup(null);
-          widget.onChoosingSigner(false);
-        },
+      return Ltr(
+        child: SetupFactsScreen.card(
+          key: const Key('setup-facts-card'),
+          card: card,
+          // Zurück zu "Karte und PIN", das darunter liegt.
+          onBack: () => widget.onCardFacts(null),
+          onLive: () {
+            setState(() => _announcement = 'Die Kassa ist in Betrieb.');
+            widget.onCardFacts(null);
+            widget.onCardSetup(null);
+            widget.onChoosingSigner(false);
+          },
+        ),
       );
     }
     if (widget.cardSetup case final purpose?) {
-      return CardSetupScreen(
-        key: const Key('card-setup-screen'),
-        purpose: purpose,
-        // Auf dem Weg zum echten Betrieb liegt die Wahl darunter.
-        onBack: () => widget.onCardSetup(null),
-        onLive: (facts) => widget.onCardFacts(facts),
-        onProbeStarted: (sentence) {
-          setState(() => _announcement = sentence);
-          widget.onCardSetup(null);
-        },
+      return Ltr(
+        child: CardSetupScreen(
+          key: const Key('card-setup-screen'),
+          purpose: purpose,
+          // Auf dem Weg zum echten Betrieb liegt die Wahl darunter.
+          onBack: () => widget.onCardSetup(null),
+          onLive: (facts) => widget.onCardFacts(facts),
+          onProbeStarted: (sentence) {
+            setState(() => _announcement = sentence);
+            widget.onCardSetup(null);
+          },
+        ),
       );
     }
     if (widget.credentials case final route?) {
-      return CredentialsScreen(
-        key: const Key('credentials-screen'),
-        edit: route.edit,
-        checking: route.check,
-        onChecking: (check) =>
-            widget.onCredentials(CredentialsRoute(check: check)),
-        setup: route.setup,
-        onSetup: (facts) => widget.onCredentials(
-          facts == null
-              ? const CredentialsRoute()
-              : CredentialsRoute(setup: facts),
+      return Ltr(
+        child: CredentialsScreen(
+          key: const Key('credentials-screen'),
+          edit: route.edit,
+          checking: route.check,
+          onChecking: (check) =>
+              widget.onCredentials(CredentialsRoute(check: check)),
+          setup: route.setup,
+          onSetup: (facts) => widget.onCredentials(
+            facts == null
+                ? const CredentialsRoute()
+                : CredentialsRoute(setup: facts),
+          ),
+          onLive: () {
+            setState(() => _announcement = 'Die Kassa ist in Betrieb.');
+            widget.onCredentials(null);
+            widget.onChoosingSigner(false);
+          },
+          // Von der Wahl geöffnet, liegt sie darunter, und "Zurück" führt zu
+          // ihr; sonst in die Einstellungen.
+          onBack: () => widget.onCredentials(null),
         ),
-        onLive: () {
-          setState(() => _announcement = 'Die Kassa ist in Betrieb.');
-          widget.onCredentials(null);
-          widget.onChoosingSigner(false);
-        },
-        // Von der Wahl geöffnet, liegt sie darunter, und "Zurück" führt zu
-        // ihr; sonst in die Einstellungen.
-        onBack: () => widget.onCredentials(null),
       );
     }
     if (widget.choosingSigner) {
-      return SignerChoiceScreen(
-        key: const Key('signer-choice-screen'),
-        onCard: () => widget.onCardSetup(CardSetupPurpose.live),
-        // Die Wahl bleibt unter den Zugangsdaten.
-        onOnline: () => widget.onCredentials(const CredentialsRoute()),
-        onBack: () => widget.onChoosingSigner(false),
+      return Ltr(
+        child: SignerChoiceScreen(
+          key: const Key('signer-choice-screen'),
+          onCard: () => widget.onCardSetup(CardSetupPurpose.live),
+          // Die Wahl bleibt unter den Zugangsdaten.
+          onOnline: () => widget.onCredentials(const CredentialsRoute()),
+          onBack: () => widget.onChoosingSigner(false),
+        ),
       );
     }
     final c = KassaColors.of(context);
@@ -235,8 +253,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final devices = SettingsCard(
       title: l.settingsDevices,
       rows: [
-        const PrinterPanel(),
-        const CardPanel(),
+        const Ltr(child: PrinterPanel()),
+        const Ltr(child: CardPanel()),
         SettingsRow(
           title: l.settingsDrawer,
           help: l.settingsDrawerHelp,
@@ -254,7 +272,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: SettingsRow(
             title: l.settingsDeviceTest,
             help: l.settingsDeviceTestHelp,
-            control: Icon(LucideIcons.chevronRight, size: 24, color: c.ink2),
+            control: Icon(
+              directionalIcon(
+                context,
+                ltr: LucideIcons.chevronRight,
+                rtl: LucideIcons.chevronLeft,
+              ),
+              size: 24,
+              color: c.ink2,
+            ),
           ),
         ),
       ],
@@ -276,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: l.settingsView,
           help: l.settingsViewHelp,
           below: Align(
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: Segmented<AppThemeMode>(
               segments: [
                 (AppThemeMode.system, l.settingsThemeSystem),
@@ -304,7 +330,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onChanged: (v) => _change((s) => s.copyWith(voidRequiresChef: v)),
           ),
         ),
-        const ReimportPanel(),
+        const Ltr(child: ReimportPanel()),
       ],
     );
 
@@ -347,10 +373,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SignaturePanel(
-                      announcement: _announcement,
-                      onOpenCardCheck: () => widget.onCheckingCard(true),
-                      onOpenConnectionCheck: widget.onCheckingConnection,
+                    Ltr(
+                      child: SignaturePanel(
+                        announcement: _announcement,
+                        onOpenCardCheck: () => widget.onCheckingCard(true),
+                        onOpenConnectionCheck: widget.onCheckingConnection,
+                      ),
                     ),
                     gap,
                     register,
@@ -368,7 +396,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     gap,
                     display,
                     gap,
-                    const ServerPanel(),
+                    const Ltr(child: ServerPanel()),
                   ],
                 ),
               ),

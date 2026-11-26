@@ -10,6 +10,7 @@ import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/qr_view.dart';
@@ -139,8 +140,8 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(
-          left: BorderSide(color: c.line, width: KassaTokens.borderThin),
+        border: BorderDirectional(
+          start: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
       child: receipt == null
@@ -254,7 +255,7 @@ class _Header extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Text(
-                l.bonsTime(receiptTime(receipt.createdAt)),
+                l.bonsTime(ltrIsolate(context, receiptTime(receipt.createdAt))),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.labelLarge!.copyWith(
@@ -356,9 +357,12 @@ class _Body extends StatelessWidget {
                     color: c.ink,
                   ),
                 ),
-              Text(
-                '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}',
-                style: small,
+              Ltr(
+                child: Text(
+                  '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}',
+                  textAlign: ltrAlign(context, TextAlign.start),
+                  style: small,
+                ),
               ),
               Text(switch (r.kind) {
                 ReceiptKind.voided => l.bonsVoidedBy(r.staffName),
@@ -451,8 +455,9 @@ class _LineRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     // Die Namen des gespeicherten Bons, wie er gedruckt wurde.
     final sub = [
-      for (final o in line.options) o.optionName,
-      if (line.info != null && line.info!.isNotEmpty) line.info!,
+      for (final o in line.options) nameIsolateIn(context, o.optionName),
+      if (line.info != null && line.info!.isNotEmpty)
+        nameIsolateIn(context, line.info!),
     ].join(L10n.of(context).uiListSeparator);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -476,7 +481,7 @@ class _LineRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(line.name, style: text.bodyLarge),
+                Text(nameIsolateIn(context, line.name), style: text.bodyLarge),
                 if (sub.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: KassaTokens.spaceXxs),
@@ -493,7 +498,7 @@ class _LineRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: KassaTokens.spaceMd),
-          Text(formatEuro(line.goodsCents), style: text.bodyLarge),
+          Ltr(child: Text(formatEuro(line.goodsCents), style: text.bodyLarge)),
         ],
       ),
     );
@@ -522,7 +527,7 @@ class _AmountRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: text.bodyMedium!.copyWith(color: c.ink2)),
-          Text(amount, style: text.bodyLarge),
+          Ltr(child: Text(amount, style: text.bodyLarge)),
         ],
       ),
     );
@@ -544,7 +549,8 @@ class _SmallRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: style),
-          Text(value, style: style),
+          // Meist ein Betrag; ein Wort ("Bar") steht so gleich.
+          Ltr(child: Text(value, style: style)),
         ],
       ),
     );
@@ -576,14 +582,16 @@ class _Total extends StatelessWidget {
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                formatEuro(receipt.totalCents),
-                key: const Key('detail-total'),
-                maxLines: 1,
-                style: KassaText.amount(context).copyWith(
-                  decoration: receipt.isVoided
-                      ? TextDecoration.lineThrough
-                      : null,
+              child: Ltr(
+                child: Text(
+                  formatEuro(receipt.totalCents),
+                  key: const Key('detail-total'),
+                  maxLines: 1,
+                  style: KassaText.amount(context).copyWith(
+                    decoration: receipt.isVoided
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
                 ),
               ),
             ),

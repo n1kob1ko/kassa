@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../l10n/generated/l10n.dart';
+import '../../ui/ltr.dart';
 import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
@@ -103,7 +104,7 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
         constraints: const BoxConstraints(
           minHeight: KassaTokens.receiptLineMinHeight,
         ),
-        padding: const EdgeInsets.fromLTRB(16, 6, 14, 6),
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 14, 6),
         child: Row(
           children: [
             Expanded(
@@ -153,11 +154,13 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
             const SizedBox(width: KassaTokens.spaceSm),
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 62),
-              child: Text(
-                formatEuro(line.goodsCents),
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
+              child: Ltr(
+                child: Text(
+                  formatEuro(line.goodsCents),
+                  textAlign: ltrAlign(context, TextAlign.end),
+                  maxLines: 1,
+                  style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],
