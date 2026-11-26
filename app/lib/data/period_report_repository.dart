@@ -93,13 +93,21 @@ class PeriodReportRepository {
         }
         revenue += total;
         deposit += r.receipt.depositCents;
-        if (r.payment == PaymentKind.cash.name) {
-          cash += total;
-          cashCount += step;
-        } else {
-          card += total;
-          cardCount += step;
+        // Bar und Karte aus den Zahlungen, ohne Trinkgeld. Ein gemischter
+        // Bon zählt bei beiden Arten.
+        var hasCash = false;
+        var hasCard = false;
+        for (final p in r.payments) {
+          if (p.kind == PaymentKind.cash.name) {
+            cash += p.amountCents;
+            hasCash = true;
+          } else if (p.kind == PaymentKind.card.name) {
+            card += p.amountCents;
+            hasCard = true;
+          }
         }
+        if (hasCash) cashCount += step;
+        if (hasCard) cardCount += step;
         final t = r.receipt.createdAt;
         final day = DateTime(t.year, t.month, t.day);
         final old = perDay[day] ?? (0, 0);
@@ -222,27 +230,30 @@ class PeriodReportRepository {
       _db.receiptRows.createdAt.isBiggerOrEqualValue(m.start) &
       _db.receiptRows.createdAt.isSmallerThanValue(m.end);
 
-  /// Die gezählten Bons des Monats mit der Zahlungsart, nach Nummer.
-  Future<List<({ReceiptRow receipt, String? payment})>> _receiptsOf(
+  /// Die gezählten Bons des Monats mit ihren Zahlungen, nach Nummer. Ein
+  /// gemischter Bon hat zwei Zahlungen und steht trotzdem einmal da.
+  Future<List<({ReceiptRow receipt, List<PaymentRow> payments})>> _receiptsOf(
     YearMonth m,
     bool live,
   ) async {
-    final rows =
-        await (_db.select(_db.receiptRows).join([
-                leftOuterJoin(
-                  _db.paymentRows,
-                  _db.paymentRows.receiptId.equalsExp(_db.receiptRows.id),
-                ),
-              ])
-              ..where(_inMonth(m, live))
-              ..orderBy([OrderingTerm.asc(_db.receiptRows.number)]))
+    final receipts =
+        await (_db.select(_db.receiptRows)
+              ..where((_) => _inMonth(m, live))
+              ..orderBy([(t) => OrderingTerm.asc(t.number)]))
             .get();
+    final payments = <String, List<PaymentRow>>{};
+    for (final j in await (_db.select(_db.paymentRows).join([
+      innerJoin(
+        _db.receiptRows,
+        _db.receiptRows.id.equalsExp(_db.paymentRows.receiptId),
+      ),
+    ])..where(_inMonth(m, live))).get()) {
+      final p = j.readTable(_db.paymentRows);
+      (payments[p.receiptId] ??= []).add(p);
+    }
     return [
-      for (final r in rows)
-        (
-          receipt: r.readTable(_db.receiptRows),
-          payment: r.readTableOrNull(_db.paymentRows)?.kind,
-        ),
+      for (final r in receipts)
+        (receipt: r, payments: payments[r.id] ?? const <PaymentRow>[]),
     ];
   }
 

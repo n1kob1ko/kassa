@@ -76,10 +76,12 @@ class StatsRepository {
         .fold(0, (s, r) => s + r.totalCents);
 
     final ids = {for (final r in current) r.id};
-    final payments = {
+    // Die Zahlungen der Bons im Zeitraum. Bar und Karte kommen aus ihnen,
+    // ohne Trinkgeld; ein gemischter Bon trägt zu beiden bei.
+    final payments = [
       for (final p in await _db.select(_db.paymentRows).get())
-        if (ids.contains(p.receiptId)) p.receiptId: p.kind,
-    };
+        if (ids.contains(p.receiptId)) p,
+    ];
     final lineRows = [
       for (final l in await _db.select(_db.receiptLineRows).get())
         if (ids.contains(l.receiptId)) l,
@@ -97,10 +99,12 @@ class StatsRepository {
       final isVoid = r.kind == ReceiptKind.voided.name;
       count += isVoid ? -1 : 1;
       if (isVoid) voids++;
-      if (payments[r.id] == PaymentKind.cash.name) {
-        cash += r.totalCents;
-      } else {
-        card += r.totalCents;
+    }
+    for (final p in payments) {
+      if (p.kind == PaymentKind.cash.name) {
+        cash += p.amountCents;
+      } else if (p.kind == PaymentKind.card.name) {
+        card += p.amountCents;
       }
     }
 

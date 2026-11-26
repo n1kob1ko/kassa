@@ -544,6 +544,9 @@ class L10nZh extends L10n {
   String get bonsCard => '刷卡';
 
   @override
+  String get bonsCashAndCard => '现金 + 刷卡';
+
+  @override
   String get bonsVoided => '已作废';
 
   @override

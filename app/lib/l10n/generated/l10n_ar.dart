@@ -562,6 +562,9 @@ class L10nAr extends L10n {
   String get bonsCard => 'بطاقة';
 
   @override
+  String get bonsCashAndCard => 'نقدًا + بطاقة';
+
+  @override
   String get bonsVoided => 'ملغاة';
 
   @override

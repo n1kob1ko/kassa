@@ -120,7 +120,8 @@ class PeriodReport {
   /// Wahr, solange es noch keinen echt signierten Bon gibt: dann zählen alle.
   final bool testMode;
 
-  /// Verkaufs-Bons minus Storno-Bons, auch je Zahlungsart.
+  /// Verkaufs-Bons minus Storno-Bons, auch je Zahlungsart: dort zählt ein
+  /// Bon mit mindestens einer Zahlung dieser Art, ein gemischter bei beiden.
   final int receiptCount;
   final int cashReceiptCount;
   final int cardReceiptCount;
@@ -129,8 +130,10 @@ class PeriodReport {
   final int voidCount;
   final int voidedCents;
 
-  /// Summe aller gezählten Bons, Storno negativ, mit Pfand.
+  /// Summe aller gezählten Bons, Storno negativ, mit Pfand, ohne Trinkgeld.
   final int revenueCents;
+
+  /// Summe der Zahlungen bar bzw. mit Karte, ohne Trinkgeld, Storno negativ.
   final int cashRevenueCents;
   final int cardRevenueCents;
   final int depositCents;

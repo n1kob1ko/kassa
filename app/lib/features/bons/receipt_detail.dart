@@ -445,9 +445,14 @@ class _Body extends StatelessWidget {
         : null;
     final voider = r.isVoided ? state._find(r.voidedByReceiptId) : null;
     final paymentKind = r.paymentKind;
-    final cashPayment = r.cashPayment;
-    final cash =
-        r.kind == ReceiptKind.sale && paymentKind == ReceiptPaymentKind.cash;
+    final payments = r.payments;
+    // "Gegeben" und "Rückgeld" nur bei einer einzigen Bar-Zahlung.
+    final cashPayment =
+        r.kind == ReceiptKind.sale &&
+            payments.length == 1 &&
+            payments.single.kind == PaymentKind.cash
+        ? payments.single
+        : null;
     final special = r.kind.isSpecial;
     final rksv = r.rksv;
     final d = r.createdAt;
@@ -472,14 +477,26 @@ class _Body extends StatelessWidget {
               // Sonderbelege haben keine Zahlung.
               if (paymentKind != null) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
-                _SmallRow(
-                  l.bonsPayment,
-                  paymentKind == ReceiptPaymentKind.cash
-                      ? l.bonsCash
-                      : l.bonsCard,
-                  small,
-                ),
-                if (cash && cashPayment != null) ...[
+                if (payments.length == 1)
+                  _SmallRow(
+                    key: const Key('detail-payment-0'),
+                    l.bonsPayment,
+                    receiptPaymentLabel(l, r),
+                    small,
+                  )
+                else ...[
+                  // Mehrere Zahlungen: die Zahlungsart, dann jede Zahlung in
+                  // ihrer Reihenfolge mit ihrem Teil (ohne Trinkgeld).
+                  _SmallRow(l.bonsPayment, receiptPaymentLabel(l, r), small),
+                  for (final (i, p) in payments.indexed)
+                    _SmallRow(
+                      key: Key('detail-payment-$i'),
+                      p.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
+                      formatEuro(p.amountCents),
+                      small,
+                    ),
+                ],
+                if (cashPayment != null) ...[
                   _SmallRow(
                     l.kassaGiven,
                     formatEuro(cashPayment.givenCents),
@@ -692,7 +709,7 @@ class _AmountRow extends StatelessWidget {
 }
 
 class _SmallRow extends StatelessWidget {
-  const _SmallRow(this.label, this.value, this.style);
+  const _SmallRow(this.label, this.value, this.style, {super.key});
 
   final String label;
   final String value;

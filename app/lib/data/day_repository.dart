@@ -196,17 +196,18 @@ class DayRepository {
                 ]),
               ))
             .get();
-    final payments = {
-      for (final p in await (_db.select(_db.paymentRows).join([
-        innerJoin(
-          _db.receiptRows,
-          _db.receiptRows.id.equalsExp(_db.paymentRows.receiptId),
-        ),
-      ])..where(_db.receiptRows.businessDayId.equals(day.id))).get())
-        p.readTable(_db.paymentRows).receiptId: p
-            .readTable(_db.paymentRows)
-            .kind,
-    };
+    // Die Zahlungen je Bon: ein gemischter Bon hat eine bar und eine mit
+    // Karte.
+    final payments = <String, List<PaymentRow>>{};
+    for (final j in await (_db.select(_db.paymentRows).join([
+      innerJoin(
+        _db.receiptRows,
+        _db.receiptRows.id.equalsExp(_db.paymentRows.receiptId),
+      ),
+    ])..where(_db.receiptRows.businessDayId.equals(day.id))).get()) {
+      final p = j.readTable(_db.paymentRows);
+      (payments[p.receiptId] ??= []).add(p);
+    }
     final lines = await (_db.select(_db.receiptLineRows).join([
       innerJoin(
         _db.receiptRows,
@@ -237,13 +238,21 @@ class DayRepository {
       }
       revenue += r.totalCents;
       deposit += r.depositCents;
-      if (payments[r.id] == PaymentKind.cash.name) {
-        cash += r.totalCents;
-        cashCount += step;
-      } else {
-        card += r.totalCents;
-        cardCount += step;
+      // Bar und Karte aus den Zahlungen, ohne Trinkgeld. Ein gemischter Bon
+      // zählt bei beiden Arten.
+      var hasCash = false;
+      var hasCard = false;
+      for (final p in payments[r.id] ?? const <PaymentRow>[]) {
+        if (p.kind == PaymentKind.cash.name) {
+          cash += p.amountCents;
+          hasCash = true;
+        } else if (p.kind == PaymentKind.card.name) {
+          card += p.amountCents;
+          hasCard = true;
+        }
       }
+      if (hasCash) cashCount += step;
+      if (hasCard) cardCount += step;
     }
     final gross = sumByRate([
       for (final j in lines)

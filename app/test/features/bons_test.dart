@@ -129,6 +129,83 @@ void main() {
     expect(find.text('Storniert'), findsWidgets);
   });
 
+  testWidgets(
+    'gemischter Bon: Pille "Bar + Karte", zu sehen unter "Bar" und unter "Karte"',
+    (t) async {
+      await pumpBonsWithSales(t, 0);
+      final staff = containerOf(t).read(sessionProvider)!;
+      await containerOf(t)
+          .read(receiptRepositoryProvider)
+          .finalizeCardSale(
+            saleId: 'mixed-1',
+            cart: const Cart.empty().add(teigtaschen).add(cola),
+            staff: staff,
+            provider: 'sumup',
+            txCode: 'TX-M1',
+            cardScheme: 'VISA',
+            cardLast4: '4242',
+            cashPartCents: 500,
+            tipCents: 50,
+          );
+      await t.tap(find.byKey(const Key('tab-Kassa')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('receipt-1')),
+          matching: find.text('Bar + Karte'),
+        ),
+        findsOneWidget,
+      );
+      for (final f in ['bar', 'karte']) {
+        await t.tap(find.byKey(Key('filter-$f')));
+        await t.pumpAndSettle();
+        expect(find.byKey(const Key('receipt-1')), findsOneWidget);
+      }
+      await t.tap(find.byKey(const Key('receipt-1')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('detail-payment-0')), findsOneWidget);
+      expect(find.byKey(const Key('detail-payment-1')), findsOneWidget);
+      // Bar vor Karte, je mit ihrem Teil; kein "Gegeben" bei zwei Zahlungen.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('detail-payment-0')),
+          matching: find.text(formatEuro(500)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('detail-payment-1')),
+          matching: find.text(formatEuro(465)),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Gegeben'), findsNothing);
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('eine Bar-Zahlung: eine Zeile, dazu "Gegeben" und "Rückgeld"', (
+    t,
+  ) async {
+    await pumpBonsWithSales(t, 1);
+    await openReceipt(t, 1);
+    expect(find.byKey(const Key('detail-payment-0')), findsOneWidget);
+    expect(find.byKey(const Key('detail-payment-1')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-payment-0')),
+        matching: find.text('Bar'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Gegeben'), findsOneWidget);
+    expect(find.text('Rückgeld'), findsOneWidget);
+  });
+
   testWidgets('Drucken im Bon-Detail druckt genau diesen Bon', (t) async {
     await pumpBonsWithSales(t, 3);
     await setUpPrinter(t);

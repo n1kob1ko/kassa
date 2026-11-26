@@ -157,6 +157,7 @@
   "bonsFilterAll": "All",
   "bonsCash": "Cash",
   "bonsCard": "Card",
+  "bonsCashAndCard": "Cash + card",
   "bonsVoided": "Voided",
   "bonsVoidReceipt": "Void",
   "bonsKindStart": "Start receipt",

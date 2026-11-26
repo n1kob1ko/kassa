@@ -157,6 +157,7 @@
   "bonsFilterAll": "الكل",
   "bonsCash": "نقدًا",
   "bonsCard": "بطاقة",
+  "bonsCashAndCard": "نقدًا + بطاقة",
   "bonsVoided": "ملغاة",
   "bonsVoidReceipt": "إلغاء",
   "bonsKindStart": "فاتورة البدء",

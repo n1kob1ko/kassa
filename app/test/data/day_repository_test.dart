@@ -369,4 +369,42 @@ void main() {
       expect(after.first, 2);
     },
   );
+
+  test('gemischter Bon: Bar und Karte kommen aus den Zahlungen, Trinkgeld zählt nicht zum Umsatz', () async {
+    await shop.days.setOpeningFloat(10000);
+    await shop.sell('a'); // bar 18,20
+    await shop.sellCard('b'); // Karte 9,65
+    await shop.sellCard('m1', cart: cart, cashPartCents: 1000, tipCents: 80);
+    final s = (await shop.days.summary())!;
+    expect(
+      (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+      (4605, 2820, 1785),
+    );
+    expect((s.receiptCount, s.cashReceiptCount, s.cardReceiptCount), (3, 2, 2));
+    expect(s.expectedCashCents, 10000 + 2820);
+  });
+
+  test('Storno des gemischten Bons nimmt beide Teile zurück', () async {
+    await shop.days.setOpeningFloat(10000);
+    await shop.sell('a'); // bar 18,20
+    await shop.sellCard('b'); // Karte 9,65
+    await shop.sellCard('m1', cart: cart, cashPartCents: 1000, tipCents: 80);
+    await shop.receipts.voidReceipt('m1', staff: shop.chef);
+    final s = (await shop.days.summary())!;
+    expect(
+      (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+      (2785, 1820, 965),
+    );
+    expect(
+      (
+        s.receiptCount,
+        s.cashReceiptCount,
+        s.cardReceiptCount,
+        s.voidCount,
+        s.voidedCents,
+      ),
+      (2, 1, 1, 1, 1820),
+    );
+    expect(s.expectedCashCents, 10000 + 1820);
+  });
 }

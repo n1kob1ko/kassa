@@ -157,6 +157,7 @@
   "bonsFilterAll": "全部",
   "bonsCash": "现金",
   "bonsCard": "刷卡",
+  "bonsCashAndCard": "现金 + 刷卡",
   "bonsVoided": "已作废",
   "bonsVoidReceipt": "作废单",
   "bonsKindStart": "启用小票",

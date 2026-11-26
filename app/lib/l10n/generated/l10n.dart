@@ -1046,6 +1046,12 @@ abstract class L10n {
   /// **'Karte'**
   String get bonsCard;
 
+  /// Pille und Zahlung: Bon, der teils bar und teils mit Karte bezahlt wurde.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar + Karte'**
+  String get bonsCashAndCard;
+
   /// Filter und Pille: stornierter Bon.
   ///
   /// In de, this message translates to:

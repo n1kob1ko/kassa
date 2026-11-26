@@ -122,6 +122,23 @@ void main() {
     expect((r.revenueCents, r.receiptCount), (2785, 2));
   });
 
+  test('Monat mit gemischtem Bon', () async {
+    await sellAt('a', DateTime(2026, 10, 5, 10)); // bar 18,20
+    final now = shop.clock.value;
+    shop.clock.value = DateTime(2026, 10, 6, 10);
+    await shop.sellCard('b'); // Karte 9,65
+    await shop.sellCard('m1', cart: cart, cashPartCents: 1000, tipCents: 80);
+    shop.clock.value = now;
+    final r = await shop.periods.report(const MonthRange(okt, okt));
+    expect((r.cashRevenueCents, r.cashReceiptCount), (2820, 2));
+    expect((r.cardRevenueCents, r.cardReceiptCount), (1785, 2));
+    expect((r.revenueCents, r.receiptCount), (4605, 3));
+    expect(r.rows.map((d) => (d.start.day, d.receiptCount, d.revenueCents)), [
+      (5, 1, 1820),
+      (6, 2, 2785),
+    ]);
+  });
+
   test('Steuer und Pfand', () async {
     await sellAt('a', DateTime(2026, 10, 5, 10));
     await sellAt('b', DateTime(2026, 10, 6, 10));

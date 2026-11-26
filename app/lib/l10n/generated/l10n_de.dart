@@ -559,6 +559,9 @@ class L10nDe extends L10n {
   String get bonsCard => 'Karte';
 
   @override
+  String get bonsCashAndCard => 'Bar + Karte';
+
+  @override
   String get bonsVoided => 'Storniert';
 
   @override

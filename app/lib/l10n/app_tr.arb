@@ -157,6 +157,7 @@
   "bonsFilterAll": "Tümü",
   "bonsCash": "Nakit",
   "bonsCard": "Kart",
+  "bonsCashAndCard": "Nakit + kart",
   "bonsVoided": "İptal edildi",
   "bonsVoidReceipt": "İptal fişi",
   "bonsKindStart": "Başlangıç fişi",

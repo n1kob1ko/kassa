@@ -774,6 +774,10 @@
   "@bonsCard": {
     "description": "Filter, Pille und Zahlung: Karte."
   },
+  "bonsCashAndCard": "Bar + Karte",
+  "@bonsCashAndCard": {
+    "description": "Pille und Zahlung: Bon, der teils bar und teils mit Karte bezahlt wurde."
+  },
   "bonsVoided": "Storniert",
   "@bonsVoided": {
     "description": "Filter und Pille: stornierter Bon."

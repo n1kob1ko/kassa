@@ -87,7 +87,8 @@ class DaySummary {
   /// Verkaufs-Bons minus Storno-Bons, die an diesem Tag gebucht wurden.
   final int receiptCount;
 
-  /// Wie [receiptCount], nur für Bons mit dieser Zahlungsart.
+  /// Bons mit mindestens einer Zahlung bar bzw. mit Karte (Verkauf +1,
+  /// Storno −1). Ein gemischter Bon zählt bei beiden, in [receiptCount] einmal.
   final int cashReceiptCount;
   final int cardReceiptCount;
 
@@ -95,8 +96,10 @@ class DaySummary {
   final int voidCount;
   final int voidedCents;
 
-  /// Summe aller Bons des Tages, Storno negativ, mit Pfand.
+  /// Summe aller Bons des Tages, Storno negativ, mit Pfand, ohne Trinkgeld.
   final int revenueCents;
+
+  /// Summe der Zahlungen bar bzw. mit Karte, ohne Trinkgeld, Storno negativ.
   final int cashRevenueCents;
   final int cardRevenueCents;
   final int depositCents;
@@ -105,7 +108,7 @@ class DaySummary {
   final int cashInCents;
   final int cashOutCents;
 
-  /// Wechselgeld + Bar-Einnahmen + Einlagen - Entnahmen.
+  /// Wechselgeld + Bar-Zahlungen + Einlagen - Entnahmen.
   final int expectedCashCents;
 
   /// Nach Zeit aufsteigend.

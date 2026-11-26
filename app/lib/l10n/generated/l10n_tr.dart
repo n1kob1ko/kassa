@@ -554,6 +554,9 @@ class L10nTr extends L10n {
   String get bonsCard => 'Kart';
 
   @override
+  String get bonsCashAndCard => 'Nakit + kart';
+
+  @override
   String get bonsVoided => 'İptal edildi';
 
   @override

@@ -209,6 +209,17 @@ void main() {
     expect(o.receiptCount, 2);
   });
 
+  test('Übersicht: Zahlungsarten aus den Zahlungen', () async {
+    await shop.sell('a'); // bar 18,20
+    await shop.sellCard('b'); // Karte 9,65
+    await shop.sellCard('m1', cart: cart, cashPartCents: 1000, tipCents: 80);
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(
+      (o.revenueCents, o.cashCents, o.cardCents, o.receiptCount),
+      (4605, 2820, 1785, 3),
+    );
+  });
+
   test('Sonderbelege zählen nicht: weder Anzahl noch Balken', () async {
     shop.clock.value = DateTime(2026, 11, 17, 11, 10);
     await shop.sell('s1'); // 1820

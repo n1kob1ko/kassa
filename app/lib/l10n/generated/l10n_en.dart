@@ -560,6 +560,9 @@ class L10nEn extends L10n {
   String get bonsCard => 'Card';
 
   @override
+  String get bonsCashAndCard => 'Cash + card';
+
+  @override
   String get bonsVoided => 'Voided';
 
   @override
