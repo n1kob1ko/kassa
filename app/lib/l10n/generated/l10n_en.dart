@@ -447,4 +447,324 @@ class L10nEn extends L10n {
 
   @override
   String get unclearBack => 'Back';
+
+  @override
+  String get dateMonthJanuary => 'January';
+
+  @override
+  String get dateMonthFebruary => 'February';
+
+  @override
+  String get dateMonthMarch => 'March';
+
+  @override
+  String get dateMonthApril => 'April';
+
+  @override
+  String get dateMonthMay => 'May';
+
+  @override
+  String get dateMonthJune => 'June';
+
+  @override
+  String get dateMonthJuly => 'July';
+
+  @override
+  String get dateMonthAugust => 'August';
+
+  @override
+  String get dateMonthSeptember => 'September';
+
+  @override
+  String get dateMonthOctober => 'October';
+
+  @override
+  String get dateMonthNovember => 'November';
+
+  @override
+  String get dateMonthDecember => 'December';
+
+  @override
+  String get dateWeekdayMonday => 'Monday';
+
+  @override
+  String get dateWeekdayTuesday => 'Tuesday';
+
+  @override
+  String get dateWeekdayWednesday => 'Wednesday';
+
+  @override
+  String get dateWeekdayThursday => 'Thursday';
+
+  @override
+  String get dateWeekdayFriday => 'Friday';
+
+  @override
+  String get dateWeekdaySaturday => 'Saturday';
+
+  @override
+  String get dateWeekdaySunday => 'Sunday';
+
+  @override
+  String get dateWeekdayShortMonday => 'Mon';
+
+  @override
+  String get dateWeekdayShortTuesday => 'Tue';
+
+  @override
+  String get dateWeekdayShortWednesday => 'Wed';
+
+  @override
+  String get dateWeekdayShortThursday => 'Thu';
+
+  @override
+  String get dateWeekdayShortFriday => 'Fri';
+
+  @override
+  String get dateWeekdayShortSaturday => 'Sat';
+
+  @override
+  String get dateWeekdayShortSunday => 'Sun';
+
+  @override
+  String dateWeekdayDayMonth(String weekday, int day, String month) {
+    return '$weekday, $day $month';
+  }
+
+  @override
+  String get bonsTitle => 'Receipts';
+
+  @override
+  String bonsToday(String day) {
+    return 'Today, $day';
+  }
+
+  @override
+  String bonsDayLabel(String weekday, int day, String month) {
+    return '$weekday, $day $month';
+  }
+
+  @override
+  String get bonsNoneToday => 'No receipts yet today.';
+
+  @override
+  String get bonsNoneForFilter => 'No receipts match this filter.';
+
+  @override
+  String get bonsFilterAll => 'All';
+
+  @override
+  String get bonsCash => 'Cash';
+
+  @override
+  String get bonsCard => 'Card';
+
+  @override
+  String get bonsVoided => 'Voided';
+
+  @override
+  String get bonsVoidReceipt => 'Void';
+
+  @override
+  String get bonsKindStart => 'Start receipt';
+
+  @override
+  String get bonsKindMonth => 'Monthly receipt';
+
+  @override
+  String get bonsKindYear => 'Annual receipt';
+
+  @override
+  String get bonsKindZero => 'Zero receipt';
+
+  @override
+  String get bonsKindCollective => 'Collective receipt';
+
+  @override
+  String get bonsKindClosing => 'Final receipt';
+
+  @override
+  String bonsNumberShort(int number) {
+    return 'No. $number';
+  }
+
+  @override
+  String get bonsPrint => 'Print';
+
+  @override
+  String get bonsVoid => 'Void';
+
+  @override
+  String get bonsNothingSelected => 'Tap a receipt to view it.';
+
+  @override
+  String bonsTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String get bonsDeposit => 'Deposit';
+
+  @override
+  String bonsTaxRate(int percent) {
+    return '$percent % VAT';
+  }
+
+  @override
+  String get bonsPayment => 'Payment';
+
+  @override
+  String bonsVoidOf(String number) {
+    return 'Void of receipt no. $number';
+  }
+
+  @override
+  String bonsVoidedBy(String name) {
+    return 'Voided by $name';
+  }
+
+  @override
+  String bonsCreatedBy(String name) {
+    return 'Created by $name';
+  }
+
+  @override
+  String bonsRungUpBy(String name) {
+    return 'Rung up by $name';
+  }
+
+  @override
+  String get bonsVoidedNotCounted =>
+      'Voided. This receipt does not count towards revenue.';
+
+  @override
+  String bonsVoidedByNotCounted(String name) {
+    return 'Voided by $name. This receipt does not count towards revenue.';
+  }
+
+  @override
+  String bonsCashBoxId(String id) {
+    return 'Register ID $id';
+  }
+
+  @override
+  String get bonsTestReceipt => 'Test receipt';
+
+  @override
+  String get bonsDeviceFailed => 'Signature device failed';
+
+  @override
+  String get bonsProbeSignature => 'Test receipt with trial signature.';
+
+  @override
+  String get bonsQrOnPaper => 'The QR code is also on the printed receipt.';
+
+  @override
+  String get bonsVoidFailed => 'The void could not be saved. Please try again.';
+
+  @override
+  String get bonsVoidOlderThanProbe =>
+      'This receipt is older than the trial signature and cannot be voided.';
+
+  @override
+  String get bonsVoidFromTestTime =>
+      'This receipt is from the test period and cannot be voided.';
+
+  @override
+  String bonsVoidQuestion(int number) {
+    return 'Void receipt no. $number?';
+  }
+
+  @override
+  String bonsVoidCashBack(String amount) {
+    return 'You give back $amount in cash.';
+  }
+
+  @override
+  String get bonsVoidCardHint =>
+      'The money is not refunded automatically. Please refund the payment in the SumUp app.';
+
+  @override
+  String get bonsVoidConfirmCard => 'Void, I\'ll refund in SumUp';
+
+  @override
+  String get bonsVoidConfirm => 'Yes, void';
+
+  @override
+  String get itemsTitle => 'Items';
+
+  @override
+  String get itemsWithChoice => 'With choices';
+
+  @override
+  String itemsPlusDeposit(String amount) {
+    return 'plus $amount deposit';
+  }
+
+  @override
+  String get itemsColumnItem => 'Item';
+
+  @override
+  String get itemsPrice => 'Price';
+
+  @override
+  String get itemsFavorite => 'Favorite';
+
+  @override
+  String get itemsInSale => 'For sale';
+
+  @override
+  String itemsFavoriteRemove(String name) {
+    return 'Remove $name from favorites';
+  }
+
+  @override
+  String itemsFavoriteAdd(String name) {
+    return 'Add $name to favorites';
+  }
+
+  @override
+  String itemsInSaleLabel(String name) {
+    return '$name for sale';
+  }
+
+  @override
+  String get itemsChangePrice => 'Change price';
+
+  @override
+  String itemsDepositToggle(String amount) {
+    return 'Deposit $amount';
+  }
+
+  @override
+  String get itemsVegan => 'Vegan';
+
+  @override
+  String get itemsSpicy => 'Spicy';
+
+  @override
+  String get itemsTaxRate => 'Tax rate';
+
+  @override
+  String get itemsChoiceWhenRinging => 'Choices when ringing up';
+
+  @override
+  String itemsChoiceGroups(String groups) {
+    return '$groups.';
+  }
+
+  @override
+  String get itemsFromMenuFile =>
+      'Names, photos and new items come from the menu file.';
+
+  @override
+  String get itemsWriteFailed => 'That didn\'t work. Please try again.';
+
+  @override
+  String itemsNewPrice(String amount) {
+    return 'New price, currently $amount';
+  }
+
+  @override
+  String get itemsApply => 'Apply';
 }

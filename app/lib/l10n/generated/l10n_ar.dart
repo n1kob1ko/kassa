@@ -449,4 +449,324 @@ class L10nAr extends L10n {
 
   @override
   String get unclearBack => 'رجوع';
+
+  @override
+  String get dateMonthJanuary => 'يناير';
+
+  @override
+  String get dateMonthFebruary => 'فبراير';
+
+  @override
+  String get dateMonthMarch => 'مارس';
+
+  @override
+  String get dateMonthApril => 'أبريل';
+
+  @override
+  String get dateMonthMay => 'مايو';
+
+  @override
+  String get dateMonthJune => 'يونيو';
+
+  @override
+  String get dateMonthJuly => 'يوليو';
+
+  @override
+  String get dateMonthAugust => 'أغسطس';
+
+  @override
+  String get dateMonthSeptember => 'سبتمبر';
+
+  @override
+  String get dateMonthOctober => 'أكتوبر';
+
+  @override
+  String get dateMonthNovember => 'نوفمبر';
+
+  @override
+  String get dateMonthDecember => 'ديسمبر';
+
+  @override
+  String get dateWeekdayMonday => 'الاثنين';
+
+  @override
+  String get dateWeekdayTuesday => 'الثلاثاء';
+
+  @override
+  String get dateWeekdayWednesday => 'الأربعاء';
+
+  @override
+  String get dateWeekdayThursday => 'الخميس';
+
+  @override
+  String get dateWeekdayFriday => 'الجمعة';
+
+  @override
+  String get dateWeekdaySaturday => 'السبت';
+
+  @override
+  String get dateWeekdaySunday => 'الأحد';
+
+  @override
+  String get dateWeekdayShortMonday => 'الاثنين';
+
+  @override
+  String get dateWeekdayShortTuesday => 'الثلاثاء';
+
+  @override
+  String get dateWeekdayShortWednesday => 'الأربعاء';
+
+  @override
+  String get dateWeekdayShortThursday => 'الخميس';
+
+  @override
+  String get dateWeekdayShortFriday => 'الجمعة';
+
+  @override
+  String get dateWeekdayShortSaturday => 'السبت';
+
+  @override
+  String get dateWeekdayShortSunday => 'الأحد';
+
+  @override
+  String dateWeekdayDayMonth(String weekday, int day, String month) {
+    return '$weekday، $day $month';
+  }
+
+  @override
+  String get bonsTitle => 'الفواتير';
+
+  @override
+  String bonsToday(String day) {
+    return 'اليوم، $day';
+  }
+
+  @override
+  String bonsDayLabel(String weekday, int day, String month) {
+    return '$weekday، $day $month';
+  }
+
+  @override
+  String get bonsNoneToday => 'لا توجد فواتير اليوم بعد.';
+
+  @override
+  String get bonsNoneForFilter => 'لا توجد فواتير بهذا التصنيف.';
+
+  @override
+  String get bonsFilterAll => 'الكل';
+
+  @override
+  String get bonsCash => 'نقدًا';
+
+  @override
+  String get bonsCard => 'بطاقة';
+
+  @override
+  String get bonsVoided => 'ملغاة';
+
+  @override
+  String get bonsVoidReceipt => 'إلغاء';
+
+  @override
+  String get bonsKindStart => 'فاتورة البدء';
+
+  @override
+  String get bonsKindMonth => 'فاتورة شهرية';
+
+  @override
+  String get bonsKindYear => 'فاتورة سنوية';
+
+  @override
+  String get bonsKindZero => 'فاتورة صفرية';
+
+  @override
+  String get bonsKindCollective => 'فاتورة مجمعة';
+
+  @override
+  String get bonsKindClosing => 'الفاتورة الختامية';
+
+  @override
+  String bonsNumberShort(int number) {
+    return 'رقم $number';
+  }
+
+  @override
+  String get bonsPrint => 'طباعة';
+
+  @override
+  String get bonsVoid => 'إلغاء';
+
+  @override
+  String get bonsNothingSelected => 'اضغط على فاتورة لعرضها.';
+
+  @override
+  String bonsTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String get bonsDeposit => 'تأمين';
+
+  @override
+  String bonsTaxRate(int percent) {
+    return 'ضريبة $percent %';
+  }
+
+  @override
+  String get bonsPayment => 'الدفع';
+
+  @override
+  String bonsVoidOf(String number) {
+    return 'إلغاء الفاتورة رقم $number';
+  }
+
+  @override
+  String bonsVoidedBy(String name) {
+    return 'ألغاها $name';
+  }
+
+  @override
+  String bonsCreatedBy(String name) {
+    return 'أنشأها $name';
+  }
+
+  @override
+  String bonsRungUpBy(String name) {
+    return 'سجّلها $name';
+  }
+
+  @override
+  String get bonsVoidedNotCounted =>
+      'ملغاة. لا تُحتسب هذه الفاتورة في الإيرادات.';
+
+  @override
+  String bonsVoidedByNotCounted(String name) {
+    return 'ألغاها $name. لا تُحتسب هذه الفاتورة في الإيرادات.';
+  }
+
+  @override
+  String bonsCashBoxId(String id) {
+    return 'معرّف الصندوق $id';
+  }
+
+  @override
+  String get bonsTestReceipt => 'فاتورة تجريبية';
+
+  @override
+  String get bonsDeviceFailed => 'تعطّل جهاز الأمان';
+
+  @override
+  String get bonsProbeSignature => 'فاتورة تجريبية بتوقيع تجريبي.';
+
+  @override
+  String get bonsQrOnPaper => 'رمز QR موجود أيضًا على الفاتورة المطبوعة.';
+
+  @override
+  String get bonsVoidFailed => 'تعذّر حفظ الإلغاء. يرجى المحاولة مرة أخرى.';
+
+  @override
+  String get bonsVoidOlderThanProbe =>
+      'هذه الفاتورة أقدم من التوقيع التجريبي ولا يمكن إلغاؤها.';
+
+  @override
+  String get bonsVoidFromTestTime =>
+      'هذه الفاتورة من فترة التجربة ولا يمكن إلغاؤها.';
+
+  @override
+  String bonsVoidQuestion(int number) {
+    return 'هل تريد إلغاء الفاتورة رقم $number؟';
+  }
+
+  @override
+  String bonsVoidCashBack(String amount) {
+    return 'تُعيد $amount نقدًا.';
+  }
+
+  @override
+  String get bonsVoidCardHint =>
+      'لا يُعاد المبلغ تلقائيًا. يرجى استرداد الدفعة في تطبيق SumUp.';
+
+  @override
+  String get bonsVoidConfirmCard => 'إلغاء، وسأسترد المبلغ في SumUp';
+
+  @override
+  String get bonsVoidConfirm => 'نعم، إلغاء';
+
+  @override
+  String get itemsTitle => 'الأصناف';
+
+  @override
+  String get itemsWithChoice => 'مع خيارات';
+
+  @override
+  String itemsPlusDeposit(String amount) {
+    return 'زائد $amount تأمين';
+  }
+
+  @override
+  String get itemsColumnItem => 'الصنف';
+
+  @override
+  String get itemsPrice => 'السعر';
+
+  @override
+  String get itemsFavorite => 'مفضل';
+
+  @override
+  String get itemsInSale => 'متاح للبيع';
+
+  @override
+  String itemsFavoriteRemove(String name) {
+    return 'إزالة $name من المفضلة';
+  }
+
+  @override
+  String itemsFavoriteAdd(String name) {
+    return 'إضافة $name إلى المفضلة';
+  }
+
+  @override
+  String itemsInSaleLabel(String name) {
+    return '$name متاح للبيع';
+  }
+
+  @override
+  String get itemsChangePrice => 'تغيير السعر';
+
+  @override
+  String itemsDepositToggle(String amount) {
+    return 'تأمين $amount';
+  }
+
+  @override
+  String get itemsVegan => 'نباتي';
+
+  @override
+  String get itemsSpicy => 'حار';
+
+  @override
+  String get itemsTaxRate => 'نسبة الضريبة';
+
+  @override
+  String get itemsChoiceWhenRinging => 'الخيارات عند التسجيل';
+
+  @override
+  String itemsChoiceGroups(String groups) {
+    return '$groups.';
+  }
+
+  @override
+  String get itemsFromMenuFile =>
+      'تأتي الأسماء والصور والأصناف الجديدة من ملف القائمة.';
+
+  @override
+  String get itemsWriteFailed => 'لم ينجح ذلك. يرجى المحاولة مرة أخرى.';
+
+  @override
+  String itemsNewPrice(String amount) {
+    return 'السعر الجديد، الحالي $amount';
+  }
+
+  @override
+  String get itemsApply => 'تطبيق';
 }

@@ -2,23 +2,30 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
-const voidFailText =
-    'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.';
+/// Warum ein Storno nicht geklappt hat.
+enum VoidFailure {
+  /// Nicht gespeichert.
+  failed,
 
-/// Der Bon gehört nicht zur laufenden Kette der Signatur (in der Probe).
-const voidOlderThanProbeText =
-    'Dieser Bon ist älter als die Probe-Signatur und kann nicht storniert '
-    'werden.';
+  /// Der Bon gehört nicht zur laufenden Kette der Signatur (in der Probe).
+  olderThanProbe,
 
-/// Der Bon gehört nicht zur laufenden Kette, und die Kassa ist in Betrieb.
-const voidFromTestTimeText =
-    'Dieser Bon stammt aus der Testzeit und kann nicht storniert werden.';
+  /// Der Bon gehört nicht zur laufenden Kette, und die Kassa ist in Betrieb.
+  fromTestTime;
 
-/// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] ist
-/// der Satz, warum der letzte Versuch nicht geklappt hat.
+  String text(L10n l) => switch (this) {
+    VoidFailure.failed => l.bonsVoidFailed,
+    VoidFailure.olderThanProbe => l.bonsVoidOlderThanProbe,
+    VoidFailure.fromTestTime => l.bonsVoidFromTestTime,
+  };
+}
+
+/// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] sagt,
+/// warum der letzte Versuch nicht geklappt hat.
 class VoidQuestion extends StatelessWidget {
   const VoidQuestion({
     super.key,
@@ -31,7 +38,7 @@ class VoidQuestion extends StatelessWidget {
 
   final Receipt receipt;
   final bool busy;
-  final String? failure;
+  final VoidFailure? failure;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
 
@@ -39,6 +46,7 @@ class VoidQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final amount = formatEuro(receipt.totalCents);
     final byCard = receipt.payment?.kind == PaymentKind.card;
     return Container(
@@ -52,13 +60,13 @@ class VoidQuestion extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Bon Nr. ${receipt.number} wirklich stornieren?',
+            l.bonsVoidQuestion(receipt.number),
             style: text.titleLarge!.copyWith(fontSize: 17, color: c.spicyFg),
           ),
           const SizedBox(height: KassaTokens.spaceXxs),
           if (!byCard)
             Text(
-              'Du gibst $amount bar zurück.',
+              l.bonsVoidCashBack(amount),
               style: text.bodyMedium!.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -75,8 +83,7 @@ class VoidQuestion extends StatelessWidget {
                 borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
               ),
               child: Text(
-                'Das Geld geht nicht von selbst zurück. Bitte die Zahlung in '
-                'der SumUp-App rückbuchen.',
+                l.bonsVoidCardHint,
                 style: text.bodyMedium!.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -89,7 +96,7 @@ class VoidQuestion extends StatelessWidget {
           if (failure case final failure?) ...[
             const SizedBox(height: KassaTokens.spaceSm),
             Text(
-              failure,
+              failure.text(l),
               key: const Key('void-failure'),
               style: text.bodyMedium!.copyWith(
                 fontSize: 14,
@@ -102,7 +109,7 @@ class VoidQuestion extends StatelessWidget {
           if (byCard) ...[
             BonsActionButton(
               key: const Key('confirm-void'),
-              label: 'Stornieren, Rückbuchung mache ich in SumUp',
+              label: l.bonsVoidConfirmCard,
               height: 76,
               maxLines: 2,
               radius: KassaTokens.radiusXl,
@@ -114,7 +121,7 @@ class VoidQuestion extends StatelessWidget {
             const SizedBox(height: KassaTokens.spaceLg),
             BonsActionButton(
               key: const Key('cancel-void'),
-              label: 'Abbrechen',
+              label: l.kassaCancel,
               height: 60,
               radius: KassaTokens.radiusXl,
               bg: c.card,
@@ -127,7 +134,7 @@ class VoidQuestion extends StatelessWidget {
                 Expanded(
                   child: BonsActionButton(
                     key: const Key('cancel-void'),
-                    label: 'Abbrechen',
+                    label: l.kassaCancel,
                     height: 60,
                     radius: KassaTokens.radiusXl,
                     bg: c.card,
@@ -139,7 +146,7 @@ class VoidQuestion extends StatelessWidget {
                 Expanded(
                   child: BonsActionButton(
                     key: const Key('confirm-void'),
-                    label: 'Ja, stornieren',
+                    label: l.bonsVoidConfirm,
                     height: 60,
                     radius: KassaTokens.radiusXl,
                     bg: c.red,

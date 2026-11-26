@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/german_dates.dart';
 import '../../data/providers.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/dates_text.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
 import 'receipt_detail.dart';
@@ -29,6 +30,7 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final all = ref.watch(todayReceiptsProvider).value;
     final now = ref.watch(clockProvider).now();
     // Der Untertitel nennt den Tag, dessen Bons die Liste zeigt.
@@ -37,8 +39,11 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
         opened.year == now.year &&
         opened.month == now.month &&
         opened.day == now.day;
-    final dayLabel =
-        '${germanWeekdays[opened.weekday - 1]} ${opened.day}. ${germanMonths[opened.month - 1]}';
+    final dayLabel = l.bonsDayLabel(
+      weekdayName(l, opened.weekday),
+      opened.day,
+      monthName(l, opened.month),
+    );
     final newestFirst = [...?all?.reversed];
     final shown = [
       for (final r in newestFirst)
@@ -60,13 +65,13 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
                   height: KassaTokens.receiptHeaderHeight,
                   child: Row(
                     children: [
-                      Text('Bons', style: text.headlineMedium),
+                      Text(l.bonsTitle, style: text.headlineMedium),
                       const SizedBox(width: KassaTokens.spaceLg),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(
-                            isToday ? 'Heute, $dayLabel' : dayLabel,
+                            isToday ? l.bonsToday(dayLabel) : dayLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.labelLarge!.copyWith(
@@ -79,7 +84,7 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
                       const SizedBox(width: KassaTokens.spaceLg),
                       Segmented<BonFilter>(
                         segments: [
-                          for (final f in BonFilter.values) (f, f.label),
+                          for (final f in BonFilter.values) (f, f.label(l)),
                         ],
                         selected: _filter,
                         keyFor: (f) => Key('filter-${f.id}'),
@@ -96,8 +101,8 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
                           selectedId: selected?.id,
                           onSelect: (r) => setState(() => _selectedId = r.id),
                           emptyText: newestFirst.isEmpty
-                              ? 'Heute gibt es noch keine Bons.'
-                              : 'Keine Bons mit diesem Filter.',
+                              ? l.bonsNoneToday
+                              : l.bonsNoneForFilter,
                         ),
                 ),
               ],

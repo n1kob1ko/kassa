@@ -835,6 +835,552 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Zurück'**
   String get unclearBack;
+
+  /// Name des 1. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Jänner'**
+  String get dateMonthJanuary;
+
+  /// Name des 2. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Februar'**
+  String get dateMonthFebruary;
+
+  /// Name des 3. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'März'**
+  String get dateMonthMarch;
+
+  /// Name des 4. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'April'**
+  String get dateMonthApril;
+
+  /// Name des 5. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Mai'**
+  String get dateMonthMay;
+
+  /// Name des 6. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Juni'**
+  String get dateMonthJune;
+
+  /// Name des 7. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Juli'**
+  String get dateMonthJuly;
+
+  /// Name des 8. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'August'**
+  String get dateMonthAugust;
+
+  /// Name des 9. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'September'**
+  String get dateMonthSeptember;
+
+  /// Name des 10. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Oktober'**
+  String get dateMonthOctober;
+
+  /// Name des 11. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'November'**
+  String get dateMonthNovember;
+
+  /// Name des 12. Monats am Bildschirm (Österreich: Jänner).
+  ///
+  /// In de, this message translates to:
+  /// **'Dezember'**
+  String get dateMonthDecember;
+
+  /// Name des 1. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Montag'**
+  String get dateWeekdayMonday;
+
+  /// Name des 2. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Dienstag'**
+  String get dateWeekdayTuesday;
+
+  /// Name des 3. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Mittwoch'**
+  String get dateWeekdayWednesday;
+
+  /// Name des 4. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Donnerstag'**
+  String get dateWeekdayThursday;
+
+  /// Name des 5. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Freitag'**
+  String get dateWeekdayFriday;
+
+  /// Name des 6. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Samstag'**
+  String get dateWeekdaySaturday;
+
+  /// Name des 7. Wochentags (Montag zuerst).
+  ///
+  /// In de, this message translates to:
+  /// **'Sonntag'**
+  String get dateWeekdaySunday;
+
+  /// Kurzform des 1. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Mo.'**
+  String get dateWeekdayShortMonday;
+
+  /// Kurzform des 2. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Di.'**
+  String get dateWeekdayShortTuesday;
+
+  /// Kurzform des 3. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Mi.'**
+  String get dateWeekdayShortWednesday;
+
+  /// Kurzform des 4. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Do.'**
+  String get dateWeekdayShortThursday;
+
+  /// Kurzform des 5. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Fr.'**
+  String get dateWeekdayShortFriday;
+
+  /// Kurzform des 6. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'Sa.'**
+  String get dateWeekdayShortSaturday;
+
+  /// Kurzform des 7. Wochentags (Montag zuerst), z. B. in der Tagesliste.
+  ///
+  /// In de, this message translates to:
+  /// **'So.'**
+  String get dateWeekdayShortSunday;
+
+  /// Datum mit Wochentag und Monatsnamen, z. B. "Dienstag, 17. November". Tag als Ziffern.
+  ///
+  /// In de, this message translates to:
+  /// **'{weekday}, {day}. {month}'**
+  String dateWeekdayDayMonth(String weekday, int day, String month);
+
+  /// Überschrift des Bereichs Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Bons'**
+  String get bonsTitle;
+
+  /// Untertitel: der Tag der Liste ist heute; day ist bonsDayLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Heute, {day}'**
+  String bonsToday(String day);
+
+  /// Tag der Liste im Untertitel, z. B. "Dienstag 17. November".
+  ///
+  /// In de, this message translates to:
+  /// **'{weekday} {day}. {month}'**
+  String bonsDayLabel(String weekday, int day, String month);
+
+  /// Leere Liste: heute noch kein Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Heute gibt es noch keine Bons.'**
+  String get bonsNoneToday;
+
+  /// Leere Liste: kein Bon passt zum Filter.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Bons mit diesem Filter.'**
+  String get bonsNoneForFilter;
+
+  /// Filter: alle Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle'**
+  String get bonsFilterAll;
+
+  /// Filter, Pille und Zahlung: bar.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar'**
+  String get bonsCash;
+
+  /// Filter, Pille und Zahlung: Karte.
+  ///
+  /// In de, this message translates to:
+  /// **'Karte'**
+  String get bonsCard;
+
+  /// Filter und Pille: stornierter Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Storniert'**
+  String get bonsVoided;
+
+  /// Pille eines Storno-Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Storno'**
+  String get bonsVoidReceipt;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Startbeleg'**
+  String get bonsKindStart;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Monatsbeleg'**
+  String get bonsKindMonth;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Jahresbeleg'**
+  String get bonsKindYear;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Nullbeleg'**
+  String get bonsKindZero;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Sammelbeleg'**
+  String get bonsKindCollective;
+
+  /// Art des Sonderbelegs (RKSV).
+  ///
+  /// In de, this message translates to:
+  /// **'Schlussbeleg'**
+  String get bonsKindClosing;
+
+  /// Nummer in der Liste.
+  ///
+  /// In de, this message translates to:
+  /// **'Nr. {number}'**
+  String bonsNumberShort(int number);
+
+  /// Taste: Bon noch einmal drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucken'**
+  String get bonsPrint;
+
+  /// Taste: Bon stornieren.
+  ///
+  /// In de, this message translates to:
+  /// **'Stornieren'**
+  String get bonsVoid;
+
+  /// Spalte rechts, solange kein Bon gewählt ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Tippe auf einen Bon, um ihn anzusehen.'**
+  String get bonsNothingSelected;
+
+  /// Uhrzeit im Kopf des Bons; time ist "11:05".
+  ///
+  /// In de, this message translates to:
+  /// **'{time} Uhr'**
+  String bonsTime(String time);
+
+  /// Zeile Pfand im Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand'**
+  String get bonsDeposit;
+
+  /// Steuerzeile im Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'{percent} % MwSt'**
+  String bonsTaxRate(int percent);
+
+  /// Zeile Zahlungsart im Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Zahlung'**
+  String get bonsPayment;
+
+  /// Storno-Bon: zu welchem Bon; number ist die Nummer oder "?".
+  ///
+  /// In de, this message translates to:
+  /// **'Storno zu Bon Nr. {number}'**
+  String bonsVoidOf(String number);
+
+  /// Wer den Storno-Bon gemacht hat.
+  ///
+  /// In de, this message translates to:
+  /// **'Storniert von {name}'**
+  String bonsVoidedBy(String name);
+
+  /// Wer den Sonderbeleg erstellt hat.
+  ///
+  /// In de, this message translates to:
+  /// **'Erstellt von {name}'**
+  String bonsCreatedBy(String name);
+
+  /// Wer den Verkauf boniert hat.
+  ///
+  /// In de, this message translates to:
+  /// **'Boniert von {name}'**
+  String bonsRungUpBy(String name);
+
+  /// Stornierter Bon, ohne bekannten Storno-Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Storniert. Dieser Bon zählt nicht zum Umsatz.'**
+  String get bonsVoidedNotCounted;
+
+  /// Stornierter Bon mit der Person des Stornos.
+  ///
+  /// In de, this message translates to:
+  /// **'Storniert von {name}. Dieser Bon zählt nicht zum Umsatz.'**
+  String bonsVoidedByNotCounted(String name);
+
+  /// Kassen-ID der Signatur unter dem QR-Code.
+  ///
+  /// In de, this message translates to:
+  /// **'Kassen-ID {id}'**
+  String bonsCashBoxId(String id);
+
+  /// Kennzeichen Testbon (Probe der Signatur).
+  ///
+  /// In de, this message translates to:
+  /// **'Testbon'**
+  String get bonsTestReceipt;
+
+  /// Die Signatur war beim Bon ausgefallen.
+  ///
+  /// In de, this message translates to:
+  /// **'Sicherheitseinrichtung ausgefallen'**
+  String get bonsDeviceFailed;
+
+  /// Testbon mit Probe-Signatur.
+  ///
+  /// In de, this message translates to:
+  /// **'Testbon mit Probe-Signatur.'**
+  String get bonsProbeSignature;
+
+  /// Hinweis unter dem QR-Code.
+  ///
+  /// In de, this message translates to:
+  /// **'Der QR-Code steht auch am gedruckten Bon.'**
+  String get bonsQrOnPaper;
+
+  /// Storno nicht gespeichert.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.'**
+  String get bonsVoidFailed;
+
+  /// Bon nicht in der Kette der Probe-Signatur.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Bon ist älter als die Probe-Signatur und kann nicht storniert werden.'**
+  String get bonsVoidOlderThanProbe;
+
+  /// Bon aus der Testzeit, Kassa in Betrieb.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Bon stammt aus der Testzeit und kann nicht storniert werden.'**
+  String get bonsVoidFromTestTime;
+
+  /// Rückfrage vor dem Storno.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon Nr. {number} wirklich stornieren?'**
+  String bonsVoidQuestion(int number);
+
+  /// Rückfrage, Barzahlung: Geld zurückgeben.
+  ///
+  /// In de, this message translates to:
+  /// **'Du gibst {amount} bar zurück.'**
+  String bonsVoidCashBack(String amount);
+
+  /// Rückfrage, Kartenzahlung: in SumUp rückbuchen.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Geld geht nicht von selbst zurück. Bitte die Zahlung in der SumUp-App rückbuchen.'**
+  String get bonsVoidCardHint;
+
+  /// Taste: Storno einer Kartenzahlung bestätigen.
+  ///
+  /// In de, this message translates to:
+  /// **'Stornieren, Rückbuchung mache ich in SumUp'**
+  String get bonsVoidConfirmCard;
+
+  /// Taste: Storno bestätigen.
+  ///
+  /// In de, this message translates to:
+  /// **'Ja, stornieren'**
+  String get bonsVoidConfirm;
+
+  /// Überschrift des Bereichs Artikel.
+  ///
+  /// In de, this message translates to:
+  /// **'Artikel'**
+  String get itemsTitle;
+
+  /// Zweite Zeile: Artikel mit Auswahl-Vorlage.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Auswahl'**
+  String get itemsWithChoice;
+
+  /// Zweite Zeile: Artikel mit Pfand.
+  ///
+  /// In de, this message translates to:
+  /// **'plus {amount} Pfand'**
+  String itemsPlusDeposit(String amount);
+
+  /// Kopf der Liste: Spalte Artikel.
+  ///
+  /// In de, this message translates to:
+  /// **'Artikel'**
+  String get itemsColumnItem;
+
+  /// Kopf der Liste und Detail: Preis.
+  ///
+  /// In de, this message translates to:
+  /// **'Preis'**
+  String get itemsPrice;
+
+  /// Kopf der Liste: Spalte Favorit.
+  ///
+  /// In de, this message translates to:
+  /// **'Favorit'**
+  String get itemsFavorite;
+
+  /// Kopf der Liste: Spalte Im Verkauf.
+  ///
+  /// In de, this message translates to:
+  /// **'Im Verkauf'**
+  String get itemsInSale;
+
+  /// Vorlesehilfe des Sterns, Artikel ist Favorit.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} aus den Favoriten nehmen'**
+  String itemsFavoriteRemove(String name);
+
+  /// Vorlesehilfe des Sterns, Artikel ist kein Favorit.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} zu den Favoriten'**
+  String itemsFavoriteAdd(String name);
+
+  /// Vorlesehilfe des Schalters Im Verkauf.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} im Verkauf'**
+  String itemsInSaleLabel(String name);
+
+  /// Taste: Preis ändern.
+  ///
+  /// In de, this message translates to:
+  /// **'Preis ändern'**
+  String get itemsChangePrice;
+
+  /// Schalter Pfand mit dem Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand {amount}'**
+  String itemsDepositToggle(String amount);
+
+  /// Schalter Vegan.
+  ///
+  /// In de, this message translates to:
+  /// **'Vegan'**
+  String get itemsVegan;
+
+  /// Schalter Scharf.
+  ///
+  /// In de, this message translates to:
+  /// **'Scharf'**
+  String get itemsSpicy;
+
+  /// Zeile Steuersatz.
+  ///
+  /// In de, this message translates to:
+  /// **'Steuersatz'**
+  String get itemsTaxRate;
+
+  /// Überschrift: Auswahl, die beim Bonieren kommt.
+  ///
+  /// In de, this message translates to:
+  /// **'Auswahl beim Bonieren'**
+  String get itemsChoiceWhenRinging;
+
+  /// Die Gruppen der Auswahl, mit Satzende; groups ist eine Aufzählung.
+  ///
+  /// In de, this message translates to:
+  /// **'{groups}.'**
+  String itemsChoiceGroups(String groups);
+
+  /// Hinweis unten in der Detailspalte.
+  ///
+  /// In de, this message translates to:
+  /// **'Namen, Fotos und neue Artikel kommen aus der Speisekarten-Datei.'**
+  String get itemsFromMenuFile;
+
+  /// Eine Änderung wurde nicht gespeichert (auch in den Einstellungen).
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte nochmal versuchen.'**
+  String get itemsWriteFailed;
+
+  /// Preiseingabe: Zeile über dem Feld.
+  ///
+  /// In de, this message translates to:
+  /// **'Neuer Preis, bisher {amount}'**
+  String itemsNewPrice(String amount);
+
+  /// Taste: neuen Preis übernehmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get itemsApply;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

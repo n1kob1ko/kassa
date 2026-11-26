@@ -1,8 +1,11 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/app_toggle.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import 'item_row.dart';
@@ -14,6 +17,7 @@ const standardDepositCents = 25;
 /// Die Spalte rechts (392 dp): Preis, Pfand, Vegan, Scharf, Steuersatz und die
 /// Auswahl-Vorlage des gewählten Artikels. Mit "Preis ändern" wird sie zur
 /// Preiseingabe. Schreiben tut der Aufrufer, [failed] zeigt den Hinweis.
+/// [categoryName] kommt schon in der Bediensprache.
 class ItemDetail extends StatelessWidget {
   const ItemDetail({
     super.key,
@@ -67,16 +71,18 @@ class ItemDetail extends StatelessWidget {
   }
 }
 
-class _Normal extends StatelessWidget {
+class _Normal extends ConsumerWidget {
   const _Normal(this.d, this.item);
 
   final ItemDetail d;
   final Item item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final menuText = ref.watch(menuTextProvider);
     final template = d.template;
     final hasDeposit = item.depositCents > 0;
     Widget row(Widget child) => Container(
@@ -118,7 +124,7 @@ class _Normal extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Preis',
+                              l.itemsPrice,
                               style: text.bodySmall!.copyWith(
                                 fontSize: 14,
                                 color: c.ink2,
@@ -155,7 +161,7 @@ class _Normal extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            'Preis ändern',
+                            l.itemsChangePrice,
                             maxLines: 1,
                             style: text.bodyMedium!.copyWith(
                               fontWeight: FontWeight.w700,
@@ -170,8 +176,11 @@ class _Normal extends StatelessWidget {
                 row(
                   AppToggle(
                     key: const Key('toggle-deposit'),
-                    label:
-                        'Pfand ${formatEuro(hasDeposit ? item.depositCents : standardDepositCents)}',
+                    label: l.itemsDepositToggle(
+                      formatEuro(
+                        hasDeposit ? item.depositCents : standardDepositCents,
+                      ),
+                    ),
                     value: hasDeposit,
                     onChanged: (on) =>
                         d.onDeposit(on ? standardDepositCents : 0),
@@ -180,7 +189,7 @@ class _Normal extends StatelessWidget {
                 row(
                   AppToggle(
                     key: const Key('toggle-vegan'),
-                    label: 'Vegan',
+                    label: l.itemsVegan,
                     value: item.tags.contains(ItemTag.vegan),
                     onChanged: (on) => d.onTag(ItemTag.vegan, on),
                   ),
@@ -188,7 +197,7 @@ class _Normal extends StatelessWidget {
                 row(
                   AppToggle(
                     key: const Key('toggle-spicy'),
-                    label: 'Scharf',
+                    label: l.itemsSpicy,
                     value: item.tags.contains(ItemTag.spicy),
                     onChanged: (on) => d.onTag(ItemTag.spicy, on),
                   ),
@@ -196,7 +205,7 @@ class _Normal extends StatelessWidget {
                 row(
                   Row(
                     children: [
-                      Expanded(child: Text('Steuersatz', style: labelStyle)),
+                      Expanded(child: Text(l.itemsTaxRate, style: labelStyle)),
                       Text(
                         '${item.taxRate.percent} %',
                         style: text.bodyMedium!.copyWith(
@@ -212,10 +221,14 @@ class _Normal extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Auswahl beim Bonieren', style: labelStyle),
+                        Text(l.itemsChoiceWhenRinging, style: labelStyle),
                         const SizedBox(height: KassaTokens.spaceSm),
                         Text(
-                          '${template.groups.map((g) => g.name).join(', ')}.',
+                          l.itemsChoiceGroups(
+                            template.groups
+                                .map((g) => menuText(g.name))
+                                .join(l.uiListSeparator),
+                          ),
                           style: text.bodySmall!.copyWith(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
@@ -238,7 +251,7 @@ class _Normal extends StatelessWidget {
             ),
           ),
           child: Text(
-            'Namen, Fotos und neue Artikel kommen aus der Speisekarten-Datei.',
+            l.itemsFromMenuFile,
             style: text.bodySmall!.copyWith(
               fontWeight: FontWeight.w400,
               color: c.ink2,
@@ -250,14 +263,14 @@ class _Normal extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.item, required this.categoryName});
 
   final Item item;
   final String categoryName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     return Row(
@@ -269,7 +282,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.name,
+                ref.watch(menuTextProvider)(item.name),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: text.headlineMedium,
@@ -298,7 +311,7 @@ class FailedHint extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Text(
-        'Das hat nicht geklappt. Bitte nochmal versuchen.',
+        L10n.of(context).itemsWriteFailed,
         key: const Key('write-failed'),
         style: Theme.of(context).textTheme.bodySmall!
             .copyWith(fontSize: 14, fontWeight: FontWeight.w700, color: c.red),

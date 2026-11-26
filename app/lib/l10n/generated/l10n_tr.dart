@@ -441,4 +441,324 @@ class L10nTr extends L10n {
 
   @override
   String get unclearBack => 'Geri';
+
+  @override
+  String get dateMonthJanuary => 'Ocak';
+
+  @override
+  String get dateMonthFebruary => 'Şubat';
+
+  @override
+  String get dateMonthMarch => 'Mart';
+
+  @override
+  String get dateMonthApril => 'Nisan';
+
+  @override
+  String get dateMonthMay => 'Mayıs';
+
+  @override
+  String get dateMonthJune => 'Haziran';
+
+  @override
+  String get dateMonthJuly => 'Temmuz';
+
+  @override
+  String get dateMonthAugust => 'Ağustos';
+
+  @override
+  String get dateMonthSeptember => 'Eylül';
+
+  @override
+  String get dateMonthOctober => 'Ekim';
+
+  @override
+  String get dateMonthNovember => 'Kasım';
+
+  @override
+  String get dateMonthDecember => 'Aralık';
+
+  @override
+  String get dateWeekdayMonday => 'Pazartesi';
+
+  @override
+  String get dateWeekdayTuesday => 'Salı';
+
+  @override
+  String get dateWeekdayWednesday => 'Çarşamba';
+
+  @override
+  String get dateWeekdayThursday => 'Perşembe';
+
+  @override
+  String get dateWeekdayFriday => 'Cuma';
+
+  @override
+  String get dateWeekdaySaturday => 'Cumartesi';
+
+  @override
+  String get dateWeekdaySunday => 'Pazar';
+
+  @override
+  String get dateWeekdayShortMonday => 'Pzt';
+
+  @override
+  String get dateWeekdayShortTuesday => 'Sal';
+
+  @override
+  String get dateWeekdayShortWednesday => 'Çar';
+
+  @override
+  String get dateWeekdayShortThursday => 'Per';
+
+  @override
+  String get dateWeekdayShortFriday => 'Cum';
+
+  @override
+  String get dateWeekdayShortSaturday => 'Cmt';
+
+  @override
+  String get dateWeekdayShortSunday => 'Paz';
+
+  @override
+  String dateWeekdayDayMonth(String weekday, int day, String month) {
+    return '$day $month $weekday';
+  }
+
+  @override
+  String get bonsTitle => 'Fişler';
+
+  @override
+  String bonsToday(String day) {
+    return 'Bugün, $day';
+  }
+
+  @override
+  String bonsDayLabel(String weekday, int day, String month) {
+    return '$day $month $weekday';
+  }
+
+  @override
+  String get bonsNoneToday => 'Bugün henüz fiş yok.';
+
+  @override
+  String get bonsNoneForFilter => 'Bu filtreye uygun fiş yok.';
+
+  @override
+  String get bonsFilterAll => 'Tümü';
+
+  @override
+  String get bonsCash => 'Nakit';
+
+  @override
+  String get bonsCard => 'Kart';
+
+  @override
+  String get bonsVoided => 'İptal edildi';
+
+  @override
+  String get bonsVoidReceipt => 'İptal fişi';
+
+  @override
+  String get bonsKindStart => 'Başlangıç fişi';
+
+  @override
+  String get bonsKindMonth => 'Aylık fiş';
+
+  @override
+  String get bonsKindYear => 'Yıllık fiş';
+
+  @override
+  String get bonsKindZero => 'Sıfır fiş';
+
+  @override
+  String get bonsKindCollective => 'Toplu fiş';
+
+  @override
+  String get bonsKindClosing => 'Kapanış fişi';
+
+  @override
+  String bonsNumberShort(int number) {
+    return 'No. $number';
+  }
+
+  @override
+  String get bonsPrint => 'Yazdır';
+
+  @override
+  String get bonsVoid => 'İptal et';
+
+  @override
+  String get bonsNothingSelected => 'Görmek için bir fişe dokunun.';
+
+  @override
+  String bonsTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String get bonsDeposit => 'Depozito';
+
+  @override
+  String bonsTaxRate(int percent) {
+    return 'KDV $percent %';
+  }
+
+  @override
+  String get bonsPayment => 'Ödeme';
+
+  @override
+  String bonsVoidOf(String number) {
+    return 'Fiş No. $number iptali';
+  }
+
+  @override
+  String bonsVoidedBy(String name) {
+    return 'İptal eden: $name';
+  }
+
+  @override
+  String bonsCreatedBy(String name) {
+    return 'Oluşturan: $name';
+  }
+
+  @override
+  String bonsRungUpBy(String name) {
+    return 'Kasiyer: $name';
+  }
+
+  @override
+  String get bonsVoidedNotCounted =>
+      'İptal edildi. Bu fiş ciroya dahil edilmez.';
+
+  @override
+  String bonsVoidedByNotCounted(String name) {
+    return '$name tarafından iptal edildi. Bu fiş ciroya dahil edilmez.';
+  }
+
+  @override
+  String bonsCashBoxId(String id) {
+    return 'Kasa kimliği $id';
+  }
+
+  @override
+  String get bonsTestReceipt => 'Test fişi';
+
+  @override
+  String get bonsDeviceFailed => 'Güvenlik cihazı arızalı';
+
+  @override
+  String get bonsProbeSignature => 'Deneme imzalı test fişi.';
+
+  @override
+  String get bonsQrOnPaper => 'QR kod basılı fişte de bulunur.';
+
+  @override
+  String get bonsVoidFailed => 'İptal kaydedilemedi. Lütfen tekrar deneyin.';
+
+  @override
+  String get bonsVoidOlderThanProbe =>
+      'Bu fiş deneme imzasından eski ve iptal edilemez.';
+
+  @override
+  String get bonsVoidFromTestTime =>
+      'Bu fiş test döneminden ve iptal edilemez.';
+
+  @override
+  String bonsVoidQuestion(int number) {
+    return 'Fiş No. $number iptal edilsin mi?';
+  }
+
+  @override
+  String bonsVoidCashBack(String amount) {
+    return '$amount nakit iade edersiniz.';
+  }
+
+  @override
+  String get bonsVoidCardHint =>
+      'Para otomatik olarak iade edilmez. Lütfen ödemeyi SumUp uygulamasında iade edin.';
+
+  @override
+  String get bonsVoidConfirmCard => 'İptal et, iadeyi SumUp\'ta yapacağım';
+
+  @override
+  String get bonsVoidConfirm => 'Evet, iptal et';
+
+  @override
+  String get itemsTitle => 'Ürünler';
+
+  @override
+  String get itemsWithChoice => 'Seçenekli';
+
+  @override
+  String itemsPlusDeposit(String amount) {
+    return 'artı $amount depozito';
+  }
+
+  @override
+  String get itemsColumnItem => 'Ürün';
+
+  @override
+  String get itemsPrice => 'Fiyat';
+
+  @override
+  String get itemsFavorite => 'Favori';
+
+  @override
+  String get itemsInSale => 'Satışta';
+
+  @override
+  String itemsFavoriteRemove(String name) {
+    return '$name favorilerden çıkar';
+  }
+
+  @override
+  String itemsFavoriteAdd(String name) {
+    return '$name favorilere ekle';
+  }
+
+  @override
+  String itemsInSaleLabel(String name) {
+    return '$name satışta';
+  }
+
+  @override
+  String get itemsChangePrice => 'Fiyatı değiştir';
+
+  @override
+  String itemsDepositToggle(String amount) {
+    return 'Depozito $amount';
+  }
+
+  @override
+  String get itemsVegan => 'Vegan';
+
+  @override
+  String get itemsSpicy => 'Acı';
+
+  @override
+  String get itemsTaxRate => 'KDV oranı';
+
+  @override
+  String get itemsChoiceWhenRinging => 'Fişe eklerken seçenekler';
+
+  @override
+  String itemsChoiceGroups(String groups) {
+    return '$groups.';
+  }
+
+  @override
+  String get itemsFromMenuFile =>
+      'Adlar, fotoğraflar ve yeni ürünler menü dosyasından gelir.';
+
+  @override
+  String get itemsWriteFailed => 'Olmadı. Lütfen tekrar deneyin.';
+
+  @override
+  String itemsNewPrice(String amount) {
+    return 'Yeni fiyat, şu an $amount';
+  }
+
+  @override
+  String get itemsApply => 'Uygula';
 }

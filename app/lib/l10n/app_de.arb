@@ -606,5 +606,486 @@
   "unclearBack": "Zurück",
   "@unclearBack": {
     "description": "Taste: zurück zur Frage."
+  },
+  "dateMonthJanuary": "Jänner",
+  "@dateMonthJanuary": {
+    "description": "Name des 1. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthFebruary": "Februar",
+  "@dateMonthFebruary": {
+    "description": "Name des 2. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthMarch": "März",
+  "@dateMonthMarch": {
+    "description": "Name des 3. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthApril": "April",
+  "@dateMonthApril": {
+    "description": "Name des 4. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthMay": "Mai",
+  "@dateMonthMay": {
+    "description": "Name des 5. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthJune": "Juni",
+  "@dateMonthJune": {
+    "description": "Name des 6. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthJuly": "Juli",
+  "@dateMonthJuly": {
+    "description": "Name des 7. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthAugust": "August",
+  "@dateMonthAugust": {
+    "description": "Name des 8. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthSeptember": "September",
+  "@dateMonthSeptember": {
+    "description": "Name des 9. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthOctober": "Oktober",
+  "@dateMonthOctober": {
+    "description": "Name des 10. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthNovember": "November",
+  "@dateMonthNovember": {
+    "description": "Name des 11. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateMonthDecember": "Dezember",
+  "@dateMonthDecember": {
+    "description": "Name des 12. Monats am Bildschirm (Österreich: Jänner)."
+  },
+  "dateWeekdayMonday": "Montag",
+  "@dateWeekdayMonday": {
+    "description": "Name des 1. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdayTuesday": "Dienstag",
+  "@dateWeekdayTuesday": {
+    "description": "Name des 2. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdayWednesday": "Mittwoch",
+  "@dateWeekdayWednesday": {
+    "description": "Name des 3. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdayThursday": "Donnerstag",
+  "@dateWeekdayThursday": {
+    "description": "Name des 4. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdayFriday": "Freitag",
+  "@dateWeekdayFriday": {
+    "description": "Name des 5. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdaySaturday": "Samstag",
+  "@dateWeekdaySaturday": {
+    "description": "Name des 6. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdaySunday": "Sonntag",
+  "@dateWeekdaySunday": {
+    "description": "Name des 7. Wochentags (Montag zuerst)."
+  },
+  "dateWeekdayShortMonday": "Mo.",
+  "@dateWeekdayShortMonday": {
+    "description": "Kurzform des 1. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortTuesday": "Di.",
+  "@dateWeekdayShortTuesday": {
+    "description": "Kurzform des 2. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortWednesday": "Mi.",
+  "@dateWeekdayShortWednesday": {
+    "description": "Kurzform des 3. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortThursday": "Do.",
+  "@dateWeekdayShortThursday": {
+    "description": "Kurzform des 4. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortFriday": "Fr.",
+  "@dateWeekdayShortFriday": {
+    "description": "Kurzform des 5. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortSaturday": "Sa.",
+  "@dateWeekdayShortSaturday": {
+    "description": "Kurzform des 6. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayShortSunday": "So.",
+  "@dateWeekdayShortSunday": {
+    "description": "Kurzform des 7. Wochentags (Montag zuerst), z. B. in der Tagesliste."
+  },
+  "dateWeekdayDayMonth": "{weekday}, {day}. {month}",
+  "@dateWeekdayDayMonth": {
+    "description": "Datum mit Wochentag und Monatsnamen, z. B. \"Dienstag, 17. November\". Tag als Ziffern.",
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsTitle": "Bons",
+  "@bonsTitle": {
+    "description": "Überschrift des Bereichs Bons."
+  },
+  "bonsToday": "Heute, {day}",
+  "@bonsToday": {
+    "description": "Untertitel: der Tag der Liste ist heute; day ist bonsDayLabel.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsDayLabel": "{weekday} {day}. {month}",
+  "@bonsDayLabel": {
+    "description": "Tag der Liste im Untertitel, z. B. \"Dienstag 17. November\".",
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsNoneToday": "Heute gibt es noch keine Bons.",
+  "@bonsNoneToday": {
+    "description": "Leere Liste: heute noch kein Bon."
+  },
+  "bonsNoneForFilter": "Keine Bons mit diesem Filter.",
+  "@bonsNoneForFilter": {
+    "description": "Leere Liste: kein Bon passt zum Filter."
+  },
+  "bonsFilterAll": "Alle",
+  "@bonsFilterAll": {
+    "description": "Filter: alle Bons."
+  },
+  "bonsCash": "Bar",
+  "@bonsCash": {
+    "description": "Filter, Pille und Zahlung: bar."
+  },
+  "bonsCard": "Karte",
+  "@bonsCard": {
+    "description": "Filter, Pille und Zahlung: Karte."
+  },
+  "bonsVoided": "Storniert",
+  "@bonsVoided": {
+    "description": "Filter und Pille: stornierter Bon."
+  },
+  "bonsVoidReceipt": "Storno",
+  "@bonsVoidReceipt": {
+    "description": "Pille eines Storno-Bons."
+  },
+  "bonsKindStart": "Startbeleg",
+  "@bonsKindStart": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsKindMonth": "Monatsbeleg",
+  "@bonsKindMonth": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsKindYear": "Jahresbeleg",
+  "@bonsKindYear": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsKindZero": "Nullbeleg",
+  "@bonsKindZero": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsKindCollective": "Sammelbeleg",
+  "@bonsKindCollective": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsKindClosing": "Schlussbeleg",
+  "@bonsKindClosing": {
+    "description": "Art des Sonderbelegs (RKSV)."
+  },
+  "bonsNumberShort": "Nr. {number}",
+  "@bonsNumberShort": {
+    "description": "Nummer in der Liste.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "bonsPrint": "Drucken",
+  "@bonsPrint": {
+    "description": "Taste: Bon noch einmal drucken."
+  },
+  "bonsVoid": "Stornieren",
+  "@bonsVoid": {
+    "description": "Taste: Bon stornieren."
+  },
+  "bonsNothingSelected": "Tippe auf einen Bon, um ihn anzusehen.",
+  "@bonsNothingSelected": {
+    "description": "Spalte rechts, solange kein Bon gewählt ist."
+  },
+  "bonsTime": "{time} Uhr",
+  "@bonsTime": {
+    "description": "Uhrzeit im Kopf des Bons; time ist \"11:05\".",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsDeposit": "Pfand",
+  "@bonsDeposit": {
+    "description": "Zeile Pfand im Bon."
+  },
+  "bonsTaxRate": "{percent} % MwSt",
+  "@bonsTaxRate": {
+    "description": "Steuerzeile im Bon.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "bonsPayment": "Zahlung",
+  "@bonsPayment": {
+    "description": "Zeile Zahlungsart im Bon."
+  },
+  "bonsVoidOf": "Storno zu Bon Nr. {number}",
+  "@bonsVoidOf": {
+    "description": "Storno-Bon: zu welchem Bon; number ist die Nummer oder \"?\".",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidedBy": "Storniert von {name}",
+  "@bonsVoidedBy": {
+    "description": "Wer den Storno-Bon gemacht hat.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsCreatedBy": "Erstellt von {name}",
+  "@bonsCreatedBy": {
+    "description": "Wer den Sonderbeleg erstellt hat.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsRungUpBy": "Boniert von {name}",
+  "@bonsRungUpBy": {
+    "description": "Wer den Verkauf boniert hat.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidedNotCounted": "Storniert. Dieser Bon zählt nicht zum Umsatz.",
+  "@bonsVoidedNotCounted": {
+    "description": "Stornierter Bon, ohne bekannten Storno-Bon."
+  },
+  "bonsVoidedByNotCounted": "Storniert von {name}. Dieser Bon zählt nicht zum Umsatz.",
+  "@bonsVoidedByNotCounted": {
+    "description": "Stornierter Bon mit der Person des Stornos.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsCashBoxId": "Kassen-ID {id}",
+  "@bonsCashBoxId": {
+    "description": "Kassen-ID der Signatur unter dem QR-Code.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsTestReceipt": "Testbon",
+  "@bonsTestReceipt": {
+    "description": "Kennzeichen Testbon (Probe der Signatur)."
+  },
+  "bonsDeviceFailed": "Sicherheitseinrichtung ausgefallen",
+  "@bonsDeviceFailed": {
+    "description": "Die Signatur war beim Bon ausgefallen."
+  },
+  "bonsProbeSignature": "Testbon mit Probe-Signatur.",
+  "@bonsProbeSignature": {
+    "description": "Testbon mit Probe-Signatur."
+  },
+  "bonsQrOnPaper": "Der QR-Code steht auch am gedruckten Bon.",
+  "@bonsQrOnPaper": {
+    "description": "Hinweis unter dem QR-Code."
+  },
+  "bonsVoidFailed": "Der Storno konnte nicht gespeichert werden. Bitte noch einmal.",
+  "@bonsVoidFailed": {
+    "description": "Storno nicht gespeichert."
+  },
+  "bonsVoidOlderThanProbe": "Dieser Bon ist älter als die Probe-Signatur und kann nicht storniert werden.",
+  "@bonsVoidOlderThanProbe": {
+    "description": "Bon nicht in der Kette der Probe-Signatur."
+  },
+  "bonsVoidFromTestTime": "Dieser Bon stammt aus der Testzeit und kann nicht storniert werden.",
+  "@bonsVoidFromTestTime": {
+    "description": "Bon aus der Testzeit, Kassa in Betrieb."
+  },
+  "bonsVoidQuestion": "Bon Nr. {number} wirklich stornieren?",
+  "@bonsVoidQuestion": {
+    "description": "Rückfrage vor dem Storno.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "bonsVoidCashBack": "Du gibst {amount} bar zurück.",
+  "@bonsVoidCashBack": {
+    "description": "Rückfrage, Barzahlung: Geld zurückgeben.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidCardHint": "Das Geld geht nicht von selbst zurück. Bitte die Zahlung in der SumUp-App rückbuchen.",
+  "@bonsVoidCardHint": {
+    "description": "Rückfrage, Kartenzahlung: in SumUp rückbuchen."
+  },
+  "bonsVoidConfirmCard": "Stornieren, Rückbuchung mache ich in SumUp",
+  "@bonsVoidConfirmCard": {
+    "description": "Taste: Storno einer Kartenzahlung bestätigen."
+  },
+  "bonsVoidConfirm": "Ja, stornieren",
+  "@bonsVoidConfirm": {
+    "description": "Taste: Storno bestätigen."
+  },
+  "itemsTitle": "Artikel",
+  "@itemsTitle": {
+    "description": "Überschrift des Bereichs Artikel."
+  },
+  "itemsWithChoice": "Mit Auswahl",
+  "@itemsWithChoice": {
+    "description": "Zweite Zeile: Artikel mit Auswahl-Vorlage."
+  },
+  "itemsPlusDeposit": "plus {amount} Pfand",
+  "@itemsPlusDeposit": {
+    "description": "Zweite Zeile: Artikel mit Pfand.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsColumnItem": "Artikel",
+  "@itemsColumnItem": {
+    "description": "Kopf der Liste: Spalte Artikel."
+  },
+  "itemsPrice": "Preis",
+  "@itemsPrice": {
+    "description": "Kopf der Liste und Detail: Preis."
+  },
+  "itemsFavorite": "Favorit",
+  "@itemsFavorite": {
+    "description": "Kopf der Liste: Spalte Favorit."
+  },
+  "itemsInSale": "Im Verkauf",
+  "@itemsInSale": {
+    "description": "Kopf der Liste: Spalte Im Verkauf."
+  },
+  "itemsFavoriteRemove": "{name} aus den Favoriten nehmen",
+  "@itemsFavoriteRemove": {
+    "description": "Vorlesehilfe des Sterns, Artikel ist Favorit.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsFavoriteAdd": "{name} zu den Favoriten",
+  "@itemsFavoriteAdd": {
+    "description": "Vorlesehilfe des Sterns, Artikel ist kein Favorit.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsInSaleLabel": "{name} im Verkauf",
+  "@itemsInSaleLabel": {
+    "description": "Vorlesehilfe des Schalters Im Verkauf.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsChangePrice": "Preis ändern",
+  "@itemsChangePrice": {
+    "description": "Taste: Preis ändern."
+  },
+  "itemsDepositToggle": "Pfand {amount}",
+  "@itemsDepositToggle": {
+    "description": "Schalter Pfand mit dem Betrag.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsVegan": "Vegan",
+  "@itemsVegan": {
+    "description": "Schalter Vegan."
+  },
+  "itemsSpicy": "Scharf",
+  "@itemsSpicy": {
+    "description": "Schalter Scharf."
+  },
+  "itemsTaxRate": "Steuersatz",
+  "@itemsTaxRate": {
+    "description": "Zeile Steuersatz."
+  },
+  "itemsChoiceWhenRinging": "Auswahl beim Bonieren",
+  "@itemsChoiceWhenRinging": {
+    "description": "Überschrift: Auswahl, die beim Bonieren kommt."
+  },
+  "itemsChoiceGroups": "{groups}.",
+  "@itemsChoiceGroups": {
+    "description": "Die Gruppen der Auswahl, mit Satzende; groups ist eine Aufzählung.",
+    "placeholders": {
+      "groups": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsFromMenuFile": "Namen, Fotos und neue Artikel kommen aus der Speisekarten-Datei.",
+  "@itemsFromMenuFile": {
+    "description": "Hinweis unten in der Detailspalte."
+  },
+  "itemsWriteFailed": "Das hat nicht geklappt. Bitte nochmal versuchen.",
+  "@itemsWriteFailed": {
+    "description": "Eine Änderung wurde nicht gespeichert (auch in den Einstellungen)."
+  },
+  "itemsNewPrice": "Neuer Preis, bisher {amount}",
+  "@itemsNewPrice": {
+    "description": "Preiseingabe: Zeile über dem Feld.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "itemsApply": "Übernehmen",
+  "@itemsApply": {
+    "description": "Taste: neuen Preis übernehmen."
   }
 }

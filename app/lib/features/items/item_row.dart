@@ -1,12 +1,15 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/app_toggle.dart';
 import '../../ui/hex_color.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
@@ -75,6 +78,7 @@ class ItemTagPills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     Widget pill(String label, Color bg, Color fg) => Container(
       height: 20,
       padding: const EdgeInsets.symmetric(horizontal: 7),
@@ -96,25 +100,31 @@ class ItemTagPills extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (item.tags.contains(ItemTag.vegan))
-          pill('VEGAN', c.veganBg, c.veganFg),
+          pill(l.kassaTagVegan, c.veganBg, c.veganFg),
         if (item.tags.contains(ItemTag.vegan) &&
             item.tags.contains(ItemTag.spicy))
           const SizedBox(width: 4),
         if (item.tags.contains(ItemTag.spicy))
-          pill('SCHARF', c.spicyBg, c.spicyFg),
+          pill(l.kassaTagSpicy, c.spicyBg, c.spicyFg),
       ],
     );
   }
 }
 
-/// Zweite Zeile einer Zeile: nicht im Verkauf, sonst Vorlage, Pfand, Zusatz.
-String? itemSecondLine(Item item, ModifierTemplate? template) {
-  if (!item.inSale) return 'Nicht im Verkauf';
-  if (template != null) return 'Mit Auswahl';
+/// Zweite Zeile einer Zeile: nicht im Verkauf, sonst Vorlage, Pfand, Zusatz
+/// ([info]: die Zusatzangabe in der Bediensprache).
+String? itemSecondLine(
+  L10n l,
+  Item item,
+  ModifierTemplate? template,
+  String? info,
+) {
+  if (!item.inSale) return l.kassaNotForSale;
+  if (template != null) return l.itemsWithChoice;
   if (item.depositCents > 0) {
-    return 'plus ${formatEuro(item.depositCents)} Pfand';
+    return l.itemsPlusDeposit(formatEuro(item.depositCents));
   }
-  return item.info;
+  return info;
 }
 
 /// Kopf der Liste: Artikel, Preis, Favorit, Im Verkauf (12,5 dp 700, `ink2`).
@@ -124,6 +134,7 @@ class ItemListHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     final style = Theme.of(context).textTheme.bodySmall!
         .copyWith(fontSize: 12.5, fontWeight: FontWeight.w700, color: c.ink2);
     Widget cell(String label, double width, Alignment alignment) => SizedBox(
@@ -144,10 +155,10 @@ class ItemListHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Text('Artikel', style: style)),
-          cell('Preis', _priceWidth, Alignment.centerRight),
-          cell('Favorit', _starWidth, Alignment.center),
-          cell('Im Verkauf', _toggleWidth, Alignment.center),
+          Expanded(child: Text(l.itemsColumnItem, style: style)),
+          cell(l.itemsPrice, _priceWidth, Alignment.centerRight),
+          cell(l.itemsFavorite, _starWidth, Alignment.center),
+          cell(l.itemsInSale, _toggleWidth, Alignment.center),
         ],
       ),
     );
@@ -156,8 +167,8 @@ class ItemListHeader extends StatelessWidget {
 
 /// Eine Zeile der Artikelliste. Die Fläche mit Bild, Name und Preis wählt den
 /// Artikel (`row-<id>`), Stern (`fav-<id>`) und Schalter (`insale-<id>`)
-/// schreiben sofort.
-class ItemRow extends StatelessWidget {
+/// schreiben sofort. Name und Zusatz stehen in der Bediensprache.
+class ItemRow extends ConsumerWidget {
   const ItemRow({
     super.key,
     required this.item,
@@ -176,11 +187,15 @@ class ItemRow extends StatelessWidget {
   final ValueChanged<bool> onInSale;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final menuText = ref.watch(menuTextProvider);
+    final name = menuText(item.name);
+    final info = item.info == null ? null : menuText(item.info!);
     final ink = item.inSale ? c.ink : c.ink2;
-    final second = itemSecondLine(item, template);
+    final second = itemSecondLine(l, item, template, info);
     return Container(
       height: _rowHeight,
       padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
@@ -222,7 +237,7 @@ class ItemRow extends StatelessWidget {
                                 children: [
                                   Flexible(
                                     child: Text(
-                                      item.name,
+                                      name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: text.bodyMedium!.copyWith(
@@ -278,8 +293,8 @@ class ItemRow extends StatelessWidget {
                 onTap: () => onFavorite(!item.favorite),
                 minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
                 semanticLabel: item.favorite
-                    ? '${item.name} aus den Favoriten nehmen'
-                    : '${item.name} zu den Favoriten',
+                    ? l.itemsFavoriteRemove(name)
+                    : l.itemsFavoriteAdd(name),
                 child: SizedBox(
                   width: KassaTokens.minTap,
                   height: KassaTokens.minTap,
@@ -301,7 +316,7 @@ class ItemRow extends StatelessWidget {
             width: _toggleWidth,
             child: Semantics(
               toggled: item.inSale,
-              label: '${item.name} im Verkauf',
+              label: l.itemsInSaleLabel(name),
               excludeSemantics: true,
               onTap: () => onInSale(!item.inSale),
               child: AppToggle(

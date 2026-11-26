@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/keypad.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
@@ -37,6 +38,7 @@ class _PriceEntryState extends State<PriceEntry> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final empty = _input.isEmpty;
     final canSave = _input.cents > 0;
     return Column(
@@ -51,7 +53,7 @@ class _PriceEntryState extends State<PriceEntry> {
                 widget.header,
                 const SizedBox(height: KassaTokens.spaceXxl),
                 Text(
-                  'Neuer Preis, bisher ${formatEuro(widget.currentCents)}',
+                  l.itemsNewPrice(formatEuro(widget.currentCents)),
                   style: text.bodySmall!.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -102,7 +104,7 @@ class _PriceEntryState extends State<PriceEntry> {
               Expanded(
                 child: PrimaryButton(
                   key: const Key('cancel-price'),
-                  label: 'Abbrechen',
+                  label: l.kassaCancel,
                   filled: false,
                   height: KassaTokens.secondaryActionHeight,
                   onPressed: widget.onCancel,
@@ -112,7 +114,7 @@ class _PriceEntryState extends State<PriceEntry> {
               Expanded(
                 child: PrimaryButton(
                   key: const Key('save-price'),
-                  label: 'Übernehmen',
+                  label: l.itemsApply,
                   labelSize: 17,
                   height: KassaTokens.secondaryActionHeight,
                   onPressed: canSave ? () => widget.onSave(_input.cents) : null,

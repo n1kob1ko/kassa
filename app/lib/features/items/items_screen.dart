@@ -3,6 +3,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../data/providers.dart';
 import '../../domain/catalog.dart';
+import '../../l10n/generated/l10n.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/tokens.dart';
 import '../kassa/category_rail.dart';
 import 'item_detail.dart';
@@ -71,6 +73,8 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final menuText = ref.watch(menuTextProvider);
     final catalog = ref.watch(catalogStreamProvider).value;
     if (catalog == null) return ColoredBox(color: c.ground);
 
@@ -91,6 +95,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     ];
     final selected =
         items.where((i) => i.id == _itemId).firstOrNull ?? items.firstOrNull;
+    final categoryName = category == null ? '' : menuText(category.name);
 
     final radius = BorderRadius.circular(KassaTokens.radiusCard);
     return Row(
@@ -111,13 +116,16 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                   height: KassaTokens.receiptHeaderHeight,
                   child: Row(
                     children: [
-                      Text('Artikel', style: text.headlineMedium),
+                      Text(l.itemsTitle, style: text.headlineMedium),
                       const SizedBox(width: KassaTokens.spaceLg),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(
-                            '${category?.name ?? ''}, ${items.length} Artikel',
+                            l.kassaCategoryLabel(
+                              categoryName,
+                              l.kassaItemCount(items.length),
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.labelLarge!.copyWith(
@@ -177,7 +185,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
         ItemDetail(
           key: ValueKey(selected?.id),
           item: selected,
-          categoryName: category?.name ?? '',
+          categoryName: categoryName,
           template: selected == null ? null : catalog.templateOf(selected),
           editingPrice: _editingPrice,
           failed: _failed,

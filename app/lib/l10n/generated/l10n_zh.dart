@@ -431,4 +431,319 @@ class L10nZh extends L10n {
 
   @override
   String get unclearBack => '返回';
+
+  @override
+  String get dateMonthJanuary => '一月';
+
+  @override
+  String get dateMonthFebruary => '二月';
+
+  @override
+  String get dateMonthMarch => '三月';
+
+  @override
+  String get dateMonthApril => '四月';
+
+  @override
+  String get dateMonthMay => '五月';
+
+  @override
+  String get dateMonthJune => '六月';
+
+  @override
+  String get dateMonthJuly => '七月';
+
+  @override
+  String get dateMonthAugust => '八月';
+
+  @override
+  String get dateMonthSeptember => '九月';
+
+  @override
+  String get dateMonthOctober => '十月';
+
+  @override
+  String get dateMonthNovember => '十一月';
+
+  @override
+  String get dateMonthDecember => '十二月';
+
+  @override
+  String get dateWeekdayMonday => '星期一';
+
+  @override
+  String get dateWeekdayTuesday => '星期二';
+
+  @override
+  String get dateWeekdayWednesday => '星期三';
+
+  @override
+  String get dateWeekdayThursday => '星期四';
+
+  @override
+  String get dateWeekdayFriday => '星期五';
+
+  @override
+  String get dateWeekdaySaturday => '星期六';
+
+  @override
+  String get dateWeekdaySunday => '星期日';
+
+  @override
+  String get dateWeekdayShortMonday => '周一';
+
+  @override
+  String get dateWeekdayShortTuesday => '周二';
+
+  @override
+  String get dateWeekdayShortWednesday => '周三';
+
+  @override
+  String get dateWeekdayShortThursday => '周四';
+
+  @override
+  String get dateWeekdayShortFriday => '周五';
+
+  @override
+  String get dateWeekdayShortSaturday => '周六';
+
+  @override
+  String get dateWeekdayShortSunday => '周日';
+
+  @override
+  String dateWeekdayDayMonth(String weekday, int day, String month) {
+    return '$month$day日 $weekday';
+  }
+
+  @override
+  String get bonsTitle => '小票记录';
+
+  @override
+  String bonsToday(String day) {
+    return '今天，$day';
+  }
+
+  @override
+  String bonsDayLabel(String weekday, int day, String month) {
+    return '$month$day日 $weekday';
+  }
+
+  @override
+  String get bonsNoneToday => '今天还没有小票。';
+
+  @override
+  String get bonsNoneForFilter => '没有符合此筛选的小票。';
+
+  @override
+  String get bonsFilterAll => '全部';
+
+  @override
+  String get bonsCash => '现金';
+
+  @override
+  String get bonsCard => '刷卡';
+
+  @override
+  String get bonsVoided => '已作废';
+
+  @override
+  String get bonsVoidReceipt => '作废单';
+
+  @override
+  String get bonsKindStart => '启用小票';
+
+  @override
+  String get bonsKindMonth => '月度小票';
+
+  @override
+  String get bonsKindYear => '年度小票';
+
+  @override
+  String get bonsKindZero => '零元小票';
+
+  @override
+  String get bonsKindCollective => '汇总小票';
+
+  @override
+  String get bonsKindClosing => '终止小票';
+
+  @override
+  String bonsNumberShort(int number) {
+    return '$number 号';
+  }
+
+  @override
+  String get bonsPrint => '打印';
+
+  @override
+  String get bonsVoid => '作废';
+
+  @override
+  String get bonsNothingSelected => '点按一张小票即可查看。';
+
+  @override
+  String bonsTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String get bonsDeposit => '押金';
+
+  @override
+  String bonsTaxRate(int percent) {
+    return '增值税 $percent %';
+  }
+
+  @override
+  String get bonsPayment => '付款方式';
+
+  @override
+  String bonsVoidOf(String number) {
+    return '作废小票号 $number';
+  }
+
+  @override
+  String bonsVoidedBy(String name) {
+    return '作废人：$name';
+  }
+
+  @override
+  String bonsCreatedBy(String name) {
+    return '创建人：$name';
+  }
+
+  @override
+  String bonsRungUpBy(String name) {
+    return '收银员：$name';
+  }
+
+  @override
+  String get bonsVoidedNotCounted => '已作废。此小票不计入营业额。';
+
+  @override
+  String bonsVoidedByNotCounted(String name) {
+    return '由 $name 作废。此小票不计入营业额。';
+  }
+
+  @override
+  String bonsCashBoxId(String id) {
+    return '收银机编号 $id';
+  }
+
+  @override
+  String get bonsTestReceipt => '测试小票';
+
+  @override
+  String get bonsDeviceFailed => '安全装置故障';
+
+  @override
+  String get bonsProbeSignature => '带试用签名的测试小票。';
+
+  @override
+  String get bonsQrOnPaper => '打印的小票上也有二维码。';
+
+  @override
+  String get bonsVoidFailed => '作废未能保存。请重试。';
+
+  @override
+  String get bonsVoidOlderThanProbe => '此小票早于试用签名，无法作废。';
+
+  @override
+  String get bonsVoidFromTestTime => '此小票来自测试期，无法作废。';
+
+  @override
+  String bonsVoidQuestion(int number) {
+    return '确定作废小票号 $number？';
+  }
+
+  @override
+  String bonsVoidCashBack(String amount) {
+    return '请退还现金 $amount。';
+  }
+
+  @override
+  String get bonsVoidCardHint => '款项不会自动退回。请在 SumUp 应用中退款。';
+
+  @override
+  String get bonsVoidConfirmCard => '作废，我会在 SumUp 中退款';
+
+  @override
+  String get bonsVoidConfirm => '确定作废';
+
+  @override
+  String get itemsTitle => '商品';
+
+  @override
+  String get itemsWithChoice => '含选项';
+
+  @override
+  String itemsPlusDeposit(String amount) {
+    return '另加押金 $amount';
+  }
+
+  @override
+  String get itemsColumnItem => '商品';
+
+  @override
+  String get itemsPrice => '价格';
+
+  @override
+  String get itemsFavorite => '收藏';
+
+  @override
+  String get itemsInSale => '在售';
+
+  @override
+  String itemsFavoriteRemove(String name) {
+    return '将 $name 移出收藏';
+  }
+
+  @override
+  String itemsFavoriteAdd(String name) {
+    return '将 $name 加入收藏';
+  }
+
+  @override
+  String itemsInSaleLabel(String name) {
+    return '$name 在售';
+  }
+
+  @override
+  String get itemsChangePrice => '修改价格';
+
+  @override
+  String itemsDepositToggle(String amount) {
+    return '押金 $amount';
+  }
+
+  @override
+  String get itemsVegan => '纯素';
+
+  @override
+  String get itemsSpicy => '辣';
+
+  @override
+  String get itemsTaxRate => '税率';
+
+  @override
+  String get itemsChoiceWhenRinging => '点单时的选项';
+
+  @override
+  String itemsChoiceGroups(String groups) {
+    return '$groups。';
+  }
+
+  @override
+  String get itemsFromMenuFile => '名称、照片和新商品来自菜单文件。';
+
+  @override
+  String get itemsWriteFailed => '未成功，请重试。';
+
+  @override
+  String itemsNewPrice(String amount) {
+    return '新价格，原价 $amount';
+  }
+
+  @override
+  String get itemsApply => '确定';
 }

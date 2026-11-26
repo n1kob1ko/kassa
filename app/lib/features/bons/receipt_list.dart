@@ -2,21 +2,28 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 
 /// Welche Bons die Liste zeigt.
 enum BonFilter {
-  all('alle', 'Alle'),
-  cash('bar', 'Bar'),
-  card('karte', 'Karte'),
-  voided('storniert', 'Storniert');
+  all('alle'),
+  cash('bar'),
+  card('karte'),
+  voided('storniert');
 
-  const BonFilter(this.id, this.label);
+  const BonFilter(this.id);
 
-  /// Teil der Schlüssel `filter-<id>`.
+  /// Teil der Schlüssel `filter-<id>`, in jeder Sprache gleich.
   final String id;
-  final String label;
+
+  String label(L10n l) => switch (this) {
+    BonFilter.all => l.bonsFilterAll,
+    BonFilter.cash => l.bonsCash,
+    BonFilter.card => l.bonsCard,
+    BonFilter.voided => l.bonsVoided,
+  };
 
   /// "Bar" und "Karte" zeigen Verkäufe dieser Zahlung, die nicht storniert
   /// sind. "Storniert" zeigt stornierte Bons und Storno-Bons. Sonderbelege
@@ -45,20 +52,35 @@ String receiptTime(DateTime t) =>
 /// Zahl mit echtem Minuszeichen, wie [formatEuro] es schreibt.
 String signedCount(int n) => n < 0 ? '−${-n}' : '$n';
 
-/// Die Zeilen einzeilig: "2 × Cola, Pommes".
-String receiptSummary(Receipt r) => [
-  for (final l in r.lines)
-    l.quantity.abs() > 1 ? '${l.quantity.abs()} × ${l.name}' : l.name,
-].join(', ');
+/// Die Zeilen einzeilig: "2 × Cola, Pommes". Die Namen sind die des
+/// gespeicherten Bons, wie er gedruckt wurde.
+String receiptSummary(L10n l, Receipt r) => [
+  for (final line in r.lines)
+    line.quantity.abs() > 1
+        ? '${line.quantity.abs()} × ${line.name}'
+        : line.name,
+].join(l.uiListSeparator);
+
+/// Bezeichnung eines Sonderbelegs am Bildschirm, sonst `null`
+/// ([ReceiptKindX.specialTitle] bleibt die deutsche Fassung des Zettels).
+String? specialTitleText(L10n l, ReceiptKind kind) => switch (kind) {
+  ReceiptKind.sale || ReceiptKind.voided => null,
+  ReceiptKind.start => l.bonsKindStart,
+  ReceiptKind.month => l.bonsKindMonth,
+  ReceiptKind.year => l.bonsKindYear,
+  ReceiptKind.zero => l.bonsKindZero,
+  ReceiptKind.collective => l.bonsKindCollective,
+  ReceiptKind.closing => l.bonsKindClosing,
+};
 
 /// Was die Pille zeigt: "Storno" (Storno-Bon), "Storniert", die Bezeichnung
 /// eines Sonderbelegs oder die Zahlung.
-String receiptPillLabel(Receipt r) {
-  if (r.kind == ReceiptKind.voided) return 'Storno';
-  if (r.isVoided) return 'Storniert';
-  final special = r.kind.specialTitle;
+String receiptPillLabel(L10n l, Receipt r) {
+  if (r.kind == ReceiptKind.voided) return l.bonsVoidReceipt;
+  if (r.isVoided) return l.bonsVoided;
+  final special = specialTitleText(l, r.kind);
   if (special != null) return special;
-  return r.payment?.kind == PaymentKind.cash ? 'Bar' : 'Karte';
+  return r.payment?.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard;
 }
 
 /// Status-Pille: Zahlungsart ruhig, Storno und Storniert in Rot, die
@@ -87,7 +109,7 @@ class ReceiptPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(KassaTokens.radiusPill),
       ),
       child: Text(
-        receiptPillLabel(receipt),
+        receiptPillLabel(L10n.of(context), receipt),
         maxLines: 1,
         style: Theme.of(context).textTheme.labelLarge!
             .copyWith(fontSize: 12.5, color: fg),
@@ -174,6 +196,7 @@ class _ReceiptRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final struck = receipt.isVoided;
     final ink = struck ? c.ink2 : c.ink;
     const gap = SizedBox(width: 14);
@@ -193,7 +216,7 @@ class _ReceiptRow extends StatelessWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 58),
               child: Text(
-                'Nr. ${receipt.number}',
+                l.bonsNumberShort(receipt.number),
                 maxLines: 1,
                 style: text.bodyMedium!.copyWith(
                   fontWeight: FontWeight.w800,
@@ -217,7 +240,7 @@ class _ReceiptRow extends StatelessWidget {
             gap,
             Expanded(
               child: Text(
-                receiptSummary(receipt),
+                receiptSummary(l, receipt),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyMedium!.copyWith(

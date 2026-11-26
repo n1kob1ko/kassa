@@ -8,8 +8,10 @@ import '../../data/receipt_repository.dart' show NotInCurrentChainException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/receipt.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/primary_button.dart';
+import '../../ui/print_problem_text.dart';
 import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
@@ -39,7 +41,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
   bool _busy = false;
 
   /// Warum der letzte Storno nicht geklappt hat, sonst `null`.
-  String? _failure;
+  VoidFailure? _failure;
 
   Receipt? _find(String? id) {
     for (final r in widget.all) {
@@ -68,8 +70,8 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       });
     } catch (e) {
       final failure = e is NotInCurrentChainException
-          ? await _notInChainText()
-          : voidFailText;
+          ? await _notInChainFailure()
+          : VoidFailure.failed;
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -78,16 +80,16 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     }
   }
 
-  /// Der Satz, wenn der Bon nicht zur laufenden Kette gehört: in Betrieb
+  /// Der Grund, wenn der Bon nicht zur laufenden Kette gehört: in Betrieb
   /// stammt er aus der Testzeit, sonst ist er älter als die Probe.
-  Future<String> _notInChainText() async {
+  Future<VoidFailure> _notInChainFailure() async {
     try {
       final state = await ref.read(rksvRepositoryProvider).current();
-      if (state.mode == RksvMode.live) return voidFromTestTimeText;
+      if (state.mode == RksvMode.live) return VoidFailure.fromTestTime;
     } catch (_) {
       // Ohne Stand bleibt der bisherige Satz.
     }
-    return voidOlderThanProbeText;
+    return VoidFailure.olderThanProbe;
   }
 
   /// Zeigt das Ergebnis des Druckens als Hinweis unten, ohne "Rückgängig".
@@ -96,9 +98,12 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     if (!mounted) return;
     // Ohne Drucker gibt es nichts zu melden.
     if (outcome.problem == PrintProblem.notSetUp) return;
+    final l = L10n.of(context);
     showUndoToast(
       context,
-      message: outcome.ok ? 'Bon gedruckt' : outcome.message,
+      message: outcome.ok
+          ? l.kassaPrinted
+          : printProblemText(l, outcome.problem!),
     );
   }
 
@@ -118,6 +123,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
+    final l = L10n.of(context);
     final receipt = widget.receipt;
     final staff = ref.watch(sessionProvider);
     final settings =
@@ -165,7 +171,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                           Expanded(
                             child: PrimaryButton(
                               key: const Key('print-receipt'),
-                              label: 'Drucken',
+                              label: l.bonsPrint,
                               icon: LucideIcons.printer,
                               filled: false,
                               height: KassaTokens.secondaryActionHeight,
@@ -178,7 +184,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                           Expanded(
                             child: BonsActionButton(
                               key: const Key('void-receipt'),
-                              label: 'Stornieren',
+                              label: l.bonsVoid,
                               height: KassaTokens.secondaryActionHeight,
                               radius: KassaTokens.radiusXxl,
                               border: c.line,
@@ -204,7 +210,7 @@ class _NothingSelected extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(KassaTokens.spaceHuge),
         child: Text(
-          'Tippe auf einen Bon, um ihn anzusehen.',
+          L10n.of(context).bonsNothingSelected,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(
             fontWeight: FontWeight.w600,
@@ -225,8 +231,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     // Ein Sonderbeleg heißt nach seiner Art; die Pille sagte dasselbe.
-    final special = receipt.kind.specialTitle;
+    final special = specialTitleText(l, receipt.kind);
     return Container(
       height: KassaTokens.receiptHeaderHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -238,7 +245,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            special ?? 'Bon Nr. ${receipt.number}',
+            special ?? l.kassaReceiptNumber(receipt.number),
             maxLines: 1,
             style: text.headlineMedium,
           ),
@@ -247,7 +254,7 @@ class _Header extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Text(
-                '${receiptTime(receipt.createdAt)} Uhr',
+                l.bonsTime(receiptTime(receipt.createdAt)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.labelLarge!.copyWith(
@@ -277,6 +284,7 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final small = text.bodySmall!.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -299,7 +307,7 @@ class _Body extends StatelessWidget {
       children: [
         for (final l in r.lines) _LineRow(l),
         if (r.depositCents != 0)
-          _AmountRow('Pfand', formatEuro(r.depositCents), strong: true),
+          _AmountRow(l.bonsDeposit, formatEuro(r.depositCents), strong: true),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Column(
@@ -307,7 +315,7 @@ class _Body extends StatelessWidget {
             children: [
               for (final t in r.taxLines)
                 _SmallRow(
-                  '${t.rate.percent} % MwSt',
+                  l.bonsTaxRate(t.rate.percent),
                   formatEuro(t.taxCents),
                   small,
                 ),
@@ -315,13 +323,21 @@ class _Body extends StatelessWidget {
               if (payment != null) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
                 _SmallRow(
-                  'Zahlung',
-                  payment.kind == PaymentKind.cash ? 'Bar' : 'Karte',
+                  l.bonsPayment,
+                  payment.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
                   small,
                 ),
                 if (cash) ...[
-                  _SmallRow('Gegeben', formatEuro(payment.givenCents), small),
-                  _SmallRow('Rückgeld', formatEuro(payment.changeCents), small),
+                  _SmallRow(
+                    l.kassaGiven,
+                    formatEuro(payment.givenCents),
+                    small,
+                  ),
+                  _SmallRow(
+                    l.kassaChange,
+                    formatEuro(payment.changeCents),
+                    small,
+                  ),
                 ],
               ],
             ],
@@ -334,7 +350,7 @@ class _Body extends StatelessWidget {
             children: [
               if (r.kind == ReceiptKind.voided)
                 Text(
-                  'Storno zu Bon Nr. ${pair?.number ?? '?'}',
+                  l.bonsVoidOf('${pair?.number ?? '?'}'),
                   style: small.copyWith(
                     fontWeight: FontWeight.w700,
                     color: c.ink,
@@ -345,17 +361,17 @@ class _Body extends StatelessWidget {
                 style: small,
               ),
               Text(switch (r.kind) {
-                ReceiptKind.voided => 'Storniert von ${r.staffName}',
-                _ when special => 'Erstellt von ${r.staffName}',
-                _ => 'Boniert von ${r.staffName}',
+                ReceiptKind.voided => l.bonsVoidedBy(r.staffName),
+                _ when special => l.bonsCreatedBy(r.staffName),
+                _ => l.bonsRungUpBy(r.staffName),
               }, style: small),
               if (r.isVoided)
                 Padding(
                   padding: const EdgeInsets.only(top: KassaTokens.spaceSm),
                   child: Text(
                     voider == null
-                        ? 'Storniert. Dieser Bon zählt nicht zum Umsatz.'
-                        : 'Storniert von ${voider.staffName}. Dieser Bon zählt nicht zum Umsatz.',
+                        ? l.bonsVoidedNotCounted
+                        : l.bonsVoidedByNotCounted(voider.staffName),
                     style: small,
                   ),
                 ),
@@ -380,6 +396,7 @@ class _SignatureBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final small = text.bodySmall!.copyWith(
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -398,7 +415,7 @@ class _SignatureBlock extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kassen-ID ${stamp.cashBoxId}',
+                  l.bonsCashBoxId(stamp.cashBoxId),
                   style: text.bodyMedium!.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -408,14 +425,11 @@ class _SignatureBlock extends StatelessWidget {
                 const SizedBox(height: KassaTokens.spaceXs),
                 if (stamp.damaged) ...[
                   // Ein Testbon bleibt ein Testbon, auch mit Ausfall-Vermerk.
-                  if (stamp.probe) Text('Testbon', style: small),
-                  Text('Sicherheitseinrichtung ausgefallen', style: small),
+                  if (stamp.probe) Text(l.bonsTestReceipt, style: small),
+                  Text(l.bonsDeviceFailed, style: small),
                 ] else if (stamp.probe) ...[
-                  Text('Testbon mit Probe-Signatur.', style: small),
-                  Text(
-                    'Der QR-Code steht auch am gedruckten Bon.',
-                    style: small,
-                  ),
+                  Text(l.bonsProbeSignature, style: small),
+                  Text(l.bonsQrOnPaper, style: small),
                 ],
               ],
             ),
@@ -435,10 +449,11 @@ class _LineRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    // Die Namen des gespeicherten Bons, wie er gedruckt wurde.
     final sub = [
       for (final o in line.options) o.optionName,
       if (line.info != null && line.info!.isNotEmpty) line.info!,
-    ].join(', ');
+    ].join(L10n.of(context).uiListSeparator);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -557,7 +572,7 @@ class _Total extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Summe', style: text.bodyLarge),
+          Text(L10n.of(context).kassaTotal, style: text.bodyLarge),
           Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
