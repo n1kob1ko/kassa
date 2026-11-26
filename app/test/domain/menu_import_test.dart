@@ -273,4 +273,169 @@ void main() {
     );
     expect(problemsOf(demoWith({'bon_ende': 'x' * 200})), isEmpty);
   });
+
+  group('Übersetzungen', () {
+    List<String> problemsOf(String json) {
+      try {
+        parseMenuFile(json);
+        return const [];
+      } on MenuImportException catch (e) {
+        return e.problems;
+      }
+    }
+
+    test('ohne den Schlüssel ist das Wörterbuch leer', () {
+      expect(parseMenuFile(demo).translations, isEmpty);
+    });
+
+    test('Datei mit uebersetzungen wird gelesen', () {
+      final c = parseMenuFile(
+        demoWith({
+          'uebersetzungen': {
+            'Bowls': {'en': 'Rice bowls', 'tr': 'Kaseler'},
+            'Cola 0,33 l': {'en': 'Cola', 'zh': '可乐'},
+          },
+        }),
+      );
+      expect(c.translations, {
+        'Bowls': {'en': 'Rice bowls', 'tr': 'Kaseler'},
+        'Cola 0,33 l': {'en': 'Cola', 'zh': '可乐'},
+      });
+    });
+
+    test('Namen aus Kategorie, Artikel, Info, Gruppe und Option gelten', () {
+      final c = parseMenuFile(
+        demoWith({
+          'uebersetzungen': {
+            'Süßes': {'en': 'Sweets'},
+            'Teigtaschen': {'en': 'Dumplings'},
+            '5 Stück': {'en': '5 pieces'},
+            'Größe': {'en': 'Size'},
+            'XXL': {'en': 'Extra large'},
+          },
+        }),
+      );
+      expect(c.translations.keys, [
+        'Süßes',
+        'Teigtaschen',
+        '5 Stück',
+        'Größe',
+        'XXL',
+      ]);
+    });
+
+    test('Leerzeichen werden entfernt, leere und gleiche Texte entfallen', () {
+      final c = parseMenuFile(
+        demoWith({
+          'uebersetzungen': {
+            ' Cola 0,33 l ': {
+              'en': '  Soda ',
+              'tr': '   ',
+              'zh': 'Cola 0,33 l',
+            },
+            'Bowls': {'en': ''},
+          },
+        }),
+      );
+      expect(c.translations, {
+        'Cola 0,33 l': {'en': 'Soda'},
+      });
+    });
+
+    test('Meldungen wörtlich', () {
+      expect(problemsOf(demoWith({'uebersetzungen': 'x'})), [
+        '"uebersetzungen" muss eine Liste von Namen mit ihren Übersetzungen sein.',
+      ]);
+      expect(
+        problemsOf(
+          demoWith({
+            'uebersetzungen': {
+              'Pizza': {'en': 'Pizza'},
+            },
+          }),
+        ),
+        ['Übersetzung "Pizza": Diesen Namen gibt es in der Speisekarte nicht.'],
+      );
+      expect(
+        problemsOf(
+          demoWith({
+            'uebersetzungen': {
+              'Pommes': {'fr': 'Frites'},
+            },
+          }),
+        ),
+        [
+          'Übersetzung "Pommes": Die Sprache "fr" kennt die Kassa nicht. Erlaubt sind en, zh, tr und ar.',
+        ],
+      );
+      expect(
+        problemsOf(
+          demoWith({
+            'uebersetzungen': {
+              'Pommes': {'en': 5},
+            },
+          }),
+        ),
+        ['Übersetzung "Pommes", Sprache "en": Der Text fehlt.'],
+      );
+      expect(
+        problemsOf(
+          demoWith({
+            'uebersetzungen': {
+              'Pommes': {'en': 'x' * 201},
+            },
+          }),
+        ),
+        ['Übersetzung "Pommes", Sprache "en": Höchstens 200 Zeichen.'],
+      );
+      expect(
+        parseMenuFile(
+          demoWith({
+            'uebersetzungen': {
+              'Pommes': {'en': 'x' * 200},
+            },
+          }),
+        ).translations['Pommes'],
+        isNotNull,
+      );
+    });
+  });
+
+  group('gemeinsame Prüfdateien', () {
+    final root = Directory('../shared/fixtures/menu');
+    final names = [
+      for (final f in Directory('${root.path}/inputs').listSync())
+        if (f is File && f.path.contains('uebersetzung'))
+          f.uri.pathSegments.last,
+    ]..sort();
+
+    test(
+      'es gibt Dateien',
+      () => expect(names.length, greaterThanOrEqualTo(6)),
+    );
+
+    for (final name in names) {
+      test(name, () {
+        final input = File('${root.path}/inputs/$name').readAsStringSync();
+        final expected = jsonDecode(
+          File('${root.path}/expected/$name').readAsStringSync(),
+        ) as Map<String, dynamic>;
+        if (expected.containsKey('problems')) {
+          expect(
+            () => parseMenuFile(input),
+            throwsA(
+              isA<MenuImportException>().having(
+                (e) => e.problems,
+                'problems',
+                expected['problems'],
+              ),
+            ),
+          );
+        } else {
+          final menu = expected['menu'] as Map<String, dynamic>;
+          expect(parseMenuFile(input).translations, menu['translations']);
+        }
+      });
+    }
+  });
 }

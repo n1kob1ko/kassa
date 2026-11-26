@@ -7,6 +7,7 @@ import '../domain/catalog.dart';
 import '../domain/wire_file.dart';
 import 'database.dart';
 import 'outbox_repository.dart';
+import 'translation_repository.dart';
 
 class CatalogRepository {
   CatalogRepository(this._db, {this._clock = const SystemClock()});
@@ -18,6 +19,8 @@ class CatalogRepository {
   /// alte Stand. Favorit und Im-Verkauf bestehender Artikel bleiben erhalten,
   /// alles andere kommt aus der Datei. Artikel, die in der Datei fehlen,
   /// werden stillgelegt, nicht gelöscht. Mitarbeiter legt der Import nicht an.
+  /// Übersetzungen aus der Datei ersetzen die gespeicherten je Name und
+  /// Sprache; was nicht in der Datei steht, bleibt.
   Future<void> importCatalog(Catalog c) async {
     final categoryIds = {for (final k in c.categories) k.id};
     for (final item in c.items) {
@@ -138,6 +141,19 @@ class CatalogRepository {
       }
       await (_db.update(_db.itemRows)..where((t) => t.id.isNotIn(itemIds)))
           .write(const ItemRowsCompanion(archived: Value(true)));
+
+      await _mergeTranslations(c.translations);
+    });
+  }
+
+  Future<void> _mergeTranslations(
+    Map<String, Map<String, String>> fromFile,
+  ) async {
+    if (fromFile.isEmpty) return;
+    final old = await TranslationRepository(_db).current();
+    await upsertIn(_db, {
+      for (final e in fromFile.entries)
+        e.key: {...?old.entries[e.key], ...e.value},
     });
   }
 

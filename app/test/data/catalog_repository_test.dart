@@ -9,6 +9,7 @@ import 'package:kassa/data/catalog_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
+import 'package:kassa/data/translation_repository.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/menu_import.dart';
 
@@ -496,6 +497,50 @@ void main() {
       await synced.updateItem('cola', priceCents: 310);
       await synced.updateItem('cola', priceCents: 320);
       expect(await pending(), [('cola', 'priceCents', '320', changedAt)]);
+    });
+  });
+
+  test(
+    'Einspielen behält alte Übersetzungen und überschreibt genannte',
+    () async {
+      await db
+          .into(db.translationRows)
+          .insert(
+            TranslationRowsCompanion.insert(
+              source: 'Cola 0,33 l',
+              valuesJson: '{"en":"Cola","tr":"Kola"}',
+            ),
+          );
+      await db
+          .into(db.translationRows)
+          .insert(
+            TranslationRowsCompanion.insert(
+              source: 'Wasser',
+              valuesJson: '{"en":"Water"}',
+            ),
+          );
+      final json = jsonDecode(demo) as Map<String, dynamic>;
+      json['uebersetzungen'] = {
+        'Cola 0,33 l': {'en': 'Soda', 'zh': '可乐'},
+        'Bowls': {'en': 'Rice bowls'},
+      };
+      await repo.importCatalog(parseMenuFile(jsonEncode(json)));
+      final d = await TranslationRepository(db).current();
+      expect(d.entries, {
+        'Cola 0,33 l': {'en': 'Soda', 'tr': 'Kola', 'zh': '可乐'},
+        'Wasser': {'en': 'Water'},
+        'Bowls': {'en': 'Rice bowls'},
+      });
+    },
+  );
+
+  test('Einspielen ohne Übersetzungen lässt das Wörterbuch', () async {
+    await TranslationRepository(db).upsert({
+      'Cola 0,33 l': {'en': 'Soda'},
+    });
+    await repo.importCatalog(parseMenuFile(demo));
+    expect((await TranslationRepository(db).current()).entries, {
+      'Cola 0,33 l': {'en': 'Soda'},
     });
   });
 }

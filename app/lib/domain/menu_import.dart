@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'catalog.dart';
+import 'menu_dictionary.dart';
 import 'staff.dart';
 
 class MenuImportException implements Exception {
@@ -213,6 +214,12 @@ Catalog parseMenuFile(String jsonText) {
     if (ok) staffSeeds.add((name: name, pin: pin as String, role: role!));
   }
 
+  final translations = _translations(
+    root['uebersetzungen'],
+    _menuNames(categoriesJson, itemsJson, groupsJson),
+    problems,
+  );
+
   if (problems.isNotEmpty) throw MenuImportException(problems);
   return Catalog(
     business: BusinessInfo(
@@ -225,6 +232,7 @@ Catalog parseMenuFile(String jsonText) {
     items: items,
     templates: templates,
     staffSeeds: staffSeeds,
+    translations: translations,
   );
 }
 
@@ -260,6 +268,95 @@ String? _optionalText(Object? raw, String name, List<String> problems) {
     return null;
   }
   return _text(raw);
+}
+
+/// Alle Namen der Speisekarte, die übersetzt werden dürfen: Kategorien,
+/// Artikel, Infotexte, Gruppen und Optionen.
+Set<String> _menuNames(
+  List categories,
+  List items,
+  Map<String, dynamic> groups,
+) {
+  final names = <String>{};
+  void add(Object? raw) {
+    final t = _text(raw);
+    if (t != null) names.add(t);
+  }
+
+  for (final k in categories) {
+    if (k is Map) add(k['name']);
+  }
+  for (final a in items) {
+    if (a is Map) {
+      add(a['name']);
+      add(a['info']);
+    }
+  }
+  for (final groupList in groups.values) {
+    if (groupList is! List) continue;
+    for (final g in groupList) {
+      if (g is! Map) continue;
+      add(g['name']);
+      final options = g['optionen'];
+      if (options is! List) continue;
+      for (final o in options) {
+        if (o is Map) add(o['name']);
+      }
+    }
+  }
+  return names;
+}
+
+/// Freiwilliges Wörterbuch. Name und Text werden gekürzt; ein leerer Text oder
+/// einer gleich dem Namen zählt als keiner.
+Map<String, Map<String, String>> _translations(
+  Object? raw,
+  Set<String> menuNames,
+  List<String> problems,
+) {
+  if (raw == null) return const {};
+  if (raw is! Map<String, dynamic> ||
+      raw.values.any((v) => v is! Map<String, dynamic>)) {
+    problems.add(
+      '"uebersetzungen" muss eine Liste von Namen mit ihren Übersetzungen sein.',
+    );
+    return const {};
+  }
+  final result = <String, Map<String, String>>{};
+  for (final entry in raw.entries) {
+    final name = entry.key.trim();
+    if (!menuNames.contains(name)) {
+      problems.add(
+        'Übersetzung "$name": Diesen Namen gibt es in der Speisekarte nicht.',
+      );
+      continue;
+    }
+    final texts = <String, String>{};
+    for (final lang in (entry.value as Map<String, dynamic>).entries) {
+      final code = lang.key;
+      if (!translationLanguages.contains(code)) {
+        problems.add(
+          'Übersetzung "$name": Die Sprache "$code" kennt die Kassa nicht. Erlaubt sind en, zh, tr und ar.',
+        );
+        continue;
+      }
+      final value = lang.value;
+      if (value is! String) {
+        problems.add('Übersetzung "$name", Sprache "$code": Der Text fehlt.');
+        continue;
+      }
+      final text = value.trim();
+      if (text.length > 200) {
+        problems.add(
+          'Übersetzung "$name", Sprache "$code": Höchstens 200 Zeichen.',
+        );
+        continue;
+      }
+      if (text.isNotEmpty && text != name) texts[code] = text;
+    }
+    if (texts.isNotEmpty) result[name] = {...?result[name], ...texts};
+  }
+  return result;
 }
 
 TaxRate? _rate(Object? value) {

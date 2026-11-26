@@ -1,0 +1,28 @@
+{
+  "uebersetzungen": {
+    "  Huhn Bowl ": {
+      "en": "  Chicken bowl  ",
+      "tr": "   ",
+      "zh": "Huhn Bowl"
+    },
+    "Bowls": {
+      "en": ""
+    }
+  },
+  "betrieb": "Beispiel-Imbiss",
+  "kategorien": [
+    {
+      "id": "bowls",
+      "name": "Bowls"
+    }
+  ],
+  "artikel": [
+    {
+      "id": "huhn-bowl",
+      "name": "Huhn Bowl",
+      "preis_cent": 990,
+      "kategorie": "bowls",
+      "mwst": 10
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import '../core/app_info.dart';
 import '../core/clock.dart';
 import '../domain/catalog.dart';
 import '../domain/day.dart';
+import '../domain/menu_dictionary.dart';
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
 import '../rksv/rksv_providers.dart';
@@ -28,6 +29,7 @@ import 'settings_repository.dart';
 import 'staff_repository.dart';
 import 'stats_repository.dart';
 import 'sync_state_repository.dart';
+import 'translation_repository.dart';
 
 /// Öffnet die echte Datenbank. Tests ersetzen ihn durch
 /// `KassaDatabase(NativeDatabase.memory())`.
@@ -38,6 +40,15 @@ final databaseProvider = Provider<KassaDatabase>((ref) {
 });
 
 final clockProvider = Provider<Clock>((ref) => const SystemClock());
+
+final translationRepositoryProvider = Provider(
+  (ref) => TranslationRepository(ref.watch(databaseProvider)),
+);
+
+/// Das Wörterbuch der Speisekarte, neu bei jeder Änderung.
+final menuDictionaryProvider = StreamProvider<MenuDictionary>(
+  (ref) => ref.watch(translationRepositoryProvider).watch(),
+);
 
 final catalogRepositoryProvider = Provider(
   (ref) => CatalogRepository(

@@ -167,6 +167,7 @@ class Catalog {
     required this.items,
     required this.templates,
     this.staffSeeds = const [],
+    this.translations = const {},
   });
 
   final BusinessInfo business;
@@ -174,6 +175,10 @@ class Catalog {
   final List<Item> items;
   final List<ModifierTemplate> templates;
   final List<({String name, String pin, StaffRole role})> staffSeeds;
+
+  /// Übersetzungen aus der Speisekarten-Datei: Name -> Sprachkürzel -> Text.
+  /// Nur beim Einlesen gefüllt; die Datenbank hält sie in `translations`.
+  final Map<String, Map<String, String>> translations;
 
   /// Abkürzung für `business.name`.
   String get businessName => business.name;
