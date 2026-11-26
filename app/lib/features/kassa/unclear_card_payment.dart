@@ -219,6 +219,14 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                       ),
                     ),
                   ),
+                  if (p.tipCents > 0) ...[
+                    const SizedBox(height: KassaTokens.spaceXs),
+                    Text(
+                      l.unclearTip(ltrIsolate(context, formatEuro(p.tipCents))),
+                      key: const Key('unclear-tip'),
+                      style: text.bodyLarge!.copyWith(color: c.ink2),
+                    ),
+                  ],
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
                     l.unclearStarted(

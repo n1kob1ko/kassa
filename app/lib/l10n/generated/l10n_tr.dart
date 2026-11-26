@@ -1405,4 +1405,45 @@ class L10nTr extends L10n {
 
   @override
   String get kassaKitchenDismiss => 'Gizle';
+
+  @override
+  String get tipGuestPays => 'Misafir öder';
+
+  @override
+  String get tipTip => 'Bahşiş';
+
+  @override
+  String get tipNone => 'Bahşişsiz';
+
+  @override
+  String tipToTerminal(String amount) {
+    return 'Terminale $amount';
+  }
+
+  @override
+  String tipConfirm(String amount) {
+    return 'Bahşiş $amount?';
+  }
+
+  @override
+  String get tipConfirmYes => 'Evet, doğru';
+
+  @override
+  String get tipConfirmNo => 'Değiştir';
+
+  @override
+  String get tipTooLow => 'Tutar toplamdan küçük.';
+
+  @override
+  String kassaTipDone(String amount) {
+    return 'bunun $amount kadarı bahşiş';
+  }
+
+  @override
+  String unclearTip(String amount) {
+    return 'Bunun $amount kadarı bahşiş';
+  }
+
+  @override
+  String get closeReasonTip => 'Bahşiş';
 }

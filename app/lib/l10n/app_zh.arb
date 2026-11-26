@@ -404,5 +404,16 @@
   "bonsKitchenNothing": "这张小票上没有需要厨房制作的内容。",
   "settingsKitchenNoReceiptPrinter": "未设置小票打印机。不会打印厨房单。",
   "kassaKitchenLateMore": "其他未打印的厨房单：{count}",
-  "kassaKitchenDismiss": "隐藏"
+  "kassaKitchenDismiss": "隐藏",
+  "tipGuestPays": "顾客支付",
+  "tipTip": "小费",
+  "tipNone": "不加小费",
+  "tipToTerminal": "去终端收款 {amount}",
+  "tipConfirm": "小费 {amount}？",
+  "tipConfirmYes": "是的，没错",
+  "tipConfirmNo": "修改",
+  "tipTooLow": "金额小于应付总额。",
+  "kassaTipDone": "其中小费 {amount}",
+  "unclearTip": "其中小费 {amount}",
+  "closeReasonTip": "小费"
 }

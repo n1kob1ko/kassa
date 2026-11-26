@@ -158,12 +158,16 @@ class TypedAmount extends StatelessWidget {
     required this.keypadKey,
     required this.onKey,
     required this.onSuggestions,
+    this.label,
   });
 
   final KeypadInput input;
   final Key keypadKey;
   final ValueChanged<String> onKey;
   final VoidCallback onSuggestions;
+
+  /// Die Überschrift über dem Feld; ohne steht "Gegeben".
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +184,7 @@ class TypedAmount extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                l.kassaGiven,
+                label ?? l.kassaGiven,
                 style: text.bodySmall!.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

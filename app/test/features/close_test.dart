@@ -146,6 +146,30 @@ void main() {
       expect(textOf(t, const Key('left-expected')), '148,20 €');
     });
 
+    testWidgets('Trinkgeld gibt es nur beim Entnehmen, und es steht in der '
+        'Karte', (t) async {
+      await pumpCloseReady(t);
+      // Ohne den Schalter "Trinkgeld bei Kartenzahlung" wie in 1.10.0.
+      await _tap(t, 'cash-out');
+      expect(find.byKey(const Key('reason-tip')), findsNothing);
+      await _tap(t, 'close-movement');
+      await setSettings(t, (s) => s.copyWith(cardTipEnabled: true));
+      await _tap(t, 'cash-in');
+      expect(find.byKey(const Key('reason-tip')), findsNothing);
+      await _tap(t, 'close-movement');
+      await _tap(t, 'cash-out');
+      expect(find.byKey(const Key('reason-tip')), findsOneWidget);
+      expect(
+        t.getSize(find.byKey(const Key('reason-tip'))).height,
+        greaterThanOrEqualTo(48),
+      );
+      await tapKeys(t, '3');
+      await _tap(t, 'reason-tip');
+      await _tap(t, 'save-movement');
+      expect(textOf(t, const Key('expected-cash')), '165,20 €');
+      expect(find.text('Entnommen: Trinkgeld'), findsOneWidget);
+    });
+
     testWidgets(
       'Einlage hebt das Soll und steht als "Eingelegt: Wechselgeld"',
       (t) async {

@@ -1419,4 +1419,45 @@ class L10nDe extends L10n {
 
   @override
   String get kassaKitchenDismiss => 'Ausblenden';
+
+  @override
+  String get tipGuestPays => 'Gast zahlt';
+
+  @override
+  String get tipTip => 'Trinkgeld';
+
+  @override
+  String get tipNone => 'Ohne Trinkgeld';
+
+  @override
+  String tipToTerminal(String amount) {
+    return 'Zum Terminal $amount';
+  }
+
+  @override
+  String tipConfirm(String amount) {
+    return 'Trinkgeld $amount?';
+  }
+
+  @override
+  String get tipConfirmYes => 'Ja, stimmt';
+
+  @override
+  String get tipConfirmNo => 'Ändern';
+
+  @override
+  String get tipTooLow => 'Der Betrag ist kleiner als die Summe.';
+
+  @override
+  String kassaTipDone(String amount) {
+    return 'davon Trinkgeld $amount';
+  }
+
+  @override
+  String unclearTip(String amount) {
+    return 'Davon Trinkgeld $amount';
+  }
+
+  @override
+  String get closeReasonTip => 'Trinkgeld';
 }

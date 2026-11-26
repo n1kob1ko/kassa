@@ -94,6 +94,50 @@ Future<List<Map<String, Object?>>> _receipts(WidgetTester t) =>
 
 String _json(Cart c) => jsonEncode(c.toJson());
 
+/// Datenbank mit einer offenen, unklaren Zahlung von Anna über [cart]: mit
+/// [tipCents] so, wie die Kassa sie heute schreibt; mit [v110] nur mit den
+/// Spalten, die 1.10.0 kannte (Bar-Teil und Trinkgeld bleiben beim
+/// Vorgabewert der Migration).
+Future<List<Override>> _setupTipped({
+  int tipCents = 0,
+  bool v110 = false,
+}) async {
+  final overrides = await memoryOverrides(clock: FixedClock(_first));
+  final c = ProviderContainer(overrides: overrides);
+  try {
+    final staff = await c.read(staffRepositoryProvider).all();
+    final anna = staff.firstWhere((s) => s.name == 'Anna');
+    if (v110) {
+      await c.read(databaseProvider).customStatement(
+        'INSERT INTO pending_card_payments (id, cart_json, amount_cents, '
+        'staff_id, staff_name, started_at, state) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [
+          'p1',
+          _json(cart),
+          cart.totalCents,
+          anna.id,
+          anna.name,
+          _first.millisecondsSinceEpoch ~/ 1000,
+          'unknown',
+        ],
+      );
+    } else {
+      final repo = c.read(cardPaymentRepositoryProvider);
+      await repo.begin(
+        paymentId: 'p1',
+        cart: cart,
+        staff: anna,
+        tipCents: tipCents,
+      );
+      await repo.markUnknown('p1');
+    }
+  } finally {
+    c.dispose();
+  }
+  return overrides;
+}
+
 void main() {
   testWidgets('ohne offene Zahlung erscheint nichts', (t) async {
     await _start(t, await _setup());
@@ -604,6 +648,67 @@ void main() {
       expect(await _pending(t), 0);
       expect(_json(cartOf(t)), _json(cartCard));
     });
+  });
+
+  testWidgets('unklar mit Trinkgeld: "bezahlt" schreibt den Bon mit '
+      'Trinkgeld für die Person der Zahlung', (t) async {
+    // Anna hat kassiert; inzwischen ist der Chef angemeldet.
+    await pumpKassa(
+      t,
+      overrides: await _setupTipped(tipCents: 80),
+      pin: '4711',
+    );
+    await t.pumpAndSettle();
+    expect(_sheet, findsOneWidget);
+    expect(textOf(t, const Key('unclear-amount')), '19,00 €');
+    expect(textOf(t, const Key('unclear-tip')), 'Davon Trinkgeld 0,80 €');
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(
+      await queryRows(
+        t,
+        'SELECT kind, amount_cents, tip_cents, tip_staff_name FROM payments',
+      ),
+      [
+        {
+          'kind': 'card',
+          'amount_cents': 1820,
+          'tip_cents': 80,
+          'tip_staff_name': 'Anna',
+        },
+      ],
+    );
+    expect(await queryRows(t, 'SELECT total_cents, tip_cents FROM receipts'), [
+      {'total_cents': 1820, 'tip_cents': 80},
+    ]);
+    expect(await _pending(t), 0);
+  });
+
+  testWidgets('offene Zahlung in der Form von 1.10.0 (ohne Bar-Teil und '
+      'Trinkgeld): "bezahlt" gibt einen Bon mit einer Kartenzahlung', (
+    t,
+  ) async {
+    await _start(t, await _setupTipped(v110: true));
+    expect(_sheet, findsOneWidget);
+    expect(textOf(t, const Key('unclear-amount')), '18,20 €');
+    expect(find.byKey(const Key('unclear-tip')), findsNothing);
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(
+      await queryRows(
+        t,
+        'SELECT position, kind, amount_cents, tip_cents FROM payments',
+      ),
+      [
+        {'position': 0, 'kind': 'card', 'amount_cents': 1820, 'tip_cents': 0},
+      ],
+    );
+    expect(await queryRows(t, 'SELECT total_cents, tip_cents FROM receipts'), [
+      {'total_cents': 1820, 'tip_cents': 0},
+    ]);
+    expect(await _pending(t), 0);
   });
 
   testWidgets('Tasten des Blatts sind mindestens 48 dp hoch', (t) async {

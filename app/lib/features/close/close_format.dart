@@ -27,6 +27,7 @@ String cashReasonText(L10n l, CashReason r) => switch (r) {
   CashReason.purchase => l.closeReasonPurchase,
   CashReason.change => l.closeReasonChange,
   CashReason.other => l.closeReasonOther,
+  CashReason.tip => l.closeReasonTip,
 };
 
 /// Betrag mit Vorzeichen: "+1,00 €", "−0,20 €", "0,00 €".

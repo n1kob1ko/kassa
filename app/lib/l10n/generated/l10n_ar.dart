@@ -1417,4 +1417,45 @@ class L10nAr extends L10n {
 
   @override
   String get kassaKitchenDismiss => 'إخفاء';
+
+  @override
+  String get tipGuestPays => 'يدفع الضيف';
+
+  @override
+  String get tipTip => 'إكرامية';
+
+  @override
+  String get tipNone => 'بدون إكرامية';
+
+  @override
+  String tipToTerminal(String amount) {
+    return 'إلى الجهاز $amount';
+  }
+
+  @override
+  String tipConfirm(String amount) {
+    return 'إكرامية $amount؟';
+  }
+
+  @override
+  String get tipConfirmYes => 'نعم، صحيح';
+
+  @override
+  String get tipConfirmNo => 'تغيير';
+
+  @override
+  String get tipTooLow => 'المبلغ أقل من الإجمالي.';
+
+  @override
+  String kassaTipDone(String amount) {
+    return 'منها إكرامية $amount';
+  }
+
+  @override
+  String unclearTip(String amount) {
+    return 'منها إكرامية $amount';
+  }
+
+  @override
+  String get closeReasonTip => 'إكرامية';
 }

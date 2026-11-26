@@ -432,5 +432,7 @@ class _ThrowingSaleService extends SaleService {
     required String paymentId,
     required Cart cart,
     required Staff staff,
+    int cashPartCents = 0,
+    int tipCents = 0,
   }) async => throw StateError('kaputt');
 }

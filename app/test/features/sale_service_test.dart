@@ -665,6 +665,127 @@ void main() {
       expect(container.read(activeCardPaymentProvider), isNull);
     });
 
+    test('payByCard mit Bar-Teil 10,00 und Trinkgeld 0,80: Terminal bucht '
+        '9,00', () async {
+      putOnRegister();
+      var seen = false;
+      terminal.next = () async {
+        final p = (await cardPayments.pending()).single;
+        expect((p.amountCents, p.cashPartCents, p.tipCents), (900, 1000, 80));
+        seen = true;
+        return const CardPaid(txCode: 'TX1');
+      };
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+        tipCents: 80,
+      ) as CardSaleDone;
+      expect(seen, isTrue);
+      expect(terminal.payments.single.amountCents, 900);
+      final payments = o.sale.receipt.payments;
+      expect(
+        [for (final p in payments) (p.kind, p.amountCents, p.tipCents)],
+        [(PaymentKind.cash, 1000, 0), (PaymentKind.card, 820, 80)],
+      );
+      expect(payments.last.tipStaffName, 'Anna');
+      expect(o.sale.receipt.totalCents, 1820);
+      expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test(
+      'Rest unter dem Kleinstbetrag: belowMinimum, nichts geschrieben',
+      () async {
+        final o = await service.payByCard(
+          paymentId: 'p1',
+          cart: cart,
+          staff: shop.anna,
+          cashPartCents: 1750,
+          tipCents: 500,
+        ) as CardSaleFailed;
+        expect(o.problem, CardSaleProblem.belowMinimum);
+        expect(o.minimumCents, 100);
+        expect(terminal.payments, isEmpty);
+        expect(await cardPayments.pending(), isEmpty);
+        expect(await shop.count('receipts'), 0);
+        expect(container.read(activeCardPaymentProvider), isNull);
+      },
+    );
+
+    test('negativer Bar-Teil oder negatives Trinkgeld: nicht gestartet, '
+        'nichts geschrieben', () async {
+      for (final (cashPart, tip) in [(-1, 0), (0, -1)]) {
+        final o = await service.payByCard(
+          paymentId: 'p1',
+          cart: cart,
+          staff: shop.anna,
+          cashPartCents: cashPart,
+          tipCents: tip,
+        ) as CardSaleFailed;
+        expect(o.problem, CardSaleProblem.notStarted);
+      }
+      expect(terminal.payments, isEmpty);
+      expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test('unklar mit Bar-Teil und Trinkgeld bestätigen: der Bon trägt beide, '
+        'das Trinkgeld für die Person der Zahlung', () async {
+      putOnRegister();
+      terminal.next = const CardUnknown();
+      await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+        tipCents: 80,
+      );
+      final p = (await cardPayments.pending()).single;
+      expect((p.amountCents, p.cashPartCents, p.tipCents), (900, 1000, 80));
+      final catalog = (await container.read(catalogProvider.future))!;
+      final r = await service.confirmUnclear(p, catalog: catalog);
+      expect(
+        [
+          for (final x in r.receipt.payments)
+            (x.kind, x.amountCents, x.tipCents, x.tipStaffName),
+        ],
+        [
+          (PaymentKind.cash, 1000, 0, null),
+          (PaymentKind.card, 820, 80, 'Anna'),
+        ],
+      );
+      expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test('cartOfPending prüft den Betrag mit Bar-Teil und Trinkgeld', () async {
+      final catalog = (await container.read(catalogProvider.future))!;
+      PendingCardPayment pending(int amount, int cashPart, int tip) =>
+          PendingCardPayment(
+            id: 'p1',
+            cartJson: jsonEncode(cart.toJson()),
+            amountCents: amount,
+            staffId: shop.anna.id,
+            staffName: 'Anna',
+            startedAt: shop.clock.now(),
+            unknown: true,
+            cashPartCents: cashPart,
+            tipCents: tip,
+          );
+      expect(
+        SaleService.cartOfPending(pending(900, 1000, 80), catalog),
+        isNotNull,
+      );
+      expect(
+        SaleService.cartOfPending(pending(1820, 0, 0), catalog),
+        isNotNull,
+      );
+      expect(SaleService.cartOfPending(pending(1820, 0, 80), catalog), isNull);
+      expect(
+        SaleService.cartOfPending(pending(1820, 1000, 0), catalog),
+        isNull,
+      );
+    });
+
     test('zweiter Aufruf während einer laufenden Zahlung: abgewiesen, ein '
         'Aufruf am Terminal', () async {
       putOnRegister();

@@ -179,8 +179,8 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
     final async = ref.watch(closeSummaryProvider);
-    final drawer =
-        ref.watch(settingsStreamProvider).value?.cashDrawerEnabled ?? true;
+    final settings = ref.watch(settingsStreamProvider).value;
+    final drawer = settings?.cashDrawerEnabled ?? true;
     final printerSetUp = ref.watch(printerSetUpProvider);
     final now = ref.watch(clockProvider).now();
     final switcher = Segmented<bool>(
@@ -243,6 +243,7 @@ class _CloseScreenState extends ConsumerState<CloseScreen> {
             ? _saveMovement
             : null,
         failed: _failed,
+        showTip: settings?.cardTipEnabled ?? false,
       );
     } else if (_leaving) {
       column = LeaveInDrawerSheet(

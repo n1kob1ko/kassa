@@ -188,18 +188,27 @@ class SaleService {
     );
   }
 
-  /// Nimmt die Kartenzahlung für [cart] am Terminal an. Die offene Zahlung
-  /// steht in der Datenbank, bevor das Terminal etwas erfährt. Wirft nie.
+  /// Nimmt die Kartenzahlung für [cart] am Terminal an: [cashPartCents] ist
+  /// schon bar bezahlt, die Karte bucht den Rest und das Trinkgeld
+  /// [tipCents] (für [staff]). Die offene Zahlung steht mit beiden Beträgen in
+  /// der Datenbank, bevor das Terminal etwas erfährt. Wirft nie.
   Future<CardSaleOutcome> payByCard({
     required String paymentId,
     required Cart cart,
     required Staff staff,
+    int cashPartCents = 0,
+    int tipCents = 0,
   }) async {
     if (_ref.read(activeCardPaymentProvider) != null) {
       return const CardSaleFailed(CardSaleProblem.alreadyRunning);
     }
+    if (cashPartCents < 0 || tipCents < 0) {
+      return const CardSaleFailed(CardSaleProblem.notStarted);
+    }
     final terminal = _ref.read(cardTerminalProvider);
-    if (cart.isEmpty || cart.totalCents < terminal.minimumCents) {
+    // Der Kleinstbetrag gilt für den Rest ohne Trinkgeld.
+    final rest = cart.totalCents - cashPartCents;
+    if (cart.isEmpty || rest < terminal.minimumCents) {
       return cart.isEmpty
           ? const CardSaleFailed(CardSaleProblem.emptyCart)
           : CardSaleFailed(
@@ -239,7 +248,13 @@ class SaleService {
         return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       try {
-        await pending.begin(paymentId: paymentId, cart: cart, staff: staff);
+        await pending.begin(
+          paymentId: paymentId,
+          cart: cart,
+          staff: staff,
+          cashPartCents: cashPartCents,
+          tipCents: tipCents,
+        );
       } catch (_) {
         return const CardSaleFailed(CardSaleProblem.notStarted);
       }
@@ -248,7 +263,7 @@ class SaleService {
       try {
         result = await terminal.pay(
           paymentId: paymentId,
-          amountCents: cart.totalCents,
+          amountCents: rest + tipCents,
           title: 'Bon ${await _businessName()}',
         );
       } catch (_) {
@@ -268,6 +283,8 @@ class SaleService {
                   txCode: result.txCode,
                   cardScheme: result.cardScheme,
                   cardLast4: result.cardLast4,
+                  cashPartCents: cashPartCents,
+                  tipCents: tipCents,
                 );
           } catch (_) {
             // Bezahlt, aber nicht gespeichert: die offene Zahlung bleibt.
@@ -316,14 +333,17 @@ class SaleService {
 
   /// Der Bon einer offenen Zahlung, oder `null`, wenn er sich nicht mehr
   /// zusammenstellen lässt: nicht lesbar, leer oder mit anderem Betrag, als das
-  /// Terminal verlangt hat.
+  /// Terminal verlangt hat (Summe ohne Bar-Teil, mit Trinkgeld).
   static Cart? cartOfPending(PendingCardPayment p, Catalog catalog) {
     try {
       final cart = Cart.fromJson(
         jsonDecode(p.cartJson) as Map<String, dynamic>,
         catalog,
       );
-      if (cart.isEmpty || cart.totalCents != p.amountCents) return null;
+      if (cart.isEmpty ||
+          cart.totalCents - p.cashPartCents + p.tipCents != p.amountCents) {
+        return null;
+      }
       return cart;
     } catch (_) {
       return null;
@@ -341,7 +361,9 @@ class SaleService {
   }
 
   /// Der Kunde hat bezahlt: schließt den Bon aus der offenen Zahlung als
-  /// Kartenzahlung ohne Beleg-Code ab. Wirft, wenn sich der Bon nicht mehr
+  /// Kartenzahlung ohne Beleg-Code ab, mit ihrem Bar-Teil und ihrem
+  /// Trinkgeld; das Trinkgeld gehört der Person der offenen Zahlung, nicht
+  /// der, die gerade angemeldet ist. Wirft, wenn sich der Bon nicht mehr
   /// lesen lässt; die offene Zahlung bleibt dann stehen. Liegt derselbe Bon
   /// noch auf der Kassa (Absturz: der Entwurf hat ihn zurückgebracht), wird
   /// die Kassa geleert, damit er nicht noch einmal kassiert wird; anderer
@@ -360,6 +382,8 @@ class SaleService {
           cart: cart,
           staff: Staff(id: p.staffId, name: p.staffName, role: StaffRole.staff),
           provider: _ref.read(cardTerminalProvider).providerName,
+          cashPartCents: p.cashPartCents,
+          tipCents: p.tipCents,
         );
     final onRegister = _ref.read(cartProvider);
     if (!onRegister.isEmpty) {

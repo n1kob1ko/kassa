@@ -11,7 +11,10 @@ import 'amount_entry.dart';
 import 'close_format.dart' show cashReasonText;
 
 /// Zustand D: Bargeld einlegen oder entnehmen, mit Betrag und Grund. Speichern
-/// geht, wenn der Betrag über 0 ist und ein Grund gewählt ist.
+/// geht, wenn der Betrag über 0 ist und ein Grund gewählt ist. "Trinkgeld"
+/// gibt es nur beim Entnehmen und nur mit [showTip] (Trinkgeld bei
+/// Kartenzahlung eingeschaltet): das Trinkgeld der Karte geht bar an die
+/// Person.
 class CashMovementSheet extends StatelessWidget {
   const CashMovementSheet({
     super.key,
@@ -23,6 +26,7 @@ class CashMovementSheet extends StatelessWidget {
     required this.onClose,
     required this.onSave,
     required this.failed,
+    this.showTip = false,
   });
 
   final CashMovementKind kind;
@@ -35,6 +39,9 @@ class CashMovementSheet extends StatelessWidget {
   /// `null`, solange Betrag oder Grund fehlen oder gerade geschrieben wird.
   final VoidCallback? onSave;
   final bool failed;
+
+  /// Ob "Trinkgeld" als Grund beim Entnehmen da ist.
+  final bool showTip;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +87,16 @@ class CashMovementSheet extends StatelessWidget {
             _ReasonKey(CashReason.other, reason, onReason),
           ],
         ),
+        if (!deposit && showTip) ...[
+          const SizedBox(height: KassaTokens.spaceMd),
+          Row(
+            children: [
+              _ReasonKey(CashReason.tip, reason, onReason),
+              const SizedBox(width: KassaTokens.spaceMd),
+              const Spacer(),
+            ],
+          ),
+        ],
       ],
       bottom: PrimaryButton(
         key: const Key('save-movement'),

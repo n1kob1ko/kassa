@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 405 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 416 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -118,6 +118,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Küchenbon gedruckt. | Kitchen ticket printed. | Kassa: `kassaKitchenPrinted` |
 | Weitere Küchenbons nicht gedruckt: {count} | More kitchen tickets not printed: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | Dismiss | Kassa: `kassaKitchenDismiss` |
+| davon Trinkgeld {amount} | incl. tip {amount} | Kassa: `kassaTipDone` |
 
 ## Kartenzahlung
 
@@ -178,6 +179,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist. | Kassa discards the payment. The current receipt stays as it is. | Unklare Kartenzahlung: `unclearEffectDiscard` |
 | Bestätigen | Confirm | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | Back | Unklare Kartenzahlung: `unclearBack` |
+| Davon Trinkgeld {amount} | Including tip {amount} | Unklare Kartenzahlung: `unclearTip` |
 
 ## Datum
 
@@ -434,6 +436,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr davor | Previous year | Abschluss: `closeYearBefore` |
 | Jahr danach | Next year | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | No printer set up. | Abschluss: `closeNoPrinter` |
+| Trinkgeld | Tip | Abschluss: `closeReasonTip` |
 
 ## Einstellungen
 
@@ -490,6 +493,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | STORNO | VOID | Küchenbon: `kitchenVoided` |
 | KOPIE | COPY | Küchenbon: `kitchenCopy` |
 | PROBE | SAMPLE | Küchenbon: `kitchenSample` |
+
+## Sonstiges
+
+| Deutsch | Übersetzung | Wo |
+| --- | --- | --- |
+| Gast zahlt | Guest pays | Sonstiges: `tipGuestPays` |
+| Trinkgeld | Tip | Sonstiges: `tipTip` |
+| Ohne Trinkgeld | No tip | Sonstiges: `tipNone` |
+| Zum Terminal {amount} | To terminal {amount} | Sonstiges: `tipToTerminal` |
+| Trinkgeld {amount}? | Tip {amount}? | Sonstiges: `tipConfirm` |
+| Ja, stimmt | Yes, that's right | Sonstiges: `tipConfirmYes` |
+| Ändern | Change | Sonstiges: `tipConfirmNo` |
+| Der Betrag ist kleiner als die Summe. | The amount is less than the total. | Sonstiges: `tipTooLow` |
 
 ## Unsicher
 

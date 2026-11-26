@@ -1385,4 +1385,45 @@ class L10nZh extends L10n {
 
   @override
   String get kassaKitchenDismiss => '隐藏';
+
+  @override
+  String get tipGuestPays => '顾客支付';
+
+  @override
+  String get tipTip => '小费';
+
+  @override
+  String get tipNone => '不加小费';
+
+  @override
+  String tipToTerminal(String amount) {
+    return '去终端收款 $amount';
+  }
+
+  @override
+  String tipConfirm(String amount) {
+    return '小费 $amount？';
+  }
+
+  @override
+  String get tipConfirmYes => '是的，没错';
+
+  @override
+  String get tipConfirmNo => '修改';
+
+  @override
+  String get tipTooLow => '金额小于应付总额。';
+
+  @override
+  String kassaTipDone(String amount) {
+    return '其中小费 $amount';
+  }
+
+  @override
+  String unclearTip(String amount) {
+    return '其中小费 $amount';
+  }
+
+  @override
+  String get closeReasonTip => '小费';
 }

@@ -204,6 +204,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                           ? _CardPaid(
                               scheme: card.cardScheme,
                               last4: card.cardLast4,
+                              tipCents: card.tipCents,
                             )
                           : changeCents == 0
                           ? Text(
@@ -266,12 +267,18 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   }
 }
 
-/// "Mit Karte bezahlt", darunter z. B. "VISA **** 4242" (was fehlt, entfällt).
+/// "Mit Karte bezahlt", darunter mit Trinkgeld "davon Trinkgeld 0,35 €" und
+/// z. B. "VISA **** 4242" (was fehlt, entfällt).
 class _CardPaid extends StatelessWidget {
-  const _CardPaid({required this.scheme, required this.last4});
+  const _CardPaid({
+    required this.scheme,
+    required this.last4,
+    required this.tipCents,
+  });
 
   final String? scheme;
   final String? last4;
+  final int tipCents;
 
   @override
   Widget build(BuildContext context) {
@@ -290,6 +297,15 @@ class _CardPaid extends StatelessWidget {
           key: const Key('paid-by-card'),
           style: text.titleLarge!.copyWith(color: c.accentInk),
         ),
+        if (tipCents > 0) ...[
+          const SizedBox(height: KassaTokens.spaceXs),
+          Text(
+            L10n.of(context)
+                .kassaTipDone(ltrIsolate(context, formatEuro(tipCents))),
+            key: const Key('tip-done'),
+            style: text.bodyLarge!.copyWith(color: c.accentInk),
+          ),
+        ],
         if (detail.isNotEmpty) ...[
           const SizedBox(height: KassaTokens.spaceXs),
           // "VISA **** 4242" wie auf der Karte.

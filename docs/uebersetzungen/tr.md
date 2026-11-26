@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 405 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 416 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -118,6 +118,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Küchenbon gedruckt. | Mutfak fişi yazdırıldı. | Kassa: `kassaKitchenPrinted` |
 | Weitere Küchenbons nicht gedruckt: {count} | Yazdırılmayan diğer mutfak fişleri: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | Gizle | Kassa: `kassaKitchenDismiss` |
+| davon Trinkgeld {amount} | bunun {amount} kadarı bahşiş | Kassa: `kassaTipDone` |
 
 ## Kartenzahlung
 
@@ -178,6 +179,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist. | Kassa ödemeyi siler. Mevcut fiş olduğu gibi kalır. | Unklare Kartenzahlung: `unclearEffectDiscard` |
 | Bestätigen | Onayla | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | Geri | Unklare Kartenzahlung: `unclearBack` |
+| Davon Trinkgeld {amount} | Bunun {amount} kadarı bahşiş | Unklare Kartenzahlung: `unclearTip` |
 
 ## Datum
 
@@ -434,6 +436,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr davor | Önceki yıl | Abschluss: `closeYearBefore` |
 | Jahr danach | Sonraki yıl | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | Yazıcı kurulmadı. | Abschluss: `closeNoPrinter` |
+| Trinkgeld | Bahşiş | Abschluss: `closeReasonTip` |
 
 ## Einstellungen
 
@@ -490,6 +493,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | STORNO | İPTAL | Küchenbon: `kitchenVoided` |
 | KOPIE | KOPYA | Küchenbon: `kitchenCopy` |
 | PROBE | DENEME | Küchenbon: `kitchenSample` |
+
+## Sonstiges
+
+| Deutsch | Übersetzung | Wo |
+| --- | --- | --- |
+| Gast zahlt | Misafir öder | Sonstiges: `tipGuestPays` |
+| Trinkgeld | Bahşiş | Sonstiges: `tipTip` |
+| Ohne Trinkgeld | Bahşişsiz | Sonstiges: `tipNone` |
+| Zum Terminal {amount} | Terminale {amount} | Sonstiges: `tipToTerminal` |
+| Trinkgeld {amount}? | Bahşiş {amount}? | Sonstiges: `tipConfirm` |
+| Ja, stimmt | Evet, doğru | Sonstiges: `tipConfirmYes` |
+| Ändern | Değiştir | Sonstiges: `tipConfirmNo` |
+| Der Betrag ist kleiner als die Summe. | Tutar toplamdan küçük. | Sonstiges: `tipTooLow` |
 
 ## Unsicher
 

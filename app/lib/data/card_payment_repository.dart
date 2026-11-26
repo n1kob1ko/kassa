@@ -19,12 +19,17 @@ class PendingCardPayment {
     required this.staffName,
     required this.startedAt,
     required this.unknown,
+    this.cashPartCents = 0,
+    this.tipCents = 0,
   });
 
   final String id;
 
   /// Der Bon als JSON (`Cart.toJson`), damit er wieder aufgebaut werden kann.
   final String cartJson;
+
+  /// Was das Terminal bucht: die Summe des Bons ohne [cashPartCents], mit
+  /// [tipCents].
   final int amountCents;
   final String staffId;
   final String staffName;
@@ -32,6 +37,13 @@ class PendingCardPayment {
 
   /// Ob der Ausgang unklar ist (nicht mehr "läuft").
   final bool unknown;
+
+  /// Der Teil des Bons, der bar bezahlt wird (0 ohne). Eine Zahlung aus
+  /// 1.10.0 hat hier 0.
+  final int cashPartCents;
+
+  /// Das Trinkgeld auf der Karte (0 ohne); es gehört der Person [staffName].
+  final int tipCents;
 }
 
 class CardPaymentRepository {
@@ -40,23 +52,29 @@ class CardPaymentRepository {
   final KassaDatabase _db;
   final Clock _clock;
 
-  /// Schreibt die offene Zahlung. Eine Zeile mit dieser Id wird nie
-  /// überschrieben: gibt es sie schon, wirft der Aufruf.
+  /// Schreibt die offene Zahlung mit dem Bar-Teil [cashPartCents] und dem
+  /// Trinkgeld [tipCents]; das Terminal bucht die Summe ohne Bar-Teil, mit
+  /// Trinkgeld. Eine Zeile mit dieser Id wird nie überschrieben: gibt es sie
+  /// schon, wirft der Aufruf.
   Future<void> begin({
     required String paymentId,
     required Cart cart,
     required Staff staff,
+    int cashPartCents = 0,
+    int tipCents = 0,
   }) => _db
       .into(_db.pendingCardPaymentRows)
       .insert(
         PendingCardPaymentRowsCompanion.insert(
           id: paymentId,
           cartJson: jsonEncode(cart.toJson()),
-          amountCents: cart.totalCents,
+          amountCents: cart.totalCents - cashPartCents + tipCents,
           staffId: staff.id,
           staffName: staff.name,
           startedAt: _clock.now(),
           state: _started,
+          cashPartCents: Value(cashPartCents),
+          tipCents: Value(tipCents),
         ),
       );
 
@@ -88,6 +106,8 @@ class CardPaymentRepository {
         staffName: r.staffName,
         startedAt: r.startedAt,
         unknown: r.state == _unknown,
+        cashPartCents: r.cashPartCents,
+        tipCents: r.tipCents,
       ),
   ];
 

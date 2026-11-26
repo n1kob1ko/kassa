@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 405 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 416 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -118,6 +118,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Küchenbon gedruckt. | تمت طباعة تذكرة المطبخ. | Kassa: `kassaKitchenPrinted` |
 | Weitere Küchenbons nicht gedruckt: {count} | تذاكر مطبخ أخرى لم تُطبع: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | إخفاء | Kassa: `kassaKitchenDismiss` |
+| davon Trinkgeld {amount} | منها إكرامية {amount} | Kassa: `kassaTipDone` |
 
 ## Kartenzahlung
 
@@ -178,6 +179,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist. | يتجاهل Kassa الدفع. تبقى الفاتورة الحالية كما هي. | Unklare Kartenzahlung: `unclearEffectDiscard` |
 | Bestätigen | تأكيد | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | رجوع | Unklare Kartenzahlung: `unclearBack` |
+| Davon Trinkgeld {amount} | منها إكرامية {amount} | Unklare Kartenzahlung: `unclearTip` |
 
 ## Datum
 
@@ -434,6 +436,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr davor | السنة السابقة | Abschluss: `closeYearBefore` |
 | Jahr danach | السنة التالية | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | لم يتم إعداد طابعة. | Abschluss: `closeNoPrinter` |
+| Trinkgeld | إكرامية | Abschluss: `closeReasonTip` |
 
 ## Einstellungen
 
@@ -490,6 +493,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | STORNO | إلغاء | Küchenbon: `kitchenVoided` |
 | KOPIE | نسخة | Küchenbon: `kitchenCopy` |
 | PROBE | تجربة | Küchenbon: `kitchenSample` |
+
+## Sonstiges
+
+| Deutsch | Übersetzung | Wo |
+| --- | --- | --- |
+| Gast zahlt | يدفع الضيف | Sonstiges: `tipGuestPays` |
+| Trinkgeld | إكرامية | Sonstiges: `tipTip` |
+| Ohne Trinkgeld | بدون إكرامية | Sonstiges: `tipNone` |
+| Zum Terminal {amount} | إلى الجهاز {amount} | Sonstiges: `tipToTerminal` |
+| Trinkgeld {amount}? | إكرامية {amount}؟ | Sonstiges: `tipConfirm` |
+| Ja, stimmt | نعم، صحيح | Sonstiges: `tipConfirmYes` |
+| Ändern | تغيير | Sonstiges: `tipConfirmNo` |
+| Der Betrag ist kleiner als die Summe. | المبلغ أقل من الإجمالي. | Sonstiges: `tipTooLow` |
 
 ## Unsicher
 

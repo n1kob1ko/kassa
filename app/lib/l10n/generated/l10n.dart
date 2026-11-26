@@ -2533,6 +2533,72 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Ausblenden'**
   String get kassaKitchenDismiss;
+
+  /// Überschrift über den Vorschlägen im Blatt Trinkgeld: so viel zahlt der Gast mit Karte.
+  ///
+  /// In de, this message translates to:
+  /// **'Gast zahlt'**
+  String get tipGuestPays;
+
+  /// Titel des Blatts Trinkgeld und Zeile mit dem Trinkgeld (was der Gast über die Summe zahlt).
+  ///
+  /// In de, this message translates to:
+  /// **'Trinkgeld'**
+  String get tipTip;
+
+  /// Taste im Blatt Trinkgeld: ohne Trinkgeld zum Terminal, ein Tipp.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Trinkgeld'**
+  String get tipNone;
+
+  /// Hauptaktion im Blatt Trinkgeld: diesen Betrag (mit Trinkgeld) am Terminal buchen; amount wie "10,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Terminal {amount}'**
+  String tipToTerminal(String amount);
+
+  /// Nachfrage bei sehr hohem Trinkgeld (vertippt?); amount wie "90,35 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Trinkgeld {amount}?'**
+  String tipConfirm(String amount);
+
+  /// Antwort auf die Nachfrage zum Trinkgeld: der Betrag stimmt, weiter zum Terminal.
+  ///
+  /// In de, this message translates to:
+  /// **'Ja, stimmt'**
+  String get tipConfirmYes;
+
+  /// Antwort auf die Nachfrage zum Trinkgeld: zurück, den Betrag ändern.
+  ///
+  /// In de, this message translates to:
+  /// **'Ändern'**
+  String get tipConfirmNo;
+
+  /// Hinweis im Blatt Trinkgeld: der getippte Betrag liegt unter der Summe.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Betrag ist kleiner als die Summe.'**
+  String get tipTooLow;
+
+  /// Verkauf fertig, unter "Mit Karte bezahlt": so viel davon ist Trinkgeld; amount wie "0,35 €".
+  ///
+  /// In de, this message translates to:
+  /// **'davon Trinkgeld {amount}'**
+  String kassaTipDone(String amount);
+
+  /// Blatt Unklare Kartenzahlung, unter dem Betrag: so viel davon ist Trinkgeld; amount wie "0,35 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Davon Trinkgeld {amount}'**
+  String unclearTip(String amount);
+
+  /// Grund einer Bargeld-Bewegung: Trinkgeld (nur beim Entnehmen).
+  ///
+  /// In de, this message translates to:
+  /// **'Trinkgeld'**
+  String get closeReasonTip;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

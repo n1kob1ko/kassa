@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 405 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 416 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -118,6 +118,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Küchenbon gedruckt. | 厨房单已打印。 | Kassa: `kassaKitchenPrinted` |
 | Weitere Küchenbons nicht gedruckt: {count} | 其他未打印的厨房单：{count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | 隐藏 | Kassa: `kassaKitchenDismiss` |
+| davon Trinkgeld {amount} | 其中小费 {amount} | Kassa: `kassaTipDone` |
 
 ## Kartenzahlung
 
@@ -178,6 +179,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Die Kassa verwirft die Zahlung. Der Bon auf der Kassa bleibt, wie er ist. | Kassa 放弃这笔付款。当前小票保持不变。 | Unklare Kartenzahlung: `unclearEffectDiscard` |
 | Bestätigen | 确认 | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | 返回 | Unklare Kartenzahlung: `unclearBack` |
+| Davon Trinkgeld {amount} | 其中小费 {amount} | Unklare Kartenzahlung: `unclearTip` |
 
 ## Datum
 
@@ -434,6 +436,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr davor | 上一年 | Abschluss: `closeYearBefore` |
 | Jahr danach | 下一年 | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | 未设置打印机。 | Abschluss: `closeNoPrinter` |
+| Trinkgeld | 小费 | Abschluss: `closeReasonTip` |
 
 ## Einstellungen
 
@@ -490,6 +493,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | STORNO | 作废 | Küchenbon: `kitchenVoided` |
 | KOPIE | 副本 | Küchenbon: `kitchenCopy` |
 | PROBE | 测试 | Küchenbon: `kitchenSample` |
+
+## Sonstiges
+
+| Deutsch | Übersetzung | Wo |
+| --- | --- | --- |
+| Gast zahlt | 顾客支付 | Sonstiges: `tipGuestPays` |
+| Trinkgeld | 小费 | Sonstiges: `tipTip` |
+| Ohne Trinkgeld | 不加小费 | Sonstiges: `tipNone` |
+| Zum Terminal {amount} | 去终端收款 {amount} | Sonstiges: `tipToTerminal` |
+| Trinkgeld {amount}? | 小费 {amount}？ | Sonstiges: `tipConfirm` |
+| Ja, stimmt | 是的，没错 | Sonstiges: `tipConfirmYes` |
+| Ändern | 修改 | Sonstiges: `tipConfirmNo` |
+| Der Betrag ist kleiner als die Summe. | 金额小于应付总额。 | Sonstiges: `tipTooLow` |
 
 ## Unsicher
 

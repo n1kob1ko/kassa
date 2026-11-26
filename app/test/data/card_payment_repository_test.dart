@@ -32,6 +32,25 @@ void main() {
     },
   );
 
+  test('begin mit Bar-Teil und Trinkgeld: das Terminal bucht den Rest mit '
+      'Trinkgeld', () async {
+    await repo.begin(
+      paymentId: 'p1',
+      cart: cart,
+      staff: shop.anna,
+      cashPartCents: 1000,
+      tipCents: 80,
+    );
+    final p = (await repo.pending()).single;
+    expect((p.amountCents, p.cashPartCents, p.tipCents), (900, 1000, 80));
+  });
+
+  test('begin ohne Bar-Teil und Trinkgeld: beide 0', () async {
+    await repo.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
+    final p = (await repo.pending()).single;
+    expect((p.amountCents, p.cashPartCents, p.tipCents), (1820, 0, 0));
+  });
+
   test('discard entfernt, unbekannte Id ist kein Fehler', () async {
     await repo.begin(paymentId: 'p1', cart: cart, staff: shop.anna);
     await repo.discard('gibt-es-nicht');

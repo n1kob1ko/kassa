@@ -2054,5 +2054,69 @@
   "kassaKitchenDismiss": "Ausblenden",
   "@kassaKitchenDismiss": {
     "description": "Taste im Hinweis über dem Bon: den Hinweis zu diesem Küchenbon wegnehmen, ohne zu drucken."
+  },
+  "tipGuestPays": "Gast zahlt",
+  "@tipGuestPays": {
+    "description": "Überschrift über den Vorschlägen im Blatt Trinkgeld: so viel zahlt der Gast mit Karte."
+  },
+  "tipTip": "Trinkgeld",
+  "@tipTip": {
+    "description": "Titel des Blatts Trinkgeld und Zeile mit dem Trinkgeld (was der Gast über die Summe zahlt)."
+  },
+  "tipNone": "Ohne Trinkgeld",
+  "@tipNone": {
+    "description": "Taste im Blatt Trinkgeld: ohne Trinkgeld zum Terminal, ein Tipp."
+  },
+  "tipToTerminal": "Zum Terminal {amount}",
+  "@tipToTerminal": {
+    "description": "Hauptaktion im Blatt Trinkgeld: diesen Betrag (mit Trinkgeld) am Terminal buchen; amount wie \"10,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tipConfirm": "Trinkgeld {amount}?",
+  "@tipConfirm": {
+    "description": "Nachfrage bei sehr hohem Trinkgeld (vertippt?); amount wie \"90,35 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tipConfirmYes": "Ja, stimmt",
+  "@tipConfirmYes": {
+    "description": "Antwort auf die Nachfrage zum Trinkgeld: der Betrag stimmt, weiter zum Terminal."
+  },
+  "tipConfirmNo": "Ändern",
+  "@tipConfirmNo": {
+    "description": "Antwort auf die Nachfrage zum Trinkgeld: zurück, den Betrag ändern."
+  },
+  "tipTooLow": "Der Betrag ist kleiner als die Summe.",
+  "@tipTooLow": {
+    "description": "Hinweis im Blatt Trinkgeld: der getippte Betrag liegt unter der Summe."
+  },
+  "kassaTipDone": "davon Trinkgeld {amount}",
+  "@kassaTipDone": {
+    "description": "Verkauf fertig, unter \"Mit Karte bezahlt\": so viel davon ist Trinkgeld; amount wie \"0,35 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "unclearTip": "Davon Trinkgeld {amount}",
+  "@unclearTip": {
+    "description": "Blatt Unklare Kartenzahlung, unter dem Betrag: so viel davon ist Trinkgeld; amount wie \"0,35 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "closeReasonTip": "Trinkgeld",
+  "@closeReasonTip": {
+    "description": "Grund einer Bargeld-Bewegung: Trinkgeld (nur beim Entnehmen)."
   }
 }

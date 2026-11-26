@@ -33,6 +33,7 @@ import 'modifier_panel.dart';
 import 'outage_banner.dart';
 import 'sale_done.dart';
 import 'sale_service.dart';
+import 'tip_sheet.dart';
 
 const _favoritesId = 'favorites';
 
@@ -77,7 +78,8 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 
 /// Der Kassenbildschirm: Kategorien links, Artikel (oder das Zusammenstellen)
 /// in der Mitte, der offene Bon rechts (in Arabisch gespiegelt). Mit "Bar" wird die Bon-Spalte zum
-/// Bezahlen, mit "Karte" zum Warten auf das Terminal, danach zur
+/// Bezahlen, mit "Karte" zum Warten auf das Terminal (ist Trinkgeld bei
+/// Kartenzahlung eingeschaltet, zuerst zum Blatt "Trinkgeld"), danach zur
 /// Fertig-Ansicht; die Artikelfläche ist dabei halb ausgeblendet und reagiert
 /// nicht.
 class KassaScreen extends ConsumerStatefulWidget {
@@ -88,7 +90,7 @@ class KassaScreen extends ConsumerStatefulWidget {
 }
 
 /// Was die rechte Spalte zeigt.
-enum _Side { cart, paying, waitingForCard, done }
+enum _Side { cart, paying, tip, waitingForCard, done }
 
 class _KassaScreenState extends ConsumerState<KassaScreen>
     with WidgetsBindingObserver {
@@ -97,7 +99,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   _Side _side = _Side.cart;
   SaleResult? _paid;
 
-  /// Der Betrag, auf den das Terminal wartet.
+  /// Der Betrag, auf den das Terminal wartet (mit Trinkgeld).
   int _cardCents = 0;
 
   /// Steht ab dem ersten Tipp auf "Karte" bis zum Ergebnis; ein zweiter Tipp im
@@ -251,20 +253,41 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     unawaited(_prepareTerminal());
   }
 
-  Future<void> _payByCard() async {
+  /// "Karte": mit Trinkgeld bei Kartenzahlung zuerst das Blatt "Trinkgeld",
+  /// sonst direkt zum Terminal.
+  void _tapCard() {
+    final settings =
+        ref.read(settingsStreamProvider).value ?? const RegisterSettings();
+    if (settings.cardTipEnabled) {
+      if (_cardRunning || ref.read(cartProvider).isEmpty) return;
+      setState(() => _side = _Side.tip);
+    } else {
+      _payByCard();
+    }
+  }
+
+  Future<void> _payByCard({int tipCents = 0}) async {
     final staff = ref.read(sessionProvider);
     final cart = ref.read(cartProvider);
-    if (_cardRunning || staff == null || cart.isEmpty) return;
+    if (_cardRunning || staff == null || cart.isEmpty) {
+      if (_side == _Side.tip) setState(() => _side = _Side.cart);
+      return;
+    }
     _cardRunning = true;
     setState(() {
-      _cardCents = cart.totalCents;
+      _cardCents = cart.totalCents + tipCents;
       _side = _Side.waitingForCard;
     });
     CardSaleOutcome? outcome;
     try {
       outcome = await ref
           .read(saleServiceProvider)
-          .payByCard(paymentId: const Uuid().v4(), cart: cart, staff: staff);
+          .payByCard(
+            paymentId: const Uuid().v4(),
+            cart: cart,
+            staff: staff,
+            tipCents: tipCents,
+          );
     } catch (_) {
       // payByCard wirft nicht; falls doch, zurück zum Bon. Gibt es eine offene
       // Zahlung, fragt das Blatt danach.
@@ -408,7 +431,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         switch (_side) {
           _Side.cart => CartPanel(
             onPayCash: () => setState(() => _side = _Side.paying),
-            onPayCard: _payByCard,
+            onPayCard: _tapCard,
             canPay: building == null,
             notice: const Column(
               mainAxisSize: MainAxisSize.min,
@@ -420,6 +443,14 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               cart: cart,
               onBack: () => setState(() => _side = _Side.cart),
               onPaid: _onPaid,
+            ),
+          ),
+          _Side.tip => _AboveBottomBar(
+            child: TipSheet(
+              dueCents: cart.totalCents,
+              receiptTotalCents: cart.totalCents,
+              onBack: () => setState(() => _side = _Side.cart),
+              onPay: (tip) => _payByCard(tipCents: tip),
             ),
           ),
           _Side.waitingForCard => _AboveBottomBar(

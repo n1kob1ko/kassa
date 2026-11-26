@@ -4,7 +4,9 @@ import 'pricing.dart';
 
 enum CashMovementKind { deposit, withdrawal }
 
-enum CashReason { bank, purchase, change, other }
+/// Gespeichert und im Abgleich gesendet als [Enum.name]: neue Gründe kommen
+/// ans Ende.
+enum CashReason { bank, purchase, change, other, tip }
 
 /// Name eines Grundes, wie er in Tasten und Zeilen steht.
 String reasonLabel(CashReason r) => switch (r) {
@@ -12,6 +14,7 @@ String reasonLabel(CashReason r) => switch (r) {
   CashReason.purchase => 'Einkauf',
   CashReason.change => 'Wechselgeld',
   CashReason.other => 'Sonstiges',
+  CashReason.tip => 'Trinkgeld',
 };
 
 class BusinessDay {

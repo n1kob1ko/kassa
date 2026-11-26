@@ -1416,4 +1416,45 @@ class L10nEn extends L10n {
 
   @override
   String get kassaKitchenDismiss => 'Dismiss';
+
+  @override
+  String get tipGuestPays => 'Guest pays';
+
+  @override
+  String get tipTip => 'Tip';
+
+  @override
+  String get tipNone => 'No tip';
+
+  @override
+  String tipToTerminal(String amount) {
+    return 'To terminal $amount';
+  }
+
+  @override
+  String tipConfirm(String amount) {
+    return 'Tip $amount?';
+  }
+
+  @override
+  String get tipConfirmYes => 'Yes, that\'s right';
+
+  @override
+  String get tipConfirmNo => 'Change';
+
+  @override
+  String get tipTooLow => 'The amount is less than the total.';
+
+  @override
+  String kassaTipDone(String amount) {
+    return 'incl. tip $amount';
+  }
+
+  @override
+  String unclearTip(String amount) {
+    return 'Including tip $amount';
+  }
+
+  @override
+  String get closeReasonTip => 'Tip';
 }

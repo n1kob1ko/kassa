@@ -404,5 +404,16 @@
   "bonsKitchenNothing": "لا يوجد في هذه الفاتورة شيء للمطبخ.",
   "settingsKitchenNoReceiptPrinter": "لم يتم إعداد طابعة الفواتير. لن تُطبع تذكرة المطبخ.",
   "kassaKitchenLateMore": "تذاكر مطبخ أخرى لم تُطبع: {count}",
-  "kassaKitchenDismiss": "إخفاء"
+  "kassaKitchenDismiss": "إخفاء",
+  "tipGuestPays": "يدفع الضيف",
+  "tipTip": "إكرامية",
+  "tipNone": "بدون إكرامية",
+  "tipToTerminal": "إلى الجهاز {amount}",
+  "tipConfirm": "إكرامية {amount}؟",
+  "tipConfirmYes": "نعم، صحيح",
+  "tipConfirmNo": "تغيير",
+  "tipTooLow": "المبلغ أقل من الإجمالي.",
+  "kassaTipDone": "منها إكرامية {amount}",
+  "unclearTip": "منها إكرامية {amount}",
+  "closeReasonTip": "إكرامية"
 }
