@@ -237,3 +237,24 @@ Eine Auslieferung (1.10.0), gebaut in dieser Reihenfolge, jede Stufe für sich g
 
 - Wer liest die chinesischen, türkischen und arabischen Texte gegen?
 - Soll Claude die Speisekarte von YICHI gleich in alle vier Sprachen übersetzen und als Datei zum Einspielen vorbereiten?
+
+## 10. Abweichungen und Entscheidungen beim Bau
+
+Was beim Bauen anders wurde als oben beschrieben oder oben offen war, je mit dem Grund.
+
+1. **Übersetzung gleich dem Namen.** Steht als Übersetzung genau der Name aus der Speisekarte ("Cola", "XXL"), zählt das als übersetzt und wird gespeichert. Nur ein leeres Feld heißt "keine Übersetzung". Sonst käme die Seite Übersetzungen nie auf "Alles übersetzt.".
+2. **Wo die Karte "Sprache" steht.** In den Einstellungen ist "Sprache" die erste Karte der rechten Spalte, ohne Scrollen sichtbar, nicht ganz oben links (5.2 sagt "erster Abschnitt"). So bleibt die Karte Signatur oben links ganz sichtbar.
+3. **Hinweis zur ausgefallenen Signatur.** Der Grund kommt aus der Signatur und bleibt Deutsch. Steht die Kassa in einer anderen Sprache, folgt darunter ein fester übersetzter Satz: "Die Kassa läuft weiter. Bitte dem Chef Bescheid geben." Steht der Grund in der Bediensprache (auf Deutsch, oder wenn A-Trust die Zugangsdaten abgelehnt hat), heißt der Satz darunter "Du kannst normal weiterverkaufen." in der Bediensprache.
+4. **Deutsche Bildschirme in Arabisch.** Was Deutsch bleibt (Einrichtung, Signatur, Drucker, Server), wird in Arabisch nicht gespiegelt, sondern steht als Ganzes von links nach rechts. Ein deutscher Text in einem gespiegelten Rahmen wäre schwer zu lesen.
+5. **Was in Arabisch nicht gespiegelt wird:** Ziffernfelder, Beträge, Uhrzeiten und das Diagramm der Übersicht stehen weiter von links nach rechts.
+6. **Lange Namen auf Artikeltasten.** Ein langer übersetzter Name wird zuerst kleiner (in Stufen bis 80 %) und erst dann mit "…" gekürzt.
+7. **Der Verkauf wartet nicht auf den Küchenbon.** Das Ergebnis des Küchenbons kommt später nach (in der Technik ein `Future`). "Verkauf fertig" zeigt dazu nur etwas, wenn er gescheitert ist: "Küchenbon nicht gedruckt" mit der Taste "Küchenbon drucken".
+8. **Kein Küchendrucker eingerichtet.** Ist "Am Küchendrucker" gewählt, aber kein Drucker da, steht ein Hinweis in den Einstellungen, und "Verkauf fertig" zeigt nach jedem Verkauf "Küchenbon nicht gedruckt" mit "Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon." So fällt es sofort auf, wenn in der Küche nichts ankommt.
+9. **Kein Nachdruck für stornierte Verkäufe.** Ein stornierter Verkauf hat im Bereich Bons keine Taste "Küchenbon drucken", sonst ginge eine abgesagte Bestellung noch einmal in die Küche. Das Storno selbst druckt den Küchenbon mit STORNO. Hat ein Bon nichts für die Küche, sagt die Taste "Auf diesem Bon ist nichts für die Küche.".
+10. **Tasten in den Bons.** "Küchenbon drucken" steht neben "Drucken", "Stornieren" in einer zweiten Reihe darunter. Drei gleich breite Tasten in einer Reihe schnitten die Beschriftung ab.
+11. **Vorschau des Küchenbons.** Ist der Abschnitt Küche breit genug (Tablet ab 1280 dp Breite), steht die Vorschau neben den Kategorien für die Küche, bei schmalerem Bildschirm (1024 dp) darunter.
+12. **Probe-Bon.** Der Beispiel-Zettel nimmt die ersten drei Artikel aus Kategorien für die Küche. Beim ersten Artikel steht je Auswahlgruppe eine Option (die vorgewählte, sonst die erste), höchstens zwei Gruppen.
+13. **Reihenfolge am gemeinsamen Drucker.** Am Bondrucker kommt der Küchenbon direkt nach dem Kundenbon desselben Verkaufs, auch wenn schnell hintereinander verkauft wird: Bon A, Küche A, Bon B, Küche B.
+14. **Neuer Farbwert "Papier".** Für die Vorschau des Küchenbons gibt es den Farbwert Papier, weiß in hell und dunkel, weil der Zettel auch im dunklen Bild weiß ist.
+15. **Chinesische Monate mit Ziffern.** Ausgeschriebene Daten zeigen den Monat auf Chinesisch als Ziffer ("11月17日", "2026年11月"), nicht als Zeichen ("十一月"). So ist es in Kassen und Apps üblich. Das Zahlendatum 26.11.2026 bleibt in jeder Sprache gleich.
+16. **"Pfand" in der Übersicht.** In der Übersicht (meistverkaufte Artikel, Umsatz nach Kategorie) steht die Zeile Pfand in der Bediensprache. In den Daten und in den Berichten heißt sie weiter "Pfand".

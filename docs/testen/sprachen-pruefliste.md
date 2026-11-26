@@ -174,7 +174,7 @@ Nur wenn du einen zweiten Bondrucker hast.
 - [ ] In der Karte "Küche" auf "Am Küchendrucker" tippen, aber noch keinen Drucker wählen.
   Es steht "Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon."
 - [ ] Einen Verkauf machen.
-  Nur der Kundenbon kommt. Auf "Verkauf fertig" steht kein Hinweis zum Küchenbon.
+  Nur der Kundenbon kommt. Auf "Verkauf fertig" steht "Küchenbon nicht gedruckt" mit "Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon." So merkt man es gleich, auch ohne in die Einstellungen zu schauen.
 - [ ] Die Zeile "Küchendrucker" tippen und den zweiten Drucker suchen und wählen, so wie beim Bondrucker.
   Der Hinweis "Kein Küchendrucker eingerichtet" ist weg.
 - [ ] "Probe drucken" tippen.
