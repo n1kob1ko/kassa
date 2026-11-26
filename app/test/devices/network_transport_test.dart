@@ -160,6 +160,49 @@ void main() {
       },
     );
 
+    test('ein langer Küchenbon: send darf das Limit des ganzen Aufrufs '
+        'nutzen, nicht nur 5 Sekunden', () async {
+      final received = Completer<List<int>>();
+      server.listen((s) {
+        sockets.add(s);
+        final data = <int>[];
+        s.listen(data.addAll, onDone: () => received.complete(data));
+      });
+      // Verbindung und Übertragung brauchen zusammen länger als 5 Sekunden.
+      final t = NetworkTransport(
+        '127.0.0.1:${server.port}',
+        connector: slowConnector(
+          Future<void>.delayed(const Duration(milliseconds: 5400)),
+        ),
+      );
+      t.startCall(rasterCallLimit);
+      await t.send(Uint8List.fromList([1, 2, 3]));
+      expect(await received.future, [1, 2, 3]);
+    }, timeout: const Timeout(Duration(seconds: 20)));
+
+    test('send endet spätestens mit dem Limit des Aufrufs', () async {
+      server.listen(sockets.add);
+      final t = NetworkTransport(
+        '127.0.0.1:${server.port}',
+        connector: slowConnector(
+          Future<void>.delayed(const Duration(seconds: 2)),
+        ),
+      );
+      t.startCall(const Duration(milliseconds: 300));
+      final watch = Stopwatch()..start();
+      await expectLater(
+        t.send(Uint8List.fromList([1])),
+        throwsA(
+          isA<PrinterException>().having(
+            (e) => e.problem,
+            'problem',
+            PrintProblem.timeout,
+          ),
+        ),
+      );
+      expect(watch.elapsed, lessThan(const Duration(milliseconds: 1500)));
+    });
+
     test('abandon schließt eine offene Verbindung', () async {
       final closed = Completer<void>();
       server.listen((s) {

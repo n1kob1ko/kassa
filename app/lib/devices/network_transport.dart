@@ -31,18 +31,39 @@ class NetworkTransport implements PrinterTransport {
   final _open = <Socket>{};
   int _epoch = 0;
 
+  final _clock = Stopwatch()..start();
+
+  /// Ende des laufenden Aufrufs auf [_clock]; `null` ohne [startCall].
+  Duration? _deadline;
+
   late final String host;
   late final int port;
 
   static const connectLimit = Duration(seconds: 3);
+
+  /// Höchstdauer von [send] ohne [startCall].
   static const sendLimit = Duration(seconds: 5);
   static const statusLimit = Duration(seconds: 1);
+
+  /// Zeit, die [send] noch hat: der Rest des laufenden Aufrufs (beim
+  /// Küchenbon bis zu [rasterCallLimit], ein großes Bild braucht länger),
+  /// ohne [startCall] [sendLimit].
+  Duration _sendBudget() {
+    final deadline = _deadline;
+    if (deadline == null) return sendLimit;
+    final left = deadline - _clock.elapsed;
+    return left.isNegative ? Duration.zero : left;
+  }
 
   /// Je Aufruf ein eigener Socket, in jedem Fall wieder geschlossen.
   @override
   Future<void> send(Uint8List bytes) async {
+    final budget = _sendBudget();
+    if (budget <= Duration.zero) {
+      throw const PrinterException(PrintProblem.timeout);
+    }
     try {
-      await _withSocket(sendLimit, (socket) async {
+      await _withSocket(budget, (socket) async {
         socket.add(bytes);
         await socket.flush();
       });
@@ -71,14 +92,15 @@ class NetworkTransport implements PrinterTransport {
     }
   }
 
-  /// Jeder Socket hat seine eigenen Grenzen; nach dem Limit schließt
-  /// [abandon] alles.
+  /// Die Zustandsfrage hat ihre eigene Grenze; [send] nutzt, was vom Aufruf
+  /// übrig ist. Nach dem Limit schließt [abandon] alles.
   @override
-  void startCall(Duration limit) {}
+  void startCall(Duration limit) => _deadline = _clock.elapsed + limit;
 
   @override
   void abandon() {
     _epoch++;
+    _deadline = null;
     for (final s in _open.toList()) {
       s.destroy();
     }
