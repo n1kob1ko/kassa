@@ -1306,4 +1306,16 @@ class L10nEn extends L10n {
   String settingsVersion(String version) {
     return 'Kassa version $version';
   }
+
+  @override
+  String get kitchenTitle => 'KITCHEN';
+
+  @override
+  String get kitchenVoided => 'VOID';
+
+  @override
+  String get kitchenCopy => 'COPY';
+
+  @override
+  String get kitchenSample => 'SAMPLE';
 }

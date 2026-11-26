@@ -2323,6 +2323,30 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Kassa Version {version}'**
   String settingsVersion(String version);
+
+  /// Überschrift des Küchenbons (Küche), in Großbuchstaben.
+  ///
+  /// In de, this message translates to:
+  /// **'KÜCHE'**
+  String get kitchenTitle;
+
+  /// Vermerk auf dem Küchenbon nach einem Storno, in Großbuchstaben.
+  ///
+  /// In de, this message translates to:
+  /// **'STORNO'**
+  String get kitchenVoided;
+
+  /// Vermerk auf dem Küchenbon beim erneuten Druck (Kopie), in Großbuchstaben.
+  ///
+  /// In de, this message translates to:
+  /// **'KOPIE'**
+  String get kitchenCopy;
+
+  /// Vermerk auf dem Probe-Küchenbon, in Großbuchstaben.
+  ///
+  /// In de, this message translates to:
+  /// **'PROBE'**
+  String get kitchenSample;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

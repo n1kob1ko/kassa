@@ -369,5 +369,9 @@
   "settingsRegister": "Kasa",
   "settingsVoidChef": "Yalnızca yönetici iptal edebilir",
   "settingsVoidChefHelp": "Çalışanlar bu durumda fiş iptal edemez.",
-  "settingsVersion": "Kassa sürüm {version}"
+  "settingsVersion": "Kassa sürüm {version}",
+  "kitchenTitle": "MUTFAK",
+  "kitchenVoided": "İPTAL",
+  "kitchenCopy": "KOPYA",
+  "kitchenSample": "DENEME"
 }

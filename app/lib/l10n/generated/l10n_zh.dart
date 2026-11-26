@@ -1278,4 +1278,16 @@ class L10nZh extends L10n {
   String settingsVersion(String version) {
     return 'Kassa 版本 $version';
   }
+
+  @override
+  String get kitchenTitle => '厨房';
+
+  @override
+  String get kitchenVoided => '取消';
+
+  @override
+  String get kitchenCopy => '副本';
+
+  @override
+  String get kitchenSample => '测试';
 }

@@ -369,5 +369,9 @@
   "settingsRegister": "收银",
   "settingsVoidChef": "仅店长可作废",
   "settingsVoidChefHelp": "员工将无法作废小票。",
-  "settingsVersion": "Kassa 版本 {version}"
+  "settingsVersion": "Kassa 版本 {version}",
+  "kitchenTitle": "厨房",
+  "kitchenVoided": "取消",
+  "kitchenCopy": "副本",
+  "kitchenSample": "测试"
 }

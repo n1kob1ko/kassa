@@ -369,5 +369,9 @@
   "settingsRegister": "Register",
   "settingsVoidChef": "Only the manager can void",
   "settingsVoidChefHelp": "Staff then cannot void receipts.",
-  "settingsVersion": "Kassa version {version}"
+  "settingsVersion": "Kassa version {version}",
+  "kitchenTitle": "KITCHEN",
+  "kitchenVoided": "VOID",
+  "kitchenCopy": "COPY",
+  "kitchenSample": "SAMPLE"
 }

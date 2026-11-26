@@ -369,5 +369,9 @@
   "settingsRegister": "البيع",
   "settingsVoidChef": "الإلغاء للمدير فقط",
   "settingsVoidChefHelp": "لن يتمكن الموظفون عندها من إلغاء الفواتير.",
-  "settingsVersion": "Kassa الإصدار {version}"
+  "settingsVersion": "Kassa الإصدار {version}",
+  "kitchenTitle": "المطبخ",
+  "kitchenVoided": "إلغاء",
+  "kitchenCopy": "نسخة",
+  "kitchenSample": "تجربة"
 }

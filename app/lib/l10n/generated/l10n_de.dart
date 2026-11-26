@@ -1310,4 +1310,16 @@ class L10nDe extends L10n {
   String settingsVersion(String version) {
     return 'Kassa Version $version';
   }
+
+  @override
+  String get kitchenTitle => 'KÜCHE';
+
+  @override
+  String get kitchenVoided => 'STORNO';
+
+  @override
+  String get kitchenCopy => 'KOPIE';
+
+  @override
+  String get kitchenSample => 'PROBE';
 }

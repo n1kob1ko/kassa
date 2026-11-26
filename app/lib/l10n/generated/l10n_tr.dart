@@ -1296,4 +1296,16 @@ class L10nTr extends L10n {
   String settingsVersion(String version) {
     return 'Kassa sürüm $version';
   }
+
+  @override
+  String get kitchenTitle => 'MUTFAK';
+
+  @override
+  String get kitchenVoided => 'İPTAL';
+
+  @override
+  String get kitchenCopy => 'KOPYA';
+
+  @override
+  String get kitchenSample => 'DENEME';
 }

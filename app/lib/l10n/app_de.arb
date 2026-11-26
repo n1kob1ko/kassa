@@ -1909,5 +1909,21 @@
         "type": "String"
       }
     }
+  },
+  "kitchenTitle": "KÜCHE",
+  "@kitchenTitle": {
+    "description": "Überschrift des Küchenbons (Küche), in Großbuchstaben."
+  },
+  "kitchenVoided": "STORNO",
+  "@kitchenVoided": {
+    "description": "Vermerk auf dem Küchenbon nach einem Storno, in Großbuchstaben."
+  },
+  "kitchenCopy": "KOPIE",
+  "@kitchenCopy": {
+    "description": "Vermerk auf dem Küchenbon beim erneuten Druck (Kopie), in Großbuchstaben."
+  },
+  "kitchenSample": "PROBE",
+  "@kitchenSample": {
+    "description": "Vermerk auf dem Probe-Küchenbon, in Großbuchstaben."
   }
 }

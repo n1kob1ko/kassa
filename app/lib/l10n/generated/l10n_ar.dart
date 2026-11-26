@@ -1308,4 +1308,16 @@ class L10nAr extends L10n {
   String settingsVersion(String version) {
     return 'Kassa الإصدار $version';
   }
+
+  @override
+  String get kitchenTitle => 'المطبخ';
+
+  @override
+  String get kitchenVoided => 'إلغاء';
+
+  @override
+  String get kitchenCopy => 'نسخة';
+
+  @override
+  String get kitchenSample => 'تجربة';
 }
