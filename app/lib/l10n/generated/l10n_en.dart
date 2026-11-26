@@ -1244,4 +1244,66 @@ class L10nEn extends L10n {
 
   @override
   String get closeNoPrinter => 'No printer set up.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String settingsRegisterAt(String business) {
+    return 'Kassa 1 at $business';
+  }
+
+  @override
+  String get settingsDevices => 'Devices on this register';
+
+  @override
+  String get settingsDrawer => 'Cash drawer';
+
+  @override
+  String get settingsDrawerHelp => 'Turn off if there is no cash drawer.';
+
+  @override
+  String get settingsDeviceTest => 'Test devices';
+
+  @override
+  String get settingsDeviceTestHelp => 'Test print, open drawer.';
+
+  @override
+  String get settingsDisplay => 'Display';
+
+  @override
+  String get settingsImages => 'Items with pictures';
+
+  @override
+  String get settingsImagesHelp => 'Large buttons with a photo.';
+
+  @override
+  String get settingsView => 'Appearance';
+
+  @override
+  String get settingsViewHelp =>
+      'Dark is easier on the eyes in the evening and in dark rooms.';
+
+  @override
+  String get settingsThemeSystem => 'Like the tablet';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeDark => 'Dark';
+
+  @override
+  String get settingsRegister => 'Register';
+
+  @override
+  String get settingsVoidChef => 'Only the manager can void';
+
+  @override
+  String get settingsVoidChefHelp => 'Staff then cannot void receipts.';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Kassa version $version';
+  }
 }

@@ -1823,5 +1823,91 @@
   "closeNoPrinter": "Kein Drucker eingerichtet.",
   "@closeNoPrinter": {
     "description": "Kein Drucker eingerichtet."
+  },
+  "settingsTitle": "Einstellungen",
+  "@settingsTitle": {
+    "description": "Überschrift der Einstellungen."
+  },
+  "settingsRegisterAt": "Kassa 1 bei {business}",
+  "@settingsRegisterAt": {
+    "description": "Untertitel: Kassa mit Name des Betriebs (\"Kassa\" ist der Name der App).",
+    "placeholders": {
+      "business": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsDevices": "Geräte an dieser Kassa",
+  "@settingsDevices": {
+    "description": "Karte Geräte."
+  },
+  "settingsDrawer": "Geldlade",
+  "@settingsDrawer": {
+    "description": "Zeile Geldlade."
+  },
+  "settingsDrawerHelp": "Ausschalten, wenn es keine Geldlade gibt.",
+  "@settingsDrawerHelp": {
+    "description": "Hilfe zur Geldlade."
+  },
+  "settingsDeviceTest": "Geräte testen",
+  "@settingsDeviceTest": {
+    "description": "Zeile Geräte testen."
+  },
+  "settingsDeviceTestHelp": "Testdruck, Lade öffnen.",
+  "@settingsDeviceTestHelp": {
+    "description": "Hilfe zu Geräte testen."
+  },
+  "settingsDisplay": "Anzeige",
+  "@settingsDisplay": {
+    "description": "Karte Anzeige."
+  },
+  "settingsImages": "Artikel mit Bildern",
+  "@settingsImages": {
+    "description": "Zeile Artikel mit Bildern."
+  },
+  "settingsImagesHelp": "Große Tasten mit Foto.",
+  "@settingsImagesHelp": {
+    "description": "Hilfe zu Artikel mit Bildern."
+  },
+  "settingsView": "Ansicht",
+  "@settingsView": {
+    "description": "Zeile Ansicht (hell oder dunkel)."
+  },
+  "settingsViewHelp": "Dunkel ist angenehmer am Abend und in dunklen Räumen.",
+  "@settingsViewHelp": {
+    "description": "Hilfe zur Ansicht."
+  },
+  "settingsThemeSystem": "Wie das Tablet",
+  "@settingsThemeSystem": {
+    "description": "Ansicht wie das Tablet."
+  },
+  "settingsThemeLight": "Hell",
+  "@settingsThemeLight": {
+    "description": "Ansicht hell."
+  },
+  "settingsThemeDark": "Dunkel",
+  "@settingsThemeDark": {
+    "description": "Ansicht dunkel."
+  },
+  "settingsRegister": "Kassa",
+  "@settingsRegister": {
+    "description": "Karte Kassa (Einstellungen der Kasse)."
+  },
+  "settingsVoidChef": "Storno nur durch den Chef",
+  "@settingsVoidChef": {
+    "description": "Zeile Storno nur durch den Chef."
+  },
+  "settingsVoidChefHelp": "Mitarbeiter können Bons dann nicht stornieren.",
+  "@settingsVoidChefHelp": {
+    "description": "Hilfe zu Storno nur durch den Chef."
+  },
+  "settingsVersion": "Kassa Version {version}",
+  "@settingsVersion": {
+    "description": "Version der App (\"Kassa\" ist der Name der App).",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
   }
 }

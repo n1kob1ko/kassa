@@ -1247,4 +1247,67 @@ class L10nDe extends L10n {
 
   @override
   String get closeNoPrinter => 'Kein Drucker eingerichtet.';
+
+  @override
+  String get settingsTitle => 'Einstellungen';
+
+  @override
+  String settingsRegisterAt(String business) {
+    return 'Kassa 1 bei $business';
+  }
+
+  @override
+  String get settingsDevices => 'Geräte an dieser Kassa';
+
+  @override
+  String get settingsDrawer => 'Geldlade';
+
+  @override
+  String get settingsDrawerHelp => 'Ausschalten, wenn es keine Geldlade gibt.';
+
+  @override
+  String get settingsDeviceTest => 'Geräte testen';
+
+  @override
+  String get settingsDeviceTestHelp => 'Testdruck, Lade öffnen.';
+
+  @override
+  String get settingsDisplay => 'Anzeige';
+
+  @override
+  String get settingsImages => 'Artikel mit Bildern';
+
+  @override
+  String get settingsImagesHelp => 'Große Tasten mit Foto.';
+
+  @override
+  String get settingsView => 'Ansicht';
+
+  @override
+  String get settingsViewHelp =>
+      'Dunkel ist angenehmer am Abend und in dunklen Räumen.';
+
+  @override
+  String get settingsThemeSystem => 'Wie das Tablet';
+
+  @override
+  String get settingsThemeLight => 'Hell';
+
+  @override
+  String get settingsThemeDark => 'Dunkel';
+
+  @override
+  String get settingsRegister => 'Kassa';
+
+  @override
+  String get settingsVoidChef => 'Storno nur durch den Chef';
+
+  @override
+  String get settingsVoidChefHelp =>
+      'Mitarbeiter können Bons dann nicht stornieren.';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Kassa Version $version';
+  }
 }

@@ -1217,4 +1217,65 @@ class L10nZh extends L10n {
 
   @override
   String get closeNoPrinter => '未设置打印机。';
+
+  @override
+  String get settingsTitle => '设置';
+
+  @override
+  String settingsRegisterAt(String business) {
+    return '$business 的 Kassa 1';
+  }
+
+  @override
+  String get settingsDevices => '本收银机的设备';
+
+  @override
+  String get settingsDrawer => '钱箱';
+
+  @override
+  String get settingsDrawerHelp => '如果没有钱箱，请关闭。';
+
+  @override
+  String get settingsDeviceTest => '测试设备';
+
+  @override
+  String get settingsDeviceTestHelp => '测试打印、打开钱箱。';
+
+  @override
+  String get settingsDisplay => '显示';
+
+  @override
+  String get settingsImages => '商品带图片';
+
+  @override
+  String get settingsImagesHelp => '带照片的大按钮。';
+
+  @override
+  String get settingsView => '外观';
+
+  @override
+  String get settingsViewHelp => '晚上和光线暗的地方用深色更舒适。';
+
+  @override
+  String get settingsThemeSystem => '跟随平板';
+
+  @override
+  String get settingsThemeLight => '浅色';
+
+  @override
+  String get settingsThemeDark => '深色';
+
+  @override
+  String get settingsRegister => '收银';
+
+  @override
+  String get settingsVoidChef => '仅店长可作废';
+
+  @override
+  String get settingsVoidChefHelp => '员工将无法作废小票。';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Kassa 版本 $version';
+  }
 }

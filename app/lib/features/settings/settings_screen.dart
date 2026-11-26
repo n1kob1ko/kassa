@@ -214,13 +214,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
     final s =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final business = ref.watch(catalogStreamProvider).value?.businessName;
     const gap = SizedBox(height: KassaTokens.spaceXxl);
 
     final language = SettingsCard(
-      title: L10n.of(context).languageSectionTitle,
+      title: l.languageSectionTitle,
       rows: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: KassaTokens.spaceXxl),
@@ -232,16 +233,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ],
     );
     final devices = SettingsCard(
-      title: 'Geräte an dieser Kassa',
+      title: l.settingsDevices,
       rows: [
         const PrinterPanel(),
         const CardPanel(),
         SettingsRow(
-          title: 'Geldlade',
-          help: 'Ausschalten, wenn es keine Geldlade gibt.',
+          title: l.settingsDrawer,
+          help: l.settingsDrawerHelp,
           control: RowToggle(
             key: const Key('toggle-drawer'),
-            label: 'Geldlade',
+            label: l.settingsDrawer,
             value: s.cashDrawerEnabled,
             onChanged: (v) => _change((s) => s.copyWith(cashDrawerEnabled: v)),
           ),
@@ -249,38 +250,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         Pressable(
           key: const Key('open-device-test'),
           onTap: () => widget.onTestingDevices(true),
-          semanticLabel: 'Geräte testen',
+          semanticLabel: l.settingsDeviceTest,
           child: SettingsRow(
-            title: 'Geräte testen',
-            help: 'Testdruck, Lade öffnen.',
+            title: l.settingsDeviceTest,
+            help: l.settingsDeviceTestHelp,
             control: Icon(LucideIcons.chevronRight, size: 24, color: c.ink2),
           ),
         ),
       ],
     );
     final display = SettingsCard(
-      title: 'Anzeige',
+      title: l.settingsDisplay,
       rows: [
         SettingsRow(
-          title: 'Artikel mit Bildern',
-          help: 'Große Tasten mit Foto.',
+          title: l.settingsImages,
+          help: l.settingsImagesHelp,
           control: RowToggle(
             key: const Key('toggle-images'),
-            label: 'Artikel mit Bildern',
+            label: l.settingsImages,
             value: s.showImages,
             onChanged: (v) => _change((s) => s.copyWith(showImages: v)),
           ),
         ),
         SettingsRow(
-          title: 'Ansicht',
-          help: 'Dunkel ist angenehmer am Abend und in dunklen Räumen.',
+          title: l.settingsView,
+          help: l.settingsViewHelp,
           below: Align(
             alignment: Alignment.centerLeft,
             child: Segmented<AppThemeMode>(
-              segments: const [
-                (AppThemeMode.system, 'Wie das Tablet'),
-                (AppThemeMode.light, 'Hell'),
-                (AppThemeMode.dark, 'Dunkel'),
+              segments: [
+                (AppThemeMode.system, l.settingsThemeSystem),
+                (AppThemeMode.light, l.settingsThemeLight),
+                (AppThemeMode.dark, l.settingsThemeDark),
               ],
               selected: s.themeMode,
               keyFor: (m) => Key('theme-${m.name}'),
@@ -291,14 +292,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ],
     );
     final register = SettingsCard(
-      title: 'Kassa',
+      title: l.settingsRegister,
       rows: [
         SettingsRow(
-          title: 'Storno nur durch den Chef',
-          help: 'Mitarbeiter können Bons dann nicht stornieren.',
+          title: l.settingsVoidChef,
+          help: l.settingsVoidChefHelp,
           control: RowToggle(
             key: const Key('toggle-void-chef'),
-            label: 'Storno nur durch den Chef',
+            label: l.settingsVoidChef,
             value: s.voidRequiresChef,
             onChanged: (v) => _change((s) => s.copyWith(voidRequiresChef: v)),
           ),
@@ -316,13 +317,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             height: KassaTokens.receiptHeaderHeight,
             child: Row(
               children: [
-                Text('Einstellungen', style: text.headlineMedium),
+                Text(l.settingsTitle, style: text.headlineMedium),
                 const SizedBox(width: KassaTokens.spaceLg),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
-                      business == null ? 'Kassa 1' : 'Kassa 1 bei $business',
+                      // "Kassa 1": Name der App und Nummer, in jeder Sprache.
+                      business == null
+                          ? 'Kassa 1'
+                          : l.settingsRegisterAt(business),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.labelLarge!.copyWith(
@@ -372,7 +376,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: KassaTokens.spaceXxl),
           Text(
-            'Kassa Version $appVersion',
+            l.settingsVersion(appVersion),
             key: const Key('app-version'),
             style: text.bodySmall!.copyWith(color: c.ink2),
           ),

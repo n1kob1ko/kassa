@@ -2209,6 +2209,120 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Kein Drucker eingerichtet.'**
   String get closeNoPrinter;
+
+  /// Überschrift der Einstellungen.
+  ///
+  /// In de, this message translates to:
+  /// **'Einstellungen'**
+  String get settingsTitle;
+
+  /// Untertitel: Kassa mit Name des Betriebs ("Kassa" ist der Name der App).
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa 1 bei {business}'**
+  String settingsRegisterAt(String business);
+
+  /// Karte Geräte.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte an dieser Kassa'**
+  String get settingsDevices;
+
+  /// Zeile Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Geldlade'**
+  String get settingsDrawer;
+
+  /// Hilfe zur Geldlade.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausschalten, wenn es keine Geldlade gibt.'**
+  String get settingsDrawerHelp;
+
+  /// Zeile Geräte testen.
+  ///
+  /// In de, this message translates to:
+  /// **'Geräte testen'**
+  String get settingsDeviceTest;
+
+  /// Hilfe zu Geräte testen.
+  ///
+  /// In de, this message translates to:
+  /// **'Testdruck, Lade öffnen.'**
+  String get settingsDeviceTestHelp;
+
+  /// Karte Anzeige.
+  ///
+  /// In de, this message translates to:
+  /// **'Anzeige'**
+  String get settingsDisplay;
+
+  /// Zeile Artikel mit Bildern.
+  ///
+  /// In de, this message translates to:
+  /// **'Artikel mit Bildern'**
+  String get settingsImages;
+
+  /// Hilfe zu Artikel mit Bildern.
+  ///
+  /// In de, this message translates to:
+  /// **'Große Tasten mit Foto.'**
+  String get settingsImagesHelp;
+
+  /// Zeile Ansicht (hell oder dunkel).
+  ///
+  /// In de, this message translates to:
+  /// **'Ansicht'**
+  String get settingsView;
+
+  /// Hilfe zur Ansicht.
+  ///
+  /// In de, this message translates to:
+  /// **'Dunkel ist angenehmer am Abend und in dunklen Räumen.'**
+  String get settingsViewHelp;
+
+  /// Ansicht wie das Tablet.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie das Tablet'**
+  String get settingsThemeSystem;
+
+  /// Ansicht hell.
+  ///
+  /// In de, this message translates to:
+  /// **'Hell'**
+  String get settingsThemeLight;
+
+  /// Ansicht dunkel.
+  ///
+  /// In de, this message translates to:
+  /// **'Dunkel'**
+  String get settingsThemeDark;
+
+  /// Karte Kassa (Einstellungen der Kasse).
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa'**
+  String get settingsRegister;
+
+  /// Zeile Storno nur durch den Chef.
+  ///
+  /// In de, this message translates to:
+  /// **'Storno nur durch den Chef'**
+  String get settingsVoidChef;
+
+  /// Hilfe zu Storno nur durch den Chef.
+  ///
+  /// In de, this message translates to:
+  /// **'Mitarbeiter können Bons dann nicht stornieren.'**
+  String get settingsVoidChefHelp;
+
+  /// Version der App ("Kassa" ist der Name der App).
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa Version {version}'**
+  String settingsVersion(String version);
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

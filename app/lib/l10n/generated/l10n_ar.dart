@@ -1245,4 +1245,67 @@ class L10nAr extends L10n {
 
   @override
   String get closeNoPrinter => 'لم يتم إعداد طابعة.';
+
+  @override
+  String get settingsTitle => 'الإعدادات';
+
+  @override
+  String settingsRegisterAt(String business) {
+    return 'Kassa 1 في $business';
+  }
+
+  @override
+  String get settingsDevices => 'الأجهزة في نقطة البيع هذه';
+
+  @override
+  String get settingsDrawer => 'درج النقود';
+
+  @override
+  String get settingsDrawerHelp => 'أوقفه إذا لم يكن هناك درج نقود.';
+
+  @override
+  String get settingsDeviceTest => 'اختبار الأجهزة';
+
+  @override
+  String get settingsDeviceTestHelp => 'طباعة تجريبية، فتح الدرج.';
+
+  @override
+  String get settingsDisplay => 'العرض';
+
+  @override
+  String get settingsImages => 'الأصناف مع الصور';
+
+  @override
+  String get settingsImagesHelp => 'أزرار كبيرة مع صورة.';
+
+  @override
+  String get settingsView => 'المظهر';
+
+  @override
+  String get settingsViewHelp =>
+      'الوضع الداكن أريح في المساء وفي الأماكن المظلمة.';
+
+  @override
+  String get settingsThemeSystem => 'مثل الجهاز اللوحي';
+
+  @override
+  String get settingsThemeLight => 'فاتح';
+
+  @override
+  String get settingsThemeDark => 'داكن';
+
+  @override
+  String get settingsRegister => 'البيع';
+
+  @override
+  String get settingsVoidChef => 'الإلغاء للمدير فقط';
+
+  @override
+  String get settingsVoidChefHelp =>
+      'لن يتمكن الموظفون عندها من إلغاء الفواتير.';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Kassa الإصدار $version';
+  }
 }

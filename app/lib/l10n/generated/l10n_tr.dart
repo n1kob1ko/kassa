@@ -1234,4 +1234,66 @@ class L10nTr extends L10n {
 
   @override
   String get closeNoPrinter => 'Yazıcı kurulmadı.';
+
+  @override
+  String get settingsTitle => 'Ayarlar';
+
+  @override
+  String settingsRegisterAt(String business) {
+    return '$business – Kassa 1';
+  }
+
+  @override
+  String get settingsDevices => 'Bu kasadaki cihazlar';
+
+  @override
+  String get settingsDrawer => 'Para çekmecesi';
+
+  @override
+  String get settingsDrawerHelp => 'Para çekmecesi yoksa kapatın.';
+
+  @override
+  String get settingsDeviceTest => 'Cihazları test et';
+
+  @override
+  String get settingsDeviceTestHelp => 'Test baskısı, çekmeceyi aç.';
+
+  @override
+  String get settingsDisplay => 'Görünüm';
+
+  @override
+  String get settingsImages => 'Resimli ürünler';
+
+  @override
+  String get settingsImagesHelp => 'Fotoğraflı büyük düğmeler.';
+
+  @override
+  String get settingsView => 'Tema';
+
+  @override
+  String get settingsViewHelp =>
+      'Koyu tema akşamları ve karanlık ortamlarda daha rahattır.';
+
+  @override
+  String get settingsThemeSystem => 'Tablet gibi';
+
+  @override
+  String get settingsThemeLight => 'Açık';
+
+  @override
+  String get settingsThemeDark => 'Koyu';
+
+  @override
+  String get settingsRegister => 'Kasa';
+
+  @override
+  String get settingsVoidChef => 'Yalnızca yönetici iptal edebilir';
+
+  @override
+  String get settingsVoidChefHelp => 'Çalışanlar bu durumda fiş iptal edemez.';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Kassa sürüm $version';
+  }
 }
