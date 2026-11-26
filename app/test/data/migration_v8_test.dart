@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,7 +75,7 @@ void main() {
       final paymentsBefore = [
         for (final r in raw.select(
           'SELECT receipt_id, kind, amount_cents, given_cents, change_cents, '
-          'provider_tx_code FROM payments ORDER BY rowid',
+          'provider_tx_code FROM payments ORDER BY receipt_id',
         ))
           (
             r['receipt_id'] as String,
@@ -96,7 +97,12 @@ void main() {
       addTearDown(db.close);
       expect(await userVersion(db), 8);
 
-      final payments = await db.select(db.paymentRows).get();
+      final payments =
+          await (db.select(db.paymentRows)..orderBy([
+                (t) => OrderingTerm(expression: t.receiptId),
+                (t) => OrderingTerm(expression: t.position),
+              ]))
+              .get();
       expect(payments.length, before['payments']);
       expect(
         payments.every(
