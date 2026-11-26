@@ -2461,6 +2461,24 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Auf diesem Bon ist nichts für die Küche.'**
   String get bonsKitchenNothing;
+
+  /// Hinweis im Abschnitt Küche bei "Am Bondrucker", wenn kein Bondrucker eingerichtet ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Bondrucker eingerichtet. Es kommt kein Küchenbon.'**
+  String get settingsKitchenNoReceiptPrinter;
+
+  /// Zeile im Hinweis über dem Bon: so viele weitere Küchenbons sind ebenfalls nicht gedruckt (der neueste steht darüber).
+  ///
+  /// In de, this message translates to:
+  /// **'Weitere Küchenbons nicht gedruckt: {count}'**
+  String kassaKitchenLateMore(int count);
+
+  /// Taste im Hinweis über dem Bon: den Hinweis zu diesem Küchenbon wegnehmen, ohne zu drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausblenden'**
+  String get kassaKitchenDismiss;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

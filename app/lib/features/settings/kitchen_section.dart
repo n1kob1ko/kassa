@@ -204,6 +204,23 @@ class _KitchenSectionState extends ConsumerState<KitchenSection>
                       ),
                   ],
                 )
+              : _shown == KitchenMode.receiptPrinter &&
+                    s.printerKind == PrinterKind.none
+              // Am Bondrucker ohne Bondrucker käme nie ein Küchenbon.
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _Line(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: _Notice(
+                        key: const Key('kitchen-no-receipt-printer'),
+                        text: l.settingsKitchenNoReceiptPrinter,
+                        ok: false,
+                      ),
+                    ),
+                  ],
+                )
               : const SizedBox(width: double.infinity),
         ),
         const _Line(),

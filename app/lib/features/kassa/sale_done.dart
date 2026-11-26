@@ -15,6 +15,7 @@ import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
 import 'kitchen_service.dart';
+import 'late_kitchen.dart';
 import 'sale_service.dart';
 
 /// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
@@ -24,7 +25,9 @@ import 'sale_service.dart';
 /// leeren Kassa zurück und ist immer sofort aktiv, auch während des Druckens.
 /// Scheitert der Küchenbon, steht unter dem Druckzustand "Küchenbon nicht
 /// gedruckt" mit der Meldung des Druckers und "Küchenbon drucken"; auf ihn
-/// wird nie gewartet.
+/// wird nie gewartet. Geht die Ansicht weg ("Nächster Kunde"), übernimmt der
+/// Hinweis über dem Bon ([LateKitchenNotice]) einen Küchenbon, der noch läuft
+/// oder gescheitert ist.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -50,14 +53,31 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   /// "Küchenbon gedruckt.".
   bool _kitchenRetried = false;
 
+  /// Der letzte Küchenbon dieses Verkaufs (der erste oder ein Nachdruck).
+  late Future<PrintOutcome?> _currentKitchen;
+
+  /// Übernimmt beim Weggehen den Küchenbon; beim Aufräumen darf das Widget
+  /// `ref` nicht mehr lesen.
+  late final LateKitchen _late;
+
   @override
   void initState() {
     super.initState();
+    _late = ref.read(lateKitchenProvider.notifier);
     _await(widget.result.print);
     _awaitKitchen(widget.result.kitchen);
   }
 
+  @override
+  void dispose() {
+    // Gedruckt oder keiner fällig: nichts. Läuft er noch oder ist er
+    // gescheitert, steht er danach über dem Bon der Kassa.
+    _late.follow(widget.result.receipt, _currentKitchen);
+    super.dispose();
+  }
+
   void _awaitKitchen(Future<PrintOutcome?> kitchen) {
+    _currentKitchen = kitchen;
     kitchen.then(
       (outcome) {
         if (!mounted) return;
@@ -165,7 +185,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                     if (_kitchen case final kitchen?
                         when !kitchen.ok || _kitchenRetried) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
-                      _KitchenState(
+                      KitchenStateBox(
                         outcome: kitchen,
                         mode: settings.kitchenMode,
                         printing: _kitchenAgain,
@@ -344,16 +364,24 @@ class _PrintState extends StatelessWidget {
   }
 }
 
-/// Der Küchenbon nach dem Verkauf: gescheitert die Zeile "Küchenbon nicht
-/// gedruckt" mit der Meldung des Druckers in `warnBg` und "Küchenbon
-/// drucken"; nach einem Nachdruck, der geklappt hat, "Küchenbon gedruckt.".
-class _KitchenState extends StatelessWidget {
-  const _KitchenState({
+/// Der Küchenbon nach dem Verkauf (und nach einem Storno im Bon-Detail):
+/// gescheitert die Zeile "Küchenbon nicht gedruckt" mit der Meldung des
+/// Druckers in `warnBg` und "Küchenbon drucken"; nach einem Nachdruck, der
+/// geklappt hat, "Küchenbon gedruckt.". [boxKey] und [reprintKey] sind die
+/// Schlüssel des Ganzen und der Taste.
+class KitchenStateBox extends StatelessWidget {
+  const KitchenStateBox({
+    super.key,
     required this.outcome,
     required this.mode,
     required this.printing,
     required this.onReprint,
+    this.boxKey = const Key('kitchen-state'),
+    this.reprintKey = const Key('kitchen-reprint'),
   });
+
+  final Key boxKey;
+  final Key reprintKey;
 
   final PrintOutcome outcome;
 
@@ -374,7 +402,7 @@ class _KitchenState extends StatelessWidget {
     if (problem == null) {
       return Text(
         l.kassaKitchenPrinted,
-        key: const Key('kitchen-state'),
+        key: boxKey,
         style: text.bodyLarge!.copyWith(
           fontWeight: FontWeight.w600,
           color: c.ink2,
@@ -382,7 +410,7 @@ class _KitchenState extends StatelessWidget {
       );
     }
     return Container(
-      key: const Key('kitchen-state'),
+      key: boxKey,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: c.warnBg,
@@ -408,7 +436,7 @@ class _KitchenState extends StatelessWidget {
           ),
           const SizedBox(height: KassaTokens.spaceMd),
           PrimaryButton(
-            key: const Key('kitchen-reprint'),
+            key: reprintKey,
             label: printing ? l.kassaKitchenPrinting : l.kassaKitchenPrint,
             icon: LucideIcons.printer,
             filled: false,

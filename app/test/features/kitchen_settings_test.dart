@@ -116,6 +116,40 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('Am Bondrucker ohne Bondrucker: Hinweis, mit Bondrucker nicht', (
+    t,
+  ) async {
+    await _pump(t);
+    await _save(
+      t,
+      (s) => s.copyWith(
+        kitchenMode: KitchenMode.receiptPrinter,
+        printerKind: PrinterKind.none,
+      ),
+    );
+    const hint = 'Kein Bondrucker eingerichtet. Es kommt kein Küchenbon.';
+    expect(find.text(hint), findsOneWidget);
+    expect(find.byKey(const Key('kitchen-no-receipt-printer')), findsOneWidget);
+    await _save(
+      t,
+      (s) => s.copyWith(
+        printerKind: PrinterKind.network,
+        printerAddress: '192.168.1.50:9100',
+      ),
+    );
+    expect(find.text(hint), findsNothing);
+    // Am Küchendrucker zählt der Bondrucker nicht.
+    await _save(
+      t,
+      (s) => s.copyWith(
+        kitchenMode: KitchenMode.kitchenPrinter,
+        printerKind: PrinterKind.none,
+      ),
+    );
+    expect(find.text(hint), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('mit eingerichtetem Küchendrucker: Name statt Hinweis', (
     t,
   ) async {

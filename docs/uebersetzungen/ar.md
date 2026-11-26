@@ -2,11 +2,9 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Diese Liste enthält alle 393 Texte, die die Kassa auf Arabisch zeigt. Links steht der deutsche Text, in der Mitte die Übersetzung, rechts, wo der Text in der Kassa steht. Bitte gib die Liste jemandem, der Arabisch gut spricht.
+Hier stehen alle 396 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
-Wenn etwas falsch oder holprig ist: die Zeile nennen (den Eintrag in der Spalte "Wo") und den richtigen Text dazuschreiben. Am Ende steht der Abschnitt "Unsicher" mit den Stellen, die besonders wichtig sind.
-
-Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst ein (einen Betrag, einen Namen, eine Zahl); sie bleiben genau so stehen. Texte mit "plural" haben eine Form je Anzahl (zum Beispiel one = eins, other = mehrere).
+Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
 ## Sprache
 
@@ -118,6 +116,8 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Küchenbon drucken | طباعة تذكرة المطبخ | Kassa: `kassaKitchenPrint` |
 | Küchenbon wird gedruckt … | جارٍ طباعة تذكرة المطبخ… | Kassa: `kassaKitchenPrinting` |
 | Küchenbon gedruckt. | تمت طباعة تذكرة المطبخ. | Kassa: `kassaKitchenPrinted` |
+| Weitere Küchenbons nicht gedruckt: {count} | تذاكر مطبخ أخرى لم تُطبع: {count} | Kassa: `kassaKitchenLateMore` |
+| Ausblenden | إخفاء | Kassa: `kassaKitchenDismiss` |
 
 ## Kartenzahlung
 
@@ -471,6 +471,7 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Probe drucken | طباعة نموذج | Einstellungen: `settingsKitchenSample` |
 | Druckt … | جارٍ الطباعة… | Einstellungen: `settingsKitchenSamplePrinting` |
 | Probe gedruckt. | تمت طباعة النموذج. | Einstellungen: `settingsKitchenSamplePrinted` |
+| Kein Bondrucker eingerichtet. Es kommt kein Küchenbon. | لم يتم إعداد طابعة الفواتير. لن تُطبع تذكرة المطبخ. | Einstellungen: `settingsKitchenNoReceiptPrinter` |
 
 ## Küchenbon
 

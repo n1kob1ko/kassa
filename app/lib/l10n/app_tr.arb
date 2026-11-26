@@ -392,5 +392,8 @@
   "kassaKitchenPrint": "Mutfak fişini yazdır",
   "kassaKitchenPrinting": "Mutfak fişi yazdırılıyor…",
   "kassaKitchenPrinted": "Mutfak fişi yazdırıldı.",
-  "bonsKitchenNothing": "Bu fişte mutfak için bir şey yok."
+  "bonsKitchenNothing": "Bu fişte mutfak için bir şey yok.",
+  "settingsKitchenNoReceiptPrinter": "Fiş yazıcısı kurulmamış. Mutfak fişi yazdırılmaz.",
+  "kassaKitchenLateMore": "Yazdırılmayan diğer mutfak fişleri: {count}",
+  "kassaKitchenDismiss": "Gizle"
 }

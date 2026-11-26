@@ -392,5 +392,8 @@
   "kassaKitchenPrint": "Print kitchen ticket",
   "kassaKitchenPrinting": "Printing kitchen ticket…",
   "kassaKitchenPrinted": "Kitchen ticket printed.",
-  "bonsKitchenNothing": "Nothing on this receipt is for the kitchen."
+  "bonsKitchenNothing": "Nothing on this receipt is for the kitchen.",
+  "settingsKitchenNoReceiptPrinter": "No receipt printer set up. No kitchen ticket will print.",
+  "kassaKitchenLateMore": "More kitchen tickets not printed: {count}",
+  "kassaKitchenDismiss": "Dismiss"
 }

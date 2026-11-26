@@ -2,11 +2,9 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Diese Liste enthält alle 393 Texte, die die Kassa auf Englisch zeigt. Links steht der deutsche Text, in der Mitte die Übersetzung, rechts, wo der Text in der Kassa steht. Bitte gib die Liste jemandem, der Englisch gut spricht.
+Hier stehen alle 396 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
-Wenn etwas falsch oder holprig ist: die Zeile nennen (den Eintrag in der Spalte "Wo") und den richtigen Text dazuschreiben. Am Ende steht der Abschnitt "Unsicher" mit den Stellen, die besonders wichtig sind.
-
-Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst ein (einen Betrag, einen Namen, eine Zahl); sie bleiben genau so stehen. Texte mit "plural" haben eine Form je Anzahl (zum Beispiel one = eins, other = mehrere).
+Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
 ## Sprache
 
@@ -118,6 +116,8 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Küchenbon drucken | Print kitchen ticket | Kassa: `kassaKitchenPrint` |
 | Küchenbon wird gedruckt … | Printing kitchen ticket… | Kassa: `kassaKitchenPrinting` |
 | Küchenbon gedruckt. | Kitchen ticket printed. | Kassa: `kassaKitchenPrinted` |
+| Weitere Küchenbons nicht gedruckt: {count} | More kitchen tickets not printed: {count} | Kassa: `kassaKitchenLateMore` |
+| Ausblenden | Dismiss | Kassa: `kassaKitchenDismiss` |
 
 ## Kartenzahlung
 
@@ -471,6 +471,7 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Probe drucken | Print sample | Einstellungen: `settingsKitchenSample` |
 | Druckt … | Printing… | Einstellungen: `settingsKitchenSamplePrinting` |
 | Probe gedruckt. | Sample printed. | Einstellungen: `settingsKitchenSamplePrinted` |
+| Kein Bondrucker eingerichtet. Es kommt kein Küchenbon. | No receipt printer set up. No kitchen ticket will print. | Einstellungen: `settingsKitchenNoReceiptPrinter` |
 
 ## Küchenbon
 

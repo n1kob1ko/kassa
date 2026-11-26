@@ -7,7 +7,7 @@ void main() {
     const expected = {
       AppLanguage.de: ('KÜCHE', 'STORNO', 'KOPIE', 'PROBE'),
       AppLanguage.en: ('KITCHEN', 'VOID', 'COPY', 'SAMPLE'),
-      AppLanguage.zh: ('厨房', '取消', '副本', '测试'),
+      AppLanguage.zh: ('厨房', '作废', '副本', '测试'),
       AppLanguage.tr: ('MUTFAK', 'İPTAL', 'KOPYA', 'DENEME'),
       AppLanguage.ar: ('المطبخ', 'إلغاء', 'نسخة', 'تجربة'),
     };

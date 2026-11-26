@@ -66,8 +66,8 @@ const _unsure = <String, Map<String, String>>{
     'bonsVoidOf':
         'Neu "作废 128 号小票" (vorher "作废小票号 128"). Steht am Storno-Bon.',
     'kitchenVoided':
-        'Überschrift STORNO am Küchenbon. "取消" heißt auch "Abbrechen" '
-        '(Taste). Wäre "作废" klarer?',
+        'Neu "作废" (vorher "取消", das auch "Abbrechen" heißt). Überschrift '
+        'STORNO am Küchenbon, wie "作废" bei "Stornieren".',
     'dateMonthNovember':
         'Monate jetzt mit Ziffern ("11月", "11月17日", "2026年11月") statt '
         '"十一月". Gilt für alle zwölf Monate.',
@@ -151,23 +151,17 @@ String _list(
     )
     ..writeln()
     ..writeln(
-      'Diese Liste enthält alle ${german.length} Texte, die die Kassa auf '
-      '$name zeigt. Links steht der deutsche Text, in der Mitte die '
-      'Übersetzung, rechts, wo der Text in der Kassa steht. Bitte gib die '
-      'Liste jemandem, der $name gut spricht.',
+      'Hier stehen alle ${german.length} Texte, die die Kassa auf $name '
+      'zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der '
+      'Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den '
+      'richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" '
+      'am Ende.',
     )
     ..writeln()
     ..writeln(
-      'Wenn etwas falsch oder holprig ist: die Zeile nennen (den Eintrag in '
-      'der Spalte "Wo") und den richtigen Text dazuschreiben. Am Ende steht '
-      'der Abschnitt "Unsicher" mit den Stellen, die besonders wichtig sind.',
-    )
-    ..writeln()
-    ..writeln(
-      'Wörter in geschweiften Klammern wie {amount} oder {name} setzt die '
-      'Kassa selbst ein (einen Betrag, einen Namen, eine Zahl); sie bleiben '
-      'genau so stehen. Texte mit "plural" haben eine Form je Anzahl '
-      '(zum Beispiel one = eins, other = mehrere).',
+      'Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst '
+      'ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, '
+      'je nach Anzahl: bitte jede Form ansehen.',
     );
   // Je Bereich eine Tabelle, in der Reihenfolge, in der die Bereiche in der
   // deutschen Datei zuerst vorkommen (später ergänzte Texte stehen dort

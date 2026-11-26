@@ -1283,7 +1283,7 @@ class L10nZh extends L10n {
   String get kitchenTitle => '厨房';
 
   @override
-  String get kitchenVoided => '取消';
+  String get kitchenVoided => '作废';
 
   @override
   String get kitchenCopy => '副本';
@@ -1347,4 +1347,15 @@ class L10nZh extends L10n {
 
   @override
   String get bonsKitchenNothing => '这张小票上没有需要厨房制作的内容。';
+
+  @override
+  String get settingsKitchenNoReceiptPrinter => '未设置小票打印机。不会打印厨房单。';
+
+  @override
+  String kassaKitchenLateMore(int count) {
+    return '其他未打印的厨房单：$count';
+  }
+
+  @override
+  String get kassaKitchenDismiss => '隐藏';
 }

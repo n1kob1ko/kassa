@@ -14,6 +14,8 @@ import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/core/app_language.dart';
+import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -129,6 +131,35 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('in einer anderen Sprache: Namen aus dem Wörterbuch, der Name '
+      'der Person als eigener Abschnitt', (t) async {
+    await _start(t, await _setup(open: [('p1', cart, _first)]));
+    await containerOf(t).read(translationRepositoryProvider).upsert({
+      'Cola 0,33 l': {'tr': 'Kola 0,33 l', 'ar': 'كولا'},
+      'Huhn Bowl': {'tr': 'Tavuk Bowl'},
+    });
+    final repo = containerOf(t).read(settingsRepositoryProvider);
+    await repo.save((await repo.current()).copyWith(language: AppLanguage.tr));
+    await t.pumpAndSettle();
+    expect(_inSheet('2 × Kola 0,33 l'), findsOneWidget);
+    expect(_inSheet('Tavuk Bowl'), findsOneWidget);
+
+    await repo.save((await repo.current()).copyWith(language: AppLanguage.ar));
+    await t.pumpAndSettle();
+    expect(_inSheet('2 × \u2068كولا\u2069'), findsOneWidget);
+    // Ohne Übersetzung: der Name der Speisekarte, eigener Abschnitt.
+    expect(_inSheet('\u2068Huhn Bowl\u2069'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: _sheet,
+        matching: find.textContaining('\u2068Anna\u2069'),
+      ),
+      findsOneWidget,
+    );
+    // Gespeichert bleibt der Bon der Zahlung, wie er war.
+    expect(await _pending(t), 1);
+  });
+
   testWidgets('mehr als vier Zeilen: vier, dann "und 3 weitere"', (t) async {
     final big = const Cart.empty()
         .add(cola)
@@ -173,6 +204,41 @@ void main() {
     expect(rows.single['kind'], 'card');
     expect(await _pending(t), 0);
     expect(printer.printed, ['p1']);
+  });
+
+  testWidgets('Ja und Bestätigen, der Küchenbon scheitert: über dem Bon '
+      'steht der Hinweis mit "Küchenbon drucken"', (t) async {
+    final kitchen = FakeKitchenService()
+      ..next = const PrintOutcome.failed(PrintProblem.unreachable);
+    await _start(t, [
+      ...await _setup(open: [('p1', cart, _first)]),
+      kitchenServiceProvider.overrideWithValue(kitchen),
+    ]);
+    final repo = containerOf(t).read(settingsRepositoryProvider);
+    await repo.save(
+      (await repo.current()).copyWith(kitchenMode: KitchenMode.kitchenPrinter),
+    );
+    await t.pumpAndSettle();
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(kitchen.calls, ['for:1']);
+    final notice = find.byKey(const Key('late-kitchen'));
+    expect(
+      find.descendant(
+        of: notice,
+        matching: find.text('Küchenbon nicht gedruckt'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: notice, matching: find.text('Bon Nr. 1')),
+      findsOneWidget,
+    );
+    kitchen.next = const PrintOutcome.ok();
+    await _tap(t, 'late-kitchen-reprint');
+    expect(kitchen.calls, ['for:1', 'for:1']);
+    expect(notice, findsNothing);
   });
 
   testWidgets('Nein und Bestätigen: kein Bon, die Artikel liegen wieder auf '

@@ -556,6 +556,22 @@ void main() {
     expect(find.byKey(const Key('void-receipt')), findsOneWidget);
   });
 
+  testWidgets('auf Arabisch stehen Namen der Personen als eigener '
+      'Abschnitt', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await _startVoid(t, 1);
+    await t.tap(find.byKey(const Key('confirm-void')));
+    await t.pumpAndSettle();
+    final repo = containerOf(t).read(settingsRepositoryProvider);
+    await repo.save((await repo.current()).copyWith(language: AppLanguage.ar));
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+    // "Boniert von" und "Storniert von ... zählt nicht".
+    expect(find.textContaining('\u2068Anna\u2069'), findsNWidgets(2));
+    await openReceipt(t, 2);
+    expect(find.textContaining('\u2068Anna\u2069'), findsOneWidget);
+  });
+
   group('Küchenbon drucken im Bon-Detail', () {
     Future<FakeKitchenService> pumpWithKitchen(
       WidgetTester t,
@@ -676,17 +692,84 @@ void main() {
       await t.pumpAndSettle();
     });
 
-    testWidgets('nur für Verkäufe: kein Küchenbon für Storno-Bon und '
-        'stornierten Verkauf', (t) async {
-      await pumpWithKitchen(t, 1);
+    testWidgets('der stornierte Verkauf hat keine Taste; der Storno-Bon '
+        'druckt den STORNO-Zettel noch einmal', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
       await _startVoid(t, 1);
       await t.tap(find.byKey(const Key('confirm-void')));
       await t.pumpAndSettle();
-      await openReceipt(t, 2);
-      expect(find.text('Storno'), findsWidgets);
-      expect(find.byKey(const Key('print-kitchen')), findsNothing);
+      expect(kitchen.calls, ['for:2']);
       await openReceipt(t, 1);
       expect(find.byKey(const Key('print-kitchen')), findsNothing);
+      await openReceipt(t, 2);
+      expect(find.text('Storno'), findsWidgets);
+      expect(find.byKey(const Key('print-kitchen')), findsOneWidget);
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      // Als Kopie: der Zettel bleibt STORNO (Küchenbon-Bau, getestet).
+      expect(kitchen.calls, ['for:2', 'for:2:copy']);
+      expect(find.text('Küchenbon gedruckt.'), findsOneWidget);
+    });
+
+    testWidgets('Storno, der Küchenbon scheitert: Hinweis mit Grund und '
+        '"Küchenbon drucken"', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      kitchen.next = const PrintOutcome.failed(PrintProblem.paperOut);
+      await _startVoid(t, 1);
+      await t.tap(find.byKey(const Key('confirm-void')));
+      await t.pumpAndSettle();
+      final box = find.byKey(const Key('void-kitchen'));
+      expect(
+        find.descendant(
+          of: box,
+          matching: find.text('Küchenbon nicht gedruckt'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: box,
+          matching: find.text('Drucker nicht bereit. Das Papier ist leer.'),
+        ),
+        findsOneWidget,
+      );
+      final button = find.byKey(const Key('void-kitchen-reprint'));
+      expect(t.getSize(button).height, greaterThanOrEqualTo(64));
+      kitchen.next = const PrintOutcome.ok();
+      await t.tap(button);
+      await t.pumpAndSettle();
+      expect(kitchen.calls, ['for:2', 'for:2:copy']);
+      expect(
+        find.descendant(
+          of: box,
+          matching: find.text('Küchenbon gedruckt.'),
+          matchRoot: true,
+        ),
+        findsOneWidget,
+      );
+      expect(button, findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('Storno, der Küchenbon kommt: kein Hinweis', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      await _startVoid(t, 1);
+      await t.tap(find.byKey(const Key('confirm-void')));
+      await t.pumpAndSettle();
+      expect(kitchen.calls, ['for:2']);
+      expect(find.byKey(const Key('void-kitchen')), findsNothing);
+      expect(find.text('Küchenbon nicht gedruckt'), findsNothing);
+    });
+
+    testWidgets('Storno, nichts davon für die Küche (null): kein Hinweis', (
+      t,
+    ) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      kitchen.next = null;
+      await _startVoid(t, 1);
+      await t.tap(find.byKey(const Key('confirm-void')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('void-kitchen')), findsNothing);
     });
 
     for (final language in AppLanguage.values) {

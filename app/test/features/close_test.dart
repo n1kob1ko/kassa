@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/providers.dart';
@@ -276,6 +277,22 @@ void main() {
         expect(textOf(t, const Key('left-difference')), '−0,20 €');
       },
     );
+
+    testWidgets('auf Arabisch steht der Name als eigener Abschnitt', (t) async {
+      await pumpCloseReady(t);
+      await tapKeys(t, '1 6 8');
+      await t.tap(find.byKey(const Key('count-next')));
+      await t.pump();
+      await tapKeys(t, '1 5 0');
+      await t.tap(find.byKey(const Key('close-day')));
+      await t.pumpAndSettle();
+      final repo = containerOf(t).read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(language: AppLanguage.ar),
+      );
+      await t.pumpAndSettle();
+      expect(find.textContaining('\u2068Chef\u2069'), findsOneWidget);
+    });
 
     testWidgets('Schritt 1: ohne Eingabe, stimmt genau, zu viel', (t) async {
       await pumpCloseReady(t);

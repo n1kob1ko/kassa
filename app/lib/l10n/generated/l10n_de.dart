@@ -1380,4 +1380,16 @@ class L10nDe extends L10n {
 
   @override
   String get bonsKitchenNothing => 'Auf diesem Bon ist nichts für die Küche.';
+
+  @override
+  String get settingsKitchenNoReceiptPrinter =>
+      'Kein Bondrucker eingerichtet. Es kommt kein Küchenbon.';
+
+  @override
+  String kassaKitchenLateMore(int count) {
+    return 'Weitere Küchenbons nicht gedruckt: $count';
+  }
+
+  @override
+  String get kassaKitchenDismiss => 'Ausblenden';
 }

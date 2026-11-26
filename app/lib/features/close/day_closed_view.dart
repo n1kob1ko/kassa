@@ -96,7 +96,7 @@ class DayClosedView extends StatelessWidget {
         if (by != null && at != null) ...[
           const SizedBox(height: KassaTokens.spaceXxl),
           Text(
-            l.closeClosedBy(by, clockTime(context, at)),
+            l.closeClosedBy(nameIsolateIn(context, by), clockTime(context, at)),
             style: text.bodySmall!.copyWith(
               fontWeight: FontWeight.w600,
               color: c.ink2,

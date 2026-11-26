@@ -1378,4 +1378,16 @@ class L10nAr extends L10n {
 
   @override
   String get bonsKitchenNothing => 'لا يوجد في هذه الفاتورة شيء للمطبخ.';
+
+  @override
+  String get settingsKitchenNoReceiptPrinter =>
+      'لم يتم إعداد طابعة الفواتير. لن تُطبع تذكرة المطبخ.';
+
+  @override
+  String kassaKitchenLateMore(int count) {
+    return 'تذاكر مطبخ أخرى لم تُطبع: $count';
+  }
+
+  @override
+  String get kassaKitchenDismiss => 'إخفاء';
 }

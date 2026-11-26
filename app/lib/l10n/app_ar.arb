@@ -392,5 +392,8 @@
   "kassaKitchenPrint": "طباعة تذكرة المطبخ",
   "kassaKitchenPrinting": "جارٍ طباعة تذكرة المطبخ…",
   "kassaKitchenPrinted": "تمت طباعة تذكرة المطبخ.",
-  "bonsKitchenNothing": "لا يوجد في هذه الفاتورة شيء للمطبخ."
+  "bonsKitchenNothing": "لا يوجد في هذه الفاتورة شيء للمطبخ.",
+  "settingsKitchenNoReceiptPrinter": "لم يتم إعداد طابعة الفواتير. لن تُطبع تذكرة المطبخ.",
+  "kassaKitchenLateMore": "تذاكر مطبخ أخرى لم تُطبع: {count}",
+  "kassaKitchenDismiss": "إخفاء"
 }

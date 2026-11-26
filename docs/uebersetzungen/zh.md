@@ -2,11 +2,9 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Diese Liste enthält alle 393 Texte, die die Kassa auf Chinesisch zeigt. Links steht der deutsche Text, in der Mitte die Übersetzung, rechts, wo der Text in der Kassa steht. Bitte gib die Liste jemandem, der Chinesisch gut spricht.
+Hier stehen alle 396 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
-Wenn etwas falsch oder holprig ist: die Zeile nennen (den Eintrag in der Spalte "Wo") und den richtigen Text dazuschreiben. Am Ende steht der Abschnitt "Unsicher" mit den Stellen, die besonders wichtig sind.
-
-Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst ein (einen Betrag, einen Namen, eine Zahl); sie bleiben genau so stehen. Texte mit "plural" haben eine Form je Anzahl (zum Beispiel one = eins, other = mehrere).
+Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
 ## Sprache
 
@@ -118,6 +116,8 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Küchenbon drucken | 打印厨房单 | Kassa: `kassaKitchenPrint` |
 | Küchenbon wird gedruckt … | 正在打印厨房单… | Kassa: `kassaKitchenPrinting` |
 | Küchenbon gedruckt. | 厨房单已打印。 | Kassa: `kassaKitchenPrinted` |
+| Weitere Küchenbons nicht gedruckt: {count} | 其他未打印的厨房单：{count} | Kassa: `kassaKitchenLateMore` |
+| Ausblenden | 隐藏 | Kassa: `kassaKitchenDismiss` |
 
 ## Kartenzahlung
 
@@ -471,13 +471,14 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Probe drucken | 打印样张 | Einstellungen: `settingsKitchenSample` |
 | Druckt … | 正在打印… | Einstellungen: `settingsKitchenSamplePrinting` |
 | Probe gedruckt. | 样张已打印。 | Einstellungen: `settingsKitchenSamplePrinted` |
+| Kein Bondrucker eingerichtet. Es kommt kein Küchenbon. | 未设置小票打印机。不会打印厨房单。 | Einstellungen: `settingsKitchenNoReceiptPrinter` |
 
 ## Küchenbon
 
 | Deutsch | Übersetzung | Wo |
 | --- | --- | --- |
 | KÜCHE | 厨房 | Küchenbon: `kitchenTitle` |
-| STORNO | 取消 | Küchenbon: `kitchenVoided` |
+| STORNO | 作废 | Küchenbon: `kitchenVoided` |
 | KOPIE | 副本 | Küchenbon: `kitchenCopy` |
 | PROBE | 测试 | Küchenbon: `kitchenSample` |
 
@@ -490,5 +491,5 @@ Wörter in geschweiften Klammern wie {amount} oder {name} setzt die Kassa selbst
 | Abschluss: `closeSaveCashOut` | Entnahme speichern | 确认取出 | Neu "确认取出" (vorher "保存取出"). Taste. |
 | Bons: `bonsNumberShort` | Nr. {number} | {number} 号 | Bon-Nummer in der Liste, zum Beispiel "128 号". |
 | Bons: `bonsVoidOf` | Storno zu Bon Nr. {number} | 作废 {number} 号小票 | Neu "作废 128 号小票" (vorher "作废小票号 128"). Steht am Storno-Bon. |
-| Küchenbon: `kitchenVoided` | STORNO | 取消 | Überschrift STORNO am Küchenbon. "取消" heißt auch "Abbrechen" (Taste). Wäre "作废" klarer? |
+| Küchenbon: `kitchenVoided` | STORNO | 作废 | Neu "作废" (vorher "取消", das auch "Abbrechen" heißt). Überschrift STORNO am Küchenbon, wie "作废" bei "Stornieren". |
 | Datum: `dateMonthNovember` | November | 11月 | Monate jetzt mit Ziffern ("11月", "11月17日", "2026年11月") statt "十一月". Gilt für alle zwölf Monate. |

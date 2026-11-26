@@ -13,6 +13,7 @@ import '../../devices/printer.dart';
 import '../../domain/catalog.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/ltr.dart';
+import '../../ui/menu_text.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/theme.dart';
@@ -21,6 +22,7 @@ import '../../ui/undo_toast.dart';
 import '../bons/receipt_list.dart' show receiptTime;
 import '../login/session.dart';
 import 'cart_controller.dart';
+import 'late_kitchen.dart';
 import 'sale_service.dart';
 
 /// Die Zahlungen, nach denen gefragt wird, die älteste zuerst: alle mit
@@ -130,6 +132,8 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
       _failed = false;
     });
     final service = ref.read(saleServiceProvider);
+    // Vor dem Warten gelesen: danach kann das Blatt schon weg sein.
+    final lateKitchen = ref.read(lateKitchenProvider.notifier);
     final p = widget.payment;
     try {
       if (paid) {
@@ -137,6 +141,9 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
         if (catalog == null) throw const UnreadableCardPaymentException();
         final sale = await service.confirmUnclear(p, catalog: catalog);
         widget.onPrint(sale.print);
+        // Das Blatt ist gleich weg: einen gescheiterten Küchenbon meldet der
+        // Hinweis über dem Bon der Kassa, mit "Küchenbon drucken".
+        lateKitchen.follow(sale.receipt, sale.kitchen);
       } else {
         await service.discardUnclear(p);
       }
@@ -170,7 +177,9 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
     final catalog = ref.watch(catalogStreamProvider).value;
     final cart = catalog == null ? null : SaleService.cartOfPending(p, catalog);
     final unreadable = _unreadable || cart == null;
-    final lines = catalog == null ? const <String>[] : _lineTexts(p, catalog);
+    final lines = catalog == null
+        ? const <String>[]
+        : _lineTexts(p, catalog, ref.watch(menuTextProvider));
     final shown = lines.take(_maxLines).toList();
     final more = lines.length - shown.length;
     final time = receiptTime(p.startedAt);
@@ -212,7 +221,10 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                   ),
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
-                    l.unclearStarted(ltrIsolate(context, time), p.staffName),
+                    l.unclearStarted(
+                      ltrIsolate(context, time),
+                      nameIsolateIn(context, p.staffName),
+                    ),
                     style: text.bodyLarge!.copyWith(color: c.ink2),
                   ),
                   if (shown.isNotEmpty) ...[
@@ -367,14 +379,21 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
 /// Höchstens so viele Zeilen des Bons stehen auf dem Blatt.
 const _maxLines = 4;
 
-/// Die Zeilen des Bons in Kurzform: "2 × Cola", "Huhn Bowl". Lässt sich der
-/// Bon nicht lesen, steht nichts da.
-List<String> _lineTexts(PendingCardPayment p, Catalog catalog) {
+/// Die Zeilen des Bons in Kurzform: "2 × Cola", "Huhn Bowl", die Namen in
+/// der Bediensprache ([text], nur für die Anzeige). Lässt sich der Bon nicht
+/// lesen, steht nichts da.
+List<String> _lineTexts(
+  PendingCardPayment p,
+  Catalog catalog,
+  String Function(String source) text,
+) {
   final cart = SaleService.cartOfPending(p, catalog);
   if (cart == null) return const [];
   return [
     for (final l in cart.lines)
-      l.quantity > 1 ? '${l.quantity} × ${l.item.name}' : l.item.name,
+      l.quantity > 1
+          ? '${l.quantity} × ${text(l.item.name)}'
+          : text(l.item.name),
   ];
 }
 

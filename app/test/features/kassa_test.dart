@@ -1088,6 +1088,116 @@ void kuechenbonNachDemVerkaufTests() {
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
   });
+
+  Finder late(String text) => find.descendant(
+    of: find.byKey(const Key('late-kitchen')),
+    matching: find.text(text),
+  );
+
+  testWidgets('scheitert der Küchenbon nach "Nächster Kunde", steht über dem '
+      'Bon ein Hinweis mit Bon-Nummer und Grund; "Küchenbon drucken" druckt '
+      'ihn, dann ist der Hinweis weg', (t) async {
+    final hold = Completer<void>();
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+      hold: hold,
+    );
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('late-kitchen')), findsNothing);
+    kitchen.hold = null;
+    hold.complete();
+    await t.pumpAndSettle();
+    expect(late('Küchenbon nicht gedruckt'), findsOneWidget);
+    expect(late('Bon Nr. 1'), findsOneWidget);
+    expect(late('Drucker nicht bereit. Das Papier ist leer.'), findsOneWidget);
+    expect(
+      t.getSize(find.byKey(const Key('late-kitchen-reprint'))).height,
+      greaterThanOrEqualTo(64),
+    );
+    // Er bleibt stehen, auch während der nächste Bon entsteht.
+    await tapItem(t, 'cola');
+    await t.pump(const Duration(seconds: 30));
+    expect(find.byKey(const Key('late-kitchen')), findsOneWidget);
+
+    kitchen.next = const PrintOutcome.ok();
+    await t.tap(find.byKey(const Key('late-kitchen-reprint')));
+    await t.pumpAndSettle();
+    expect(kitchen.calls, ['for:1', 'for:1']);
+    expect(find.byKey(const Key('late-kitchen')), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('nachdrucken aus dem Hinweis scheitert wieder: der Hinweis '
+      'bleibt mit dem neuen Grund', (t) async {
+    final hold = Completer<void>();
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+      hold: hold,
+    );
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    kitchen.hold = null;
+    hold.complete();
+    await t.pumpAndSettle();
+    kitchen.next = const PrintOutcome.failed(PrintProblem.coverOpen);
+    await t.tap(find.byKey(const Key('late-kitchen-reprint')));
+    await t.pumpAndSettle();
+    expect(late('Drucker nicht bereit. Der Deckel ist offen.'), findsOneWidget);
+    expect(late('Bon Nr. 1'), findsOneWidget);
+  });
+
+  testWidgets('zwei späte Fehler: der neueste steht da, mit der Zahl der '
+      'übrigen; Ausblenden zeigt den älteren', (t) async {
+    final hold = Completer<void>();
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+      hold: hold,
+    );
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    // Der zweite Verkauf, während der erste Küchenbon noch hängt.
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    kitchen.hold = null;
+    hold.complete();
+    await t.pumpAndSettle();
+    expect(late('Bon Nr. 2'), findsOneWidget);
+    expect(late('Weitere Küchenbons nicht gedruckt: 1'), findsOneWidget);
+
+    await t.tap(find.byKey(const Key('late-kitchen-dismiss')));
+    await t.pumpAndSettle();
+    expect(late('Bon Nr. 1'), findsOneWidget);
+    expect(late('Weitere Küchenbons nicht gedruckt: 1'), findsNothing);
+    await t.tap(find.byKey(const Key('late-kitchen-dismiss')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('late-kitchen')), findsNothing);
+    expect(kitchen.calls, ['for:1', 'for:2']);
+  });
+
+  testWidgets('schon auf "Verkauf fertig" gescheitert und trotzdem weiter: '
+      'der Hinweis kommt mit', (t) async {
+    await sellWithKitchen(t, const PrintOutcome.failed(PrintProblem.paperOut));
+    expect(_text('Küchenbon nicht gedruckt'), findsOneWidget);
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    expect(late('Bon Nr. 1'), findsOneWidget);
+  });
+
+  testWidgets('Küchenbon gedruckt, dann weiter: kein Hinweis', (t) async {
+    await sellWithKitchen(t, const PrintOutcome.ok());
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('late-kitchen')), findsNothing);
+  });
 }
 
 /// Was der offene Bon nach einer Preisänderung zeigt.

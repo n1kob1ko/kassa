@@ -19,6 +19,7 @@ import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
 import '../kassa/kitchen_service.dart';
+import '../kassa/sale_done.dart' show KitchenStateBox;
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import 'receipt_list.dart';
@@ -26,7 +27,11 @@ import 'void_question.dart';
 
 /// Die Spalte rechts (392 dp): der gewählte Bon mit Zeilen, Steuer, Zahlung
 /// und, wenn erlaubt, "Stornieren". Ist der Küchenbon eingeschaltet, hat ein
-/// Verkauf daneben "Küchenbon drucken" (als Kopie). Die Rückfrage steht an Ort und Stelle.
+/// Verkauf daneben "Küchenbon drucken" (als Kopie), ebenso ein Storno-Bon
+/// (der Zettel bleibt STORNO); ein stornierter Verkauf nicht. Scheitert der
+/// STORNO-Zettel gleich nach dem Stornieren, steht über den Tasten "Küchenbon
+/// nicht gedruckt" mit Grund und "Küchenbon drucken". Die Rückfrage steht an
+/// Ort und Stelle.
 /// [all] sind die Bons des Tages (für Namen und Nummern der Storno-Paare).
 /// Der Aufrufer gibt der Spalte je Bon einen eigenen Schlüssel, damit eine
 /// offene Rückfrage nicht zu einem anderen Bon wandert.
@@ -46,6 +51,16 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
 
   /// Warum der letzte Storno nicht geklappt hat, sonst `null`.
   VoidFailure? _failure;
+
+  /// Der Storno-Bon des eben gemachten Stornos, solange sein Küchenbon
+  /// gescheitert ist (oder danach nachgedruckt wurde); sonst `null`.
+  Receipt? _voidReceipt;
+
+  /// Das letzte Ergebnis seines Küchenbons.
+  PrintOutcome? _voidKitchen;
+
+  /// "Küchenbon drucken" für den Storno läuft.
+  bool _voidKitchenAgain = false;
 
   Receipt? _find(String? id) {
     for (final r in widget.all) {
@@ -67,6 +82,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
           .read(saleServiceProvider)
           .voidReceipt(receipt.id, staff: staff);
       _announce(result.print);
+      _followVoidKitchen(result.receipt, result.kitchen, retry: false);
       if (!mounted) return;
       setState(() {
         _asking = false;
@@ -108,6 +124,42 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       message: outcome.ok
           ? l.kassaPrinted
           : printProblemText(l, outcome.problem!),
+    );
+  }
+
+  /// Zeigt einen gescheiterten Küchenbon des Stornos an. Beim ersten
+  /// Ergebnis ([retry] falsch) nur, wenn er gescheitert ist; nach
+  /// "Küchenbon drucken" auch, dass er gedruckt ist. Wartet nie auf ihn.
+  void _followVoidKitchen(
+    Receipt voidReceipt,
+    Future<PrintOutcome?> kitchen, {
+    required bool retry,
+  }) {
+    void show(PrintOutcome? outcome) {
+      if (!mounted) return;
+      if (!retry && (outcome == null || outcome.ok)) return;
+      setState(() {
+        _voidReceipt = outcome == null ? null : voidReceipt;
+        _voidKitchen = outcome;
+        _voidKitchenAgain = false;
+      });
+    }
+
+    kitchen.then(
+      show,
+      onError: (Object _) =>
+          show(const PrintOutcome.failed(PrintProblem.unreachable)),
+    );
+  }
+
+  void _reprintVoidKitchen() {
+    final voidReceipt = _voidReceipt;
+    if (voidReceipt == null || _voidKitchenAgain) return;
+    setState(() => _voidKitchenAgain = true);
+    _followVoidKitchen(
+      voidReceipt,
+      ref.read(kitchenServiceProvider).printFor(voidReceipt, copy: true),
+      retry: true,
     );
   }
 
@@ -165,12 +217,12 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         !receipt.isVoided &&
         staff != null &&
         (staff.isChef || !settings.voidRequiresChef);
-    // Nur ein Verkauf, der gilt: ein stornierter käme sonst noch einmal in
-    // die Küche.
+    // Ein Verkauf, der gilt (ein stornierter käme sonst noch einmal in die
+    // Küche), und ein Storno-Bon: sein Zettel sagt der Küche STORNO.
     final canKitchen =
         receipt != null &&
-        receipt.kind == ReceiptKind.sale &&
-        !receipt.isVoided &&
+        ((receipt.kind == ReceiptKind.sale && !receipt.isVoided) ||
+            receipt.kind == ReceiptKind.voided) &&
         settings.kitchenMode != KitchenMode.off;
     final printButton = receipt == null || !hasPrinter
         ? null
@@ -244,31 +296,45 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                     }),
                     onConfirm: () => _confirm(receipt),
                   )
-                else if (rows.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (var i = 0; i < rows.length; i++) ...[
-                          if (i > 0)
-                            const SizedBox(height: KassaTokens.spaceMd),
-                          Row(
-                            children: [
-                              for (var j = 0; j < rows[i].length; j++) ...[
-                                if (j > 0)
-                                  const SizedBox(width: KassaTokens.spaceMd),
-                                Expanded(
-                                  flex: rows[i][j].$2,
-                                  child: rows[i][j].$1,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ],
+                else ...[
+                  if (_voidKitchen case final kitchen?)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: KitchenStateBox(
+                        boxKey: const Key('void-kitchen'),
+                        reprintKey: const Key('void-kitchen-reprint'),
+                        outcome: kitchen,
+                        mode: settings.kitchenMode,
+                        printing: _voidKitchenAgain,
+                        onReprint: _reprintVoidKitchen,
+                      ),
                     ),
-                  ),
+                  if (rows.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < rows.length; i++) ...[
+                            if (i > 0)
+                              const SizedBox(height: KassaTokens.spaceMd),
+                            Row(
+                              children: [
+                                for (var j = 0; j < rows[i].length; j++) ...[
+                                  if (j > 0)
+                                    const SizedBox(width: KassaTokens.spaceMd),
+                                  Expanded(
+                                    flex: rows[i][j].$2,
+                                    child: rows[i][j].$1,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
     );
@@ -438,9 +504,13 @@ class _Body extends StatelessWidget {
                 ),
               ),
               Text(switch (r.kind) {
-                ReceiptKind.voided => l.bonsVoidedBy(r.staffName),
-                _ when special => l.bonsCreatedBy(r.staffName),
-                _ => l.bonsRungUpBy(r.staffName),
+                ReceiptKind.voided => l.bonsVoidedBy(
+                  nameIsolateIn(context, r.staffName),
+                ),
+                _ when special => l.bonsCreatedBy(
+                  nameIsolateIn(context, r.staffName),
+                ),
+                _ => l.bonsRungUpBy(nameIsolateIn(context, r.staffName)),
               }, style: small),
               if (r.isVoided)
                 Padding(
@@ -448,7 +518,9 @@ class _Body extends StatelessWidget {
                   child: Text(
                     voider == null
                         ? l.bonsVoidedNotCounted
-                        : l.bonsVoidedByNotCounted(voider.staffName),
+                        : l.bonsVoidedByNotCounted(
+                            nameIsolateIn(context, voider.staffName),
+                          ),
                     style: small,
                   ),
                 ),

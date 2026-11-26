@@ -2001,5 +2001,22 @@
   "bonsKitchenNothing": "Auf diesem Bon ist nichts für die Küche.",
   "@bonsKitchenNothing": {
     "description": "Hinweis im Bon-Detail nach \"Küchenbon drucken\": keine Zeile des Bons gehört in eine Kategorie für die Küche."
+  },
+  "settingsKitchenNoReceiptPrinter": "Kein Bondrucker eingerichtet. Es kommt kein Küchenbon.",
+  "@settingsKitchenNoReceiptPrinter": {
+    "description": "Hinweis im Abschnitt Küche bei \"Am Bondrucker\", wenn kein Bondrucker eingerichtet ist."
+  },
+  "kassaKitchenLateMore": "Weitere Küchenbons nicht gedruckt: {count}",
+  "@kassaKitchenLateMore": {
+    "description": "Zeile im Hinweis über dem Bon: so viele weitere Küchenbons sind ebenfalls nicht gedruckt (der neueste steht darüber).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kassaKitchenDismiss": "Ausblenden",
+  "@kassaKitchenDismiss": {
+    "description": "Taste im Hinweis über dem Bon: den Hinweis zu diesem Küchenbon wegnehmen, ohne zu drucken."
   }
 }

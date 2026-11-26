@@ -1366,4 +1366,16 @@ class L10nTr extends L10n {
 
   @override
   String get bonsKitchenNothing => 'Bu fişte mutfak için bir şey yok.';
+
+  @override
+  String get settingsKitchenNoReceiptPrinter =>
+      'Fiş yazıcısı kurulmamış. Mutfak fişi yazdırılmaz.';
+
+  @override
+  String kassaKitchenLateMore(int count) {
+    return 'Yazdırılmayan diğer mutfak fişleri: $count';
+  }
+
+  @override
+  String get kassaKitchenDismiss => 'Gizle';
 }

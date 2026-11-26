@@ -1377,4 +1377,16 @@ class L10nEn extends L10n {
   @override
   String get bonsKitchenNothing =>
       'Nothing on this receipt is for the kitchen.';
+
+  @override
+  String get settingsKitchenNoReceiptPrinter =>
+      'No receipt printer set up. No kitchen ticket will print.';
+
+  @override
+  String kassaKitchenLateMore(int count) {
+    return 'More kitchen tickets not printed: $count';
+  }
+
+  @override
+  String get kassaKitchenDismiss => 'Dismiss';
 }
