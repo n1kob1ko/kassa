@@ -1,6 +1,7 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../l10n/generated/l10n.dart';
 import 'business_logo.dart';
 import 'pressable.dart';
 import 'tokens.dart';
@@ -15,8 +16,18 @@ enum AppArea {
 
   const AppArea(this.label);
 
-  /// Beschriftung des Reiters, zugleich Teil seines Schlüssels `tab-<name>`.
+  /// Der deutsche Name, Teil des Schlüssels `tab-<label>` (in jeder Sprache
+  /// gleich). Der Reiter zeigt [title].
   final String label;
+
+  /// Beschriftung des Reiters in der Bediensprache.
+  String title(L10n l) => switch (this) {
+    AppArea.kassa => l.shellTabKassa,
+    AppArea.bons => l.shellTabBons,
+    AppArea.overview => l.shellTabOverview,
+    AppArea.items => l.shellTabItems,
+    AppArea.close => l.shellTabClose,
+  };
 }
 
 /// Kopfleiste: Logo, Wortmarke, Reiter, Mitarbeiter-Knopf und (nur für den
@@ -150,7 +161,7 @@ class _OfflinePill extends StatelessWidget {
             const SizedBox(width: KassaTokens.spaceMd),
             Flexible(
               child: Text(
-                'Kein Internet. Bar bonieren geht weiter.',
+                L10n.of(context).shellOffline,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium!.copyWith(
@@ -193,7 +204,7 @@ class _Tab extends StatelessWidget {
           borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
         ),
         child: Text(
-          area.label,
+          area.title(L10n.of(context)),
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -220,7 +231,7 @@ class _StaffButton extends StatelessWidget {
     return Pressable(
       key: const Key('staff'),
       onTap: onTap,
-      semanticLabel: 'Mitarbeiter wechseln, angemeldet: $name',
+      semanticLabel: L10n.of(context).shellSwitchStaff(name),
       child: Container(
         height: KassaTokens.minTap,
         padding: const EdgeInsets.only(left: 7, right: 14),
@@ -265,7 +276,7 @@ class _SettingsButton extends StatelessWidget {
     return Pressable(
       key: const Key('settings'),
       onTap: onTap,
-      semanticLabel: 'Einstellungen',
+      semanticLabel: L10n.of(context).shellSettings,
       child: Container(
         width: KassaTokens.minTap,
         height: KassaTokens.minTap,

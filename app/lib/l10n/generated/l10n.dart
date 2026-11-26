@@ -121,6 +121,120 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Sprache ändern'**
   String get languageChangeLabel;
+
+  /// Titel der PIN-Karte am Anmeldebildschirm.
+  ///
+  /// In de, this message translates to:
+  /// **'PIN eingeben'**
+  String get loginTitle;
+
+  /// Hinweis unter dem Titel, solange nichts falsch ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Jede Person hat ihre eigene PIN'**
+  String get loginHint;
+
+  /// Die getippte PIN gehört zu niemandem.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese PIN kennt die Kassa nicht.'**
+  String get loginWrongPin;
+
+  /// Die Prüfung der PIN ist gescheitert (Fehler).
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte nochmal versuchen.'**
+  String get loginFailed;
+
+  /// Vorlesehilfe der vier Punkte der PIN.
+  ///
+  /// In de, this message translates to:
+  /// **'{filled} von 4 Ziffern eingegeben'**
+  String loginDigitsEntered(int filled);
+
+  /// Reiter: der Verkauf (Kassa).
+  ///
+  /// In de, this message translates to:
+  /// **'Kassa'**
+  String get shellTabKassa;
+
+  /// Reiter: die gespeicherten Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Bons'**
+  String get shellTabBons;
+
+  /// Reiter: Übersicht mit Umsatz.
+  ///
+  /// In de, this message translates to:
+  /// **'Übersicht'**
+  String get shellTabOverview;
+
+  /// Reiter: Artikel der Speisekarte.
+  ///
+  /// In de, this message translates to:
+  /// **'Artikel'**
+  String get shellTabItems;
+
+  /// Reiter: Tages- und Monatsabschluss.
+  ///
+  /// In de, this message translates to:
+  /// **'Abschluss'**
+  String get shellTabClose;
+
+  /// Pille in der Kopfleiste ohne Internet.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Internet. Bar bonieren geht weiter.'**
+  String get shellOffline;
+
+  /// Vorlesehilfe der Taste mit dem Namen.
+  ///
+  /// In de, this message translates to:
+  /// **'Mitarbeiter wechseln, angemeldet: {name}'**
+  String shellSwitchStaff(String name);
+
+  /// Vorlesehilfe der Taste Einstellungen.
+  ///
+  /// In de, this message translates to:
+  /// **'Einstellungen'**
+  String get shellSettings;
+
+  /// Taste im Hinweis unten.
+  ///
+  /// In de, this message translates to:
+  /// **'Rückgängig'**
+  String get uiUndo;
+
+  /// Vorlesehilfe der Komma-Taste im Zahlenfeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Komma'**
+  String get uiKeypadComma;
+
+  /// Vorlesehilfe der Punkt-Taste im Zahlenfeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Punkt'**
+  String get uiKeypadDot;
+
+  /// Vorlesehilfe der Löschtaste im Zahlenfeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Letzte Ziffer löschen'**
+  String get uiKeypadDelete;
+
+  /// Vorlesehilfe des QR-Codes am Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'QR-Code des Bons'**
+  String get uiReceiptQr;
+
+  /// Trennt Namen in einer Aufzählung (Optionen, fehlende Gruppen).
+  ///
+  /// In de, this message translates to:
+  /// **', '**
+  String get uiListSeparator;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

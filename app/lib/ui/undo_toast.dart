@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../l10n/generated/l10n.dart';
 import 'pressable.dart';
 import 'tokens.dart';
 
@@ -181,7 +182,7 @@ class UndoToastView extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   alignment: Alignment.center,
                   child: Text(
-                    'Rückgängig',
+                    L10n.of(context).uiUndo,
                     style: text.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

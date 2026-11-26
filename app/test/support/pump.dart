@@ -32,6 +32,7 @@ import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
+import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:kassa/features/setup/menu_file_picker.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/ui/theme.dart';
@@ -125,6 +126,13 @@ Future<void> pumpApp(
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: kassaTheme(brightness),
+        // Wie in der App: die Texte aus den ARB-Dateien, auf Deutsch.
+        locale: const Locale('de'),
+        supportedLocales: L10n.supportedLocales,
+        localizationsDelegates: const [
+          L10n.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
         home: Scaffold(body: child),
       ),
     );

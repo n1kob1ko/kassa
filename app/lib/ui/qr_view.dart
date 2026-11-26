@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:qr/qr.dart';
 
+import '../l10n/generated/l10n.dart';
 import 'tokens.dart';
 
 /// Ruhezone um den Code, in Modulen (so verlangt es der QR-Standard).
@@ -33,7 +34,7 @@ class QrView extends StatelessWidget {
       image = null;
     }
     return Semantics(
-      label: 'QR-Code des Bons',
+      label: L10n.of(context).uiReceiptQr,
       image: true,
       child: Container(
         width: size,

@@ -65,6 +65,7 @@ class _PinScreenState extends ConsumerState<PinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
     return Scaffold(
       backgroundColor: KassaColors.of(context).ground,
       body: SafeArea(
@@ -73,12 +74,12 @@ class _PinScreenState extends ConsumerState<PinScreen> {
             Positioned.fill(
               child: PinCard(
                 businessName: ref.watch(catalogProvider).value?.businessName,
-                title: 'PIN eingeben',
+                title: l.loginTitle,
                 hint: _failed
-                    ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
+                    ? l.loginFailed
                     : _wrong
-                    ? 'Diese PIN kennt die Kassa nicht.'
-                    : 'Jede Person hat ihre eigene PIN',
+                    ? l.loginWrongPin
+                    : l.loginHint,
                 hintIsError: _wrong || _failed,
                 filled: _pin.length,
                 onKey: _onKey,
@@ -248,7 +249,7 @@ class _Dots extends StatelessWidget {
     final c = KassaColors.of(context);
     final instant = MediaQuery.disableAnimationsOf(context);
     return Semantics(
-      label: '$filled von 4 Ziffern eingegeben',
+      label: L10n.of(context).loginDigitsEntered(filled),
       excludeSemantics: true,
       child: SizedBox(
         height: 24,

@@ -1,6 +1,7 @@
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../l10n/generated/l10n.dart';
 import 'pressable.dart';
 import 'tokens.dart';
 
@@ -30,6 +31,7 @@ class Keypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.of(context);
     Widget digit(int d) => _KeypadKey(
       key: Key('key-$d'),
       height: keyHeight,
@@ -50,7 +52,7 @@ class Keypad extends StatelessWidget {
             key: Key(separator == '.' ? 'key-dot' : 'key-comma'),
             height: keyHeight,
             quiet: true,
-            semanticLabel: separator == '.' ? 'Punkt' : 'Komma',
+            semanticLabel: separator == '.' ? l.uiKeypadDot : l.uiKeypadComma,
             onTap: () => onKey(separator),
             child: Text(separator, style: _keyStyle(context)),
           )
@@ -59,7 +61,7 @@ class Keypad extends StatelessWidget {
       key: const Key('key-back'),
       height: keyHeight,
       quiet: true,
-      semanticLabel: 'Letzte Ziffer löschen',
+      semanticLabel: l.uiKeypadDelete,
       onTap: () => onKey('back'),
       child: Icon(
         LucideIcons.delete,

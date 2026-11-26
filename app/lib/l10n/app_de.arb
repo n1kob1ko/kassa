@@ -11,5 +11,91 @@
   "languageChangeLabel": "Sprache ändern",
   "@languageChangeLabel": {
     "description": "Semantik der Sprachtaste am Anmeldebildschirm."
+  },
+  "loginTitle": "PIN eingeben",
+  "@loginTitle": {
+    "description": "Titel der PIN-Karte am Anmeldebildschirm."
+  },
+  "loginHint": "Jede Person hat ihre eigene PIN",
+  "@loginHint": {
+    "description": "Hinweis unter dem Titel, solange nichts falsch ist."
+  },
+  "loginWrongPin": "Diese PIN kennt die Kassa nicht.",
+  "@loginWrongPin": {
+    "description": "Die getippte PIN gehört zu niemandem."
+  },
+  "loginFailed": "Das hat nicht geklappt. Bitte nochmal versuchen.",
+  "@loginFailed": {
+    "description": "Die Prüfung der PIN ist gescheitert (Fehler)."
+  },
+  "loginDigitsEntered": "{filled} von 4 Ziffern eingegeben",
+  "@loginDigitsEntered": {
+    "description": "Vorlesehilfe der vier Punkte der PIN.",
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      }
+    }
+  },
+  "shellTabKassa": "Kassa",
+  "@shellTabKassa": {
+    "description": "Reiter: der Verkauf (Kassa)."
+  },
+  "shellTabBons": "Bons",
+  "@shellTabBons": {
+    "description": "Reiter: die gespeicherten Bons."
+  },
+  "shellTabOverview": "Übersicht",
+  "@shellTabOverview": {
+    "description": "Reiter: Übersicht mit Umsatz."
+  },
+  "shellTabItems": "Artikel",
+  "@shellTabItems": {
+    "description": "Reiter: Artikel der Speisekarte."
+  },
+  "shellTabClose": "Abschluss",
+  "@shellTabClose": {
+    "description": "Reiter: Tages- und Monatsabschluss."
+  },
+  "shellOffline": "Kein Internet. Bar bonieren geht weiter.",
+  "@shellOffline": {
+    "description": "Pille in der Kopfleiste ohne Internet."
+  },
+  "shellSwitchStaff": "Mitarbeiter wechseln, angemeldet: {name}",
+  "@shellSwitchStaff": {
+    "description": "Vorlesehilfe der Taste mit dem Namen.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellSettings": "Einstellungen",
+  "@shellSettings": {
+    "description": "Vorlesehilfe der Taste Einstellungen."
+  },
+  "uiUndo": "Rückgängig",
+  "@uiUndo": {
+    "description": "Taste im Hinweis unten."
+  },
+  "uiKeypadComma": "Komma",
+  "@uiKeypadComma": {
+    "description": "Vorlesehilfe der Komma-Taste im Zahlenfeld."
+  },
+  "uiKeypadDot": "Punkt",
+  "@uiKeypadDot": {
+    "description": "Vorlesehilfe der Punkt-Taste im Zahlenfeld."
+  },
+  "uiKeypadDelete": "Letzte Ziffer löschen",
+  "@uiKeypadDelete": {
+    "description": "Vorlesehilfe der Löschtaste im Zahlenfeld."
+  },
+  "uiReceiptQr": "QR-Code des Bons",
+  "@uiReceiptQr": {
+    "description": "Vorlesehilfe des QR-Codes am Bon."
+  },
+  "uiListSeparator": ", ",
+  "@uiListSeparator": {
+    "description": "Trennt Namen in einer Aufzählung (Optionen, fehlende Gruppen)."
   }
 }
