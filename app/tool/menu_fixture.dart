@@ -28,7 +28,17 @@ Map<String, String> buildMenuFixtures(Directory root) {
     final text = utf8.decode(file.readAsBytesSync());
     Object body;
     try {
-      body = {'menu': catalogToWire(parseMenuFile(text))};
+      final catalog = parseMenuFile(text);
+      // `translations` steht nur da, wenn die Datei welche enthält; ältere
+      // erwartete Dateien haben den Schlüssel nicht (der Server liest ihn
+      // dann als {}).
+      body = {
+        'menu': {
+          ...catalogToWire(catalog),
+          if (catalog.translations.isNotEmpty)
+            'translations': catalog.translations,
+        },
+      };
     } on MenuImportException catch (e) {
       body = {'problems': e.problems};
     }
