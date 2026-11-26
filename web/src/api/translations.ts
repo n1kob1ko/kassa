@@ -104,7 +104,7 @@ export function useSetTranslation(b: string, { onSaved }: { onSaved?: () => void
     },
     onSuccess: async (row, { source, lang }, context) => {
       await stopRefetch(queryClient, b);
-      // Der Server kürzt Leerzeichen am Rand und löscht einen Text gleich dem Namen: sein Wert gilt, wenn nichts Neueres kam.
+      // Der Server kürzt Leerzeichen am Rand: sein Wert gilt, wenn nichts Neueres kam.
       if (latest.get(`${b}/${entry(lang, source)}`) === context.token) {
         queryClient.setQueryData<Translations>(translationsKey(b), (d) => setValue(d, source, lang, row.values[lang] ?? ''));
       }

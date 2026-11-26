@@ -31,7 +31,8 @@
     "templates": [],
     "translations": {
       "Huhn Bowl": {
-        "en": "Chicken bowl"
+        "en": "Chicken bowl",
+        "zh": "Huhn Bowl"
       }
     }
   }

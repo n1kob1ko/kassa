@@ -49,7 +49,8 @@ export function menuNames(categories: unknown[], items: unknown[], groups: Json)
 
 /**
  * Prüft `uebersetzungen` gegen die Namen der Speisekarte. Name und Text werden gekürzt;
- * ein leerer Text oder einer gleich dem Namen zählt als keiner und wird nicht gespeichert.
+ * nur ein leerer Text zählt als keiner und wird nicht gespeichert. Ein Text gleich dem Namen
+ * ist eine gültige Übersetzung.
  */
 export function parseTranslations(raw: unknown, names: Set<string>, problems: string[]): Translations {
   if (raw === undefined || raw === null) return {};
@@ -82,7 +83,7 @@ export function parseTranslations(raw: unknown, names: Set<string>, problems: st
         problems.push(`Übersetzung "${name}", Sprache "${code}": Höchstens 200 Zeichen.`);
         continue;
       }
-      if (text !== '' && text !== name) texts[code as TranslationLang] = text;
+      if (text !== '') texts[code as TranslationLang] = text;
     }
     if (Object.keys(texts).length > 0) result[name] = { ...result[name], ...texts };
   }

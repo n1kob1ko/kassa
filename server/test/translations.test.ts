@@ -65,7 +65,7 @@ describe('Liste der Übersetzungen', () => {
     });
   });
 
-  test('doppelter Name nur einmal, stillgelegte fehlen, done zählt nur nicht leere', async () => {
+  test('doppelter Name nur einmal, stillgelegte fehlen, done zählt jeden nicht leeren Text', async () => {
     await withBusiness(a.db, businessId, async (c) => {
       await c.query(`update items set name = 'Normal' where id = 'cola'`);
       await c.query(`update items set archived = true where id = 'teigtaschen'`);
@@ -80,7 +80,8 @@ describe('Liste der Übersetzungen', () => {
     expect(all).toEqual(['Bowls', 'Huhn Bowl', 'Größe', 'Normal', 'XXL', 'Extra-Sauce', 'Teriyaki']);
     expect(new Set(all).size).toBe(all.length);
     expect(body.total).toBe(7);
-    expect(body.done).toEqual({ en: 1, zh: 0, tr: 0, ar: 0 });
+    // "Bowls" gleich dem Namen zählt mit.
+    expect(body.done).toEqual({ en: 2, zh: 0, tr: 0, ar: 0 });
     await withBusiness(a.db, businessId, async (c) => {
       await c.query(`update items set name = 'Cola 0,33 l' where id = 'cola'`);
       await c.query(`update items set archived = false where id = 'teigtaschen'`);
@@ -128,10 +129,26 @@ describe('Eine Übersetzung setzen', () => {
     expect((await row(businessId, 'Cola 0,33 l')).change_seq).toBe(after.change_seq);
   });
 
-  test('Text gleich dem Namen zählt als leer; Löschen ohne Zeile legt keine an', async () => {
-    const res = await put({ source: 'Huhn Bowl', lang: 'zh', value: 'Huhn Bowl' });
-    expect(res.json()).toEqual({ source: 'Huhn Bowl', values: {} });
-    expect(await row(businessId, 'Huhn Bowl')).toBeUndefined();
+  test('Text gleich dem Namen wird gespeichert und zählt; nochmal ändert die Nummer nicht; Leerzeichen löschen', async () => {
+    const doneBefore = (await get()).json().done.zh;
+    const res = await put({ source: 'Huhn Bowl', lang: 'zh', value: ' Huhn Bowl ' });
+    expect(res.json()).toEqual({ source: 'Huhn Bowl', values: { zh: 'Huhn Bowl' } });
+    const stored = await row(businessId, 'Huhn Bowl');
+    expect(stored.values).toEqual({ zh: 'Huhn Bowl' });
+    expect((await get()).json().done.zh).toBe(doneBefore + 1);
+
+    await put({ source: 'Huhn Bowl', lang: 'zh', value: 'Huhn Bowl' });
+    expect((await row(businessId, 'Huhn Bowl')).change_seq).toBe(stored.change_seq);
+
+    const other = await put({ source: 'Cola 0,33 l', lang: 'zh', value: 'x' });
+    expect(Number((await row(businessId, 'Cola 0,33 l')).change_seq)).toBeGreaterThan(Number(stored.change_seq));
+    expect(other.statusCode).toBe(200);
+
+    const cleared = await put({ source: 'Huhn Bowl', lang: 'zh', value: '   ' });
+    expect(cleared.json()).toEqual({ source: 'Huhn Bowl', values: {} });
+    expect(Number((await row(businessId, 'Huhn Bowl')).change_seq)).toBeGreaterThan(Number(stored.change_seq));
+    expect((await get()).json().done.zh).toBe(doneBefore + 1);
+    await clear();
   });
 
   test('Fehler: unbekannter Name 404, falsche Sprache und zu langer Text 422', async () => {
@@ -179,9 +196,9 @@ describe('Datei einspielen', () => {
     const file = { uebersetzungen: { Bowls: { en: 'Bowls', zh: '碗' }, 'Huhn Bowl': { en: 'Chicken bowl' }, Normal: { tr: 'Normal ', en: 'Regular' } } };
     const res = await importFile(file);
     expect(res.statusCode).toBe(200);
-    // "Bowls" auf Englisch ist gleich dem Namen, aber Chinesisch zählt.
+    // "Bowls" auf Englisch ist gleich dem Namen und zählt wie Chinesisch.
     expect(res.json()).toEqual({ changed: 3 });
-    expect((await row(businessId, 'Bowls')).values).toEqual({ zh: '碗' });
+    expect((await row(businessId, 'Bowls')).values).toEqual({ en: 'Bowls', zh: '碗' });
     expect((await importFile(file)).json()).toEqual({ changed: 0 });
     expect((await auditRows('translation.import')).length).toBeGreaterThanOrEqual(2);
   });

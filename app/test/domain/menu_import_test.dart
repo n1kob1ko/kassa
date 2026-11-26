@@ -324,7 +324,7 @@ void main() {
       ]);
     });
 
-    test('Leerzeichen werden entfernt, leere und gleiche Texte entfallen', () {
+    test('Leerzeichen werden entfernt, leere Texte entfallen, gleiche zählen', () {
       final c = parseMenuFile(
         demoWith({
           'uebersetzungen': {
@@ -338,7 +338,7 @@ void main() {
         }),
       );
       expect(c.translations, {
-        'Cola 0,33 l': {'en': 'Soda'},
+        'Cola 0,33 l': {'en': 'Soda', 'zh': 'Cola 0,33 l'},
       });
     });
 

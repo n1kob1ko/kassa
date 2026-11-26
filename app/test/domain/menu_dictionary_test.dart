@@ -5,6 +5,7 @@ import 'package:kassa/domain/menu_dictionary.dart';
 void main() {
   const dictionary = MenuDictionary({
     'Huhn Bowl': {'en': 'Chicken bowl', 'tr': '', 'zh': '  '},
+    'Teriyaki': {'en': 'Teriyaki'},
   });
 
   test('Treffer in der Sprache', () {
@@ -23,6 +24,11 @@ void main() {
   test('leerer Text: Name aus der Speisekarte', () {
     expect(dictionary.text('Huhn Bowl', AppLanguage.tr), 'Huhn Bowl');
     expect(dictionary.text('Huhn Bowl', AppLanguage.zh), 'Huhn Bowl');
+  });
+
+  test('Text gleich dem Namen ist ein Treffer mit demselben Text', () {
+    expect(dictionary.text('Teriyaki', AppLanguage.en), 'Teriyaki');
+    expect(dictionary.textOrNull('Teriyaki', AppLanguage.en), 'Teriyaki');
   });
 
   test('Leerzeichen am Rand der Quelle zählen nicht', () {

@@ -104,7 +104,7 @@ type TranslationFieldProps = {
 
 /**
  * Das Feld einer Übersetzung. Verlassen und Enter speichern, aber nur einen anderen Text; Escape stellt den
- * gespeicherten wieder her. Ein Text gleich dem Namen heißt wie leer: keine Übersetzung, der Name gilt.
+ * gespeicherten wieder her. Ein Text gleich dem Namen ist eine Übersetzung; leer heißt: der Name gilt.
  */
 function TranslationField({ row, language, onCommit }: TranslationFieldProps) {
   const value = row.values[language.code] ?? '';
@@ -119,8 +119,7 @@ function TranslationField({ row, language, onCommit }: TranslationFieldProps) {
 
   const commit = () => {
     setEditing(false);
-    const trimmed = draft.trim();
-    const next = trimmed === row.source ? '' : trimmed;
+    const next = draft.trim();
     setDraft(next);
     if (next !== value) onCommit(next);
   };

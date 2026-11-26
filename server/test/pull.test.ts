@@ -133,10 +133,10 @@ describe('mit gemeinsamer App', () => {
       next: number;
       translations: { source: string; values: object }[];
     };
-    // Cola mit en gleich dem Namen: nur tr bleibt.
+    // Cola mit en gleich dem Namen: kommt an wie jeder Text.
     expect(first.translations).toEqual([
       { source: 'Huhn Bowl', values: { en: 'Chicken bowl' } },
-      { source: 'Cola 0,33 l', values: { tr: 'Kola' } },
+      { source: 'Cola 0,33 l', values: { en: 'Cola 0,33 l', tr: 'Kola' } },
     ]);
 
     // Ein gelöschter Eintrag (values {}) wird weiter geliefert.

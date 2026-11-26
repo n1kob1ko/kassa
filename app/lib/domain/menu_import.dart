@@ -307,8 +307,9 @@ Set<String> _menuNames(
   return names;
 }
 
-/// Freiwilliges Wörterbuch. Name und Text werden gekürzt; ein leerer Text oder
-/// einer gleich dem Namen zählt als keiner.
+/// Freiwilliges Wörterbuch. Name und Text werden gekürzt; nur ein leerer Text
+/// zählt als keiner. Ein Text gleich dem Namen ist eine gültige Übersetzung
+/// ("Cola 0,33 l" bleibt in jeder Sprache gleich).
 Map<String, Map<String, String>> _translations(
   Object? raw,
   Set<String> menuNames,
@@ -352,7 +353,7 @@ Map<String, Map<String, String>> _translations(
         );
         continue;
       }
-      if (text.isNotEmpty && text != name) texts[code] = text;
+      if (text.isNotEmpty) texts[code] = text;
     }
     if (texts.isNotEmpty) result[name] = {...?result[name], ...texts};
   }

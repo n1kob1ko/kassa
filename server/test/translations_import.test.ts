@@ -58,6 +58,13 @@ test('Einspielen schreibt das Wörterbuch und zählt die Namen', async () => {
   ]);
 });
 
+test('Text gleich dem Namen wird geschrieben, nur Leerzeichen nicht', async () => {
+  const b = await insertBusiness(t.db);
+  const summary = await run(b, menu({ 'Cola 0,33 l': { en: ' Cola 0,33 l ', tr: '   ' } }));
+  expect(summary.translations).toBe(1);
+  expect((await rows(b)).map((r) => [r.source, r.values])).toEqual([['Cola 0,33 l', { en: 'Cola 0,33 l' }]]);
+});
+
 test('je Name und Sprache ersetzen, der Rest bleibt', async () => {
   const b = await insertBusiness(t.db);
   await run(b, menu({ 'Cola 0,33 l': { en: 'Cola drink', tr: 'Kola' }, 'Huhn Bowl': { en: 'Chicken bowl' } }));

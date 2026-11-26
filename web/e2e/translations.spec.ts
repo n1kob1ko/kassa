@@ -134,13 +134,13 @@ test('"Nur fehlende" blendet übersetzte Namen aus; eben übersetzte bleiben ste
   await page.keyboard.press('Tab');
   // Gerade übersetzt: die Zeile bleibt, der Fokus geht weiter, nichts springt weg.
   await expect(field(page, 'Cola 0,33 l', 'English')).toHaveValue('Coke 0.33 l');
-  await expect(progress(page)).toHaveText(`2 von ${TOTAL} übersetzt`);
+  await expect(progress(page)).toHaveText(`3 von ${TOTAL} übersetzt`);
 
   await page.getByRole('switch', { name: 'Nur fehlende' }).uncheck();
   await page.getByRole('switch', { name: 'Nur fehlende' }).check();
   await expect(field(page, 'Cola 0,33 l', 'English')).toHaveCount(0);
-  // "Bowls" gleich dem Namen heißt: keine Übersetzung, der Name gilt. Darum fehlt sie noch.
-  await expect(field(page, 'Bowls', 'English')).toBeVisible();
+  // "Bowls" gleich dem Namen ist eine Übersetzung: die Zeile fehlt nicht mehr.
+  await expect(field(page, 'Bowls', 'English')).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 2, name: 'Getränke' })).toHaveCount(0);
 });
 

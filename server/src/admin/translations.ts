@@ -131,8 +131,8 @@ export function installTranslationRoutes(app: FastifyInstance): void {
       if (!(await allNames(c)).has(source)) throw new ApiError(404, 'not_found', 'Das gibt es nicht.');
       const before = (await storedValues(c)).get(source);
       const values: Values = { ...before };
-      // Leer oder gleich dem Namen heißt: keine Übersetzung, der Name der Speisekarte gilt.
-      if (text === '' || text === source) delete values[lang];
+      // Leer heißt: keine Übersetzung, der Name der Speisekarte gilt. Ein Text gleich dem Namen ist eine Übersetzung.
+      if (text === '') delete values[lang];
       else values[lang] = text;
       if (before === undefined ? Object.keys(values).length > 0 : !same(before, values)) {
         await c.query(
