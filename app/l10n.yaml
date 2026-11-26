@@ -1,0 +1,11 @@
+arb-dir: lib/l10n
+template-arb-file: app_de.arb
+output-class: L10n
+output-localization-file: l10n.dart
+output-dir: lib/l10n/generated
+nullable-getter: false
+untranslated-messages-file: build/l10n_untranslated.json
+# Die erzeugte Liste `localizationsDelegates` nennt die veralteten Material-
+# und Cupertino-Texte aus `flutter_localizations`; die App nutzt sie nicht
+# (siehe app.dart).
+header: "// ignore_for_file: deprecated_member_use"

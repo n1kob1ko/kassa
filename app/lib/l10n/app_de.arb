@@ -1,0 +1,15 @@
+{
+  "@@locale": "de",
+  "languageSectionTitle": "Sprache",
+  "@languageSectionTitle": {
+    "description": "Überschrift des Abschnitts in den Einstellungen."
+  },
+  "languageSheetTitle": "Sprache",
+  "@languageSheetTitle": {
+    "description": "Titel des Blatts mit den Sprachen am Anmeldebildschirm."
+  },
+  "languageChangeLabel": "Sprache ändern",
+  "@languageChangeLabel": {
+    "description": "Semantik der Sprachtaste am Anmeldebildschirm."
+  }
+}

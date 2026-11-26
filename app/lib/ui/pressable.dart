@@ -17,6 +17,7 @@ class Pressable extends StatefulWidget {
     this.minTapSize = Size.zero,
     this.semanticLabel,
     this.dimWhenDisabled = true,
+    this.selected,
   });
 
   final VoidCallback? onTap;
@@ -27,6 +28,9 @@ class Pressable extends StatefulWidget {
   /// Ausgeschaltet mit Deckkraft 0,4 zeigen. Wer den Zustand selbst malt,
   /// stellt das aus.
   final bool dimWhenDisabled;
+
+  /// Für Tasten einer Auswahl: ob diese gewählt ist (Semantik).
+  final bool? selected;
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -86,6 +90,7 @@ class _PressableState extends State<Pressable> {
     return Semantics(
       button: true,
       enabled: enabled,
+      selected: widget.selected,
       label: widget.semanticLabel,
       excludeSemantics: widget.semanticLabel != null,
       onTap: widget.onTap,

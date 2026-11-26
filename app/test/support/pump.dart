@@ -44,8 +44,9 @@ import 'kassa_pump.dart' show containerOf;
 
 Future<void>? _fonts;
 
-/// Lädt Figtree und JetBrains Mono aus `assets/fonts` und die Lucide-Symbole, damit Bildvergleiche
-/// echten Text und echte Symbole zeigen.
+/// Lädt Figtree, JetBrains Mono und Noto Sans SC/Arabic aus `assets/fonts` und
+/// die Lucide-Symbole, damit Bildvergleiche echten Text und echte Symbole
+/// zeigen.
 Future<void> loadFigtree() => _fonts ??= () async {
   final loader = FontLoader('Figtree');
   for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
@@ -65,6 +66,20 @@ Future<void> loadFigtree() => _fonts ??= () async {
       ),
     );
   await mono.load();
+  // Chinesisch und Arabisch (Ersatzschriften hinter Figtree, 500 und 700).
+  for (final family in ['SC', 'Arabic']) {
+    final noto = FontLoader('Noto Sans $family');
+    for (final w in ['Medium', 'Bold']) {
+      noto.addFont(
+        Future.value(
+          ByteData.sublistView(
+            File('assets/fonts/NotoSans$family-$w.ttf').readAsBytesSync(),
+          ),
+        ),
+      );
+    }
+    await noto.load();
+  }
   // Lucide-Symbole kommen aus dem Paket, nicht aus dem Testgerät.
   final lucide = FontLoader('packages/lucide_icons_flutter/Lucide')
     ..addFont(

@@ -5,8 +5,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/app_info.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../rksv/card/card_facts.dart';
 import '../../rksv/online/atrust_client.dart' show AtrustSystem;
+import '../../ui/language_picker.dart';
 import '../../ui/pressable.dart';
 import '../../ui/segmented.dart';
 import '../../ui/tokens.dart';
@@ -26,7 +28,9 @@ import 'signature_panel.dart';
 import 'signer_choice_screen.dart';
 
 /// Der Bereich Einstellungen (nur Chef): links Signatur und Kassa, rechts
-/// Geräte, Anzeige und Server (Signatur oben links wie im Entwurf `s1b-2`).
+/// Sprache, Geräte, Anzeige und Server (Signatur oben links wie im Entwurf
+/// `s1b-2`; sie muss ohne Scrollen ganz im Bild stehen, darum steht die
+/// Sprache oben rechts).
 /// Jede Änderung wird sofort gespeichert, der Bildschirm folgt dem Strom der
 /// Einstellungen.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -215,6 +219,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final business = ref.watch(catalogStreamProvider).value?.businessName;
     const gap = SizedBox(height: KassaTokens.spaceXxl);
 
+    final language = SettingsCard(
+      title: L10n.of(context).languageSectionTitle,
+      rows: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: KassaTokens.spaceXxl),
+          child: LanguagePicker(
+            value: s.language,
+            onChanged: (l) => _change((s) => s.copyWith(language: l)),
+          ),
+        ),
+      ],
+    );
     final devices = SettingsCard(
       title: 'Geräte an dieser Kassa',
       rows: [
@@ -341,7 +357,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [devices, gap, display, gap, const ServerPanel()],
+                  children: [
+                    language,
+                    gap,
+                    devices,
+                    gap,
+                    display,
+                    gap,
+                    const ServerPanel(),
+                  ],
                 ),
               ),
             ],

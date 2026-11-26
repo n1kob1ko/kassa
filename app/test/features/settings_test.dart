@@ -66,6 +66,8 @@ void main() {
     t,
   ) async {
     await pumpSettings(t);
+    await t.ensureVisible(find.byKey(const Key('toggle-images')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('toggle-images')));
     await t.pump();
     await t.tap(find.byKey(const Key('toggle-void-chef')));
@@ -81,6 +83,8 @@ void main() {
   testWidgets('dunkle Ansicht schaltet das Thema um', (t) async {
     await pumpAppLoggedInAsChef(t);
     await openSettings(t);
+    await t.ensureVisible(find.byKey(const Key('theme-dark')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('theme-dark')));
     await t.pumpAndSettle();
     expect(_brightness(t), Brightness.dark);
@@ -92,6 +96,8 @@ void main() {
   ) async {
     await pumpSettings(t, brightness: Brightness.dark);
     expect(_brightness(t), Brightness.dark);
+    await t.ensureVisible(find.byKey(const Key('theme-light')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('theme-light')));
     await t.pumpAndSettle();
     expect(_brightness(t), Brightness.light);

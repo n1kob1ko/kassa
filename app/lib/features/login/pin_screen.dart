@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app.dart' show appLanguageProvider;
 import '../../data/providers.dart';
+import '../../l10n/generated/l10n.dart';
 import '../../ui/keypad.dart';
 import '../../ui/business_logo.dart';
+import '../../ui/language_picker.dart';
+import '../../ui/pressable.dart';
 import '../../ui/tokens.dart';
 import 'session.dart';
 
@@ -63,17 +68,75 @@ class _PinScreenState extends ConsumerState<PinScreen> {
     return Scaffold(
       backgroundColor: KassaColors.of(context).ground,
       body: SafeArea(
-        child: PinCard(
-          businessName: ref.watch(catalogProvider).value?.businessName,
-          title: 'PIN eingeben',
-          hint: _failed
-              ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
-              : _wrong
-              ? 'Diese PIN kennt die Kassa nicht.'
-              : 'Jede Person hat ihre eigene PIN',
-          hintIsError: _wrong || _failed,
-          filled: _pin.length,
-          onKey: _onKey,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: PinCard(
+                businessName: ref.watch(catalogProvider).value?.businessName,
+                title: 'PIN eingeben',
+                hint: _failed
+                    ? 'Das hat nicht geklappt. Bitte nochmal versuchen.'
+                    : _wrong
+                    ? 'Diese PIN kennt die Kassa nicht.'
+                    : 'Jede Person hat ihre eigene PIN',
+                hintIsError: _wrong || _failed,
+                filled: _pin.length,
+                onKey: _onKey,
+              ),
+            ),
+            // Oben am Ende der Zeile, in Arabisch also links.
+            const PositionedDirectional(
+              top: KassaTokens.spaceXxl,
+              end: KassaTokens.spaceXxl,
+              child: _LanguageButton(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Weltkugel und Name der jetzigen Sprache; öffnet die Sprachen als Blatt.
+/// Wer kein Deutsch liest, findet sie ohne Lesen.
+class _LanguageButton extends ConsumerWidget {
+  const _LanguageButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = KassaColors.of(context);
+    final language = ref.watch(appLanguageProvider);
+    return Pressable(
+      key: const Key('login-language'),
+      onTap: () => showLanguageSheet(context, ref),
+      semanticLabel: L10n.of(context).languageChangeLabel,
+      child: Container(
+        constraints: const BoxConstraints(
+          minHeight: KassaTokens.loginLanguageButtonHeight,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+          border: Border.all(color: c.line, width: KassaTokens.borderThin),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.globe, size: 22, color: c.ink),
+            const SizedBox(width: KassaTokens.spaceMd),
+            Text(
+              language.nativeName,
+              locale: language.locale,
+              style: TextStyle(
+                fontFamily: KassaTokens.fontFamily,
+                fontFamilyFallback: KassaTokens.fontFallback,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: c.ink,
+              ),
+            ),
+          ],
         ),
       ),
     );

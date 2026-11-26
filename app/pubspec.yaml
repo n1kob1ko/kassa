@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
   material_ui: ^1.1.0
 
   # The following adds the Cupertino Icons font to your application.
@@ -74,6 +77,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  # Erzeugt lib/l10n/generated aus den ARB-Dateien (siehe l10n.yaml).
+  generate: true
 
   assets:
     - assets/demo/beispiel-imbiss.json
@@ -95,6 +100,19 @@ flutter:
       fonts:
         - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
           weight: 600
+    # Chinesisch und Arabisch: Ersatzschriften hinter Figtree (OFL-Noto.txt).
+    - family: Noto Sans SC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansSC-Bold.ttf
+          weight: 700
+    - family: Noto Sans Arabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansArabic-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

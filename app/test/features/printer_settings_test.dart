@@ -46,6 +46,13 @@ Future<void> _tapKind(WidgetTester t, String kind) async {
 Future<void> _typeAddress(WidgetTester t, String address) async {
   await t.tap(find.byKey(const Key('printer-address-open')));
   await t.pumpAndSettle();
+  // Seit dem Abschnitt "Sprache" oben rechts steht das Zahlenfeld tiefer:
+  // so weit scrollen, dass "Übernehmen" unten im Bild steht.
+  await Scrollable.ensureVisible(
+    t.element(find.byKey(const Key('printer-address-save'))),
+    alignment: 1,
+  );
+  await t.pumpAndSettle();
   await tapKeys(
     t,
     address.split('').map((c) => c == '.' ? 'dot' : c).join(' '),
@@ -174,6 +181,8 @@ void main() {
     await t.tap(find.byKey(const Key('printer-found-192.168.1.50:9100')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('printer-width-42')));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('printer-remove')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('printer-remove')));
     await t.pumpAndSettle();
@@ -356,6 +365,8 @@ void main() {
     await pumpSettings(t, discovery: FakeDiscovery(foundNetwork: [_lan]));
     await _openPanel(t);
     await t.tap(find.byKey(const Key('printer-found-192.168.1.50:9100')));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('printer-remove')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('printer-remove')));
     await t.pumpAndSettle();

@@ -2,16 +2,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_sync_providers.dart';
+import 'core/app_language.dart';
 import 'data/providers.dart';
 import 'data/settings_repository.dart';
 import 'features/login/pin_screen.dart';
 import 'features/login/session.dart';
 import 'features/setup/setup_screen.dart';
 import 'features/shell/shell_screen.dart';
+import 'l10n/generated/l10n.dart';
 import 'ui/primary_button.dart';
 import 'ui/system_bars.dart';
 import 'ui/theme.dart';
 import 'ui/tokens.dart';
+
+/// Die Sprache der Oberfläche, aus den Einstellungen der Kassa. Solange sie
+/// nicht geladen sind: Deutsch.
+final appLanguageProvider = Provider<AppLanguage>(
+  (ref) =>
+      ref.watch(settingsStreamProvider.select((s) => s.value?.language)) ??
+      AppLanguage.de,
+);
 
 /// Wurzel der App: Einrichtung, solange es keine Speisekarte und keinen Chef
 /// gibt, dann Anmeldung, dann die Kassa.
@@ -34,6 +44,16 @@ class KassaApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: kassaTheme(Brightness.light),
       darkTheme: kassaTheme(Brightness.dark),
+      locale: ref.watch(appLanguageProvider).locale,
+      supportedLocales: L10n.supportedLocales,
+      // Material aus `material_ui` (nicht `L10n.localizationsDelegates`: die
+      // nennen die Material-Texte aus `flutter_localizations`, die die
+      // Widgets von `material_ui` nicht lesen). Darin auch Widgets
+      // (Leserichtung) und Cupertino.
+      localizationsDelegates: const [
+        L10n.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
       themeMode: switch (mode) {
         AppThemeMode.light => ThemeMode.light,
         AppThemeMode.dark => ThemeMode.dark,

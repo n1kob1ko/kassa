@@ -84,9 +84,22 @@ class KassaTokens {
   static const double keypadKeyHeight = 56.0;
   static const double keypadInputHeight = 60.0;
 
+  /// Tasten der Sprachauswahl (Einstellungen, Blatt am Anmeldebildschirm).
+  static const double languageButtonHeight = 64.0;
+
+  /// Sprachtaste oben am Anmeldebildschirm.
+  static const double loginLanguageButtonHeight = 52.0;
+
   // Schrift
   static const String fontFamily = 'Figtree';
-  static const List<String> fontFallback = ['Roboto'];
+
+  /// Hinter Figtree: die mitgelieferten Schriften für Arabisch und
+  /// Chinesisch, dann die Schrift des Geräts für seltene Zeichen.
+  static const List<String> fontFallback = [
+    'Noto Sans Arabic',
+    'Noto Sans SC',
+    'Roboto',
+  ];
 
   /// Schrift mit gleich breiten Zeichen für Werte, die jemand abschreibt
   /// (Kennungen, Schlüssel): Null mit Punkt, I, l und 1 deutlich verschieden.

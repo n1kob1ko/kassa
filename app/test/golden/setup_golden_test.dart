@@ -82,6 +82,21 @@ void main() {
     );
   });
 
+  testWidgets('Anmeldung, Blatt "Sprache" auf Arabisch (hell)', (t) async {
+    await _start(t, seeded: true);
+    await t.tap(find.byKey(const Key('login-language')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('language-ar')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('login-language')));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    await expectLater(
+      find.byType(KassaApp),
+      matchesGoldenFile('goldens/anmeldung_sprache_arabisch.png'),
+    );
+  });
+
   for (final (name, size, brightness, scale) in [
     ('klein mit Textskala 1,3', const Size(960, 600), Brightness.light, 1.3),
     ('dunkel', const Size(1280, 800), Brightness.dark, 1.0),
