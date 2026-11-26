@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/domain/staff.dart';
 
 void main() {
   late KassaDatabase db;
@@ -195,5 +197,101 @@ void main() {
     expect(s.copyWith(printerColumns: 32).printerQrAsImage, isTrue);
     expect(s.copyWith(printerQrAsImage: false).printerQrAsImage, isFalse);
     expect(s.withoutPrinter().printerQrAsImage, isTrue);
+  });
+
+  test('die vier Schalter: speichern und lesen', () async {
+    var s = await settings.current();
+    expect(
+      (
+        s.splitPaymentEnabled,
+        s.cardTipEnabled,
+        s.discountAccess,
+        s.openAmountAccess,
+      ),
+      (false, false, FeatureAccess.off, FeatureAccess.off),
+    );
+    await settings.save(
+      s.copyWith(
+        splitPaymentEnabled: true,
+        cardTipEnabled: true,
+        discountAccess: FeatureAccess.chefOnly,
+        openAmountAccess: FeatureAccess.all,
+      ),
+    );
+    s = await settings.current();
+    expect(
+      (
+        s.splitPaymentEnabled,
+        s.cardTipEnabled,
+        s.discountAccess,
+        s.openAmountAccess,
+      ),
+      (true, true, FeatureAccess.chefOnly, FeatureAccess.all),
+    );
+    final row = await db.select(db.settingsRows).getSingle();
+    expect((row.discountAccess, row.openAmountAccess), ('chefOnly', 'all'));
+    // withoutPrinter und withoutKitchenPrinter reichen sie durch.
+    for (final t in [s.withoutPrinter(), s.withoutKitchenPrinter()]) {
+      expect(
+        (
+          t.splitPaymentEnabled,
+          t.cardTipEnabled,
+          t.discountAccess,
+          t.openAmountAccess,
+        ),
+        (true, true, FeatureAccess.chefOnly, FeatureAccess.all),
+      );
+    }
+    expect(
+      s.copyWith(printerColumns: 32).discountAccess,
+      FeatureAccess.chefOnly,
+    );
+  });
+
+  test('unbekannter Text in discount_access gibt off', () async {
+    await settings.save(
+      const RegisterSettings(
+        discountAccess: FeatureAccess.all,
+        openAmountAccess: FeatureAccess.all,
+      ),
+    );
+    await db.customStatement(
+      "UPDATE settings SET discount_access = 'bogus', open_amount_access = ''",
+    );
+    final s = await settings.current();
+    expect(s.discountAccess, FeatureAccess.off);
+    expect(s.openAmountAccess, FeatureAccess.off);
+  });
+
+  group('FeatureAccess.allows', () {
+    const anna = Staff(id: 'staff-anna', name: 'Anna', role: StaffRole.staff);
+    const chef = Staff(id: 'staff-chef', name: 'Chef', role: StaffRole.chef);
+
+    test('off: nie', () {
+      expect(
+        [
+          for (final p in [anna, chef, null]) FeatureAccess.off.allows(p),
+        ],
+        [false, false, false],
+      );
+    });
+
+    test('all: Anna und Chef, ohne Anmeldung nie', () {
+      expect(
+        [
+          for (final p in [anna, chef, null]) FeatureAccess.all.allows(p),
+        ],
+        [true, true, false],
+      );
+    });
+
+    test('chefOnly: nur der Chef', () {
+      expect(
+        [
+          for (final p in [anna, chef, null]) FeatureAccess.chefOnly.allows(p),
+        ],
+        [false, true, false],
+      );
+    });
   });
 }

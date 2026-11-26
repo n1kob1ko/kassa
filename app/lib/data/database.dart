@@ -179,6 +179,15 @@ class SettingsRows extends Table {
   TextColumn get kitchenSkipCategories =>
       text().withDefault(const Constant('[]'))();
 
+  /// Die vier Schalter von "Zahlen": Teil bar, Rest Karte; Trinkgeld bei
+  /// Kartenzahlung; wer Rabatt geben und wer einen freien Betrag bonieren
+  /// darf (`off`, `all` oder `chefOnly`, siehe `FeatureAccess`).
+  BoolColumn get splitPayment => boolean().withDefault(const Constant(false))();
+  BoolColumn get cardTip => boolean().withDefault(const Constant(false))();
+  TextColumn get discountAccess => text().withDefault(const Constant('off'))();
+  TextColumn get openAmountAccess =>
+      text().withDefault(const Constant('off'))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -268,6 +277,19 @@ class ReceiptRows extends Table {
   IntColumn get depositCents => integer()();
   IntColumn get totalCents => integer()();
 
+  /// Trinkgeld aller Zahlungen zusammen; nicht in [totalCents].
+  IntColumn get tipCents => integer().withDefault(const Constant(0))();
+
+  /// Summe aller Rabatte (der Zeilen und des Bons), positiv.
+  IntColumn get discountCents => integer().withDefault(const Constant(0))();
+
+  /// Der Rabatt auf den ganzen Bon: Prozent oder leer bei festem Betrag, der
+  /// Betrag in Cent und der Grund.
+  IntColumn get discountPercent => integer().nullable()();
+  IntColumn get discountAmountCents =>
+      integer().withDefault(const Constant(0))();
+  TextColumn get discountReason => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -293,6 +315,16 @@ class ReceiptLineRows extends Table {
   IntColumn get gross13Cents => integer().withDefault(const Constant(0))();
   IntColumn get gross0Cents => integer().withDefault(const Constant(0))();
   IntColumn get gross19Cents => integer().withDefault(const Constant(0))();
+
+  /// Gesamter Rabatt der Zeile in Cent: der eigene plus ihr Anteil am Rabatt
+  /// des Bons. Die Beträge je Steuersatz oben stehen schon nach Rabatt.
+  IntColumn get discountCents => integer().withDefault(const Constant(0))();
+
+  /// Der eigene Rabatt der Zeile: Prozent oder leer bei festem Betrag, der
+  /// Betrag in Cent und der Grund.
+  IntColumn get ownDiscountPercent => integer().nullable()();
+  IntColumn get ownDiscountCents => integer().withDefault(const Constant(0))();
+  TextColumn get ownDiscountReason => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {receiptId, position};
@@ -324,6 +356,9 @@ class PaymentRows extends Table {
 
   TextColumn get receiptId => text().references(ReceiptRows, #id)();
 
+  /// Stelle der Zahlung im Bon, ab 0.
+  IntColumn get position => integer().withDefault(const Constant(0))();
+
   /// `cash` oder `card`.
   TextColumn get kind => text()();
   IntColumn get amountCents => integer()();
@@ -336,8 +371,14 @@ class PaymentRows extends Table {
   TextColumn get cardScheme => text().nullable()();
   TextColumn get cardLast4 => text().nullable()();
 
+  /// Trinkgeld dieser Zahlung (nur bei Karte), nicht in [amountCents]. Für wen
+  /// es ist: Id und Name, leer ohne Trinkgeld.
+  IntColumn get tipCents => integer().withDefault(const Constant(0))();
+  TextColumn get tipStaffId => text().nullable()();
+  TextColumn get tipStaffName => text().nullable()();
+
   @override
-  Set<Column> get primaryKey => {receiptId};
+  Set<Column> get primaryKey => {receiptId, position};
 }
 
 /// Eine Kartenzahlung, die gestartet, aber noch nicht als Bon abgeschlossen
@@ -356,6 +397,11 @@ class PendingCardPaymentRows extends Table {
 
   /// `started` oder `unknown`.
   TextColumn get state => text()();
+
+  /// Der Teil, der bar bezahlt wird (0 ohne), und das Trinkgeld der Karte.
+  /// [amountCents] ist der Betrag ans Terminal ohne Trinkgeld.
+  IntColumn get cashPartCents => integer().withDefault(const Constant(0))();
+  IntColumn get tipCents => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -576,7 +622,7 @@ class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -634,7 +680,8 @@ class KassaDatabase extends _$KassaDatabase {
         await m.addColumn(paymentRows, paymentRows.providerTxCode);
         await m.addColumn(paymentRows, paymentRows.cardScheme);
         await m.addColumn(paymentRows, paymentRows.cardLast4);
-        await m.createTable(pendingCardPaymentRows);
+        // In der Form von Version 2: Schritt 8 fügt die Spalten dazu.
+        await customStatement(_pendingCardPaymentsV2);
       }
       if (from < 3 && to >= 3) {
         // Mit dem Stand von Version 3 anlegen, nicht mit dem heutigen: die
@@ -667,7 +714,8 @@ class KassaDatabase extends _$KassaDatabase {
           await customStatement(
             'DROP INDEX IF EXISTS receipts_voids_receipt_id',
           );
-          await m.alterTable(TableMigration(receiptRows));
+          // In der Form von Version 4: Schritt 8 fügt die Spalten dazu.
+          await _rebuildReceiptsV4();
           await _createReceiptsVoidsIndex();
           await _createReceiptGuards('receipts');
 
@@ -727,6 +775,14 @@ class KassaDatabase extends _$KassaDatabase {
         ).get();
         if (done.isEmpty) await _stepTo7(m);
       }
+      if (from < 8 && to >= 8) {
+        // Wie Schritt 7: ganz oder gar nicht, und wiederholbar. Erledigt ist
+        // er, wenn `payments` die Spalte `position` hat.
+        final columns = await customSelect('PRAGMA table_info(payments)').get();
+        if (!columns.any((c) => c.read<String>('name') == 'position')) {
+          await _stepTo8(m);
+        }
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -768,6 +824,112 @@ class KassaDatabase extends _$KassaDatabase {
       await m.createTable(translationRows);
       await customStatement('UPDATE sync_state SET pull_cursor = 0');
     });
+  }
+
+  /// Schritt 8: gemischt zahlen, Trinkgeld, Rabatt und die vier Schalter.
+  /// `payments` wird neu aufgebaut, weil der Schlüssel `{receiptId,
+  /// position}` wird; vorhandene Zahlungen bekommen Stelle 0. Alles andere
+  /// kommt als neue Spalte mit Vorgabe. Nichts geht in die Liste "noch zu
+  /// senden", der Abgleich-Stand bleibt.
+  Future<void> _stepTo8(Migrator m) async {
+    // Wie Schritt 4: ohne Fremdschlüssel, und nur neue kaputte Verweise
+    // zählen.
+    await customStatement('PRAGMA foreign_keys = OFF');
+    final brokenBefore = await _brokenReferences();
+    await transaction(() async {
+      for (final action in const ['update', 'delete']) {
+        await customStatement('DROP TRIGGER IF EXISTS payments_no_$action');
+      }
+      await m.alterTable(
+        TableMigration(
+          paymentRows,
+          newColumns: [
+            paymentRows.position,
+            paymentRows.tipCents,
+            paymentRows.tipStaffId,
+            paymentRows.tipStaffName,
+          ],
+        ),
+      );
+      await _createReceiptGuards('payments');
+
+      await m.addColumn(receiptRows, receiptRows.tipCents);
+      await m.addColumn(receiptRows, receiptRows.discountCents);
+      await m.addColumn(receiptRows, receiptRows.discountPercent);
+      await m.addColumn(receiptRows, receiptRows.discountAmountCents);
+      await m.addColumn(receiptRows, receiptRows.discountReason);
+      await m.addColumn(receiptLineRows, receiptLineRows.discountCents);
+      await m.addColumn(receiptLineRows, receiptLineRows.ownDiscountPercent);
+      await m.addColumn(receiptLineRows, receiptLineRows.ownDiscountCents);
+      await m.addColumn(receiptLineRows, receiptLineRows.ownDiscountReason);
+      await m.addColumn(
+        pendingCardPaymentRows,
+        pendingCardPaymentRows.cashPartCents,
+      );
+      await m.addColumn(
+        pendingCardPaymentRows,
+        pendingCardPaymentRows.tipCents,
+      );
+      await m.addColumn(settingsRows, settingsRows.splitPayment);
+      await m.addColumn(settingsRows, settingsRows.cardTip);
+      await m.addColumn(settingsRows, settingsRows.discountAccess);
+      await m.addColumn(settingsRows, settingsRows.openAmountAccess);
+
+      final brokenAfter = await _brokenReferences();
+      final added = [
+        for (final MapEntry(:key, :value) in brokenAfter.entries)
+          if (value > (brokenBefore[key] ?? 0)) key,
+      ];
+      if (added.isNotEmpty) {
+        throw StateError(
+          'Verweise nach der Migration auf Version 8 kaputt: $added',
+        );
+      }
+    });
+    await customStatement('PRAGMA foreign_keys = ON');
+  }
+
+  /// `pending_card_payments`, wie Version 2 sie angelegt hat.
+  static const _pendingCardPaymentsV2 =
+      'CREATE TABLE "pending_card_payments" ("id" TEXT NOT NULL, '
+      '"cart_json" TEXT NOT NULL, "amount_cents" INTEGER NOT NULL, '
+      '"staff_id" TEXT NOT NULL, "staff_name" TEXT NOT NULL, '
+      '"started_at" INTEGER NOT NULL, "state" TEXT NOT NULL, '
+      'PRIMARY KEY(id))';
+
+  /// Die Spalten von `receipts` in Version 4.
+  static const _receiptsV4Columns =
+      '"id", "number", "created_at", "staff_id", "staff_name", '
+      '"business_day_id", "kind", "voids_receipt_id", "goods_cents", '
+      '"deposit_cents", "total_cents"';
+
+  /// `receipts` in der Form von Version 4 neu aufbauen (`business_day_id`
+  /// darf leer sein), wie `alterTable` es täte: neue Tabelle, Zeilen kopieren,
+  /// alte weg, umbenennen. Trigger und Index entfernt und legt der Aufrufer an,
+  /// andere gibt es in Version 3 an `receipts` nicht.
+  Future<void> _rebuildReceiptsV4() async {
+    await customStatement(
+      'CREATE TABLE "tmp_for_copy_receipts" ("id" TEXT NOT NULL, '
+      '"number" INTEGER NOT NULL UNIQUE, "created_at" INTEGER NOT NULL, '
+      '"staff_id" TEXT NOT NULL, "staff_name" TEXT NOT NULL, '
+      '"business_day_id" TEXT NULL REFERENCES business_days(id), '
+      '"kind" TEXT NOT NULL, '
+      '"voids_receipt_id" TEXT NULL REFERENCES receipts(id), '
+      '"goods_cents" INTEGER NOT NULL, "deposit_cents" INTEGER NOT NULL, '
+      '"total_cents" INTEGER NOT NULL, PRIMARY KEY(id))',
+    );
+    await customStatement(
+      'INSERT INTO "tmp_for_copy_receipts" ($_receiptsV4Columns) '
+      'SELECT $_receiptsV4Columns FROM "receipts"',
+    );
+    await customStatement('DROP TABLE "receipts"');
+    // Wie alterTable: ohne die Prüfung des ganzen Schemas umbenennen, die an
+    // Verweisen auf die eben gelöschte Tabelle scheitern kann.
+    await customStatement('PRAGMA legacy_alter_table = 1');
+    await customStatement(
+      'ALTER TABLE "tmp_for_copy_receipts" RENAME TO "receipts"',
+    );
+    await customStatement('PRAGMA legacy_alter_table = 0');
   }
 
   /// `rksv_chains`, wie Version 4 sie angelegt hat (ohne `unit`).

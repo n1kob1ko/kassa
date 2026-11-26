@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 
 import '../core/app_language.dart';
 import '../core/enums.dart';
+import '../domain/feature_access.dart';
 import 'database.dart';
 
 enum AppThemeMode { system, light, dark }
@@ -31,6 +32,10 @@ class RegisterSettings {
     this.kitchenPrinterName,
     this.kitchenPrinterColumns = 48,
     this.kitchenSkipCategories = const {},
+    this.splitPaymentEnabled = false,
+    this.cardTipEnabled = false,
+    this.discountAccess = FeatureAccess.off,
+    this.openAmountAccess = FeatureAccess.off,
   });
 
   final bool cashDrawerEnabled;
@@ -59,6 +64,14 @@ class RegisterSettings {
   /// Kennungen der Kategorien, die nicht auf den Küchenbon kommen.
   final Set<String> kitchenSkipCategories;
 
+  /// Die Schalter von "Zahlen": Teil bar, Rest Karte; Trinkgeld bei
+  /// Kartenzahlung; wer Rabatt geben und wer einen freien Betrag bonieren
+  /// darf.
+  final bool splitPaymentEnabled;
+  final bool cardTipEnabled;
+  final FeatureAccess discountAccess;
+  final FeatureAccess openAmountAccess;
+
   RegisterSettings copyWith({
     bool? cashDrawerEnabled,
     bool? showImages,
@@ -77,6 +90,10 @@ class RegisterSettings {
     String? kitchenPrinterName,
     int? kitchenPrinterColumns,
     Set<String>? kitchenSkipCategories,
+    bool? splitPaymentEnabled,
+    bool? cardTipEnabled,
+    FeatureAccess? discountAccess,
+    FeatureAccess? openAmountAccess,
   }) => RegisterSettings(
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
     showImages: showImages ?? this.showImages,
@@ -95,6 +112,10 @@ class RegisterSettings {
     kitchenPrinterName: kitchenPrinterName ?? this.kitchenPrinterName,
     kitchenPrinterColumns: kitchenPrinterColumns ?? this.kitchenPrinterColumns,
     kitchenSkipCategories: kitchenSkipCategories ?? this.kitchenSkipCategories,
+    splitPaymentEnabled: splitPaymentEnabled ?? this.splitPaymentEnabled,
+    cardTipEnabled: cardTipEnabled ?? this.cardTipEnabled,
+    discountAccess: discountAccess ?? this.discountAccess,
+    openAmountAccess: openAmountAccess ?? this.openAmountAccess,
   );
 
   /// Kein Drucker mehr: Art `none`, Adresse und Name leer (`copyWith` kann
@@ -114,6 +135,10 @@ class RegisterSettings {
     kitchenPrinterName: kitchenPrinterName,
     kitchenPrinterColumns: kitchenPrinterColumns,
     kitchenSkipCategories: kitchenSkipCategories,
+    splitPaymentEnabled: splitPaymentEnabled,
+    cardTipEnabled: cardTipEnabled,
+    discountAccess: discountAccess,
+    openAmountAccess: openAmountAccess,
   );
 
   /// Kein Küchendrucker mehr: Art `none`, Adresse und Name leer.
@@ -132,6 +157,10 @@ class RegisterSettings {
     kitchenLanguage: kitchenLanguage,
     kitchenPrinterColumns: kitchenPrinterColumns,
     kitchenSkipCategories: kitchenSkipCategories,
+    splitPaymentEnabled: splitPaymentEnabled,
+    cardTipEnabled: cardTipEnabled,
+    discountAccess: discountAccess,
+    openAmountAccess: openAmountAccess,
   );
 }
 
@@ -171,6 +200,10 @@ class SettingsRepository {
           kitchenSkipCategories: Value(
             jsonEncode((s.kitchenSkipCategories.toList()..sort())),
           ),
+          splitPayment: Value(s.splitPaymentEnabled),
+          cardTip: Value(s.cardTipEnabled),
+          discountAccess: Value(s.discountAccess.name),
+          openAmountAccess: Value(s.openAmountAccess.name),
         ),
       );
 
@@ -225,6 +258,18 @@ class SettingsRepository {
           kitchenPrinterName: r.kitchenPrinterName,
           kitchenPrinterColumns: r.kitchenPrinterColumns,
           kitchenSkipCategories: _skipCategories(r.kitchenSkipCategories),
+          splitPaymentEnabled: r.splitPayment,
+          cardTipEnabled: r.cardTip,
+          discountAccess: enumByNameOr(
+            FeatureAccess.values,
+            r.discountAccess,
+            FeatureAccess.off,
+          ),
+          openAmountAccess: enumByNameOr(
+            FeatureAccess.values,
+            r.openAmountAccess,
+            FeatureAccess.off,
+          ),
         );
 
   /// Kaputtes JSON oder etwas anderes als eine Liste: leere Menge.

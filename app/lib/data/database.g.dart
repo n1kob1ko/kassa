@@ -3544,6 +3544,60 @@ class $SettingsRowsTable extends SettingsRows
         requiredDuringInsert: false,
         defaultValue: const Constant('[]'),
       );
+  static const VerificationMeta _splitPaymentMeta = const VerificationMeta(
+    'splitPayment',
+  );
+  @override
+  late final GeneratedColumn<bool> splitPayment = GeneratedColumn<bool>(
+    'split_payment',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("split_payment" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cardTipMeta = const VerificationMeta(
+    'cardTip',
+  );
+  @override
+  late final GeneratedColumn<bool> cardTip = GeneratedColumn<bool>(
+    'card_tip',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("card_tip" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _discountAccessMeta = const VerificationMeta(
+    'discountAccess',
+  );
+  @override
+  late final GeneratedColumn<String> discountAccess = GeneratedColumn<String>(
+    'discount_access',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('off'),
+  );
+  static const VerificationMeta _openAmountAccessMeta = const VerificationMeta(
+    'openAmountAccess',
+  );
+  @override
+  late final GeneratedColumn<String> openAmountAccess = GeneratedColumn<String>(
+    'open_amount_access',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('off'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3565,6 +3619,10 @@ class $SettingsRowsTable extends SettingsRows
     kitchenPrinterName,
     kitchenPrinterColumns,
     kitchenSkipCategories,
+    splitPayment,
+    cardTip,
+    discountAccess,
+    openAmountAccess,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3734,6 +3792,39 @@ class $SettingsRowsTable extends SettingsRows
         ),
       );
     }
+    if (data.containsKey('split_payment')) {
+      context.handle(
+        _splitPaymentMeta,
+        splitPayment.isAcceptableOrUnknown(
+          data['split_payment']!,
+          _splitPaymentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('card_tip')) {
+      context.handle(
+        _cardTipMeta,
+        cardTip.isAcceptableOrUnknown(data['card_tip']!, _cardTipMeta),
+      );
+    }
+    if (data.containsKey('discount_access')) {
+      context.handle(
+        _discountAccessMeta,
+        discountAccess.isAcceptableOrUnknown(
+          data['discount_access']!,
+          _discountAccessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('open_amount_access')) {
+      context.handle(
+        _openAmountAccessMeta,
+        openAmountAccess.isAcceptableOrUnknown(
+          data['open_amount_access']!,
+          _openAmountAccessMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3819,6 +3910,22 @@ class $SettingsRowsTable extends SettingsRows
         DriftSqlType.string,
         data['${effectivePrefix}kitchen_skip_categories'],
       )!,
+      splitPayment: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}split_payment'],
+      )!,
+      cardTip: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}card_tip'],
+      )!,
+      discountAccess: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}discount_access'],
+      )!,
+      openAmountAccess: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}open_amount_access'],
+      )!,
     );
   }
 
@@ -3861,6 +3968,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// Kategorie-Kennungen, deren Artikel nicht auf den Küchenbon kommen, als
   /// JSON-Liste von Texten.
   final String kitchenSkipCategories;
+
+  /// Die vier Schalter von "Zahlen": Teil bar, Rest Karte; Trinkgeld bei
+  /// Kartenzahlung; wer Rabatt geben und wer einen freien Betrag bonieren
+  /// darf (`off`, `all` oder `chefOnly`, siehe `FeatureAccess`).
+  final bool splitPayment;
+  final bool cardTip;
+  final String discountAccess;
+  final String openAmountAccess;
   const SettingsRow({
     required this.id,
     required this.cashDrawerEnabled,
@@ -3881,6 +3996,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.kitchenPrinterName,
     required this.kitchenPrinterColumns,
     required this.kitchenSkipCategories,
+    required this.splitPayment,
+    required this.cardTip,
+    required this.discountAccess,
+    required this.openAmountAccess,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3914,6 +4033,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     }
     map['kitchen_printer_columns'] = Variable<int>(kitchenPrinterColumns);
     map['kitchen_skip_categories'] = Variable<String>(kitchenSkipCategories);
+    map['split_payment'] = Variable<bool>(splitPayment);
+    map['card_tip'] = Variable<bool>(cardTip);
+    map['discount_access'] = Variable<String>(discountAccess);
+    map['open_amount_access'] = Variable<String>(openAmountAccess);
     return map;
   }
 
@@ -3948,6 +4071,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           : Value(kitchenPrinterName),
       kitchenPrinterColumns: Value(kitchenPrinterColumns),
       kitchenSkipCategories: Value(kitchenSkipCategories),
+      splitPayment: Value(splitPayment),
+      cardTip: Value(cardTip),
+      discountAccess: Value(discountAccess),
+      openAmountAccess: Value(openAmountAccess),
     );
   }
 
@@ -3986,6 +4113,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       kitchenSkipCategories: serializer.fromJson<String>(
         json['kitchenSkipCategories'],
       ),
+      splitPayment: serializer.fromJson<bool>(json['splitPayment']),
+      cardTip: serializer.fromJson<bool>(json['cardTip']),
+      discountAccess: serializer.fromJson<String>(json['discountAccess']),
+      openAmountAccess: serializer.fromJson<String>(json['openAmountAccess']),
     );
   }
   @override
@@ -4013,6 +4144,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'kitchenPrinterName': serializer.toJson<String?>(kitchenPrinterName),
       'kitchenPrinterColumns': serializer.toJson<int>(kitchenPrinterColumns),
       'kitchenSkipCategories': serializer.toJson<String>(kitchenSkipCategories),
+      'splitPayment': serializer.toJson<bool>(splitPayment),
+      'cardTip': serializer.toJson<bool>(cardTip),
+      'discountAccess': serializer.toJson<String>(discountAccess),
+      'openAmountAccess': serializer.toJson<String>(openAmountAccess),
     };
   }
 
@@ -4036,6 +4171,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> kitchenPrinterName = const Value.absent(),
     int? kitchenPrinterColumns,
     String? kitchenSkipCategories,
+    bool? splitPayment,
+    bool? cardTip,
+    String? discountAccess,
+    String? openAmountAccess,
   }) => SettingsRow(
     id: id ?? this.id,
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
@@ -4062,6 +4201,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         : this.kitchenPrinterName,
     kitchenPrinterColumns: kitchenPrinterColumns ?? this.kitchenPrinterColumns,
     kitchenSkipCategories: kitchenSkipCategories ?? this.kitchenSkipCategories,
+    splitPayment: splitPayment ?? this.splitPayment,
+    cardTip: cardTip ?? this.cardTip,
+    discountAccess: discountAccess ?? this.discountAccess,
+    openAmountAccess: openAmountAccess ?? this.openAmountAccess,
   );
   SettingsRow copyWithCompanion(SettingsRowsCompanion data) {
     return SettingsRow(
@@ -4116,6 +4259,16 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       kitchenSkipCategories: data.kitchenSkipCategories.present
           ? data.kitchenSkipCategories.value
           : this.kitchenSkipCategories,
+      splitPayment: data.splitPayment.present
+          ? data.splitPayment.value
+          : this.splitPayment,
+      cardTip: data.cardTip.present ? data.cardTip.value : this.cardTip,
+      discountAccess: data.discountAccess.present
+          ? data.discountAccess.value
+          : this.discountAccess,
+      openAmountAccess: data.openAmountAccess.present
+          ? data.openAmountAccess.value
+          : this.openAmountAccess,
     );
   }
 
@@ -4140,13 +4293,17 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ..write('kitchenPrinterAddress: $kitchenPrinterAddress, ')
           ..write('kitchenPrinterName: $kitchenPrinterName, ')
           ..write('kitchenPrinterColumns: $kitchenPrinterColumns, ')
-          ..write('kitchenSkipCategories: $kitchenSkipCategories')
+          ..write('kitchenSkipCategories: $kitchenSkipCategories, ')
+          ..write('splitPayment: $splitPayment, ')
+          ..write('cardTip: $cardTip, ')
+          ..write('discountAccess: $discountAccess, ')
+          ..write('openAmountAccess: $openAmountAccess')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     cashDrawerEnabled,
     showImages,
@@ -4166,7 +4323,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     kitchenPrinterName,
     kitchenPrinterColumns,
     kitchenSkipCategories,
-  );
+    splitPayment,
+    cardTip,
+    discountAccess,
+    openAmountAccess,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4189,7 +4350,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.kitchenPrinterAddress == this.kitchenPrinterAddress &&
           other.kitchenPrinterName == this.kitchenPrinterName &&
           other.kitchenPrinterColumns == this.kitchenPrinterColumns &&
-          other.kitchenSkipCategories == this.kitchenSkipCategories);
+          other.kitchenSkipCategories == this.kitchenSkipCategories &&
+          other.splitPayment == this.splitPayment &&
+          other.cardTip == this.cardTip &&
+          other.discountAccess == this.discountAccess &&
+          other.openAmountAccess == this.openAmountAccess);
 }
 
 class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
@@ -4212,6 +4377,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> kitchenPrinterName;
   final Value<int> kitchenPrinterColumns;
   final Value<String> kitchenSkipCategories;
+  final Value<bool> splitPayment;
+  final Value<bool> cardTip;
+  final Value<String> discountAccess;
+  final Value<String> openAmountAccess;
   const SettingsRowsCompanion({
     this.id = const Value.absent(),
     this.cashDrawerEnabled = const Value.absent(),
@@ -4232,6 +4401,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.kitchenPrinterName = const Value.absent(),
     this.kitchenPrinterColumns = const Value.absent(),
     this.kitchenSkipCategories = const Value.absent(),
+    this.splitPayment = const Value.absent(),
+    this.cardTip = const Value.absent(),
+    this.discountAccess = const Value.absent(),
+    this.openAmountAccess = const Value.absent(),
   });
   SettingsRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -4253,6 +4426,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     this.kitchenPrinterName = const Value.absent(),
     this.kitchenPrinterColumns = const Value.absent(),
     this.kitchenSkipCategories = const Value.absent(),
+    this.splitPayment = const Value.absent(),
+    this.cardTip = const Value.absent(),
+    this.discountAccess = const Value.absent(),
+    this.openAmountAccess = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
     Expression<int>? id,
@@ -4274,6 +4451,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? kitchenPrinterName,
     Expression<int>? kitchenPrinterColumns,
     Expression<String>? kitchenSkipCategories,
+    Expression<bool>? splitPayment,
+    Expression<bool>? cardTip,
+    Expression<String>? discountAccess,
+    Expression<String>? openAmountAccess,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4300,6 +4481,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
         'kitchen_printer_columns': kitchenPrinterColumns,
       if (kitchenSkipCategories != null)
         'kitchen_skip_categories': kitchenSkipCategories,
+      if (splitPayment != null) 'split_payment': splitPayment,
+      if (cardTip != null) 'card_tip': cardTip,
+      if (discountAccess != null) 'discount_access': discountAccess,
+      if (openAmountAccess != null) 'open_amount_access': openAmountAccess,
     });
   }
 
@@ -4323,6 +4508,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? kitchenPrinterName,
     Value<int>? kitchenPrinterColumns,
     Value<String>? kitchenSkipCategories,
+    Value<bool>? splitPayment,
+    Value<bool>? cardTip,
+    Value<String>? discountAccess,
+    Value<String>? openAmountAccess,
   }) {
     return SettingsRowsCompanion(
       id: id ?? this.id,
@@ -4347,6 +4536,10 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
           kitchenPrinterColumns ?? this.kitchenPrinterColumns,
       kitchenSkipCategories:
           kitchenSkipCategories ?? this.kitchenSkipCategories,
+      splitPayment: splitPayment ?? this.splitPayment,
+      cardTip: cardTip ?? this.cardTip,
+      discountAccess: discountAccess ?? this.discountAccess,
+      openAmountAccess: openAmountAccess ?? this.openAmountAccess,
     );
   }
 
@@ -4416,6 +4609,18 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
         kitchenSkipCategories.value,
       );
     }
+    if (splitPayment.present) {
+      map['split_payment'] = Variable<bool>(splitPayment.value);
+    }
+    if (cardTip.present) {
+      map['card_tip'] = Variable<bool>(cardTip.value);
+    }
+    if (discountAccess.present) {
+      map['discount_access'] = Variable<String>(discountAccess.value);
+    }
+    if (openAmountAccess.present) {
+      map['open_amount_access'] = Variable<String>(openAmountAccess.value);
+    }
     return map;
   }
 
@@ -4440,7 +4645,11 @@ class SettingsRowsCompanion extends UpdateCompanion<SettingsRow> {
           ..write('kitchenPrinterAddress: $kitchenPrinterAddress, ')
           ..write('kitchenPrinterName: $kitchenPrinterName, ')
           ..write('kitchenPrinterColumns: $kitchenPrinterColumns, ')
-          ..write('kitchenSkipCategories: $kitchenSkipCategories')
+          ..write('kitchenSkipCategories: $kitchenSkipCategories, ')
+          ..write('splitPayment: $splitPayment, ')
+          ..write('cardTip: $cardTip, ')
+          ..write('discountAccess: $discountAccess, ')
+          ..write('openAmountAccess: $openAmountAccess')
           ..write(')'))
         .toString();
   }
@@ -5924,6 +6133,63 @@ class $ReceiptRowsTable extends ReceiptRows
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _tipCentsMeta = const VerificationMeta(
+    'tipCents',
+  );
+  @override
+  late final GeneratedColumn<int> tipCents = GeneratedColumn<int>(
+    'tip_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _discountCentsMeta = const VerificationMeta(
+    'discountCents',
+  );
+  @override
+  late final GeneratedColumn<int> discountCents = GeneratedColumn<int>(
+    'discount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _discountPercentMeta = const VerificationMeta(
+    'discountPercent',
+  );
+  @override
+  late final GeneratedColumn<int> discountPercent = GeneratedColumn<int>(
+    'discount_percent',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _discountAmountCentsMeta =
+      const VerificationMeta('discountAmountCents');
+  @override
+  late final GeneratedColumn<int> discountAmountCents = GeneratedColumn<int>(
+    'discount_amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _discountReasonMeta = const VerificationMeta(
+    'discountReason',
+  );
+  @override
+  late final GeneratedColumn<String> discountReason = GeneratedColumn<String>(
+    'discount_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5937,6 +6203,11 @@ class $ReceiptRowsTable extends ReceiptRows
     goodsCents,
     depositCents,
     totalCents,
+    tipCents,
+    discountCents,
+    discountPercent,
+    discountAmountCents,
+    discountReason,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6040,6 +6311,48 @@ class $ReceiptRowsTable extends ReceiptRows
     } else if (isInserting) {
       context.missing(_totalCentsMeta);
     }
+    if (data.containsKey('tip_cents')) {
+      context.handle(
+        _tipCentsMeta,
+        tipCents.isAcceptableOrUnknown(data['tip_cents']!, _tipCentsMeta),
+      );
+    }
+    if (data.containsKey('discount_cents')) {
+      context.handle(
+        _discountCentsMeta,
+        discountCents.isAcceptableOrUnknown(
+          data['discount_cents']!,
+          _discountCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discount_percent')) {
+      context.handle(
+        _discountPercentMeta,
+        discountPercent.isAcceptableOrUnknown(
+          data['discount_percent']!,
+          _discountPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discount_amount_cents')) {
+      context.handle(
+        _discountAmountCentsMeta,
+        discountAmountCents.isAcceptableOrUnknown(
+          data['discount_amount_cents']!,
+          _discountAmountCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discount_reason')) {
+      context.handle(
+        _discountReasonMeta,
+        discountReason.isAcceptableOrUnknown(
+          data['discount_reason']!,
+          _discountReasonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6093,6 +6406,26 @@ class $ReceiptRowsTable extends ReceiptRows
         DriftSqlType.int,
         data['${effectivePrefix}total_cents'],
       )!,
+      tipCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tip_cents'],
+      )!,
+      discountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_cents'],
+      )!,
+      discountPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_percent'],
+      ),
+      discountAmountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_amount_cents'],
+      )!,
+      discountReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}discount_reason'],
+      ),
     );
   }
 
@@ -6122,6 +6455,18 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
   final int goodsCents;
   final int depositCents;
   final int totalCents;
+
+  /// Trinkgeld aller Zahlungen zusammen; nicht in [totalCents].
+  final int tipCents;
+
+  /// Summe aller Rabatte (der Zeilen und des Bons), positiv.
+  final int discountCents;
+
+  /// Der Rabatt auf den ganzen Bon: Prozent oder leer bei festem Betrag, der
+  /// Betrag in Cent und der Grund.
+  final int? discountPercent;
+  final int discountAmountCents;
+  final String? discountReason;
   const ReceiptRow({
     required this.id,
     required this.number,
@@ -6134,6 +6479,11 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     required this.goodsCents,
     required this.depositCents,
     required this.totalCents,
+    required this.tipCents,
+    required this.discountCents,
+    this.discountPercent,
+    required this.discountAmountCents,
+    this.discountReason,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6153,6 +6503,15 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     map['goods_cents'] = Variable<int>(goodsCents);
     map['deposit_cents'] = Variable<int>(depositCents);
     map['total_cents'] = Variable<int>(totalCents);
+    map['tip_cents'] = Variable<int>(tipCents);
+    map['discount_cents'] = Variable<int>(discountCents);
+    if (!nullToAbsent || discountPercent != null) {
+      map['discount_percent'] = Variable<int>(discountPercent);
+    }
+    map['discount_amount_cents'] = Variable<int>(discountAmountCents);
+    if (!nullToAbsent || discountReason != null) {
+      map['discount_reason'] = Variable<String>(discountReason);
+    }
     return map;
   }
 
@@ -6173,6 +6532,15 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       goodsCents: Value(goodsCents),
       depositCents: Value(depositCents),
       totalCents: Value(totalCents),
+      tipCents: Value(tipCents),
+      discountCents: Value(discountCents),
+      discountPercent: discountPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discountPercent),
+      discountAmountCents: Value(discountAmountCents),
+      discountReason: discountReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discountReason),
     );
   }
 
@@ -6193,6 +6561,13 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       goodsCents: serializer.fromJson<int>(json['goodsCents']),
       depositCents: serializer.fromJson<int>(json['depositCents']),
       totalCents: serializer.fromJson<int>(json['totalCents']),
+      tipCents: serializer.fromJson<int>(json['tipCents']),
+      discountCents: serializer.fromJson<int>(json['discountCents']),
+      discountPercent: serializer.fromJson<int?>(json['discountPercent']),
+      discountAmountCents: serializer.fromJson<int>(
+        json['discountAmountCents'],
+      ),
+      discountReason: serializer.fromJson<String?>(json['discountReason']),
     );
   }
   @override
@@ -6210,6 +6585,11 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       'goodsCents': serializer.toJson<int>(goodsCents),
       'depositCents': serializer.toJson<int>(depositCents),
       'totalCents': serializer.toJson<int>(totalCents),
+      'tipCents': serializer.toJson<int>(tipCents),
+      'discountCents': serializer.toJson<int>(discountCents),
+      'discountPercent': serializer.toJson<int?>(discountPercent),
+      'discountAmountCents': serializer.toJson<int>(discountAmountCents),
+      'discountReason': serializer.toJson<String?>(discountReason),
     };
   }
 
@@ -6225,6 +6605,11 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     int? goodsCents,
     int? depositCents,
     int? totalCents,
+    int? tipCents,
+    int? discountCents,
+    Value<int?> discountPercent = const Value.absent(),
+    int? discountAmountCents,
+    Value<String?> discountReason = const Value.absent(),
   }) => ReceiptRow(
     id: id ?? this.id,
     number: number ?? this.number,
@@ -6241,6 +6626,15 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     goodsCents: goodsCents ?? this.goodsCents,
     depositCents: depositCents ?? this.depositCents,
     totalCents: totalCents ?? this.totalCents,
+    tipCents: tipCents ?? this.tipCents,
+    discountCents: discountCents ?? this.discountCents,
+    discountPercent: discountPercent.present
+        ? discountPercent.value
+        : this.discountPercent,
+    discountAmountCents: discountAmountCents ?? this.discountAmountCents,
+    discountReason: discountReason.present
+        ? discountReason.value
+        : this.discountReason,
   );
   ReceiptRow copyWithCompanion(ReceiptRowsCompanion data) {
     return ReceiptRow(
@@ -6265,6 +6659,19 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
       totalCents: data.totalCents.present
           ? data.totalCents.value
           : this.totalCents,
+      tipCents: data.tipCents.present ? data.tipCents.value : this.tipCents,
+      discountCents: data.discountCents.present
+          ? data.discountCents.value
+          : this.discountCents,
+      discountPercent: data.discountPercent.present
+          ? data.discountPercent.value
+          : this.discountPercent,
+      discountAmountCents: data.discountAmountCents.present
+          ? data.discountAmountCents.value
+          : this.discountAmountCents,
+      discountReason: data.discountReason.present
+          ? data.discountReason.value
+          : this.discountReason,
     );
   }
 
@@ -6281,7 +6688,12 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
           ..write('voidsReceiptId: $voidsReceiptId, ')
           ..write('goodsCents: $goodsCents, ')
           ..write('depositCents: $depositCents, ')
-          ..write('totalCents: $totalCents')
+          ..write('totalCents: $totalCents, ')
+          ..write('tipCents: $tipCents, ')
+          ..write('discountCents: $discountCents, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('discountAmountCents: $discountAmountCents, ')
+          ..write('discountReason: $discountReason')
           ..write(')'))
         .toString();
   }
@@ -6299,6 +6711,11 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
     goodsCents,
     depositCents,
     totalCents,
+    tipCents,
+    discountCents,
+    discountPercent,
+    discountAmountCents,
+    discountReason,
   );
   @override
   bool operator ==(Object other) =>
@@ -6314,7 +6731,12 @@ class ReceiptRow extends DataClass implements Insertable<ReceiptRow> {
           other.voidsReceiptId == this.voidsReceiptId &&
           other.goodsCents == this.goodsCents &&
           other.depositCents == this.depositCents &&
-          other.totalCents == this.totalCents);
+          other.totalCents == this.totalCents &&
+          other.tipCents == this.tipCents &&
+          other.discountCents == this.discountCents &&
+          other.discountPercent == this.discountPercent &&
+          other.discountAmountCents == this.discountAmountCents &&
+          other.discountReason == this.discountReason);
 }
 
 class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
@@ -6329,6 +6751,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
   final Value<int> goodsCents;
   final Value<int> depositCents;
   final Value<int> totalCents;
+  final Value<int> tipCents;
+  final Value<int> discountCents;
+  final Value<int?> discountPercent;
+  final Value<int> discountAmountCents;
+  final Value<String?> discountReason;
   final Value<int> rowid;
   const ReceiptRowsCompanion({
     this.id = const Value.absent(),
@@ -6342,6 +6769,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     this.goodsCents = const Value.absent(),
     this.depositCents = const Value.absent(),
     this.totalCents = const Value.absent(),
+    this.tipCents = const Value.absent(),
+    this.discountCents = const Value.absent(),
+    this.discountPercent = const Value.absent(),
+    this.discountAmountCents = const Value.absent(),
+    this.discountReason = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReceiptRowsCompanion.insert({
@@ -6356,6 +6788,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     required int goodsCents,
     required int depositCents,
     required int totalCents,
+    this.tipCents = const Value.absent(),
+    this.discountCents = const Value.absent(),
+    this.discountPercent = const Value.absent(),
+    this.discountAmountCents = const Value.absent(),
+    this.discountReason = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        number = Value(number),
@@ -6378,6 +6815,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     Expression<int>? goodsCents,
     Expression<int>? depositCents,
     Expression<int>? totalCents,
+    Expression<int>? tipCents,
+    Expression<int>? discountCents,
+    Expression<int>? discountPercent,
+    Expression<int>? discountAmountCents,
+    Expression<String>? discountReason,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6392,6 +6834,12 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
       if (goodsCents != null) 'goods_cents': goodsCents,
       if (depositCents != null) 'deposit_cents': depositCents,
       if (totalCents != null) 'total_cents': totalCents,
+      if (tipCents != null) 'tip_cents': tipCents,
+      if (discountCents != null) 'discount_cents': discountCents,
+      if (discountPercent != null) 'discount_percent': discountPercent,
+      if (discountAmountCents != null)
+        'discount_amount_cents': discountAmountCents,
+      if (discountReason != null) 'discount_reason': discountReason,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6408,6 +6856,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     Value<int>? goodsCents,
     Value<int>? depositCents,
     Value<int>? totalCents,
+    Value<int>? tipCents,
+    Value<int>? discountCents,
+    Value<int?>? discountPercent,
+    Value<int>? discountAmountCents,
+    Value<String?>? discountReason,
     Value<int>? rowid,
   }) {
     return ReceiptRowsCompanion(
@@ -6422,6 +6875,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
       goodsCents: goodsCents ?? this.goodsCents,
       depositCents: depositCents ?? this.depositCents,
       totalCents: totalCents ?? this.totalCents,
+      tipCents: tipCents ?? this.tipCents,
+      discountCents: discountCents ?? this.discountCents,
+      discountPercent: discountPercent ?? this.discountPercent,
+      discountAmountCents: discountAmountCents ?? this.discountAmountCents,
+      discountReason: discountReason ?? this.discountReason,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6462,6 +6920,21 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
     if (totalCents.present) {
       map['total_cents'] = Variable<int>(totalCents.value);
     }
+    if (tipCents.present) {
+      map['tip_cents'] = Variable<int>(tipCents.value);
+    }
+    if (discountCents.present) {
+      map['discount_cents'] = Variable<int>(discountCents.value);
+    }
+    if (discountPercent.present) {
+      map['discount_percent'] = Variable<int>(discountPercent.value);
+    }
+    if (discountAmountCents.present) {
+      map['discount_amount_cents'] = Variable<int>(discountAmountCents.value);
+    }
+    if (discountReason.present) {
+      map['discount_reason'] = Variable<String>(discountReason.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6482,6 +6955,11 @@ class ReceiptRowsCompanion extends UpdateCompanion<ReceiptRow> {
           ..write('goodsCents: $goodsCents, ')
           ..write('depositCents: $depositCents, ')
           ..write('totalCents: $totalCents, ')
+          ..write('tipCents: $tipCents, ')
+          ..write('discountCents: $discountCents, ')
+          ..write('discountPercent: $discountPercent, ')
+          ..write('discountAmountCents: $discountAmountCents, ')
+          ..write('discountReason: $discountReason, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6639,6 +7117,52 @@ class $ReceiptLineRowsTable extends ReceiptLineRows
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _discountCentsMeta = const VerificationMeta(
+    'discountCents',
+  );
+  @override
+  late final GeneratedColumn<int> discountCents = GeneratedColumn<int>(
+    'discount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _ownDiscountPercentMeta =
+      const VerificationMeta('ownDiscountPercent');
+  @override
+  late final GeneratedColumn<int> ownDiscountPercent = GeneratedColumn<int>(
+    'own_discount_percent',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ownDiscountCentsMeta = const VerificationMeta(
+    'ownDiscountCents',
+  );
+  @override
+  late final GeneratedColumn<int> ownDiscountCents = GeneratedColumn<int>(
+    'own_discount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _ownDiscountReasonMeta = const VerificationMeta(
+    'ownDiscountReason',
+  );
+  @override
+  late final GeneratedColumn<String> ownDiscountReason =
+      GeneratedColumn<String>(
+        'own_discount_reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     receiptId,
@@ -6654,6 +7178,10 @@ class $ReceiptLineRowsTable extends ReceiptLineRows
     gross13Cents,
     gross0Cents,
     gross19Cents,
+    discountCents,
+    ownDiscountPercent,
+    ownDiscountCents,
+    ownDiscountReason,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6780,6 +7308,42 @@ class $ReceiptLineRowsTable extends ReceiptLineRows
         ),
       );
     }
+    if (data.containsKey('discount_cents')) {
+      context.handle(
+        _discountCentsMeta,
+        discountCents.isAcceptableOrUnknown(
+          data['discount_cents']!,
+          _discountCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('own_discount_percent')) {
+      context.handle(
+        _ownDiscountPercentMeta,
+        ownDiscountPercent.isAcceptableOrUnknown(
+          data['own_discount_percent']!,
+          _ownDiscountPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('own_discount_cents')) {
+      context.handle(
+        _ownDiscountCentsMeta,
+        ownDiscountCents.isAcceptableOrUnknown(
+          data['own_discount_cents']!,
+          _ownDiscountCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('own_discount_reason')) {
+      context.handle(
+        _ownDiscountReasonMeta,
+        ownDiscountReason.isAcceptableOrUnknown(
+          data['own_discount_reason']!,
+          _ownDiscountReasonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6841,6 +7405,22 @@ class $ReceiptLineRowsTable extends ReceiptLineRows
         DriftSqlType.int,
         data['${effectivePrefix}gross19_cents'],
       )!,
+      discountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}discount_cents'],
+      )!,
+      ownDiscountPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}own_discount_percent'],
+      ),
+      ownDiscountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}own_discount_cents'],
+      )!,
+      ownDiscountReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}own_discount_reason'],
+      ),
     );
   }
 
@@ -6868,6 +7448,16 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
   final int gross13Cents;
   final int gross0Cents;
   final int gross19Cents;
+
+  /// Gesamter Rabatt der Zeile in Cent: der eigene plus ihr Anteil am Rabatt
+  /// des Bons. Die Beträge je Steuersatz oben stehen schon nach Rabatt.
+  final int discountCents;
+
+  /// Der eigene Rabatt der Zeile: Prozent oder leer bei festem Betrag, der
+  /// Betrag in Cent und der Grund.
+  final int? ownDiscountPercent;
+  final int ownDiscountCents;
+  final String? ownDiscountReason;
   const ReceiptLineRow({
     required this.receiptId,
     required this.position,
@@ -6882,6 +7472,10 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
     required this.gross13Cents,
     required this.gross0Cents,
     required this.gross19Cents,
+    required this.discountCents,
+    this.ownDiscountPercent,
+    required this.ownDiscountCents,
+    this.ownDiscountReason,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6901,6 +7495,14 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
     map['gross13_cents'] = Variable<int>(gross13Cents);
     map['gross0_cents'] = Variable<int>(gross0Cents);
     map['gross19_cents'] = Variable<int>(gross19Cents);
+    map['discount_cents'] = Variable<int>(discountCents);
+    if (!nullToAbsent || ownDiscountPercent != null) {
+      map['own_discount_percent'] = Variable<int>(ownDiscountPercent);
+    }
+    map['own_discount_cents'] = Variable<int>(ownDiscountCents);
+    if (!nullToAbsent || ownDiscountReason != null) {
+      map['own_discount_reason'] = Variable<String>(ownDiscountReason);
+    }
     return map;
   }
 
@@ -6919,6 +7521,14 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
       gross13Cents: Value(gross13Cents),
       gross0Cents: Value(gross0Cents),
       gross19Cents: Value(gross19Cents),
+      discountCents: Value(discountCents),
+      ownDiscountPercent: ownDiscountPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownDiscountPercent),
+      ownDiscountCents: Value(ownDiscountCents),
+      ownDiscountReason: ownDiscountReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownDiscountReason),
     );
   }
 
@@ -6941,6 +7551,12 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
       gross13Cents: serializer.fromJson<int>(json['gross13Cents']),
       gross0Cents: serializer.fromJson<int>(json['gross0Cents']),
       gross19Cents: serializer.fromJson<int>(json['gross19Cents']),
+      discountCents: serializer.fromJson<int>(json['discountCents']),
+      ownDiscountPercent: serializer.fromJson<int?>(json['ownDiscountPercent']),
+      ownDiscountCents: serializer.fromJson<int>(json['ownDiscountCents']),
+      ownDiscountReason: serializer.fromJson<String?>(
+        json['ownDiscountReason'],
+      ),
     );
   }
   @override
@@ -6960,6 +7576,10 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
       'gross13Cents': serializer.toJson<int>(gross13Cents),
       'gross0Cents': serializer.toJson<int>(gross0Cents),
       'gross19Cents': serializer.toJson<int>(gross19Cents),
+      'discountCents': serializer.toJson<int>(discountCents),
+      'ownDiscountPercent': serializer.toJson<int?>(ownDiscountPercent),
+      'ownDiscountCents': serializer.toJson<int>(ownDiscountCents),
+      'ownDiscountReason': serializer.toJson<String?>(ownDiscountReason),
     };
   }
 
@@ -6977,6 +7597,10 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
     int? gross13Cents,
     int? gross0Cents,
     int? gross19Cents,
+    int? discountCents,
+    Value<int?> ownDiscountPercent = const Value.absent(),
+    int? ownDiscountCents,
+    Value<String?> ownDiscountReason = const Value.absent(),
   }) => ReceiptLineRow(
     receiptId: receiptId ?? this.receiptId,
     position: position ?? this.position,
@@ -6991,6 +7615,14 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
     gross13Cents: gross13Cents ?? this.gross13Cents,
     gross0Cents: gross0Cents ?? this.gross0Cents,
     gross19Cents: gross19Cents ?? this.gross19Cents,
+    discountCents: discountCents ?? this.discountCents,
+    ownDiscountPercent: ownDiscountPercent.present
+        ? ownDiscountPercent.value
+        : this.ownDiscountPercent,
+    ownDiscountCents: ownDiscountCents ?? this.ownDiscountCents,
+    ownDiscountReason: ownDiscountReason.present
+        ? ownDiscountReason.value
+        : this.ownDiscountReason,
   );
   ReceiptLineRow copyWithCompanion(ReceiptLineRowsCompanion data) {
     return ReceiptLineRow(
@@ -7021,6 +7653,18 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
       gross19Cents: data.gross19Cents.present
           ? data.gross19Cents.value
           : this.gross19Cents,
+      discountCents: data.discountCents.present
+          ? data.discountCents.value
+          : this.discountCents,
+      ownDiscountPercent: data.ownDiscountPercent.present
+          ? data.ownDiscountPercent.value
+          : this.ownDiscountPercent,
+      ownDiscountCents: data.ownDiscountCents.present
+          ? data.ownDiscountCents.value
+          : this.ownDiscountCents,
+      ownDiscountReason: data.ownDiscountReason.present
+          ? data.ownDiscountReason.value
+          : this.ownDiscountReason,
     );
   }
 
@@ -7039,7 +7683,11 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
           ..write('gross10Cents: $gross10Cents, ')
           ..write('gross13Cents: $gross13Cents, ')
           ..write('gross0Cents: $gross0Cents, ')
-          ..write('gross19Cents: $gross19Cents')
+          ..write('gross19Cents: $gross19Cents, ')
+          ..write('discountCents: $discountCents, ')
+          ..write('ownDiscountPercent: $ownDiscountPercent, ')
+          ..write('ownDiscountCents: $ownDiscountCents, ')
+          ..write('ownDiscountReason: $ownDiscountReason')
           ..write(')'))
         .toString();
   }
@@ -7059,6 +7707,10 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
     gross13Cents,
     gross0Cents,
     gross19Cents,
+    discountCents,
+    ownDiscountPercent,
+    ownDiscountCents,
+    ownDiscountReason,
   );
   @override
   bool operator ==(Object other) =>
@@ -7076,7 +7728,11 @@ class ReceiptLineRow extends DataClass implements Insertable<ReceiptLineRow> {
           other.gross10Cents == this.gross10Cents &&
           other.gross13Cents == this.gross13Cents &&
           other.gross0Cents == this.gross0Cents &&
-          other.gross19Cents == this.gross19Cents);
+          other.gross19Cents == this.gross19Cents &&
+          other.discountCents == this.discountCents &&
+          other.ownDiscountPercent == this.ownDiscountPercent &&
+          other.ownDiscountCents == this.ownDiscountCents &&
+          other.ownDiscountReason == this.ownDiscountReason);
 }
 
 class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
@@ -7093,6 +7749,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
   final Value<int> gross13Cents;
   final Value<int> gross0Cents;
   final Value<int> gross19Cents;
+  final Value<int> discountCents;
+  final Value<int?> ownDiscountPercent;
+  final Value<int> ownDiscountCents;
+  final Value<String?> ownDiscountReason;
   final Value<int> rowid;
   const ReceiptLineRowsCompanion({
     this.receiptId = const Value.absent(),
@@ -7108,6 +7768,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
     this.gross13Cents = const Value.absent(),
     this.gross0Cents = const Value.absent(),
     this.gross19Cents = const Value.absent(),
+    this.discountCents = const Value.absent(),
+    this.ownDiscountPercent = const Value.absent(),
+    this.ownDiscountCents = const Value.absent(),
+    this.ownDiscountReason = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReceiptLineRowsCompanion.insert({
@@ -7124,6 +7788,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
     this.gross13Cents = const Value.absent(),
     this.gross0Cents = const Value.absent(),
     this.gross19Cents = const Value.absent(),
+    this.discountCents = const Value.absent(),
+    this.ownDiscountPercent = const Value.absent(),
+    this.ownDiscountCents = const Value.absent(),
+    this.ownDiscountReason = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : receiptId = Value(receiptId),
        position = Value(position),
@@ -7146,6 +7814,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
     Expression<int>? gross13Cents,
     Expression<int>? gross0Cents,
     Expression<int>? gross19Cents,
+    Expression<int>? discountCents,
+    Expression<int>? ownDiscountPercent,
+    Expression<int>? ownDiscountCents,
+    Expression<String>? ownDiscountReason,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7162,6 +7834,11 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
       if (gross13Cents != null) 'gross13_cents': gross13Cents,
       if (gross0Cents != null) 'gross0_cents': gross0Cents,
       if (gross19Cents != null) 'gross19_cents': gross19Cents,
+      if (discountCents != null) 'discount_cents': discountCents,
+      if (ownDiscountPercent != null)
+        'own_discount_percent': ownDiscountPercent,
+      if (ownDiscountCents != null) 'own_discount_cents': ownDiscountCents,
+      if (ownDiscountReason != null) 'own_discount_reason': ownDiscountReason,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7180,6 +7857,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
     Value<int>? gross13Cents,
     Value<int>? gross0Cents,
     Value<int>? gross19Cents,
+    Value<int>? discountCents,
+    Value<int?>? ownDiscountPercent,
+    Value<int>? ownDiscountCents,
+    Value<String?>? ownDiscountReason,
     Value<int>? rowid,
   }) {
     return ReceiptLineRowsCompanion(
@@ -7196,6 +7877,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
       gross13Cents: gross13Cents ?? this.gross13Cents,
       gross0Cents: gross0Cents ?? this.gross0Cents,
       gross19Cents: gross19Cents ?? this.gross19Cents,
+      discountCents: discountCents ?? this.discountCents,
+      ownDiscountPercent: ownDiscountPercent ?? this.ownDiscountPercent,
+      ownDiscountCents: ownDiscountCents ?? this.ownDiscountCents,
+      ownDiscountReason: ownDiscountReason ?? this.ownDiscountReason,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7242,6 +7927,18 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
     if (gross19Cents.present) {
       map['gross19_cents'] = Variable<int>(gross19Cents.value);
     }
+    if (discountCents.present) {
+      map['discount_cents'] = Variable<int>(discountCents.value);
+    }
+    if (ownDiscountPercent.present) {
+      map['own_discount_percent'] = Variable<int>(ownDiscountPercent.value);
+    }
+    if (ownDiscountCents.present) {
+      map['own_discount_cents'] = Variable<int>(ownDiscountCents.value);
+    }
+    if (ownDiscountReason.present) {
+      map['own_discount_reason'] = Variable<String>(ownDiscountReason.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7264,6 +7961,10 @@ class ReceiptLineRowsCompanion extends UpdateCompanion<ReceiptLineRow> {
           ..write('gross13Cents: $gross13Cents, ')
           ..write('gross0Cents: $gross0Cents, ')
           ..write('gross19Cents: $gross19Cents, ')
+          ..write('discountCents: $discountCents, ')
+          ..write('ownDiscountPercent: $ownDiscountPercent, ')
+          ..write('ownDiscountCents: $ownDiscountCents, ')
+          ..write('ownDiscountReason: $ownDiscountReason, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7725,6 +8426,18 @@ class $PaymentRowsTable extends PaymentRows
       'REFERENCES receipts (id)',
     ),
   );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _kindMeta = const VerificationMeta('kind');
   @override
   late final GeneratedColumn<String> kind = GeneratedColumn<String>(
@@ -7811,9 +8524,44 @@ class $PaymentRowsTable extends PaymentRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tipCentsMeta = const VerificationMeta(
+    'tipCents',
+  );
+  @override
+  late final GeneratedColumn<int> tipCents = GeneratedColumn<int>(
+    'tip_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _tipStaffIdMeta = const VerificationMeta(
+    'tipStaffId',
+  );
+  @override
+  late final GeneratedColumn<String> tipStaffId = GeneratedColumn<String>(
+    'tip_staff_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tipStaffNameMeta = const VerificationMeta(
+    'tipStaffName',
+  );
+  @override
+  late final GeneratedColumn<String> tipStaffName = GeneratedColumn<String>(
+    'tip_staff_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     receiptId,
+    position,
     kind,
     amountCents,
     givenCents,
@@ -7822,6 +8570,9 @@ class $PaymentRowsTable extends PaymentRows
     providerTxCode,
     cardScheme,
     cardLast4,
+    tipCents,
+    tipStaffId,
+    tipStaffName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7842,6 +8593,12 @@ class $PaymentRowsTable extends PaymentRows
       );
     } else if (isInserting) {
       context.missing(_receiptIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
     }
     if (data.containsKey('kind')) {
       context.handle(
@@ -7908,11 +8665,35 @@ class $PaymentRowsTable extends PaymentRows
         cardLast4.isAcceptableOrUnknown(data['card_last4']!, _cardLast4Meta),
       );
     }
+    if (data.containsKey('tip_cents')) {
+      context.handle(
+        _tipCentsMeta,
+        tipCents.isAcceptableOrUnknown(data['tip_cents']!, _tipCentsMeta),
+      );
+    }
+    if (data.containsKey('tip_staff_id')) {
+      context.handle(
+        _tipStaffIdMeta,
+        tipStaffId.isAcceptableOrUnknown(
+          data['tip_staff_id']!,
+          _tipStaffIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tip_staff_name')) {
+      context.handle(
+        _tipStaffNameMeta,
+        tipStaffName.isAcceptableOrUnknown(
+          data['tip_staff_name']!,
+          _tipStaffNameMeta,
+        ),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {receiptId};
+  Set<GeneratedColumn> get $primaryKey => {receiptId, position};
   @override
   PaymentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -7920,6 +8701,10 @@ class $PaymentRowsTable extends PaymentRows
       receiptId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}receipt_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
       )!,
       kind: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -7953,6 +8738,18 @@ class $PaymentRowsTable extends PaymentRows
         DriftSqlType.string,
         data['${effectivePrefix}card_last4'],
       ),
+      tipCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tip_cents'],
+      )!,
+      tipStaffId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tip_staff_id'],
+      ),
+      tipStaffName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tip_staff_name'],
+      ),
     );
   }
 
@@ -7965,6 +8762,9 @@ class $PaymentRowsTable extends PaymentRows
 class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   final String receiptId;
 
+  /// Stelle der Zahlung im Bon, ab 0.
+  final int position;
+
   /// `cash` oder `card`.
   final String kind;
   final int amountCents;
@@ -7976,8 +8776,15 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   final String? providerTxCode;
   final String? cardScheme;
   final String? cardLast4;
+
+  /// Trinkgeld dieser Zahlung (nur bei Karte), nicht in [amountCents]. Für wen
+  /// es ist: Id und Name, leer ohne Trinkgeld.
+  final int tipCents;
+  final String? tipStaffId;
+  final String? tipStaffName;
   const PaymentRow({
     required this.receiptId,
+    required this.position,
     required this.kind,
     required this.amountCents,
     required this.givenCents,
@@ -7986,11 +8793,15 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     this.providerTxCode,
     this.cardScheme,
     this.cardLast4,
+    required this.tipCents,
+    this.tipStaffId,
+    this.tipStaffName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['receipt_id'] = Variable<String>(receiptId);
+    map['position'] = Variable<int>(position);
     map['kind'] = Variable<String>(kind);
     map['amount_cents'] = Variable<int>(amountCents);
     map['given_cents'] = Variable<int>(givenCents);
@@ -8007,12 +8818,20 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     if (!nullToAbsent || cardLast4 != null) {
       map['card_last4'] = Variable<String>(cardLast4);
     }
+    map['tip_cents'] = Variable<int>(tipCents);
+    if (!nullToAbsent || tipStaffId != null) {
+      map['tip_staff_id'] = Variable<String>(tipStaffId);
+    }
+    if (!nullToAbsent || tipStaffName != null) {
+      map['tip_staff_name'] = Variable<String>(tipStaffName);
+    }
     return map;
   }
 
   PaymentRowsCompanion toCompanion(bool nullToAbsent) {
     return PaymentRowsCompanion(
       receiptId: Value(receiptId),
+      position: Value(position),
       kind: Value(kind),
       amountCents: Value(amountCents),
       givenCents: Value(givenCents),
@@ -8029,6 +8848,13 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       cardLast4: cardLast4 == null && nullToAbsent
           ? const Value.absent()
           : Value(cardLast4),
+      tipCents: Value(tipCents),
+      tipStaffId: tipStaffId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tipStaffId),
+      tipStaffName: tipStaffName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tipStaffName),
     );
   }
 
@@ -8039,6 +8865,7 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PaymentRow(
       receiptId: serializer.fromJson<String>(json['receiptId']),
+      position: serializer.fromJson<int>(json['position']),
       kind: serializer.fromJson<String>(json['kind']),
       amountCents: serializer.fromJson<int>(json['amountCents']),
       givenCents: serializer.fromJson<int>(json['givenCents']),
@@ -8047,6 +8874,9 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       providerTxCode: serializer.fromJson<String?>(json['providerTxCode']),
       cardScheme: serializer.fromJson<String?>(json['cardScheme']),
       cardLast4: serializer.fromJson<String?>(json['cardLast4']),
+      tipCents: serializer.fromJson<int>(json['tipCents']),
+      tipStaffId: serializer.fromJson<String?>(json['tipStaffId']),
+      tipStaffName: serializer.fromJson<String?>(json['tipStaffName']),
     );
   }
   @override
@@ -8054,6 +8884,7 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'receiptId': serializer.toJson<String>(receiptId),
+      'position': serializer.toJson<int>(position),
       'kind': serializer.toJson<String>(kind),
       'amountCents': serializer.toJson<int>(amountCents),
       'givenCents': serializer.toJson<int>(givenCents),
@@ -8062,11 +8893,15 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       'providerTxCode': serializer.toJson<String?>(providerTxCode),
       'cardScheme': serializer.toJson<String?>(cardScheme),
       'cardLast4': serializer.toJson<String?>(cardLast4),
+      'tipCents': serializer.toJson<int>(tipCents),
+      'tipStaffId': serializer.toJson<String?>(tipStaffId),
+      'tipStaffName': serializer.toJson<String?>(tipStaffName),
     };
   }
 
   PaymentRow copyWith({
     String? receiptId,
+    int? position,
     String? kind,
     int? amountCents,
     int? givenCents,
@@ -8075,8 +8910,12 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     Value<String?> providerTxCode = const Value.absent(),
     Value<String?> cardScheme = const Value.absent(),
     Value<String?> cardLast4 = const Value.absent(),
+    int? tipCents,
+    Value<String?> tipStaffId = const Value.absent(),
+    Value<String?> tipStaffName = const Value.absent(),
   }) => PaymentRow(
     receiptId: receiptId ?? this.receiptId,
+    position: position ?? this.position,
     kind: kind ?? this.kind,
     amountCents: amountCents ?? this.amountCents,
     givenCents: givenCents ?? this.givenCents,
@@ -8087,10 +8926,14 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
         : this.providerTxCode,
     cardScheme: cardScheme.present ? cardScheme.value : this.cardScheme,
     cardLast4: cardLast4.present ? cardLast4.value : this.cardLast4,
+    tipCents: tipCents ?? this.tipCents,
+    tipStaffId: tipStaffId.present ? tipStaffId.value : this.tipStaffId,
+    tipStaffName: tipStaffName.present ? tipStaffName.value : this.tipStaffName,
   );
   PaymentRow copyWithCompanion(PaymentRowsCompanion data) {
     return PaymentRow(
       receiptId: data.receiptId.present ? data.receiptId.value : this.receiptId,
+      position: data.position.present ? data.position.value : this.position,
       kind: data.kind.present ? data.kind.value : this.kind,
       amountCents: data.amountCents.present
           ? data.amountCents.value
@@ -8109,6 +8952,13 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
           ? data.cardScheme.value
           : this.cardScheme,
       cardLast4: data.cardLast4.present ? data.cardLast4.value : this.cardLast4,
+      tipCents: data.tipCents.present ? data.tipCents.value : this.tipCents,
+      tipStaffId: data.tipStaffId.present
+          ? data.tipStaffId.value
+          : this.tipStaffId,
+      tipStaffName: data.tipStaffName.present
+          ? data.tipStaffName.value
+          : this.tipStaffName,
     );
   }
 
@@ -8116,6 +8966,7 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   String toString() {
     return (StringBuffer('PaymentRow(')
           ..write('receiptId: $receiptId, ')
+          ..write('position: $position, ')
           ..write('kind: $kind, ')
           ..write('amountCents: $amountCents, ')
           ..write('givenCents: $givenCents, ')
@@ -8123,7 +8974,10 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
           ..write('provider: $provider, ')
           ..write('providerTxCode: $providerTxCode, ')
           ..write('cardScheme: $cardScheme, ')
-          ..write('cardLast4: $cardLast4')
+          ..write('cardLast4: $cardLast4, ')
+          ..write('tipCents: $tipCents, ')
+          ..write('tipStaffId: $tipStaffId, ')
+          ..write('tipStaffName: $tipStaffName')
           ..write(')'))
         .toString();
   }
@@ -8131,6 +8985,7 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   @override
   int get hashCode => Object.hash(
     receiptId,
+    position,
     kind,
     amountCents,
     givenCents,
@@ -8139,12 +8994,16 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
     providerTxCode,
     cardScheme,
     cardLast4,
+    tipCents,
+    tipStaffId,
+    tipStaffName,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PaymentRow &&
           other.receiptId == this.receiptId &&
+          other.position == this.position &&
           other.kind == this.kind &&
           other.amountCents == this.amountCents &&
           other.givenCents == this.givenCents &&
@@ -8152,11 +9011,15 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
           other.provider == this.provider &&
           other.providerTxCode == this.providerTxCode &&
           other.cardScheme == this.cardScheme &&
-          other.cardLast4 == this.cardLast4);
+          other.cardLast4 == this.cardLast4 &&
+          other.tipCents == this.tipCents &&
+          other.tipStaffId == this.tipStaffId &&
+          other.tipStaffName == this.tipStaffName);
 }
 
 class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
   final Value<String> receiptId;
+  final Value<int> position;
   final Value<String> kind;
   final Value<int> amountCents;
   final Value<int> givenCents;
@@ -8165,9 +9028,13 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
   final Value<String?> providerTxCode;
   final Value<String?> cardScheme;
   final Value<String?> cardLast4;
+  final Value<int> tipCents;
+  final Value<String?> tipStaffId;
+  final Value<String?> tipStaffName;
   final Value<int> rowid;
   const PaymentRowsCompanion({
     this.receiptId = const Value.absent(),
+    this.position = const Value.absent(),
     this.kind = const Value.absent(),
     this.amountCents = const Value.absent(),
     this.givenCents = const Value.absent(),
@@ -8176,10 +9043,14 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     this.providerTxCode = const Value.absent(),
     this.cardScheme = const Value.absent(),
     this.cardLast4 = const Value.absent(),
+    this.tipCents = const Value.absent(),
+    this.tipStaffId = const Value.absent(),
+    this.tipStaffName = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PaymentRowsCompanion.insert({
     required String receiptId,
+    this.position = const Value.absent(),
     required String kind,
     required int amountCents,
     required int givenCents,
@@ -8188,6 +9059,9 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     this.providerTxCode = const Value.absent(),
     this.cardScheme = const Value.absent(),
     this.cardLast4 = const Value.absent(),
+    this.tipCents = const Value.absent(),
+    this.tipStaffId = const Value.absent(),
+    this.tipStaffName = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : receiptId = Value(receiptId),
        kind = Value(kind),
@@ -8196,6 +9070,7 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
        changeCents = Value(changeCents);
   static Insertable<PaymentRow> custom({
     Expression<String>? receiptId,
+    Expression<int>? position,
     Expression<String>? kind,
     Expression<int>? amountCents,
     Expression<int>? givenCents,
@@ -8204,10 +9079,14 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     Expression<String>? providerTxCode,
     Expression<String>? cardScheme,
     Expression<String>? cardLast4,
+    Expression<int>? tipCents,
+    Expression<String>? tipStaffId,
+    Expression<String>? tipStaffName,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (receiptId != null) 'receipt_id': receiptId,
+      if (position != null) 'position': position,
       if (kind != null) 'kind': kind,
       if (amountCents != null) 'amount_cents': amountCents,
       if (givenCents != null) 'given_cents': givenCents,
@@ -8216,12 +9095,16 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
       if (providerTxCode != null) 'provider_tx_code': providerTxCode,
       if (cardScheme != null) 'card_scheme': cardScheme,
       if (cardLast4 != null) 'card_last4': cardLast4,
+      if (tipCents != null) 'tip_cents': tipCents,
+      if (tipStaffId != null) 'tip_staff_id': tipStaffId,
+      if (tipStaffName != null) 'tip_staff_name': tipStaffName,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   PaymentRowsCompanion copyWith({
     Value<String>? receiptId,
+    Value<int>? position,
     Value<String>? kind,
     Value<int>? amountCents,
     Value<int>? givenCents,
@@ -8230,10 +9113,14 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     Value<String?>? providerTxCode,
     Value<String?>? cardScheme,
     Value<String?>? cardLast4,
+    Value<int>? tipCents,
+    Value<String?>? tipStaffId,
+    Value<String?>? tipStaffName,
     Value<int>? rowid,
   }) {
     return PaymentRowsCompanion(
       receiptId: receiptId ?? this.receiptId,
+      position: position ?? this.position,
       kind: kind ?? this.kind,
       amountCents: amountCents ?? this.amountCents,
       givenCents: givenCents ?? this.givenCents,
@@ -8242,6 +9129,9 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
       providerTxCode: providerTxCode ?? this.providerTxCode,
       cardScheme: cardScheme ?? this.cardScheme,
       cardLast4: cardLast4 ?? this.cardLast4,
+      tipCents: tipCents ?? this.tipCents,
+      tipStaffId: tipStaffId ?? this.tipStaffId,
+      tipStaffName: tipStaffName ?? this.tipStaffName,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -8251,6 +9141,9 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     final map = <String, Expression>{};
     if (receiptId.present) {
       map['receipt_id'] = Variable<String>(receiptId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
     }
     if (kind.present) {
       map['kind'] = Variable<String>(kind.value);
@@ -8276,6 +9169,15 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
     if (cardLast4.present) {
       map['card_last4'] = Variable<String>(cardLast4.value);
     }
+    if (tipCents.present) {
+      map['tip_cents'] = Variable<int>(tipCents.value);
+    }
+    if (tipStaffId.present) {
+      map['tip_staff_id'] = Variable<String>(tipStaffId.value);
+    }
+    if (tipStaffName.present) {
+      map['tip_staff_name'] = Variable<String>(tipStaffName.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -8286,6 +9188,7 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
   String toString() {
     return (StringBuffer('PaymentRowsCompanion(')
           ..write('receiptId: $receiptId, ')
+          ..write('position: $position, ')
           ..write('kind: $kind, ')
           ..write('amountCents: $amountCents, ')
           ..write('givenCents: $givenCents, ')
@@ -8294,6 +9197,9 @@ class PaymentRowsCompanion extends UpdateCompanion<PaymentRow> {
           ..write('providerTxCode: $providerTxCode, ')
           ..write('cardScheme: $cardScheme, ')
           ..write('cardLast4: $cardLast4, ')
+          ..write('tipCents: $tipCents, ')
+          ..write('tipStaffId: $tipStaffId, ')
+          ..write('tipStaffName: $tipStaffName, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8379,6 +9285,30 @@ class $PendingCardPaymentRowsTable extends PendingCardPaymentRows
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _cashPartCentsMeta = const VerificationMeta(
+    'cashPartCents',
+  );
+  @override
+  late final GeneratedColumn<int> cashPartCents = GeneratedColumn<int>(
+    'cash_part_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _tipCentsMeta = const VerificationMeta(
+    'tipCents',
+  );
+  @override
+  late final GeneratedColumn<int> tipCents = GeneratedColumn<int>(
+    'tip_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -8388,6 +9318,8 @@ class $PendingCardPaymentRowsTable extends PendingCardPaymentRows
     staffName,
     startedAt,
     state,
+    cashPartCents,
+    tipCents,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8457,6 +9389,21 @@ class $PendingCardPaymentRowsTable extends PendingCardPaymentRows
     } else if (isInserting) {
       context.missing(_stateMeta);
     }
+    if (data.containsKey('cash_part_cents')) {
+      context.handle(
+        _cashPartCentsMeta,
+        cashPartCents.isAcceptableOrUnknown(
+          data['cash_part_cents']!,
+          _cashPartCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tip_cents')) {
+      context.handle(
+        _tipCentsMeta,
+        tipCents.isAcceptableOrUnknown(data['tip_cents']!, _tipCentsMeta),
+      );
+    }
     return context;
   }
 
@@ -8494,6 +9441,14 @@ class $PendingCardPaymentRowsTable extends PendingCardPaymentRows
         DriftSqlType.string,
         data['${effectivePrefix}state'],
       )!,
+      cashPartCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cash_part_cents'],
+      )!,
+      tipCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tip_cents'],
+      )!,
     );
   }
 
@@ -8514,6 +9469,11 @@ class PendingCardPaymentRow extends DataClass
 
   /// `started` oder `unknown`.
   final String state;
+
+  /// Der Teil, der bar bezahlt wird (0 ohne), und das Trinkgeld der Karte.
+  /// [amountCents] ist der Betrag ans Terminal ohne Trinkgeld.
+  final int cashPartCents;
+  final int tipCents;
   const PendingCardPaymentRow({
     required this.id,
     required this.cartJson,
@@ -8522,6 +9482,8 @@ class PendingCardPaymentRow extends DataClass
     required this.staffName,
     required this.startedAt,
     required this.state,
+    required this.cashPartCents,
+    required this.tipCents,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8533,6 +9495,8 @@ class PendingCardPaymentRow extends DataClass
     map['staff_name'] = Variable<String>(staffName);
     map['started_at'] = Variable<DateTime>(startedAt);
     map['state'] = Variable<String>(state);
+    map['cash_part_cents'] = Variable<int>(cashPartCents);
+    map['tip_cents'] = Variable<int>(tipCents);
     return map;
   }
 
@@ -8545,6 +9509,8 @@ class PendingCardPaymentRow extends DataClass
       staffName: Value(staffName),
       startedAt: Value(startedAt),
       state: Value(state),
+      cashPartCents: Value(cashPartCents),
+      tipCents: Value(tipCents),
     );
   }
 
@@ -8561,6 +9527,8 @@ class PendingCardPaymentRow extends DataClass
       staffName: serializer.fromJson<String>(json['staffName']),
       startedAt: serializer.fromJson<DateTime>(json['startedAt']),
       state: serializer.fromJson<String>(json['state']),
+      cashPartCents: serializer.fromJson<int>(json['cashPartCents']),
+      tipCents: serializer.fromJson<int>(json['tipCents']),
     );
   }
   @override
@@ -8574,6 +9542,8 @@ class PendingCardPaymentRow extends DataClass
       'staffName': serializer.toJson<String>(staffName),
       'startedAt': serializer.toJson<DateTime>(startedAt),
       'state': serializer.toJson<String>(state),
+      'cashPartCents': serializer.toJson<int>(cashPartCents),
+      'tipCents': serializer.toJson<int>(tipCents),
     };
   }
 
@@ -8585,6 +9555,8 @@ class PendingCardPaymentRow extends DataClass
     String? staffName,
     DateTime? startedAt,
     String? state,
+    int? cashPartCents,
+    int? tipCents,
   }) => PendingCardPaymentRow(
     id: id ?? this.id,
     cartJson: cartJson ?? this.cartJson,
@@ -8593,6 +9565,8 @@ class PendingCardPaymentRow extends DataClass
     staffName: staffName ?? this.staffName,
     startedAt: startedAt ?? this.startedAt,
     state: state ?? this.state,
+    cashPartCents: cashPartCents ?? this.cashPartCents,
+    tipCents: tipCents ?? this.tipCents,
   );
   PendingCardPaymentRow copyWithCompanion(
     PendingCardPaymentRowsCompanion data,
@@ -8607,6 +9581,10 @@ class PendingCardPaymentRow extends DataClass
       staffName: data.staffName.present ? data.staffName.value : this.staffName,
       startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
       state: data.state.present ? data.state.value : this.state,
+      cashPartCents: data.cashPartCents.present
+          ? data.cashPartCents.value
+          : this.cashPartCents,
+      tipCents: data.tipCents.present ? data.tipCents.value : this.tipCents,
     );
   }
 
@@ -8619,7 +9597,9 @@ class PendingCardPaymentRow extends DataClass
           ..write('staffId: $staffId, ')
           ..write('staffName: $staffName, ')
           ..write('startedAt: $startedAt, ')
-          ..write('state: $state')
+          ..write('state: $state, ')
+          ..write('cashPartCents: $cashPartCents, ')
+          ..write('tipCents: $tipCents')
           ..write(')'))
         .toString();
   }
@@ -8633,6 +9613,8 @@ class PendingCardPaymentRow extends DataClass
     staffName,
     startedAt,
     state,
+    cashPartCents,
+    tipCents,
   );
   @override
   bool operator ==(Object other) =>
@@ -8644,7 +9626,9 @@ class PendingCardPaymentRow extends DataClass
           other.staffId == this.staffId &&
           other.staffName == this.staffName &&
           other.startedAt == this.startedAt &&
-          other.state == this.state);
+          other.state == this.state &&
+          other.cashPartCents == this.cashPartCents &&
+          other.tipCents == this.tipCents);
 }
 
 class PendingCardPaymentRowsCompanion
@@ -8656,6 +9640,8 @@ class PendingCardPaymentRowsCompanion
   final Value<String> staffName;
   final Value<DateTime> startedAt;
   final Value<String> state;
+  final Value<int> cashPartCents;
+  final Value<int> tipCents;
   final Value<int> rowid;
   const PendingCardPaymentRowsCompanion({
     this.id = const Value.absent(),
@@ -8665,6 +9651,8 @@ class PendingCardPaymentRowsCompanion
     this.staffName = const Value.absent(),
     this.startedAt = const Value.absent(),
     this.state = const Value.absent(),
+    this.cashPartCents = const Value.absent(),
+    this.tipCents = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingCardPaymentRowsCompanion.insert({
@@ -8675,6 +9663,8 @@ class PendingCardPaymentRowsCompanion
     required String staffName,
     required DateTime startedAt,
     required String state,
+    this.cashPartCents = const Value.absent(),
+    this.tipCents = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        cartJson = Value(cartJson),
@@ -8691,6 +9681,8 @@ class PendingCardPaymentRowsCompanion
     Expression<String>? staffName,
     Expression<DateTime>? startedAt,
     Expression<String>? state,
+    Expression<int>? cashPartCents,
+    Expression<int>? tipCents,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -8701,6 +9693,8 @@ class PendingCardPaymentRowsCompanion
       if (staffName != null) 'staff_name': staffName,
       if (startedAt != null) 'started_at': startedAt,
       if (state != null) 'state': state,
+      if (cashPartCents != null) 'cash_part_cents': cashPartCents,
+      if (tipCents != null) 'tip_cents': tipCents,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -8713,6 +9707,8 @@ class PendingCardPaymentRowsCompanion
     Value<String>? staffName,
     Value<DateTime>? startedAt,
     Value<String>? state,
+    Value<int>? cashPartCents,
+    Value<int>? tipCents,
     Value<int>? rowid,
   }) {
     return PendingCardPaymentRowsCompanion(
@@ -8723,6 +9719,8 @@ class PendingCardPaymentRowsCompanion
       staffName: staffName ?? this.staffName,
       startedAt: startedAt ?? this.startedAt,
       state: state ?? this.state,
+      cashPartCents: cashPartCents ?? this.cashPartCents,
+      tipCents: tipCents ?? this.tipCents,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -8751,6 +9749,12 @@ class PendingCardPaymentRowsCompanion
     if (state.present) {
       map['state'] = Variable<String>(state.value);
     }
+    if (cashPartCents.present) {
+      map['cash_part_cents'] = Variable<int>(cashPartCents.value);
+    }
+    if (tipCents.present) {
+      map['tip_cents'] = Variable<int>(tipCents.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -8767,6 +9771,8 @@ class PendingCardPaymentRowsCompanion
           ..write('staffName: $staffName, ')
           ..write('startedAt: $startedAt, ')
           ..write('state: $state, ')
+          ..write('cashPartCents: $cashPartCents, ')
+          ..write('tipCents: $tipCents, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -14859,6 +15865,10 @@ typedef $$SettingsRowsTableCreateCompanionBuilder =
       Value<String?> kitchenPrinterName,
       Value<int> kitchenPrinterColumns,
       Value<String> kitchenSkipCategories,
+      Value<bool> splitPayment,
+      Value<bool> cardTip,
+      Value<String> discountAccess,
+      Value<String> openAmountAccess,
     });
 typedef $$SettingsRowsTableUpdateCompanionBuilder =
     SettingsRowsCompanion Function({
@@ -14881,6 +15891,10 @@ typedef $$SettingsRowsTableUpdateCompanionBuilder =
       Value<String?> kitchenPrinterName,
       Value<int> kitchenPrinterColumns,
       Value<String> kitchenSkipCategories,
+      Value<bool> splitPayment,
+      Value<bool> cardTip,
+      Value<String> discountAccess,
+      Value<String> openAmountAccess,
     });
 
 class $$SettingsRowsTableFilterComposer
@@ -14984,6 +15998,26 @@ class $$SettingsRowsTableFilterComposer
 
   ColumnFilters<String> get kitchenSkipCategories => $composableBuilder(
     column: $table.kitchenSkipCategories,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get splitPayment => $composableBuilder(
+    column: $table.splitPayment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get cardTip => $composableBuilder(
+    column: $table.cardTip,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get discountAccess => $composableBuilder(
+    column: $table.discountAccess,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get openAmountAccess => $composableBuilder(
+    column: $table.openAmountAccess,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -15091,6 +16125,26 @@ class $$SettingsRowsTableOrderingComposer
     column: $table.kitchenSkipCategories,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get splitPayment => $composableBuilder(
+    column: $table.splitPayment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get cardTip => $composableBuilder(
+    column: $table.cardTip,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get discountAccess => $composableBuilder(
+    column: $table.discountAccess,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get openAmountAccess => $composableBuilder(
+    column: $table.openAmountAccess,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsRowsTableAnnotationComposer
@@ -15190,6 +16244,24 @@ class $$SettingsRowsTableAnnotationComposer
     column: $table.kitchenSkipCategories,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get splitPayment => $composableBuilder(
+    column: $table.splitPayment,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get cardTip =>
+      $composableBuilder(column: $table.cardTip, builder: (column) => column);
+
+  GeneratedColumn<String> get discountAccess => $composableBuilder(
+    column: $table.discountAccess,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get openAmountAccess => $composableBuilder(
+    column: $table.openAmountAccess,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsRowsTableTableManager
@@ -15242,6 +16314,10 @@ class $$SettingsRowsTableTableManager
                 Value<String?> kitchenPrinterName = const Value.absent(),
                 Value<int> kitchenPrinterColumns = const Value.absent(),
                 Value<String> kitchenSkipCategories = const Value.absent(),
+                Value<bool> splitPayment = const Value.absent(),
+                Value<bool> cardTip = const Value.absent(),
+                Value<String> discountAccess = const Value.absent(),
+                Value<String> openAmountAccess = const Value.absent(),
               }) => SettingsRowsCompanion(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -15262,6 +16338,10 @@ class $$SettingsRowsTableTableManager
                 kitchenPrinterName: kitchenPrinterName,
                 kitchenPrinterColumns: kitchenPrinterColumns,
                 kitchenSkipCategories: kitchenSkipCategories,
+                splitPayment: splitPayment,
+                cardTip: cardTip,
+                discountAccess: discountAccess,
+                openAmountAccess: openAmountAccess,
               ),
           createCompanionCallback:
               ({
@@ -15284,6 +16364,10 @@ class $$SettingsRowsTableTableManager
                 Value<String?> kitchenPrinterName = const Value.absent(),
                 Value<int> kitchenPrinterColumns = const Value.absent(),
                 Value<String> kitchenSkipCategories = const Value.absent(),
+                Value<bool> splitPayment = const Value.absent(),
+                Value<bool> cardTip = const Value.absent(),
+                Value<String> discountAccess = const Value.absent(),
+                Value<String> openAmountAccess = const Value.absent(),
               }) => SettingsRowsCompanion.insert(
                 id: id,
                 cashDrawerEnabled: cashDrawerEnabled,
@@ -15304,6 +16388,10 @@ class $$SettingsRowsTableTableManager
                 kitchenPrinterName: kitchenPrinterName,
                 kitchenPrinterColumns: kitchenPrinterColumns,
                 kitchenSkipCategories: kitchenSkipCategories,
+                splitPayment: splitPayment,
+                cardTip: cardTip,
+                discountAccess: discountAccess,
+                openAmountAccess: openAmountAccess,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -16393,6 +17481,11 @@ typedef $$ReceiptRowsTableCreateCompanionBuilder =
       required int goodsCents,
       required int depositCents,
       required int totalCents,
+      Value<int> tipCents,
+      Value<int> discountCents,
+      Value<int?> discountPercent,
+      Value<int> discountAmountCents,
+      Value<String?> discountReason,
       Value<int> rowid,
     });
 typedef $$ReceiptRowsTableUpdateCompanionBuilder =
@@ -16408,6 +17501,11 @@ typedef $$ReceiptRowsTableUpdateCompanionBuilder =
       Value<int> goodsCents,
       Value<int> depositCents,
       Value<int> totalCents,
+      Value<int> tipCents,
+      Value<int> discountCents,
+      Value<int?> discountPercent,
+      Value<int> discountAmountCents,
+      Value<String?> discountReason,
       Value<int> rowid,
     });
 
@@ -16559,6 +17657,31 @@ class $$ReceiptRowsTableFilterComposer
 
   ColumnFilters<int> get totalCents => $composableBuilder(
     column: $table.totalCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discountAmountCents => $composableBuilder(
+    column: $table.discountAmountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get discountReason => $composableBuilder(
+    column: $table.discountReason,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16738,6 +17861,31 @@ class $$ReceiptRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discountAmountCents => $composableBuilder(
+    column: $table.discountAmountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get discountReason => $composableBuilder(
+    column: $table.discountReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$BusinessDayRowsTableOrderingComposer get businessDayId {
     final $$BusinessDayRowsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -16824,6 +17972,29 @@ class $$ReceiptRowsTableAnnotationComposer
 
   GeneratedColumn<int> get totalCents => $composableBuilder(
     column: $table.totalCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get tipCents =>
+      $composableBuilder(column: $table.tipCents, builder: (column) => column);
+
+  GeneratedColumn<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get discountPercent => $composableBuilder(
+    column: $table.discountPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get discountAmountCents => $composableBuilder(
+    column: $table.discountAmountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get discountReason => $composableBuilder(
+    column: $table.discountReason,
     builder: (column) => column,
   );
 
@@ -16994,6 +18165,11 @@ class $$ReceiptRowsTableTableManager
                 Value<int> goodsCents = const Value.absent(),
                 Value<int> depositCents = const Value.absent(),
                 Value<int> totalCents = const Value.absent(),
+                Value<int> tipCents = const Value.absent(),
+                Value<int> discountCents = const Value.absent(),
+                Value<int?> discountPercent = const Value.absent(),
+                Value<int> discountAmountCents = const Value.absent(),
+                Value<String?> discountReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReceiptRowsCompanion(
                 id: id,
@@ -17007,6 +18183,11 @@ class $$ReceiptRowsTableTableManager
                 goodsCents: goodsCents,
                 depositCents: depositCents,
                 totalCents: totalCents,
+                tipCents: tipCents,
+                discountCents: discountCents,
+                discountPercent: discountPercent,
+                discountAmountCents: discountAmountCents,
+                discountReason: discountReason,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17022,6 +18203,11 @@ class $$ReceiptRowsTableTableManager
                 required int goodsCents,
                 required int depositCents,
                 required int totalCents,
+                Value<int> tipCents = const Value.absent(),
+                Value<int> discountCents = const Value.absent(),
+                Value<int?> discountPercent = const Value.absent(),
+                Value<int> discountAmountCents = const Value.absent(),
+                Value<String?> discountReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReceiptRowsCompanion.insert(
                 id: id,
@@ -17035,6 +18221,11 @@ class $$ReceiptRowsTableTableManager
                 goodsCents: goodsCents,
                 depositCents: depositCents,
                 totalCents: totalCents,
+                tipCents: tipCents,
+                discountCents: discountCents,
+                discountPercent: discountPercent,
+                discountAmountCents: discountAmountCents,
+                discountReason: discountReason,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -17206,6 +18397,10 @@ typedef $$ReceiptLineRowsTableCreateCompanionBuilder =
       Value<int> gross13Cents,
       Value<int> gross0Cents,
       Value<int> gross19Cents,
+      Value<int> discountCents,
+      Value<int?> ownDiscountPercent,
+      Value<int> ownDiscountCents,
+      Value<String?> ownDiscountReason,
       Value<int> rowid,
     });
 typedef $$ReceiptLineRowsTableUpdateCompanionBuilder =
@@ -17223,6 +18418,10 @@ typedef $$ReceiptLineRowsTableUpdateCompanionBuilder =
       Value<int> gross13Cents,
       Value<int> gross0Cents,
       Value<int> gross19Cents,
+      Value<int> discountCents,
+      Value<int?> ownDiscountPercent,
+      Value<int> ownDiscountCents,
+      Value<String?> ownDiscountReason,
       Value<int> rowid,
     });
 
@@ -17322,6 +18521,26 @@ class $$ReceiptLineRowsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ownDiscountPercent => $composableBuilder(
+    column: $table.ownDiscountPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ownDiscountCents => $composableBuilder(
+    column: $table.ownDiscountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownDiscountReason => $composableBuilder(
+    column: $table.ownDiscountReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ReceiptRowsTableFilterComposer get receiptId {
     final $$ReceiptRowsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -17415,6 +18634,26 @@ class $$ReceiptLineRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ownDiscountPercent => $composableBuilder(
+    column: $table.ownDiscountPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ownDiscountCents => $composableBuilder(
+    column: $table.ownDiscountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownDiscountReason => $composableBuilder(
+    column: $table.ownDiscountReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ReceiptRowsTableOrderingComposer get receiptId {
     final $$ReceiptRowsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17498,6 +18737,26 @@ class $$ReceiptLineRowsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get discountCents => $composableBuilder(
+    column: $table.discountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get ownDiscountPercent => $composableBuilder(
+    column: $table.ownDiscountPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get ownDiscountCents => $composableBuilder(
+    column: $table.ownDiscountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ownDiscountReason => $composableBuilder(
+    column: $table.ownDiscountReason,
+    builder: (column) => column,
+  );
+
   $$ReceiptRowsTableAnnotationComposer get receiptId {
     final $$ReceiptRowsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -17565,6 +18824,10 @@ class $$ReceiptLineRowsTableTableManager
                 Value<int> gross13Cents = const Value.absent(),
                 Value<int> gross0Cents = const Value.absent(),
                 Value<int> gross19Cents = const Value.absent(),
+                Value<int> discountCents = const Value.absent(),
+                Value<int?> ownDiscountPercent = const Value.absent(),
+                Value<int> ownDiscountCents = const Value.absent(),
+                Value<String?> ownDiscountReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReceiptLineRowsCompanion(
                 receiptId: receiptId,
@@ -17580,6 +18843,10 @@ class $$ReceiptLineRowsTableTableManager
                 gross13Cents: gross13Cents,
                 gross0Cents: gross0Cents,
                 gross19Cents: gross19Cents,
+                discountCents: discountCents,
+                ownDiscountPercent: ownDiscountPercent,
+                ownDiscountCents: ownDiscountCents,
+                ownDiscountReason: ownDiscountReason,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17597,6 +18864,10 @@ class $$ReceiptLineRowsTableTableManager
                 Value<int> gross13Cents = const Value.absent(),
                 Value<int> gross0Cents = const Value.absent(),
                 Value<int> gross19Cents = const Value.absent(),
+                Value<int> discountCents = const Value.absent(),
+                Value<int?> ownDiscountPercent = const Value.absent(),
+                Value<int> ownDiscountCents = const Value.absent(),
+                Value<String?> ownDiscountReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReceiptLineRowsCompanion.insert(
                 receiptId: receiptId,
@@ -17612,6 +18883,10 @@ class $$ReceiptLineRowsTableTableManager
                 gross13Cents: gross13Cents,
                 gross0Cents: gross0Cents,
                 gross19Cents: gross19Cents,
+                discountCents: discountCents,
+                ownDiscountPercent: ownDiscountPercent,
+                ownDiscountCents: ownDiscountCents,
+                ownDiscountReason: ownDiscountReason,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -17938,6 +19213,7 @@ typedef $$ReceiptLineOptionRowsTableProcessedTableManager =
 typedef $$PaymentRowsTableCreateCompanionBuilder =
     PaymentRowsCompanion Function({
       required String receiptId,
+      Value<int> position,
       required String kind,
       required int amountCents,
       required int givenCents,
@@ -17946,11 +19222,15 @@ typedef $$PaymentRowsTableCreateCompanionBuilder =
       Value<String?> providerTxCode,
       Value<String?> cardScheme,
       Value<String?> cardLast4,
+      Value<int> tipCents,
+      Value<String?> tipStaffId,
+      Value<String?> tipStaffName,
       Value<int> rowid,
     });
 typedef $$PaymentRowsTableUpdateCompanionBuilder =
     PaymentRowsCompanion Function({
       Value<String> receiptId,
+      Value<int> position,
       Value<String> kind,
       Value<int> amountCents,
       Value<int> givenCents,
@@ -17959,6 +19239,9 @@ typedef $$PaymentRowsTableUpdateCompanionBuilder =
       Value<String?> providerTxCode,
       Value<String?> cardScheme,
       Value<String?> cardLast4,
+      Value<int> tipCents,
+      Value<String?> tipStaffId,
+      Value<String?> tipStaffName,
       Value<int> rowid,
     });
 
@@ -17993,6 +19276,11 @@ class $$PaymentRowsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get kind => $composableBuilder(
     column: $table.kind,
     builder: (column) => ColumnFilters(column),
@@ -18033,6 +19321,21 @@ class $$PaymentRowsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tipStaffId => $composableBuilder(
+    column: $table.tipStaffId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tipStaffName => $composableBuilder(
+    column: $table.tipStaffName,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ReceiptRowsTableFilterComposer get receiptId {
     final $$ReceiptRowsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -18066,6 +19369,11 @@ class $$PaymentRowsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get kind => $composableBuilder(
     column: $table.kind,
     builder: (column) => ColumnOrderings(column),
@@ -18106,6 +19414,21 @@ class $$PaymentRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tipStaffId => $composableBuilder(
+    column: $table.tipStaffId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tipStaffName => $composableBuilder(
+    column: $table.tipStaffName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ReceiptRowsTableOrderingComposer get receiptId {
     final $$ReceiptRowsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -18139,6 +19462,9 @@ class $$PaymentRowsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
   GeneratedColumn<String> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
 
@@ -18172,6 +19498,19 @@ class $$PaymentRowsTableAnnotationComposer
 
   GeneratedColumn<String> get cardLast4 =>
       $composableBuilder(column: $table.cardLast4, builder: (column) => column);
+
+  GeneratedColumn<int> get tipCents =>
+      $composableBuilder(column: $table.tipCents, builder: (column) => column);
+
+  GeneratedColumn<String> get tipStaffId => $composableBuilder(
+    column: $table.tipStaffId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tipStaffName => $composableBuilder(
+    column: $table.tipStaffName,
+    builder: (column) => column,
+  );
 
   $$ReceiptRowsTableAnnotationComposer get receiptId {
     final $$ReceiptRowsTableAnnotationComposer composer = $composerBuilder(
@@ -18226,6 +19565,7 @@ class $$PaymentRowsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> receiptId = const Value.absent(),
+                Value<int> position = const Value.absent(),
                 Value<String> kind = const Value.absent(),
                 Value<int> amountCents = const Value.absent(),
                 Value<int> givenCents = const Value.absent(),
@@ -18234,9 +19574,13 @@ class $$PaymentRowsTableTableManager
                 Value<String?> providerTxCode = const Value.absent(),
                 Value<String?> cardScheme = const Value.absent(),
                 Value<String?> cardLast4 = const Value.absent(),
+                Value<int> tipCents = const Value.absent(),
+                Value<String?> tipStaffId = const Value.absent(),
+                Value<String?> tipStaffName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentRowsCompanion(
                 receiptId: receiptId,
+                position: position,
                 kind: kind,
                 amountCents: amountCents,
                 givenCents: givenCents,
@@ -18245,11 +19589,15 @@ class $$PaymentRowsTableTableManager
                 providerTxCode: providerTxCode,
                 cardScheme: cardScheme,
                 cardLast4: cardLast4,
+                tipCents: tipCents,
+                tipStaffId: tipStaffId,
+                tipStaffName: tipStaffName,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String receiptId,
+                Value<int> position = const Value.absent(),
                 required String kind,
                 required int amountCents,
                 required int givenCents,
@@ -18258,9 +19606,13 @@ class $$PaymentRowsTableTableManager
                 Value<String?> providerTxCode = const Value.absent(),
                 Value<String?> cardScheme = const Value.absent(),
                 Value<String?> cardLast4 = const Value.absent(),
+                Value<int> tipCents = const Value.absent(),
+                Value<String?> tipStaffId = const Value.absent(),
+                Value<String?> tipStaffName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentRowsCompanion.insert(
                 receiptId: receiptId,
+                position: position,
                 kind: kind,
                 amountCents: amountCents,
                 givenCents: givenCents,
@@ -18269,6 +19621,9 @@ class $$PaymentRowsTableTableManager
                 providerTxCode: providerTxCode,
                 cardScheme: cardScheme,
                 cardLast4: cardLast4,
+                tipCents: tipCents,
+                tipStaffId: tipStaffId,
+                tipStaffName: tipStaffName,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -18345,6 +19700,8 @@ typedef $$PendingCardPaymentRowsTableCreateCompanionBuilder =
       required String staffName,
       required DateTime startedAt,
       required String state,
+      Value<int> cashPartCents,
+      Value<int> tipCents,
       Value<int> rowid,
     });
 typedef $$PendingCardPaymentRowsTableUpdateCompanionBuilder =
@@ -18356,6 +19713,8 @@ typedef $$PendingCardPaymentRowsTableUpdateCompanionBuilder =
       Value<String> staffName,
       Value<DateTime> startedAt,
       Value<String> state,
+      Value<int> cashPartCents,
+      Value<int> tipCents,
       Value<int> rowid,
     });
 
@@ -18400,6 +19759,16 @@ class $$PendingCardPaymentRowsTableFilterComposer
 
   ColumnFilters<String> get state => $composableBuilder(
     column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cashPartCents => $composableBuilder(
+    column: $table.cashPartCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -18447,6 +19816,16 @@ class $$PendingCardPaymentRowsTableOrderingComposer
     column: $table.state,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get cashPartCents => $composableBuilder(
+    column: $table.cashPartCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tipCents => $composableBuilder(
+    column: $table.tipCents,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PendingCardPaymentRowsTableAnnotationComposer
@@ -18480,6 +19859,14 @@ class $$PendingCardPaymentRowsTableAnnotationComposer
 
   GeneratedColumn<String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get cashPartCents => $composableBuilder(
+    column: $table.cashPartCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get tipCents =>
+      $composableBuilder(column: $table.tipCents, builder: (column) => column);
 }
 
 class $$PendingCardPaymentRowsTableTableManager
@@ -18535,6 +19922,8 @@ class $$PendingCardPaymentRowsTableTableManager
                 Value<String> staffName = const Value.absent(),
                 Value<DateTime> startedAt = const Value.absent(),
                 Value<String> state = const Value.absent(),
+                Value<int> cashPartCents = const Value.absent(),
+                Value<int> tipCents = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingCardPaymentRowsCompanion(
                 id: id,
@@ -18544,6 +19933,8 @@ class $$PendingCardPaymentRowsTableTableManager
                 staffName: staffName,
                 startedAt: startedAt,
                 state: state,
+                cashPartCents: cashPartCents,
+                tipCents: tipCents,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -18555,6 +19946,8 @@ class $$PendingCardPaymentRowsTableTableManager
                 required String staffName,
                 required DateTime startedAt,
                 required String state,
+                Value<int> cashPartCents = const Value.absent(),
+                Value<int> tipCents = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingCardPaymentRowsCompanion.insert(
                 id: id,
@@ -18564,6 +19957,8 @@ class $$PendingCardPaymentRowsTableTableManager
                 staffName: staffName,
                 startedAt: startedAt,
                 state: state,
+                cashPartCents: cashPartCents,
+                tipCents: tipCents,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
