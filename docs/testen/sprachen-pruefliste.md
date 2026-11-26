@@ -89,7 +89,7 @@ Mach die folgenden Punkte einmal in jeder der fünf Sprachen.
 
 - [ ] Im Browser anmelden, YICHI öffnen und links auf "Übersetzungen" klicken.
   Oben steht ein Umschalter mit English, 中文, Türkçe, العربية und daneben zum Beispiel "0 von 140 übersetzt". Darunter die Kategorien, die Artikel und "Auswahl und Extras". Links der Name aus der Speisekarte, rechts ein leeres Feld.
-- [ ] "Türkçe" wählen und bei einem Artikel eine Übersetzung eintippen, dann mit der Tabulator-Taste ins nächste Feld springen.
+- [ ] "Türkçe" wählen und bei einem Artikel eine Übersetzung eintippen, dann Enter drücken oder ins nächste Feld klicken.
   Die Übersetzung ist gespeichert, die Zahl oben wird um eins größer.
 - [ ] "العربية" wählen und bei demselben Artikel eine Übersetzung eintippen.
   Das Feld schreibt von rechts nach links.
@@ -104,7 +104,7 @@ Mach die folgenden Punkte einmal in jeder der fünf Sprachen.
 - [ ] Am Tablet "Deutsch" wählen.
   Die Taste zeigt wieder den Namen aus der Speisekarte.
 
-Übersetzungen als Datei: In der Speisekarten-Datei kann ganz oben der Teil "uebersetzungen" stehen (Beispiel: "Hühnerspieß" mit "tr": "Tavuk şiş"). Auf der Seite "Übersetzungen" gibt es dazu die Taste "Übersetzungen einspielen"; sie nimmt eine Datei, in der nur dieser Teil steht, und ändert nichts an Artikeln und Preisen.
+Übersetzungen als Datei: In der Speisekarten-Datei kann ganz oben der Teil "uebersetzungen" stehen (Beispiel: "Hühnerspieß" mit "tr": "Tavuk şiş"). Auf der Seite "Übersetzungen" gibt es dazu die Taste "Übersetzungen einspielen"; sie nimmt eine Datei, in der nur dieser Teil steht, und ändert nichts an Artikeln und Preisen. Die Taste siehst du nur, wenn du im Browser als Anbieter angemeldet bist, nicht als Chef des Lokals.
 
 - [ ] Eine kleine Datei mit "uebersetzungen" für zwei Artikel über "Übersetzungen einspielen" laden. (Ich kann dir so eine Datei vorbereiten.)
   Es erscheint "2 Namen übersetzt." Die zwei Übersetzungen stehen in der Tabelle. Preise sind unverändert.
@@ -140,6 +140,8 @@ Mach die folgenden Punkte einmal in jeder der fünf Sprachen.
   Die Schrift ist sauber und lesbar, keine Kästchen und keine Fragezeichen. Der arabische Zettel steht von rechts nach links, die Buchstaben sind verbunden.
 - [ ] Wenn jemand in der Küche die Sprache liest: ihm den Zettel zeigen.
   Er versteht, was gekocht werden soll.
+- [ ] "العربية" als Sprache am Küchenbon lassen und einen Artikel ohne arabische Übersetzung bonieren, dessen Name mit einer Zahl beginnt (zum Beispiel "3 Frühlingsrollen"; wenn es keinen gibt, im Browser so einen Artikel anlegen lassen).
+  Auf dem Zettel steht rechts "2 ×" und daneben "3 Frühlingsrollen", so wie in der Speisekarte. Die "3" steht vorne beim Namen, nicht hinten neben der Anzahl. Ein Ausrufezeichen am Ende ("Extra scharf!") steht auch am Ende.
 
 ### C3. Kategorien für die Küche
 
@@ -162,10 +164,22 @@ Mach die folgenden Punkte einmal in jeder der fünf Sprachen.
   Nach dem Storno-Bon kommt ein Küchenbon mit "STORNO" groß oben und den Zeilen des stornierten Verkaufs.
 - [ ] Den stornierten Verkauf unter "Bons" öffnen.
   Dort gibt es keine Taste "Küchenbon drucken" mehr. So geht eine abgesagte Bestellung nicht noch einmal in die Küche.
+- [ ] Den Storno-Bon unter "Bons" öffnen (Pille "Storno") und dort "Küchenbon drucken" tippen.
+  Der Zettel mit "STORNO" kommt noch einmal. So erfährt die Küche die Absage auch, wenn der erste Zettel fehlt.
+- [ ] Den Drucker für die Küche ausschalten und einen weiteren Verkauf mit Essen stornieren.
+  Der Storno ist trotzdem gespeichert. Unten im Bon steht "Küchenbon nicht gedruckt" mit dem Grund und der Taste "Küchenbon drucken".
+- [ ] Den Drucker wieder einschalten und dort "Küchenbon drucken" tippen (oder beim Storno-Bon).
+  Der Zettel mit "STORNO" kommt. Es steht "Küchenbon gedruckt."
 - [ ] Den Bondrucker ausschalten, einen Verkauf machen.
   Der Verkauf ist trotzdem fertig. Auf "Verkauf fertig" steht "Küchenbon nicht gedruckt" mit dem Grund und der Taste "Küchenbon drucken".
 - [ ] Drucker wieder einschalten und "Küchenbon drucken" tippen.
   Der Küchenbon kommt. Es steht "Küchenbon gedruckt."
+- [ ] Den Drucker wieder ausschalten, einen Verkauf machen und gleich "Nächster Kunde" tippen, noch bevor etwas über den Küchenbon dasteht.
+  Nach ein paar Sekunden steht über dem Bon der Kassa ein gelber Hinweis: "Küchenbon nicht gedruckt", die Bon-Nummer, der Grund und die Taste "Küchenbon drucken". Er bleibt stehen, auch wenn du weiter bonierst.
+- [ ] Zwei solche Verkäufe hintereinander machen.
+  Der Hinweis zeigt den neueren Bon und darunter "Weitere Küchenbons nicht gedruckt: 1". Mit dem Kreuz oben in der Ecke geht er weg, dann steht der ältere da.
+- [ ] Den Drucker einschalten und im Hinweis "Küchenbon drucken" tippen.
+  Der Küchenbon kommt, der Hinweis geht weg.
 
 ### C5. Eigener Drucker in der Küche
 
@@ -183,10 +197,20 @@ Nur wenn du einen zweiten Bondrucker hast.
   Der Kundenbon kommt aus dem Bondrucker, der Küchenbon aus dem Küchendrucker, beide fast gleichzeitig.
 - [ ] Den Küchendrucker ausschalten und einen Verkauf machen.
   Der Kundenbon kommt, der Verkauf ist fertig. Auf "Verkauf fertig" steht "Küchenbon nicht gedruckt" mit "Küchenbon drucken".
-- [ ] Wenn du einen Drucker mit 58 mm Papier hast: ihn als Küchendrucker nehmen und "Probe drucken" tippen.
-  Der Zettel passt auf das schmale Papier, nichts ist abgeschnitten.
+- [ ] Den Küchendrucker ausschalten, einen Verkauf machen und gleich "Nächster Kunde" tippen.
+  Nach ein paar Sekunden (bis etwa 5) steht über dem Bon der Kassa der gelbe Hinweis "Küchenbon nicht gedruckt" mit der Bon-Nummer und "Küchenbon drucken".
+- [ ] Wenn der Küchendrucker im WLAN oder am Netzwerkkabel hängt: eine lange Bestellung machen (etwa 20 Artikel mit Auswahl) und bar bezahlen.
+  Der Küchenbon kommt ganz heraus, bis zur gestrichelten Linie am Ende, und wird erst dann geschnitten. Er bricht nicht in der Mitte ab.
+- [ ] Wenn du nur einen Drucker hast: ihn als Bondrucker und als Küchendrucker wählen (gleiche Adresse) und einen Verkauf machen.
+  Erst kommt der Kundenbon ganz, dann der Küchenbon. Die beiden Zettel kommen nie durcheinander.
+- [ ] Papier mit 58 mm: Das kann die Kassa beim Küchendrucker noch nicht. Zur Wahl stehen dieselben zwei Breiten wie beim Bondrucker (80 mm Papier). Einen Drucker mit 58 mm Papier bitte nicht als Küchendrucker nehmen.
 
-### C6. Wieder aus
+### C6. Große Bestellung
+
+- [ ] Eine sehr große Bestellung bonieren: etwa 40 Zeilen (verschiedene Artikel, manche mit Auswahl) und bar bezahlen.
+  Der Küchenbon kommt ganz heraus, alle 40 Zeilen, bis zur gestrichelten Linie am Ende. Wenn er nicht kommt: steht auf "Verkauf fertig" "Küchenbon nicht gedruckt"? Bitte notieren, und ein Foto vom Zettel machen.
+
+### C7. Wieder aus
 
 - [ ] In der Karte "Küche" auf "Aus" tippen und einen Verkauf machen.
   Nur der Kundenbon kommt, wie vor dem Update.
@@ -195,7 +219,9 @@ Nur wenn du einen zweiten Bondrucker hast.
 
 Die Texte auf Englisch, Chinesisch, Türkisch und Arabisch habe ich geschrieben. Bevor die Kassa im echten Betrieb in einer dieser Sprachen läuft, soll sie jemand lesen, der die Sprache gut spricht.
 
-- [ ] Für jede Sprache die Liste aus dem Ordner `docs/uebersetzungen/` an jemanden geben, der die Sprache spricht: `en.md` (Englisch), `zh.md` (Chinesisch), `tr.md` (Türkisch), `ar.md` (Arabisch).
+Die vier Listen dafür schicke ich dir im Chat, je Sprache eine Datei: Englisch, Chinesisch, Türkisch, Arabisch.
+
+- [ ] Jede Liste an jemanden geben, der die Sprache gut spricht.
   In jeder Liste steht links der deutsche Text, in der Mitte die Übersetzung, rechts, wo der Text in der Kassa steht.
 - [ ] Die Person bitten, besonders den Abschnitt "Unsicher" am Ende jeder Liste anzusehen.
   Dort stehen die Stellen, bei denen ich mir nicht sicher bin.
@@ -203,3 +229,5 @@ Die Texte auf Englisch, Chinesisch, Türkisch und Arabisch habe ich geschrieben.
   Ich bessere es aus, und es kommt mit der nächsten Version.
 - [ ] Wenn jemand die Sprache gelesen hat: hier eintragen, wer und wann.
   Englisch: ______ Chinesisch: ______ Türkisch: ______ Arabisch: ______
+
+Zum Nachschauen: Die Listen liegen auch im Projekt, im Ordner `docs/uebersetzungen/` (`en.md`, `zh.md`, `tr.md`, `ar.md`). Du brauchst sie dort nicht zu holen.
