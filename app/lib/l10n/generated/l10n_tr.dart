@@ -383,7 +383,7 @@ class L10nTr extends L10n {
   String get outageRetry => 'Tekrar kontrol et';
 
   @override
-  String get outageRepin => 'PIN\'i yeniden girin';
+  String get outageRepin => 'PIN\'i yeniden gir';
 
   @override
   String get unclearTitle => 'Bu kart ödemesi başarılı oldu mu?';
@@ -1256,7 +1256,7 @@ class L10nTr extends L10n {
   String get settingsDeviceTest => 'Cihazları test et';
 
   @override
-  String get settingsDeviceTestHelp => 'Test baskısı, çekmeceyi aç.';
+  String get settingsDeviceTestHelp => 'Test baskısı, çekmeceyi açma.';
 
   @override
   String get settingsDisplay => 'Görünüm';

@@ -91,7 +91,7 @@ class L10nAr extends L10n {
       few: '$count أصناف',
       two: 'صنفان',
       one: 'صنف واحد',
-      zero: '$count صنف',
+      zero: 'لا أصناف',
     );
     return '$_temp0';
   }

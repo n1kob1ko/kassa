@@ -173,4 +173,29 @@ void main() {
       }
     }
   });
+
+  test('Chinesisch schreibt den Monat mit Ziffern ("11月17日")', () {
+    final zh = lookupL10n(const Locale('zh'));
+    expect(monthName(zh, 11), '11月');
+    expect(weekdayDayMonth(zh, DateTime(2026, 11, 17)), '11月17日 星期二');
+    expect(zh.closeDayMonth(1, monthName(zh, 12)), '12月1日');
+    expect(zh.closeMonthYear(monthName(zh, 11), 2026), '2026年11月');
+  });
+
+  test('Politur der Übersetzungen', () {
+    final en = lookupL10n(const Locale('en'));
+    expect(en.kassaPaidExact, 'Exact amount');
+    expect(en.kassaStillMissing, 'Remaining');
+    final zh = lookupL10n(const Locale('zh'));
+    expect(zh.closeSaveCashIn, '确认存入');
+    expect(zh.closeSaveCashOut, '确认取出');
+    expect(zh.bonsVoidOf('128'), '作废 128 号小票');
+    // Türkisch: Tasten in der kurzen Befehlsform, Sätze höflich.
+    final tr = lookupL10n(const Locale('tr'));
+    expect(tr.outageRepin, "PIN'i yeniden gir");
+    expect(tr.settingsDeviceTestHelp, 'Test baskısı, çekmeceyi açma.');
+    final ar = lookupL10n(const Locale('ar'));
+    expect(ar.kassaItemCount(0), 'لا أصناف');
+    expect(ar.kassaCancel, 'إلغاء');
+  });
 }

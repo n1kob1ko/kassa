@@ -433,40 +433,40 @@ class L10nZh extends L10n {
   String get unclearBack => '返回';
 
   @override
-  String get dateMonthJanuary => '一月';
+  String get dateMonthJanuary => '1月';
 
   @override
-  String get dateMonthFebruary => '二月';
+  String get dateMonthFebruary => '2月';
 
   @override
-  String get dateMonthMarch => '三月';
+  String get dateMonthMarch => '3月';
 
   @override
-  String get dateMonthApril => '四月';
+  String get dateMonthApril => '4月';
 
   @override
-  String get dateMonthMay => '五月';
+  String get dateMonthMay => '5月';
 
   @override
-  String get dateMonthJune => '六月';
+  String get dateMonthJune => '6月';
 
   @override
-  String get dateMonthJuly => '七月';
+  String get dateMonthJuly => '7月';
 
   @override
-  String get dateMonthAugust => '八月';
+  String get dateMonthAugust => '8月';
 
   @override
-  String get dateMonthSeptember => '九月';
+  String get dateMonthSeptember => '9月';
 
   @override
-  String get dateMonthOctober => '十月';
+  String get dateMonthOctober => '10月';
 
   @override
-  String get dateMonthNovember => '十一月';
+  String get dateMonthNovember => '11月';
 
   @override
-  String get dateMonthDecember => '十二月';
+  String get dateMonthDecember => '12月';
 
   @override
   String get dateWeekdayMonday => '星期一';
@@ -599,7 +599,7 @@ class L10nZh extends L10n {
 
   @override
   String bonsVoidOf(String number) {
-    return '作废小票号 $number';
+    return '作废 $number 号小票';
   }
 
   @override
@@ -887,10 +887,10 @@ class L10nZh extends L10n {
   String get closeReason => '原因';
 
   @override
-  String get closeSaveCashIn => '保存存入';
+  String get closeSaveCashIn => '确认存入';
 
   @override
-  String get closeSaveCashOut => '保存取出';
+  String get closeSaveCashOut => '确认取出';
 
   @override
   String get closeFloatTitle => '备用零钱';

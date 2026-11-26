@@ -244,7 +244,7 @@ class L10nEn extends L10n {
   String get kassaShowSuggestions => 'Show suggestions';
 
   @override
-  String get kassaStillMissing => 'Still due';
+  String get kassaStillMissing => 'Remaining';
 
   @override
   String get kassaChange => 'Change';
@@ -275,7 +275,7 @@ class L10nEn extends L10n {
   }
 
   @override
-  String get kassaPaidExact => 'Paid exact';
+  String get kassaPaidExact => 'Exact amount';
 
   @override
   String get kassaGiveChange => 'Give change';
