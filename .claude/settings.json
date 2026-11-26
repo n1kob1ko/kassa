@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/app/test/data/migration_test.dart)",
+      "Edit(/app/test/data/migration_v6_test.dart)",
+      "Edit(/app/test/data/migration_v7_test.dart)"
+    ]
+  }
+}
