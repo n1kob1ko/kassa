@@ -406,7 +406,9 @@ class _CategoryEntry extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                ref.watch(menuTextProvider)(stat.name),
+                stat.deposit
+                    ? L10n.of(context).bonsDeposit
+                    : ref.watch(menuTextProvider)(stat.name),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyMedium!.copyWith(fontWeight: FontWeight.w500),

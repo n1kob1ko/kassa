@@ -216,7 +216,9 @@ class StatsRepository {
       return c != 0 ? c : a.name.compareTo(b.name);
     });
     if (deposit != 0) {
-      stats.add(CategoryStat(name: _depositName, cents: deposit));
+      stats.add(
+        CategoryStat(name: _depositName, cents: deposit, deposit: true),
+      );
     }
     return stats;
   }

@@ -174,6 +174,17 @@ void main() {
     }
   });
 
+  testWidgets('Übersicht: Pfand nach Kategorie in der Bediensprache', (
+    t,
+  ) async {
+    // Die Beispiel-Verkäufe haben Cola mit Pfand.
+    await pumpOverviewWithSales(t);
+    expect(_inArea(OverviewScreen, 'Pfand'), findsOneWidget);
+    await _setLanguage(t, AppLanguage.tr);
+    expect(_inArea(OverviewScreen, 'Depozito'), findsOneWidget);
+    expect(_inArea(OverviewScreen, 'Pfand'), findsNothing);
+  });
+
   test('Chinesisch schreibt den Monat mit Ziffern ("11月17日")', () {
     final zh = lookupL10n(const Locale('zh'));
     expect(monthName(zh, 11), '11月');

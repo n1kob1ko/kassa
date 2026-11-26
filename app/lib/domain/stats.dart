@@ -26,10 +26,18 @@ class ItemStat {
 }
 
 class CategoryStat {
-  const CategoryStat({required this.name, required this.cents});
+  const CategoryStat({
+    required this.name,
+    required this.cents,
+    this.deposit = false,
+  });
 
   final String name;
   final int cents;
+
+  /// Die Zeile Pfand (keine Kategorie der Speisekarte). Heißt in den Daten
+  /// immer "Pfand"; die Übersicht zeigt sie in der Bediensprache.
+  final bool deposit;
 }
 
 class Overview {
