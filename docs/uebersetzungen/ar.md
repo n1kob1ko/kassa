@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 397 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 405 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -457,6 +457,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Kassa | البيع | Einstellungen: `settingsRegister` |
 | Storno nur durch den Chef | الإلغاء للمدير فقط | Einstellungen: `settingsVoidChef` |
 | Mitarbeiter können Bons dann nicht stornieren. | لن يتمكن الموظفون عندها من إلغاء الفواتير. | Einstellungen: `settingsVoidChefHelp` |
+| Zahlen | الدفع | Einstellungen: `settingsPayments` |
+| Teil bar, Rest Karte | جزء نقدًا والباقي بالبطاقة | Einstellungen: `settingsSplitPayment` |
+| Trinkgeld bei Kartenzahlung | إكرامية عند الدفع بالبطاقة | Einstellungen: `settingsCardTip` |
+| Rabatt | خصم | Einstellungen: `settingsDiscount` |
+| Freier Betrag | مبلغ حر | Einstellungen: `settingsOpenAmount` |
+| Aus | إيقاف | Einstellungen: `settingsAccessOff` |
+| Alle | الجميع | Einstellungen: `settingsAccessAll` |
+| Nur Chef | للمدير فقط | Einstellungen: `settingsAccessChef` |
 | Kassa Version {version} | Kassa الإصدار {version} | Einstellungen: `settingsVersion` |
 | Küche | المطبخ | Einstellungen: `settingsKitchen` |
 | Küchenbon | تذكرة المطبخ | Einstellungen: `settingsKitchenMode` |

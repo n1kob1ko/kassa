@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,10 +16,11 @@ import 'pump.dart';
 
 List<Override>? _lastOverrides;
 
-/// Startet die App auf einer Datenbank im Speicher, meldet "Anna" an und endet
-/// auf dem Kassenbildschirm. Mit [sameDatabase] baut sie einen neuen
-/// `ProviderScope` auf die Datenbank des letzten Aufrufs: so sieht man, was
-/// einen Neustart übersteht (die Anmeldung gehört nicht dazu).
+/// Startet die App auf einer Datenbank im Speicher, meldet "Anna" an (mit
+/// [pin] '4711' den Chef) und endet auf dem Kassenbildschirm. Mit
+/// [sameDatabase] baut sie einen neuen `ProviderScope` auf die Datenbank des
+/// letzten Aufrufs: so sieht man, was einen Neustart übersteht (die Anmeldung
+/// gehört nicht dazu).
 Future<void> pumpKassa(
   WidgetTester t, {
   bool sameDatabase = false,
@@ -26,6 +28,7 @@ Future<void> pumpKassa(
   Brightness brightness = Brightness.light,
   double textScale = 1.0,
   List<Override>? overrides,
+  String pin = '1234',
 }) async {
   // Einen früheren ProviderScope abbauen, damit der neue wirklich neu beginnt.
   await t.pumpWidget(const SizedBox());
@@ -42,7 +45,7 @@ Future<void> pumpKassa(
     textScale: textScale,
   );
   await t.pumpAndSettle();
-  await typePin(t, '1234');
+  await typePin(t, pin);
   await t.pumpAndSettle();
 }
 
@@ -82,3 +85,14 @@ ProviderContainer containerOf(WidgetTester t) =>
 /// Der Bon steht nach den Tests auch in der Datenbank.
 Future<String?> draftOf(WidgetTester t) =>
     containerOf(t).read(settingsRepositoryProvider).readDraft();
+
+/// Ändert die Einstellungen, speichert sie und wartet, bis die Oberfläche
+/// ihnen folgt.
+Future<void> setSettings(
+  WidgetTester t,
+  RegisterSettings Function(RegisterSettings s) change,
+) async {
+  final repo = containerOf(t).read(settingsRepositoryProvider);
+  await repo.save(change(await repo.current()));
+  await t.pumpAndSettle();
+}

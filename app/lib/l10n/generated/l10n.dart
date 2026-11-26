@@ -2324,6 +2324,54 @@ abstract class L10n {
   /// **'Mitarbeiter können Bons dann nicht stornieren.'**
   String get settingsVoidChefHelp;
 
+  /// Karte Zahlen (Schalter für das Bezahlen).
+  ///
+  /// In de, this message translates to:
+  /// **'Zahlen'**
+  String get settingsPayments;
+
+  /// Zeile Teil bar, Rest Karte (Schalter).
+  ///
+  /// In de, this message translates to:
+  /// **'Teil bar, Rest Karte'**
+  String get settingsSplitPayment;
+
+  /// Zeile Trinkgeld bei Kartenzahlung (Schalter).
+  ///
+  /// In de, this message translates to:
+  /// **'Trinkgeld bei Kartenzahlung'**
+  String get settingsCardTip;
+
+  /// Zeile Rabatt: wer Rabatt geben darf.
+  ///
+  /// In de, this message translates to:
+  /// **'Rabatt'**
+  String get settingsDiscount;
+
+  /// Zeile Freier Betrag: wer einen freien Betrag bonieren darf.
+  ///
+  /// In de, this message translates to:
+  /// **'Freier Betrag'**
+  String get settingsOpenAmount;
+
+  /// Segment Aus: niemand darf es.
+  ///
+  /// In de, this message translates to:
+  /// **'Aus'**
+  String get settingsAccessOff;
+
+  /// Segment Alle: jede angemeldete Person darf es.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle'**
+  String get settingsAccessAll;
+
+  /// Segment Nur Chef: nur der Chef darf es.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Chef'**
+  String get settingsAccessChef;
+
   /// Version der App ("Kassa" ist der Name der App).
   ///
   /// In de, this message translates to:

@@ -1308,6 +1308,30 @@ class L10nAr extends L10n {
       'لن يتمكن الموظفون عندها من إلغاء الفواتير.';
 
   @override
+  String get settingsPayments => 'الدفع';
+
+  @override
+  String get settingsSplitPayment => 'جزء نقدًا والباقي بالبطاقة';
+
+  @override
+  String get settingsCardTip => 'إكرامية عند الدفع بالبطاقة';
+
+  @override
+  String get settingsDiscount => 'خصم';
+
+  @override
+  String get settingsOpenAmount => 'مبلغ حر';
+
+  @override
+  String get settingsAccessOff => 'إيقاف';
+
+  @override
+  String get settingsAccessAll => 'الجميع';
+
+  @override
+  String get settingsAccessChef => 'للمدير فقط';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa الإصدار $version';
   }

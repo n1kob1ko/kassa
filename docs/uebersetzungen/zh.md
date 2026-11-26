@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 397 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 405 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -457,6 +457,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Kassa | 收银 | Einstellungen: `settingsRegister` |
 | Storno nur durch den Chef | 仅店长可作废 | Einstellungen: `settingsVoidChef` |
 | Mitarbeiter können Bons dann nicht stornieren. | 员工将无法作废小票。 | Einstellungen: `settingsVoidChefHelp` |
+| Zahlen | 付款 | Einstellungen: `settingsPayments` |
+| Teil bar, Rest Karte | 部分现金，其余刷卡 | Einstellungen: `settingsSplitPayment` |
+| Trinkgeld bei Kartenzahlung | 刷卡时收小费 | Einstellungen: `settingsCardTip` |
+| Rabatt | 折扣 | Einstellungen: `settingsDiscount` |
+| Freier Betrag | 自定义金额 | Einstellungen: `settingsOpenAmount` |
+| Aus | 关闭 | Einstellungen: `settingsAccessOff` |
+| Alle | 所有人 | Einstellungen: `settingsAccessAll` |
+| Nur Chef | 仅店长 | Einstellungen: `settingsAccessChef` |
 | Kassa Version {version} | Kassa 版本 {version} | Einstellungen: `settingsVersion` |
 | Küche | 厨房 | Einstellungen: `settingsKitchen` |
 | Küchenbon | 厨房单 | Einstellungen: `settingsKitchenMode` |

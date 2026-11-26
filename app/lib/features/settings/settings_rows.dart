@@ -63,7 +63,8 @@ class SettingsCard extends StatelessWidget {
   }
 }
 
-/// Eine Zeile: Titel (16 dp 700) mit Hilfezeile (14 dp, `ink2`), darunter auf
+/// Eine Zeile: Titel (16 dp 700) mit Hilfezeile (14 dp, `ink2`; ohne [help]
+/// nur der Titel), darunter auf
 /// Wunsch [note] kräftig (zum Beispiel der Grund eines Ausfalls), rechts das
 /// Bedienelement [control]. Mindestens 76 dp hoch. Mit [below] steht unter dem
 /// Text ein breites Bedienelement (Regler), mit [panel] ersetzt die Zeile ihren
@@ -72,14 +73,14 @@ class SettingsRow extends StatelessWidget {
   const SettingsRow({
     super.key,
     required this.title,
-    required this.help,
+    this.help,
     this.note,
     this.control,
     this.below,
   });
 
   final String title;
-  final String help;
+  final String? help;
   final String? note;
   final Widget? control;
   final Widget? below;
@@ -107,16 +108,18 @@ class SettingsRow extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: KassaTokens.spaceXxs),
-                    Text(
-                      help,
-                      style: text.bodyMedium!.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        height: 1.3,
-                        color: c.ink2,
+                    if (help case final help?) ...[
+                      const SizedBox(height: KassaTokens.spaceXxs),
+                      Text(
+                        help,
+                        style: text.bodyMedium!.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.3,
+                          color: c.ink2,
+                        ),
                       ),
-                    ),
+                    ],
                     if (note case final note?) ...[
                       const SizedBox(height: KassaTokens.spaceXxs),
                       Text(

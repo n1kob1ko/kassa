@@ -1306,6 +1306,30 @@ class L10nEn extends L10n {
   String get settingsVoidChefHelp => 'Staff then cannot void receipts.';
 
   @override
+  String get settingsPayments => 'Payments';
+
+  @override
+  String get settingsSplitPayment => 'Part cash, rest by card';
+
+  @override
+  String get settingsCardTip => 'Tip on card payments';
+
+  @override
+  String get settingsDiscount => 'Discount';
+
+  @override
+  String get settingsOpenAmount => 'Open amount';
+
+  @override
+  String get settingsAccessOff => 'Off';
+
+  @override
+  String get settingsAccessAll => 'Everyone';
+
+  @override
+  String get settingsAccessChef => 'Manager only';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa version $version';
   }

@@ -1310,6 +1310,30 @@ class L10nDe extends L10n {
       'Mitarbeiter können Bons dann nicht stornieren.';
 
   @override
+  String get settingsPayments => 'Zahlen';
+
+  @override
+  String get settingsSplitPayment => 'Teil bar, Rest Karte';
+
+  @override
+  String get settingsCardTip => 'Trinkgeld bei Kartenzahlung';
+
+  @override
+  String get settingsDiscount => 'Rabatt';
+
+  @override
+  String get settingsOpenAmount => 'Freier Betrag';
+
+  @override
+  String get settingsAccessOff => 'Aus';
+
+  @override
+  String get settingsAccessAll => 'Alle';
+
+  @override
+  String get settingsAccessChef => 'Nur Chef';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa Version $version';
   }

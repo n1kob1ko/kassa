@@ -1278,6 +1278,30 @@ class L10nZh extends L10n {
   String get settingsVoidChefHelp => '员工将无法作废小票。';
 
   @override
+  String get settingsPayments => '付款';
+
+  @override
+  String get settingsSplitPayment => '部分现金，其余刷卡';
+
+  @override
+  String get settingsCardTip => '刷卡时收小费';
+
+  @override
+  String get settingsDiscount => '折扣';
+
+  @override
+  String get settingsOpenAmount => '自定义金额';
+
+  @override
+  String get settingsAccessOff => '关闭';
+
+  @override
+  String get settingsAccessAll => '所有人';
+
+  @override
+  String get settingsAccessChef => '仅店长';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa 版本 $version';
   }

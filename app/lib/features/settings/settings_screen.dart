@@ -21,6 +21,7 @@ import 'connection_check_screen.dart';
 import 'credentials_screen.dart';
 import 'device_test_screen.dart';
 import 'kitchen_section.dart';
+import 'payment_section.dart';
 import 'printer_panel.dart';
 import 'reimport_panel.dart';
 import 'server_panel.dart';
@@ -29,10 +30,10 @@ import 'setup_facts_screen.dart';
 import 'signature_panel.dart';
 import 'signer_choice_screen.dart';
 
-/// Der Bereich Einstellungen (nur Chef): links Signatur und Kassa, rechts
-/// Sprache, Geräte, Küche, Anzeige und Server (Signatur oben links wie im Entwurf
-/// `s1b-2`; sie muss ohne Scrollen ganz im Bild stehen, darum steht die
-/// Sprache oben rechts).
+/// Der Bereich Einstellungen (nur Chef): links Signatur, Kassa und Zahlen,
+/// rechts Sprache, Geräte, Küche, Anzeige und Server (Signatur oben links wie
+/// im Entwurf `s1b-2`; sie muss ohne Scrollen ganz im Bild stehen, darum steht
+/// die Sprache oben rechts).
 /// Jede Änderung wird sofort gespeichert, der Bildschirm folgt dem Strom der
 /// Einstellungen.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -383,6 +384,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     gap,
                     register,
+                    gap,
+                    PaymentSection(settings: s, onChange: _change),
                   ],
                 ),
               ),

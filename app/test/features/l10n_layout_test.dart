@@ -202,6 +202,11 @@ Future<void> _tour(
   await _tap(t, 'settings');
   look('Einstellungen');
 
+  // Karte Zahlen: zwei Schalter und zwei Regler mit drei Segmenten.
+  await t.ensureVisible(find.byKey(const Key('payment-card')));
+  await t.pumpAndSettle();
+  look('Einstellungen Zahlen');
+
   // Abschnitt Küche: am Küchendrucker, erst ohne (Hinweis), dann mit
   // eingerichtetem Drucker, Vorschau gezeichnet.
   final repo = containerOf(t).read(settingsRepositoryProvider);

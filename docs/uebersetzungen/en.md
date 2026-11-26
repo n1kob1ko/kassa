@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 397 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 405 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -457,6 +457,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Kassa | Register | Einstellungen: `settingsRegister` |
 | Storno nur durch den Chef | Only the manager can void | Einstellungen: `settingsVoidChef` |
 | Mitarbeiter können Bons dann nicht stornieren. | Staff then cannot void receipts. | Einstellungen: `settingsVoidChefHelp` |
+| Zahlen | Payments | Einstellungen: `settingsPayments` |
+| Teil bar, Rest Karte | Part cash, rest by card | Einstellungen: `settingsSplitPayment` |
+| Trinkgeld bei Kartenzahlung | Tip on card payments | Einstellungen: `settingsCardTip` |
+| Rabatt | Discount | Einstellungen: `settingsDiscount` |
+| Freier Betrag | Open amount | Einstellungen: `settingsOpenAmount` |
+| Aus | Off | Einstellungen: `settingsAccessOff` |
+| Alle | Everyone | Einstellungen: `settingsAccessAll` |
+| Nur Chef | Manager only | Einstellungen: `settingsAccessChef` |
 | Kassa Version {version} | Kassa version {version} | Einstellungen: `settingsVersion` |
 | Küche | Kitchen | Einstellungen: `settingsKitchen` |
 | Küchenbon | Kitchen ticket | Einstellungen: `settingsKitchenMode` |

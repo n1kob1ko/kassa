@@ -1905,6 +1905,38 @@
   "@settingsVoidChefHelp": {
     "description": "Hilfe zu Storno nur durch den Chef."
   },
+  "settingsPayments": "Zahlen",
+  "@settingsPayments": {
+    "description": "Karte Zahlen (Schalter für das Bezahlen)."
+  },
+  "settingsSplitPayment": "Teil bar, Rest Karte",
+  "@settingsSplitPayment": {
+    "description": "Zeile Teil bar, Rest Karte (Schalter)."
+  },
+  "settingsCardTip": "Trinkgeld bei Kartenzahlung",
+  "@settingsCardTip": {
+    "description": "Zeile Trinkgeld bei Kartenzahlung (Schalter)."
+  },
+  "settingsDiscount": "Rabatt",
+  "@settingsDiscount": {
+    "description": "Zeile Rabatt: wer Rabatt geben darf."
+  },
+  "settingsOpenAmount": "Freier Betrag",
+  "@settingsOpenAmount": {
+    "description": "Zeile Freier Betrag: wer einen freien Betrag bonieren darf."
+  },
+  "settingsAccessOff": "Aus",
+  "@settingsAccessOff": {
+    "description": "Segment Aus: niemand darf es."
+  },
+  "settingsAccessAll": "Alle",
+  "@settingsAccessAll": {
+    "description": "Segment Alle: jede angemeldete Person darf es."
+  },
+  "settingsAccessChef": "Nur Chef",
+  "@settingsAccessChef": {
+    "description": "Segment Nur Chef: nur der Chef darf es."
+  },
   "settingsVersion": "Kassa Version {version}",
   "@settingsVersion": {
     "description": "Version der App (\"Kassa\" ist der Name der App).",

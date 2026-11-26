@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 397 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 405 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -457,6 +457,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Kassa | Kasa | Einstellungen: `settingsRegister` |
 | Storno nur durch den Chef | Yalnızca yönetici iptal edebilir | Einstellungen: `settingsVoidChef` |
 | Mitarbeiter können Bons dann nicht stornieren. | Çalışanlar bu durumda fiş iptal edemez. | Einstellungen: `settingsVoidChefHelp` |
+| Zahlen | Ödeme | Einstellungen: `settingsPayments` |
+| Teil bar, Rest Karte | Bir kısmı nakit, kalanı kart | Einstellungen: `settingsSplitPayment` |
+| Trinkgeld bei Kartenzahlung | Kartla ödemede bahşiş | Einstellungen: `settingsCardTip` |
+| Rabatt | İndirim | Einstellungen: `settingsDiscount` |
+| Freier Betrag | Serbest tutar | Einstellungen: `settingsOpenAmount` |
+| Aus | Kapalı | Einstellungen: `settingsAccessOff` |
+| Alle | Herkes | Einstellungen: `settingsAccessAll` |
+| Nur Chef | Yalnızca yönetici | Einstellungen: `settingsAccessChef` |
 | Kassa Version {version} | Kassa sürüm {version} | Einstellungen: `settingsVersion` |
 | Küche | Mutfak | Einstellungen: `settingsKitchen` |
 | Küchenbon | Mutfak fişi | Einstellungen: `settingsKitchenMode` |

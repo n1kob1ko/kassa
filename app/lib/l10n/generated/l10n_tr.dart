@@ -1296,6 +1296,30 @@ class L10nTr extends L10n {
   String get settingsVoidChefHelp => 'Çalışanlar bu durumda fiş iptal edemez.';
 
   @override
+  String get settingsPayments => 'Ödeme';
+
+  @override
+  String get settingsSplitPayment => 'Bir kısmı nakit, kalanı kart';
+
+  @override
+  String get settingsCardTip => 'Kartla ödemede bahşiş';
+
+  @override
+  String get settingsDiscount => 'İndirim';
+
+  @override
+  String get settingsOpenAmount => 'Serbest tutar';
+
+  @override
+  String get settingsAccessOff => 'Kapalı';
+
+  @override
+  String get settingsAccessAll => 'Herkes';
+
+  @override
+  String get settingsAccessChef => 'Yalnızca yönetici';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa sürüm $version';
   }
