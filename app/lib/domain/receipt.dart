@@ -73,20 +73,35 @@ class ReceiptLine {
 
 class Payment {
   const Payment({
+    this.position = 0,
     required this.kind,
     required this.amountCents,
     required this.givenCents,
     required this.changeCents,
+    this.tipCents = 0,
+    this.tipStaffId,
+    this.tipStaffName,
     this.provider,
     this.providerTxCode,
     this.cardScheme,
     this.cardLast4,
   });
 
+  /// Stelle der Zahlung im Bon, ab 0.
+  final int position;
   final PaymentKind kind;
+
+  /// Anteil an der Summe des Bons, ohne Trinkgeld.
   final int amountCents;
   final int givenCents;
   final int changeCents;
+
+  /// Nur bei Karte ungleich 0.
+  final int tipCents;
+
+  /// Wem das Trinkgeld gehört, leer ohne Trinkgeld.
+  final String? tipStaffId;
+  final String? tipStaffName;
 
   /// Nur bei Kartenzahlung: Anbieter, dessen Beleg-Code, Kartenart und die
   /// letzten vier Ziffern (soweit bekannt).
@@ -94,7 +109,13 @@ class Payment {
   final String? providerTxCode;
   final String? cardScheme;
   final String? cardLast4;
+
+  /// Was die Karte gebucht hat: Anteil plus Trinkgeld.
+  int get chargedCents => amountCents + tipCents;
 }
+
+/// Wie ein Bon bezahlt ist: nur bar, nur Karte oder beides.
+enum ReceiptPaymentKind { cash, card, mixed }
 
 /// Was das Protokoll der Signatur zu einem Bon weiß.
 final class RksvStamp {
@@ -130,12 +151,13 @@ class Receipt {
     this.voidsReceiptId,
     this.voidedByReceiptId,
     required List<ReceiptLine> lines,
-    required this.payment,
+    required List<Payment> payments,
     this.rksv,
     required this.goodsCents,
     required this.depositCents,
     required this.totalCents,
   }) : lines = List.unmodifiable(lines),
+       payments = List.unmodifiable(payments),
        grossByRate = Map.unmodifiable(
          sumByRate([for (final l in lines) l.grossByRate]),
        );
@@ -157,8 +179,8 @@ class Receipt {
   final String? voidedByReceiptId;
   final List<ReceiptLine> lines;
 
-  /// Leer bei Sonderbelegen.
-  final Payment? payment;
+  /// Die Zahlungen nach Stelle, leer bei Sonderbelegen.
+  final List<Payment> payments;
 
   /// Leer, wenn der Bon keinen Protokoll-Eintrag hat.
   final RksvStamp? rksv;
@@ -170,6 +192,40 @@ class Receipt {
   final Map<TaxRate, int> grossByRate;
 
   bool get isVoided => voidedByReceiptId != null;
+
+  /// Die erste Bar-Zahlung, sonst `null`.
+  Payment? get cashPayment => _first(PaymentKind.cash);
+
+  /// Die Kartenzahlung, sonst `null`.
+  Payment? get cardPayment => _first(PaymentKind.card);
+
+  /// `null` bei Sonderbelegen.
+  ReceiptPaymentKind? get paymentKind {
+    final cash = cashPayment != null, card = cardPayment != null;
+    if (cash && card) return ReceiptPaymentKind.mixed;
+    if (cash) return ReceiptPaymentKind.cash;
+    if (card) return ReceiptPaymentKind.card;
+    return null;
+  }
+
+  /// Summe der Bar-Anteile.
+  int get cashCents => _sumOf(PaymentKind.cash);
+
+  /// Summe der Karten-Anteile, ohne Trinkgeld.
+  int get cardCents => _sumOf(PaymentKind.card);
+
+  /// Summe der Trinkgelder.
+  int get tipCents => payments.fold(0, (sum, p) => sum + p.tipCents);
+
+  Payment? _first(PaymentKind kind) {
+    for (final p in payments) {
+      if (p.kind == kind) return p;
+    }
+    return null;
+  }
+
+  int _sumOf(PaymentKind kind) =>
+      payments.fold(0, (sum, p) => p.kind == kind ? sum + p.amountCents : sum);
 
   List<TaxLine> get taxLines => taxBreakdown(grossByRate);
 }

@@ -67,7 +67,11 @@ void main() {
     expect((r.goodsCents, r.depositCents, r.totalCents), (1770, 50, 1820));
     expect(r.grossByRate, {TaxRate.normal: 580, TaxRate.reduced1: 1190});
     expect(
-      (r.payment!.kind, r.payment!.givenCents, r.payment!.changeCents),
+      (
+        r.payments.single.kind,
+        r.payments.single.givenCents,
+        r.payments.single.changeCents,
+      ),
       (PaymentKind.cash, 2000, 180),
     );
     expect(
@@ -192,9 +196,13 @@ void main() {
     expect(v.staffName, 'Chef');
     expect(v.lines.first.quantity, -r.lines.first.quantity);
     expect(v.lines.last.options.map((o) => o.optionName), ['XXL', 'Nudeln']);
-    expect(v.payment!.amountCents, -r.totalCents);
+    expect(v.payments.single.amountCents, -r.totalCents);
     expect(
-      (v.payment!.kind, v.payment!.givenCents, v.payment!.changeCents),
+      (
+        v.payments.single.kind,
+        v.payments.single.givenCents,
+        v.payments.single.changeCents,
+      ),
       (PaymentKind.cash, 0, 0),
     );
     expect(v.businessDayId, r.businessDayId);
@@ -308,18 +316,22 @@ void main() {
       cardScheme: 'VISA',
       cardLast4: '4242',
     );
-    expect(r.payment!.kind, PaymentKind.card);
+    expect(r.payments.single.kind, PaymentKind.card);
     expect(
-      (r.payment!.amountCents, r.payment!.givenCents, r.payment!.changeCents),
+      (
+        r.payments.single.amountCents,
+        r.payments.single.givenCents,
+        r.payments.single.changeCents,
+      ),
       (1820, 0, 0),
     );
     final back = await receipts.byId('c1');
     expect(
       (
-        back.payment!.provider,
-        back.payment!.providerTxCode,
-        back.payment!.cardScheme,
-        back.payment!.cardLast4,
+        back.payments.single.provider,
+        back.payments.single.providerTxCode,
+        back.payments.single.cardScheme,
+        back.payments.single.cardLast4,
       ),
       ('sumup', 'TX9', 'VISA', '4242'),
     );
@@ -357,9 +369,9 @@ void main() {
       'negativem Betrag', () async {
     final sale = await shop.sellCard('c1');
     final v = await receipts.voidReceipt(sale.id, staff: shop.chef);
-    expect(v.payment!.kind, PaymentKind.card);
-    expect(v.payment!.amountCents, -sale.totalCents);
-    expect(v.payment!.providerTxCode, 'TX-c1');
+    expect(v.payments.single.kind, PaymentKind.card);
+    expect(v.payments.single.amountCents, -sale.totalCents);
+    expect(v.payments.single.providerTxCode, 'TX-c1');
     expect(v.totalCents, -sale.totalCents);
   });
 
@@ -417,7 +429,7 @@ void main() {
       final r = await receipts.byId('m1');
       expect(r.kind, ReceiptKind.month);
       expect(r.businessDayId, isNull);
-      expect(r.payment, isNull);
+      expect(r.payments, isEmpty);
       expect(r.lines, isEmpty);
       expect((r.goodsCents, r.depositCents, r.totalCents), (0, 0, 0));
       expect(r.rksv, isNull);
@@ -593,6 +605,155 @@ void main() {
       await sub.cancel();
       expect(emitted.first, [1]);
       expect(emitted.last, [1, 2]);
+    });
+  });
+
+  group('Zahlungen als Liste', () {
+    test(
+      'Teil bar, Rest Karte mit Trinkgeld: zwei Zahlungen, Karte zuletzt',
+      () async {
+        final r = await shop.receipts.finalizeCardSale(
+          saleId: 'm1',
+          cart: cart,
+          staff: shop.anna,
+          provider: 'sumup',
+          txCode: 'TX1',
+          cashPartCents: 1000,
+          tipCents: 80,
+        );
+        expect(r.totalCents, 1820);
+        expect(
+          [
+            for (final p in r.payments)
+              (p.position, p.kind, p.amountCents, p.tipCents),
+          ],
+          [(0, PaymentKind.cash, 1000, 0), (1, PaymentKind.card, 820, 80)],
+        );
+        expect(
+          (r.payments[1].tipStaffId, r.payments[1].chargedCents),
+          (shop.anna.id, 900),
+        );
+        expect(
+          (r.cashCents, r.cardCents, r.tipCents, r.paymentKind),
+          (1000, 820, 80, ReceiptPaymentKind.mixed),
+        );
+        expect(
+          (await shop.db.select(shop.db.receiptRows).getSingle()).tipCents,
+          80,
+        );
+      },
+    );
+
+    test('Storno spiegelt jede Zahlung und das Trinkgeld; es bleibt bei der '
+        'Person, die kassiert hat', () async {
+      await shop.receipts.finalizeCardSale(
+        saleId: 'm1',
+        cart: cart,
+        staff: shop.anna,
+        provider: 'sumup',
+        cashPartCents: 1000,
+        tipCents: 80,
+      );
+      final v = await shop.receipts.voidReceipt('m1', staff: shop.chef);
+      expect(
+        [
+          for (final p in v.payments)
+            (p.kind, p.amountCents, p.tipCents, p.givenCents, p.changeCents),
+        ],
+        [
+          (PaymentKind.cash, -1000, 0, 0, 0),
+          (PaymentKind.card, -820, -80, 0, 0),
+        ],
+      );
+      expect(
+        (v.payments[1].tipStaffId, v.staffId),
+        (shop.anna.id, shop.chef.id),
+      );
+    });
+
+    test('Bar-Teil gleich der Summe, negativ, oder Trinkgeld negativ: '
+        'ArgumentError, nichts gespeichert', () async {
+      Future<Receipt> sale({int cashPart = 0, int tip = 0}) =>
+          shop.receipts.finalizeCardSale(
+            saleId: 'm1',
+            cart: cart,
+            staff: shop.anna,
+            provider: 'sumup',
+            cashPartCents: cashPart,
+            tipCents: tip,
+          );
+      await expectLater(sale(cashPart: 1820), throwsArgumentError);
+      await expectLater(sale(cashPart: -1), throwsArgumentError);
+      await expectLater(sale(tip: -1), throwsArgumentError);
+      expect(await shop.count('receipts'), 0);
+      expect(await shop.count('payments'), 0);
+    });
+
+    test('ein Bon aus 1.10.0 (eine Zahlung, Stelle 0) lässt sich lesen und '
+        'stornieren', () async {
+      final day = await shop.days.openOrCreateDay();
+      await shop.db
+          .into(shop.db.receiptRows)
+          .insert(
+            ReceiptRowsCompanion.insert(
+              id: 'alt',
+              number: 1,
+              createdAt: shop.clock.now(),
+              staffId: shop.anna.id,
+              staffName: shop.anna.name,
+              businessDayId: Value(day.id),
+              kind: ReceiptKind.sale.name,
+              goodsCents: 590,
+              depositCents: 0,
+              totalCents: 590,
+            ),
+          );
+      await shop.db
+          .into(shop.db.receiptLineRows)
+          .insert(
+            ReceiptLineRowsCompanion.insert(
+              receiptId: 'alt',
+              position: 0,
+              itemId: teigtaschen.id,
+              name: teigtaschen.name,
+              unitPriceCents: 590,
+              quantity: 1,
+              unitDepositCents: 0,
+              gross10Cents: const Value(590),
+            ),
+          );
+      await shop.db
+          .into(shop.db.paymentRows)
+          .insert(
+            PaymentRowsCompanion.insert(
+              receiptId: 'alt',
+              kind: PaymentKind.card.name,
+              amountCents: 590,
+              givenCents: 0,
+              changeCents: 0,
+              provider: const Value('sumup'),
+            ),
+          );
+      final r = await shop.receipts.byId('alt');
+      expect(
+        [
+          for (final p in r.payments)
+            (p.position, p.kind, p.amountCents, p.tipCents, p.tipStaffId),
+        ],
+        [(0, PaymentKind.card, 590, 0, null)],
+      );
+      expect(
+        (r.paymentKind, r.cardCents, r.tipCents),
+        (ReceiptPaymentKind.card, 590, 0),
+      );
+      final v = await shop.receipts.voidReceipt('alt', staff: shop.chef);
+      expect(
+        [
+          for (final p in v.payments)
+            (p.position, p.kind, p.amountCents, p.provider),
+        ],
+        [(0, PaymentKind.card, -590, 'sumup')],
+      );
     });
   });
 }

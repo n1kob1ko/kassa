@@ -8,6 +8,7 @@ import '../domain/cart.dart';
 import '../domain/catalog.dart';
 import '../domain/pricing.dart';
 import '../domain/receipt.dart';
+import '../domain/receipt_rules.dart';
 import '../domain/staff.dart';
 import '../rksv/core/rksv_code.dart';
 import '../rksv/rksv_journal.dart';
@@ -77,15 +78,6 @@ class ReceiptRepository {
   /// Das Journal, mit dem die Bons ihre Einträge bekommen (null ohne).
   RksvJournal? get journal => _journal;
 
-  /// Reihenfolge der fünf Beträge im Code.
-  static const _codeRates = [
-    TaxRate.normal,
-    TaxRate.reduced1,
-    TaxRate.reduced2,
-    TaxRate.zero,
-    TaxRate.special,
-  ];
-
   /// Schließt einen Barverkauf ab. Die Id des Bons ist [saleId]: gibt es ihn
   /// schon, kommt der gespeicherte Bon zurück und nichts wird geschrieben.
   /// Im selben Schritt geht der Bon-Entwurf weg: ein Absturz direkt danach
@@ -110,12 +102,14 @@ class ReceiptRepository {
         goodsCents: cart.goodsCents,
         depositCents: cart.depositCents,
         totalCents: cart.totalCents,
-        payment: Payment(
-          kind: PaymentKind.cash,
-          amountCents: cart.totalCents,
-          givenCents: givenCents,
-          changeCents: givenCents - cart.totalCents,
-        ),
+        payments: [
+          Payment(
+            kind: PaymentKind.cash,
+            amountCents: cart.totalCents,
+            givenCents: givenCents,
+            changeCents: givenCents - cart.totalCents,
+          ),
+        ],
       );
       await (_db.update(_db.settingsRows)..where((t) => t.id.equals(1))).write(
         const SettingsRowsCompanion(receiptDraft: Value(null)),
@@ -128,6 +122,12 @@ class ReceiptRepository {
   /// hat. Bon, Zahlung, Entwurf und offene Zahlung ändern sich in einem
   /// Schritt. Gibt es den Bon zu [saleId] schon, kommt er zurück; die offene
   /// Zahlung mit dieser Id geht trotzdem weg.
+  ///
+  /// Mit [cashPartCents] über 0 ist der Bon gemischt bezahlt: Zahlung 0 bar
+  /// über den Bar-Teil (gegeben gleich Bar-Teil, kein Rückgeld), Zahlung 1
+  /// mit Karte über den Rest. Die Karte trägt [tipCents]; das Trinkgeld
+  /// gehört [staff]. Es muss `0 <= cashPartCents < cart.totalCents` und
+  /// `tipCents >= 0` gelten, sonst [ArgumentError].
   Future<Receipt> finalizeCardSale({
     required String saleId,
     required Cart cart,
@@ -136,10 +136,28 @@ class ReceiptRepository {
     String? txCode,
     String? cardScheme,
     String? cardLast4,
+    int cashPartCents = 0,
+    int tipCents = 0,
   }) {
     return _db.transaction(() async {
       final existing = await _find(saleId);
       if (existing == null && cart.isEmpty) throw const EmptyCartException();
+      if (existing == null) {
+        if (cashPartCents < 0 || cashPartCents >= cart.totalCents) {
+          throw ArgumentError.value(
+            cashPartCents,
+            'cashPartCents',
+            'Der Bar-Teil muss zwischen 0 und der Summe liegen',
+          );
+        }
+        if (tipCents < 0) {
+          throw ArgumentError.value(
+            tipCents,
+            'tipCents',
+            'Das Trinkgeld darf nicht negativ sein',
+          );
+        }
+      }
       final saved =
           existing ??
           await _write(
@@ -150,16 +168,29 @@ class ReceiptRepository {
             goodsCents: cart.goodsCents,
             depositCents: cart.depositCents,
             totalCents: cart.totalCents,
-            payment: Payment(
-              kind: PaymentKind.card,
-              amountCents: cart.totalCents,
-              givenCents: 0,
-              changeCents: 0,
-              provider: provider,
-              providerTxCode: txCode,
-              cardScheme: cardScheme,
-              cardLast4: cardLast4,
-            ),
+            payments: [
+              if (cashPartCents > 0)
+                Payment(
+                  kind: PaymentKind.cash,
+                  amountCents: cashPartCents,
+                  givenCents: cashPartCents,
+                  changeCents: 0,
+                ),
+              Payment(
+                position: cashPartCents > 0 ? 1 : 0,
+                kind: PaymentKind.card,
+                amountCents: cart.totalCents - cashPartCents,
+                givenCents: 0,
+                changeCents: 0,
+                tipCents: tipCents,
+                tipStaffId: tipCents > 0 ? staff.id : null,
+                tipStaffName: tipCents > 0 ? staff.name : null,
+                provider: provider,
+                providerTxCode: txCode,
+                cardScheme: cardScheme,
+                cardLast4: cardLast4,
+              ),
+            ],
           );
       await (_db.delete(
         _db.pendingCardPaymentRows,
@@ -209,9 +240,9 @@ class ReceiptRepository {
       }
       if (original.kind.isSpecial) throw const CannotVoidSpecialException();
       if (original.isVoided) throw const AlreadyVoidedException();
-      final payment =
-          original.payment ??
-          (throw StateError('Bon "${original.id}" hat keine Zahlung.'));
+      if (original.payments.isEmpty) {
+        throw StateError('Bon "${original.id}" hat keine Zahlung.');
+      }
       final journal = _journal;
       if (journal != null && !await journal.mayVoid(original.id)) {
         throw const NotInCurrentChainException();
@@ -240,16 +271,25 @@ class ReceiptRepository {
         goodsCents: -original.goodsCents,
         depositCents: -original.depositCents,
         totalCents: -original.totalCents,
-        payment: Payment(
-          kind: payment.kind,
-          amountCents: -original.totalCents,
-          givenCents: 0,
-          changeCents: 0,
-          provider: payment.provider,
-          providerTxCode: payment.providerTxCode,
-          cardScheme: payment.cardScheme,
-          cardLast4: payment.cardLast4,
-        ),
+        // Jede Zahlung gespiegelt. Das Trinkgeld bleibt bei der Person,
+        // die kassiert hat, nicht bei der, die storniert (Spec 5.4a).
+        payments: [
+          for (final p in original.payments)
+            Payment(
+              position: p.position,
+              kind: p.kind,
+              amountCents: -p.amountCents,
+              givenCents: 0,
+              changeCents: 0,
+              tipCents: -p.tipCents,
+              tipStaffId: p.tipStaffId,
+              tipStaffName: p.tipStaffName,
+              provider: p.provider,
+              providerTxCode: p.providerTxCode,
+              cardScheme: p.cardScheme,
+              cardLast4: p.cardLast4,
+            ),
+        ],
       );
     });
   }
@@ -370,21 +410,33 @@ class ReceiptRepository {
     required int goodsCents,
     required int depositCents,
     required int totalCents,
-    required Payment payment,
+    required List<Payment> payments,
   }) async {
+    final tipCents = payments.fold<int>(0, (sum, p) => sum + p.tipCents);
+    final sums = codeSums(
+      lineGross: [for (final l in lines) l.grossByRate],
+      depositCents: depositCents,
+      tipCents: tipCents,
+    );
     final journal = _journal;
     final signing = journal != null && await journal.isActive();
-    List<int>? sums;
-    var signatureDown = false;
-    if (signing) {
-      sums = _codeSumsOf(lines, depositCents);
-      if (sums.fold<int>(0, (a, b) => a + b) != totalCents) {
-        throw StateError(
-          'Die Beträge je Satz ergeben nicht die Summe des Bons $id.',
-        );
-      }
-      signatureDown = await _writeDue(journal, staff);
+    // Mit laufender Signatur wie bisher zuerst diese Prüfung: Kein Bon geht
+    // ins Protokoll, dessen Beträge nicht Summe plus Trinkgeld ergeben.
+    if (signing &&
+        sums.fold<int>(0, (a, b) => a + b) != totalCents + tipCents) {
+      throw StateError(
+        'Die Beträge je Satz ergeben nicht die Summe des Bons $id.',
+      );
     }
+    checkReceiptRules(
+      goodsCents: goodsCents,
+      depositCents: depositCents,
+      totalCents: totalCents,
+      lines: lines,
+      payments: payments,
+    );
+    var signatureDown = false;
+    if (signing) signatureDown = await _writeDue(journal, staff);
     final dayId = (await _days.openOrCreateDay()).id;
     final number = await _nextNumber();
     final createdAt = _clock.now();
@@ -403,6 +455,7 @@ class ReceiptRepository {
             goodsCents: goodsCents,
             depositCents: depositCents,
             totalCents: totalCents,
+            tipCents: Value(tipCents),
           ),
         );
     for (final l in lines) {
@@ -442,21 +495,27 @@ class ReceiptRepository {
             );
       }
     }
-    await _db
-        .into(_db.paymentRows)
-        .insert(
-          PaymentRowsCompanion.insert(
-            receiptId: id,
-            kind: payment.kind.name,
-            amountCents: payment.amountCents,
-            givenCents: payment.givenCents,
-            changeCents: payment.changeCents,
-            provider: Value(payment.provider),
-            providerTxCode: Value(payment.providerTxCode),
-            cardScheme: Value(payment.cardScheme),
-            cardLast4: Value(payment.cardLast4),
-          ),
-        );
+    for (final payment in payments) {
+      await _db
+          .into(_db.paymentRows)
+          .insert(
+            PaymentRowsCompanion.insert(
+              receiptId: id,
+              position: Value(payment.position),
+              kind: payment.kind.name,
+              amountCents: payment.amountCents,
+              givenCents: payment.givenCents,
+              changeCents: payment.changeCents,
+              tipCents: Value(payment.tipCents),
+              tipStaffId: Value(payment.tipStaffId),
+              tipStaffName: Value(payment.tipStaffName),
+              provider: Value(payment.provider),
+              providerTxCode: Value(payment.providerTxCode),
+              cardScheme: Value(payment.cardScheme),
+              cardLast4: Value(payment.cardLast4),
+            ),
+          );
+    }
     if (signing) {
       await _record(
         journal,
@@ -464,7 +523,7 @@ class ReceiptRepository {
         number: number,
         createdAt: createdAt,
         kind: kind,
-        sumsCents: sums!,
+        sumsCents: sums,
         trySign: !signatureDown,
       );
     }
@@ -478,14 +537,6 @@ class ReceiptRepository {
     )..addColumns([maxNumber])).map((r) => r.read(maxNumber)).getSingle();
     return (highest ?? 0) + 1;
   }
-
-  /// Die fünf Beträge des Codes: Summen der Zeilen je Satz, das Pfand zählt
-  /// zu Null.
-  static List<int> _codeSumsOf(List<ReceiptLine> lines, int depositCents) => [
-    for (final rate in _codeRates)
-      lines.fold<int>(0, (sum, l) => sum + (l.grossByRate[rate] ?? 0)) +
-          (rate == TaxRate.zero ? depositCents : 0),
-  ];
 
   /// Schreibt, was vor einem Verkauf oder Storno fällig ist. Höchstens zwei
   /// Runden: Auf einen Sammelbeleg kann ein Monats- oder Jahresbeleg folgen.
@@ -665,12 +716,14 @@ class ReceiptRepository {
     for (final o in optionRows) {
       (optionsOf[(o.receiptId, o.linePosition)] ??= []).add(o);
     }
-    final payments = {
-      for (final p in await (_db.select(
-        _db.paymentRows,
-      )..where((t) => t.receiptId.isIn(ids))).get())
-        p.receiptId: p,
-    };
+    final paymentsOf = <String, List<PaymentRow>>{};
+    for (final p
+        in await (_db.select(_db.paymentRows)
+              ..where((t) => t.receiptId.isIn(ids))
+              ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+            .get()) {
+      (paymentsOf[p.receiptId] ??= []).add(p);
+    }
     final stamps = <String, RksvStamp>{};
     for (final j in await (_db.select(_db.rksvEntryRows).join([
       innerJoin(
@@ -746,19 +799,23 @@ class ReceiptRepository {
               ),
           ],
           // Sonderbelege haben keine Zahlung.
-          payment: switch (payments[r.id]) {
-            null => null,
-            final p => Payment(
-              kind: PaymentKind.values.byName(p.kind),
-              amountCents: p.amountCents,
-              givenCents: p.givenCents,
-              changeCents: p.changeCents,
-              provider: p.provider,
-              providerTxCode: p.providerTxCode,
-              cardScheme: p.cardScheme,
-              cardLast4: p.cardLast4,
-            ),
-          },
+          payments: [
+            for (final p in paymentsOf[r.id] ?? const <PaymentRow>[])
+              Payment(
+                position: p.position,
+                kind: PaymentKind.values.byName(p.kind),
+                amountCents: p.amountCents,
+                givenCents: p.givenCents,
+                changeCents: p.changeCents,
+                tipCents: p.tipCents,
+                tipStaffId: p.tipStaffId,
+                tipStaffName: p.tipStaffName,
+                provider: p.provider,
+                providerTxCode: p.providerTxCode,
+                cardScheme: p.cardScheme,
+                cardLast4: p.cardLast4,
+              ),
+          ],
           rksv: stamps[r.id],
           goodsCents: r.goodsCents,
           depositCents: r.depositCents,

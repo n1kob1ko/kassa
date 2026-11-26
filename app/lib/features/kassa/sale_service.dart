@@ -486,7 +486,7 @@ class SaleService {
         _drawerMissing.contains(receipt.id) &&
         settings.cashDrawerEnabled &&
         receipt.kind == ReceiptKind.sale &&
-        receipt.payment?.kind == PaymentKind.cash;
+        receipt.cashPayment != null;
     if (kick && _printedOk.contains(receipt.id)) {
       return _drawerOnly(receipt.id, settings);
     }

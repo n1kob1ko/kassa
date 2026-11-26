@@ -7,7 +7,6 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
-import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
@@ -128,9 +127,9 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     final drawer = settings.cashDrawerEnabled;
     final number = widget.result.receipt.number;
     // Ein Verkauf hat immer eine Zahlung, nur Sonderbelege haben keine.
-    final payment = widget.result.receipt.payment;
-    final changeCents = payment?.changeCents ?? 0;
-    final byCard = payment?.kind == PaymentKind.card;
+    final receipt = widget.result.receipt;
+    final card = receipt.cardPayment;
+    final changeCents = receipt.cashPayment?.changeCents ?? 0;
     final outcome = _outcome;
     final showPrint =
         settings.printerKind != PrinterKind.none &&
@@ -201,10 +200,10 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                           KassaTokens.radiusXxl,
                         ),
                       ),
-                      child: byCard
+                      child: card != null
                           ? _CardPaid(
-                              scheme: payment?.cardScheme,
-                              last4: payment?.cardLast4,
+                              scheme: card.cardScheme,
+                              last4: card.cardLast4,
                             )
                           : changeCents == 0
                           ? Text(

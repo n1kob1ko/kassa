@@ -51,7 +51,7 @@ Receipt receipt(
   businessDayId: kind.isSpecial ? null : 'd1',
   kind: kind,
   lines: lines,
-  payment: null,
+  payments: const [],
   goodsCents: 0,
   depositCents: 0,
   totalCents: 0,

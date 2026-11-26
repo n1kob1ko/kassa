@@ -32,12 +32,14 @@ Receipt receipt({
   voidsReceiptId: voids,
   rksv: rksv,
   lines: const [],
-  payment: const Payment(
-    kind: PaymentKind.cash,
-    amountCents: 0,
-    givenCents: 0,
-    changeCents: 0,
-  ),
+  payments: const [
+    Payment(
+      kind: PaymentKind.cash,
+      amountCents: 0,
+      givenCents: 0,
+      changeCents: 0,
+    ),
+  ],
   goodsCents: 0,
   depositCents: 0,
   totalCents: 0,

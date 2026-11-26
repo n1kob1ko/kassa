@@ -176,17 +176,24 @@ class TestShop {
     staff: anna,
   );
 
-  /// Verkauft [cart] (Standard: [cartCard]) mit Karte als Anna.
-  Future<Receipt> sellCard(String saleId, {Cart? cart}) =>
-      receipts.finalizeCardSale(
-        saleId: saleId,
-        cart: cart ?? cartCard,
-        staff: anna,
-        provider: 'sumup',
-        txCode: 'TX-$saleId',
-        cardScheme: 'VISA',
-        cardLast4: '4242',
-      );
+  /// Verkauft [cart] (Standard: [cartCard]) mit Karte als Anna, mit
+  /// [cashPartCents] bar davor und [tipCents] Trinkgeld auf der Karte.
+  Future<Receipt> sellCard(
+    String saleId, {
+    Cart? cart,
+    int cashPartCents = 0,
+    int tipCents = 0,
+  }) => receipts.finalizeCardSale(
+    saleId: saleId,
+    cart: cart ?? cartCard,
+    staff: anna,
+    provider: 'sumup',
+    txCode: 'TX-$saleId',
+    cardScheme: 'VISA',
+    cardLast4: '4242',
+    cashPartCents: cashPartCents,
+    tipCents: tipCents,
+  );
 
   /// Id des offenen Geschäftstags.
   Future<String> dayId() async {

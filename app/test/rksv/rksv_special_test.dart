@@ -75,7 +75,7 @@ void main() {
       expect(month.kind, ReceiptKind.month);
       expect(month.number, 3);
       expect(
-        (month.totalCents, month.payment, month.businessDayId),
+        (month.totalCents, month.payments.firstOrNull, month.businessDayId),
         (0, null, null),
       );
       expect(month.lines, isEmpty);
@@ -242,7 +242,10 @@ void main() {
       await rig.sell('s1', cart);
       final zero = await rig.service.zeroReceipt(staff: rig.chef);
       expect(zero.kind, ReceiptKind.zero);
-      expect((zero.number, zero.totalCents, zero.payment), (3, 0, null));
+      expect(
+        (zero.number, zero.totalCents, zero.payments.firstOrNull),
+        (3, 0, null),
+      );
       expect(zero.staffName, 'Chef');
       expect(zero.rksv!.damaged, isFalse);
       expect((await rig.codeFieldsOf(zero.id)).sublist(5, 10), [

@@ -376,15 +376,22 @@ class RksvRig {
     staff: anna,
   );
 
-  /// Verkauft [cart] mit Karte als Anna.
-  Future<Receipt> sellCard(String saleId, Cart cart) =>
-      receipts.finalizeCardSale(
-        saleId: saleId,
-        cart: cart,
-        staff: anna,
-        provider: 'sumup',
-        txCode: 'TX-$saleId',
-      );
+  /// Verkauft [cart] mit Karte als Anna, mit [cashPartCents] bar davor und
+  /// [tipCents] Trinkgeld auf der Karte.
+  Future<Receipt> sellCard(
+    String saleId,
+    Cart cart, {
+    int cashPartCents = 0,
+    int tipCents = 0,
+  }) => receipts.finalizeCardSale(
+    saleId: saleId,
+    cart: cart,
+    staff: anna,
+    provider: 'sumup',
+    txCode: 'TX-$saleId',
+    cashPartCents: cashPartCents,
+    tipCents: tipCents,
+  );
 
   Future<RksvStateRow> stateRow() => db.select(db.rksvStateRows).getSingle();
 
@@ -612,9 +619,10 @@ class RksvRig {
   }
 
   /// Rechnet die Kette [chain] nach, ohne das Journal zu fragen: Positionen
-  /// 1 bis n, Felder des Codes gegen den Bon, jeder Kettenwert, jede Signatur
-  /// gegen ihr Zertifikat (oder der Ausfall-Text), jeder Zähler gegen die
-  /// laufende Summe, und bei der laufenden Kette der Zählerstand.
+  /// 1 bis n, Felder des Codes gegen den Bon (Summe plus Trinkgeld), jeder
+  /// Kettenwert, jede Signatur gegen ihr Zertifikat (oder der Ausfall-Text),
+  /// jeder Zähler gegen die laufende Summe, und bei der laufenden Kette der
+  /// Zählerstand.
   Future<void> verifyChain(int chain) async {
     final chainRow = await this.chainRow(chain);
     final list = await entries(chain);
@@ -643,7 +651,7 @@ class RksvRig {
       final sums = [for (final s in f.sublist(5, 10)) _cents(s)];
       expect(
         sums.fold<int>(0, (a, b) => a + b),
-        receipt.totalCents,
+        receipt.totalCents + receipt.tipCents,
         reason: '$at: Summe der Beträge',
       );
       counter += sums.fold<int>(0, (a, b) => a + b);

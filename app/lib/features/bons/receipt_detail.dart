@@ -444,9 +444,10 @@ class _Body extends StatelessWidget {
         ? state._find(r.voidsReceiptId)
         : null;
     final voider = r.isVoided ? state._find(r.voidedByReceiptId) : null;
-    final payment = r.payment;
+    final paymentKind = r.paymentKind;
+    final cashPayment = r.cashPayment;
     final cash =
-        r.kind == ReceiptKind.sale && payment?.kind == PaymentKind.cash;
+        r.kind == ReceiptKind.sale && paymentKind == ReceiptPaymentKind.cash;
     final special = r.kind.isSpecial;
     final rksv = r.rksv;
     final d = r.createdAt;
@@ -469,22 +470,24 @@ class _Body extends StatelessWidget {
                   small,
                 ),
               // Sonderbelege haben keine Zahlung.
-              if (payment != null) ...[
+              if (paymentKind != null) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
                 _SmallRow(
                   l.bonsPayment,
-                  payment.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
+                  paymentKind == ReceiptPaymentKind.cash
+                      ? l.bonsCash
+                      : l.bonsCard,
                   small,
                 ),
-                if (cash) ...[
+                if (cash && cashPayment != null) ...[
                   _SmallRow(
                     l.kassaGiven,
-                    formatEuro(payment.givenCents),
+                    formatEuro(cashPayment.givenCents),
                     small,
                   ),
                   _SmallRow(
                     l.kassaChange,
-                    formatEuro(payment.changeCents),
+                    formatEuro(cashPayment.changeCents),
                     small,
                   ),
                 ],

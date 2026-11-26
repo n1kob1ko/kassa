@@ -398,7 +398,7 @@ void main() {
       expect(collective.damaged, isFalse);
       final c = await rig.receipts.byId(collective.receiptId);
       expect(
-        (c.number, c.totalCents, c.payment, c.businessDayId),
+        (c.number, c.totalCents, c.payments.firstOrNull, c.businessDayId),
         (3, 0, null, null),
       );
       expect(c.createdAt, DateTime(2026, 11, 18, 13, 20));

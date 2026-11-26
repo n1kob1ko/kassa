@@ -68,7 +68,7 @@ void main() {
     expect(start.number, 1);
     expect((start.goodsCents, start.depositCents, start.totalCents), (0, 0, 0));
     expect(start.lines, isEmpty);
-    expect(start.payment, isNull);
+    expect(start.payments, isEmpty);
     expect(start.businessDayId, isNull);
     expect((start.staffId, start.staffName), (rig.chef.id, 'Chef'));
     expect(await rig.count('business_days'), 0);
@@ -164,7 +164,7 @@ void main() {
     expect(closing.kind, ReceiptKind.closing);
     expect(closing.number, 3);
     expect(closing.totalCents, 0);
-    expect(closing.payment, isNull);
+    expect(closing.payments, isEmpty);
     expect(closing.businessDayId, isNull);
     expect(closing.staffName, 'Chef');
     final first = await rig.entries(1);

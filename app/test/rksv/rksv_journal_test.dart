@@ -35,7 +35,7 @@ void main() {
     final r = await rig.sell('s1', cart);
     expect(r.number, 1);
     expect(r.totalCents, 1820);
-    expect(r.payment!.amountCents, 1820);
+    expect(r.payments.single.amountCents, 1820);
     expect(r.businessDayId, isNotNull);
     expect(r.rksv, isNull);
     final v = await rig.receipts.voidReceipt('s1', staff: rig.chef);
@@ -118,6 +118,16 @@ void main() {
       expect(read.damaged, isFalse);
       expect(read.probe, isTrue);
       expect(read.qrText, startsWith('_R1-AT100_${read.cashBoxId}_3_'));
+    });
+
+    test('Trinkgeld: der Umsatzzähler steigt um Summe plus Trinkgeld, die '
+        'Kette prüft sich', () async {
+      final before = (await rig.stateRow()).counterCents;
+      await rig.sellCard('t1', cart, tipCents: 80);
+      expect((await rig.stateRow()).counterCents, before + 1900);
+      await rig.receipts.voidReceipt('t1', staff: rig.chef);
+      expect((await rig.stateRow()).counterCents, before);
+      await rig.verifyChain(1);
     });
 
     test('Bon über 1.234,56 Euro: Betrag im Code ohne Punkt, verifyChain '

@@ -87,13 +87,13 @@ List<PrintOp> layoutReceipt(
     b.row(_taxText(t), amount(t.grossCents));
   }
 
-  // 8. Zahlung, bei Sonderbelegen keine
-  final p = r.payment;
-  if (p != null) {
+  // 8. Zahlungen in ihrer Reihenfolge, bei Sonderbelegen keine. "Gegeben"
+  // und "Rückgeld" nur, wenn die Bar-Zahlung die einzige ist.
+  for (final p in r.payments) {
     switch (p.kind) {
       case PaymentKind.cash:
         b.row('Bar', amount(p.amountCents));
-        if (p.givenCents != p.amountCents) {
+        if (r.payments.length == 1 && p.givenCents != p.amountCents) {
           b.row('Gegeben', amount(p.givenCents));
           b.row('Rückgeld', amount(p.changeCents));
         }

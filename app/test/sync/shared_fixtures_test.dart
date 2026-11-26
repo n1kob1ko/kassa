@@ -206,7 +206,7 @@ void main() {
             );
       }
     }
-    final p = original.payment!;
+    final p = original.payments.single;
     await db
         .into(db.paymentRows)
         .insert(

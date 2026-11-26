@@ -34,9 +34,9 @@ enum BonFilter {
       case BonFilter.all:
         return true;
       case BonFilter.cash:
-        return _isLiveSale(r) && r.payment?.kind == PaymentKind.cash;
+        return _isLiveSale(r) && r.cashPayment != null;
       case BonFilter.card:
-        return _isLiveSale(r) && r.payment?.kind == PaymentKind.card;
+        return _isLiveSale(r) && r.cardPayment != null;
       case BonFilter.voided:
         return r.isVoided || r.kind == ReceiptKind.voided;
     }
@@ -81,7 +81,7 @@ String receiptPillLabel(L10n l, Receipt r) {
   if (r.isVoided) return l.bonsVoided;
   final special = specialTitleText(l, r.kind);
   if (special != null) return special;
-  return r.payment?.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard;
+  return r.paymentKind == ReceiptPaymentKind.cash ? l.bonsCash : l.bonsCard;
 }
 
 /// Status-Pille: Zahlungsart ruhig, Storno und Storniert in Rot, die

@@ -49,7 +49,7 @@ class VoidQuestion extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
     final amount = formatEuro(receipt.totalCents);
-    final byCard = receipt.payment?.kind == PaymentKind.card;
+    final byCard = receipt.cardPayment != null;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),
