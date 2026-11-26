@@ -31,7 +31,7 @@
 ## Review Focus
 
 1. **Lange oder fremde Namen:** ein türkischer Name mit 45 Zeichen, ein arabischer Name, ein lateinischer Name in arabischer Zeile. Artikeltaste, Bon-Zeile und Küchenbon brechen um, nichts läuft über oder wird abgeschnitten (Tests in Aufgabe 9, 10 und 12).
-2. **Übersetzung, die nichts sagt:** nur Leerzeichen, gleich dem Namen, oder ein Name mit Leerzeichen am Rand. Gilt als "keine", das Feld im Browser zeigt sie nicht als übersetzt (Tests in Aufgabe 2 und 4).
+2. **Übersetzung, die nichts sagt:** nur Leerzeichen, oder ein Name mit Leerzeichen am Rand. Gilt als "keine", das Feld im Browser zeigt sie nicht als übersetzt. Eine Übersetzung gleich dem Namen ("Cola", "XXL") gilt dagegen als übersetzt (beim Bau geändert, sonst wird ein Betrieb nie fertig) (Tests in Aufgabe 2 und 4).
 3. **Küchendrucker aus, Bondrucker an (und umgekehrt):** der Verkauf ist fertig, der Kundenbon gedruckt, "Küchenbon nicht gedruckt" steht da, "Küchenbon drucken" druckt nach (Tests in Aufgabe 13 und 14).
 4. **Alter Bon, geänderte Speisekarte:** Küchenbon für einen Bon, dessen Artikel inzwischen stillgelegt oder umbenannt ist. Er kommt mit den Namen aus dem Bon (Test in Aufgabe 11).
 5. **Wechsel der Sprache mitten im Verkauf:** offener Bon bleibt, Beträge bleiben, kein Absturz; nach Neustart gilt die gewählte Sprache (Test in Aufgabe 7).
@@ -112,7 +112,7 @@ class TranslationRepository {
 final translationRepositoryProvider; final menuDictionaryProvider /* StreamProvider<MenuDictionary> */;
 ```
 
-Regeln der Datei (gleich in App und Server, gemeinsame Prüfdaten): Schlüssel `uebersetzungen` ganz oben, freiwillig, ein Objekt `Name -> {Kürzel -> Text}`. Name und Text werden am Rand von Leerzeichen befreit. Leerer Text oder Text gleich dem Namen zählt als "keine". Fehlermeldungen wörtlich:
+Regeln der Datei (gleich in App und Server, gemeinsame Prüfdaten): Schlüssel `uebersetzungen` ganz oben, freiwillig, ein Objekt `Name -> {Kürzel -> Text}`. Name und Text werden am Rand von Leerzeichen befreit. Leerer Text zählt als "keine"; ein Text gleich dem Namen wird gespeichert und zählt als übersetzt. Fehlermeldungen wörtlich:
 
 - kein Objekt: `"uebersetzungen" muss eine Liste von Namen mit ihren Übersetzungen sein.`
 - Name nicht in der Speisekarte (Kategorie, Artikel, Info, Gruppe, Option): `Übersetzung "<Name>": Diesen Namen gibt es in der Speisekarte nicht.`
@@ -180,7 +180,7 @@ POST /api/admin/businesses/:b/translations/import   (nur Anbieter)  body: Text d
      -> { changed: number }   | 422 { code: 'translations_invalid', problems: string[] }
 ```
 
-Abschnitte in dieser Reihenfolge: "Kategorien" (Namen der aktiven Kategorien), dann je aktive Kategorie ihr Name als Titel mit den Namen und Infos ihrer aktiven Artikel, dann "Auswahl und Extras" (Gruppen- und Optionsnamen der Vorlagen, die ein aktiver Artikel nutzt). Jeder Name steht nur beim ersten Vorkommen. `total` ist die Zahl der Zeilen, `done[lang]` die Zahl mit nicht leerer Übersetzung. `PUT`: `source` muss ein Name der Tabelle sein (sonst 404), `lang` aus den vier, `value` am Rand gekürzt, höchstens 200 Zeichen, gleich dem Namen zählt als leer; Zugriff wie bei Artikeln (`requireBusinessAccess`), Eintrag im Verlauf `translation.update`.
+Abschnitte in dieser Reihenfolge: "Kategorien" (Namen der aktiven Kategorien), dann je aktive Kategorie ihr Name als Titel mit den Namen und Infos ihrer aktiven Artikel, dann "Auswahl und Extras" (Gruppen- und Optionsnamen der Vorlagen, die ein aktiver Artikel nutzt). Jeder Name steht nur beim ersten Vorkommen. `total` ist die Zahl der Zeilen, `done[lang]` die Zahl mit nicht leerer Übersetzung. `PUT`: `source` muss ein Name der Tabelle sein (sonst 404), `lang` aus den vier, `value` am Rand gekürzt, höchstens 200 Zeichen, gleich dem Namen ist erlaubt und zählt als übersetzt; Zugriff wie bei Artikeln (`requireBusinessAccess`), Eintrag im Verlauf `translation.update`.
 
 - [ ] Tests: Aufbau und Reihenfolge der Abschnitte, doppelter Name nur einmal, stillgelegte fehlen; `PUT` setzt, ändert, löscht, zählt `done` neu, erhöht die Änderungs-Nummer nur bei Änderung; fremder Betrieb 404, Chef eines anderen Betriebs 403/404 wie bei Artikeln; `import` nur Anbieter, meldet Fehler wörtlich, ändert bei Fehlern nichts; Wert nur aus Leerzeichen zählt als leer.
 - [ ] Umsetzen, `npx vitest run test/translations.test.ts test/businesses.test.ts`, `npm run typecheck`. Commit.
