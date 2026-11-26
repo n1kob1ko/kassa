@@ -6,6 +6,7 @@ import { createBusiness } from './support/businesses.js';
 import {
   changedMenu,
   createPairingCode,
+  createStaff,
   expectSyncFixture,
   fixtureBusiness,
   normalize,
@@ -105,4 +106,20 @@ test('Senden: Paket aus push_request.json und die Antwort wie in push_response.j
   });
   expect(res.statusCode).toBe(200);
   expectSyncFixture('push_response', normalize(res.json()));
+});
+
+test('Senden: Paket aus push_request_v2.json (Bon v: 2) wird ganz angenommen', async () => {
+  // Ein eigener Betrieb: das Paket hat dieselben Kennungen wie push_request.json.
+  const other = (await createBusiness(f.app, provider.cookie)).id;
+  await createStaff(f.app, provider.cookie, other, { name: 'Chefin', role: 'chef', pin: '1234' });
+  const { token } = await pairDevice(f.app, provider.cookie, other);
+  const request = syncFixture('push_request_v2') as { deviceId: string; entries: object[] };
+  const res = await f.app.inject({
+    method: 'POST',
+    url: '/api/device/sync/push',
+    headers: { authorization: `Bearer ${token}` },
+    payload: request,
+  });
+  expect(res.statusCode).toBe(200);
+  expect(normalize(res.json())).toEqual(syncFixture('push_response'));
 });

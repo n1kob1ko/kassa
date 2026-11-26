@@ -8,14 +8,17 @@ import { handleItemChange } from './push_item_change.js';
 import { handleReport } from './push_report.js';
 import { requireRegister, type Register } from './guard.js';
 import {
+  asV1,
   certificateEntry,
   chainEntry,
   dayEntry,
   envelopeSchema,
   invalid,
   movementEntry,
+  paymentColumns,
   receiptEntry,
   type ParsedReceipt,
+  type ParsedReceiptV2,
 } from './push_schema.js';
 
 export const PUSH_BODY_LIMIT = 2 * 1024 * 1024;
@@ -166,25 +169,64 @@ async function writeRksvEntry(c: pg.PoolClient, ctx: EntryContext, receiptId: st
   await report(c, ctx, 'rksv_conflict', { receiptId, chain: e.chain, position: e.position });
 }
 
+/** Prüfwert eines Bons: über alle gelesenen Felder außer dem Eintrag der Signatur. */
+function receiptHash(r: ParsedReceipt): Buffer {
+  const { rksv: _rksv, ...withoutRksv } = r;
+  return contentHash(withoutRksv);
+}
+
+/** Was an den Summen eines Bons nicht passt. Der Bon wird trotzdem angenommen, das geht in den Bericht receipt_sums. */
+function sumProblems(v: ParsedReceipt): string[] {
+  const grossSum = v.lines.reduce((s, l) => s + l.gross['20'] + l.gross['10'] + l.gross['13'] + l.gross['0'] + l.gross['19'], 0);
+  const problems: string[] = [];
+  if (v.goodsCents + v.depositCents !== v.totalCents) problems.push('goods_plus_deposit');
+  if (grossSum !== v.goodsCents) problems.push('lines_gross');
+  if (v.v === 1) {
+    if (v.kind === 'sale' && v.payment !== null && v.payment.amountCents !== v.totalCents) problems.push('payment');
+    return problems;
+  }
+  return [...problems, ...sumProblemsV2(v)];
+}
+
+function sumProblemsV2(v: ParsedReceiptV2): string[] {
+  const problems: string[] = [];
+  const sum = (values: number[]) => values.reduce((s, n) => s + n, 0);
+  const paid = sum(v.payments.map((p) => p.amountCents));
+  if ((v.kind === 'sale' || v.kind === 'voided') && paid !== v.totalCents) problems.push('payments');
+  if (sum(v.payments.map((p) => p.tipCents)) !== v.tipCents) problems.push('tip');
+  if (sum(v.lines.map((l) => l.discountCents)) !== v.discountCents) problems.push('discount');
+  // Höchstens eine Kartenzahlung, und die an letzter Stelle.
+  const byPosition = [...v.payments].sort((a, b) => a.position - b.position);
+  const cards = byPosition.filter((p) => p.kind === 'card');
+  if (cards.length > 1 || (cards.length === 1 && byPosition.at(-1) !== cards[0])) problems.push('card_last');
+  return problems;
+}
+
 async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = receiptEntry.safeParse(body);
   if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.receipt;
-  const { rksv, ...withoutRksv } = v;
-  const hash = contentHash(withoutRksv);
+  const rksv = v.rksv;
+  const hash = receiptHash(v);
+  const sums = paymentColumns(v);
   // Das Original ist der Bon, wie er kam (auch Felder, die der Server noch nicht kennt), der Prüfwert hängt an den gelesenen.
   const payload = JSON.stringify((body as { receipt: unknown }).receipt);
   const inserted = await c.query(
     `insert into receipts (business_id, id, register_id, device_id, number, created_at, kind, staff_id, staff_name, business_day_id,
-                           voids_receipt_id, goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload, received_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) on conflict do nothing`,
+                           voids_receipt_id, goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload, received_at,
+                           cash_cents, card_cents, tip_cents, discount_cents)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+     on conflict do nothing`,
     [ctx.register.businessId, v.id, ctx.register.id, ctx.deviceId, v.number, v.createdAt, v.kind, v.staffId, v.staffName,
-      v.businessDayId, v.voidsReceiptId, v.goodsCents, v.depositCents, v.totalCents, v.payment?.kind ?? null, v.test,
-      hash, payload, ctx.at],
+      v.businessDayId, v.voidsReceiptId, v.goodsCents, v.depositCents, v.totalCents, sums.paymentKind, v.test,
+      hash, payload, ctx.at, sums.cashCents, sums.cardCents, sums.tipCents, sums.discountCents],
   );
   if (inserted.rowCount !== 1) {
-    const existing = await c.query<Existing>('select content_hash from receipts where id = $1', [v.id]);
-    if (!existing.rows[0]!.content_hash.equals(hash)) {
+    const existing = (await c.query<Existing>('select content_hash from receipts where id = $1', [v.id])).rows[0]!.content_hash;
+    // Ein Tablet, das von 1.10.0 auf 1.11.0 ging, schickt einen schon gesendeten Bon noch einmal als v: 2.
+    const old = v.v === 2 ? asV1(v) : null;
+    const same = existing.equals(hash) || (old !== null && existing.equals(receiptHash(old)));
+    if (!same) {
       await report(c, ctx, 'receipt_conflict', { receiptId: v.id, number: v.number });
       return CONFLICT;
     }
@@ -192,22 +234,21 @@ async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown)
     return DUPLICATE;
   }
 
-  for (const l of v.lines) {
+  // Zeilen von v: 1 haben keinen Rabatt.
+  const lines: ParsedReceiptV2['lines'] = v.v === 2 ? v.lines : v.lines.map((l) => ({ ...l, discountCents: 0, discount: null }));
+  for (const l of lines) {
     await c.query(
       `insert into receipt_lines (business_id, receipt_id, position, item_id, name, info, unit_price_cents, quantity, unit_deposit_cents,
-                                  gross20_cents, gross10_cents, gross13_cents, gross0_cents, gross19_cents, options)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+                                  gross20_cents, gross10_cents, gross13_cents, gross0_cents, gross19_cents, options, discount_cents, discount)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [ctx.register.businessId, v.id, l.position, l.itemId, l.name, l.info, l.unitPriceCents, l.quantity, l.unitDepositCents,
-        l.gross['20'], l.gross['10'], l.gross['13'], l.gross['0'], l.gross['19'], JSON.stringify(l.options)],
+        l.gross['20'], l.gross['10'], l.gross['13'], l.gross['0'], l.gross['19'], JSON.stringify(l.options),
+        l.discountCents, l.discount === null ? null : JSON.stringify(l.discount)],
     );
   }
   if (rksv) await writeRksvEntry(c, ctx, v.id, rksv);
 
-  const grossSum = v.lines.reduce((s, l) => s + l.gross['20'] + l.gross['10'] + l.gross['13'] + l.gross['0'] + l.gross['19'], 0);
-  const problems: string[] = [];
-  if (v.goodsCents + v.depositCents !== v.totalCents) problems.push('goods_plus_deposit');
-  if (grossSum !== v.goodsCents) problems.push('lines_gross');
-  if (v.kind === 'sale' && v.payment !== null && v.payment.amountCents !== v.totalCents) problems.push('payment');
+  const problems = sumProblems(v);
   if (problems.length > 0) await report(c, ctx, 'receipt_sums', { receiptId: v.id, number: v.number, problems });
   return ACCEPTED;
 }

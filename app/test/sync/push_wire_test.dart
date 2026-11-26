@@ -9,8 +9,12 @@ import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/sync/push_wire.dart';
 
+import '../support/sales.dart' show TestShop, cart;
+
+/// Das Paket eines Tablets mit Bon `v: 2` (die App baut seit 1.11.0 nur
+/// noch diese Form; `push_request.json` ist das Paket von 1.10.0).
 Map<String, dynamic> pushRequest() => jsonDecode(
-  File('../shared/fixtures/sync/push_request.json').readAsStringSync(),
+  File('../shared/fixtures/sync/push_request_v2.json').readAsStringSync(),
 ) as Map<String, dynamic>;
 
 /// Schreibt die Daten eines Bons aus der Beispieldatei in die Tabellen.
@@ -20,6 +24,7 @@ Future<void> insertReceiptOf(
   bool withProtocol = true,
 }) async {
   DateTime time(String s) => DateTime.parse(s);
+  final discount = r['discount'] as Map<String, dynamic>?;
   await db
       .into(db.receiptRows)
       .insert(
@@ -35,10 +40,16 @@ Future<void> insertReceiptOf(
           goodsCents: r['goodsCents'] as int,
           depositCents: r['depositCents'] as int,
           totalCents: r['totalCents'] as int,
+          tipCents: Value(r['tipCents'] as int),
+          discountCents: Value(r['discountCents'] as int),
+          discountPercent: Value(discount?['percent'] as int?),
+          discountAmountCents: Value(discount?['amountCents'] as int? ?? 0),
+          discountReason: Value(discount?['reason'] as String?),
         ),
       );
   for (final l in (r['lines'] as List).cast<Map<String, dynamic>>()) {
     final gross = l['gross'] as Map<String, dynamic>;
+    final own = l['discount'] as Map<String, dynamic>?;
     await db
         .into(db.receiptLineRows)
         .insert(
@@ -56,6 +67,10 @@ Future<void> insertReceiptOf(
             gross13Cents: Value(gross['13'] as int),
             gross0Cents: Value(gross['0'] as int),
             gross19Cents: Value(gross['19'] as int),
+            discountCents: Value(l['discountCents'] as int),
+            ownDiscountPercent: Value(own?['percent'] as int?),
+            ownDiscountCents: Value(own?['amountCents'] as int? ?? 0),
+            ownDiscountReason: Value(own?['reason'] as String?),
           ),
         );
     final options = (l['options'] as List).cast<Map<String, dynamic>>();
@@ -74,17 +89,22 @@ Future<void> insertReceiptOf(
           );
     }
   }
-  final p = r['payment'] as Map<String, dynamic>?;
-  if (p != null) {
+  // Rückwärts eingetragen: die Reihenfolge im Abgleich kommt aus `position`.
+  final payments = (r['payments'] as List).cast<Map<String, dynamic>>();
+  for (final p in payments.reversed) {
     await db
         .into(db.paymentRows)
         .insert(
           PaymentRowsCompanion.insert(
             receiptId: r['id'] as String,
+            position: Value(p['position'] as int),
             kind: p['kind'] as String,
             amountCents: p['amountCents'] as int,
             givenCents: p['givenCents'] as int,
             changeCents: p['changeCents'] as int,
+            tipCents: Value(p['tipCents'] as int),
+            tipStaffId: Value(p['tipStaffId'] as String?),
+            tipStaffName: Value(p['tipStaffName'] as String?),
             provider: Value(p['provider'] as String?),
             providerTxCode: Value(p['providerTxCode'] as String?),
             cardScheme: Value(p['cardScheme'] as String?),
@@ -249,7 +269,7 @@ void main() {
     );
   });
 
-  test('Sonderbeleg hat payment null und businessDayId null', () async {
+  test('Sonderbeleg hat payments leer und businessDayId null', () async {
     final base = entries[4]['receipt'] as Map<String, dynamic>;
     await insertReceiptOf(db, {
       ...base,
@@ -259,8 +279,11 @@ void main() {
       'businessDayId': null,
       'goodsCents': 0,
       'totalCents': 0,
+      'tipCents': 0,
+      'discountCents': 0,
+      'discount': null,
       'lines': <Object?>[],
-      'payment': null,
+      'payments': <Object?>[],
       'rksv': null,
     });
     final built = await payloads.build(
@@ -268,10 +291,13 @@ void main() {
     );
     final r = built!['receipt'] as Map<String, dynamic>;
     expect(r['kind'], 'zero');
-    expect(r['payment'], isNull);
+    expect(r['payments'], isEmpty);
     expect(r['businessDayId'], isNull);
     expect(r['lines'], isEmpty);
-    expect(r.containsKey('payment'), isTrue);
+    expect(r['discount'], isNull);
+    expect(r.containsKey('payments'), isTrue);
+    expect(r.containsKey('payment'), isFalse);
+    expect(r.containsKey('discount'), isTrue);
     expect(r.containsKey('businessDayId'), isTrue);
   });
 
@@ -388,6 +414,66 @@ void main() {
       ),
     );
     expect(jsonDecode(jsonEncode(built)), expected);
+  });
+
+  test('Bon aus cart mit Bar-Teil 1000 und Trinkgeld 80 geht als v: 2 mit '
+      'zwei Zahlungen hinaus', () async {
+    final shop = await TestShop.open();
+    addTearDown(shop.close);
+    await shop.receipts.finalizeCardSale(
+      saleId: 'gemischt',
+      cart: cart,
+      staff: shop.anna,
+      provider: 'sumup',
+      txCode: 'TX-1',
+      cardScheme: 'VISA',
+      cardLast4: '4242',
+      cashPartCents: 1000,
+      tipCents: 80,
+    );
+    final built = await PushPayloads(shop.db)
+        .build(entry(1, 'receipt', 'gemischt'));
+    final r = jsonDecode(jsonEncode(built))['receipt'] as Map<String, dynamic>;
+    expect(r['v'], 2);
+    expect(r.containsKey('payment'), isFalse);
+    expect(r['totalCents'], 1820);
+    expect(r['tipCents'], 80);
+    expect(r['discountCents'], 0);
+    expect(r['discount'], isNull);
+    expect(r['payments'], [
+      {
+        'position': 0,
+        'kind': 'cash',
+        'amountCents': 1000,
+        'givenCents': 1000,
+        'changeCents': 0,
+        'tipCents': 0,
+        'tipStaffId': null,
+        'tipStaffName': null,
+        'provider': null,
+        'providerTxCode': null,
+        'cardScheme': null,
+        'cardLast4': null,
+      },
+      {
+        'position': 1,
+        'kind': 'card',
+        'amountCents': 820,
+        'givenCents': 0,
+        'changeCents': 0,
+        'tipCents': 80,
+        'tipStaffId': shop.anna.id,
+        'tipStaffName': 'Anna',
+        'provider': 'sumup',
+        'providerTxCode': 'TX-1',
+        'cardScheme': 'VISA',
+        'cardLast4': '4242',
+      },
+    ]);
+    for (final l in (r['lines'] as List).cast<Map<String, dynamic>>()) {
+      expect(l['discountCents'], 0);
+      expect(l['discount'], isNull);
+    }
   });
 
   test('Bericht, den es nicht mehr gibt, ergibt null', () async {

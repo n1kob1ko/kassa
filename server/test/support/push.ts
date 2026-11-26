@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
+import { withBusiness } from '../../src/db/tenant.js';
+import type { TestApp } from './app.js';
+import { syncFixture } from './device.js';
 
 export type PushResult = { seq: number; status: string; reason?: string };
 
@@ -52,6 +55,38 @@ export function sampleReceipt(overrides: Record<string, unknown> = {}): Record<s
     rksv: null,
     ...overrides,
   };
+}
+
+/**
+ * Ein Bon in der Form `v: 2`: der Bon aus `push_request_v2.json` (zwei Zahlungen, Trinkgeld, Rabatte), mit neuer Id und
+ * ohne Eintrag der Signatur.
+ */
+export function sampleReceiptV2(overrides: Record<string, unknown> = {}): Record<string, any> {
+  const request = syncFixture('push_request_v2') as { entries: { kind: string; receipt?: Record<string, any> }[] };
+  const receipt = request.entries.find((e) => e.kind === 'receipt')!.receipt!;
+  return { ...receipt, id: randomUUID(), businessDayId: randomUUID(), rksv: null, ...overrides };
+}
+
+/** Derselbe Bon wie [v1] in der Form `v: 2`: eine Zahlung an Stelle 0, kein Trinkgeld, kein Rabatt. */
+export function asV2(v1: Record<string, any>): Record<string, any> {
+  const { payment, ...rest } = v1;
+  return {
+    ...rest,
+    v: 2,
+    tipCents: 0,
+    discountCents: 0,
+    discount: null,
+    lines: v1.lines.map((l: object) => ({ ...l, discountCents: 0, discount: null })),
+    payments: payment === null ? [] : [{ position: 0, ...payment, tipCents: 0, tipStaffId: null, tipStaffName: null }],
+  };
+}
+
+/** Die Arten der Berichte, die der Server für den Betrieb geschrieben hat, sortiert. */
+export async function reportKinds(a: TestApp, businessId: string): Promise<string[]> {
+  const rows = await withBusiness(a.db, businessId, async (c) =>
+    (await c.query<{ kind: string }>(`select kind from reports where source = 'server' order by kind`)).rows,
+  );
+  return rows.map((r) => r.kind);
 }
 
 /** Ein offener Tag (der Inhalt von `day`). */

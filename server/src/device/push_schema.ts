@@ -116,27 +116,138 @@ const paymentSchema = z.object({
   cardLast4: nullableText,
 });
 
-export const RECEIPT_KINDS = ['sale', 'voided', 'start', 'month', 'year', 'zero', 'collective', 'closing'] as const;
-
-export const receiptEntry = z.object({
-  receipt: z.object({
-    v: z.literal(1),
-    id: uuid,
-    number: z.number().int().min(0).max(2_000_000_000),
-    createdAt: time,
-    staffId: text,
-    staffName: text,
-    businessDayId: uuid.nullable(),
-    kind: z.enum(RECEIPT_KINDS),
-    voidsReceiptId: uuid.nullable(),
-    goodsCents: cents,
-    depositCents: cents,
-    totalCents: cents,
-    test: z.boolean(),
-    lines: z.array(lineSchema).max(2000),
-    payment: paymentSchema.nullable(),
-    rksv: rksvSchema.nullable(),
-  }),
+/** Ein Rabatt: Prozent (1 bis 100) oder `null` bei festem Betrag, der Betrag in Cent und der Grund. */
+const discountSchema = z.object({
+  percent: z.number().int().min(1).max(100).nullable(),
+  amountCents: cents,
+  reason: text,
 });
 
-export type ParsedReceipt = z.infer<typeof receiptEntry>['receipt'];
+/** Eine Zeile in v: 2: wie in v: 1, dazu der ganze Rabatt der Zeile und ihr eigener Rabatt (oder `null`). */
+const lineV2Schema = lineSchema.extend({
+  discountCents: cents,
+  discount: discountSchema.nullable(),
+});
+
+/** Eine Zahlung in v: 2: nur bar oder Karte, mit Stelle und Trinkgeld. */
+const paymentV2Schema = z.object({
+  position: z.number().int().min(0).max(100),
+  kind: z.enum(['cash', 'card']),
+  amountCents: cents,
+  givenCents: nullableCents,
+  changeCents: nullableCents,
+  tipCents: cents,
+  tipStaffId: nullableText,
+  tipStaffName: nullableText,
+  provider: nullableText,
+  providerTxCode: nullableText,
+  cardScheme: nullableText,
+  cardLast4: nullableText,
+});
+
+export const RECEIPT_KINDS = ['sale', 'voided', 'start', 'month', 'year', 'zero', 'collective', 'closing'] as const;
+
+/** Was v: 1 und v: 2 gleich haben. */
+const receiptBase = {
+  id: uuid,
+  number: z.number().int().min(0).max(2_000_000_000),
+  createdAt: time,
+  staffId: text,
+  staffName: text,
+  businessDayId: uuid.nullable(),
+  kind: z.enum(RECEIPT_KINDS),
+  voidsReceiptId: uuid.nullable(),
+  goodsCents: cents,
+  depositCents: cents,
+  totalCents: cents,
+  test: z.boolean(),
+  rksv: rksvSchema.nullable(),
+};
+
+/** Bon von Tablets bis 1.10.0: eine Zahlung oder keine. */
+const receiptV1 = z.object({
+  v: z.literal(1),
+  ...receiptBase,
+  lines: z.array(lineSchema).max(2000),
+  payment: paymentSchema.nullable(),
+});
+
+/** Bon ab 1.11.0: Zahlungen als Liste, Trinkgeld und Rabatte. `goodsCents` ist der Warenwert nach Rabatt. */
+const receiptV2 = z.object({
+  v: z.literal(2),
+  ...receiptBase,
+  tipCents: cents,
+  discountCents: cents,
+  discount: discountSchema.nullable(),
+  lines: z.array(lineV2Schema).max(2000),
+  payments: z.array(paymentV2Schema).max(20),
+});
+
+export const receiptEntry = z.object({
+  receipt: z.discriminatedUnion('v', [receiptV1, receiptV2]),
+});
+
+export type ParsedReceiptV1 = z.infer<typeof receiptV1>;
+export type ParsedReceiptV2 = z.infer<typeof receiptV2>;
+export type ParsedReceipt = ParsedReceiptV1 | ParsedReceiptV2;
+
+const sum = (values: number[]) => values.reduce((s, n) => s + n, 0);
+
+/** Zahlungsart und Summen für die Spalten von `receipts`. */
+export function paymentColumns(r: ParsedReceipt): {
+  paymentKind: 'cash' | 'card' | 'mixed' | null;
+  cashCents: number;
+  cardCents: number;
+  tipCents: number;
+  discountCents: number;
+} {
+  if (r.v === 1) {
+    // Wie Migration 0004 für alte Bons: bar ist alles bar, jede andere Art alles Karte.
+    if (r.payment === null) return { paymentKind: null, cashCents: 0, cardCents: 0, tipCents: 0, discountCents: 0 };
+    const cash = r.payment.kind === 'cash';
+    return {
+      paymentKind: cash ? 'cash' : 'card',
+      cashCents: cash ? r.totalCents : 0,
+      cardCents: cash ? 0 : r.totalCents,
+      tipCents: 0,
+      discountCents: 0,
+    };
+  }
+  const of = (kind: 'cash' | 'card') => r.payments.filter((p) => p.kind === kind);
+  const cash = of('cash');
+  const card = of('card');
+  const paymentKind = cash.length > 0 && card.length > 0 ? 'mixed' : cash.length > 0 ? 'cash' : card.length > 0 ? 'card' : null;
+  return {
+    paymentKind,
+    cashCents: sum(cash.map((p) => p.amountCents)),
+    cardCents: sum(card.map((p) => p.amountCents)),
+    tipCents: r.tipCents,
+    discountCents: r.discountCents,
+  };
+}
+
+/** Ein v2-Bon in der Form von v1, wenn er sich so schreiben lässt (höchstens eine Zahlung, kein Trinkgeld, kein Rabatt), sonst null. */
+export function asV1(r: ParsedReceiptV2): ParsedReceiptV1 | null {
+  if (r.payments.length > 1 || r.tipCents !== 0 || r.payments.some((p) => p.tipCents !== 0)) return null;
+  if (r.discountCents !== 0 || r.discount !== null || r.lines.some((l) => l.discountCents !== 0 || l.discount !== null)) return null;
+  // Ohne die Felder, die v: 1 nicht kennt; was übrig bleibt, ist genau ein gelesener v1-Bon.
+  const { tipCents, discountCents, discount, lines, payments, ...base } = r;
+  const p = payments[0];
+  return {
+    ...base,
+    v: 1,
+    lines: lines.map(({ discountCents, discount, ...line }) => line),
+    payment: p
+      ? {
+          kind: p.kind,
+          amountCents: p.amountCents,
+          givenCents: p.givenCents,
+          changeCents: p.changeCents,
+          provider: p.provider,
+          providerTxCode: p.providerTxCode,
+          cardScheme: p.cardScheme,
+          cardLast4: p.cardLast4,
+        }
+      : null,
+  };
+}

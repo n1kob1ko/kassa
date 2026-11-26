@@ -1,7 +1,9 @@
 // Nachrichten zum Senden (Teil C2): ein Eintrag der Liste "noch zu senden"
 // wird beim Senden aus den Tabellen gelesen und in die Form gebracht, die der
 // Server erwartet. Das Gegenstück auf dem Server ist `push_schema.ts`; beide
-// prüfen sich an `shared/fixtures/sync/push_request.json`.
+// prüfen sich an `shared/fixtures/sync/push_request_v2.json` (Bon `v: 2`).
+// `push_request.json` ist das Paket von 1.10.0 (Bon `v: 1`), das der Server
+// weiter annimmt.
 
 import 'dart:convert';
 
@@ -209,9 +211,11 @@ class PushPayloads {
                 (t) => OrderingTerm.asc(t.position),
               ]))
             .get();
-    final payment = await (_db.select(
-      _db.paymentRows,
-    )..where((t) => t.receiptId.equals(id))).getSingleOrNull();
+    final payments =
+        await (_db.select(_db.paymentRows)
+              ..where((t) => t.receiptId.equals(id))
+              ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+            .get();
     final stamp = await (_db.select(_db.rksvEntryRows).join([
       innerJoin(
         _db.rksvChainRows,
@@ -223,7 +227,7 @@ class PushPayloads {
 
     return {
       'receipt': {
-        'v': 1,
+        'v': 2,
         'id': row.id,
         'number': row.number,
         'createdAt': _iso(row.createdAt),
@@ -238,6 +242,15 @@ class PushPayloads {
         // Ein Bon zählt nur als echt, wenn er in einer Kette mit `live`
         // steht. Ohne Signatur und in einer Probe-Kette ist er ein Testbon.
         'test': chain?.mode != 'live',
+        'tipCents': row.tipCents,
+        'discountCents': row.discountCents,
+        'discount': row.discountReason == null
+            ? null
+            : _discount(
+                row.discountPercent,
+                row.discountAmountCents,
+                row.discountReason!,
+              ),
         'lines': [
           for (final l in lines)
             {
@@ -264,20 +277,33 @@ class PushPayloads {
                       'surchargeCents': o.surchargeCents,
                     },
               ],
+              'discountCents': l.discountCents,
+              'discount': l.ownDiscountReason == null
+                  ? null
+                  : _discount(
+                      l.ownDiscountPercent,
+                      l.ownDiscountCents,
+                      l.ownDiscountReason!,
+                    ),
             },
         ],
-        'payment': payment == null
-            ? null
-            : {
-                'kind': payment.kind,
-                'amountCents': payment.amountCents,
-                'givenCents': payment.givenCents,
-                'changeCents': payment.changeCents,
-                'provider': payment.provider,
-                'providerTxCode': payment.providerTxCode,
-                'cardScheme': payment.cardScheme,
-                'cardLast4': payment.cardLast4,
-              },
+        'payments': [
+          for (final p in payments)
+            {
+              'position': p.position,
+              'kind': p.kind,
+              'amountCents': p.amountCents,
+              'givenCents': p.givenCents,
+              'changeCents': p.changeCents,
+              'tipCents': p.tipCents,
+              'tipStaffId': p.tipStaffId,
+              'tipStaffName': p.tipStaffName,
+              'provider': p.provider,
+              'providerTxCode': p.providerTxCode,
+              'cardScheme': p.cardScheme,
+              'cardLast4': p.cardLast4,
+            },
+        ],
         'rksv': entry == null
             ? null
             : {
@@ -290,4 +316,12 @@ class PushPayloads {
       },
     };
   }
+
+  /// Ein Rabatt im Abgleich: Prozent oder `null` bei festem Betrag, Betrag
+  /// in Cent und Grund. Ohne Grund gibt es keinen Rabatt (dann `null`).
+  static Map<String, Object?> _discount(
+    int? percent,
+    int amountCents,
+    String reason,
+  ) => {'percent': percent, 'amountCents': amountCents, 'reason': reason};
 }

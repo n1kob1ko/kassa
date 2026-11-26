@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { migrate, restrictAppRole } from '../src/db/migrate.js';
+import { readdir, readFile } from 'node:fs/promises';
 import { createTestDb, TEST_APP_PASSWORD, withDatabase } from './support/db.js';
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
@@ -17,6 +18,39 @@ async function owner(sql: string, params: unknown[] = []): Promise<pg.QueryResul
     return await c.query(sql, params);
   } finally {
     await c.end();
+  }
+}
+
+const MIGRATIONS = new URL('../migrations/', import.meta.url);
+
+/** Wendet die noch fehlenden Migrationen bis einschließlich [last] an, wie migrate es tut. Gibt ihre Namen zurück. */
+async function migrateTo(c: pg.Client, last: string): Promise<string[]> {
+  await c.query('create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())');
+  const done = new Set((await c.query<{ name: string }>('select name from schema_migrations')).rows.map((r) => r.name));
+  const names = (await readdir(MIGRATIONS)).filter((n) => n.endsWith('.sql') && n <= last && !done.has(n)).sort();
+  for (const name of names) {
+    await c.query('begin');
+    await c.query(await readFile(new URL(name, MIGRATIONS), 'utf8'));
+    await c.query('insert into schema_migrations (name) values ($1)', [name]);
+    await c.query('commit');
+  }
+  return names;
+}
+
+/** Eine leere Datenbank nur für einen Test, mit einer Verbindung als Besitzer. */
+async function withFreshDb(run: (c: pg.Client) => Promise<void>): Promise<void> {
+  const database = `kassa_test_mig_${randomBytes(6).toString('hex')}`;
+  await owner(`create database ${database}`);
+  try {
+    const c = new pg.Client({ connectionString: withDatabase(t.ownerUrl, database) });
+    await c.connect();
+    try {
+      await run(c);
+    } finally {
+      await c.end();
+    }
+  } finally {
+    await owner(`drop database if exists ${database} with (force)`);
   }
 }
 
@@ -114,7 +148,7 @@ test('0002 läuft auf einer Datenbank mit Stand 0001 und lässt vorhandene Artik
         [biz],
       );
       const applied = await migrate(url, { appPassword: TEST_APP_PASSWORD });
-      expect(applied).toEqual(['0002_sync.sql', '0003_translations.sql']);
+      expect(applied).toEqual(['0002_sync.sql', '0003_translations.sql', '0004_payments.sql']);
       const item = await c.query('select name, price_cents, photo_file_id from items where id = $1', ['huhn-bowl']);
       expect(item.rows).toEqual([{ name: 'Huhn Bowl', price_cents: 990, photo_file_id: null }]);
       const biz2 = await c.query('select time_zone from businesses where id = $1', [biz]);
@@ -125,4 +159,53 @@ test('0002 läuft auf einer Datenbank mit Stand 0001 und lässt vorhandene Artik
   } finally {
     await owner(`drop database if exists ${database} with (force)`);
   }
+});
+
+test('0004 füllt alte Bons aus payment_kind und total_cents, danach ist receipts wieder unveränderlich', async () => {
+  await withFreshDb(async (c) => {
+    // Stand 0003 herstellen, drei Bons direkt einfügen: bar 990, Karte 1250, Sonderbeleg 0 ohne Zahlung.
+    await migrateTo(c, '0003_translations.sql');
+    const b = await c.query<{ id: string }>(`insert into businesses (name, change_seq) values ('Alt', nextval('change_seq')) returning id`);
+    const biz = b.rows[0]!.id;
+    const receipt = (number: number, kind: string, total: number, paymentKind: string | null) =>
+      c.query(
+        `insert into receipts (business_id, id, register_id, device_id, number, created_at, kind, staff_id, staff_name,
+                               goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload)
+         values ($1, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), $2, now(), $3, 's', 'S', $4, 0, $4, $5, true, '\\x00', '{}')`,
+        [biz, number, kind, total, paymentKind],
+      );
+    await receipt(1, 'sale', 990, 'cash');
+    await receipt(2, 'sale', 1250, 'card');
+    await receipt(3, 'zero', 0, null);
+
+    expect(await migrateTo(c, '0004_payments.sql')).toEqual(['0004_payments.sql']);
+    expect((await c.query('select number, cash_cents, card_cents, tip_cents, discount_cents from receipts order by number')).rows).toEqual([
+      { number: 1, cash_cents: 990, card_cents: 0, tip_cents: 0, discount_cents: 0 },
+      { number: 2, cash_cents: 0, card_cents: 1250, tip_cents: 0, discount_cents: 0 },
+      { number: 3, cash_cents: 0, card_cents: 0, tip_cents: 0, discount_cents: 0 },
+    ]);
+    await expect(c.query('update receipts set cash_cents = 1')).rejects.toThrow(/unveränderlich/);
+    await expect(c.query('delete from receipts')).rejects.toThrow(/unveränderlich/);
+  });
+});
+
+test('0004 läuft auf einer leeren Datenbank mit Stand 0003, die neuen Spalten haben ihre Vorgaben', async () => {
+  await withFreshDb(async (c) => {
+    await migrateTo(c, '0003_translations.sql');
+    expect(await migrateTo(c, '0004_payments.sql')).toEqual(['0004_payments.sql']);
+    const cols = await c.query(
+      `select table_name, column_name, data_type, is_nullable, column_default from information_schema.columns
+        where table_name in ('receipts', 'receipt_lines')
+          and column_name in ('cash_cents', 'card_cents', 'tip_cents', 'discount_cents', 'discount')
+        order by table_name, column_name`,
+    );
+    expect(cols.rows).toEqual([
+      { table_name: 'receipt_lines', column_name: 'discount', data_type: 'jsonb', is_nullable: 'YES', column_default: null },
+      { table_name: 'receipt_lines', column_name: 'discount_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { table_name: 'receipts', column_name: 'card_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { table_name: 'receipts', column_name: 'cash_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { table_name: 'receipts', column_name: 'discount_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { table_name: 'receipts', column_name: 'tip_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+    ]);
+  });
 });

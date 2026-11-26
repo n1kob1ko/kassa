@@ -3,7 +3,7 @@
   "timeZone": "UTC",
   "receipts": [
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000001",
       "number": 1,
       "createdAt": "2025-11-03T10:00:00.000Z",
@@ -16,6 +16,9 @@
       "depositCents": 50,
       "totalCents": 1820,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -32,7 +35,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -60,23 +65,31 @@
               "optionName": "Nudeln",
               "surchargeCents": 0
             }
-          ]
+          ],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 1820,
-        "givenCents": 5000,
-        "changeCents": 3180,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 1820,
+          "givenCents": 5000,
+          "changeCents": 3180,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000002",
       "number": 2,
       "createdAt": "2025-11-29T12:00:00.000Z",
@@ -89,6 +102,9 @@
       "depositCents": 25,
       "totalCents": 965,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -105,7 +121,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -122,23 +140,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "card",
-        "amountCents": 965,
-        "givenCents": 0,
-        "changeCents": 0,
-        "provider": "sumup",
-        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000002",
-        "cardScheme": "VISA",
-        "cardLast4": "4242"
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "card",
+          "amountCents": 965,
+          "givenCents": 0,
+          "changeCents": 0,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": "sumup",
+          "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000002",
+          "cardScheme": "VISA",
+          "cardLast4": "4242"
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000003",
       "number": 3,
       "createdAt": "2025-11-30T23:30:00.000Z",
@@ -151,6 +177,9 @@
       "depositCents": 50,
       "totalCents": 630,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -167,23 +196,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 630,
-        "givenCents": 5000,
-        "changeCents": 4370,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 630,
+          "givenCents": 5000,
+          "changeCents": 4370,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000004",
       "number": 4,
       "createdAt": "2025-12-05T09:00:00.000Z",
@@ -196,6 +233,9 @@
       "depositCents": 0,
       "totalCents": 990,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -223,23 +263,31 @@
               "optionName": "Reis",
               "surchargeCents": 0
             }
-          ]
+          ],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 990,
-        "givenCents": 5000,
-        "changeCents": 4010,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 990,
+          "givenCents": 5000,
+          "changeCents": 4010,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000005",
       "number": 5,
       "createdAt": "2025-12-06T10:00:00.000Z",
@@ -252,6 +300,9 @@
       "depositCents": -50,
       "totalCents": -630,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -268,23 +319,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": -630,
-        "givenCents": 0,
-        "changeCents": 0,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": -630,
+          "givenCents": 0,
+          "changeCents": 0,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000006",
       "number": 6,
       "createdAt": "2025-12-31T23:59:00.000Z",
@@ -297,6 +356,9 @@
       "depositCents": 25,
       "totalCents": 965,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -313,7 +375,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -330,23 +394,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "card",
-        "amountCents": 965,
-        "givenCents": 0,
-        "changeCents": 0,
-        "provider": "sumup",
-        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000006",
-        "cardScheme": "VISA",
-        "cardLast4": "4242"
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "card",
+          "amountCents": 965,
+          "givenCents": 0,
+          "changeCents": 0,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": "sumup",
+          "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000006",
+          "cardScheme": "VISA",
+          "cardLast4": "4242"
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000007",
       "number": 7,
       "createdAt": "2026-02-01T00:01:00.000Z",
@@ -359,6 +431,9 @@
       "depositCents": 50,
       "totalCents": 1820,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -375,7 +450,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -403,23 +480,31 @@
               "optionName": "Nudeln",
               "surchargeCents": 0
             }
-          ]
+          ],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 1820,
-        "givenCents": 5000,
-        "changeCents": 3180,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 1820,
+          "givenCents": 5000,
+          "changeCents": 3180,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000008",
       "number": 8,
       "createdAt": "2026-02-14T18:00:00.000Z",
@@ -432,6 +517,9 @@
       "depositCents": 25,
       "totalCents": 965,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -448,7 +536,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -465,23 +555,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "card",
-        "amountCents": 965,
-        "givenCents": 0,
-        "changeCents": 0,
-        "provider": "sumup",
-        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000008",
-        "cardScheme": "VISA",
-        "cardLast4": "4242"
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "card",
+          "amountCents": 965,
+          "givenCents": 0,
+          "changeCents": 0,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": "sumup",
+          "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000008",
+          "cardScheme": "VISA",
+          "cardLast4": "4242"
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000009",
       "number": 9,
       "createdAt": "2026-02-14T19:00:00.000Z",
@@ -494,6 +592,9 @@
       "depositCents": 0,
       "totalCents": 990,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -521,23 +622,31 @@
               "optionName": "Reis",
               "surchargeCents": 0
             }
-          ]
+          ],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 990,
-        "givenCents": 5000,
-        "changeCents": 4010,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 990,
+          "givenCents": 5000,
+          "changeCents": 4010,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000010",
       "number": 10,
       "createdAt": "2026-02-28T22:00:00.000Z",
@@ -550,6 +659,9 @@
       "depositCents": 50,
       "totalCents": 630,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -566,23 +678,31 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 630,
-        "givenCents": 5000,
-        "changeCents": 4370,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 630,
+          "givenCents": 5000,
+          "changeCents": 4370,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000011",
       "number": 11,
       "createdAt": "2025-12-15T08:00:00.000Z",
@@ -595,12 +715,15 @@
       "depositCents": 0,
       "totalCents": 0,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [],
-      "payment": null,
+      "payments": [],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000012",
       "number": 12,
       "createdAt": "2026-03-02T09:00:00.000Z",
@@ -613,6 +736,9 @@
       "depositCents": 50,
       "totalCents": 1820,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -629,7 +755,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -657,23 +785,31 @@
               "optionName": "Nudeln",
               "surchargeCents": 0
             }
-          ]
+          ],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "cash",
-        "amountCents": 1820,
-        "givenCents": 5000,
-        "changeCents": 3180,
-        "provider": null,
-        "providerTxCode": null,
-        "cardScheme": null,
-        "cardLast4": null
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "cash",
+          "amountCents": 1820,
+          "givenCents": 5000,
+          "changeCents": 3180,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": null,
+          "providerTxCode": null,
+          "cardScheme": null,
+          "cardLast4": null
+        }
+      ],
       "rksv": null
     },
     {
-      "v": 1,
+      "v": 2,
       "id": "eeeeeeee-0000-4000-8000-000000000013",
       "number": 13,
       "createdAt": "2026-03-10T12:00:00.000Z",
@@ -686,6 +822,9 @@
       "depositCents": 25,
       "totalCents": 965,
       "test": true,
+      "tipCents": 0,
+      "discountCents": 0,
+      "discount": null,
       "lines": [
         {
           "position": 0,
@@ -702,7 +841,9 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         },
         {
           "position": 1,
@@ -719,19 +860,27 @@
             "0": 0,
             "19": 0
           },
-          "options": []
+          "options": [],
+          "discountCents": 0,
+          "discount": null
         }
       ],
-      "payment": {
-        "kind": "card",
-        "amountCents": 965,
-        "givenCents": 0,
-        "changeCents": 0,
-        "provider": "sumup",
-        "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000013",
-        "cardScheme": "VISA",
-        "cardLast4": "4242"
-      },
+      "payments": [
+        {
+          "position": 0,
+          "kind": "card",
+          "amountCents": 965,
+          "givenCents": 0,
+          "changeCents": 0,
+          "tipCents": 0,
+          "tipStaffId": null,
+          "tipStaffName": null,
+          "provider": "sumup",
+          "providerTxCode": "TX-eeeeeeee-0000-4000-8000-000000000013",
+          "cardScheme": "VISA",
+          "cardLast4": "4242"
+        }
+      ],
       "rksv": null
     }
   ],

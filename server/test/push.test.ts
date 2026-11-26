@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { handlers } from '../src/device/push.js';
 import { withBusiness } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createBusiness } from './support/businesses.js';
 import { createStaff, fixtureBusiness, pairDevice, syncFixture } from './support/device.js';
-import { entry, pushEntries, sampleDay, sampleReceipt } from './support/push.js';
+import { asV2, entry, pushEntries, reportKinds, sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, type TestUser } from './support/users.js';
 
 let f: TestApp;
@@ -280,6 +280,138 @@ describe('Annahme', () => {
     expect(await count(businessId, 'receipts')).toBe(before);
     expect((await rows(businessId, 'select total_cents from receipts where id = $1', [r.id]))[0].total_cents).toBe(990);
     expect(await rows(b2, 'select total_cents from receipts')).toEqual([{ total_cents: 777 }]);
+  });
+});
+
+describe('Bon v: 1 und v: 2', () => {
+  // Jeder Test in einem eigenen Betrieb: so zählen nur seine Berichte.
+  let a: string;
+  let t: string;
+  beforeEach(async () => {
+    a = (await createBusiness(f.app, provider.cookie)).id;
+    await createStaff(f.app, provider.cookie, a, { name: 'Chefin', role: 'chef', pin: '1234' });
+    t = (await pairDevice(f.app, provider.cookie, a)).token;
+  });
+  const push = (entries: object[]) => pushEntries(f.app, t, deviceId, entries);
+  const columns = 'select payment_kind, cash_cents, card_cents, tip_cents, discount_cents from receipts';
+
+  test('v: 2 mit zwei Zahlungen, Trinkgeld und Rabatt: angenommen, die Spalten stimmen', async () => {
+    const res = await push([entry(1, 'receipt', sampleReceiptV2())]);
+    expect(res.results).toEqual([{ seq: 1, status: 'accepted' }]);
+    const [row] = await rows(a, columns);
+    expect(row).toEqual({ payment_kind: 'mixed', cash_cents: 1000, card_cents: 536, tip_cents: 64, discount_cents: 284 });
+    const lines = await rows(a, 'select discount_cents, discount from receipt_lines order by position');
+    expect(lines).toEqual([
+      { discount_cents: 58, discount: null },
+      { discount_cents: 226, discount: { percent: 10, amountCents: 119, reason: 'regular' } },
+    ]);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 1 von einem Tablet mit 1.10.0: angenommen, bar steht in cash_cents', async () => {
+    expect(statuses(await push([entry(1, 'receipt', sampleReceipt())]))).toEqual(['accepted']); // Barverkauf 9,90
+    const [row] = await rows(a, columns);
+    expect(row).toEqual({ payment_kind: 'cash', cash_cents: 990, card_cents: 0, tip_cents: 0, discount_cents: 0 });
+    const lines = await rows(a, 'select discount_cents, discount from receipt_lines');
+    expect(lines).toEqual([{ discount_cents: 0, discount: null }]);
+  });
+
+  test('derselbe Bon erst als v: 1, dann als v: 2: duplicate, kein Bericht', async () => {
+    const r = sampleReceipt();
+    await push([entry(1, 'receipt', r)]);
+    const res = await push([entry(2, 'receipt', asV2(r))]);
+    expect(res.results).toEqual([{ seq: 2, status: 'duplicate' }]);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 2 mit anderem Betrag als der gespeicherte v: 1: rejected/conflict', async () => {
+    const r = sampleReceipt();
+    await push([entry(1, 'receipt', r)]);
+    const v2 = asV2(r);
+    const changed = { ...v2, goodsCents: 1000, totalCents: 1000, payments: [{ ...v2.payments[0], amountCents: 1000 }] };
+    expect(statuses(await push([entry(2, 'receipt', changed)]))).toEqual(['rejected/conflict']);
+    expect(await reportKinds(f, a)).toEqual(['receipt_conflict']);
+    expect((await rows(a, 'select total_cents from receipts where id = $1', [r.id]))[0].total_cents).toBe(990);
+  });
+
+  test('v: 2, Summen passen nicht: angenommen, Bericht receipt_sums nennt payments, tip, discount und card_last', async () => {
+    const good = sampleReceiptV2();
+    const [cash, card] = good.payments;
+    // Karte zuerst, zwei Karten, Zahlungen 10 Cent zu wenig, Trinkgeld der Zahlungen 64 statt 70, Zeilen-Rabatt 284 statt 300.
+    const bad = sampleReceiptV2({
+      tipCents: 70,
+      discountCents: 300,
+      payments: [
+        { ...card, position: 0, amountCents: 500 },
+        { ...card, position: 1, amountCents: 26, tipCents: 0, tipStaffId: null, tipStaffName: null },
+        { ...cash, position: 2 },
+      ],
+    });
+    expect(statuses(await push([entry(1, 'receipt', bad)]))).toEqual(['accepted']);
+    const found = await rows(a, "select content from reports where kind = 'receipt_sums'");
+    expect(found).toHaveLength(1);
+    expect(found[0].content).toEqual({ receiptId: bad.id, number: bad.number, problems: ['payments', 'tip', 'discount', 'card_last'] });
+  });
+
+  test('v: 2, Storno passt: kein Bericht; Storno mit falscher Zahlung: payments', async () => {
+    const neg = (p: Record<string, any>) => ({ ...p, amountCents: -p.amountCents, givenCents: 0, changeCents: 0, tipCents: -p.tipCents });
+    const r = sampleReceiptV2();
+    const voided = (payments: object[]) =>
+      sampleReceiptV2({
+        kind: 'voided',
+        voidsReceiptId: r.id,
+        goodsCents: -r.goodsCents,
+        depositCents: -r.depositCents,
+        totalCents: -r.totalCents,
+        tipCents: -r.tipCents,
+        discountCents: -r.discountCents,
+        lines: r.lines.map((l: Record<string, any>) => ({
+          ...l,
+          quantity: -l.quantity,
+          discountCents: -l.discountCents,
+          gross: Object.fromEntries(Object.entries(l.gross as Record<string, number>).map(([k, v]) => [k, -v])),
+        })),
+        payments,
+      });
+    expect(statuses(await push([entry(1, 'receipt', voided(r.payments.map(neg)))]))).toEqual(['accepted']);
+    expect(await reportKinds(f, a)).toEqual([]);
+    const [cash, card] = r.payments.map(neg);
+    expect(statuses(await push([entry(2, 'receipt', voided([cash, { ...card, amountCents: -500 }]))]))).toEqual(['accepted']);
+    const found = await rows(a, "select content from reports where kind = 'receipt_sums'");
+    expect(found.map((x) => x.content.problems)).toEqual([['payments']]);
+  });
+
+  test('v: 2 ohne Zahlung (Sonderbeleg): payment_kind null, beide Spalten 0', async () => {
+    const zero = sampleReceiptV2({
+      kind: 'zero', businessDayId: null, goodsCents: 0, depositCents: 0, totalCents: 0, tipCents: 0, discountCents: 0,
+      discount: null, lines: [], payments: [],
+    });
+    expect(statuses(await push([entry(1, 'receipt', zero)]))).toEqual(['accepted']);
+    expect(await rows(a, columns)).toEqual([{ payment_kind: null, cash_cents: 0, card_cents: 0, tip_cents: 0, discount_cents: 0 }]);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 3: rejected/invalid', async () => {
+    const res = await push([entry(1, 'receipt', { ...sampleReceiptV2(), v: 3 })]);
+    expect(statuses(res)).toEqual(['rejected/invalid']);
+    expect(await count(a, 'receipts')).toBe(0);
+  });
+
+  test('v: 2 mit falscher Zahlungsart, 21 Zahlungen, Stelle 101 oder Prozent 0: rejected/invalid', async () => {
+    const r = sampleReceiptV2();
+    const [cash] = r.payments;
+    const bad = [
+      sampleReceiptV2({ payments: [{ ...cash, kind: 'voucher' }] }),
+      sampleReceiptV2({ payments: Array.from({ length: 21 }, (_, i) => ({ ...cash, position: i, amountCents: 1 })) }),
+      sampleReceiptV2({ payments: [{ ...cash, position: 101 }] }),
+      sampleReceiptV2({ discount: { ...r.discount, percent: 0 } }),
+      sampleReceiptV2({ discount: { ...r.discount, percent: 101 } }),
+      sampleReceiptV2({ payment: r.payments[0], payments: undefined }),
+    ];
+    const res = await push(bad.map((b, i) => entry(i + 1, 'receipt', b)));
+    expect(statuses(res)).toEqual(bad.map(() => 'rejected/invalid'));
+    // Fester Betrag ohne Prozent ist erlaubt.
+    expect(statuses(await push([entry(9, 'receipt', sampleReceiptV2({ discount: { ...r.discount, percent: null } }))]))).toEqual(['accepted']);
   });
 });
 

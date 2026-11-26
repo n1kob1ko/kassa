@@ -1,0 +1,200 @@
+{
+  "deviceId": "0b8f6a52-3c1d-4e7a-9f21-5d6c8a1e4b90",
+  "entries": [
+    {
+      "seq": 1,
+      "kind": "rksv_certificate",
+      "certificate": {
+        "serialHex": "1a2b",
+        "certificate": "AQIDBAUG",
+        "issuers": [
+          "BwgJCgsM"
+        ]
+      }
+    },
+    {
+      "seq": 2,
+      "kind": "rksv_chain",
+      "chain": {
+        "chain": 1,
+        "mode": "probe",
+        "cashBoxId": "KASSA1",
+        "zdaId": "AT0",
+        "certSerial": "1a2b",
+        "startedAt": "2026-11-19T07:59:00.000Z",
+        "endedAt": null
+      }
+    },
+    {
+      "seq": 3,
+      "kind": "day",
+      "day": {
+        "id": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "openedAt": "2026-11-19T08:00:00.000Z",
+        "closedAt": null,
+        "openingFloatCents": 10000,
+        "countedCents": null,
+        "leftInDrawerCents": null,
+        "expectedCents": null,
+        "differenceCents": null,
+        "closedByName": null
+      }
+    },
+    {
+      "seq": 4,
+      "kind": "cash_movement",
+      "movement": {
+        "id": "a4d92f10-6b3e-4a58-b7c1-92e4d0f5a863",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "withdrawal",
+        "amountCents": 2000,
+        "reason": "bank",
+        "createdAt": "2026-11-19T09:00:00.000Z",
+        "staffId": "chefin",
+        "staffName": "Chefin"
+      }
+    },
+    {
+      "seq": 5,
+      "kind": "receipt",
+      "receipt": {
+        "v": 2,
+        "id": "e5b7c3a9-1f48-4d62-a0b6-3c8d9e2f1470",
+        "number": 1,
+        "createdAt": "2026-11-19T08:05:00.000Z",
+        "staffId": "chefin",
+        "staffName": "Chefin",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "sale",
+        "voidsReceiptId": null,
+        "goodsCents": 1486,
+        "depositCents": 50,
+        "totalCents": 1536,
+        "test": true,
+        "tipCents": 64,
+        "discountCents": 284,
+        "discount": {
+          "percent": 10,
+          "amountCents": 165,
+          "reason": "promotion"
+        },
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "cola",
+            "name": "Cola 0,33 l",
+            "info": null,
+            "unitPriceCents": 290,
+            "quantity": 2,
+            "unitDepositCents": 25,
+            "gross": {
+              "20": 522,
+              "10": 0,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 58,
+            "discount": null
+          },
+          {
+            "position": 1,
+            "itemId": "huhn-bowl",
+            "name": "Huhn Bowl",
+            "info": null,
+            "unitPriceCents": 1190,
+            "quantity": 1,
+            "unitDepositCents": 0,
+            "gross": {
+              "20": 0,
+              "10": 964,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [
+              {
+                "groupName": "Größe",
+                "optionName": "XXL",
+                "surchargeCents": 200
+              }
+            ],
+            "discountCents": 226,
+            "discount": {
+              "percent": 10,
+              "amountCents": 119,
+              "reason": "regular"
+            }
+          }
+        ],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "cash",
+            "amountCents": 1000,
+            "givenCents": 1000,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null
+          },
+          {
+            "position": 1,
+            "kind": "card",
+            "amountCents": 536,
+            "givenCents": 0,
+            "changeCents": 0,
+            "tipCents": 64,
+            "tipStaffId": "anna",
+            "tipStaffName": "Anna",
+            "provider": "sumup",
+            "providerTxCode": "TX-BEISPIEL-1",
+            "cardScheme": "VISA",
+            "cardLast4": "4242"
+          }
+        ],
+        "rksv": {
+          "chain": 1,
+          "position": 2,
+          "jws": "eyJhbGciOiJFUzI1NiJ9.eyJ4IjoxfQ.c2lnbmF0dXI",
+          "damaged": false,
+          "certSerial": "1a2b"
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "kind": "item_change",
+      "change": {
+        "itemId": "huhn-bowl",
+        "field": "priceCents",
+        "value": 1090,
+        "changedAt": "2026-11-19T08:10:00.000Z"
+      }
+    },
+    {
+      "seq": 7,
+      "kind": "report",
+      "report": {
+        "id": "3f6a8b21-9c4d-4e05-8a7b-1d2e3f4a5b6c",
+        "kind": "error",
+        "at": "2026-11-19T08:11:00.000Z",
+        "appVersion": "1.5.0",
+        "androidVersion": "14",
+        "deviceModel": "Redmi Pad Pro",
+        "count": 1,
+        "error": {
+          "type": "RangeError",
+          "message": null,
+          "stack": "RangeError: Index out of range\n    at main (app.dart:1)"
+        },
+        "devices": null
+      }
+    }
+  ]
+}
