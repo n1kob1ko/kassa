@@ -1,0 +1,395 @@
+<title>Kassa Sprachen Entwurf</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@500;700;800&family=Noto+Sans+SC:wght@500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Aufbau: eine ruhige Seite mit Bildern zum Entwurf. Oben zwei Sprachwahlen zum Antippen,
+   darunter der Kassenbildschirm und die Zettel, die sich mit der Wahl ändern. */
+:root {
+  --bg: #F3F4F6; --card: #FFFFFF; --ink: #14171A; --ink2: #5B6470; --line: #E2E5E9;
+  --fill: #F1F2F4; --accent: #0F766E; --accent-soft: #E7F1F1; --accent-ink: #0C615A;
+  --paper: #FFFDF8; --paper-ink: #1B1B1B; --warn-bg: #FFF1CC; --warn-ink: #6B4200;
+  --font: "Figtree", "Noto Sans Arabic", "Noto Sans SC", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1012; --card: #191C20; --ink: #F2F4F6; --ink2: #A3ACB6; --line: #2C3138;
+  --fill: #22262B; --accent: #2AA198; --accent-soft: #173233; --accent-ink: #9AC5C2;
+  --paper: #FFFDF8; --paper-ink: #1B1B1B; --warn-bg: #3D2E00; --warn-ink: #FFD77A; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0E1012; --card: #191C20; --ink: #F2F4F6; --ink2: #A3ACB6; --line: #2C3138;
+  --fill: #22262B; --accent: #2AA198; --accent-soft: #173233; --accent-ink: #9AC5C2;
+  --paper: #FFFDF8; --paper-ink: #1B1B1B; --warn-bg: #3D2E00; --warn-ink: #FFD77A; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.page { max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 44px; }
+header h1 { font-size: clamp(28px, 4.5vw, 40px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin: 0 0 10px; text-wrap: balance; }
+header p, .lead { color: var(--ink2); max-width: 66ch; margin: 0; font-weight: 500; }
+section { display: flex; flex-direction: column; gap: 16px; }
+h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.note { font-size: 14px; color: var(--ink2); font-weight: 500; max-width: 70ch; margin: 0; }
+
+/* Sprachwahl */
+.pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.picker { background: var(--card); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.picker h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.picker p { margin: 0; font-size: 13px; color: var(--ink2); font-weight: 600; }
+.langs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.langs button { font: inherit; font-weight: 800; font-size: 15px; min-height: 56px; border: 0; border-radius: 14px; background: var(--fill); color: var(--ink);
+  cursor: pointer; padding: 4px 2px; transition: transform .12s ease-out, background .12s ease-out; }
+.langs button:active { transform: scale(.96); }
+.langs button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.langs button:focus-visible, .tabs2 button:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
+@media (max-width: 420px) { .langs button { font-size: 13px; } }
+
+/* Rahmen für Bildschirme: feste Entwurfsgröße, per Skript eingepasst */
+.frame { border-radius: 18px; overflow: hidden; background: #F3F4F6; box-shadow: 0 1px 0 var(--line), 0 18px 40px -24px rgba(0,0,0,.35); position: relative; }
+.frame .stage { transform-origin: 0 0; position: absolute; inset: 0 auto auto 0; }
+.scroll { overflow-x: auto; }
+.scroll .frame { min-width: 560px; }
+
+/* ---- Kassenbildschirm (helle Ansicht der App, feste Farben) ---- */
+.k { width: 1280px; height: 800px; background: #F3F4F6; color: #14171A; display: flex; flex-direction: column; font-family: var(--font); }
+.k * { box-sizing: border-box; }
+.k-head { height: 64px; display: flex; align-items: center; gap: 20px; padding-inline: 20px; background: #fff; border-bottom: 1px solid #E2E5E9; }
+.k-logo { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+.k-tabs { display: flex; gap: 4px; }
+.k-tabs span { height: 44px; padding-inline: 16px; display: flex; align-items: center; border-radius: 12px; font-weight: 700; font-size: 15px; color: #5B6470; }
+.k-tabs span.on { background: #E7F1F1; color: #0C615A; }
+.k-user { margin-inline-start: auto; font-weight: 700; font-size: 14px; color: #5B6470; display: flex; align-items: center; gap: 10px; }
+.k-user i { width: 36px; height: 36px; border-radius: 999px; background: #F1F2F4; display: grid; place-items: center; font-style: normal; font-weight: 800; color: #14171A; }
+.k-body { flex: 1; display: flex; gap: 16px; padding: 16px; min-height: 0; }
+.k-cats { width: 190px; display: flex; flex-direction: column; gap: 8px; }
+.k-cats span { height: 56px; border-radius: 14px; background: #fff; display: flex; align-items: center; padding-inline: 16px; font-weight: 700; font-size: 15px; }
+.k-cats span.on { background: #0F766E; color: #fff; }
+.k-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 164px; gap: 12px; align-content: start; }
+.k-tile { background: #fff; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; text-align: start; }
+.k-tile b { font-size: 17px; font-weight: 800; line-height: 1.2; }
+.k-tile small { display: block; font-size: 12.5px; color: #5B6470; font-weight: 600; margin-top: 3px; }
+.k-tile .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.k-tile .p { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; direction: ltr; }
+.tag { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 3px 7px; border-radius: 6px; }
+.tag.v { background: #DDF3E4; color: #14592B; } .tag.s { background: #FDE3DF; color: #A1201A; }
+.k-bon { width: 370px; background: #fff; border-radius: 20px; display: flex; flex-direction: column; padding: 18px; gap: 12px; }
+.k-bon h4 { margin: 0; font-size: 20px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; }
+.k-bon h4 span { font-size: 13px; font-weight: 700; color: #5B6470; background: #F1F2F4; padding: 8px 12px; border-radius: 10px; }
+.k-lines { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.k-line { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; padding-block: 10px; border-bottom: 1px solid #EEF0F2; align-items: start; }
+.k-line .q { width: 34px; height: 34px; border-radius: 10px; background: #F1F2F4; display: grid; place-items: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.k-line b { font-size: 15.5px; font-weight: 700; }
+.k-line small { display: block; color: #5B6470; font-size: 13px; font-weight: 600; }
+.k-line .a { font-weight: 800; font-variant-numeric: tabular-nums; direction: ltr; }
+.k-sum { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
+.k-sum span { font-size: 16px; color: #5B6470; } .k-sum b { font-size: 40px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; direction: ltr; }
+.k-pay { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.k-pay span { height: 80px; border-radius: 16px; display: grid; place-items: center; font-size: 20px; font-weight: 800; }
+.k-pay .cash { background: #14171A; color: #fff; } .k-pay .card { background: #0F766E; color: #fff; }
+
+/* ---- Zettel ---- */
+.papers { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; justify-content: center; }
+.paper-col { display: flex; flex-direction: column; gap: 10px; align-items: center; min-width: 0; }
+.paper-col h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.paper-col p { margin: 0; font-size: 13px; color: var(--ink2); font-weight: 600; text-align: center; max-width: 320px; }
+.paper { width: 300px; max-width: 100%; background: var(--paper); color: var(--paper-ink); padding: 18px 16px 30px; box-shadow: 0 14px 30px -18px rgba(0,0,0,.5);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), 97% 100%, 94% calc(100% - 8px), 91% 100%, 88% calc(100% - 8px), 85% 100%, 82% calc(100% - 8px), 79% 100%, 76% calc(100% - 8px), 73% 100%, 70% calc(100% - 8px), 67% 100%, 64% calc(100% - 8px), 61% 100%, 58% calc(100% - 8px), 55% 100%, 52% calc(100% - 8px), 49% 100%, 46% calc(100% - 8px), 43% 100%, 40% calc(100% - 8px), 37% 100%, 34% calc(100% - 8px), 31% 100%, 28% calc(100% - 8px), 25% 100%, 22% calc(100% - 8px), 19% 100%, 16% calc(100% - 8px), 13% 100%, 10% calc(100% - 8px), 7% 100%, 4% calc(100% - 8px), 0 100%); }
+.receipt { font-family: var(--mono); font-size: 11.5px; line-height: 1.5; font-weight: 500; white-space: pre; overflow: hidden; }
+.receipt .c { text-align: center; } .receipt .big { font-size: 17px; font-weight: 700; }
+.receipt .qr { width: 92px; height: 92px; margin: 10px auto 2px; background:
+  conic-gradient(#1b1b1b 25%, transparent 0 50%, #1b1b1b 0 75%, transparent 0) 0 0 / 11.5px 11.5px,
+  conic-gradient(transparent 25%, #1b1b1b 0 50%, transparent 0) 4px 3px / 23px 17px; outline: 6px solid var(--paper); border: 7px double #1b1b1b; }
+.kt { font-family: var(--font); }
+.kt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.kt-head b { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; } .kt-head .n { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; direction: ltr; }
+.kt-meta { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.kt hr { border: 0; border-top: 2px dashed #1b1b1b; margin: 10px 0; }
+.kt-line { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; margin-bottom: 8px; }
+.kt-line .q { font-size: 23px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kt-line b { font-size: 23px; font-weight: 800; line-height: 1.2; }
+.kt-line i { grid-column: 2; font-style: normal; font-size: 17px; font-weight: 600; line-height: 1.35; }
+
+/* ---- kleine Ausschnitte ---- */
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.shot { background: var(--card); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.shot h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.shot > p { margin: 0; font-size: 13.5px; color: var(--ink2); font-weight: 500; }
+.app { background: #F3F4F6; color: #14171A; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; font-family: var(--font); }
+.app .set { background: #fff; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.app .set h5 { margin: 0; font-size: 13px; font-weight: 800; color: #5B6470; letter-spacing: .02em; }
+.app .l5 { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; }
+.app .l5 span, .seg span { min-height: 48px; border-radius: 12px; background: #F1F2F4; display: grid; place-items: center; font-weight: 800; font-size: 13.5px; text-align: center; padding: 2px; }
+.app .l5 span.on, .seg span.on { background: #0F766E; color: #fff; }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+.rowx { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 700; font-size: 14.5px; min-height: 44px; }
+.rowx small { display: block; font-weight: 600; color: #5B6470; font-size: 12.5px; }
+.sw { width: 50px; height: 30px; border-radius: 999px; background: #D5D9DE; position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.sw.on { background: #0F766E; } .sw.on::after { left: 23px; }
+.btn { min-height: 52px; border-radius: 14px; background: #F1F2F4; display: grid; place-items: center; font-weight: 800; font-size: 15px; }
+.login { align-items: center; padding-block: 22px; position: relative; }
+.login .globe { align-self: flex-end; display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 14px; min-height: 52px; padding-inline: 14px; font-weight: 800; font-size: 15px; }
+.login .globe svg { width: 22px; height: 22px; }
+.login h6 { margin: 6px 0 0; font-size: 20px; font-weight: 800; }
+.dots { display: flex; gap: 12px; } .dots i { width: 16px; height: 16px; border-radius: 999px; background: #D5D9DE; } .dots i.f { background: #0F766E; }
+.pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 8px; } .pad span { height: 52px; border-radius: 14px; background: #fff; display: grid; place-items: center; font-weight: 800; font-size: 19px; }
+
+/* ---- Verwaltung ---- */
+.admin { background: #fff; color: #14171A; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; font-family: var(--font); min-width: 560px; }
+.admin h4 { margin: 0; font-size: 22px; font-weight: 800; } .admin .sub { color: #5B6470; font-weight: 600; font-size: 14px; }
+.tabs2 { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tabs2 span.t { padding: 9px 14px; border-radius: 10px; background: #F1F2F4; font-weight: 800; font-size: 14px; }
+.tabs2 span.t.on { background: #E7F1F1; color: #0C615A; }
+.tabs2 .prog { margin-inline-start: auto; font-size: 13.5px; font-weight: 700; color: #5B6470; display: flex; align-items: center; gap: 10px; }
+.bar { width: 120px; height: 8px; border-radius: 99px; background: #E7E9ED; overflow: hidden; } .bar i { display: block; height: 100%; width: 44%; background: #0F766E; }
+table.tr { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+table.tr th { text-align: start; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #5B6470; padding: 8px 10px; border-bottom: 1px solid #E2E5E9; }
+table.tr td { padding: 6px 10px; border-bottom: 1px solid #EEF0F2; font-weight: 600; vertical-align: middle; }
+table.tr tr.g td { background: #F7F8F9; font-weight: 800; font-size: 13px; color: #5B6470; }
+table.tr .in { display: flex; align-items: center; min-height: 40px; border: 1.5px solid #D5D9DE; border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+table.tr .in.empty { border-style: dashed; color: #9AA2AC; background: #FAFBFC; }
+table.tr .in.focus { border-color: #0F766E; box-shadow: 0 0 0 3px #E7F1F1; }
+.miss { font-size: 11px; font-weight: 800; background: #FFF1CC; color: #6B4200; padding: 2px 7px; border-radius: 6px; margin-inline-start: 8px; white-space: nowrap; }
+
+.decide { background: var(--card); border-radius: 20px; padding: 18px 20px; }
+.decide ol { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 8px; font-weight: 500; max-width: 72ch; }
+.decide ol b { font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .langs button { transition: none; } }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Sprachen und Küchenbon</h1>
+    <p>Bilder zum Entwurf vom 26.11.2026. Betrieb, Artikel und Preise sind erfunden. Tippe unten auf eine Sprache, dann ändern sich der Kassenbildschirm und die Zettel.</p>
+  </header>
+
+  <section aria-labelledby="s1">
+    <h2 id="s1">Zum Ausprobieren: zwei getrennte Sprachen</h2>
+    <div class="pickers">
+      <div class="picker">
+        <h3>Sprache der Kassa</h3>
+        <p>So sieht die Bedienung die Kassa.</p>
+        <div class="langs" id="ui-langs" role="group" aria-label="Sprache der Kassa"></div>
+      </div>
+      <div class="picker">
+        <h3>Sprache am Küchenbon</h3>
+        <p>So liest die Küche den Zettel.</p>
+        <div class="langs" id="kt-langs" role="group" aria-label="Sprache am Küchenbon"></div>
+      </div>
+    </div>
+    <div class="scroll"><div class="frame" id="kassa-frame" style="aspect-ratio: 1280 / 800"><div class="stage" id="kassa"></div></div></div>
+    <p class="note">Bei Arabisch dreht sich der ganze Aufbau: Kategorien rechts, Bon links. Preise und Ziffern bleiben gleich. Hat ein Artikel keine Übersetzung, steht sein Name aus der Speisekarte da.</p>
+  </section>
+
+  <section aria-labelledby="s2">
+    <h2 id="s2">Was aus dem Drucker kommt</h2>
+    <div class="papers">
+      <div class="paper-col">
+        <h3>Kundenbon</h3>
+        <div class="paper"><div class="receipt" id="receipt"></div></div>
+        <p>Bleibt immer Deutsch, mit Signatur und QR-Code. Hier ändert sich nichts.</p>
+      </div>
+      <div class="paper-col">
+        <h3>Küchenbon</h3>
+        <div class="paper"><div class="kt" id="ticket"></div></div>
+        <p>Neu. Große Schrift, keine Preise, gleiche Bon-Nummer wie am Kundenbon. Ayran fehlt, weil Getränke für die Küche abgeschaltet sind.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="s3">
+    <h2 id="s3">Wo man es einstellt</h2>
+    <div class="two">
+      <div class="shot">
+        <h3>Einstellungen am Tablet</h3>
+        <div class="app">
+          <div class="set">
+            <h5>SPRACHE</h5>
+            <div class="l5"><span class="on">Deutsch</span><span>English</span><span>中文</span><span>Türkçe</span><span>العربية</span></div>
+          </div>
+          <div class="set">
+            <h5>KÜCHE</h5>
+            <div class="rowx"><span>Küchenbon</span></div>
+            <div class="seg"><span>Aus</span><span class="on">Am Bondrucker</span><span>Am Küchen&shy;drucker</span></div>
+            <div class="rowx"><span>Sprache am Küchenbon</span></div>
+            <div class="l5"><span>Deutsch</span><span>English</span><span>中文</span><span class="on">Türkçe</span><span>العربية</span></div>
+            <div class="rowx"><span>Speisen<small>kommen auf den Küchenbon</small></span><i class="sw on"></i></div>
+            <div class="rowx"><span>Getränke<small>kommen nicht auf den Küchenbon</small></span><i class="sw"></i></div>
+            <div class="btn">Probe drucken</div>
+          </div>
+        </div>
+        <p>Ein Tipp stellt sofort um, ohne Neustart. Daneben zeigt die Kassa eine Vorschau des Küchenbons.</p>
+      </div>
+      <div class="shot">
+        <h3>Anmeldung</h3>
+        <div class="app login">
+          <div class="globe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg>Deutsch</div>
+          <h6>PIN eingeben</h6>
+          <div class="dots"><i class="f"></i><i class="f"></i><i></i><i></i></div>
+          <div class="pad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div>
+        </div>
+        <p>Die Taste mit der Weltkugel ist immer da. Wer kein Deutsch liest, findet sie ohne Lesen und wechselt mit zwei Tipps.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="s4">
+    <h2 id="s4">Übersetzungen der Speisekarte im Browser</h2>
+    <p class="lead">Neue Seite in der Verwaltung. Links der Name aus der Speisekarte, rechts die Übersetzung. Ein leeres Feld heißt: der normale Name wird verwendet.</p>
+    <div class="scroll">
+      <div class="admin">
+        <div><h4>Übersetzungen</h4><span class="sub">Beispiel-Imbiss</span></div>
+        <div class="tabs2">
+          <span class="t">English</span><span class="t">中文</span><span class="t on">Türkçe</span><span class="t">العربية</span>
+          <span class="prog"><span class="bar"><i></i></span>8 von 18 übersetzt</span>
+        </div>
+        <table class="tr">
+          <thead><tr><th style="width:46%">Speisekarte</th><th>Türkçe</th></tr></thead>
+          <tbody>
+            <tr class="g"><td colspan="2">Kategorien</td></tr>
+            <tr><td>Teller</td><td><span class="in">Tabaklar</span></td></tr>
+            <tr><td>Getränke</td><td><span class="in">İçecekler</span></td></tr>
+            <tr class="g"><td colspan="2">Kebap &amp; Dürüm</td></tr>
+            <tr><td>Kebap Dürüm</td><td><span class="in">Et döner dürüm</span></td></tr>
+            <tr><td>Hühner Dürüm</td><td><span class="in focus">Tavuk döner dürüm</span></td></tr>
+            <tr><td>Adana Spieß <span class="miss">fehlt</span></td><td><span class="in empty">Adana Spieß</span></td></tr>
+            <tr class="g"><td colspan="2">Auswahl und Extras</td></tr>
+            <tr><td>Scharfe Sauce</td><td><span class="in">Acı sos</span></td></tr>
+            <tr><td>Ohne Zwiebel</td><td><span class="in">Soğansız</span></td></tr>
+            <tr><td>Extra Fleisch <span class="miss">fehlt</span></td><td><span class="in empty">Extra Fleisch</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note">Dieselben Übersetzungen können auch gleich in der Speisekarten-Datei stehen. Dann ist nach dem Einspielen alles da.</p>
+  </section>
+
+  <section aria-labelledby="s5">
+    <h2 id="s5">Was ich festgelegt habe</h2>
+    <div class="decide">
+      <ol>
+        <li><b>Kundenbon und Berichte bleiben Deutsch.</b> Nur der Küchenbon hat eine eigene Sprache.</li>
+        <li><b>Die Sprache gilt für die Kassa,</b> nicht pro Mitarbeiter. Umschalten geht bei der Anmeldung.</li>
+        <li><b>Die Einrichtung bleibt vorerst Deutsch:</b> Signatur, Koppeln, Drucker und Kartenterminal einrichten. Das machst du beim Aufstellen.</li>
+        <li><b>Chinesisch in vereinfachter Schrift.</b></li>
+        <li><b>Der Küchenbon wird als Bild gedruckt.</b> So geht jede Schrift auf jedem Bondrucker.</li>
+        <li><b>Welche Kategorien in die Küche gehen,</b> stellt man am Tablet ein.</li>
+        <li><b>Die Texte übersetze ich.</b> Vor dem echten Betrieb soll jemand, der die Sprache spricht, Chinesisch, Türkisch und Arabisch gegenlesen. Dafür bekommst du je Sprache eine Liste.</li>
+      </ol>
+    </div>
+  </section>
+</div>
+
+<script>
+const LANGS = [["de","Deutsch"],["en","English"],["zh","中文"],["tr","Türkçe"],["ar","العربية"]];
+const UI = {
+  de: { tabs: ["Kassa","Bons","Übersicht","Artikel","Abschluss"], bon: "Bon", clear: "Bon leeren", sum: "Summe", cash: "Bar", card: "Karte", vegan: "VEGAN", spicy: "SCHARF", kitchen: "KÜCHE" },
+  en: { tabs: ["Register","Receipts","Overview","Items","Closing"], bon: "Receipt", clear: "Clear", sum: "Total", cash: "Cash", card: "Card", vegan: "VEGAN", spicy: "SPICY", kitchen: "KITCHEN" },
+  zh: { tabs: ["收银","小票","概览","商品","日结"], bon: "小票", clear: "清空", sum: "合计", cash: "现金", card: "刷卡", vegan: "纯素", spicy: "辣", kitchen: "厨房" },
+  tr: { tabs: ["Kasa","Fişler","Özet","Ürünler","Gün sonu"], bon: "Fiş", clear: "Fişi temizle", sum: "Toplam", cash: "Nakit", card: "Kart", vegan: "VEGAN", spicy: "ACI", kitchen: "MUTFAK" },
+  ar: { tabs: ["الكاشير","الفواتير","نظرة عامة","الأصناف","الإغلاق"], bon: "الفاتورة", clear: "تفريغ", sum: "المجموع", cash: "نقدًا", card: "بطاقة", vegan: "نباتي", spicy: "حار", kitchen: "المطبخ" },
+};
+// Wörterbuch der Speisekarte: Name aus der Speisekarte, Übersetzungen je Sprache.
+const DICT = {
+  "Favoriten": { en: "Favorites", zh: "常用", tr: "Favoriler", ar: "المفضلة" },
+  "Kebap & Dürüm": { en: "Kebab & wraps", zh: "烤肉和卷饼", tr: "Kebap & Dürüm", ar: "كباب ودورم" },
+  "Teller": { en: "Plates", zh: "套餐", tr: "Tabaklar", ar: "أطباق" },
+  "Vorspeisen": { en: "Starters", zh: "前菜", tr: "Başlangıçlar", ar: "مقبلات" },
+  "Süßes": { en: "Desserts", zh: "甜点", tr: "Tatlılar", ar: "حلويات" },
+  "Getränke": { en: "Drinks", zh: "饮料", tr: "İçecekler", ar: "مشروبات" },
+  "Kebap Dürüm": { en: "Kebab wrap", zh: "烤肉卷饼", tr: "Et döner dürüm", ar: "دورم كباب" },
+  "Hühner Dürüm": { en: "Chicken wrap", zh: "鸡肉卷饼", tr: "Tavuk döner dürüm", ar: "دورم دجاج" },
+  "Kebap Teller": { en: "Kebab plate", zh: "烤肉套餐", tr: "Döner porsiyon", ar: "طبق كباب" },
+  "Falafel Teller": { en: "Falafel plate", zh: "法拉费套餐", tr: "Falafel tabağı", ar: "طبق فلافل" },
+  "Lahmacun": { zh: "土耳其薄饼", ar: "لحم بعجين" },
+  "Linsensuppe": { en: "Lentil soup", zh: "扁豆汤", tr: "Mercimek çorbası", ar: "شوربة عدس" },
+  "Pommes": { en: "Fries", zh: "薯条", tr: "Patates kızartması", ar: "بطاطا مقلية" },
+  "Baklava": { zh: "果仁蜜饼", ar: "بقلاوة" },
+  "3 Stück": { en: "3 pieces", zh: "3块", tr: "3 adet", ar: "3 قطع" },
+  "Ayran": { zh: "咸酸奶", ar: "عيران" },
+  "Cola": { zh: "可乐", tr: "Kola", ar: "كولا" },
+  "0,33 l": {},
+  "Adana Spieß": { en: "Adana skewer", zh: "阿达纳烤肉串", ar: "كباب أضنة" },
+  "Börek": { zh: "土耳其酥饼", ar: "بوريك" },
+  "Käse Pide": { en: "Cheese pide", zh: "奶酪皮塔饼", tr: "Peynirli pide", ar: "بيدا بالجبنة" },
+  "Hummus": { zh: "鹰嘴豆泥", tr: "Humus", ar: "حمص" },
+  "Künefe": { zh: "库纳法", ar: "كنافة" },
+  "Türkischer Tee": { en: "Turkish tea", zh: "土耳其红茶", tr: "Çay", ar: "شاي تركي" },
+  "Scharfe Sauce": { en: "Hot sauce", zh: "辣酱", tr: "Acı sos", ar: "صلصة حارة" },
+  "Ohne Zwiebel": { en: "No onion", zh: "不要洋葱", tr: "Soğansız", ar: "بدون بصل" },
+};
+const CATS = ["Favoriten","Kebap & Dürüm","Teller","Vorspeisen","Süßes","Getränke"];
+const ITEMS = [
+  ["Kebap Dürüm","7,90"],["Hühner Dürüm","7,50"],["Kebap Teller","11,90"],["Falafel Teller","9,90",null,"v"],
+  ["Adana Spieß","12,90",null,"s"],["Lahmacun","5,50"],["Linsensuppe","4,50",null,"v"],["Pommes","3,90",null,"v"],
+  ["Börek","4,90"],["Käse Pide","8,90"],["Hummus","4,90",null,"v"],["Baklava","3,50","3 Stück"],
+  ["Künefe","5,90"],["Ayran","2,50"],["Türkischer Tee","2,00"],["Cola","2,90","0,33 l"],
+];
+const CART = [
+  { q: 2, name: "Kebap Dürüm", opts: ["Scharfe Sauce","Ohne Zwiebel"], amount: "15,80", kitchen: true },
+  { q: 1, name: "Linsensuppe", opts: [], amount: "4,50", kitchen: true },
+  { q: 1, name: "Ayran", opts: [], amount: "2,50", kitchen: false },
+];
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tr = (name, lang) => (DICT[name] && DICT[name][lang]) || name;
+let ui = "de", kt = "tr";
+
+function pickers() {
+  for (const [id, get, set] of [["ui-langs", () => ui, (v) => (ui = v)], ["kt-langs", () => kt, (v) => (kt = v)]]) {
+    const box = document.getElementById(id);
+    if (!box.firstChild) {
+      for (const [code, label] of LANGS) {
+        const b = document.createElement("button");
+        b.type = "button"; b.id = id + "-" + code; b.textContent = label; b.lang = code; b.dataset.code = code;
+        b.addEventListener("click", () => { set(code); render(); });
+        box.appendChild(b);
+      }
+    }
+    for (const b of box.children) b.setAttribute("aria-pressed", String(get() === b.dataset.code));
+  }
+}
+function kassa() {
+  const t = UI[ui];
+  const el = document.getElementById("kassa");
+  el.innerHTML = `<div class="k" dir="${ui === "ar" ? "rtl" : "ltr"}" lang="${ui}">
+    <div class="k-head"><span class="k-logo">Kassa</span>
+      <div class="k-tabs">${t.tabs.map((x, i) => `<span class="${i === 0 ? "on" : ""}">${esc(x)}</span>`).join("")}</div>
+      <span class="k-user">Ayşe <i>A</i></span></div>
+    <div class="k-body">
+      <div class="k-cats">${CATS.map((c, i) => `<span class="${i === 0 ? "on" : ""}">${esc(tr(c, ui))}</span>`).join("")}</div>
+      <div class="k-grid">${ITEMS.map(([n, p, info, tag]) => `<div class="k-tile"><div><b>${esc(tr(n, ui))}</b>${info ? `<small>${esc(tr(info, ui))}</small>` : ""}</div>
+        <div class="row"><span class="p">${p} €</span>${tag ? `<span class="tag ${tag}">${esc(tag === "v" ? t.vegan : t.spicy)}</span>` : ""}</div></div>`).join("")}</div>
+      <div class="k-bon"><h4>${esc(t.bon)} <span>${esc(t.clear)}</span></h4>
+        <div class="k-lines">${CART.map((l) => `<div class="k-line"><span class="q">${l.q}</span><div><b>${esc(tr(l.name, ui))}</b>${l.opts.map((o) => `<small>${esc(tr(o, ui))}</small>`).join("")}</div><span class="a">${l.amount}</span></div>`).join("")}</div>
+        <div class="k-sum"><span>${esc(t.sum)}</span><b>22,80 €</b></div>
+        <div class="k-pay"><span class="cash">${esc(t.cash)}</span><span class="card">${esc(t.card)}</span></div>
+      </div>
+    </div></div>`;
+}
+function receipt() {
+  const W = 38, pad = (l, r) => l + " ".repeat(Math.max(1, W - l.length - r.length)) + r, rule = "-".repeat(W);
+  const lines = [
+    `<div class="c big">Beispiel-Imbiss</div><div class="c">Musterstraße 1, 1010 Wien</div><div class="c">UID ATU00000000</div>`,
+    rule, pad("Bon Nr. 128", "26.11.2026 14:32"), "Bedienung: Ayşe", "Kassen-ID: KASSA-1", rule,
+    pad("2 x Kebap Dürüm", "15,80"), "    je 7,90", "    Scharfe Sauce", "    Ohne Zwiebel",
+    pad("1 x Linsensuppe", "4,50"), pad("1 x Ayran", "2,50"), rule,
+    `<b>${pad("SUMME EUR", "22,80")}</b>`, rule,
+    pad("10 % MwSt 1,85  Netto 18,45", "20,30"), pad("20 % MwSt 0,42  Netto 2,08", "2,50"),
+    pad("Bar", "22,80"), `<div class="qr"></div>`, `<div class="c">Danke für deinen Besuch!</div>`,
+  ];
+  document.getElementById("receipt").innerHTML = lines.map((l) => (l.startsWith("<div") ? l : `<div>${l.startsWith("<b>") ? l : esc(l)}</div>`)).join("");
+}
+function ticket() {
+  const el = document.getElementById("ticket");
+  el.dir = kt === "ar" ? "rtl" : "ltr"; el.lang = kt;
+  el.innerHTML = `<div class="kt-head"><b>${esc(UI[kt].kitchen)}</b><span class="n">128</span></div>
+    <div class="kt-meta"><bdi>26.11.2026</bdi> &nbsp;<bdi>14:32</bdi> &nbsp;·&nbsp; <bdi>Ayşe</bdi></div><hr>
+    ${CART.filter((l) => l.kitchen).map((l) => `<div class="kt-line"><span class="q">${l.q} ×</span><b>${esc(tr(l.name, kt))}</b>${l.opts.map((o) => `<i>${esc(tr(o, kt))}</i>`).join("")}</div>`).join("")}<hr>`;
+}
+function fit() {
+  const f = document.getElementById("kassa-frame");
+  document.getElementById("kassa").style.transform = `scale(${f.clientWidth / 1280})`;
+}
+function render() { pickers(); kassa(); receipt(); ticket(); fit(); }
+render();
+addEventListener("resize", fit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+</script>
