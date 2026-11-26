@@ -156,6 +156,32 @@ void main() {
     );
   });
 
+  test('Küchenbon ar mit deutschen Namen aus der Speisekarte', () async {
+    // Fehlt die Übersetzung, steht der Name der Speisekarte da: eine Zahl
+    // am Anfang und ein Satzzeichen am Ende bleiben, wo sie hingehören.
+    await _expectGolden(
+      KitchenTicket(
+        language: AppLanguage.ar,
+        kind: KitchenTicketKind.order,
+        title: 'المطبخ',
+        number: 128,
+        time: DateTime(2026, 11, 26, 14, 32),
+        staffName: 'Ayşe',
+        lines: const [
+          KitchenLine(
+            quantity: 2,
+            name: '3 Frühlingsrollen',
+            info: '5 Stück',
+            options: ['2 Saucen', 'Extra scharf!'],
+          ),
+          KitchenLine(quantity: 1, name: 'طبق دجاج', options: ['حار']),
+        ],
+      ),
+      576,
+      'kuechenbon_arabisch_gemischt',
+    );
+  });
+
   test('Küchenbon Storno (ar) bei 576 Punkten', () async {
     await _expectGolden(
       _ticket(AppLanguage.ar, banner: 'إلغاء'),

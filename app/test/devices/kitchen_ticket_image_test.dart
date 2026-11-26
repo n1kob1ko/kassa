@@ -164,6 +164,37 @@ void main() {
     }
   });
 
+  test('ar mit deutschen Namen: eine Zahl am Anfang bleibt vorne', () async {
+    // Mit und ohne führende Zahl: steht der deutsche Name als eigener
+    // Abschnitt von links nach rechts, endet er rechts gleich ("...rollen"),
+    // und die rechte Hälfte des Zettels ist fast Punkt für Punkt dieselbe. Ohne
+    // eigenen Abschnitt rückt die "3" ans Ende, neben die Anzahl.
+    Future<MonoImage> render(String prefix) => renderKitchenTicket(
+      _ticket(AppLanguage.ar, [
+        KitchenLine(
+          quantity: 2,
+          name: '${prefix}Frühlingsrollen',
+          info: '${prefix}Falafel',
+          options: ['${prefix}Fladen'],
+        ),
+      ], title: 'المطبخ'),
+      widthDots: 576,
+    );
+    final digits = await render('3 ');
+    final plain = await render('');
+    expect(digits.height, plain.height);
+    var differing = 0, ink = 0;
+    for (var y = 0; y < plain.height; y++) {
+      for (var x = 288; x < 576; x++) {
+        if (plain.at(x, y)) ink++;
+        if (digits.at(x, y) != plain.at(x, y)) differing++;
+      }
+    }
+    // Kanten einzelner Buchstaben dürfen um einen Punkt anders fallen
+    // (Laufweite); eine Zahl am falschen Ende sind tausende Punkte.
+    expect(differing, lessThan(ink * 0.05));
+  });
+
   test('mit Banner: oben über die ganze Breite schwarz', () async {
     final image = await renderKitchenTicket(
       _ticket(AppLanguage.de, [soup], banner: 'STORNO'),

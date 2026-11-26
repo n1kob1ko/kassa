@@ -102,6 +102,13 @@ class _TicketLayout {
 
   double _px(double v) => v * _scale;
 
+  /// Ein Name, ein Zusatz oder eine Option in einer Sprache von rechts nach
+  /// links: ein eigener Abschnitt, dessen Richtung sein erster Buchstabe
+  /// bestimmt. So bleibt ein deutscher Name aus der Speisekarte wie
+  /// "3 Frühlingsrollen" oder "Extra scharf!" auf einem arabischen Zettel
+  /// richtig herum; sonst bleibt der Text Zeichen für Zeichen gleich.
+  String _own(String text) => ticket.language.isRtl ? _isolate(text) : text;
+
   double get _margin => _px(12);
   double get _content => width - 2 * _margin;
 
@@ -254,7 +261,7 @@ class _TicketLayout {
       final line = ticket.lines[i];
       if (i > 0) y += _px(22);
       final name = _text(
-        line.name,
+        _own(line.name),
         size: 44,
         weight: ui.FontWeight.w800,
         width: nameWidth,
@@ -280,7 +287,7 @@ class _TicketLayout {
       final info = line.info;
       if (info != null && info.isNotEmpty) {
         final p = _text(
-          info,
+          _own(info),
           size: 30,
           weight: ui.FontWeight.w600,
           width: nameWidth,
@@ -291,7 +298,7 @@ class _TicketLayout {
       if (line.options.isNotEmpty) bottom += _px(2);
       for (final option in line.options) {
         final p = _text(
-          option,
+          _own(option),
           size: 34,
           weight: ui.FontWeight.w600,
           width: nameWidth,
