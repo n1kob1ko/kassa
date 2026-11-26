@@ -7,6 +7,7 @@ import 'package:qr/qr.dart';
 
 import '../domain/print_document.dart';
 import '../domain/receipt_layout.dart' show printable;
+import 'mono_image.dart';
 
 /// Statusabfrage: Zustand des Druckers (DLE EOT 1).
 const escposStatusPrinter = [0x10, 0x04, 0x01];
@@ -170,9 +171,42 @@ List<int> _qrImage(String data, int columns) {
       }
     }
   }
-  return [
-    0x1D, 0x76, 0x30, 0x00, //
-    widthBytes & 0xFF, widthBytes >> 8, height & 0xFF, height >> 8,
-    ...image,
-  ];
+  return _raster(widthBytes, height, image);
+}
+
+/// Rasterbild (GS v 0, normale Größe): [widthBytes] Bytes je Zeile, [height]
+/// Zeilen, danach die Punkte Zeile für Zeile.
+List<int> _raster(int widthBytes, int height, List<int> bits) => [
+  0x1D, 0x76, 0x30, 0x00, //
+  widthBytes & 0xFF, widthBytes >> 8, height & 0xFF, height >> 8,
+  ...bits,
+];
+
+/// Höchstens so viele Zeilen gehen in einem Rasterbefehl hinaus; manche
+/// Drucker haben für ein Bild nur einen kleinen Puffer.
+const _rasterStripRows = 240;
+
+/// Initialisieren, Bild in Streifen zu höchstens 240 Zeilen (GS v 0), 3 Zeilen
+/// Vorschub, Schnitt.
+Uint8List encodeRasterTicket(MonoImage image) {
+  final out = BytesBuilder(copy: false)..add(_init);
+  final rowBytes = image.rowBytes;
+  for (var top = 0; top < image.height; top += _rasterStripRows) {
+    final rows = (image.height - top).clamp(0, _rasterStripRows);
+    out.add(
+      _raster(
+        rowBytes,
+        rows,
+        Uint8List.sublistView(
+          image.bits,
+          top * rowBytes,
+          (top + rows) * rowBytes,
+        ),
+      ),
+    );
+  }
+  out
+    ..add(const [0x1B, 0x64, 3])
+    ..add(_cut);
+  return out.toBytes();
 }

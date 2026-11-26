@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/devices/escpos.dart';
+import 'package:kassa/devices/mono_image.dart';
 import 'package:kassa/domain/business_info.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
@@ -195,6 +198,67 @@ void main() {
         encodeEscPos([const PrintQr('ABC')], qrAsImage: true, columns: 32),
       );
       expect(b[7] + 256 * b[8], 48);
+    });
+  });
+
+  group('Küchenbon als Rasterbild', () {
+    /// Bild mit [height] Zeilen zu 576 Punkten; Zeile y hat das Byte y & 0xFF
+    /// an jeder Stelle, damit die Streifen sich unterscheiden lassen.
+    MonoImage image(int height, {int width = 576}) {
+      final rowBytes = (width + 7) ~/ 8;
+      final bits = Uint8List(rowBytes * height);
+      for (var y = 0; y < height; y++) {
+        bits.fillRange(y * rowBytes, (y + 1) * rowBytes, y & 0xFF);
+      }
+      return MonoImage(width, height, bits);
+    }
+
+    /// Die Streifen (Breite in Bytes, Höhe, Daten) ab [start], und wo sie enden.
+    (List<(int, int, List<int>)>, int) strips(List<int> b, int start) {
+      final out = <(int, int, List<int>)>[];
+      var i = start;
+      while (i + 8 <= b.length &&
+          b[i] == 0x1D &&
+          b[i + 1] == 0x76 &&
+          b[i + 2] == 0x30 &&
+          b[i + 3] == 0x00) {
+        final w = b[i + 4] + 256 * b[i + 5];
+        final h = b[i + 6] + 256 * b[i + 7];
+        out.add((w, h, b.sublist(i + 8, i + 8 + w * h)));
+        i += 8 + w * h;
+      }
+      return (out, i);
+    }
+
+    test('Start, ein Streifen, 3 Zeilen Vorschub, Schnitt', () {
+      final b = encodeRasterTicket(image(100));
+      expect(b.sublist(0, 2), [0x1B, 0x40]);
+      final (s, end) = strips(b, 2);
+      expect(s.length, 1);
+      expect(s[0].$1, 72);
+      expect(s[0].$2, 100);
+      expect(b.sublist(end), [0x1B, 0x64, 0x03, 0x1D, 0x56, 0x42, 0x00]);
+    });
+
+    test('500 Zeilen geben 3 Streifen zu 240, 240 und 20 Zeilen', () {
+      final img = image(500);
+      final b = encodeRasterTicket(img);
+      final (s, end) = strips(b, 2);
+      expect([for (final x in s) x.$2], [240, 240, 20]);
+      expect(s.every((x) => x.$1 == 72), isTrue);
+      // Die Streifen ergeben zusammen genau das Bild.
+      expect([for (final x in s) ...x.$3], img.bits);
+      expect(end, b.length - 7);
+    });
+
+    test('Breite in Bytes aufgerundet: 384 gibt 48, 504 gibt 63', () {
+      expect(strips(encodeRasterTicket(image(10, width: 384)), 2).$1[0].$1, 48);
+      expect(strips(encodeRasterTicket(image(10, width: 504)), 2).$1[0].$1, 63);
+    });
+
+    test('Kopf des Streifens: Breite und Höhe in je zwei Bytes', () {
+      final b = encodeRasterTicket(image(240));
+      expect(b.sublist(2, 10), [0x1D, 0x76, 0x30, 0x00, 72, 0, 240, 0]);
     });
   });
 }

@@ -48,7 +48,7 @@ Future<void>? _fonts;
 /// Lädt Figtree, JetBrains Mono und Noto Sans SC/Arabic aus `assets/fonts` und
 /// die Lucide-Symbole, damit Bildvergleiche echten Text und echte Symbole
 /// zeigen.
-Future<void> loadFigtree() => _fonts ??= () async {
+Future<void> loadBundledFonts() => _fonts ??= () async {
   final loader = FontLoader('Figtree');
   for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
     final bytes = File('assets/fonts/Figtree-$w.ttf').readAsBytesSync();
@@ -101,7 +101,7 @@ Future<void> pumpApp(
   List<Override> overrides = const [],
 }) async {
   // Schriften laden braucht echte Zeit, nicht die FakeAsync-Uhr des Tests.
-  await t.runAsync(loadFigtree);
+  await t.runAsync(loadBundledFonts);
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1.0;
   t.platformDispatcher.textScaleFactorTestValue = textScale;
