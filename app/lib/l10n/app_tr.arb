@@ -391,5 +391,6 @@
   "kassaKitchenNotPrinted": "Mutfak fişi yazdırılmadı",
   "kassaKitchenPrint": "Mutfak fişini yazdır",
   "kassaKitchenPrinting": "Mutfak fişi yazdırılıyor…",
-  "kassaKitchenPrinted": "Mutfak fişi yazdırıldı."
+  "kassaKitchenPrinted": "Mutfak fişi yazdırıldı.",
+  "bonsKitchenNothing": "Bu fişte mutfak için bir şey yok."
 }

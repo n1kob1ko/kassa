@@ -1375,4 +1375,7 @@ class L10nAr extends L10n {
 
   @override
   String get kassaKitchenPrinted => 'تمت طباعة تذكرة المطبخ.';
+
+  @override
+  String get bonsKitchenNothing => 'لا يوجد في هذه الفاتورة شيء للمطبخ.';
 }

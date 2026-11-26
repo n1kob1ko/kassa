@@ -134,11 +134,14 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       final outcome = await ref
           .read(kitchenServiceProvider)
           .printFor(receipt, copy: true);
-      if (!mounted || outcome == null) return;
+      if (!mounted) return;
       final l = L10n.of(context);
       showUndoToast(
         context,
-        message: outcome.ok
+        // `null`: keine Zeile des Bons gehört in die Küche.
+        message: outcome == null
+            ? l.bonsKitchenNothing
+            : outcome.ok
             ? l.kassaKitchenPrinted
             : kitchenProblemText(l, outcome.problem!, mode),
       );

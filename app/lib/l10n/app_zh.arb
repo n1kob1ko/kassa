@@ -391,5 +391,6 @@
   "kassaKitchenNotPrinted": "厨房单未打印",
   "kassaKitchenPrint": "打印厨房单",
   "kassaKitchenPrinting": "正在打印厨房单…",
-  "kassaKitchenPrinted": "厨房单已打印。"
+  "kassaKitchenPrinted": "厨房单已打印。",
+  "bonsKitchenNothing": "这张小票上没有需要厨房制作的内容。"
 }

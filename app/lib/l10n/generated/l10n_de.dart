@@ -1377,4 +1377,7 @@ class L10nDe extends L10n {
 
   @override
   String get kassaKitchenPrinted => 'Küchenbon gedruckt.';
+
+  @override
+  String get bonsKitchenNothing => 'Auf diesem Bon ist nichts für die Küche.';
 }

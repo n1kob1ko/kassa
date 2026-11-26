@@ -2455,6 +2455,12 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Küchenbon gedruckt.'**
   String get kassaKitchenPrinted;
+
+  /// Hinweis im Bon-Detail nach "Küchenbon drucken": keine Zeile des Bons gehört in eine Kategorie für die Küche.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf diesem Bon ist nichts für die Küche.'**
+  String get bonsKitchenNothing;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

@@ -1344,4 +1344,7 @@ class L10nZh extends L10n {
 
   @override
   String get kassaKitchenPrinted => '厨房单已打印。';
+
+  @override
+  String get bonsKitchenNothing => '这张小票上没有需要厨房制作的内容。';
 }

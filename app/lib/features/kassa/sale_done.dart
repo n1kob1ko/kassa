@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/app_language.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
@@ -159,15 +160,14 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                       const SizedBox(height: KassaTokens.spaceMd),
                       _PrintState(outcome: outcome, onReprint: _reprint),
                     ],
+                    // Gescheitert immer, auch ohne Küchendrucker: sonst
+                    // käme nie ein Küchenbon, ohne dass es jemand merkt.
                     if (_kitchen case final kitchen?
-                        // Ohne Küchendrucker sagt es die Seite Einstellungen,
-                        // nicht jeder Verkauf.
-                        when (kitchen.ok
-                            ? _kitchenRetried
-                            : kitchen.problem != PrintProblem.notSetUp)) ...[
+                        when !kitchen.ok || _kitchenRetried) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
                       _KitchenState(
                         outcome: kitchen,
+                        mode: settings.kitchenMode,
                         printing: _kitchenAgain,
                         onReprint: _reprintKitchen,
                       ),
@@ -350,11 +350,16 @@ class _PrintState extends StatelessWidget {
 class _KitchenState extends StatelessWidget {
   const _KitchenState({
     required this.outcome,
+    required this.mode,
     required this.printing,
     required this.onReprint,
   });
 
   final PrintOutcome outcome;
+
+  /// Der Ort des Küchenbons: ohne Küchendrucker sagt die Meldung "Kein
+  /// Küchendrucker", nicht "Kein Bondrucker".
+  final KitchenMode mode;
 
   /// Der Nachdruck läuft: die Taste sagt es und nimmt keinen Tipp an.
   final bool printing;
@@ -395,7 +400,7 @@ class _KitchenState extends StatelessWidget {
           ),
           const SizedBox(height: KassaTokens.spaceXxs),
           Text(
-            printProblemText(l, problem),
+            kitchenProblemText(l, problem, mode),
             style: text.bodyLarge!.copyWith(
               fontWeight: FontWeight.w600,
               color: c.warnInk,

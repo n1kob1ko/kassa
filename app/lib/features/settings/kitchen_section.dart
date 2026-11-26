@@ -67,12 +67,18 @@ class _KitchenSectionState extends ConsumerState<KitchenSection>
   bool _sampling = false;
   PrintOutcome? _sample;
 
+  /// Ein Wechsel des Orts macht eine laufende Probe ungültig.
+  int _sampleGeneration = 0;
+
   @override
   void didUpdateWidget(KitchenSection old) {
     super.didUpdateWidget(old);
     final mode = widget.settings.kitchenMode;
     if (mode == old.settings.kitchenMode) return;
     if (mode != KitchenMode.off) _shown = mode;
+    // Das Ergebnis der Probe galt dem bisherigen Ort.
+    _sample = null;
+    _sampleGeneration++;
     final show = mode != KitchenMode.off;
     if (MediaQuery.disableAnimationsOf(context)) {
       _reveal.value = show ? 1 : 0;
@@ -90,6 +96,7 @@ class _KitchenSectionState extends ConsumerState<KitchenSection>
 
   Future<void> _printSample() async {
     if (_sampling) return;
+    final generation = _sampleGeneration;
     setState(() => _sampling = true);
     PrintOutcome outcome;
     try {
@@ -100,7 +107,7 @@ class _KitchenSectionState extends ConsumerState<KitchenSection>
     if (!mounted) return;
     setState(() {
       _sampling = false;
-      _sample = outcome;
+      if (generation == _sampleGeneration) _sample = outcome;
     });
   }
 

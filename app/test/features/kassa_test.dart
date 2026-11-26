@@ -1060,10 +1060,16 @@ void kuechenbonNachDemVerkaufTests() {
     expect(find.byKey(const Key('kitchen-reprint')), findsNothing);
   });
 
-  testWidgets('kein Küchendrucker eingerichtet: kein Hinweis nach jedem '
-      'Verkauf (er steht in den Einstellungen)', (t) async {
+  testWidgets('kein Küchendrucker eingerichtet: der Hinweis sagt es, mit '
+      'der Taste zum Nachdrucken', (t) async {
     await sellWithKitchen(t, const PrintOutcome.failed(PrintProblem.notSetUp));
-    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+    expect(_text('Küchenbon nicht gedruckt'), findsOneWidget);
+    expect(
+      _text('Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.'),
+      findsOneWidget,
+    );
+    expect(_text('Kein Bondrucker eingerichtet.'), findsNothing);
+    expect(find.byKey(const Key('kitchen-reprint')), findsOneWidget);
   });
 
   testWidgets('"Nächster Kunde" wartet nicht auf den Küchenbon', (t) async {

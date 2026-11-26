@@ -221,20 +221,7 @@ Future<void> _tour(
     ),
   );
   await t.pumpAndSettle();
-  for (var i = 0; i < 5; i++) {
-    await t.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 20)),
-    );
-    await t.pump();
-  }
-  await t.pumpAndSettle();
-  expect(
-    find.descendant(
-      of: find.byKey(const Key('kitchen-preview')),
-      matching: find.byType(RawImage),
-    ),
-    findsOneWidget,
-  );
+  await _awaitPreview(t);
   await t.ensureVisible(find.byKey(const Key('kitchen-sample')));
   await t.pumpAndSettle();
   look('Einstellungen Küche');
@@ -331,4 +318,24 @@ void main() {
     );
     expect(seen, containsAll(['Anmeldung', 'Kassa', 'Bar mit Zahlenfeld']));
   });
+}
+
+/// Lässt das Zeichnen der Vorschau (echtes `dart:ui`) zu Ende laufen: wartet,
+/// bis ein Bild unter `kitchen-preview` steht, höchstens rund 5 Sekunden.
+Future<void> _awaitPreview(WidgetTester t) async {
+  final image = find.descendant(
+    of: find.byKey(const Key('kitchen-preview')),
+    matching: find.byType(RawImage),
+  );
+  for (var i = 0; i < 250; i++) {
+    await t.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await t.pump();
+    if (image.evaluate().isNotEmpty &&
+        t.widget<RawImage>(image).image != null) {
+      break;
+    }
+  }
+  expect(image, findsOneWidget);
 }

@@ -632,6 +632,19 @@ void main() {
       );
     });
 
+    testWidgets('nichts für die Küche: der Hinweis sagt das', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      await openReceipt(t, 1);
+      kitchen.next = null;
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(kitchen.calls, ['for:1:copy']);
+      expect(
+        find.text('Auf diesem Bon ist nichts für die Küche.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('Küchendrucker fehlt: der Hinweis sagt das', (t) async {
       final kitchen = await pumpWithKitchen(
         t,

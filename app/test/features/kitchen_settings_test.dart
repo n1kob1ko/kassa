@@ -57,13 +57,17 @@ Future<void> _save(
   await t.pumpAndSettle();
 }
 
-/// Lässt das Zeichnen der Vorschau zu Ende laufen (echtes `dart:ui`).
-Future<void> _paint(WidgetTester t) async {
-  for (var i = 0; i < 5; i++) {
+/// Lässt das Zeichnen der Vorschau zu Ende laufen (echtes `dart:ui`): wartet,
+/// bis ein neues Bild unter `kitchen-preview` steht (nicht [before]),
+/// höchstens rund 5 Sekunden.
+Future<void> _paint(WidgetTester t, {ui.Image? before}) async {
+  for (var i = 0; i < 250; i++) {
     await t.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 20)),
     );
     await t.pump();
+    final image = _previewImage(t);
+    if (image != null && !identical(image, before)) return;
   }
 }
 
@@ -239,13 +243,13 @@ void main() {
     await _tap(t, 'kitchen-language-zh');
     // Das neue Bild ist noch nicht fertig: das alte bleibt stehen.
     expect(_previewImage(t), isNotNull);
-    await _paint(t);
+    await _paint(t, before: first);
     final second = _previewImage(t);
     expect(identical(second, first), isFalse);
 
     // Eine Kategorie weniger: wieder neu gezeichnet.
     await _tap(t, 'kitchen-category-bowls');
-    await _paint(t);
+    await _paint(t, before: second);
     expect(identical(_previewImage(t), second), isFalse);
     expect(t.takeException(), isNull);
   });
@@ -291,6 +295,18 @@ void main() {
       find.text('Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.'),
       findsNWidgets(2),
     );
+  });
+
+  testWidgets('ein anderer Ort löscht das Ergebnis der Probe', (t) async {
+    final kitchen = await _pump(t);
+    await _save(t, (s) => s.copyWith(kitchenMode: KitchenMode.receiptPrinter));
+    kitchen.nextSample = const PrintOutcome.failed(PrintProblem.notSetUp);
+    await _tap(t, 'kitchen-sample');
+    expect(find.text('Kein Bondrucker eingerichtet.'), findsOneWidget);
+    await _tap(t, 'kitchen-mode-kitchenPrinter');
+    await t.pumpAndSettle();
+    expect(find.text('Kein Bondrucker eingerichtet.'), findsNothing);
+    expect(find.byKey(const Key('kitchen-sample-result')), findsNothing);
   });
 
   testWidgets('kein Sprung, wenn das Ergebnis der Probe erscheint', (t) async {

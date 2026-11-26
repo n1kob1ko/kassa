@@ -391,5 +391,6 @@
   "kassaKitchenNotPrinted": "Kitchen ticket not printed",
   "kassaKitchenPrint": "Print kitchen ticket",
   "kassaKitchenPrinting": "Printing kitchen ticket…",
-  "kassaKitchenPrinted": "Kitchen ticket printed."
+  "kassaKitchenPrinted": "Kitchen ticket printed.",
+  "bonsKitchenNothing": "Nothing on this receipt is for the kitchen."
 }

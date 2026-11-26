@@ -391,5 +391,6 @@
   "kassaKitchenNotPrinted": "لم تُطبع تذكرة المطبخ",
   "kassaKitchenPrint": "طباعة تذكرة المطبخ",
   "kassaKitchenPrinting": "جارٍ طباعة تذكرة المطبخ…",
-  "kassaKitchenPrinted": "تمت طباعة تذكرة المطبخ."
+  "kassaKitchenPrinted": "تمت طباعة تذكرة المطبخ.",
+  "bonsKitchenNothing": "لا يوجد في هذه الفاتورة شيء للمطبخ."
 }

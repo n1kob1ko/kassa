@@ -1363,4 +1363,7 @@ class L10nTr extends L10n {
 
   @override
   String get kassaKitchenPrinted => 'Mutfak fişi yazdırıldı.';
+
+  @override
+  String get bonsKitchenNothing => 'Bu fişte mutfak için bir şey yok.';
 }

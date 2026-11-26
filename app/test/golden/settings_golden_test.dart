@@ -306,12 +306,7 @@ void main() {
       );
       await t.pumpAndSettle();
       // Die Vorschau zeichnet mit echtem `dart:ui`.
-      for (var i = 0; i < 5; i++) {
-        await t.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 20)),
-        );
-        await t.pump();
-      }
+      await _awaitPreview(t);
       // Unten im Bild: "Probe drucken"; darüber Kategorien und Vorschau.
       await Scrollable.ensureVisible(
         t.element(find.byKey(const Key('kitchen-sample'))),
@@ -325,4 +320,24 @@ void main() {
       );
     });
   }
+}
+
+/// Lässt das Zeichnen der Vorschau (echtes `dart:ui`) zu Ende laufen: wartet,
+/// bis ein Bild unter `kitchen-preview` steht, höchstens rund 5 Sekunden.
+Future<void> _awaitPreview(WidgetTester t) async {
+  final image = find.descendant(
+    of: find.byKey(const Key('kitchen-preview')),
+    matching: find.byType(RawImage),
+  );
+  for (var i = 0; i < 250; i++) {
+    await t.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await t.pump();
+    if (image.evaluate().isNotEmpty &&
+        t.widget<RawImage>(image).image != null) {
+      break;
+    }
+  }
+  expect(image, findsOneWidget);
 }

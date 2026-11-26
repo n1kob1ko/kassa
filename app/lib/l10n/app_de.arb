@@ -1997,5 +1997,9 @@
   "kassaKitchenPrinted": "Küchenbon gedruckt.",
   "@kassaKitchenPrinted": {
     "description": "Ergebnis: der Küchenbon ist gedruckt."
+  },
+  "bonsKitchenNothing": "Auf diesem Bon ist nichts für die Küche.",
+  "@bonsKitchenNothing": {
+    "description": "Hinweis im Bon-Detail nach \"Küchenbon drucken\": keine Zeile des Bons gehört in eine Kategorie für die Küche."
   }
 }
