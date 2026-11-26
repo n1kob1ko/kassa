@@ -23,7 +23,7 @@ type GroupJson = {
 };
 
 /** Eine Zeile mit ihrer Änderungs-Nummer, damit alle Arten gemeinsam nach Nummer sortiert und abgeschnitten werden. */
-type Change = { seq: number; kind: 'business' | 'categories' | 'items' | 'templates' | 'staff'; row: object };
+type Change = { seq: number; kind: 'business' | 'categories' | 'items' | 'templates' | 'staff' | 'translations'; row: object };
 
 /** Eine ganze Zahl ab `min` aus der Abfrage, sonst null. Mehrfach angegeben zählt als falsch. */
 function readInt(v: unknown, min: number): number | null {
@@ -68,7 +68,7 @@ export function installPullRoutes(app: FastifyInstance): void {
       limit = Math.min(n, MAX_LIMIT);
     }
 
-    // Ein fester Stand für alle fünf Abfragen. Jede Art liefert höchstens limit + 1 Zeilen: Daraus ergeben sich
+    // Ein fester Stand für alle sechs Abfragen. Jede Art liefert höchstens limit + 1 Zeilen: Daraus ergeben sich
     // die ersten limit Zeilen über alle Arten und ob danach noch etwas kommt.
     const changes = await withBusiness(
       db,
@@ -157,6 +157,14 @@ export function installPullRoutes(app: FastifyInstance): void {
             row: { id: r.id, name: r.name, role: r.role, pinSalt: r.pin_salt, pinHash: r.pin_hash, archived: r.archived },
           });
         }
+        const translations = await c.query(
+          `select source, values, change_seq from translations
+            where change_seq > $1 order by change_seq limit $2`,
+          [since, take],
+        );
+        for (const r of translations.rows) {
+          out.push({ seq: seqOf(r), kind: 'translations', row: { source: r.source, values: r.values } });
+        }
         return out;
       },
       { repeatableRead: true },
@@ -165,7 +173,7 @@ export function installPullRoutes(app: FastifyInstance): void {
     changes.sort((x, y) => x.seq - y.seq);
     const page = changes.slice(0, limit);
     let business: object | undefined;
-    const lists = { categories: [] as object[], items: [] as object[], templates: [] as object[], staff: [] as object[] };
+    const lists = { categories: [] as object[], items: [] as object[], templates: [] as object[], staff: [] as object[], translations: [] as object[] };
     for (const ch of page) {
       if (ch.kind === 'business') business = ch.row;
       else lists[ch.kind].push(ch.row);

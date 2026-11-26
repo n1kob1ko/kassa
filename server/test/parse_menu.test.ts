@@ -40,7 +40,8 @@ describe('gemeinsame Beispiele mit der App', () => {
         expect(thrown).toBeInstanceOf(MenuImportError);
         expect((thrown as MenuImportError).problems).toEqual(expected.problems);
       } else {
-        expect(parseMenuFile(text)).toEqual(expected.menu);
+        // Ältere Beispiele kennen kein Wörterbuch: fehlt `translations`, gilt es als leer.
+        expect(parseMenuFile(text)).toEqual({ translations: {}, ...(expected.menu as object) });
       }
     });
   }

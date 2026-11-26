@@ -51,6 +51,7 @@ test('erstes Einspielen: alles added, Nummern steigen in Datei-Reihenfolge', asy
     categories: { added: 2, changed: 0, archived: 0 },
     items: { added: 3, changed: 0, archived: 0 },
     templates: { added: 1, changed: 0, archived: 0 },
+    translations: 0,
   });
   const cats = await categories(b);
   expect(cats.map((r) => r.id)).toEqual(['bowls', 'getraenke']);
@@ -95,7 +96,7 @@ test('gleiche Datei nochmal: summary überall 0, keine Änderungs-Nummer bewegt 
   const before = await seqs(b);
   const bizBefore = (await business(b)).change_seq;
   const summary = await run(b, menu(), T1);
-  expect(summary).toEqual({ categories: ZERO, items: ZERO, templates: ZERO });
+  expect(summary).toEqual({ categories: ZERO, items: ZERO, templates: ZERO, translations: 0 });
   expect(await seqs(b)).toEqual(before);
   expect((await business(b)).change_seq).toBe(bizBefore);
   expect((await items(b))[0]!.price_changed_at).toEqual(T0);
@@ -110,7 +111,7 @@ test('Preis in der Datei geändert: genau dieser Artikel changed, neue Nummer, p
     menu((f) => (f.artikel[2].preis_cent = 320)),
     T1,
   );
-  expect(summary).toEqual({ categories: ZERO, items: { added: 0, changed: 1, archived: 0 }, templates: ZERO });
+  expect(summary).toEqual({ categories: ZERO, items: { added: 0, changed: 1, archived: 0 }, templates: ZERO, translations: 0 });
   const after = await items(b);
   const cola = after.find((r) => r.id === 'cola')!;
   expect(cola.price_cents).toBe(320);
@@ -151,18 +152,20 @@ test('Artikel fehlt in der neuen Datei: archived, taucht er wieder auf: nicht me
     categories: ZERO,
     items: { added: 0, changed: 0, archived: 1 },
     templates: ZERO,
+    translations: 0,
   });
   const gone = (await items(b)).find((r) => r.id === 'cola')!;
   expect(gone.archived).toBe(true);
   const seqGone = Number(gone.change_seq);
   // Nochmal ohne ihn: nichts mehr zu tun.
-  expect(await run(b, without, T1)).toEqual({ categories: ZERO, items: ZERO, templates: ZERO });
+  expect(await run(b, without, T1)).toEqual({ categories: ZERO, items: ZERO, templates: ZERO, translations: 0 });
   expect(Number((await items(b)).find((r) => r.id === 'cola')!.change_seq)).toBe(seqGone);
 
   expect(await run(b, menu(), T1)).toEqual({
     categories: ZERO,
     items: { added: 0, changed: 1, archived: 0 },
     templates: ZERO,
+    translations: 0,
   });
   const back = (await items(b)).find((r) => r.id === 'cola')!;
   expect(back.archived).toBe(false);
@@ -182,6 +185,7 @@ test('Kategorie und Vorlage fehlen: archived, sie kommen wieder: nicht mehr arch
     categories: { added: 0, changed: 1, archived: 1 },
     items: { added: 0, changed: 1, archived: 2 },
     templates: { added: 0, changed: 0, archived: 1 },
+    translations: 0,
   });
   const cats = await categories(b);
   expect(cats.find((r) => r.id === 'bowls')!.archived).toBe(true);

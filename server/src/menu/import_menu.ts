@@ -1,9 +1,10 @@
 import type pg from 'pg';
 import { nextChangeSeq } from '../db/tenant.js';
 import type { ParsedMenu } from './parse_menu.js';
+import { applyTranslations } from './translations.js';
 
 export type Counts = { added: number; changed: number; archived: number };
-export type ImportSummary = { categories: Counts; items: Counts; templates: Counts };
+export type ImportSummary = { categories: Counts; items: Counts; templates: Counts; translations: number };
 
 /** Größter Betrag in Cent, den der Server annimmt. Weit unter dem, was eine PostgreSQL-integer-Spalte fasst. */
 export const MAX_CENTS = 99_999_999;
@@ -74,6 +75,7 @@ type TemplateRow = { id: string; name: string; groups: unknown; archived: boolea
  * Die Datei gewinnt bei allem, was in ihr steht. `favorite`, `in_sale` und `photo_file_id` bleiben.
  * Was fehlt, wird stillgelegt, was wieder auftaucht, wieder in Betrieb genommen.
  * Nur Zeilen, die sich wirklich ändern, bekommen eine neue Änderungs-Nummer.
+ * Übersetzungen werden nie gelöscht, nur je Name und Sprache ersetzt.
  * Mitarbeiter aus der Datei werden nie angelegt.
  */
 export async function importMenu(
@@ -86,6 +88,7 @@ export async function importMenu(
     categories: { added: 0, changed: 0, archived: 0 },
     items: { added: 0, changed: 0, archived: 0 },
     templates: { added: 0, changed: 0, archived: 0 },
+    translations: 0,
   };
 
   // Betriebsdaten
@@ -255,6 +258,9 @@ export async function importMenu(
     ]);
     summary.templates.archived++;
   }
+
+  // Wörterbuch: je Name und Sprache ersetzen, der Rest bleibt.
+  summary.translations = await applyTranslations(c, businessId, menu.translations);
 
   return summary;
 }

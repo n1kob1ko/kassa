@@ -32,6 +32,7 @@ test('Anlegen aus der Beispieldatei: 201, 3 Artikel, 2 Kategorien, 1 Vorlage', a
     categories: { added: 2, changed: 0, archived: 0 },
     items: { added: 3, changed: 0, archived: 0 },
     templates: { added: 1, changed: 0, archived: 0 },
+    translations: 0,
   });
   const id = body.business.id;
   expect(await rows(id, 'select 1 from items')).toHaveLength(3);
@@ -161,6 +162,7 @@ test('Neu einspielen: 200 mit summary und ignoredStaff', async () => {
       categories: { added: 0, changed: 0, archived: 0 },
       items: { added: 0, changed: 0, archived: 0 },
       templates: { added: 0, changed: 0, archived: 0 },
+      translations: 0,
     },
     ignoredStaff: 2,
   });

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { withBusiness } from '../src/db/tenant.js';
+import { nextChangeSeq, withBusiness, withBusinessWrite } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createBusiness, menuFixture } from './support/businesses.js';
 import {
@@ -76,7 +76,7 @@ describe('Beispieldateien', () => {
     const { next } = (await pull(f.app, token, '?since=0')).json();
     const res = await pull(f.app, token, `?since=${next}`);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ next, more: false, categories: [], items: [], templates: [], staff: [] });
+    expect(res.json()).toEqual({ next, more: false, categories: [], items: [], templates: [], staff: [], translations: [] });
     // Auch eine Nummer weit hinter allem gibt next unverändert zurück.
     expect((await pull(f.app, token, '?since=999999')).json().next).toBe(999999);
   });
@@ -120,6 +120,37 @@ describe('mit gemeinsamer App', () => {
     const device = await pairDevice(a.app, provider.cookie, b);
     return { id: b as string, staffId, ...device };
   }
+
+  test('translations: ab since, nach Nummer, gelöscht kommt mit values {}', async () => {
+    const b = await business();
+    const withDict = (dict: object) =>
+      reimport(a.app, provider.cookie, b.id, JSON.stringify({ ...JSON.parse(menuFixture('beispiel-imbiss')), uebersetzungen: dict }));
+    expect(((await pull(a.app, b.token, '?since=0')).json() as { translations: unknown[] }).translations).toEqual([]);
+    const { next } = (await pull(a.app, b.token, '?since=0')).json();
+
+    await withDict({ 'Huhn Bowl': { en: 'Chicken bowl' }, 'Cola 0,33 l': { en: 'Cola 0,33 l', tr: 'Kola' } });
+    const first = (await pull(a.app, b.token, `?since=${next}`)).json() as {
+      next: number;
+      translations: { source: string; values: object }[];
+    };
+    // Cola mit en gleich dem Namen: nur tr bleibt.
+    expect(first.translations).toEqual([
+      { source: 'Huhn Bowl', values: { en: 'Chicken bowl' } },
+      { source: 'Cola 0,33 l', values: { tr: 'Kola' } },
+    ]);
+
+    // Ein gelöschter Eintrag (values {}) wird weiter geliefert.
+    await withBusinessWrite(a.db, b.id, async (c) => {
+      await c.query(`update translations set values = '{}', change_seq = $2 where business_id = $1 and source = 'Cola 0,33 l'`, [
+        b.id,
+        await nextChangeSeq(c),
+      ]);
+    });
+    const second = (await pull(a.app, b.token, `?since=${first.next}`)).json() as {
+      translations: { source: string; values: object }[];
+    };
+    expect(second.translations).toEqual([{ source: 'Cola 0,33 l', values: {} }]);
+  });
 
   test('limit=2: seitenweise bis more=false ergibt jede Zeile genau einmal', async () => {
     const b = await business();

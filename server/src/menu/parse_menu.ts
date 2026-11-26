@@ -3,6 +3,8 @@
 // der Prüfungen, gleiche Meldungen, gleiche Kennungen. Die gemeinsamen
 // Beispiele in shared/fixtures/menu/ halten beide Leser gleich.
 
+import { menuNames, parseTranslations, type Translations } from './translations.js';
+
 export class MenuImportError extends Error {
   constructor(readonly problems: string[]) {
     super(problems.join(' '));
@@ -52,6 +54,7 @@ export type ParsedMenu = {
     }[];
   }[];
   staffSeeds: { name: string; pin: string; role: 'chef' | 'staff' }[];
+  translations: Translations;
 };
 
 const INVALID_FILE = 'Die Datei ist keine gültige Speisekarten-Datei.';
@@ -382,6 +385,13 @@ export function parseMenuFile(jsonText: string): ParsedMenu {
     if (ok) staffSeeds.push({ name, pin: pin as string, role: role as 'chef' | 'staff' });
   }
 
+  // Übersetzungsprobleme kommen nach allen anderen.
+  const translations = parseTranslations(
+    root['uebersetzungen'],
+    menuNames(categoriesJson, itemsJson, groupsJson),
+    problems,
+  );
+
   if (problems.length > 0) throw new MenuImportError(problems);
   return {
     business: { name: businessName as string, addressLines, vatId, receiptFooter },
@@ -389,5 +399,6 @@ export function parseMenuFile(jsonText: string): ParsedMenu {
     items,
     templates,
     staffSeeds,
+    translations,
   };
 }
