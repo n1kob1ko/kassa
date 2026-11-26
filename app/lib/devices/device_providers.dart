@@ -69,10 +69,30 @@ final transportFactoryProvider = Provider<TransportFactory>(
 
 /// Der Drucker folgt den Einstellungen und den Betriebsdaten. Solange eines
 /// von beiden noch lädt, melden seine Aufrufe "nicht eingerichtet".
+///
+/// Er hört nur auf die Angaben des Bondruckers: in derselben Zeile der
+/// Einstellungen steht der Entwurf des Bons, der sich bei jedem Verkauf
+/// ändert, und ein neuer Drucker hätte eine neue, leere Warteschlange (der
+/// Bon eines nächsten Verkaufs käme vor dem Küchenbon des vorigen).
 final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
-  final settings = ref.watch(settingsStreamProvider).value;
+  final setup = ref.watch(
+    settingsStreamProvider.select(
+      (a) => switch (a.value) {
+        null => null,
+        final s => (
+          s.printerKind,
+          s.printerAddress,
+          s.printerColumns,
+          s.printerQrAsImage,
+        ),
+      },
+    ),
+  );
   final catalog = ref.watch(catalogStreamProvider).value;
-  if (settings == null || catalog == null) return const _NoPrinter();
+  final settings = ref.read(settingsStreamProvider).value;
+  if (setup == null || settings == null || catalog == null) {
+    return const _NoPrinter();
+  }
   final receipts = ref.watch(receiptRepositoryProvider);
   return EscPosPrinter(
     transport: ref.watch(transportFactoryProvider)(settings),
@@ -86,9 +106,24 @@ final receiptPrinterProvider = Provider<ReceiptPrinter>((ref) {
 
 /// Drucker für den Küchenbon: bei `receiptPrinter` der Bondrucker (dieselbe Instanz), bei `kitchenPrinter` ein
 /// eigener mit dem Küchen-Transport, bei `off` null.
+///
+/// Hört wie [receiptPrinterProvider] nur auf die eigenen Angaben.
 final kitchenPrinterProvider = Provider<ReceiptPrinter?>((ref) {
-  final settings = ref.watch(settingsStreamProvider).value;
-  if (settings == null) return const _NoPrinter();
+  final setup = ref.watch(
+    settingsStreamProvider.select(
+      (a) => switch (a.value) {
+        null => null,
+        final s => (
+          s.kitchenMode,
+          s.kitchenPrinterKind,
+          s.kitchenPrinterAddress,
+          s.kitchenPrinterColumns,
+        ),
+      },
+    ),
+  );
+  final settings = ref.read(settingsStreamProvider).value;
+  if (setup == null || settings == null) return const _NoPrinter();
   switch (settings.kitchenMode) {
     case KitchenMode.off:
       return null;

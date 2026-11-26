@@ -404,6 +404,23 @@ void main() {
       },
     );
 
+    test('Storno nur mit Zeilen, die nicht in die Küche gehen: kitchen ist '
+        'null, nichts gedruckt', () async {
+      await configure();
+      await configureKitchen(
+        KitchenMode.receiptPrinter,
+        skip: {cola.categoryId, huhnBowl.categoryId},
+      );
+      final sale = await sell();
+      expect(await sale.kitchen, isNull);
+      final v = await service.voidReceipt(sale.receipt.id, staff: shop.chef);
+      expect((await v.print).ok, isTrue);
+      expect(await v.kitchen, isNull);
+      expect(rendered, isEmpty);
+      expect(printer.rasters, isEmpty);
+      expect(kitchen.log, isEmpty);
+    });
+
     test('Storno mit aus: kitchen ist null', () async {
       await configure();
       final sale = await sell();

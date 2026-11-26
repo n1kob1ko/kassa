@@ -113,6 +113,11 @@ abstract interface class ReceiptPrinter {
   });
 
   /// Schickt fertige Rasterdaten durch dieselbe Warteschlange wie die Bons. Zeitlimit [rasterCallLimit].
+  ///
+  /// Der Auftrag steht ab dem Aufruf in der Warteschlange; [bytes] läuft erst,
+  /// wenn er an der Reihe ist, und vor der Zustandsfrage. Liefert [bytes]
+  /// leere Daten, geht nichts zum Drucker (auch keine Zustandsfrage), und das
+  /// Ergebnis ist ok.
   Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes);
 }
 
@@ -249,8 +254,12 @@ class EscPosPrinter implements ReceiptPrinter {
   );
 
   @override
-  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) =>
-      _run(checkStatus: true, limit: rasterLimit, bytes: bytes);
+  Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) => _run(
+    checkStatus: true,
+    dataFirst: true,
+    limit: rasterLimit,
+    bytes: bytes,
+  );
 
   /// Ende des letzten Aufrufs. Das Limit gilt je Transport für einen Aufruf,
   /// darum läuft immer nur einer: der nächste beginnt, wenn der vorige zu Ende
@@ -262,6 +271,7 @@ class EscPosPrinter implements ReceiptPrinter {
   Future<PrintOutcome> _run({
     required bool checkStatus,
     bool openDrawer = false,
+    bool dataFirst = false,
     Duration? limit,
     required Future<Uint8List> Function() bytes,
   }) {
@@ -273,6 +283,7 @@ class EscPosPrinter implements ReceiptPrinter {
           (_) => _runNow(
             checkStatus: checkStatus,
             openDrawer: openDrawer,
+            dataFirst: dataFirst,
             limit: limit ?? this.limit,
             bytes: bytes,
           ),
@@ -283,6 +294,7 @@ class EscPosPrinter implements ReceiptPrinter {
   Future<PrintOutcome> _runNow({
     required bool checkStatus,
     required bool openDrawer,
+    required bool dataFirst,
     required Duration limit,
     required Future<Uint8List> Function() bytes,
   }) async {
@@ -298,6 +310,7 @@ class EscPosPrinter implements ReceiptPrinter {
         call,
         checkStatus,
         openDrawer,
+        dataFirst,
         bytes,
       ).timeout(
         limit,
@@ -321,8 +334,14 @@ class EscPosPrinter implements ReceiptPrinter {
     _Call call,
     bool checkStatus,
     bool openDrawer,
+    bool dataFirst,
     Future<Uint8List> Function() bytes,
   ) async {
+    // [dataFirst]: erst die Daten (beim Raster samt Zeichnen); sind sie leer,
+    // gibt es nichts zu drucken und der Drucker wird gar nicht gefragt.
+    final early = dataFirst ? await bytes() : null;
+    if (call.givenUp) return const PrintOutcome.failed(PrintProblem.timeout);
+    if (early != null && early.isEmpty) return const PrintOutcome.ok();
     if (checkStatus) {
       final problem = await _offlineProblem(transport, call);
       if (problem != null) {
@@ -336,7 +355,7 @@ class EscPosPrinter implements ReceiptPrinter {
         return PrintOutcome.failed(problem, drawerSent: sent);
       }
     }
-    final data = await bytes();
+    final data = early ?? await bytes();
     if (call.givenUp) return const PrintOutcome.failed(PrintProblem.timeout);
     await transport.send(data);
     return PrintOutcome.ok(drawerSent: openDrawer);

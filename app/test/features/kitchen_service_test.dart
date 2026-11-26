@@ -10,6 +10,7 @@ import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/escpos.dart';
 import 'package:kassa/devices/mono_image.dart';
 import 'package:kassa/devices/printer.dart';
+import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/kitchen_ticket.dart';
 import 'package:kassa/domain/receipt_layout.dart';
@@ -27,6 +28,9 @@ final MonoImage _tinyImage = MonoImage(8, 2, Uint8List.fromList([0x81, 0x18]));
 class _Transport implements PrinterTransport {
   final sent = <Uint8List>[];
   final started = <Duration>[];
+
+  /// Zahl der Zustandsfragen.
+  int asked = 0;
   bool hang = false;
   final release = Completer<void>();
 
@@ -37,7 +41,10 @@ class _Transport implements PrinterTransport {
   void abandon() {}
 
   @override
-  Future<int?> status(List<int> request) async => null;
+  Future<int?> status(List<int> request) async {
+    asked++;
+    return null;
+  }
 
   @override
   Future<void> send(Uint8List bytes) async {
@@ -140,6 +147,22 @@ void main() {
       );
     });
 
+    test('ein Verkauf (Entwurf des Bons in den Einstellungen) gibt keinen '
+        'neuen Drucker und damit keine neue Warteschlange', () async {
+      await configure(KitchenMode.kitchenPrinter);
+      final receipt = container.read(receiptPrinterProvider);
+      final kitchen = container.read(kitchenPrinterProvider);
+      await container.read(settingsRepositoryProvider).writeDraft('{}');
+      await (await sell()).print;
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(
+        container.read(settingsStreamProvider).value?.kitchenMode,
+        KitchenMode.kitchenPrinter,
+      );
+      expect(container.read(receiptPrinterProvider), same(receipt));
+      expect(container.read(kitchenPrinterProvider), same(kitchen));
+    });
+
     test('am Küchendrucker: ein eigener Drucker', () async {
       await configure(KitchenMode.kitchenPrinter);
       final p = container.read(kitchenPrinterProvider);
@@ -163,6 +186,50 @@ void main() {
   });
 
   group('am Transport', () {
+    test('am Bondrucker, zwei schnelle Verkäufe: Bon A, Küche A, Bon B, '
+        'Küche B', () async {
+      await configure(KitchenMode.receiptPrinter);
+      receiptT().hang = true; // der erste Bon steckt noch im Drucker
+      // Zwei Verkäufe hintereinander, ohne auf einen Druck zu warten.
+      final ra = await sell('s1');
+      final rb = await sell('s2');
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      receiptT().release.complete();
+      expect((await ra.print).ok, isTrue);
+      expect((await rb.print).ok, isTrue);
+      expect((await ra.kitchen)!.ok, isTrue);
+      expect((await rb.kitchen)!.ok, isTrue);
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(ra.receipt, catalog.business)),
+        raster,
+        encodeEscPos(layoutReceipt(rb.receipt, catalog.business)),
+        raster,
+      ]);
+    });
+
+    test('am Bondrucker, nichts für die Küche: kitchen null, kein Zettel, '
+        'keine Frage an den Drucker', () async {
+      await configure(KitchenMode.receiptPrinter, skip: {cola.categoryId});
+      final r = await container
+          .read(saleServiceProvider)
+          .completeCash(
+            saleId: 's1',
+            cart: const Cart.empty().add(cola),
+            givenCents: 2000,
+            staff: shop.anna,
+          );
+      expect((await r.print).ok, isTrue);
+      expect(await r.kitchen, isNull);
+      // Die Warteschlange ist danach leer: ein weiterer Bon kommt durch.
+      await container.read(receiptPrinterProvider).testPrint();
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(r.receipt, catalog.business)),
+        isNot(raster),
+      ]);
+      expect(receiptT().asked, 2); // Bon und Testdruck, nicht der Küchenbon
+      expect(rendered, isEmpty);
+    });
+
     test('am Bondrucker: Kundenbon, dann Raster, je eigener Auftrag', () async {
       await configure(KitchenMode.receiptPrinter);
       final r = await sell();

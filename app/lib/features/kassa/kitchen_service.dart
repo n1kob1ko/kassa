@@ -2,6 +2,9 @@
 // Raster an den Drucker der Küche schicken. Wirft nie und schreibt nichts in
 // die Datenbank; der Verkauf wartet nicht darauf.
 
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_language.dart';
@@ -24,26 +27,77 @@ class KitchenService {
   Future<PrintOutcome?> printFor(Receipt receipt, {bool copy = false}) async {
     try {
       final settings = await _ref.read(settingsRepositoryProvider).current();
-      if (settings.kitchenMode == KitchenMode.off) return null;
-      if (receipt.kind != ReceiptKind.sale &&
-          receipt.kind != ReceiptKind.voided) {
-        return null;
-      }
-      final language = settings.kitchenLanguage;
-      final ticket = buildKitchenTicket(
-        receipt,
-        language: language,
-        texts: kitchenTextsFor(language),
-        dictionary: await _ref.read(translationRepositoryProvider).current(),
-        categoryOfItem: await _ref
-            .read(catalogRepositoryProvider)
-            .categoryOfItems(),
-        skipCategories: settings.kitchenSkipCategories,
-        copy: copy,
-        voidedNumber: await _voidedNumber(receipt),
-      );
-      if (ticket == null) return null;
-      return await _print(ticket, settings);
+      return await _queue(receipt, settings, copy: copy);
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+  }
+
+  /// Wie [printFor], für den Verkauf mit dessen [settings]: der Auftrag steht
+  /// beim Zurückkehren schon in der Warteschlange des Druckers (am Bondrucker
+  /// direkt hinter dem Bon, vor dem Bon eines nächsten Verkaufs). Ob etwas
+  /// für die Küche dabei ist, steht erst nach dem Lesen der Datenbank fest:
+  /// ist es nichts, ist das Ergebnis `null`, und der Auftrag geht leer durch
+  /// die Warteschlange, ohne den Drucker zu fragen.
+  Future<PrintOutcome?> printForSale(
+    Receipt receipt,
+    RegisterSettings settings,
+  ) {
+    try {
+      return _queue(receipt, settings, copy: false);
+    } catch (_) {
+      return Future.value(const PrintOutcome.failed(PrintProblem.unreachable));
+    }
+  }
+
+  /// Bis zum Einreihen ohne `await`. Das Lesen der Datenbank beginnt sofort,
+  /// neben der Warteschlange; Zeichnen und Umsetzen laufen im Druckaufruf.
+  Future<PrintOutcome?> _queue(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required bool copy,
+  }) {
+    if (settings.kitchenMode == KitchenMode.off) return Future.value();
+    if (receipt.kind != ReceiptKind.sale &&
+        receipt.kind != ReceiptKind.voided) {
+      return Future.value();
+    }
+    final ticket = _ticket(receipt, settings, copy: copy);
+    final job = _enqueue(ticket, settings);
+    return _outcome(ticket, job);
+  }
+
+  Future<KitchenTicket?> _ticket(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required bool copy,
+  }) async {
+    final language = settings.kitchenLanguage;
+    return buildKitchenTicket(
+      receipt,
+      language: language,
+      texts: kitchenTextsFor(language),
+      dictionary: await _ref.read(translationRepositoryProvider).current(),
+      categoryOfItem: await _ref
+          .read(catalogRepositoryProvider)
+          .categoryOfItems(),
+      skipCategories: settings.kitchenSkipCategories,
+      copy: copy,
+      voidedNumber: await _voidedNumber(receipt),
+    );
+  }
+
+  /// `null`, wenn kein Zettel fällig ist, sonst das Ergebnis des Drucks.
+  Future<PrintOutcome?> _outcome(
+    Future<KitchenTicket?> ticket,
+    Future<PrintOutcome> job,
+  ) async {
+    // Ein Fehler des Auftrags gilt als behandelt, auch wenn nach einem leeren
+    // Zettel niemand mehr auf ihn wartet.
+    unawaited(job.then<void>((_) {}, onError: (Object _) {}));
+    try {
+      if (await ticket == null) return null;
+      return await job;
     } catch (_) {
       return const PrintOutcome.failed(PrintProblem.unreachable);
     }
@@ -74,7 +128,7 @@ class KitchenService {
         skipCategories: settings.kitchenSkipCategories,
         now: _ref.read(clockProvider).now(),
       );
-      return await _print(ticket, settings);
+      return await _enqueue(Future.value(ticket), settings);
     } catch (_) {
       return const PrintOutcome.failed(PrintProblem.unreachable);
     }
@@ -91,11 +145,13 @@ class KitchenService {
     }
   }
 
-  /// Zeichnen und Umsetzen laufen im Druckaufruf und zählen zu seinem Limit.
-  Future<PrintOutcome> _print(
-    KitchenTicket ticket,
+  /// Reiht den Druck ohne `await` ein. Zeichnen und Umsetzen laufen im
+  /// Druckaufruf und zählen zu seinem Limit; ist kein Zettel fällig, sind die
+  /// Daten leer und nichts geht zum Drucker.
+  Future<PrintOutcome> _enqueue(
+    Future<KitchenTicket?> ticket,
     RegisterSettings settings,
-  ) async {
+  ) {
     final atReceiptPrinter = settings.kitchenMode == KitchenMode.receiptPrinter;
     final kind = atReceiptPrinter
         ? settings.printerKind
@@ -104,17 +160,18 @@ class KitchenService {
         ? settings.printerColumns
         : settings.kitchenPrinterColumns;
     if (kind == PrinterKind.none) {
-      return const PrintOutcome.failed(PrintProblem.notSetUp);
+      return Future.value(const PrintOutcome.failed(PrintProblem.notSetUp));
     }
     final printer = _ref.read(kitchenPrinterProvider);
     if (printer == null) {
-      return const PrintOutcome.failed(PrintProblem.notSetUp);
+      return Future.value(const PrintOutcome.failed(PrintProblem.notSetUp));
     }
     final render = _ref.read(kitchenImageRendererProvider);
-    return await printer.printRaster(
-      () async =>
-          encodeRasterTicket(await render(ticket, widthDots: columns * 12)),
-    );
+    return printer.printRaster(() async {
+      final t = await ticket;
+      if (t == null) return Uint8List(0);
+      return encodeRasterTicket(await render(t, widthDots: columns * 12));
+    });
   }
 }
 

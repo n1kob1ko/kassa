@@ -17,7 +17,7 @@ class FakePrinter implements ReceiptPrinter {
   /// Die Aufrufe in der Reihenfolge: `drawer`, `print:<Bon-Id>`,
   /// `print+drawer:<Bon-Id>` (Bon mit dem Befehl für die Lade im selben
   /// Auftrag), `test`, `day-report:<Tag-Id>`, `period-report:<Zeitraum>`,
-  /// `raster` (Rasterdaten, zum Beispiel ein Küchenbon).
+  /// `raster` (Rasterdaten, zum Beispiel ein Küchenbon; leere zählen nicht).
   final List<String> log = [];
 
   /// Die Bon-Ids der gedruckten Bons, mit und ohne Lade.
@@ -93,14 +93,27 @@ class FakePrinter implements ReceiptPrinter {
   /// Ergebnisses), wie ein unerwarteter Fehler im Drucker.
   Object? rasterError;
 
+  /// Wie der echte Drucker: die Daten entstehen erst nach [hold]; leere
+  /// Daten gehen nicht hinaus und stehen nicht im Protokoll.
   @override
   Future<PrintOutcome> printRaster(Future<Uint8List> Function() bytes) async {
-    log.add('raster');
     final error = rasterError;
-    if (error != null) throw error;
+    if (error != null) {
+      log.add('raster');
+      throw error;
+    }
     final h = hold;
     if (h != null) await h.future;
-    rasters.add(await bytes());
+    final Uint8List data;
+    try {
+      data = await bytes();
+    } catch (_) {
+      log.add('raster');
+      rethrow;
+    }
+    if (data.isEmpty) return const PrintOutcome.ok();
+    log.add('raster');
+    rasters.add(data);
     return next;
   }
 }
@@ -267,6 +280,13 @@ class FakeKitchenService implements KitchenService {
     if (h != null) await h.future;
     return next;
   }
+
+  /// Wie [printFor]; im Protokoll ebenso `for:<Bon-Nummer>`.
+  @override
+  Future<PrintOutcome?> printForSale(
+    Receipt receipt,
+    RegisterSettings settings,
+  ) => printFor(receipt);
 
   @override
   Future<PrintOutcome> printSample() async {

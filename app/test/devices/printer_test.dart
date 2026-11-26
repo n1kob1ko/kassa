@@ -539,6 +539,37 @@ void main() {
       expect(t.sent, isEmpty);
     });
 
+    test(
+      'leere Daten: ok, nichts geht zum Drucker, keine Zustandsfrage',
+      () async {
+        final t = RecordingTransport();
+        final p = printerOf(t);
+        final outcome = await p.printRaster(() async => Uint8List(0));
+        expect(outcome.ok, isTrue);
+        expect(t.asked, isEmpty);
+        expect(t.sendCalls, 0);
+        expect((await p.printReceipt(receipt())).ok, isTrue);
+        expect(t.sent, hasLength(1));
+      },
+    );
+
+    test('die Daten entstehen, wenn der Auftrag an der Reihe ist', () async {
+      final t = RecordingTransport()..statusGate = Completer<void>();
+      final p = printerOf(t);
+      var built = false;
+      final first = p.printReceipt(receipt());
+      final second = p.printRaster(() async {
+        built = true;
+        return raster;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(built, isFalse);
+      t.statusGate!.complete();
+      await first;
+      expect((await second).ok, isTrue);
+      expect(built, isTrue);
+    });
+
     test('ohne Drucker: notSetUp', () async {
       final outcome = await printerOf(null).printRaster(() async => raster);
       expect(outcome.problem, PrintProblem.notSetUp);
