@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/kassa_screen.dart';
+import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/rksv/online/online_providers.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
@@ -24,6 +28,7 @@ import '../support/demo_fixtures.dart';
 import '../support/fake_server.dart';
 import '../support/files_pump.dart';
 import '../support/fake_atrust.dart';
+import '../support/fake_devices.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/signature_pump.dart';
@@ -957,6 +962,125 @@ void main() {
       expect(find.textContaining('Speicher'), findsNothing);
       expect(find.byKey(const Key('rksv-outage')), findsNothing);
     });
+  });
+
+  kuechenbonNachDemVerkaufTests();
+}
+
+/// "Verkauf fertig" mit dem Küchenbon: Hinweis nur, wenn er gescheitert ist.
+void kuechenbonNachDemVerkaufTests() {
+  Future<FakeKitchenService> sellWithKitchen(
+    WidgetTester t,
+    PrintOutcome? outcome, {
+    Completer<void>? hold,
+  }) async {
+    final kitchen = FakeKitchenService()
+      ..next = outcome
+      ..hold = hold;
+    await pumpKassa(
+      t,
+      overrides: [
+        ...await memoryOverrides(),
+        kitchenServiceProvider.overrideWithValue(kitchen),
+      ],
+    );
+    final repo = containerOf(t).read(settingsRepositoryProvider);
+    await repo.save(
+      (await repo.current()).copyWith(kitchenMode: KitchenMode.kitchenPrinter),
+    );
+    await t.pumpAndSettle();
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    return kitchen;
+  }
+
+  testWidgets('Küchenbon gescheitert: Zeile, Meldung und Taste; nachdrucken '
+      'klappt', (t) async {
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+    );
+    expect(kitchen.calls, ['for:1']);
+    expect(_text('Küchenbon nicht gedruckt'), findsOneWidget);
+    expect(_text('Drucker nicht bereit. Das Papier ist leer.'), findsOneWidget);
+    expect(find.byKey(const Key('kitchen-reprint')), findsOneWidget);
+    expect(
+      t.getSize(find.byKey(const Key('kitchen-reprint'))).height,
+      greaterThanOrEqualTo(48),
+    );
+
+    kitchen.next = const PrintOutcome.ok();
+    final hold = kitchen.hold = Completer<void>();
+    await t.tap(find.byKey(const Key('kitchen-reprint')));
+    await t.pump();
+    expect(_text('Küchenbon wird gedruckt …'), findsOneWidget);
+    // Ein zweiter Tipp druckt nicht noch einmal.
+    await t.tap(find.byKey(const Key('kitchen-reprint')), warnIfMissed: false);
+    await t.pump();
+    expect(kitchen.calls, ['for:1', 'for:1']);
+    kitchen.hold = null;
+    hold.complete();
+    await t.pumpAndSettle();
+    expect(_text('Küchenbon gedruckt.'), findsOneWidget);
+    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+    expect(find.byKey(const Key('kitchen-reprint')), findsNothing);
+  });
+
+  testWidgets('nachdrucken scheitert wieder: Meldung des Druckers bleibt', (
+    t,
+  ) async {
+    final kitchen = await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+    );
+    kitchen.next = const PrintOutcome.failed(PrintProblem.coverOpen);
+    await t.tap(find.byKey(const Key('kitchen-reprint')));
+    await t.pumpAndSettle();
+    expect(_text('Küchenbon nicht gedruckt'), findsOneWidget);
+    expect(
+      _text('Drucker nicht bereit. Der Deckel ist offen.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('kein Küchenbon fällig (null): kein Hinweis', (t) async {
+    final kitchen = await sellWithKitchen(t, null);
+    expect(kitchen.calls, ['for:1']);
+    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+    expect(find.byKey(const Key('kitchen-reprint')), findsNothing);
+    expect(_text('Küchenbon gedruckt.'), findsNothing);
+  });
+
+  testWidgets('Küchenbon gedruckt: kein Hinweis', (t) async {
+    await sellWithKitchen(t, const PrintOutcome.ok());
+    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+    expect(find.byKey(const Key('kitchen-reprint')), findsNothing);
+  });
+
+  testWidgets('kein Küchendrucker eingerichtet: kein Hinweis nach jedem '
+      'Verkauf (er steht in den Einstellungen)', (t) async {
+    await sellWithKitchen(t, const PrintOutcome.failed(PrintProblem.notSetUp));
+    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+  });
+
+  testWidgets('"Nächster Kunde" wartet nicht auf den Küchenbon', (t) async {
+    final hold = Completer<void>();
+    await sellWithKitchen(
+      t,
+      const PrintOutcome.failed(PrintProblem.paperOut),
+      hold: hold,
+    );
+    expect(find.byKey(const Key('next-customer')), findsOneWidget);
+    expect(_text('Küchenbon nicht gedruckt'), findsNothing);
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('next-customer')), findsNothing);
+    hold.complete();
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
   });
 }
 

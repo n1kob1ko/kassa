@@ -1318,4 +1318,59 @@ class L10nEn extends L10n {
 
   @override
   String get kitchenSample => 'SAMPLE';
+
+  @override
+  String get settingsKitchen => 'Kitchen';
+
+  @override
+  String get settingsKitchenMode => 'Kitchen ticket';
+
+  @override
+  String get settingsKitchenOff => 'Off';
+
+  @override
+  String get settingsKitchenAtReceiptPrinter => 'On receipt printer';
+
+  @override
+  String get settingsKitchenAtKitchenPrinter => 'On kitchen printer';
+
+  @override
+  String get settingsKitchenLanguage => 'Kitchen ticket language';
+
+  @override
+  String get settingsKitchenNoPrinter =>
+      'No kitchen printer set up. No kitchen ticket will print.';
+
+  @override
+  String get settingsKitchenCategories => 'Categories for the kitchen';
+
+  @override
+  String get settingsKitchenCategoryOn => 'go on the kitchen ticket';
+
+  @override
+  String get settingsKitchenCategoryOff => 'not on the kitchen ticket';
+
+  @override
+  String get settingsKitchenPreview => 'Preview';
+
+  @override
+  String get settingsKitchenSample => 'Print sample';
+
+  @override
+  String get settingsKitchenSamplePrinting => 'Printing…';
+
+  @override
+  String get settingsKitchenSamplePrinted => 'Sample printed.';
+
+  @override
+  String get kassaKitchenNotPrinted => 'Kitchen ticket not printed';
+
+  @override
+  String get kassaKitchenPrint => 'Print kitchen ticket';
+
+  @override
+  String get kassaKitchenPrinting => 'Printing kitchen ticket…';
+
+  @override
+  String get kassaKitchenPrinted => 'Kitchen ticket printed.';
 }

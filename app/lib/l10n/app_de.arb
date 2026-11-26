@@ -1925,5 +1925,77 @@
   "kitchenSample": "PROBE",
   "@kitchenSample": {
     "description": "Vermerk auf dem Probe-Küchenbon, in Großbuchstaben."
+  },
+  "settingsKitchen": "Küche",
+  "@settingsKitchen": {
+    "description": "Überschrift des Abschnitts Küche in den Einstellungen."
+  },
+  "settingsKitchenMode": "Küchenbon",
+  "@settingsKitchenMode": {
+    "description": "Zeile in den Einstellungen: wo der Küchenbon gedruckt wird."
+  },
+  "settingsKitchenOff": "Aus",
+  "@settingsKitchenOff": {
+    "description": "Segment: kein Küchenbon."
+  },
+  "settingsKitchenAtReceiptPrinter": "Am Bondrucker",
+  "@settingsKitchenAtReceiptPrinter": {
+    "description": "Segment: Küchenbon kommt aus dem Bondrucker."
+  },
+  "settingsKitchenAtKitchenPrinter": "Am Küchendrucker",
+  "@settingsKitchenAtKitchenPrinter": {
+    "description": "Segment: Küchenbon kommt aus einem eigenen Küchendrucker."
+  },
+  "settingsKitchenLanguage": "Sprache am Küchenbon",
+  "@settingsKitchenLanguage": {
+    "description": "Zeile in den Einstellungen: Sprache, in der der Küchenbon gedruckt wird."
+  },
+  "settingsKitchenNoPrinter": "Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.",
+  "@settingsKitchenNoPrinter": {
+    "description": "Hinweis in Warnfarbe: Am Küchendrucker gewählt, aber keiner eingerichtet."
+  },
+  "settingsKitchenCategories": "Kategorien für die Küche",
+  "@settingsKitchenCategories": {
+    "description": "Zeile in den Einstellungen: welche Kategorien auf den Küchenbon kommen."
+  },
+  "settingsKitchenCategoryOn": "kommen auf den Küchenbon",
+  "@settingsKitchenCategoryOn": {
+    "description": "Hilfezeile unter dem Namen einer eingeschalteten Kategorie (klein geschrieben, sie setzt den Namen fort)."
+  },
+  "settingsKitchenCategoryOff": "kommen nicht auf den Küchenbon",
+  "@settingsKitchenCategoryOff": {
+    "description": "Hilfezeile unter dem Namen einer ausgeschalteten Kategorie (klein geschrieben, sie setzt den Namen fort)."
+  },
+  "settingsKitchenPreview": "Vorschau",
+  "@settingsKitchenPreview": {
+    "description": "Beschriftung über dem Bild des Beispiel-Küchenbons."
+  },
+  "settingsKitchenSample": "Probe drucken",
+  "@settingsKitchenSample": {
+    "description": "Taste: den Beispiel-Küchenbon drucken."
+  },
+  "settingsKitchenSamplePrinting": "Druckt …",
+  "@settingsKitchenSamplePrinting": {
+    "description": "Beschriftung der Taste, solange die Probe gedruckt wird."
+  },
+  "settingsKitchenSamplePrinted": "Probe gedruckt.",
+  "@settingsKitchenSamplePrinted": {
+    "description": "Ergebnis unter der Taste: die Probe ist gedruckt."
+  },
+  "kassaKitchenNotPrinted": "Küchenbon nicht gedruckt",
+  "@kassaKitchenNotPrinted": {
+    "description": "Zeile nach dem Verkauf: der Küchenbon kam nicht aus dem Drucker."
+  },
+  "kassaKitchenPrint": "Küchenbon drucken",
+  "@kassaKitchenPrint": {
+    "description": "Taste: den Küchenbon (noch einmal) drucken."
+  },
+  "kassaKitchenPrinting": "Küchenbon wird gedruckt …",
+  "@kassaKitchenPrinting": {
+    "description": "Beschriftung der Taste, solange der Küchenbon gedruckt wird."
+  },
+  "kassaKitchenPrinted": "Küchenbon gedruckt.",
+  "@kassaKitchenPrinted": {
+    "description": "Ergebnis: der Küchenbon ist gedruckt."
   }
 }

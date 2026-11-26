@@ -8,6 +8,7 @@ import 'package:kassa/app.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
 import 'package:kassa/features/kassa/modifier_panel.dart';
@@ -200,6 +201,43 @@ Future<void> _tour(
 
   await _tap(t, 'settings');
   look('Einstellungen');
+
+  // Abschnitt Küche: am Küchendrucker, erst ohne (Hinweis), dann mit
+  // eingerichtetem Drucker, Vorschau gezeichnet.
+  final repo = containerOf(t).read(settingsRepositoryProvider);
+  await repo.save(
+    (await repo.current()).copyWith(kitchenMode: KitchenMode.kitchenPrinter),
+  );
+  await t.pumpAndSettle();
+  await t.ensureVisible(find.byKey(const Key('kitchen-no-printer')));
+  await t.pumpAndSettle();
+  look('Einstellungen Küche ohne Küchendrucker');
+  await repo.save(
+    (await repo.current()).copyWith(
+      kitchenLanguage: language,
+      kitchenPrinterKind: PrinterKind.network,
+      kitchenPrinterAddress: '192.168.1.60:9100',
+      kitchenPrinterName: 'Küche 192.168.1.60',
+    ),
+  );
+  await t.pumpAndSettle();
+  for (var i = 0; i < 5; i++) {
+    await t.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await t.pump();
+  }
+  await t.pumpAndSettle();
+  expect(
+    find.descendant(
+      of: find.byKey(const Key('kitchen-preview')),
+      matching: find.byType(RawImage),
+    ),
+    findsOneWidget,
+  );
+  await t.ensureVisible(find.byKey(const Key('kitchen-sample')));
+  await t.pumpAndSettle();
+  look('Einstellungen Küche');
 }
 
 void main() {

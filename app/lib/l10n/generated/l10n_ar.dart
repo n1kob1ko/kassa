@@ -1320,4 +1320,59 @@ class L10nAr extends L10n {
 
   @override
   String get kitchenSample => 'تجربة';
+
+  @override
+  String get settingsKitchen => 'المطبخ';
+
+  @override
+  String get settingsKitchenMode => 'تذكرة المطبخ';
+
+  @override
+  String get settingsKitchenOff => 'إيقاف';
+
+  @override
+  String get settingsKitchenAtReceiptPrinter => 'على طابعة الفواتير';
+
+  @override
+  String get settingsKitchenAtKitchenPrinter => 'على طابعة المطبخ';
+
+  @override
+  String get settingsKitchenLanguage => 'لغة تذكرة المطبخ';
+
+  @override
+  String get settingsKitchenNoPrinter =>
+      'لم يتم إعداد طابعة المطبخ. لن تُطبع تذكرة المطبخ.';
+
+  @override
+  String get settingsKitchenCategories => 'الفئات الخاصة بالمطبخ';
+
+  @override
+  String get settingsKitchenCategoryOn => 'تظهر في تذكرة المطبخ';
+
+  @override
+  String get settingsKitchenCategoryOff => 'لا تظهر في تذكرة المطبخ';
+
+  @override
+  String get settingsKitchenPreview => 'معاينة';
+
+  @override
+  String get settingsKitchenSample => 'طباعة نموذج';
+
+  @override
+  String get settingsKitchenSamplePrinting => 'جارٍ الطباعة…';
+
+  @override
+  String get settingsKitchenSamplePrinted => 'تمت طباعة النموذج.';
+
+  @override
+  String get kassaKitchenNotPrinted => 'لم تُطبع تذكرة المطبخ';
+
+  @override
+  String get kassaKitchenPrint => 'طباعة تذكرة المطبخ';
+
+  @override
+  String get kassaKitchenPrinting => 'جارٍ طباعة تذكرة المطبخ…';
+
+  @override
+  String get kassaKitchenPrinted => 'تمت طباعة تذكرة المطبخ.';
 }

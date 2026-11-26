@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/app_language.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/receipt_repository.dart' show NotInCurrentChainException;
@@ -17,13 +18,15 @@ import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
+import '../kassa/kitchen_service.dart';
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
 import 'receipt_list.dart';
 import 'void_question.dart';
 
 /// Die Spalte rechts (392 dp): der gewählte Bon mit Zeilen, Steuer, Zahlung
-/// und, wenn erlaubt, "Stornieren". Die Rückfrage steht an Ort und Stelle.
+/// und, wenn erlaubt, "Stornieren". Ist der Küchenbon eingeschaltet, hat ein
+/// Verkauf daneben "Küchenbon drucken" (als Kopie). Die Rückfrage steht an Ort und Stelle.
 /// [all] sind die Bons des Tages (für Namen und Nummern der Storno-Paare).
 /// Der Aufrufer gibt der Spalte je Bon einen eigenen Schlüssel, damit eine
 /// offene Rückfrage nicht zu einem anderen Bon wandert.
@@ -121,6 +124,29 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     }
   }
 
+  /// Solange "Küchenbon drucken" läuft, tun weitere Tipps darauf nichts.
+  bool _printingKitchen = false;
+
+  Future<void> _printKitchen(Receipt receipt, KitchenMode mode) async {
+    if (_printingKitchen) return;
+    _printingKitchen = true;
+    try {
+      final outcome = await ref
+          .read(kitchenServiceProvider)
+          .printFor(receipt, copy: true);
+      if (!mounted || outcome == null) return;
+      final l = L10n.of(context);
+      showUndoToast(
+        context,
+        message: outcome.ok
+            ? l.kassaKitchenPrinted
+            : kitchenProblemText(l, outcome.problem!, mode),
+      );
+    } finally {
+      _printingKitchen = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
@@ -136,6 +162,58 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         !receipt.isVoided &&
         staff != null &&
         (staff.isChef || !settings.voidRequiresChef);
+    // Nur ein Verkauf, der gilt: ein stornierter käme sonst noch einmal in
+    // die Küche.
+    final canKitchen =
+        receipt != null &&
+        receipt.kind == ReceiptKind.sale &&
+        !receipt.isVoided &&
+        settings.kitchenMode != KitchenMode.off;
+    final printButton = receipt == null || !hasPrinter
+        ? null
+        : PrimaryButton(
+            key: const Key('print-receipt'),
+            label: l.bonsPrint,
+            icon: LucideIcons.printer,
+            filled: false,
+            height: KassaTokens.secondaryActionHeight,
+            onPressed: () => _print(receipt),
+          );
+    final kitchenButton = !canKitchen
+        ? null
+        : PrimaryButton(
+            key: const Key('print-kitchen'),
+            label: l.kassaKitchenPrint,
+            filled: false,
+            height: KassaTokens.secondaryActionHeight,
+            onPressed: () => _printKitchen(receipt, settings.kitchenMode),
+          );
+    final voidButton = !canVoid
+        ? null
+        : BonsActionButton(
+            key: const Key('void-receipt'),
+            label: l.bonsVoid,
+            height: KassaTokens.secondaryActionHeight,
+            radius: KassaTokens.radiusXxl,
+            border: c.line,
+            fg: c.red,
+            onTap: () => setState(() => _asking = true),
+          );
+    // Die Druck-Tasten stehen nebeneinander, "Küchenbon drucken" mit mehr
+    // Platz für die längere Beschriftung; "Stornieren" steht dann darunter.
+    // Ohne Küchenbon bleibt es eine Reihe: "Drucken" und "Stornieren".
+    final rows = <List<(Widget, int)>>[
+      if (kitchenButton == null)
+        [
+          if (printButton != null) (printButton, 1),
+          if (voidButton != null) (voidButton, 1),
+        ]
+      else ...[
+        [if (printButton != null) (printButton, 2), (kitchenButton, 3)],
+        [if (voidButton != null) (voidButton, 1)],
+      ],
+    ]..removeWhere((row) => row.isEmpty);
+
     return Container(
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
@@ -163,36 +241,28 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
                     }),
                     onConfirm: () => _confirm(receipt),
                   )
-                else if (canVoid || hasPrinter)
+                else if (rows.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (hasPrinter)
-                          Expanded(
-                            child: PrimaryButton(
-                              key: const Key('print-receipt'),
-                              label: l.bonsPrint,
-                              icon: LucideIcons.printer,
-                              filled: false,
-                              height: KassaTokens.secondaryActionHeight,
-                              onPressed: () => _print(receipt),
-                            ),
+                        for (var i = 0; i < rows.length; i++) ...[
+                          if (i > 0)
+                            const SizedBox(height: KassaTokens.spaceMd),
+                          Row(
+                            children: [
+                              for (var j = 0; j < rows[i].length; j++) ...[
+                                if (j > 0)
+                                  const SizedBox(width: KassaTokens.spaceMd),
+                                Expanded(
+                                  flex: rows[i][j].$2,
+                                  child: rows[i][j].$1,
+                                ),
+                              ],
+                            ],
                           ),
-                        if (hasPrinter && canVoid)
-                          const SizedBox(width: KassaTokens.spaceMd),
-                        if (canVoid)
-                          Expanded(
-                            child: BonsActionButton(
-                              key: const Key('void-receipt'),
-                              label: l.bonsVoid,
-                              height: KassaTokens.secondaryActionHeight,
-                              radius: KassaTokens.radiusXxl,
-                              border: c.line,
-                              fg: c.red,
-                              onTap: () => setState(() => _asking = true),
-                            ),
-                          ),
+                        ],
                       ],
                     ),
                   ),

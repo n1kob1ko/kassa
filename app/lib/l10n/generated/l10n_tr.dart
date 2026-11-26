@@ -1308,4 +1308,59 @@ class L10nTr extends L10n {
 
   @override
   String get kitchenSample => 'DENEME';
+
+  @override
+  String get settingsKitchen => 'Mutfak';
+
+  @override
+  String get settingsKitchenMode => 'Mutfak fişi';
+
+  @override
+  String get settingsKitchenOff => 'Kapalı';
+
+  @override
+  String get settingsKitchenAtReceiptPrinter => 'Fiş yazıcısında';
+
+  @override
+  String get settingsKitchenAtKitchenPrinter => 'Mutfak yazıcısında';
+
+  @override
+  String get settingsKitchenLanguage => 'Mutfak fişinin dili';
+
+  @override
+  String get settingsKitchenNoPrinter =>
+      'Mutfak yazıcısı kurulmamış. Mutfak fişi yazdırılmaz.';
+
+  @override
+  String get settingsKitchenCategories => 'Mutfak için kategoriler';
+
+  @override
+  String get settingsKitchenCategoryOn => 'mutfak fişine yazılır';
+
+  @override
+  String get settingsKitchenCategoryOff => 'mutfak fişine yazılmaz';
+
+  @override
+  String get settingsKitchenPreview => 'Önizleme';
+
+  @override
+  String get settingsKitchenSample => 'Örnek yazdır';
+
+  @override
+  String get settingsKitchenSamplePrinting => 'Yazdırılıyor…';
+
+  @override
+  String get settingsKitchenSamplePrinted => 'Örnek yazdırıldı.';
+
+  @override
+  String get kassaKitchenNotPrinted => 'Mutfak fişi yazdırılmadı';
+
+  @override
+  String get kassaKitchenPrint => 'Mutfak fişini yazdır';
+
+  @override
+  String get kassaKitchenPrinting => 'Mutfak fişi yazdırılıyor…';
+
+  @override
+  String get kassaKitchenPrinted => 'Mutfak fişi yazdırıldı.';
 }

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/core/money.dart';
 import 'package:kassa/data/database.dart';
@@ -11,6 +13,7 @@ import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/tokens.dart';
@@ -19,6 +22,7 @@ import 'package:material_ui/material_ui.dart';
 import '../support/bons_pump.dart';
 import '../support/cash_pump.dart';
 import '../support/demo_fixtures.dart';
+import '../support/fake_devices.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -550,5 +554,147 @@ void main() {
     // Zum Vergleich: den Barverkauf darf der Chef stornieren.
     await openReceipt(t, 1);
     expect(find.byKey(const Key('void-receipt')), findsOneWidget);
+  });
+
+  group('Küchenbon drucken im Bon-Detail', () {
+    Future<FakeKitchenService> pumpWithKitchen(
+      WidgetTester t,
+      int sales, {
+      KitchenMode mode = KitchenMode.receiptPrinter,
+      String pin = '1234',
+    }) async {
+      final kitchen = FakeKitchenService();
+      await pumpBonsWithSales(
+        t,
+        sales,
+        pin: pin,
+        overrides: [
+          ...await memoryOverrides(),
+          kitchenServiceProvider.overrideWithValue(kitchen),
+        ],
+      );
+      final repo = containerOf(t).read(settingsRepositoryProvider);
+      await repo.save((await repo.current()).copyWith(kitchenMode: mode));
+      await t.pumpAndSettle();
+      return kitchen;
+    }
+
+    testWidgets('Küchenbon aus: keine Taste', (t) async {
+      await pumpWithKitchen(t, 1, mode: KitchenMode.off);
+      await setUpPrinter(t);
+      await openReceipt(t, 1);
+      expect(find.byKey(const Key('print-receipt')), findsOneWidget);
+      expect(find.byKey(const Key('print-kitchen')), findsNothing);
+    });
+
+    testWidgets('eingeschaltet: Taste neben "Drucken", druckt als Kopie', (
+      t,
+    ) async {
+      final kitchen = await pumpWithKitchen(t, 2);
+      await setUpPrinter(t);
+      await openReceipt(t, 2);
+      final print = t.getRect(find.byKey(const Key('print-receipt')));
+      final again = t.getRect(find.byKey(const Key('print-kitchen')));
+      expect(again.top, print.top);
+      expect(again.height, greaterThanOrEqualTo(48));
+      expect(find.text('Küchenbon drucken'), findsOneWidget);
+      // Stornieren bleibt erreichbar.
+      expect(find.byKey(const Key('void-receipt')), findsOneWidget);
+      expect(t.takeException(), isNull);
+
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(kitchen.calls, ['for:2:copy']);
+      expect(find.text('Küchenbon gedruckt.'), findsOneWidget);
+      expect(printerOf(t).log, isEmpty);
+    });
+
+    testWidgets('ohne Bondrucker steht die Taste über "Stornieren", ganz '
+        'breit', (t) async {
+      await pumpWithKitchen(t, 1, mode: KitchenMode.kitchenPrinter);
+      await openReceipt(t, 1);
+      expect(find.byKey(const Key('print-receipt')), findsNothing);
+      final kitchen = t.getRect(find.byKey(const Key('print-kitchen')));
+      final cancel = t.getRect(find.byKey(const Key('void-receipt')));
+      expect(kitchen.bottom, lessThan(cancel.top));
+      expect(kitchen.width, cancel.width);
+    });
+
+    testWidgets('gescheitert: Meldung des Druckers als Hinweis', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      await openReceipt(t, 1);
+      kitchen.next = const PrintOutcome.failed(PrintProblem.paperOut);
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(
+        find.text('Drucker nicht bereit. Das Papier ist leer.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Küchendrucker fehlt: der Hinweis sagt das', (t) async {
+      final kitchen = await pumpWithKitchen(
+        t,
+        1,
+        mode: KitchenMode.kitchenPrinter,
+      );
+      await openReceipt(t, 1);
+      kitchen.next = const PrintOutcome.failed(PrintProblem.notSetUp);
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pumpAndSettle();
+      expect(
+        find.text('Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('weitere Tipps, solange gedruckt wird, drucken nicht noch '
+        'einmal', (t) async {
+      final kitchen = await pumpWithKitchen(t, 1);
+      await openReceipt(t, 1);
+      final hold = kitchen.hold = Completer<void>();
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('print-kitchen')));
+      await t.pump();
+      expect(kitchen.calls, ['for:1:copy']);
+      kitchen.hold = null;
+      hold.complete();
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('nur für Verkäufe: kein Küchenbon für Storno-Bon und '
+        'stornierten Verkauf', (t) async {
+      await pumpWithKitchen(t, 1);
+      await _startVoid(t, 1);
+      await t.tap(find.byKey(const Key('confirm-void')));
+      await t.pumpAndSettle();
+      await openReceipt(t, 2);
+      expect(find.text('Storno'), findsWidgets);
+      expect(find.byKey(const Key('print-kitchen')), findsNothing);
+      await openReceipt(t, 1);
+      expect(find.byKey(const Key('print-kitchen')), findsNothing);
+    });
+
+    for (final language in AppLanguage.values) {
+      testWidgets('drei Tasten ohne Überlauf (${language.name})', (t) async {
+        await pumpWithKitchen(t, 1);
+        await setUpPrinter(t);
+        final repo = containerOf(t).read(settingsRepositoryProvider);
+        await repo.save((await repo.current()).copyWith(language: language));
+        await t.pumpAndSettle();
+        await openReceipt(t, 1);
+        expect(find.byKey(const Key('print-kitchen')), findsOneWidget);
+        expect(find.byKey(const Key('void-receipt')), findsOneWidget);
+        expect(t.takeException(), isNull);
+        // Die Beschriftung steht ganz da, ohne Auslassungspunkte.
+        final label = find.descendant(
+          of: find.byKey(const Key('print-kitchen')),
+          matching: find.byType(RichText),
+        );
+        final box = t.renderObject<RenderParagraph>(label.first);
+        expect(box.didExceedMaxLines, isFalse);
+      });
+    }
   });
 }

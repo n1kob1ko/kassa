@@ -67,6 +67,9 @@ class Segmented<T> extends StatelessWidget {
                       ),
                       child: Text(
                         label,
+                        // Bricht eine lange Beschriftung um (drei Segmente
+                        // über die ganze Breite), steht sie mittig.
+                        textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelLarge!.copyWith(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,

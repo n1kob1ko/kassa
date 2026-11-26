@@ -199,6 +199,7 @@ Zwei Paletten mit gleichen Namen. Die helle Ansicht hat einen hellgrauen Grund m
 | `ink2` | #5B6470 | #A3ACB6 | Zweittext: Zusatzzeilen, Stückangaben, nicht aktive Reiter |
 | `solid` | #14171A | #F2F4F6 | Aktion "Karte", "Nächster Kunde", Hinweis mit Rückgängig, Kartenanteil im Diagramm (im Entwurf `--dunkel`) |
 | `solidInk` | #FFFFFF | #14171A | Schrift auf `solid` (im Entwurf `--dunkel-tinte`) |
+| `paper` | #FFFFFF | #FFFFFF | Papier in einer Druckvorschau (Küchenbon in den Einstellungen), in beiden Ansichten weiß wie das Papier; Rand `line`, Schatten Karte |
 
 ### Zustandsfarben
 

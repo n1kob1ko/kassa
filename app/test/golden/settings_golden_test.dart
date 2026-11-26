@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app.dart';
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
@@ -11,6 +12,7 @@ import 'package:material_ui/material_ui.dart';
 import '../support/fake_devices.dart';
 import '../support/pump.dart' show printerOf, tapKeys;
 import '../support/fake_server.dart';
+import '../support/kassa_pump.dart' show containerOf;
 import '../support/server_pump.dart';
 import '../support/settings_pump.dart';
 
@@ -265,6 +267,61 @@ void main() {
       await expectLater(
         find.byType(KassaApp),
         matchesGoldenFile('goldens/einstellungen_server_rueckfrage_$name.png'),
+      );
+    });
+  }
+
+  // Abschnitt Küche: am Küchendrucker (eingerichtet), Getränke nicht für die
+  // Küche, Vorschau gezeichnet. Deutsch hell und dunkel, Chinesisch und
+  // Arabisch (von rechts nach links; die Vorschau steht in der Richtung der
+  // Küchensprache).
+  for (final (name, language, brightness) in [
+    ('hell', AppLanguage.de, Brightness.light),
+    ('dunkel', AppLanguage.de, Brightness.dark),
+    ('chinesisch', AppLanguage.zh, Brightness.light),
+    ('arabisch', AppLanguage.ar, Brightness.light),
+  ]) {
+    testWidgets('Einstellungen, Küche ($name)', (t) async {
+      await pumpSettings(t, brightness: brightness);
+      await containerOf(t).read(translationRepositoryProvider).upsert(const {
+        'Bowls': {'zh': '饭碗', 'ar': 'أطباق'},
+        'Snacks': {'zh': '小吃', 'ar': 'وجبات خفيفة'},
+        'Süßes': {'zh': '甜点', 'ar': 'حلويات'},
+        'Getränke': {'zh': '饮料', 'ar': 'مشروبات'},
+        'Huhn Bowl': {'zh': '鸡肉饭碗', 'ar': 'طبق دجاج'},
+        'Tofu Bowl': {'zh': '豆腐饭碗', 'ar': 'طبق توفو'},
+        'Gemüse Bowl': {'zh': '蔬菜饭碗', 'ar': 'طبق خضار'},
+      });
+      final repo = containerOf(t).read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          language: language,
+          kitchenMode: KitchenMode.kitchenPrinter,
+          kitchenLanguage: language,
+          kitchenPrinterKind: PrinterKind.network,
+          kitchenPrinterAddress: '192.168.1.60:9100',
+          kitchenPrinterName: 'Küche 192.168.1.60',
+          kitchenSkipCategories: {'getraenke'},
+        ),
+      );
+      await t.pumpAndSettle();
+      // Die Vorschau zeichnet mit echtem `dart:ui`.
+      for (var i = 0; i < 5; i++) {
+        await t.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await t.pump();
+      }
+      // Unten im Bild: "Probe drucken"; darüber Kategorien und Vorschau.
+      await Scrollable.ensureVisible(
+        t.element(find.byKey(const Key('kitchen-sample'))),
+        alignment: 0.9,
+      );
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      await expectLater(
+        find.byType(KassaApp),
+        matchesGoldenFile('goldens/einstellungen_kueche_$name.png'),
       );
     });
   }

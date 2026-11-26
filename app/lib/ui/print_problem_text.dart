@@ -1,3 +1,4 @@
+import '../core/app_language.dart';
 import '../devices/printer.dart';
 import '../l10n/generated/l10n.dart';
 
@@ -11,3 +12,11 @@ String printProblemText(L10n l, PrintProblem p) => switch (p) {
   PrintProblem.coverOpen => l.printCoverOpen,
   PrintProblem.timeout => l.printTimeout,
 };
+
+/// Die Meldung zu einem Küchenbon: fehlt bei [KitchenMode.kitchenPrinter] der
+/// Drucker, sagt sie, dass kein Küchendrucker eingerichtet ist (nicht "Kein
+/// Bondrucker").
+String kitchenProblemText(L10n l, PrintProblem p, KitchenMode mode) =>
+    p == PrintProblem.notSetUp && mode == KitchenMode.kitchenPrinter
+    ? l.settingsKitchenNoPrinter
+    : printProblemText(l, p);

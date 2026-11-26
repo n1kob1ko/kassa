@@ -34,7 +34,14 @@ const _nothingFound = {
 /// Drucker entfernen. Jede Speicherung geht vom gespeicherten Stand aus, damit
 /// keine andere Einstellung verloren geht.
 class PrinterPanel extends ConsumerStatefulWidget {
-  const PrinterPanel({super.key});
+  const PrinterPanel({super.key}) : kitchen = false;
+
+  /// Dasselbe für den Küchendrucker (Abschnitt Küche): Zeile "Küchendrucker",
+  /// eigene Art, Adresse, Name und Breite, Testdruck am Küchendrucker, ohne
+  /// "QR-Code als Bild". Schlüssel `kitchen-printer-…` statt `printer-…`.
+  const PrinterPanel.kitchen({super.key}) : kitchen = true;
+
+  final bool kitchen;
 
   @override
   ConsumerState<PrinterPanel> createState() => _PrinterPanelState();
@@ -56,6 +63,21 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
   bool _testing = false;
   PrintOutcome? _result;
 
+  /// Anfang der Schlüssel: `printer` oder `kitchen-printer`.
+  String get _key => widget.kitchen ? 'kitchen-printer' : 'printer';
+
+  PrinterKind _kindOf(RegisterSettings s) =>
+      widget.kitchen ? s.kitchenPrinterKind : s.printerKind;
+
+  String? _addressOf(RegisterSettings s) =>
+      widget.kitchen ? s.kitchenPrinterAddress : s.printerAddress;
+
+  String? _nameOf(RegisterSettings s) =>
+      widget.kitchen ? s.kitchenPrinterName : s.printerName;
+
+  int _columnsOf(RegisterSettings s) =>
+      widget.kitchen ? s.kitchenPrinterColumns : s.printerColumns;
+
   Future<void> _save(
     RegisterSettings Function(RegisterSettings s) change,
   ) async {
@@ -74,7 +96,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       _typing = false;
       _notice = null;
       _result = null;
-      if (_open && s.printerKind != PrinterKind.none) _kind = s.printerKind;
+      if (_open && _kindOf(s) != PrinterKind.none) _kind = _kindOf(s);
     });
     if (_open) _search();
   }
@@ -142,11 +164,17 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       _result = null;
     });
     await _save(
-      (s) => s.copyWith(
-        printerKind: printer.kind,
-        printerAddress: printer.address,
-        printerName: printer.name,
-      ),
+      (s) => widget.kitchen
+          ? s.copyWith(
+              kitchenPrinterKind: printer.kind,
+              kitchenPrinterAddress: printer.address,
+              kitchenPrinterName: printer.name,
+            )
+          : s.copyWith(
+              printerKind: printer.kind,
+              printerAddress: printer.address,
+              printerName: printer.name,
+            ),
     );
   }
 
@@ -166,7 +194,12 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
     });
     PrintOutcome outcome;
     try {
-      outcome = await ref.read(receiptPrinterProvider).testPrint();
+      final printer = widget.kitchen
+          ? ref.read(kitchenPrinterProvider)
+          : ref.read(receiptPrinterProvider);
+      outcome =
+          await printer?.testPrint() ??
+          const PrintOutcome.failed(PrintProblem.notSetUp);
     } catch (_) {
       outcome = const PrintOutcome.failed(PrintProblem.unreachable);
     }
@@ -179,7 +212,9 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
 
   Future<void> _remove() async {
     setState(() => _result = null);
-    await _save((s) => s.withoutPrinter());
+    await _save(
+      (s) => widget.kitchen ? s.withoutKitchenPrinter() : s.withoutPrinter(),
+    );
   }
 
   @override
@@ -187,18 +222,18 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
     final c = KassaColors.of(context);
     final s =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
-    final set = s.printerKind != PrinterKind.none;
-    final name = s.printerName;
+    final set = _kindOf(s) != PrinterKind.none;
+    final name = _nameOf(s);
 
     final header = Semantics(
       button: true,
       expanded: _open,
       child: GestureDetector(
-        key: const Key('printer-row'),
+        key: Key('$_key-row'),
         behavior: HitTestBehavior.opaque,
         onTap: () => _toggle(s),
         child: SettingsRow(
-          title: 'Bondrucker',
+          title: widget.kitchen ? 'Küchendrucker' : 'Bondrucker',
           help: set
               ? 'Tippen, um den Drucker zu ändern.'
               : 'Tippen, um einen Drucker zu wählen.',
@@ -230,7 +265,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
             padding: const EdgeInsets.only(bottom: 14),
             child: _panel(context, s),
           ),
-        if (set)
+        if (set && !widget.kitchen)
           SettingsRow(
             title: 'QR-Code als Bild drucken',
             help:
@@ -248,10 +283,10 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
   }
 
   Widget _panel(BuildContext context, RegisterSettings s) {
-    final set = s.printerKind != PrinterKind.none;
+    final set = _kindOf(s) != PrinterKind.none;
     const gap = SizedBox(height: KassaTokens.spaceXl);
     return Column(
-      key: const Key('printer-panel'),
+      key: Key('$_key-panel'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Align(
@@ -263,7 +298,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
               (PrinterKind.bluetooth, 'Bluetooth'),
             ],
             selected: _kind,
-            keyFor: (k) => Key('printer-kind-${k.name}'),
+            keyFor: (k) => Key('$_key-kind-${k.name}'),
             onSelected: _selectKind,
           ),
         ),
@@ -300,13 +335,13 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
           _kind == PrinterKind.network
               ? 'Suche läuft. Das kann einen Moment dauern.'
               : 'Suche läuft.',
-          key: const Key('printer-searching'),
+          key: Key('$_key-searching'),
           style: body,
         ),
         gap,
         for (var i = 0; i < 3; i++) ...[
           if (i > 0) const SizedBox(height: KassaTokens.spaceMd),
-          const _SkeletonRow(),
+          _SkeletonRow(keyPrefix: _key),
         ],
       ] else if (_searchProblem != null)
         WarnBox(_searchProblem!)
@@ -316,10 +351,11 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
         for (var i = 0; i < _found.length; i++) ...[
           if (i > 0) const SizedBox(height: KassaTokens.spaceMd),
           _FoundRow(
+            keyPrefix: _key,
             printer: _found[i],
             selected:
-                s.printerKind == _found[i].kind &&
-                s.printerAddress == _found[i].address,
+                _kindOf(s) == _found[i].kind &&
+                _addressOf(s) == _found[i].address,
             onTap: () => _choose(_found[i]),
           ),
         ],
@@ -328,7 +364,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
         children: [
           Expanded(
             child: PrimaryButton(
-              key: const Key('printer-search'),
+              key: Key('$_key-search'),
               label: 'Nochmal suchen',
               filled: false,
               height: 56,
@@ -340,7 +376,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
             const SizedBox(width: KassaTokens.spaceLg),
             Expanded(
               child: PrimaryButton(
-                key: const Key('printer-address-open'),
+                key: Key('$_key-address-open'),
                 label: 'Adresse eintippen',
                 filled: false,
                 height: 56,
@@ -364,7 +400,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       Container(height: KassaTokens.borderThin, color: c.line),
       const SizedBox(height: KassaTokens.spaceXxl),
       PrimaryButton(
-        key: const Key('printer-test'),
+        key: Key('$_key-test'),
         label: _testing ? 'Druckt …' : 'Testdruck',
         height: 64,
         icon: LucideIcons.printer,
@@ -373,8 +409,8 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       if (result != null) ...[
         const SizedBox(height: KassaTokens.spaceLg),
         result.ok
-            ? _OkBox('Testdruck geschickt. Kommt Papier?')
-            : WarnBox(result.message, key: const Key('printer-result')),
+            ? _OkBox('Testdruck geschickt. Kommt Papier?', keyPrefix: _key)
+            : WarnBox(result.message, key: Key('$_key-result')),
       ],
       const SizedBox(height: KassaTokens.spaceXxl),
       Text(
@@ -389,9 +425,13 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
         alignment: Alignment.centerLeft,
         child: Segmented<int>(
           segments: const [(48, 'Normal'), (42, 'Schmal')],
-          selected: s.printerColumns,
-          keyFor: (v) => Key('printer-width-$v'),
-          onSelected: (v) => _save((s) => s.copyWith(printerColumns: v)),
+          selected: _columnsOf(s),
+          keyFor: (v) => Key('$_key-width-$v'),
+          onSelected: (v) => _save(
+            (s) => widget.kitchen
+                ? s.copyWith(kitchenPrinterColumns: v)
+                : s.copyWith(printerColumns: v),
+          ),
         ),
       ),
       const SizedBox(height: KassaTokens.spaceSm),
@@ -408,7 +448,7 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
       Align(
         alignment: Alignment.centerLeft,
         child: Pressable(
-          key: const Key('printer-remove'),
+          key: Key('$_key-remove'),
           onTap: _remove,
           minTapSize: const Size(0, KassaTokens.minTap),
           child: Padding(
@@ -442,11 +482,13 @@ class _PrinterPanelState extends ConsumerState<PrinterPanel> {
 /// Haken.
 class _FoundRow extends StatelessWidget {
   const _FoundRow({
+    required this.keyPrefix,
     required this.printer,
     required this.selected,
     required this.onTap,
   });
 
+  final String keyPrefix;
   final FoundPrinter printer;
   final bool selected;
   final VoidCallback onTap;
@@ -469,7 +511,7 @@ class _FoundRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final instant = MediaQuery.disableAnimationsOf(context);
     return Pressable(
-      key: Key('printer-found-${printer.address}'),
+      key: Key('$keyPrefix-found-${printer.address}'),
       onTap: onTap,
       child: AnimatedContainer(
         duration: instant ? Duration.zero : KassaTokens.motionFast,
@@ -538,14 +580,16 @@ class _FoundRow extends StatelessWidget {
 
 /// Grauer Platzhalter einer Drucker-Zeile während der Suche.
 class _SkeletonRow extends StatelessWidget {
-  const _SkeletonRow();
+  const _SkeletonRow({required this.keyPrefix});
+
+  final String keyPrefix;
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     return ExcludeSemantics(
       child: Container(
-        key: const Key('printer-skeleton'),
+        key: Key('$keyPrefix-skeleton'),
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
@@ -587,9 +631,10 @@ class _SkeletonRow extends StatelessWidget {
 
 /// Satz in der grünen Fläche: es hat geklappt.
 class _OkBox extends StatelessWidget {
-  const _OkBox(this.message);
+  const _OkBox(this.message, {required this.keyPrefix});
 
   final String message;
+  final String keyPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +647,7 @@ class _OkBox extends StatelessWidget {
       ),
       child: Text(
         message,
-        key: const Key('printer-result'),
+        key: Key('$keyPrefix-result'),
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontSize: 15,
           fontWeight: FontWeight.w800,

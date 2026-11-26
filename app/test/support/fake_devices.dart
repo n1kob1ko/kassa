@@ -10,6 +10,7 @@ import 'package:kassa/devices/printer_discovery.dart';
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 
 class FakePrinter implements ReceiptPrinter {
@@ -240,5 +241,38 @@ class FakeCardTerminal implements CardTerminal {
     final n = next;
     if (n is CardPaymentResult) return n;
     return await (n as dynamic Function())() as CardPaymentResult;
+  }
+}
+
+/// Falscher Küchenbon: merkt sich die Aufrufe und antwortet [next] (für einen
+/// Bon) und [nextSample] (für die Probe).
+class FakeKitchenService implements KitchenService {
+  /// Die Aufrufe in der Reihenfolge: `for:<Bon-Nummer>`, mit `:copy` für eine
+  /// Kopie, und `sample`.
+  final List<String> calls = [];
+
+  /// Das Ergebnis jedes Küchenbons; `null`: keiner fällig.
+  PrintOutcome? next = const PrintOutcome.ok();
+
+  /// Das Ergebnis jeder Probe.
+  PrintOutcome nextSample = const PrintOutcome.ok();
+
+  /// Solange gesetzt, wartet jeder Aufruf darauf.
+  Completer<void>? hold;
+
+  @override
+  Future<PrintOutcome?> printFor(Receipt receipt, {bool copy = false}) async {
+    calls.add('for:${receipt.number}${copy ? ':copy' : ''}');
+    final h = hold;
+    if (h != null) await h.future;
+    return next;
+  }
+
+  @override
+  Future<PrintOutcome> printSample() async {
+    calls.add('sample');
+    final h = hold;
+    if (h != null) await h.future;
+    return nextSample;
   }
 }

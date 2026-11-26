@@ -13,6 +13,7 @@ import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
 import 'cash_sheet.dart';
+import 'kitchen_service.dart';
 import 'sale_service.dart';
 
 /// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
@@ -20,6 +21,9 @@ import 'sale_service.dart';
 /// statt des Rückgelds "Mit Karte bezahlt" und, was bekannt ist, Kartenart und
 /// die letzten vier Ziffern. "Nächster Kunde" führt zur
 /// leeren Kassa zurück und ist immer sofort aktiv, auch während des Druckens.
+/// Scheitert der Küchenbon, steht unter dem Druckzustand "Küchenbon nicht
+/// gedruckt" mit der Meldung des Druckers und "Küchenbon drucken"; auf ihn
+/// wird nie gewartet.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -34,10 +38,52 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   /// `null`, solange gedruckt wird.
   PrintOutcome? _outcome;
 
+  /// Das letzte Ergebnis des Küchenbons; `null`, solange er läuft oder wenn
+  /// keiner fällig ist.
+  PrintOutcome? _kitchen;
+
+  /// "Küchenbon drucken" wurde getippt und läuft.
+  bool _kitchenAgain = false;
+
+  /// "Küchenbon drucken" wurde schon getippt: erst dann sagt die Zeile auch
+  /// "Küchenbon gedruckt.".
+  bool _kitchenRetried = false;
+
   @override
   void initState() {
     super.initState();
     _await(widget.result.print);
+    _awaitKitchen(widget.result.kitchen);
+  }
+
+  void _awaitKitchen(Future<PrintOutcome?> kitchen) {
+    kitchen.then(
+      (outcome) {
+        if (!mounted) return;
+        setState(() {
+          _kitchen = outcome;
+          _kitchenAgain = false;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _kitchen = const PrintOutcome.failed(PrintProblem.unreachable);
+          _kitchenAgain = false;
+        });
+      },
+    );
+  }
+
+  void _reprintKitchen() {
+    if (_kitchenAgain) return;
+    setState(() {
+      _kitchenAgain = true;
+      _kitchenRetried = true;
+    });
+    _awaitKitchen(
+      ref.read(kitchenServiceProvider).printFor(widget.result.receipt),
+    );
   }
 
   void _await(Future<PrintOutcome> print) {
@@ -112,6 +158,19 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                     if (showPrint) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
                       _PrintState(outcome: outcome, onReprint: _reprint),
+                    ],
+                    if (_kitchen case final kitchen?
+                        // Ohne Küchendrucker sagt es die Seite Einstellungen,
+                        // nicht jeder Verkauf.
+                        when (kitchen.ok
+                            ? _kitchenRetried
+                            : kitchen.problem != PrintProblem.notSetUp)) ...[
+                      const SizedBox(height: KassaTokens.spaceMd),
+                      _KitchenState(
+                        outcome: kitchen,
+                        printing: _kitchenAgain,
+                        onReprint: _reprintKitchen,
+                      ),
                     ],
                     const SizedBox(height: 20),
                     Container(
@@ -278,6 +337,78 @@ class _PrintState extends StatelessWidget {
             filled: false,
             height: 64,
             onPressed: onReprint,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Der Küchenbon nach dem Verkauf: gescheitert die Zeile "Küchenbon nicht
+/// gedruckt" mit der Meldung des Druckers in `warnBg` und "Küchenbon
+/// drucken"; nach einem Nachdruck, der geklappt hat, "Küchenbon gedruckt.".
+class _KitchenState extends StatelessWidget {
+  const _KitchenState({
+    required this.outcome,
+    required this.printing,
+    required this.onReprint,
+  });
+
+  final PrintOutcome outcome;
+
+  /// Der Nachdruck läuft: die Taste sagt es und nimmt keinen Tipp an.
+  final bool printing;
+  final VoidCallback onReprint;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final problem = outcome.problem;
+    if (problem == null) {
+      return Text(
+        l.kassaKitchenPrinted,
+        key: const Key('kitchen-state'),
+        style: text.bodyLarge!.copyWith(
+          fontWeight: FontWeight.w600,
+          color: c.ink2,
+        ),
+      );
+    }
+    return Container(
+      key: const Key('kitchen-state'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l.kassaKitchenNotPrinted,
+            style: text.bodyLarge!.copyWith(
+              fontWeight: FontWeight.w800,
+              color: c.warnInk,
+            ),
+          ),
+          const SizedBox(height: KassaTokens.spaceXxs),
+          Text(
+            printProblemText(l, problem),
+            style: text.bodyLarge!.copyWith(
+              fontWeight: FontWeight.w600,
+              color: c.warnInk,
+            ),
+          ),
+          const SizedBox(height: KassaTokens.spaceMd),
+          PrimaryButton(
+            key: const Key('kitchen-reprint'),
+            label: printing ? l.kassaKitchenPrinting : l.kassaKitchenPrint,
+            icon: LucideIcons.printer,
+            filled: false,
+            height: 64,
+            onPressed: printing ? null : onReprint,
           ),
         ],
       ),

@@ -1322,4 +1322,59 @@ class L10nDe extends L10n {
 
   @override
   String get kitchenSample => 'PROBE';
+
+  @override
+  String get settingsKitchen => 'Küche';
+
+  @override
+  String get settingsKitchenMode => 'Küchenbon';
+
+  @override
+  String get settingsKitchenOff => 'Aus';
+
+  @override
+  String get settingsKitchenAtReceiptPrinter => 'Am Bondrucker';
+
+  @override
+  String get settingsKitchenAtKitchenPrinter => 'Am Küchendrucker';
+
+  @override
+  String get settingsKitchenLanguage => 'Sprache am Küchenbon';
+
+  @override
+  String get settingsKitchenNoPrinter =>
+      'Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.';
+
+  @override
+  String get settingsKitchenCategories => 'Kategorien für die Küche';
+
+  @override
+  String get settingsKitchenCategoryOn => 'kommen auf den Küchenbon';
+
+  @override
+  String get settingsKitchenCategoryOff => 'kommen nicht auf den Küchenbon';
+
+  @override
+  String get settingsKitchenPreview => 'Vorschau';
+
+  @override
+  String get settingsKitchenSample => 'Probe drucken';
+
+  @override
+  String get settingsKitchenSamplePrinting => 'Druckt …';
+
+  @override
+  String get settingsKitchenSamplePrinted => 'Probe gedruckt.';
+
+  @override
+  String get kassaKitchenNotPrinted => 'Küchenbon nicht gedruckt';
+
+  @override
+  String get kassaKitchenPrint => 'Küchenbon drucken';
+
+  @override
+  String get kassaKitchenPrinting => 'Küchenbon wird gedruckt …';
+
+  @override
+  String get kassaKitchenPrinted => 'Küchenbon gedruckt.';
 }

@@ -2347,6 +2347,114 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'PROBE'**
   String get kitchenSample;
+
+  /// Überschrift des Abschnitts Küche in den Einstellungen.
+  ///
+  /// In de, this message translates to:
+  /// **'Küche'**
+  String get settingsKitchen;
+
+  /// Zeile in den Einstellungen: wo der Küchenbon gedruckt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Küchenbon'**
+  String get settingsKitchenMode;
+
+  /// Segment: kein Küchenbon.
+  ///
+  /// In de, this message translates to:
+  /// **'Aus'**
+  String get settingsKitchenOff;
+
+  /// Segment: Küchenbon kommt aus dem Bondrucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Am Bondrucker'**
+  String get settingsKitchenAtReceiptPrinter;
+
+  /// Segment: Küchenbon kommt aus einem eigenen Küchendrucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Am Küchendrucker'**
+  String get settingsKitchenAtKitchenPrinter;
+
+  /// Zeile in den Einstellungen: Sprache, in der der Küchenbon gedruckt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Sprache am Küchenbon'**
+  String get settingsKitchenLanguage;
+
+  /// Hinweis in Warnfarbe: Am Küchendrucker gewählt, aber keiner eingerichtet.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Küchendrucker eingerichtet. Es kommt kein Küchenbon.'**
+  String get settingsKitchenNoPrinter;
+
+  /// Zeile in den Einstellungen: welche Kategorien auf den Küchenbon kommen.
+  ///
+  /// In de, this message translates to:
+  /// **'Kategorien für die Küche'**
+  String get settingsKitchenCategories;
+
+  /// Hilfezeile unter dem Namen einer eingeschalteten Kategorie (klein geschrieben, sie setzt den Namen fort).
+  ///
+  /// In de, this message translates to:
+  /// **'kommen auf den Küchenbon'**
+  String get settingsKitchenCategoryOn;
+
+  /// Hilfezeile unter dem Namen einer ausgeschalteten Kategorie (klein geschrieben, sie setzt den Namen fort).
+  ///
+  /// In de, this message translates to:
+  /// **'kommen nicht auf den Küchenbon'**
+  String get settingsKitchenCategoryOff;
+
+  /// Beschriftung über dem Bild des Beispiel-Küchenbons.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorschau'**
+  String get settingsKitchenPreview;
+
+  /// Taste: den Beispiel-Küchenbon drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Probe drucken'**
+  String get settingsKitchenSample;
+
+  /// Beschriftung der Taste, solange die Probe gedruckt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Druckt …'**
+  String get settingsKitchenSamplePrinting;
+
+  /// Ergebnis unter der Taste: die Probe ist gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Probe gedruckt.'**
+  String get settingsKitchenSamplePrinted;
+
+  /// Zeile nach dem Verkauf: der Küchenbon kam nicht aus dem Drucker.
+  ///
+  /// In de, this message translates to:
+  /// **'Küchenbon nicht gedruckt'**
+  String get kassaKitchenNotPrinted;
+
+  /// Taste: den Küchenbon (noch einmal) drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Küchenbon drucken'**
+  String get kassaKitchenPrint;
+
+  /// Beschriftung der Taste, solange der Küchenbon gedruckt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Küchenbon wird gedruckt …'**
+  String get kassaKitchenPrinting;
+
+  /// Ergebnis: der Küchenbon ist gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Küchenbon gedruckt.'**
+  String get kassaKitchenPrinted;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

@@ -1290,4 +1290,58 @@ class L10nZh extends L10n {
 
   @override
   String get kitchenSample => '测试';
+
+  @override
+  String get settingsKitchen => '厨房';
+
+  @override
+  String get settingsKitchenMode => '厨房单';
+
+  @override
+  String get settingsKitchenOff => '关闭';
+
+  @override
+  String get settingsKitchenAtReceiptPrinter => '在小票打印机';
+
+  @override
+  String get settingsKitchenAtKitchenPrinter => '在厨房打印机';
+
+  @override
+  String get settingsKitchenLanguage => '厨房单语言';
+
+  @override
+  String get settingsKitchenNoPrinter => '未设置厨房打印机。不会打印厨房单。';
+
+  @override
+  String get settingsKitchenCategories => '发送到厨房的分类';
+
+  @override
+  String get settingsKitchenCategoryOn => '打印在厨房单上';
+
+  @override
+  String get settingsKitchenCategoryOff => '不打印在厨房单上';
+
+  @override
+  String get settingsKitchenPreview => '预览';
+
+  @override
+  String get settingsKitchenSample => '打印样张';
+
+  @override
+  String get settingsKitchenSamplePrinting => '正在打印…';
+
+  @override
+  String get settingsKitchenSamplePrinted => '样张已打印。';
+
+  @override
+  String get kassaKitchenNotPrinted => '厨房单未打印';
+
+  @override
+  String get kassaKitchenPrint => '打印厨房单';
+
+  @override
+  String get kassaKitchenPrinting => '正在打印厨房单…';
+
+  @override
+  String get kassaKitchenPrinted => '厨房单已打印。';
 }
