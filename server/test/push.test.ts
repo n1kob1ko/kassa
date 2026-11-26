@@ -112,8 +112,8 @@ describe('Annahme', () => {
     // Die Verwaltung zeigt den Bon wie jeden anderen.
     const detail = await f.app.inject({ method: 'GET', url: `/api/admin/businesses/${businessId}/receipts/${r.id}`, headers: authed(provider.cookie) });
     expect(detail.statusCode).toBe(200);
-    expect(detail.json()).toMatchObject({ id: r.id, totalCents: 990, payment: { kind: 'cash', amountCents: 990 } });
-    expect(detail.json().payment.terminal).toBeUndefined();
+    expect(detail.json()).toMatchObject({ id: r.id, totalCents: 990, payments: [{ kind: 'cash', amountCents: 990 }] });
+    expect(detail.json().payments[0].terminal).toBeUndefined();
   });
 
   test('Bon mit unbekanntem Tag wird angenommen', async () => {

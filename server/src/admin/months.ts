@@ -5,6 +5,7 @@ import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { loadTimeZone } from './overview.js';
 import { GROSS_COLUMNS, RATES, sumTaxLines, taxLinesOf } from './tax.js';
+import { tipsByStaff } from './tips.js';
 
 // Monatsabrechnung wie app/lib/data/period_report_repository.dart. Monatsgrenzen und Tage gelten in der Zeitzone
 // des Betriebs und werden in PostgreSQL gerechnet. Gezählt werden Verkäufe und Stornos; gibt es einen echten Bon
@@ -19,11 +20,14 @@ export const RECEIPT_SUMS = `
   coalesce(sum(case when kind = 'voided' then 1 else 0 end), 0)::float8 as void_count,
   coalesce(-sum(total_cents) filter (where kind = 'voided'), 0)::float8 as voided,
   coalesce(sum(total_cents), 0)::float8 as revenue,
-  coalesce(sum(case when payment_kind = 'cash' then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as cash_count,
-  coalesce(sum(case when payment_kind = 'cash' then 0 else case when kind = 'voided' then -1 else 1 end end), 0)::float8 as card_count,
-  coalesce(sum(total_cents) filter (where payment_kind = 'cash'), 0)::float8 as cash,
-  coalesce(sum(total_cents) filter (where payment_kind is distinct from 'cash'), 0)::float8 as card,
-  coalesce(sum(deposit_cents), 0)::float8 as deposit`;
+  coalesce(sum(case when payment_kind in ('cash', 'mixed') then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as cash_count,
+  coalesce(sum(case when payment_kind is distinct from 'cash' then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as card_count,
+  coalesce(sum(cash_cents), 0)::float8 as cash,
+  coalesce(sum(card_cents), 0)::float8 as card,
+  coalesce(sum(deposit_cents), 0)::float8 as deposit,
+  coalesce(sum(tip_cents), 0)::float8 as tip,
+  coalesce(sum(discount_cents), 0)::float8 as discount,
+  coalesce(sum(case when discount_cents <> 0 then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as discount_count`;
 
 export type ReceiptSums = {
   count: number;
@@ -35,7 +39,21 @@ export type ReceiptSums = {
   cash: number;
   card: number;
   deposit: number;
+  tip: number;
+  discount: number;
+  discount_count: number;
 };
+
+/** Die neuen Felder von Tag und Abrechnung: Rabatte, Karten-Trinkgeld und was am Kartenkonto ankommt. */
+export function paymentFigures(s: ReceiptSums, tips: { staffName: string; cents: number }[]) {
+  return {
+    discountCount: s.discount_count,
+    discountCents: s.discount,
+    cardTipCents: s.tip,
+    cardAccountCents: s.card + s.tip,
+    tipsByStaff: tips,
+  };
+}
 
 /** Brutto je Satz aus der Zeile einer Abfrage mit `sum(gross..._cents) as g20` usw. */
 export const GROSS_SUMS = Object.entries(GROSS_COLUMNS)
@@ -128,10 +146,18 @@ export function installMonthRoutes(app: FastifyInstance): void {
         const sums = await monthSums(c, scope, from, to);
         const grossByMonth = await monthGross(c, scope, from, to);
 
-        const total = { count: 0, void_count: 0, voided: 0, revenue: 0, cash_count: 0, card_count: 0, cash: 0, card: 0, deposit: 0 };
+        const total: ReceiptSums = {
+          count: 0, void_count: 0, voided: 0, revenue: 0, cash_count: 0, card_count: 0, cash: 0, card: 0, deposit: 0,
+          tip: 0, discount: 0, discount_count: 0,
+        };
         for (const s of sums.values()) for (const k of Object.keys(total) as (keyof ReceiptSums)[]) total[k] += s[k];
         // Steuer je Monat gerechnet, dann über die Monate addiert.
         const taxLines = sumTaxLines(months.map((m) => taxLinesOf(grossByMonth.get(m) ?? {})));
+        const tips = await tipsByStaff(
+          c,
+          `r.kind in ('sale', 'voided') and (not $2 or not r.is_test) and to_char(r.created_at at time zone $1, 'YYYY-MM') between $3 and $4`,
+          [scope.tz, scope.real, from, to],
+        );
 
         let rows: { key: string; receiptCount: number; revenueCents: number }[];
         if (from === to) {
@@ -162,6 +188,7 @@ export function installMonthRoutes(app: FastifyInstance): void {
           cashRevenueCents: total.cash,
           cardRevenueCents: total.card,
           depositCents: total.deposit,
+          ...paymentFigures(total, tips),
           taxLines,
           rows,
         };

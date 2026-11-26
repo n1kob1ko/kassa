@@ -86,6 +86,13 @@ function head(r: HeadRow) {
   };
 }
 
+type Discount = { percent: number | null; amountCents: number; reason: string };
+
+/** Ein Rabatt, wie er im Bon steht, nur mit seinen drei Feldern. */
+function discountOf(d: Discount | null | undefined): Discount | null {
+  return d ? { percent: d.percent ?? null, amountCents: d.amountCents, reason: d.reason } : null;
+}
+
 /** Adressen der Bons (nur lesen). Nach installAuth aufrufen. */
 export function installReceiptRoutes(app: FastifyInstance): void {
   const { db } = app.deps;
@@ -110,7 +117,8 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         where.push(`r.created_at >= (${d}::date::timestamp at time zone ${z})`);
         where.push(`r.created_at < ((${d}::date + 1)::timestamp at time zone ${z})`);
       }
-      if (q.payment) where.push(`r.payment_kind = ${add(q.payment)}`);
+      // Ein gemischter Bon (bar und Karte) steht unter beiden Filtern.
+      if (q.payment) where.push(`r.payment_kind in (${add(q.payment)}, 'mixed')`);
       // Beide Hälften eines Paars: der Storno-Bon und der Verkauf, auf den er sich bezieht.
       if (q.voided) where.push(`(r.kind = 'voided' or ${VOIDED})`);
       if (before) {
@@ -147,10 +155,15 @@ export function installReceiptRoutes(app: FastifyInstance): void {
             deposit_cents: number;
             voids_receipt_id: string | null;
             voided_by: string | null;
+            payments: Record<string, unknown>[] | null;
             payment: Record<string, unknown> | null;
+            discount: Discount | null;
+            tip_cents: number;
+            discount_cents: number;
           }
         >(
-          `select ${HEAD}, r.goods_cents, r.deposit_cents, r.voids_receipt_id, r.payload->'payment' as payment,
+          `select ${HEAD}, r.goods_cents, r.deposit_cents, r.voids_receipt_id, r.tip_cents, r.discount_cents,
+                  r.payload->'payments' as payments, r.payload->'payment' as payment, r.payload->'discount' as discount,
                   (select v.id from receipts v where v.business_id = r.business_id and v.voids_receipt_id = r.id and v.kind = 'voided'
                     order by v.created_at, v.id limit 1) as voided_by
              ${FROM} where r.id = $1`,
@@ -169,8 +182,10 @@ export function installReceiptRoutes(app: FastifyInstance): void {
           quantity: number;
           unit_deposit_cents: number;
           options: { groupName: string; optionName: string; surchargeCents: number }[];
+          discount_cents: number;
+          discount: Discount | null;
         }>(
-          `select position, item_id, name, info, unit_price_cents, quantity, unit_deposit_cents, options
+          `select position, item_id, name, info, unit_price_cents, quantity, unit_deposit_cents, options, discount_cents, discount
              from receipt_lines where receipt_id = $1 order by position`,
           [id],
         )
@@ -187,7 +202,12 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         )
       ).rows[0];
 
-      const p = r.payment;
+      // v: 2 bringt die Liste `payments`, v: 1 eine Zahlung `payment` (oder keine): die wird Stelle 0 ohne Trinkgeld.
+      const payments = Array.isArray(r.payments)
+        ? [...r.payments].sort((x, y) => Number(x.position) - Number(y.position))
+        : r.payment
+          ? [{ ...r.payment, position: 0, tipCents: 0, tipStaffName: null }]
+          : [];
       return {
         ...head(r),
         goodsCents: r.goods_cents,
@@ -201,19 +221,25 @@ export function installReceiptRoutes(app: FastifyInstance): void {
           quantity: l.quantity,
           unitDepositCents: l.unit_deposit_cents,
           options: l.options.map((o) => ({ groupName: o.groupName, optionName: o.optionName, surchargeCents: o.surchargeCents })),
+          discountCents: l.discount_cents,
+          discount: discountOf(l.discount),
         })),
-        payment: p
-          ? {
-              kind: p.kind,
-              amountCents: p.amountCents,
-              givenCents: p.givenCents,
-              changeCents: p.changeCents,
-              provider: p.provider,
-              providerTxCode: p.providerTxCode ?? null,
-              cardScheme: p.cardScheme,
-              cardLast4: p.cardLast4,
-            }
-          : null,
+        payments: payments.map((p) => ({
+          position: p.position,
+          kind: p.kind,
+          amountCents: p.amountCents,
+          givenCents: p.givenCents,
+          changeCents: p.changeCents,
+          tipCents: p.tipCents ?? 0,
+          tipStaffName: p.tipStaffName ?? null,
+          provider: p.provider,
+          providerTxCode: p.providerTxCode ?? null,
+          cardScheme: p.cardScheme,
+          cardLast4: p.cardLast4,
+        })),
+        tipCents: r.tip_cents,
+        discountCents: r.discount_cents,
+        discount: discountOf(r.discount),
         voidsReceiptId: r.voids_receipt_id,
         voidedByReceiptId: r.voided_by,
         rksv: rksv ? { cashBoxId: rksv.cash_box_id, damaged: rksv.damaged, probe: rksv.mode !== 'live' } : null,

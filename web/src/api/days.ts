@@ -42,6 +42,15 @@ export type DayDetail = DayHead & {
   /** Summe der Stornos als positive Zahl. */
   voidedCents: number;
   depositCents: number;
+  /** Bons mit Rabatt (Storno zählt herunter) und die Summe der Rabatte. */
+  discountCount: number;
+  discountCents: number;
+  /** Trinkgeld auf Karte, nicht im Umsatz. */
+  cardTipCents: number;
+  /** Karte plus Trinkgeld: was bei SumUp ankommt. */
+  cardAccountCents: number;
+  /** Trinkgeld auf Karte je Person, nach Name. */
+  tipsByStaff: { staffName: string; cents: number }[];
   taxLines: TaxLine[];
 };
 

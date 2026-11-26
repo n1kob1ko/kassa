@@ -4,6 +4,7 @@ import {
   filterFromParams,
   filterToParams,
   isFiltered,
+  paymentKindText,
   useReceipt,
   useReceipts,
   type ReceiptFilter,
@@ -168,7 +169,7 @@ export function ReceiptsPage() {
                 <span className={styles.number}>Bon {r.number}</span>{' '}
                 <span className={styles.meta}>
                   <span className={styles.time}>{timeText(new Date(r.createdAt))}</span>{' '}
-                  <span className={styles.who}>{[r.registerName, r.staffName].filter(Boolean).join(' · ')}</span>
+                  <span className={styles.who}>{[r.registerName, r.staffName, paymentKindText(r.paymentKind)].filter(Boolean).join(' · ')}</span>
                 </span>{' '}
                 <span className={styles.chips}>
                   <ReceiptChips receipt={r} />

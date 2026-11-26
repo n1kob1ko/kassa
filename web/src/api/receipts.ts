@@ -13,7 +13,8 @@ export type ReceiptHead = {
   kind: ReceiptKind;
   staffName: string;
   totalCents: number;
-  paymentKind: 'cash' | 'card' | null;
+  /** `mixed`: ein Teil bar, der Rest mit Karte. */
+  paymentKind: 'cash' | 'card' | 'mixed' | null;
   test: boolean;
   /** Ein Verkauf, den ein Storno-Bon storniert hat. */
   voided: boolean;
@@ -30,6 +31,28 @@ export type ReceiptLine = {
   quantity: number;
   unitDepositCents: number;
   options: { groupName: string; optionName: string; surchargeCents: number }[];
+  /** Gesamter Rabatt der Zeile (eigener plus Anteil am Bon-Rabatt), positiv. */
+  discountCents: number;
+  /** Der eigene Rabatt der Zeile. */
+  discount: Discount | null;
+};
+
+/** Ein Rabatt: in Prozent (`percent`) oder als Betrag (`percent` ist `null`), immer mit Grund. */
+export type Discount = { percent: number | null; amountCents: number; reason: string };
+
+export type Payment = {
+  position: number;
+  kind: string;
+  amountCents: number;
+  givenCents: number | null;
+  changeCents: number | null;
+  /** Trinkgeld, nur bei Karte; nicht im Betrag. */
+  tipCents: number;
+  tipStaffName: string | null;
+  provider: string | null;
+  providerTxCode: string | null;
+  cardScheme: string | null;
+  cardLast4: string | null;
 };
 
 /** Antwort von `GET …/receipts/:id`. Die Signatur selbst (JWS, Zertifikat) kommt nie mit, nur ihr Zustand. */
@@ -37,20 +60,39 @@ export type ReceiptDetail = ReceiptHead & {
   goodsCents: number;
   depositCents: number;
   lines: ReceiptLine[];
-  payment: {
-    kind: string;
-    amountCents: number;
-    givenCents: number | null;
-    changeCents: number | null;
-    provider: string | null;
-    providerTxCode: string | null;
-    cardScheme: string | null;
-    cardLast4: string | null;
-  } | null;
+  /** Nach Stelle; ein Bon aus App 1.10.0 hat eine Zahlung an Stelle 0. */
+  payments: Payment[];
+  tipCents: number;
+  /** Summe aller Rabatte des Bons, positiv. */
+  discountCents: number;
+  /** Der Rabatt auf den ganzen Bon. */
+  discount: Discount | null;
   voidsReceiptId: string | null;
   voidedByReceiptId: string | null;
   rksv: { cashBoxId: string | null; damaged: boolean; probe: boolean } | null;
 };
+
+const PAYMENT_KIND_TEXTS = { cash: 'Bar', card: 'Karte', mixed: 'Bar + Karte' } as const;
+
+/** Die Zahlungsart in Worten; ohne Zahlung (Sonderbeleg) leer. */
+export function paymentKindText(kind: ReceiptHead['paymentKind']): string {
+  return kind === null ? '' : PAYMENT_KIND_TEXTS[kind];
+}
+
+/** Gründe eines Rabatts wie in der App; ein unbekannter Grund steht, wie er kommt. */
+const DISCOUNT_REASONS: Record<string, string> = {
+  regular: 'Stammgast',
+  staff: 'Mitarbeiter',
+  complaint: 'Reklamation',
+  promotion: 'Aktion',
+  invitation: 'Einladung',
+};
+
+/** "Rabatt 10 % Aktion", "Rabatt Mitarbeiter". */
+export function discountText(d: { percent: number | null; reason: string }): string {
+  const reason = DISCOUNT_REASONS[d.reason] ?? d.reason;
+  return d.percent === null ? `Rabatt ${reason}` : `Rabatt ${d.percent} % ${reason}`;
+}
 
 /** Die Filter der Liste, so wie der Server sie liest. `null` heißt: nicht gefiltert. */
 export type ReceiptFilter = { day: string | null; payment: 'cash' | 'card' | null; voidedOnly: boolean };

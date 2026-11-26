@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, siteFor, type Site } from './support/admin_data.js';
-import { sampleDay, sampleReceipt } from './support/push.js';
+import { sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -158,6 +158,39 @@ describe('Tage', () => {
     await send(a, s, [['day', empty]]);
     expect((await detail(s, empty.id)).json()).toMatchObject({
       cashCents: 0, cardCents: 0, cashReceiptCount: 0, cardReceiptCount: 0, voidCount: 0, voidedCents: 0, depositCents: 0, taxLines: [],
+    });
+  });
+
+  test('Tag mit gemischtem Bon, Trinkgeld und Rabatt', async () => {
+    const s = await siteFor(a, provider, 'Gemischt');
+    const day = sampleDay();
+    // bar 9,90 in v: 1, dazu 15,36 in v: 2: bar 10,00, Karte 5,36, Trinkgeld 0,64 für Anna, Rabatt 2,84.
+    await send(a, s, [
+      ['day', day],
+      ['receipt', sampleReceipt({ businessDayId: day.id, number: 1 })],
+      ['receipt', sampleReceiptV2({ businessDayId: day.id, number: 2 })],
+    ]);
+    const d = (await detail(s, day.id)).json();
+    expect(d).toMatchObject({
+      receiptCount: 2, revenueCents: 2526, cashCents: 1990, cardCents: 536, cashReceiptCount: 2, cardReceiptCount: 1,
+      discountCount: 1, discountCents: 284, cardTipCents: 64, cardAccountCents: 600,
+      tipsByStaff: [{ staffName: 'Anna', cents: 64 }],
+    });
+    expect(d.tipsByStaff).toEqual([{ staffName: 'Anna', cents: 64 }]);
+  });
+
+  test('Tag nur mit Bons in v: 1: kein Trinkgeld, kein Rabatt, am Kartenkonto die Karte', async () => {
+    const s = await siteFor(a, provider, 'Alt');
+    const day = sampleDay();
+    const card = { kind: 'card', amountCents: 605, givenCents: 0, changeCents: 0, provider: 'sumup', providerTxCode: 'T', cardScheme: 'VISA', cardLast4: '4242' };
+    await send(a, s, [
+      ['day', day],
+      ['receipt', sampleReceipt({ businessDayId: day.id, number: 1 })],
+      ['receipt', sampleReceipt({ businessDayId: day.id, number: 2, totalCents: 605, goodsCents: 605, payment: card })],
+    ]);
+    expect((await detail(s, day.id)).json()).toMatchObject({
+      receiptCount: 2, revenueCents: 1595, cashCents: 990, cardCents: 605, cashReceiptCount: 1, cardReceiptCount: 1,
+      discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: 605, tipsByStaff: [],
     });
   });
 });

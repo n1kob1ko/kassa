@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
 import { pairDevice } from './support/device.js';
-import { sampleReceipt } from './support/push.js';
+import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -29,6 +29,26 @@ const summary = (s: Site, from: string, to: string, cookie?: string) =>
 
 const receipt = (createdAt: string, o: Record<string, unknown> = {}) =>
   sampleReceipt({ id: randomUUID(), createdAt, ...o });
+
+/** Der Storno-Bon zu einem Bon in `v: 2`: alle Beträge mit Minus, das Trinkgeld bleibt bei seiner Person. */
+function voidOfV2(r: Record<string, any>, o: Record<string, unknown>): Record<string, any> {
+  const neg = (n: number) => (n === 0 ? 0 : -n);
+  const gross = (g: Record<string, number>) => Object.fromEntries(Object.entries(g).map(([k, v]) => [k, neg(v)]));
+  return {
+    ...r,
+    id: randomUUID(),
+    kind: 'voided',
+    voidsReceiptId: r.id,
+    goodsCents: neg(r.goodsCents),
+    depositCents: neg(r.depositCents),
+    totalCents: neg(r.totalCents),
+    tipCents: neg(r.tipCents),
+    discountCents: neg(r.discountCents),
+    lines: r.lines.map((l: Record<string, any>) => ({ ...l, quantity: neg(l.quantity), gross: gross(l.gross), discountCents: neg(l.discountCents) })),
+    payments: r.payments.map((p: Record<string, any>) => ({ ...p, amountCents: neg(p.amountCents), givenCents: 0, changeCents: 0, tipCents: neg(p.tipCents) })),
+    ...o,
+  };
+}
 
 type Fixture = {
   now: string;
@@ -56,8 +76,41 @@ describe('Monate', () => {
       const [from, to] = key.split('..') as [string, string];
       const r = await summary(s, from, to, chef.cookie);
       expect(r.statusCode, key).toBe(200);
-      expect(r.json(), key).toEqual(fx.expected.summaries[key]);
+      // Die neuen Felder kennt die Abrechnung der App noch nicht: in diesem Beispiel ohne Trinkgeld und Rabatt.
+      const { discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff, ...rest } = r.json();
+      const fileSummary = fx.expected.summaries[key] as { cardRevenueCents: number };
+      expect({ discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff }, key).toEqual({
+        discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: fileSummary.cardRevenueCents, tipsByStaff: [],
+      });
+      expect(rest, key).toEqual(fx.expected.summaries[key]);
     }
+  });
+
+  test('gemeinsames Beispiel mixed.json: bar, Karte und bar + Karte mit Trinkgeld wie die App', async () => {
+    type Mixed = {
+      now: string;
+      timeZone: string;
+      receipts: Record<string, unknown>[];
+      expected: { months: unknown[]; summary: Record<string, unknown> };
+    };
+    const fx = JSON.parse(readFileSync(new URL('../../shared/fixtures/stats/mixed.json', import.meta.url), 'utf8')) as Mixed;
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, fx.timeZone);
+    await send(a, s, fx.receipts.map((r) => ['receipt', r]));
+    a.now.value = new Date(fx.now);
+    const chef = await createChef(a.db, s.businessId);
+
+    expect((await list(s, chef.cookie)).json()).toEqual({ testMode: true, nextAvailable: '2026-08-01', months: fx.expected.months });
+    const r = await summary(s, '2026-06', '2026-06', chef.cookie);
+    expect(r.statusCode).toBe(200);
+    const { discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff, ...rest } = r.json();
+    // Von Hand: 0,80 € Trinkgeld für Anna auf dem gemischten Bon; am Kartenkonto 9,65 + 8,20 + 0,80.
+    expect({ discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff }).toEqual({
+      discountCount: 0, discountCents: 0, cardTipCents: 80, cardAccountCents: 1865, tipsByStaff: [{ staffName: 'Anna', cents: 80 }],
+    });
+    expect(rest).toEqual(fx.expected.summary);
+    // Der gemischte Bon zählt bei bar und bei Karte, im Gesamt einmal.
+    expect(rest).toMatchObject({ receiptCount: 3, cashReceiptCount: 2, cardReceiptCount: 2 });
   });
 
   test('Mitternacht in der Zeitzone des Betriebs: 31.10. 23:30 Wien zählt zum Oktober, 1.11. 00:30 zum November', async () => {
@@ -193,6 +246,7 @@ describe('Monate', () => {
       from: '2026-09', to: '2026-09', testMode: true,
       receiptCount: 2, cashReceiptCount: 1, cardReceiptCount: 1, voidCount: 0, voidedCents: 0,
       revenueCents: 1795, cashRevenueCents: 1190, cardRevenueCents: 605, depositCents: 25,
+      discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: 605, tipsByStaff: [],
       taxLines: [
         { percent: 20, grossCents: 580, netCents: 483, taxCents: 97 },
         { percent: 10, grossCents: 1190, netCents: 1082, taxCents: 108 },
@@ -205,6 +259,53 @@ describe('Monate', () => {
       revenueCents: 605, cashRevenueCents: 0, cardRevenueCents: 605,
       taxLines: [{ percent: 20, grossCents: 580, netCents: 483, taxCents: 97 }],
       rows: [{ key: '2026-09', receiptCount: 2, revenueCents: 1795 }, { key: '2026-10', receiptCount: -1, revenueCents: -1190 }],
+    });
+  });
+
+  test('Zusammenfassung mit Trinkgeld je Person und Rabatt', async () => {
+    const s = await siteFor(a, provider);
+    a.now.value = new Date('2026-11-18T12:00:00.000Z');
+    const cash = receipt('2026-09-30T08:00:00.000Z', { number: 1 });
+    const mixed = sampleReceiptV2({ createdAt: '2026-09-30T09:00:00.000Z', number: 2 });
+    // Der Storno im Oktober storniert Chefin, das Trinkgeld bleibt bei Anna, als Minus.
+    const storno = voidOfV2(mixed, { createdAt: '2026-10-02T09:00:00.000Z', number: 3 });
+    await send(a, s, [['receipt', cash], ['receipt', mixed], ['receipt', storno]]);
+
+    expect((await summary(s, '2026-09', '2026-09')).json()).toMatchObject({
+      receiptCount: 2, revenueCents: 2526, cashRevenueCents: 1990, cardRevenueCents: 536, cashReceiptCount: 2, cardReceiptCount: 1,
+      discountCount: 1, discountCents: 284, cardTipCents: 64, cardAccountCents: 600,
+      tipsByStaff: [{ staffName: 'Anna', cents: 64 }],
+    });
+    const october = (await summary(s, '2026-10', '2026-10')).json();
+    expect(october).toMatchObject({
+      receiptCount: -1, voidCount: 1, revenueCents: -1536, cashRevenueCents: -1000, cardRevenueCents: -536,
+      cashReceiptCount: -1, cardReceiptCount: -1,
+      discountCount: -1, discountCents: -284, cardTipCents: -64, cardAccountCents: -600,
+    });
+    expect(october.tipsByStaff).toEqual([{ staffName: 'Anna', cents: -64 }]);
+    // Über beide Monate hebt sich alles auf: Zeilen mit 0 fehlen.
+    expect((await summary(s, '2026-09', '2026-10')).json()).toMatchObject({
+      receiptCount: 1, revenueCents: 990, cashRevenueCents: 990, cardRevenueCents: 0,
+      discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: 0, tipsByStaff: [],
+    });
+  });
+
+  test('Trinkgeld je Person: gruppiert nach Kennung, Name des spätesten Bons, nach Name sortiert', async () => {
+    const s = await siteFor(a, provider);
+    a.now.value = new Date('2026-11-18T12:00:00.000Z');
+    const withTip = (createdAt: string, number: number, staffId: string, staffName: string, tip: number) => {
+      const r = sampleReceiptV2({ createdAt, number });
+      return { ...r, tipCents: tip, payments: [r.payments[0], { ...r.payments[1], tipCents: tip, tipStaffId: staffId, tipStaffName: staffName }] };
+    };
+    await send(a, s, [
+      ['receipt', withTip('2026-10-05T09:00:00.000Z', 1, 'anna', 'Anna', 100)],
+      ['receipt', withTip('2026-10-06T09:00:00.000Z', 2, 'ben', 'Ben', 50)],
+      ['receipt', withTip('2026-10-07T09:00:00.000Z', 3, 'anna', 'Anna Berger', 30)],
+      ['receipt', receipt('2026-10-08T09:00:00.000Z', { number: 4 })],
+    ]);
+    expect((await summary(s, '2026-10', '2026-10')).json()).toMatchObject({
+      cardTipCents: 180, cardRevenueCents: 3 * 536, cardAccountCents: 3 * 536 + 180,
+      tipsByStaff: [{ staffName: 'Anna Berger', cents: 130 }, { staffName: 'Ben', cents: 50 }],
     });
   });
 

@@ -69,6 +69,16 @@
   color: var(--ink2);
 }
 
+/* Trinkgeld je Person: eingerückt unter "Trinkgeld Karte", ruhig. */
+.person dt {
+  padding-left: var(--space-xxl);
+}
+
+.person dd {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
 .strong dt {
   color: var(--ink);
   font-weight: 700;

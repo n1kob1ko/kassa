@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { withBusiness } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, setTimeZone, siteFor } from './support/admin_data.js';
-import { sampleReceipt } from './support/push.js';
+import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -83,6 +83,63 @@ describe('Umsätze', () => {
       }
     }
     expect([...allKeys((await overview(s.businessId, 'today')).json())].filter((k) => FORBIDDEN_KEYS.includes(k))).toEqual([]);
+  });
+
+  test('gemeinsames Beispiel mixed.json: bar, Karte und bar + Karte mit Trinkgeld wie die App', async () => {
+    const fx = JSON.parse(readFileSync(new URL('../../shared/fixtures/stats/mixed.json', import.meta.url), 'utf8')) as Omit<Fixture, 'expected'> & {
+      expected: { overview: Record<string, Record<string, unknown>> };
+    };
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, fx.timeZone);
+    await withBusiness(a.db, s.businessId, async (c) => {
+      for (const k of fx.categories) {
+        await c.query(
+          `insert into categories (business_id, id, name, position, change_seq) values ($1, $2, $3, $4, nextval('change_seq'))`,
+          [s.businessId, k.id, k.name, k.position],
+        );
+      }
+      for (const [i, it] of fx.items.entries()) {
+        await c.query(
+          `insert into items (business_id, id, name, price_cents, category_id, tax_percent, deposit_cents, position, change_seq)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, nextval('change_seq'))`,
+          [s.businessId, it.id, it.name, it.priceCents, it.categoryId, it.taxPercent, it.depositCents, i],
+        );
+      }
+    });
+    await send(a, s, fx.receipts.map((r) => ['receipt', r]));
+    // Eigene Sitzung: sie gleitet mit der Uhr des Beispiels und soll die des Anbieters nicht verkürzen.
+    const chef = await createChef(a.db, s.businessId);
+    const before = a.now.value;
+    a.now.value = new Date(fx.now);
+    const fields = ['revenueCents', 'previousRevenueCents', 'receiptCount', 'voidCount', 'buckets', 'cashCents', 'cardCents', 'topItems', 'byCategory'];
+    for (const range of ['today', 'days7', 'days30']) {
+      const body = (await overview(s.businessId, range, chef.cookie)).json();
+      for (const k of fields) expect(body[k], `${range}.${k}`).toEqual(fx.expected.overview[range]![k]);
+    }
+    // Von Hand: Umsatz ohne Trinkgeld 9,65 + 9,65 + 18,20; bar 9,65 + 10,00; Karte 9,65 + 8,20.
+    expect((await overview(s.businessId, 'days7', chef.cookie)).json()).toMatchObject({ revenueCents: 3750, cashCents: 1965, cardCents: 1785 });
+    a.now.value = before;
+  });
+
+  test('Bon in v: 2: Umsatz nach Rabatt ohne Trinkgeld, Bar und Karte aus den Zahlungen, Artikel nach Rabatt', async () => {
+    const s = await siteFor(a, provider);
+    a.now.value = new Date('2026-11-19T12:00:00.000Z');
+    await send(a, s, [['receipt', sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z' })]]);
+    const body = (await overview(s.businessId, 'today')).json();
+    expect(body).toMatchObject({ revenueCents: 1536, receiptCount: 1, cashCents: 1000, cardCents: 536 });
+    expect(body.topItems).toEqual([
+      { name: 'Cola 0,33 l', quantity: 2, cents: 522 },
+      { name: 'Huhn Bowl', quantity: 1, cents: 964 },
+    ]);
+    expect(body.byCategory).toEqual([{ name: 'Sonstiges', cents: 1486 }, { name: 'Pfand', cents: 50 }]);
+
+    // Ein Bon in v: 1 rechnet wie bisher.
+    const old = await siteFor(a, provider);
+    await send(a, old, [['receipt', receipt('2026-11-19T09:00:00.000Z')]]);
+    const before = (await overview(old.businessId, 'today')).json();
+    expect(before).toMatchObject({ revenueCents: 990, receiptCount: 1, cashCents: 990, cardCents: 0 });
+    expect(before.topItems).toEqual([{ name: 'Huhn Bowl', quantity: 1, cents: 990 }]);
+    expect(before.byCategory).toEqual([{ name: 'Sonstiges', cents: 990 }]);
   });
 
   test('Europe/Vienna: ein Bon um 23:30 UTC zählt zum nächsten Tag', async () => {

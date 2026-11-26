@@ -30,6 +30,15 @@ export type PeriodSummary = {
   cashRevenueCents: number;
   cardRevenueCents: number;
   depositCents: number;
+  /** Bons mit Rabatt (Storno zählt herunter) und die Summe der Rabatte. */
+  discountCount: number;
+  discountCents: number;
+  /** Trinkgeld auf Karte, nicht im Umsatz. */
+  cardTipCents: number;
+  /** Karte plus Trinkgeld: was bei SumUp ankommt. */
+  cardAccountCents: number;
+  /** Trinkgeld auf Karte je Person, nach Name. */
+  tipsByStaff: { staffName: string; cents: number }[];
   taxLines: TaxLine[];
   /** Bei einem Monat je Tag ('JJJJ-MM-TT'), bei mehreren je Monat ('JJJJ-MM'), aufsteigend. */
   rows: { key: string; receiptCount: number; revenueCents: number }[];

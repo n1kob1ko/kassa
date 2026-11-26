@@ -8,7 +8,13 @@ import { TaxTable } from './PeriodDetail';
 import styles from './DayDetail.module.css';
 
 /** Gründe einer Bewegung wie in der App (`close_format.dart`); Unbekanntes steht, wie es kommt. */
-const REASONS: Record<string, string> = { bank: 'Bank', purchase: 'Einkauf', change: 'Wechselgeld', other: 'Sonstiges' };
+const REASONS: Record<string, string> = {
+  bank: 'Bank',
+  purchase: 'Einkauf',
+  change: 'Wechselgeld',
+  tip: 'Trinkgeld',
+  other: 'Sonstiges',
+};
 
 function movementText(m: CashMovement): string {
   const verb = m.kind === 'deposit' ? 'Eingelegt' : 'Entnommen';
@@ -111,6 +117,18 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
         <CountFigure label="Bar" receipts={d.cashReceiptCount} cents={d.cashCents} testId="cash" />
         <CountFigure label="Karte" receipts={d.cardReceiptCount} cents={d.cardCents} testId="card" />
         {d.voidCount > 0 && <CountFigure label="Storniert" receipts={d.voidCount} cents={d.voidedCents} testId="voided" quiet />}
+        {d.discountCents !== 0 && (
+          <CountFigure label="Rabatte" receipts={d.discountCount} cents={d.discountCents} testId="discounts" />
+        )}
+        {d.cardTipCents !== 0 && <Figure label="Trinkgeld Karte" cents={d.cardTipCents} testId="card-tip" />}
+        {d.cardTipCents !== 0 &&
+          d.tipsByStaff.map((t) => (
+            <div key={t.staffName} className={[styles.figure, styles.person].join(' ')}>
+              <dt>{t.staffName}</dt>
+              <dd data-testid="card-tip-staff">{money(t.cents)}</dd>
+            </div>
+          ))}
+        {d.cardAccountCents !== 0 && <Figure label="Am Kartenkonto" cents={d.cardAccountCents} testId="card-account" />}
         {closed && d.expectedCents !== null && <Figure label="Erwartet" cents={d.expectedCents} testId="expected" />}
         {closed && d.countedCents !== null && <Figure label="Gezählt" cents={d.countedCents} testId="counted" strong />}
         {closed && d.differenceCents !== null && (

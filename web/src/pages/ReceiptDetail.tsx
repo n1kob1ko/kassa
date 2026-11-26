@@ -1,7 +1,16 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Link, type To } from 'react-router';
 import type { ApiError } from '../api/client';
-import { useReceipt, type ReceiptDetail, type ReceiptHead, type ReceiptKind, type ReceiptLine } from '../api/receipts';
+import {
+  discountText,
+  paymentKindText,
+  useReceipt,
+  type Payment as PaymentData,
+  type ReceiptDetail,
+  type ReceiptHead,
+  type ReceiptKind,
+  type ReceiptLine,
+} from '../api/receipts';
 import { dateText, money, timeText } from '../format';
 import { Button } from '../ui/Button';
 import { ChevronRightIcon } from '../ui/icons';
@@ -55,6 +64,11 @@ function Line({ line }: { line: ReceiptLine }) {
             {o.surchargeCents !== 0 && <span className={styles.surcharge}> +{money(o.surchargeCents)}</span>}
           </span>
         ))}
+        {line.discount && (
+          <span className={styles.lineNote} data-testid={`line-discount-${line.position}`}>
+            {discountText(line.discount)} <span className={styles.surcharge}>{money(-Math.abs(line.discount.amountCents))}</span>
+          </span>
+        )}
       </span>
       <span className={styles.lineAmount}>{money(line.unitPriceCents * line.quantity)}</span>
     </li>
@@ -83,49 +97,77 @@ function PairLink({
   );
 }
 
-function Payment({ receipt }: { receipt: ReceiptDetail }) {
-  const p = receipt.payment;
-  if (!p) return null;
+/**
+ * Eine Zahlung des Bons: Art, bei mehreren oder mit Trinkgeld der Betrag (bei Karte mit Trinkgeld, so wie ihn das
+ * Terminal gebucht hat, darunter "davon Trinkgeld"), bei Karte Karte und Kennung, bei bar Gegeben und Rückgeld.
+ */
+function Payment({ receipt, p, several }: { receipt: ReceiptDetail; p: PaymentData; several: boolean }) {
   const card = p.kind === 'card';
+  const tip = card ? p.tipCents : 0;
   const cardText = [p.cardScheme, p.cardLast4 ? `endet auf ${p.cardLast4}` : null].filter(Boolean).join(', ');
+  return (
+    <dl className={styles.figures} data-testid={`payment-${p.position}`}>
+      <div className={styles.figure}>
+        <dt>Zahlungsart</dt>
+        <dd data-testid="payment-kind">{card ? 'Karte' : 'Bar'}</dd>
+      </div>
+      {(several || tip !== 0) && (
+        <div className={styles.figure}>
+          <dt>Betrag</dt>
+          <dd data-testid="payment-amount">{money(p.amountCents + tip)}</dd>
+        </div>
+      )}
+      {tip !== 0 && (
+        <div className={styles.figure}>
+          <dt>davon Trinkgeld{p.tipStaffName ? ` für ${p.tipStaffName}` : ''}</dt>
+          <dd data-testid="tip">{money(tip)}</dd>
+        </div>
+      )}
+      {card && cardText && (
+        <div className={styles.figure}>
+          <dt>Karte</dt>
+          <dd data-testid="card">{cardText}</dd>
+        </div>
+      )}
+      {/* Damit findet der Chef die Zahlung beim Anbieter. Zum Markieren und Kopieren. */}
+      {card && p.providerTxCode && (
+        <div className={styles.figure}>
+          <dt>{p.provider === 'sumup' ? 'Kennung bei SumUp' : 'Kennung der Zahlung'}</dt>
+          <dd data-testid="provider-tx" className={styles.txCode}>
+            {p.providerTxCode}
+          </dd>
+        </div>
+      )}
+      {!card && receipt.kind === 'sale' && p.givenCents !== null && (
+        <>
+          <div className={styles.figure}>
+            <dt>Gegeben</dt>
+            <dd data-testid="given">{money(p.givenCents)}</dd>
+          </div>
+          <div className={styles.figure}>
+            <dt>Rückgeld</dt>
+            <dd data-testid="change">{money(p.changeCents ?? 0)}</dd>
+          </div>
+        </>
+      )}
+    </dl>
+  );
+}
+
+/** Alle Zahlungen des Bons nach Stelle; bei mehreren steht die Zahlungsart des Bons darüber ("Bar + Karte"). */
+function Payments({ receipt }: { receipt: ReceiptDetail }) {
+  if (receipt.payments.length === 0) return null;
+  const several = receipt.payments.length > 1;
   return (
     <section className={styles.section} aria-labelledby="bon-zahlung">
       <h3 id="bon-zahlung" className={styles.sectionTitle}>
-        Zahlung
+        {several ? `Zahlungen · ${paymentKindText(receipt.paymentKind)}` : 'Zahlung'}
       </h3>
-      <dl className={styles.figures}>
-        <div className={styles.figure}>
-          <dt>Zahlungsart</dt>
-          <dd data-testid="payment-kind">{card ? 'Karte' : 'Bar'}</dd>
-        </div>
-        {card && cardText && (
-          <div className={styles.figure}>
-            <dt>Karte</dt>
-            <dd data-testid="card">{cardText}</dd>
-          </div>
-        )}
-        {/* Damit findet der Chef die Zahlung beim Anbieter. Zum Markieren und Kopieren. */}
-        {card && p.providerTxCode && (
-          <div className={styles.figure}>
-            <dt>{p.provider === 'sumup' ? 'Kennung bei SumUp' : 'Kennung der Zahlung'}</dt>
-            <dd data-testid="provider-tx" className={styles.txCode}>
-              {p.providerTxCode}
-            </dd>
-          </div>
-        )}
-        {!card && receipt.kind === 'sale' && p.givenCents !== null && (
-          <>
-            <div className={styles.figure}>
-              <dt>Gegeben</dt>
-              <dd data-testid="given">{money(p.givenCents)}</dd>
-            </div>
-            <div className={styles.figure}>
-              <dt>Rückgeld</dt>
-              <dd data-testid="change">{money(p.changeCents ?? 0)}</dd>
-            </div>
-          </>
-        )}
-      </dl>
+      <div className={styles.payments}>
+        {receipt.payments.map((p) => (
+          <Payment key={p.position} receipt={receipt} p={p} several={several} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -199,6 +241,12 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
       )}
 
       <div className={styles.sum}>
+        {r.discount && (
+          <p className={styles.sumRow}>
+            <span>{discountText(r.discount)}</span>
+            <span data-testid="discount">{money(-Math.abs(r.discount.amountCents))}</span>
+          </p>
+        )}
         {r.depositCents !== 0 && (
           <p className={styles.sumRow}>
             <span>Pfand</span>
@@ -218,7 +266,7 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
         </p>
       </div>
 
-      <Payment receipt={r} />
+      <Payments receipt={r} />
 
       {signature && (
         <section className={styles.section} aria-labelledby="bon-signatur">

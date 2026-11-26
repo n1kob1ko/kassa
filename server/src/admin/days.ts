@@ -2,8 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
-import { grossOf, GROSS_SUMS, RECEIPT_SUMS, type ReceiptSums } from './months.js';
+import { grossOf, GROSS_SUMS, paymentFigures, RECEIPT_SUMS, type ReceiptSums } from './months.js';
 import { taxLinesOf } from './tax.js';
+import { tipsByStaff } from './tips.js';
 
 const MAX_DAYS = 100;
 
@@ -89,6 +90,7 @@ export function installDayRoutes(app: FastifyInstance): void {
           [id],
         )
       ).rows[0]!;
+      const tips = await tipsByStaff(c, `r.business_day_id = $1 and r.kind in ('sale', 'voided')`, [id]);
       return {
         ...head(day),
         openingFloatCents: day.opening_float_cents,
@@ -109,6 +111,7 @@ export function installDayRoutes(app: FastifyInstance): void {
         voidCount: totals.void_count,
         voidedCents: totals.voided,
         depositCents: totals.deposit,
+        ...paymentFigures(totals, tips),
         taxLines: taxLinesOf(grossOf(gross)),
       };
     });

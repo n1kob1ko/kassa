@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { filterFromParams, filterToParams, type ReceiptFilter } from './receipts';
+import { discountText, filterFromParams, filterToParams, paymentKindText, type ReceiptFilter } from './receipts';
 
 const none: ReceiptFilter = { day: null, payment: null, voidedOnly: false };
 
@@ -22,4 +22,11 @@ test('filterToParams: Vorgaben stehen nicht in der Adresse, andere Parameter ble
   expect(filterToParams({ ...none, payment: 'cash' }, new URLSearchParams('tag=2026-11-01&x=1')).toString()).toBe(
     'x=1&zahlung=bar',
   );
+});
+
+test('paymentKindText und discountText', () => {
+  expect([paymentKindText('cash'), paymentKindText('card'), paymentKindText('mixed'), paymentKindText(null)]).toEqual(['Bar', 'Karte', 'Bar + Karte', '']);
+  expect(discountText({ percent: 10, reason: 'promotion' })).toBe('Rabatt 10 % Aktion');
+  expect(discountText({ percent: null, reason: 'staff' })).toBe('Rabatt Mitarbeiter');
+  expect(discountText({ percent: null, reason: 'xyz' })).toBe('Rabatt xyz');
 });

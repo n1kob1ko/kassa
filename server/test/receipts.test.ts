@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { withBusiness } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
-import { sampleReceipt } from './support/push.js';
+import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -141,8 +141,10 @@ describe('Bons', () => {
       lines: [{
         position: 0, itemId: 'huhn-bowl', name: 'Huhn Bowl', info: null, unitPriceCents: 990, quantity: 1, unitDepositCents: 0,
         options: [{ groupName: 'Größe', optionName: 'Normal', surchargeCents: 0 }],
+        discountCents: 0, discount: null,
       }],
-      payment: { kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null },
+      payments: [{ position: 0, kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, tipCents: 0, tipStaffName: null, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null }],
+      tipCents: 0, discountCents: 0, discount: null,
       voidsReceiptId: null, voidedByReceiptId: null, rksv: null,
     });
   });
@@ -152,7 +154,41 @@ describe('Bons', () => {
     const r = bon('2026-11-19T08:00:00.000Z', { payment: card });
     await send(a, s, [['receipt', r]]);
     const body = (await get(`/api/admin/businesses/${s.businessId}/receipts/${r.id}`)).json();
-    expect(body.payment).toMatchObject({ kind: 'card', provider: 'sumup', providerTxCode: 'T1', cardScheme: 'VISA', cardLast4: '1234' });
+    expect(body.payments[0]).toMatchObject({ kind: 'card', provider: 'sumup', providerTxCode: 'T1', cardScheme: 'VISA', cardLast4: '1234' });
+  });
+
+  test('gemischter Bon: Art mixed, zu sehen unter payment=cash und payment=card', async () => {
+    const s = await siteFor(a, provider);
+    await send(a, s, [
+      ['receipt', bon('2026-11-19T08:00:00.000Z', { number: 1 })],
+      ['receipt', sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z', number: 2 })],
+    ]);
+    expect((await list(s, '')).json().receipts.map((r: { paymentKind: string }) => r.paymentKind)).toEqual(['mixed', 'cash']);
+    expect((await list(s, '?payment=cash')).json().receipts).toHaveLength(2);
+    expect((await list(s, '?payment=card')).json().receipts.map((r: { paymentKind: string }) => r.paymentKind)).toEqual(['mixed']);
+  });
+
+  test('Detail: alle Zahlungen, Trinkgeld und Rabatte; ein Bon in v: 1 hat eine Zahlung in der Liste', async () => {
+    const s = await siteFor(a, provider);
+    const v1 = bon('2026-11-19T08:00:00.000Z', { number: 1, payment: card });
+    const v2 = sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z', number: 2 });
+    await send(a, s, [['receipt', v1], ['receipt', v2]]);
+    const detail = async (id: string) => (await get(`/api/admin/businesses/${s.businessId}/receipts/${id}`)).json();
+    const d = await detail(v2.id);
+    expect(d.payments.map((p: Record<string, unknown>) => [p.kind, p.amountCents, p.tipCents])).toEqual([['cash', 1000, 0], ['card', 536, 64]]);
+    expect(d.payments[1]).toEqual({
+      position: 1, kind: 'card', amountCents: 536, givenCents: 0, changeCents: 0, tipCents: 64, tipStaffName: 'Anna',
+      provider: 'sumup', providerTxCode: 'TX-BEISPIEL-1', cardScheme: 'VISA', cardLast4: '4242',
+    });
+    expect(d).toMatchObject({ paymentKind: 'mixed', tipCents: 64, discountCents: 284, discount: { percent: 10, amountCents: 165, reason: 'promotion' } });
+    expect(d.lines.map((l: { discountCents: number }) => l.discountCents)).toEqual([58, 226]);
+    expect(d.lines.map((l: { discount: unknown }) => l.discount)).toEqual([null, { percent: 10, amountCents: 119, reason: 'regular' }]);
+    const old = await detail(v1.id);
+    expect(old.payments).toHaveLength(1);
+    expect(old).toMatchObject({
+      paymentKind: 'card', tipCents: 0, discountCents: 0, discount: null,
+      payments: [{ position: 0, kind: 'card', amountCents: 990, tipCents: 0, tipStaffName: null, providerTxCode: 'T1' }],
+    });
   });
 
   test('Signatur: Kassen-Kennung, beschädigt, Probe; nie die Signatur selbst', async () => {

@@ -84,6 +84,16 @@
   color: var(--ink2);
 }
 
+/* Trinkgeld je Person: eingerückt unter "Trinkgeld Karte", ruhig. */
+.row[data-tone='person'] .label {
+  padding-left: var(--space-xxl);
+}
+
+.row[data-tone='person'] .amount {
+  font-weight: 600;
+  color: var(--ink2);
+}
+
 /* Steuer: Satz links, Umsatz und davon MwSt in zwei rechtsbündigen Spalten. */
 .tax {
   width: 100%;

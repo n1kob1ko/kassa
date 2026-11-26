@@ -514,6 +514,123 @@ void main() {
               'in UTC.',
   );
 
+  test(
+    'Gemischt: die Beispieldatei mixed.json (bar, Karte, bar + Karte mit '
+    'Trinkgeld) stimmt mit der Rechnung der App',
+    () async {
+      final now = DateTime(2026, 7, 1, 12);
+
+      final ids = <String>[
+        await sellCash(_id('ffffffff', 1), DateTime(2026, 6, 29, 10), cartCard),
+        await sellCard(_id('ffffffff', 2), DateTime(2026, 6, 29, 12), cartCard),
+      ];
+      // 18,20 €: 10,00 € bar, 8,20 € mit Karte, dazu 0,80 € Trinkgeld für Anna.
+      await ensureDay(DateTime(2026, 6, 30, 18));
+      await shop.receipts.finalizeCardSale(
+        saleId: _id('ffffffff', 3),
+        cart: cart,
+        staff: _anna,
+        provider: 'sumup',
+        txCode: 'TX-${_id('ffffffff', 3)}',
+        cardScheme: 'VISA',
+        cardLast4: '4242',
+        cashPartCents: 1000,
+        tipCents: 80,
+      );
+      ids.add(_id('ffffffff', 3));
+      expect(await shop.count('receipts'), 3);
+
+      shop.clock.value = now;
+      final month = YearMonth(2026, 6);
+      final choice = await shop.periods.choice();
+      expect(choice.first, month);
+      expect(choice.last, month);
+      final r = await shop.periods.report(MonthRange(month, month));
+      final usedItems = {
+        for (final id in ids)
+          for (final l in (await shop.receipts.byId(id)).lines) l.itemId,
+      };
+      final content = <String, Object?>{
+        'now': _iso(now),
+        'timeZone': 'UTC',
+        'categories': [
+          for (final c in catalog.categories)
+            {'id': c.id, 'name': c.name, 'position': c.position},
+        ],
+        'items': [
+          for (final i in catalog.items)
+            if (usedItems.contains(i.id))
+              {
+                'id': i.id,
+                'name': i.name,
+                'priceCents': i.priceCents,
+                'categoryId': i.categoryId,
+                'taxPercent': i.taxRate.percent,
+                'depositCents': i.depositCents,
+              },
+        ],
+        'receipts': [for (final id in ids) await payloadOf(id)]
+          ..sort((a, b) => (a['number'] as int).compareTo(b['number'] as int)),
+        'expected': {
+          'overview': {
+            'today': _overviewJson(await shop.stats.overview(StatsRange.today)),
+            'days7': _overviewJson(await shop.stats.overview(StatsRange.days7)),
+            'days30': _overviewJson(
+              await shop.stats.overview(StatsRange.days30),
+            ),
+          },
+          'months': [
+            {
+              'month': month.key,
+              'receiptCount': r.receiptCount,
+              'revenueCents': r.revenueCents,
+            },
+          ],
+          'summary': {
+            'from': month.key,
+            'to': month.key,
+            'testMode': r.testMode,
+            'receiptCount': r.receiptCount,
+            'cashReceiptCount': r.cashReceiptCount,
+            'cardReceiptCount': r.cardReceiptCount,
+            'voidCount': r.voidCount,
+            'voidedCents': r.voidedCents,
+            'revenueCents': r.revenueCents,
+            'cashRevenueCents': r.cashRevenueCents,
+            'cardRevenueCents': r.cardRevenueCents,
+            'depositCents': r.depositCents,
+            'taxLines': [
+              for (final t in r.taxLines)
+                {
+                  'percent': t.rate.percent,
+                  'grossCents': t.grossCents,
+                  'netCents': t.netCents,
+                  'taxCents': t.taxCents,
+                },
+            ],
+            'rows': [
+              for (final row in r.rows)
+                {
+                  'key':
+                      '${row.start.year}-'
+                      '${row.start.month.toString().padLeft(2, '0')}-'
+                      '${row.start.day.toString().padLeft(2, '0')}',
+                  'receiptCount': row.receiptCount,
+                  'revenueCents': row.revenueCents,
+                },
+            ],
+          },
+        },
+      };
+      _checkFile('stats/mixed.json', content);
+    },
+    skip: DateTime.now().timeZoneOffset == Duration.zero
+        ? false
+        : 'Dieser Test braucht ein Gerät in UTC (die Beispieldatei sagt '
+              '"timeZone": "UTC"). GitHub und die Entwicklungsumgebung laufen '
+              'in UTC.',
+  );
+
   test('Protokoll-Datei: dep.json stimmt mit buildDepExport', () async {
     DateTime at(int h, int m) => DateTime.utc(2026, 11, 18, h, m);
     final db = shop.db;

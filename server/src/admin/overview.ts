@@ -97,13 +97,14 @@ export function installOverviewRoutes(app: FastifyInstance): void {
             kind: string;
             total_cents: number;
             deposit_cents: number;
-            payment_kind: string | null;
+            cash_cents: number;
+            card_cents: number;
             local_day: string;
             local_hour: number;
             in_current: boolean;
             in_previous: boolean;
           }>(
-            `select id, kind, total_cents, deposit_cents, payment_kind,
+            `select id, kind, total_cents, deposit_cents, cash_cents, card_cents,
                     to_char(created_at at time zone $1, 'YYYY-MM-DD') as local_day,
                     extract(hour from created_at at time zone $1)::int as local_hour,
                     created_at >= $2 as in_current,
@@ -135,8 +136,9 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           } else {
             receiptCount += 1;
           }
-          if (r.payment_kind === 'cash') cash += r.total_cents;
-          else card += r.total_cents;
+          // Aus den Zahlungen: ein gemischter Bon zählt mit seinem Teil zu bar und mit dem Rest zur Karte.
+          cash += r.cash_cents;
+          card += r.card_cents;
         }
 
         // Balken
@@ -172,12 +174,14 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           });
         }
 
-        // Artikel und Kategorien aus den Zeilen. Später gesendete Bons geben den Namen vor (wie am Tablet).
+        // Artikel und Kategorien aus den Zeilen. Später gesendete Bons geben den Namen vor (wie am Tablet). Der Betrag
+        // einer Zeile ist die Summe ihrer Beträge je Satz: der Wert nach Rabatt.
         const order = new Map(current.map((r, i) => [r.id, i]));
         const lines = current.length
           ? (
-              await c.query<{ receipt_id: string; item_id: string; name: string; unit_price_cents: number; quantity: number }>(
-                `select receipt_id, item_id, name, unit_price_cents, quantity
+              await c.query<{ receipt_id: string; item_id: string; name: string; cents: number; quantity: number }>(
+                `select receipt_id, item_id, name, quantity,
+                        (gross20_cents + gross10_cents + gross13_cents + gross0_cents + gross19_cents)::float8 as cents
                    from receipt_lines where receipt_id = any($1::uuid[]) order by position`,
                 [current.map((r) => r.id)],
               )
@@ -191,7 +195,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
         for (const l of lines) {
           names.set(l.item_id, l.name);
           quantity.set(l.item_id, (quantity.get(l.item_id) ?? 0) + l.quantity);
-          cents.set(l.item_id, (cents.get(l.item_id) ?? 0) + l.unit_price_cents * l.quantity);
+          cents.set(l.item_id, (cents.get(l.item_id) ?? 0) + l.cents);
         }
         const topItems = [...names.entries()]
           .filter(([id]) => quantity.get(id)! > 0)
@@ -208,7 +212,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
         const sums = new Map<string, number>();
         for (const l of lines) {
           const name = categoryNames.get(itemCategory.get(l.item_id) ?? '') ?? OTHER_CATEGORY;
-          sums.set(name, (sums.get(name) ?? 0) + l.unit_price_cents * l.quantity);
+          sums.set(name, (sums.get(name) ?? 0) + l.cents);
         }
         const byCategory = [...sums.entries()]
           .filter(([, v]) => v !== 0)
