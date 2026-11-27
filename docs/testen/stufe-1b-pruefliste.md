@@ -11,7 +11,7 @@ Was neu ist: Die Kassa kann vier neue Dinge. Jedes hat einen eigenen Schalter in
 
 **Wichtig: Kartenzahlungen im Test sind echte Buchungen.** Das Geld geht wirklich vom Konto ab. Nimm darum kleine Beträge (zum Beispiel ein Getränk) und buche jede Test-Zahlung danach in der SumUp-App zurück. Hake das in jedem Teil am Ende ab.
 
-**Wichtig: Gutscheine aus der Testzeit gelten später nicht.** Solange die Kassa Testbons macht (Probe-Signatur), sind auch die Gutscheine aus diesem Test Übungs-Gutscheine. Auf dem Gutschein-Zettel steht dann "Kein gültiger Gutschein". Sie lassen sich nur in der Testzeit einlösen und zählen in keiner Summe. Arbeitet die Kassa schon echt, dann sind die Gutscheine aus diesem Test echt: Gib sie nicht aus der Hand und storniere am Ende ihren Verkauf, wenn das noch geht.
+**Wichtig: Gutscheine aus der Testzeit gelten später nicht.** Solange die Kassa Testbons macht (Probe-Signatur), sind auch die Gutscheine aus diesem Test Übungs-Gutscheine. Auf dem Gutschein-Zettel steht dann "Kein gültiger Gutschein". Sie lassen sich nur in der Testzeit einlösen und zählen in keiner Summe. Mit diesen Übungs-Gutscheinen musst du nach dem Test nichts tun. Arbeitet die Kassa schon echt (keine Testbons), dann sind die Gutscheine aus diesem Test echte Gutscheine. Ihren Verkauf kannst du nach Teil B nicht mehr stornieren, weil sie schon eingelöst sind. Behalte die Zettel und gib sie nicht aus der Hand. Ihr Restguthaben steht im Browser bei den offenen Gutscheinen.
 
 Wichtig zum Test:
 
@@ -74,6 +74,8 @@ Für die Steuerberatung (ändert höchstens eine Stelle in der Kassa, der Test g
 
 ## B. Gutschein
 
+Vorher: Teil A ist gemacht, "Pfand zurück" steht auf "Nur Chef", und du bist als Chef angemeldet. Das brauchst du für "Mehr" und für den Schritt "Mit Gutschein abschließen".
+
 - [ ] In den Einstellungen bei "Gutschein" den Schalter einschalten.
 - [ ] Zur Kassa gehen.
   Oben in der Bon-Spalte steht jetzt "Mehr" (weil auch "Pfand zurück" an ist). Ein Tipp auf "Mehr" zeigt eine große Taste je Funktion, darunter "Gutschein".
@@ -106,9 +108,9 @@ Für die Steuerberatung (ändert höchstens eine Stelle in der Kassa, der Test g
   Die Kassa sagt: "Dieser Gutschein ist aufgebraucht." Das Blatt schließen, den Bon leeren.
 - [ ] Mit Rest Karte (echtes Terminal): einen Artikel bonieren, der mindestens 1 € mehr kostet als 2 € (zum Beispiel 3,50 €). "Gutschein", Code von Gutschein C, "Einlösen 2,00 €, Rest 1,50 €". Dann "Karte" tippen.
   Am Terminal steht nur der Rest (1,50 €). Mit der Karte zahlen. Am Kundenbon stehen zuerst "Gutschein" mit Code und dann "Karte".
-- [ ] Storno gibt das Guthaben zurück: Unter "Bons" den Bon mit Gutschein B und Rest bar öffnen, "Stornieren" und in der Rückfrage stornieren.
+- [ ] Storno gibt das Guthaben zurück: Unter "Bons" den Bon mit Gutschein B und Rest bar öffnen, "Stornieren" und dann "Ja, stornieren" tippen.
   Der Storno-Bon kommt. Prüfe danach Gutschein B ("Mehr", "Gutschein", "Prüfen", Code tippen): Das Guthaben ist wieder 2,00 €, unter den Bewegungen steht "Einlösung storniert". (Die Rückfrage vor dem Storno sagt hier noch "Du gibst … bar zurück." für den ganzen Betrag, obwohl nur der Bar-Teil bar zurückgeht. Das ist bekannt.)
-- [ ] Storno eines eingelösten Gutscheins geht nicht: Unter "Bons" den Bon öffnen, auf dem die drei Gutscheine verkauft wurden. "Stornieren" tippen und in der Rückfrage stornieren.
+- [ ] Storno eines eingelösten Gutscheins geht nicht: Unter "Bons" den Bon öffnen, auf dem die drei Gutscheine verkauft wurden. "Stornieren" und dann "Ja, stornieren" tippen.
   Die Kassa sagt: "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren." Es entsteht kein Storno-Bon.
 - [ ] Im Bon-Detail dieses Verkaufs auf "Gutschein drucken" tippen.
   Die Gutschein-Zettel kommen noch einmal.
@@ -122,6 +124,8 @@ Für das Prüfwerkzeug des Finanzministeriums musst du hier nichts tun.
 
 ## C. Rechnung an Firma
 
+Geht nur, wenn die Kassa schon echt arbeitet, mit Signatur (keine Testbons). Bei Testbons oder ohne Signatur gibt es die Taste "Rechnung an Firma" nicht, auch nicht in "Bons". Dann Teil C auslassen, ebenso den letzten Punkt in Teil D und die Punkte zu "Firmenkunden" und zum Bon mit Rechnung in Teil E.
+
 - [ ] In den Einstellungen bei "Rechnung an Firma" den Schalter einschalten.
 - [ ] Einen Artikel bonieren und bar bezahlen.
   Auf dem Bildschirm danach (oben steht "Bezahlt") steht die Taste "Rechnung an Firma".
@@ -134,7 +138,7 @@ Für das Prüfwerkzeug des Finanzministeriums musst du hier nichts tun.
 - [ ] Eine erfundene Firma eintragen, zum Beispiel "Muster GmbH", "Musterweg 1", "1010 Wien" und die UID "ATU00000000". "Übernehmen" tippen.
   Das Blatt schließt. Auf dem Bildschirm steht jetzt "Rechnung an" mit dem Namen, dazu "Rechnung drucken" und "Ändern".
 - [ ] "Rechnung drucken" tippen.
-  Die Rechnung kommt aus dem Drucker: oben "Rechnung Nr." mit deiner Kassen-ID und der Bon-Nummer (zum Beispiel "Rechnung Nr. KASSA-1 / 1042"; ohne Signatur steht nur die Bon-Nummer), darunter "An:" mit Name, Adresse und UID, danach der Bon wie immer. Auf dem Bildschirm steht "Rechnung gedruckt." Die Lade bleibt zu.
+  Die Rechnung kommt aus dem Drucker: oben "Rechnung Nr." mit deiner Kassen-ID und der Bon-Nummer (zum Beispiel "Rechnung Nr. KASSA-1 / 1042"), darunter "An:" mit Name, Adresse und UID, danach der Bon wie immer. Auf dem Bildschirm steht "Rechnung gedruckt." Die Lade bleibt zu.
 - [ ] Einen Tippfehler ändern: "Ändern" tippen, im Namen einen Buchstaben ändern, "Übernehmen", dann wieder "Rechnung drucken".
   Die neue Rechnung trägt den geänderten Namen. Hinweis: Beim "Ändern" ist "Als Firmenkunde speichern" aus. Der gespeicherte Firmenkunde bleibt dann, wie er war. Schaltest du es ein, wird ein neuer Firmenkunde gespeichert. Einen gespeicherten Firmenkunden änderst du im Browser (Teil E).
 - [ ] "Nächster Kunde" tippen. Einen neuen Bon bonieren, bezahlen, "Rechnung an Firma" tippen.
@@ -146,6 +150,8 @@ Für das Prüfwerkzeug des Finanzministeriums musst du hier nichts tun.
 - [ ] Wenn du einen Bon über 400 € machen willst (zum Beispiel mit vielen Artikeln, danach stornieren): Nach dem Bezahlen steht über der Taste ruhig "Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden."
 
 ## D. Digitaler Beleg
+
+Vorher: Die Kassa ist mit dem Server gekoppelt. Für den Punkt mit Gutschein A brauchst du Teil B, für den letzten Punkt Teil C (nur im echten Betrieb).
 
 Das Tablet so stellen oder drehen, dass der Kunde den QR-Code am Bildschirm sieht. Ohne Kundenanzeige geht das nur so.
 
@@ -167,27 +173,29 @@ Das Tablet so stellen oder drehen, dass der Kunde den QR-Code am Bildschirm sieh
   Nach etwa 3 Sekunden druckt die Kassa den Bon von selbst und sagt: "Kein Internet, Bon wird gedruckt."
 - [ ] Gut zu wissen, ohne Test: Wird das Tablet in diesen 3 Sekunden ohne Internet neu gestartet oder die Kassa geschlossen, dann druckt der Bon nicht von selbst. Dann den Bon unter "Bons" öffnen und "Drucken" tippen.
 - [ ] Das WLAN wieder einschalten. Ein paar Minuten warten (oder in den Einstellungen in der Karte "Server" auf "Jetzt abgleichen" tippen). Den Bon aus dem letzten Punkt unter "Bons" öffnen und seinen QR-Code mit dem Handy lesen.
-  Die Seite zeigt den Bon. Bevor der Server ihn hat, sagt die Seite: "Diesen Bon gibt es nicht. Ein neuer Bon ist vielleicht noch nicht da. Bitte in ein paar Minuten noch einmal versuchen."
-- [ ] Mit Rechnungsempfänger: Den Bon aus Teil C mit "Muster GmbH" unter "Bons" öffnen und seinen QR-Code lesen (geht, solange "Kundenbon" auf einem der zwei digitalen Werte steht).
+  Der QR-Code erscheint in "Bons" erst, wenn der Server den Bon hat. Dann zeigt die Seite den Bon. (Ruft jemand eine Seite auf, bevor der Server den Bon hat, sagt sie: "Diesen Bon gibt es nicht. Ein neuer Bon ist vielleicht noch nicht da. Bitte in ein paar Minuten noch einmal versuchen." Das kann passieren, wenn kein Drucker eingerichtet ist: Dann zeigt die Kassa den Code ohne Internet trotzdem.)
+- [ ] Nur im echten Betrieb, mit Teil C: Den Bon aus Teil C mit "Muster GmbH" unter "Bons" öffnen und seinen QR-Code lesen (geht, solange "Kundenbon" auf einem der zwei digitalen Werte steht).
   Die Seite zeigt auch den Empfänger der Rechnung.
 
 ## E. Im Browser
+
+Vorher: Teil A und B sind gemacht. Die Punkte zu "Firmenkunden" und zum Bon mit Rechnung brauchen Teil C (nur im echten Betrieb); bei Testbons diese Punkte auslassen.
 
 - [ ] Ein paar Minuten warten (oder am Tablet in der Karte "Server" auf "Jetzt abgleichen" tippen). Im Browser anmelden und den Betrieb öffnen.
 - [ ] Links auf "Gutscheine" klicken. Am Computer steht "Gutscheine" in der Liste links nach "Firmenkunden". Am Handy findest du "Gutscheine" unter "Mehr".
   Oben steht "Offene Gutscheine" mit der Summe aller Guthaben. Darunter die Gutscheine mit Code, Datum, Wert, Guthaben und Zustand. Übungs-Gutscheine stehen getrennt darunter, unter "Übungs-Gutscheine", und zählen nicht zur Summe.
 - [ ] Gutschein A anklicken.
   Das Detail zeigt Wert, Guthaben, Zustand und die Bewegungen (Verkauf, Einlösungen) mit dem Bon dazu.
-- [ ] Links auf "Firmenkunden" klicken.
+- [ ] Nur im echten Betrieb, mit Teil C: Links auf "Firmenkunden" klicken.
   "Muster GmbH" steht da (und der neue Firmenkunde, falls du in Teil C beim "Ändern" den Schalter eingeschaltet hast). Bei der Firma auf "Bearbeiten" klicken, die Adresse ändern und "Speichern" klicken. Nach dem nächsten Abgleich zeigt das Tablet bei "Rechnung an Firma" die neue Adresse. Alte Rechnungen bleiben, wie sie waren.
-- [ ] Links auf "Bons" klicken und den Bon mit Rechnung aus Teil C öffnen.
+- [ ] Nur im echten Betrieb, mit Teil C: Links auf "Bons" klicken und den Bon mit Rechnung aus Teil C öffnen.
   Im Detail steht "Rechnung an" mit Name, Adresse und UID, und die Zeile "Beleg" mit "Gedruckt" oder "Digital angeboten" und der Uhrzeit. Hat der Bon eine Seite, steht dort auch der Link "Seite des Bons".
-- [ ] Bei "Zahlungsart" "Gutschein" wählen.
+- [ ] Links auf "Bons" klicken und bei "Zahlungsart" "Gutschein" wählen.
   Es stehen die Bons mit Gutschein-Zahlung da, zum Beispiel "Gutschein + Bar".
 - [ ] Links auf "Abschlüsse" klicken, "Tage" wählen und den heutigen Tag öffnen.
   Es gibt die Zeilen "Mit Gutschein bezahlt", "Gutscheine verkauft" und "Pfand zurück". Die Beträge sind gleich wie im Abschluss am Tablet.
 - [ ] "Monate" wählen und die Monatsabrechnung ansehen (wenn es sie für diesen Zeitraum schon gibt).
-  Dieselben neuen Zeilen wie beim Tag, dazu "Offene Gutscheine am Monatsende".
+  Dieselben neuen Zeilen wie beim Tag, dazu "Offene Gutscheine am Monatsende" (nur wenn es echte offene Gutscheine gibt; Übungs-Gutscheine zählen nicht).
 
 ## F. Zwei Kassen (nur wenn ein zweites Tablet da ist)
 
@@ -213,5 +221,5 @@ Nach dem Wechsel der Sprache tragen die Tasten die Namen dieser Sprache. Auf Eng
 ## Am Ende
 
 - [ ] Alle Test-Zahlungen mit Karte sind in der SumUp-App zurückgebucht.
-- [ ] Arbeitet die Kassa schon echt (keine Testbons): Gib keinen Test-Gutschein aus der Hand.
+- [ ] Arbeitet die Kassa schon echt (keine Testbons): Die Zettel der Test-Gutscheine behalten und nicht aus der Hand geben. Bei Testbons ist hier nichts zu tun.
 - [ ] Die Schalter in der Karte "Zahlen" und im Abschnitt "Kundenbon" so stellen, wie du sie im Betrieb willst. Was du nicht brauchst, bleibt aus beziehungsweise auf "Immer drucken".

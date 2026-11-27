@@ -53,7 +53,7 @@ Ab 1.11.0 (Stufe 1a "Zahlen") kann die Kassa vier weitere Dinge beim Bezahlen, j
 
 Ab 1.12.0 (Stufe 1b) kann die Kassa vier weitere Dinge, jedes mit eigenem Schalter, nach dem Update und bei neuer Installation aus: Pfand zurück (Schalter "Pfand zurück" in der Karte "Zahlen" mit "Aus", "Alle" oder "Nur Chef"; zurückgegebenes Pfand steht als Zeile mit Minus am Bon, fällt der Bon unter 0, zahlt die Kassa bar aus), Gutschein (Schalter "Gutschein"; Wertgutscheine mit 8-stelligem Code verkaufen und ganz oder zum Teil als Zahlung einlösen, das Guthaben gilt an allen Kassen des Betriebs, ein verkaufter Gutschein ist kein Umsatz), Rechnung an Firma (Schalter "Rechnung an Firma"; nach dem Bezahlen Name, Adresse und UID einer Firma zum Bon geben und den Bon als Rechnung drucken, Firmenkunden werden gespeichert und lassen sich auch im Browser pflegen) und digitaler Beleg (Abschnitt "Kundenbon" mit "Immer drucken", "Drucken und digital" oder "Digital und Druck auf Wunsch"; der Kunde nimmt den Bon über einen QR-Code am Bildschirm als Seite im Internet mit). Sind alle Schalter aus und steht "Kundenbon" auf "Immer drucken", arbeitet die Kassa wie in 1.11.0.
 
-Nicht in Version 1: Tische, Kellner-Handgeräte, Küchenstationen, Lagerstand, Gutscheine, Online-Bestellungen.
+Nicht in Version 1: Tische, Kellner-Handgeräte, Küchenstationen, Lagerstand, Gutscheine (gibt es seit 1.12.0), Online-Bestellungen.
 
 Begriffe: bonieren, Bon, Storno, Tagesabschluss, Geldlade, Kundenanzeige.
 
