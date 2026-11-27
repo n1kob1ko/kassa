@@ -294,4 +294,48 @@ Für die Steuerberatung, ändert den Bau nicht, nur eine Stelle im Code:
 
 ## 10. Abweichungen und Entscheidungen beim Bau
 
-(wird beim Bauen gefüllt)
+Gebaut vom 26. bis 27.11.2026 in 16 Schritten. Hier steht, was beim Bau entschieden wurde und wo der Bau vom Entwurf oben abweicht oder ihn genauer macht.
+
+### Entscheidungen aus dem Plan
+
+- **Gemischte Bons bei "Bar" und "Karte":** Ein Bon mit Bar-Teil und Karte zählt bei den Bons mit Bar-Zahlung und bei den Bons mit Kartenzahlung, in der Zahl aller Bons aber nur einmal. Die Filter "Bar" und "Karte" zeigen ihn beide (am Tablet und im Browser).
+- **`goodsCents` ist der Warenwert nach Rabatt.** So gilt weiter: Warenwert plus Pfand ist die Summe des Bons. Die Zwischensumme am Bon ist Warenwert plus Bon-Rabatt.
+- **"Abschließen" nur bei Summe 0 mit Rabatt.** Ein Bon mit Summe 0,00 € ohne Rabatt (etwa Leitungswasser) zeigt "Bar" und "Karte" wie in 1.10.0.
+- **Der Hinweis nach gescheiterter Karte bleibt stehen.** Scheitert die Karte nach dem Bar-Teil sicher, steht "Karte nicht bezahlt. … bar zurückgeben oder noch einmal versuchen." über der Summe. Er geht erst weg, wenn sich der Bon ändert oder wenn wieder "Bar" oder "Karte" getippt wird.
+- **Beim freien Betrag ist kein Steuersatz vorgewählt.** "Auf den Bon" geht erst, wenn ein Betrag getippt und ein Satz gewählt ist. So wird kein Satz aus Versehen genommen.
+- **`receipt_lines` am Server hat zwei Spalten mehr:** `discount_cents` und `discount` (Migration 0004). Abschnitt 5.6 nennt nur die neuen Spalten von `receipts`.
+- **Die festen Regeln werden bei jedem Bon geprüft, nicht nur mit Signatur.** Mit laufender Signatur kommt vorher noch die alte Prüfung der fünf Beträge (jetzt gegen Summe plus Trinkgeld). Beides passiert, bevor etwas gespeichert wird.
+- **Der Server erkennt einen Bon wieder, der erst als `v: 1` und dann als `v: 2` kommt.** Er antwortet `duplicate` und schreibt keinen Bericht.
+- **Trinkgeld je Person liest der Server aus `payload.payments`** der gespeicherten Bons, nicht aus eigenen Spalten.
+
+### Entscheidungen beim Bau
+
+- **Grund "Trinkgeld" beim Entnehmen nur mit Schalter.** Der Grund "Trinkgeld" bei "Bargeld entnehmen" ist nur da, solange "Trinkgeld bei Kartenzahlung" an ist. Sonst wäre der Bildschirm mit allen Schaltern aus anders als in 1.10.0.
+- **Rabatt als Betrag:** Er wird so gespeichert, wie er getippt wurde, und bei jeder Rechnung auf den Wert der Zeile oder des Bons gekappt. Wird die Menge größer, wächst er darum bis zum getippten Betrag mit. Der Bildschirm zeigt den gekappten Betrag.
+- **"Abschließen" sperrt den Bon:** Während "Abschließen" einen Bon mit Summe 0,00 € speichert, nehmen die Bon-Spalte, die Kategorien und die Artikel keinen Tipp an.
+- **Bon-Detail am Tablet:** Bei der Karte steht der Betrag, den die Karte gebucht hat (Teil des Bons plus Trinkgeld), darunter "davon Trinkgeld". So ist es auch am gedruckten Bon und in der Verwaltung im Browser.
+- **Prüfwerkzeug des Finanzministeriums:** Es läuft über eine zweite, eigene Kette mit Rabatt, Trinkgeld, gemischter Zahlung, freiem Betrag, Einladung und Storno. Die alte Kette und ihr Test bleiben, wie sie sind.
+- **Bon aus 1.10.0, der noch einmal kommt** (Punkt 1 der Prüfpunkte im Plan): Der Beweis läuft mit einer Sendung, die der echte Code von 1.10.0 gebaut hat, nicht mit einer nachgebauten. Wie die Dateien entstanden sind, steht in `tool/fixtures/receipt_1_10_0.md`.
+- **Listen zum Gegenlesen** (`docs/uebersetzungen`): Die neuen Texte stehen unter "Sonstiges".
+- **Blatt "Unklare Kartenzahlung":** Eine Zeile "Diverses" zeigt dort ihren deutschen Namen.
+- **Kopf der Bon-Spalte:** Ist die Taste "Freier Betrag" da, nimmt sie so viel Breite, wie sie braucht, höchstens die Hälfte.
+
+### Geänderte oder erweiterte Erwartungen in vorhandenen Tests
+
+Gemeint sind Tests, die es vor dem Bau schon gab (Stand 3b1e4d4), und Tests, die beim Bau dazukamen und später noch einmal geändert wurden.
+
+1. Die Version der Datenbank 7 wurde 8 in drei Tests der Migration (`app/test/data/migration_test.dart`, `migration_v6_test.dart`, `migration_v7_test.dart`), mit Nikos Ja.
+2. `server/test/migrate.test.ts`: Die Liste der Migrationen bekam `0004`.
+3. Bilder (Goldens): 36 Bilder wurden in Schritt 6 neu gemacht, weil die Einstellungen die Karte "Zahlen" bekamen: 35 Bilder `einstellungen_*` und `signatur_karte_probe_hell.png`. In Schritt 16 wurden 30 Bilder `einstellungen_server_*` noch einmal neu gemacht, weil unten "Kassa Version 1.11.0" steht statt "1.10.0". Sonst änderte sich darin nichts.
+4. Das gemeinsame Beispiel `shared/fixtures/stats/mixed.json` (beim Bau in Schritt 5 entstanden) bekam in Schritt 13 einen Bon mit Rabatt und fünf neue Zahlen (Rabatte, Rabatt-Betrag, Karten-Trinkgeld, Am Kartenkonto, Trinkgeld je Person). Der Test am Tablet vergleicht diese Zahlen mit, die zwei Tests am Server vergleichen jetzt die ganze Zusammenfassung.
+5. Die Form des Bons änderte sich von `payment` zu `payments` (nur die Form, kein Wert): in `app/test/sync/push_wire_test.dart` (dort vergleicht der Test die App jetzt mit `push_request_v2.json`, weil die App nur noch `v: 2` baut; `push_request.json` von 1.10.0 bleibt und wird am Server geprüft), und genauso in `receipt_repository_test.dart`, `cash_test.dart`, `sale_service_test.dart`, `printer_test.dart`, `kitchen_ticket_test.dart`, `receipt_layout_test.dart`, `shared_fixtures_test.dart`, den Tests unter `app/test/rksv/` (`rksv_journal_test.dart`, `rksv_outage_test.dart`, `rksv_service_test.dart`, `rksv_special_test.dart`), `server/test/push.test.ts` und `server/test/receipts.test.ts`. Auch die Beispiele `shared/fixtures/stats/months.json`, `overview.json` und `shared/fixtures/rksv/dep.json` haben die Bons jetzt als `v: 2`; ihre erwarteten Ergebnisse sind gleich.
+6. `server/test/months.test.ts`: Der Vergleich der Monatsabrechnung mit `months.json` prüft zusätzlich die fünf neuen Zahlen (dort ohne Rabatt und Trinkgeld); der Rest wird weiter ganz mit der Datei verglichen.
+7. `app/test/features/bons_test.dart`, zwei Tests, die beim Bau dazukamen: Der Test aus Schritt 3 ('gemischter Bon: Pille "Bar + Karte", zu sehen unter "Bar" und unter "Karte"') erwartete bei der Karte im Bon-Detail 4,65 € und erwartet jetzt 5,15 € (Karten-Teil plus Trinkgeld), darunter "davon Trinkgeld 0,50 €". Der Test aus Schritt 13 ("Detail zeigt Zeilen-Rabatt, Bon-Rabatt und Trinkgeld") erwartete 5,36 € und erwartet jetzt 6,00 € (5,36 € plus 0,64 € Trinkgeld).
+
+### Offen nach dem Bau
+
+Diese Punkte entscheidet die Gesamtprüfung oder Niko. Sie sind nicht behoben.
+
+- Nach einer gescheiterten Karte mit Bar-Teil bucht ein Tipp auf "Karte" die ganze Summe, und der Hinweis "bar zurückgeben" ist weg. "Zurück" im Blatt "Trinkgeld" (nach "Weiter zur Karte") führt zum Bon ohne diesen Hinweis, obwohl der Bar-Teil schon in der Hand sein kann.
+- Artikel-Kennungen, die mit `open-amount-` beginnen, sind für den freien Betrag reserviert. Das Einspielen der Speisekarte lehnt solche Kennungen noch nicht ab.
+- Auf einem kleinen Bildschirm (1024 × 600) mit offenem Zahlenfeld kann der Hinweis "Der Betrag ist kleiner als die Summe." im Blatt "Trinkgeld" unter dem sichtbaren Bereich liegen.

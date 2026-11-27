@@ -2,7 +2,7 @@
 // noch einmal hinaus, jetzt als v: 2. Die Datenbank
 // `kassa_v7_receipts_1_10_0.sqlite` und die Sendung von 1.10.0
 // (`shared/fixtures/sync/receipt_1_10_0_v1.json`) hat der Code von 1.10.0
-// geschrieben (Befehle im Bericht zu Task 15 von Stufe 1a). Dieser Test baut
+// geschrieben (Befehle in `tool/fixtures/receipt_1_10_0.md`). Dieser Test baut
 // aus derselben Datenbank nach der Migration 7 zu 8 die Sendung von heute und
 // vergleicht sie mit `receipt_1_10_0_as_v2.json`. Der Server prüft beide
 // Dateien zusammen (server/test/push.test.ts). Mit KASSA_WRITE_FIXTURES=1
