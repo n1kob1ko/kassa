@@ -40,6 +40,7 @@ export async function testApp(
     ...(overrides.randomCode ? { randomCode: overrides.randomCode } : {}),
     ...(overrides.maxReleaseBytes ? { maxReleaseBytes: overrides.maxReleaseBytes } : {}),
     ...(overrides.receiptPageAddresses ? { receiptPageAddresses: overrides.receiptPageAddresses } : {}),
+    ...(overrides.wrapReceiptLoader ? { wrapReceiptLoader: overrides.wrapReceiptLoader } : {}),
   }, opts);
   return {
     app,

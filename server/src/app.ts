@@ -25,7 +25,7 @@ import { installPairRoutes } from './device/pair.js';
 import { installFileRoutes } from './files/routes.js';
 import { installPullRoutes } from './device/pull.js';
 import { installPushRoutes } from './device/push.js';
-import { installReceiptPage, isReceiptPagePath, type ReceiptPage } from './public/receipt_page.js';
+import { installReceiptPage, isReceiptPagePath, type ReceiptPage, type ReceiptPageOptions } from './public/receipt_page.js';
 import { clientAddress } from './client_address.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
@@ -44,6 +44,8 @@ export type AppDeps = {
   maxReleaseBytes?: number;
   /** Wie viele Adressen sich die Bremse der Seite eines Bons merkt. Vorgabe 50 000; Tests setzen eine kleine Zahl. */
   receiptPageAddresses?: number;
+  /** Umhüllt das Lesen eines Bons für die Seite; nur Tests zählen damit die Abfragen. */
+  wrapReceiptLoader?: ReceiptPageOptions['wrapLoader'];
 };
 
 export const BODY_LIMIT = 1024 * 1024;
@@ -141,7 +143,7 @@ export async function buildApp(
   app.decorate('deps', deps);
   // Die öffentliche Seite eines Bons vor allem anderen: ihr Hook nimmt jede Adresse unter /beleg (jede Schreibweise),
   // bevor ein Körper gelesen wird; /beleg/… bekommt nie die Seite der Verwaltung.
-  receiptPage = installReceiptPage(app, { maxAddresses: deps.receiptPageAddresses });
+  receiptPage = installReceiptPage(app, { maxAddresses: deps.receiptPageAddresses, wrapLoader: deps.wrapReceiptLoader });
   // Zuerst: der Hook für die Sicherheits-Kopfzeilen gilt nur für Adressen, die nach ihm dazukommen.
   await registerWeb(app, deps.config.webDir);
   await app.register(cookie);

@@ -491,7 +491,7 @@ describe('Nachbesserung 1: kaputte Adresse, Sperre je Adresse, gleiche falsche S
         const reference = await w.app.inject({ method: 'GET', url: `/beleg/${freshToken()}`, remoteAddress: '192.0.2.10' });
         expect(reference.statusCode).toBe(404);
         let n = 10;
-        for (const url of [`/BELEG/${r.publicToken}`, '//beleg/x', '///beleg/', '/Beleg', '/bElEg/x/y', '/beleg/%zz']) {
+        for (const url of [`/BELEG/${r.publicToken}`, '//beleg/x', '///beleg/', '/Beleg', '/bElEg/x/y', '/beleg/%zz', '/%42ELEG/x', '/beleg%2Fx', '/BELEG#x', '/%62eleg']) {
           for (const method of ['GET', 'POST'] as const) {
             const res = await w.app.inject({ method, url, remoteAddress: `192.0.2.${++n}` });
             expect(res.statusCode, `${method} ${url}`).toBe(404);
@@ -501,10 +501,13 @@ describe('Nachbesserung 1: kaputte Adresse, Sperre je Adresse, gleiche falsche S
             expect(res.headers['x-robots-tag']).toBe('noindex, nofollow');
           }
         }
-        // Die Verwaltung selbst bleibt, wie sie war.
-        const admin = await w.app.inject({ method: 'GET', url: '/betriebe' });
-        expect(admin.body).toContain('Verwaltung');
-        expect(admin.headers['referrer-policy']).toBe('same-origin');
+        // Die Verwaltung selbst bleibt, wie sie war, auch für Adressen, die nur ähnlich aussehen.
+        for (const url of ['/betriebe', '/belege', '/beleg-x', '/b/123/belege', '/b/123/bons/x', '/%62elege']) {
+          const admin = await w.app.inject({ method: 'GET', url });
+          expect(admin.statusCode, url).toBe(200);
+          expect(admin.body, url).toContain('Verwaltung');
+          expect(admin.headers['referrer-policy'], url).toBe('same-origin');
+        }
       } finally {
         await w.close();
       }
@@ -569,6 +572,115 @@ test('MissLimiter: Speicher begrenzt, je Adresse höchstens max Prüfwerte, ders
   // Nach dem Fenster ist alles weg.
   expect(m.blockedMs('x', new Date(t0.getTime() + 600_001))).toBe(0);
   expect(m.size).toBe(0);
+});
+
+describe('Nachbesserung 2: gleichzeitige Anfragen zählen mit', () => {
+  let t: TestApp;
+  let rr: Record<string, any>;
+  const lookups: string[] = [];
+  let failNext = false;
+  beforeAll(async () => {
+    t = await testApp({
+      wrapReceiptLoader: (load) => async (db, token, log) => {
+        lookups.push(token);
+        if (failNext) throw new Error('Datenbank weg');
+        return load(db, token, log);
+      },
+    });
+    const p = await createProvider(t.app, t.db);
+    const site = await siteFor(t, p);
+    [rr] = fixtureReceipts() as [Record<string, any>];
+    await send(t, site, [['receipt', rr]]);
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+  const get = (token: string, ip: string) => t.app.inject({ method: 'GET', url: `/beleg/${token}`, remoteAddress: ip });
+  const statuses = (list: { statusCode: number }[]) =>
+    list.reduce<Record<number, number>>((m, r) => ({ ...m, [r.statusCode]: (m[r.statusCode] ?? 0) + 1 }), {});
+
+  test('30 gleichzeitige Anfragen mit 30 verschiedenen falschen Schlüsseln: höchstens 10 Abfragen, der Rest 429', async () => {
+    lookups.length = 0;
+    const keys = Array.from({ length: 30 }, () => freshToken());
+    const res = await Promise.all(keys.map((k) => get(k, '192.0.2.50')));
+    expect(statuses(res)).toEqual({ 404: 10, 429: 20 });
+    expect(lookups).toHaveLength(10);
+    // Jede Abfrage gehört zu einer 404, keine 429 hat nachgesehen.
+    expect(new Set(lookups)).toEqual(new Set(keys.filter((_, i) => res[i]!.statusCode === 404)));
+    expect((await get(rr.publicToken, '192.0.2.50')).statusCode).toBe(429);
+  });
+
+  test('30 gleichzeitige Anfragen mit demselben richtigen Schlüssel: alle 200, nichts zählt', async () => {
+    lookups.length = 0;
+    const res = await Promise.all(Array.from({ length: 30 }, () => get(rr.publicToken, '192.0.2.51')));
+    expect(statuses(res)).toEqual({ 200: 30 });
+    expect(lookups).toHaveLength(30);
+    // Keine Reservierung ist hängen geblieben: zehn verschiedene falsche gehen noch, erst der elfte ist 429.
+    for (let i = 0; i < 10; i++) expect((await get(freshToken(), '192.0.2.51')).statusCode).toBe(404);
+    expect((await get(freshToken(), '192.0.2.51')).statusCode).toBe(429);
+  });
+
+  test('derselbe falsche Schlüssel gleichzeitig: ein Platz, jede Anfrage darf nachsehen', async () => {
+    lookups.length = 0;
+    const same = freshToken();
+    const res = await Promise.all(Array.from({ length: 30 }, () => get(same, '192.0.2.52')));
+    expect(statuses(res)).toEqual({ 404: 30 });
+    for (let i = 0; i < 9; i++) expect((await get(freshToken(), '192.0.2.52')).statusCode).toBe(404);
+    expect((await get(freshToken(), '192.0.2.52')).statusCode).toBe(429);
+  });
+
+  test('Fehler beim Lesen geben den Platz zurück; nach dem Fenster ist die Adresse wieder frei', async () => {
+    const start = t.now.value;
+    try {
+      failNext = true;
+      const failed = await Promise.all(Array.from({ length: 30 }, () => get(freshToken(), '192.0.2.53')));
+      failNext = false;
+      // Höchstens zehn laufen gleichzeitig; ein Fehler des Servers zählt nicht als Fehlversuch.
+      expect(statuses(failed)).toEqual({ 500: 10, 429: 20 });
+      expect((await get(rr.publicToken, '192.0.2.53')).statusCode).toBe(200);
+      // Nach dem Ansturm aus dem ersten Test und dem Ende des Fensters: alle Adressen frei, nichts hängt.
+      t.now.value = new Date(start.getTime() + 10 * 60 * 1000 + 1);
+      for (const ip of ['192.0.2.50', '192.0.2.51', '192.0.2.52', '192.0.2.53']) {
+        expect((await get(rr.publicToken, ip)).statusCode, ip).toBe(200);
+        const burst = await Promise.all(Array.from({ length: 10 }, () => get(freshToken(), ip)));
+        expect(statuses(burst), ip).toEqual({ 404: 10 });
+        expect((await get(freshToken(), ip)).statusCode, ip).toBe(429);
+      }
+    } finally {
+      failNext = false;
+      t.now.value = start;
+    }
+  });
+});
+
+test('MissLimiter: reserve zählt laufende Prüfwerte mit, release und record geben sie frei', () => {
+  const m = new MissLimiter(3, 600_000, 2);
+  const t0 = new Date('2026-11-27T10:00:00Z');
+  expect([m.reserve('a', 'h1', t0), m.reserve('a', 'h2', t0), m.reserve('a', 'h3', t0)]).toEqual([true, true, true]);
+  expect(m.reserve('a', 'h4', t0)).toBe(false);
+  // Derselbe Prüfwert braucht keinen zweiten Platz.
+  expect(m.reserve('a', 'h1', t0)).toBe(true);
+  m.release('a', 'h1');
+  m.release('a', 'h1');
+  expect(m.reserve('a', 'h4', t0)).toBe(true);
+  m.record('a', 'h2', t0);
+  m.release('a', 'h3');
+  m.release('a', 'h4');
+  expect(m.pendingSize).toBe(0);
+  expect(m.blockedMs('a', t0)).toBe(0);
+  m.reserve('a', 'h5', t0);
+  m.record('a', 'h5', t0);
+  m.reserve('a', 'h6', t0);
+  m.record('a', 'h6', t0);
+  expect(m.blockedMs('a', t0)).toBe(600_000);
+  // Grenze 2: laufende Anfragen zählen mit, die älteste gespeicherte Adresse fällt heraus.
+  m.reserve('b', 'x', t0);
+  m.reserve('c', 'x', t0);
+  expect(m.size).toBe(0);
+  expect(m.pendingSize).toBe(2);
+  m.record('b', 'x', t0);
+  m.record('c', 'x', t0);
+  expect(m.size + m.pendingSize).toBeLessThanOrEqual(2);
 });
 
 describe('QR-Code', () => {

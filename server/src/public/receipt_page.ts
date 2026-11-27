@@ -502,9 +502,21 @@ async function qrOf(rksv: ReceiptData['rksv']): Promise<ReceiptPageView['qr']> {
   return isSafeSvg(svg) ? { svg, damaged: rksv.damaged } : null;
 }
 
-/** Ob die Adresse zur Seite eines Bons gehört: `/beleg` in jeder Schreibweise, auch mit mehreren Schrägstrichen davor. */
+const PAGE_PATH = /^\/+beleg(\/|$)/i;
+
+/**
+ * Ob die Adresse zur Seite eines Bons gehört: `/beleg` in jeder Schreibweise, auch mit mehreren Schrägstrichen davor,
+ * roh oder einmal dekodiert (`/%42ELEG/x`, `/beleg%2Fx`). Abfrage und Fragment zählen nicht. Lässt sich der Pfad nicht
+ * dekodieren, zählt nur die rohe Form.
+ */
 export function isReceiptPagePath(url: string): boolean {
-  return /^\/+beleg(\/|$)/i.test(url.split('?')[0]!);
+  const raw = url.split(/[?#]/)[0]!;
+  if (PAGE_PATH.test(raw)) return true;
+  try {
+    return PAGE_PATH.test(decodeURIComponent(raw));
+  } catch {
+    return false;
+  }
 }
 
 /** Der Schlüssel aus dem Pfad, roh (ohne Dekodieren) und nur in der genauen Form `/beleg/<22 Zeichen>`; sonst null. */
@@ -519,9 +531,14 @@ function missHash(path: string): string {
   return createHash('sha256').update(path).digest('base64url').slice(0, 11);
 }
 
+/** Liest den Bon zum Schlüssel; null, wenn es ihn nicht gibt. */
+export type ReceiptLoader = (db: Db, token: string, log: FastifyBaseLogger) => Promise<ReceiptData | null>;
+
 export type ReceiptPageOptions = {
   /** Höchstens so viele Adressen merkt sich die Bremse (Vorgabe 50 000); Tests setzen eine kleine Zahl. */
   maxAddresses?: number;
+  /** Umhüllt das Lesen des Bons; Tests zählen damit die Abfragen. */
+  wrapLoader?: (load: ReceiptLoader) => ReceiptLoader;
 };
 
 export type ReceiptPage = {
@@ -539,6 +556,7 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
   const https = config.publicUrl.startsWith('https://');
   // Je App eine Zählung, begrenzt (siehe MissLimiter).
   const misses = new MissLimiter(MAX_FAILURES, WINDOW_MS, opts.maxAddresses);
+  const load: ReceiptLoader = opts.wrapLoader ? opts.wrapLoader(loadReceipt) : loadReceipt;
 
   /** Jede Antwort unter /beleg trägt dieselben Kopfzeilen, gesetzt hier (der Hook der Verwaltung lässt /beleg aus). */
   function sendPage(reply: FastifyReply, status: number, html: string): FastifyReply {
@@ -562,24 +580,34 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
       reply.header('retry-after', String(Math.max(Math.ceil(wait / 1000), 1)));
       return sendPage(reply, 429, TOO_MANY_PAGE);
     }
-    const path = req.url.split('?')[0]!;
-    const miss = () => {
-      misses.miss(address, missHash(path), at);
-      return sendPage(reply, 404, NOT_FOUND_PAGE);
-    };
-    if (badUrl) return miss();
     // Andere Methoden verraten nichts (immer dieselbe Seite) und zählen darum nicht.
-    if (req.method !== 'GET' && req.method !== 'HEAD') return sendPage(reply, 404, NOT_FOUND_PAGE);
+    if (!badUrl && req.method !== 'GET' && req.method !== 'HEAD') return sendPage(reply, 404, NOT_FOUND_PAGE);
+    const path = req.url.split('?')[0]!;
+    const hash = missHash(path);
+    // Vor dem Nachsehen einen Platz reservieren: gleichzeitige Anfragen zählen mit, mehr als MAX_FAILURES verschiedene
+    // Schlüssel je Adresse fragen nie die Datenbank. Der Platz endet im finally: Treffer und Fehler geben ihn zurück,
+    // ein Fehlversuch wird gespeichert.
+    if (!misses.reserve(address, hash, at)) {
+      reply.header('retry-after', String(Math.max(Math.ceil(misses.blockedMs(address, at) / 1000), 1)));
+      return sendPage(reply, 429, TOO_MANY_PAGE);
+    }
+    let missed = false;
     try {
       // Ein kaputter Schlüssel fragt die Datenbank nicht, bekommt aber dieselbe Antwort wie ein unbekannter.
-      const token = tokenOf(path);
-      const data = token === null ? null : await loadReceipt(db, token, req.log);
-      if (data === null) return miss();
+      const token = badUrl ? null : tokenOf(path);
+      const data = token === null ? null : await load(db, token, req.log);
+      if (data === null) {
+        missed = true;
+        return sendPage(reply, 404, NOT_FOUND_PAGE);
+      }
       return sendPage(reply, 200, renderReceiptPage(buildView(data, await qrOf(data.rksv))));
     } catch (err) {
       // Nur der Fehler, nie die Adresse (sie trägt den Schlüssel).
       req.log.error({ err }, 'Seite eines Bons nicht gebaut');
       return sendPage(reply, 500, ERROR_PAGE);
+    } finally {
+      if (missed) misses.record(address, hash, at);
+      else misses.release(address, hash);
     }
   }
 
@@ -587,8 +615,6 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
     if (!isReceiptPagePath(req.url)) return;
     return answer(req, reply, false);
   });
-  // Die Adressen selbst, damit /beleg/… nie in den Rückfall der Verwaltung läuft; der Hook oben antwortet vorher.
-  for (const url of ['/beleg', '/beleg/*']) app.all(url, (req, reply) => answer(req, reply, false));
 
   return { answerBadUrl: (req, reply) => answer(req, reply, true) };
 }

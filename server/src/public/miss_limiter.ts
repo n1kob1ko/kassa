@@ -12,6 +12,8 @@
 export class MissLimiter {
   /** Je Adresse die Fehlversuche, aufsteigend nach Zeit. Die Map ist nach dem letzten Fehlversuch geordnet, ältester zuerst. */
   private readonly misses = new Map<string, { hash: string; at: number }[]>();
+  /** Je Adresse die Prüfwerte der Anfragen, die gerade nachsehen, mit ihrer Anzahl. Leer, sobald keine mehr läuft. */
+  private readonly pending = new Map<string, Map<string, number>>();
 
   constructor(
     private readonly max: number,
@@ -19,9 +21,48 @@ export class MissLimiter {
     private readonly maxKeys = 50_000,
   ) {}
 
-  /** Wie viele Adressen gerade gespeichert sind. */
+  /** Wie viele Adressen gerade Fehlversuche gespeichert haben. */
   get size(): number {
     return this.misses.size;
+  }
+
+  /** Wie viele Adressen gerade Anfragen haben, die nachsehen. */
+  get pendingSize(): number {
+    return this.pending.size;
+  }
+
+  /**
+   * Reserviert vor dem Nachsehen einen Platz für den Prüfwert [hash]: laufende Anfragen zählen mit. `false`, wenn
+   * gespeicherte und laufende verschiedene Prüfwerte zusammen schon `max` erreichen; dann nichts reservieren. Derselbe
+   * Prüfwert, schon gespeichert oder schon laufend, braucht keinen zweiten Platz und darf nachsehen. Jedes `true` muss mit
+   * genau einem `release` oder `record` enden.
+   */
+  reserve(key: string, hash: string, now: Date): boolean {
+    this.dropExpired(now);
+    const list = this.current(key, now);
+    const running = this.pending.get(key) ?? new Map<string, number>();
+    const known = list.some((m) => m.hash === hash) || running.has(hash);
+    if (!known && list.length + running.size >= this.max) return false;
+    running.set(hash, (running.get(hash) ?? 0) + 1);
+    this.pending.set(key, running);
+    this.evict();
+    return true;
+  }
+
+  /** Gibt eine Reservierung zurück, ohne etwas zu zählen (Treffer oder Fehler des Servers). */
+  release(key: string, hash: string): void {
+    const running = this.pending.get(key);
+    const n = running?.get(hash);
+    if (!running || n === undefined) return;
+    if (n > 1) running.set(hash, n - 1);
+    else running.delete(hash);
+    if (running.size === 0) this.pending.delete(key);
+  }
+
+  /** Macht aus einer Reservierung einen gespeicherten Fehlversuch. */
+  record(key: string, hash: string, now: Date): void {
+    this.miss(key, hash, now);
+    this.release(key, hash);
   }
 
   /** Millisekunden, bis die Adresse wieder darf; 0 heißt: nicht gesperrt. */
@@ -41,7 +82,18 @@ export class MissLimiter {
     // Ans Ende stellen: die Map bleibt nach dem letzten Fehlversuch geordnet.
     this.misses.delete(key);
     this.misses.set(key, list);
-    while (this.misses.size > this.maxKeys) {
+    this.evict();
+  }
+
+  /**
+   * Hält die Tabelle in der Grenze: Adressen mit Fehlversuchen und Adressen mit laufenden Anfragen zählen zusammen
+   * gegen `maxKeys`. Ist es zu viel, fällt die Adresse mit dem ältesten gespeicherten Fehlversuch heraus. Laufende
+   * Anfragen fallen nie heraus: sie enden mit release oder record von selbst, ihre Zahl ist durch die gleichzeitig
+   * laufenden Anfragen begrenzt (je Adresse höchstens `max` Prüfwerte). Fällt eine Adresse heraus, während bei ihr noch
+   * Anfragen laufen, bleiben deren Reservierungen und bremsen weiter.
+   */
+  private evict(): void {
+    while (this.misses.size > 0 && this.misses.size + this.pending.size > this.maxKeys) {
       this.misses.delete(this.misses.keys().next().value!);
     }
   }
