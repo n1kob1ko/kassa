@@ -1838,7 +1838,7 @@ class L10nZh extends L10n {
   String get customerAddressMissing => '请输入地址。';
 
   @override
-  String get customerVatIdMissing => '超过 10.000 € 时，发票需要客户的增值税号。';
+  String get customerVatIdMissing => '超过 10,000 € 时，发票需要客户的增值税号。';
 
   @override
   String get customerTooLong => '文字太长。';

@@ -644,7 +644,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Das hat nicht geklappt. Bitte noch einmal. | That didn't work. Please try again. | Sonstiges: `customerSaveFailed` |
 | Bitte den Namen eintragen. | Please enter the name. | Sonstiges: `customerNameMissing` |
 | Bitte die Adresse eintragen. | Please enter the address. | Sonstiges: `customerAddressMissing` |
-| Über 10.000 € braucht die Rechnung die UID des Kunden. | Over 10.000 € the invoice needs the customer's VAT ID. | Sonstiges: `customerVatIdMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | Over 10,000 € the invoice needs the customer's VAT ID. | Sonstiges: `customerVatIdMissing` |
 | Der Text ist zu lang. | The text is too long. | Sonstiges: `customerTooLong` |
 
 ## Unsicher

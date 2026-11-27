@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
@@ -44,7 +45,15 @@ class VoucherCodeEntry extends ConsumerStatefulWidget {
     required this.onFound,
     required this.onCleared,
     this.problem,
+    this.displayKey,
+    this.keypadKey,
   });
+
+  /// Schlüssel der Anzeige des Codes und des Zahlenfelds, für
+  /// [revealWholeBlocks]: der Aufrufer rollt nur so, dass der obere Rand
+  /// zwischen zwei Teilen liegt.
+  final GlobalKey? displayKey;
+  final GlobalKey? keypadKey;
 
   /// Genau ein Treffer, oder die Person hat unter zweien gewählt.
   final void Function(Voucher voucher) onFound;
@@ -130,6 +139,7 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
         FieldLabel(l.voucherCode),
         const SizedBox(height: KassaTokens.spaceMd),
         Container(
+          key: widget.displayKey,
           height: KassaTokens.keypadInputHeight,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           // Die Anzeige gehört zum Zahlenfeld: in jeder Sprache rechts.
@@ -188,10 +198,69 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
           ],
         ],
         const SizedBox(height: KassaTokens.spaceMd),
-        Keypad(onKey: _key, showComma: false),
+        KeyedSubtree(
+          key: widget.keypadKey,
+          child: Keypad(onKey: _key, showComma: false),
+        ),
       ],
     );
   }
+}
+
+/// Rollt die Spalte so, dass [target] (das Ergebnis nach einem Treffer) ganz
+/// zu sehen ist und der obere Rand genau am Anfang eines der Teile [blocks]
+/// (Beschriftung, Anzeige des Codes, Zahlenfeld) oder des Ergebnisses liegt:
+/// kein Teil steht halb unter dem Rand. Gewählt wird der erste solche Anfang,
+/// bei dem das Ergebnis unten ganz zu sehen ist. Reicht der Inhalt dafür nicht
+/// weit genug nach unten, bekommt die Spalte mit [addSpace] so viel Platz am
+/// Ende dazu, wie fehlt. Rollt nicht, wenn das Ergebnis schon ganz zu sehen
+/// ist und oben nichts halb steht.
+void revealWholeBlocks(
+  GlobalKey target,
+  List<GlobalKey> blocks, {
+  required void Function(double extra) addSpace,
+}) {
+  final context = target.currentContext;
+  final targetBox = context?.findRenderObject();
+  if (context == null || targetBox == null) return;
+  final viewport = RenderAbstractViewport.maybeOf(targetBox);
+  final position = Scrollable.maybeOf(context)?.position;
+  if (viewport == null || position == null) return;
+  // Kleinster Stand, bei dem das Ergebnis unten ganz zu sehen ist, und der
+  // Stand, bei dem sein Anfang oben steht.
+  final needed = viewport.getOffsetToReveal(targetBox, 1.0).offset;
+  final top = viewport.getOffsetToReveal(targetBox, 0.0).offset;
+  final starts = <double>[
+    position.minScrollExtent,
+    for (final k in blocks)
+      if (k.currentContext?.findRenderObject() case final box?)
+        viewport.getOffsetToReveal(box, 0.0).offset,
+    top,
+  ]..sort();
+  final current = position.pixels;
+  if (current >= needed - 0.5 &&
+      current <= top + 0.5 &&
+      starts.any((s) => (s - current).abs() <= 0.5)) {
+    return;
+  }
+  // Ist das Ergebnis höher als die Spalte, steht sein Anfang oben.
+  final to = starts.firstWhere(
+    (s) => s >= needed - 0.5 && s <= top + 0.5,
+    orElse: () => top,
+  );
+  if (to <= position.maxScrollExtent) {
+    position.jumpTo(to);
+    return;
+  }
+  addSpace(to - position.maxScrollExtent);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final position = target.currentContext == null
+        ? null
+        : Scrollable.maybeOf(target.currentContext!)?.position;
+    position?.jumpTo(
+      to.clamp(position.minScrollExtent, position.maxScrollExtent),
+    );
+  });
 }
 
 /// Einer von mehreren Gutscheinen mit demselben Code: Wert und Datum, ein

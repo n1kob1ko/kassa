@@ -58,6 +58,13 @@ class _VoucherSheetState extends ConsumerState<VoucherSheet> {
 
   final _otherKey = GlobalKey();
   final _resultKey = GlobalKey();
+  final _entryKey = GlobalKey();
+  final _displayKey = GlobalKey();
+  final _keypadKey = GlobalKey();
+
+  /// Platz am Ende der Spalte, damit das Rollen zum Ergebnis an einem Anfang
+  /// eines Teils enden kann ([revealWholeBlocks]); 0 ohne Ergebnis.
+  double _endSpace = 0;
 
   int get _valueCents => _other?.cents ?? _preset ?? 0;
 
@@ -89,8 +96,15 @@ class _VoucherSheetState extends ConsumerState<VoucherSheet> {
   void _found(Voucher voucher) {
     setState(() => _checked = voucher);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _resultKey.currentContext;
-      if (context != null) Scrollable.ensureVisible(context);
+      // Das Ergebnis ganz zeigen, ohne Beschriftung oder Feld halb unter
+      // dem oberen Rand.
+      revealWholeBlocks(
+        _resultKey,
+        [_entryKey, _displayKey, _keypadKey],
+        addSpace: (extra) {
+          if (mounted) setState(() => _endSpace += extra);
+        },
+      );
     });
   }
 
@@ -232,13 +246,20 @@ class _VoucherSheetState extends ConsumerState<VoucherSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           VoucherCodeEntry(
+            key: _entryKey,
+            displayKey: _displayKey,
+            keypadKey: _keypadKey,
             onFound: _found,
-            onCleared: () => setState(() => _checked = null),
+            onCleared: () => setState(() {
+              _checked = null;
+              _endSpace = 0;
+            }),
           ),
           if (checked != null) ...[
             const SizedBox(height: KassaTokens.spaceXxl),
             _CheckResult(key: _resultKey, voucher: checked),
           ],
+          if (_endSpace > 0) SizedBox(height: _endSpace),
         ],
       ),
     );

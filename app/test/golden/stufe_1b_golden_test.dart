@@ -237,7 +237,18 @@ final _sheets =
       (
         'gutschein_pruefen',
         (t, language, brightness) async {
-          await _kassa(t, language, brightness);
+          // Im echten Betrieb: ein gewöhnlicher Gutschein, kein
+          // Übungs-Gutschein.
+          await _kassa(
+            t,
+            language,
+            brightness,
+            overrides: [
+              ...await memoryOverrides(),
+              ...fakeSignatureOverrides(FakeSignatureUnit()),
+            ],
+          );
+          await goLiveForInvoice(t);
           await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
           // 25,00 € verkauft, davon 9,65 € eingelöst: es bleiben 15,35 €.
           final voucher = await _sellVoucher(t, 'g-1', 2500);
@@ -252,6 +263,8 @@ final _sheets =
           await _tap(t, 'voucher-tab-check');
           await _typeCode(t, voucher.code);
           expect(voucher.code, '12345678');
+          expect(voucher.isTest, isFalse);
+          expect(find.byKey(const Key('voucher-check-test')), findsNothing);
           expect(find.byKey(const Key('voucher-check-movement-1')), findsOneWidget);
         },
       ),

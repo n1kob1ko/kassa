@@ -1879,7 +1879,7 @@ class L10nEn extends L10n {
 
   @override
   String get customerVatIdMissing =>
-      'Over 10.000 € the invoice needs the customer\'s VAT ID.';
+      'Over 10,000 € the invoice needs the customer\'s VAT ID.';
 
   @override
   String get customerTooLong => 'The text is too long.';

@@ -19,7 +19,8 @@ import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
 import 'package:kassa/features/kassa/modifier_panel.dart';
-import 'package:kassa/features/kassa/sale_service.dart' show receiptFallbackDelay;
+import 'package:kassa/features/kassa/sale_service.dart'
+    show receiptFallbackDelay;
 import 'package:kassa/features/overview/revenue_chart.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:kassa/ui/tokens.dart';
@@ -743,6 +744,25 @@ void main() {
     await _expectAmountsAtEnd(t, AppLanguage.de);
   });
 
+  // Stufe 1b: nach einem Treffer in "Gutschein prüfen" und "Gutschein
+  // einlösen" rollt das Blatt zum Ergebnis, ohne die Beschriftung "Code"
+  // oder die Anzeige des Codes halb unter den oberen Rand zu schieben; das
+  // Ergebnis steht ganz da. Deutsch und Arabisch, beide Größen, Schrift 1,0
+  // und 1,3.
+  for (final language in [AppLanguage.de, AppLanguage.ar]) {
+    for (final size in _sizes) {
+      for (final scale in [1.0, KassaTokens.maxTextScale]) {
+        final at =
+            '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+            'Schrift $scale';
+        testWidgets('$at: Gutschein prüfen und einlösen schneiden nach dem '
+            'Treffer nichts ab', (t) async {
+          await _expectNothingHalfHidden(t, language, size, scale, at);
+        });
+      }
+    }
+  }
+
   testWidgets('ar: Name, Adresse und UID im Formular stehen von links nach '
       'rechts ("1010 Wien")', (t) async {
     await openInvoiceKassa(t, const ['cola'], language: AppLanguage.ar);
@@ -852,10 +872,8 @@ Future<void> _expectAmountsAtEnd(WidgetTester t, AppLanguage language) async {
   await pumpKassa(t, pin: '4711');
   await setSettings(
     t,
-    (s) => s.copyWith(
-      language: language,
-      depositReturnAccess: FeatureAccess.all,
-    ),
+    (s) =>
+        s.copyWith(language: language, depositReturnAccess: FeatureAccess.all),
   );
   final staff = containerOf(t).read(sessionProvider)!;
   final receipts = containerOf(t).read(receiptRepositoryProvider);
@@ -1196,9 +1214,10 @@ Future<void> _tourVoucherRedeem(
   await _tap(t, 'pay-voucher');
   await type(shrink);
   await _tap(t, 'voucher-redeem-go');
-  final cola = containerOf(
-    t,
-  ).read(cartProvider).lines.singleWhere((l) => l.item.id == 'cola');
+  final cola = containerOf(t)
+      .read(cartProvider)
+      .lines
+      .singleWhere((l) => l.item.id == 'cola');
   await _tapVisible(t, 'qty-minus-${cola.lineId}');
   look('Kassa mit Gutschein abschließen');
   _expectWholeKey(t, 'finish-voucher', at);
@@ -1225,7 +1244,6 @@ Future<void> _tourVoucherRedeem(
   look('Unklare Kartenzahlung mit Gutschein');
   _expectWholeKey(t, 'unclear-voucher', at);
 }
-
 
 /// Kassa im echten Betrieb mit Rechnung an Firma, Drucker und Lade, ein Bon
 /// über 10.000 €: "Verkauf fertig" mit "Rechnung an Firma" und dem Hinweis,
@@ -1348,4 +1366,112 @@ Future<void> _tourInvoice(
   ]) {
     _expectWholeKey(t, key, at);
   }
+}
+
+/// Ein Rechteck ist ganz in [view] oder ganz außerhalb, nie halb.
+void _wholeOrGone(Rect r, Rect view, String what) {
+  final inside = r.top >= view.top - 0.5 && r.bottom <= view.bottom + 0.5;
+  final outside = r.bottom <= view.top + 0.5 || r.top >= view.bottom - 0.5;
+  expect(
+    inside || outside,
+    isTrue,
+    reason: '$what ($r) steht halb im sichtbaren Bereich ($view)',
+  );
+}
+
+/// Der Rahmen (Container mit Hintergrund), in dem [key] steht.
+Rect _cardOf(WidgetTester t, String key) => _rect(
+  t,
+  find
+      .ancestor(
+        of: find.byKey(Key(key)),
+        matching: find.byWidgetPredicate(
+          (w) => w is Container && w.decoration != null,
+        ),
+      )
+      .first,
+);
+
+/// Prüfen und einlösen mit einem Treffer: Beschriftung "Code" und Anzeige des
+/// Codes ganz oder gar nicht im sichtbaren Bereich der Spalte, das Ergebnis
+/// ganz darin.
+Future<void> _expectNothingHalfHidden(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+  String at,
+) async {
+  await pumpKassa(t, size: size, textScale: scale, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(language: language, voucherEnabled: true),
+  );
+  final staff = containerOf(t).read(sessionProvider)!;
+  final receipts = containerOf(t).read(receiptRepositoryProvider);
+  final sold = (await receipts.finalizeCashSale(
+    saleId: 'g-1',
+    cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+    givenCents: 2500,
+    staff: staff,
+  )).soldVouchers.single;
+  final code = sold.code;
+  // Schon einmal eingelöst: zwei Bewegungen unter dem Ergebnis (wie im
+  // Bild), die Spalte hat mehr zu rollen.
+  await receipts.finalizeVoucherSale(
+    saleId: 'g-2',
+    cart: const Cart.empty()
+        .add(catalog.item('teigtaschen'))
+        .applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 2500,
+          ),
+        ),
+    staff: staff,
+  );
+  final label = lookupL10n(language.locale).voucherCode;
+  Future<void> type() async {
+    for (final d in code.split('')) {
+      await _tapVisible(t, 'key-$d');
+    }
+    await t.pumpAndSettle();
+  }
+
+  void look(String sheet, String resultKey) {
+    final view = _rect(
+      t,
+      find
+          .ancestor(
+            of: find.byKey(const Key('voucher-code')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    final labelRect = _rect(
+      t,
+      find.descendant(of: find.byKey(Key(sheet)), matching: find.text(label)),
+    );
+    _wholeOrGone(labelRect, view, '$at $sheet Beschriftung');
+    _wholeOrGone(_cardOf(t, 'voucher-code'), view, '$at $sheet Anzeige');
+    final result = _cardOf(t, resultKey);
+    expect(
+      result.top >= view.top - 0.5 && result.bottom <= view.bottom + 0.5,
+      isTrue,
+      reason: '$at $sheet: Ergebnis ($result) nicht ganz in $view',
+    );
+  }
+
+  await _tap(t, 'voucher-button');
+  await _tap(t, 'voucher-tab-check');
+  await type();
+  look('voucher-sheet', 'voucher-check-balance');
+  await _tap(t, 'voucher-back');
+
+  await tapItem(t, 'teigtaschen');
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-voucher');
+  await type();
+  look('voucher-redeem-sheet', 'voucher-redeem-balance');
 }

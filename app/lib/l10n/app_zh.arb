@@ -540,7 +540,7 @@
   "customerSaveFailed": "未成功，请重试。",
   "customerNameMissing": "请输入名称。",
   "customerAddressMissing": "请输入地址。",
-  "customerVatIdMissing": "超过 10.000 € 时，发票需要客户的增值税号。",
+  "customerVatIdMissing": "超过 10,000 € 时，发票需要客户的增值税号。",
   "customerTooLong": "文字太长。",
   "kassaReceiptQrCaption": "用手机领取小票",
   "kassaPrintReceiptNow": "打印小票",

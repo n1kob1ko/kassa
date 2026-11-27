@@ -644,7 +644,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Das hat nicht geklappt. Bitte noch einmal. | 未成功，请重试。 | Sonstiges: `customerSaveFailed` |
 | Bitte den Namen eintragen. | 请输入名称。 | Sonstiges: `customerNameMissing` |
 | Bitte die Adresse eintragen. | 请输入地址。 | Sonstiges: `customerAddressMissing` |
-| Über 10.000 € braucht die Rechnung die UID des Kunden. | 超过 10.000 € 时，发票需要客户的增值税号。 | Sonstiges: `customerVatIdMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | 超过 10,000 € 时，发票需要客户的增值税号。 | Sonstiges: `customerVatIdMissing` |
 | Der Text ist zu lang. | 文字太长。 | Sonstiges: `customerTooLong` |
 
 ## Unsicher
