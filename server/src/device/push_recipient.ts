@@ -1,12 +1,12 @@
 import type pg from 'pg';
 import { z } from 'zod';
 import type { EntryContext, EntryResult } from './push.js';
-import { customerText, customerVatId, VAT_ID_REQUIRED_ABOVE_CENTS } from './push_customer.js';
+import { customerText, customerVatId, noNul, VAT_ID_REQUIRED_ABOVE_CENTS } from './push_customer.js';
 import { invalid } from './push_schema.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = z.string().regex(UUID).transform((s) => s.toLowerCase());
-const text = z.string().max(2000);
+const text = noNul.pipe(z.string().max(2000));
 
 // Der Eintrag ist flach: `{seq, kind, receiptId, version, …}`. Unbekannte Felder werden überlesen.
 const recipientEntry = z.object({
@@ -18,7 +18,7 @@ const recipientEntry = z.object({
   addressLine2: customerText,
   vatId: customerVatId,
   createdAt: z.iso.datetime().transform((s) => new Date(s)),
-  staffId: text.min(1),
+  staffId: noNul.pipe(z.string().min(1).max(2000)),
   staffName: text,
 });
 

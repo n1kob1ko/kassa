@@ -264,8 +264,30 @@ class SyncService {
       ].take(size).toList();
       if (batch.isEmpty) break;
 
-      final packet = <(OutboxEntry, Map<String, Object?>)>[];
+      // Ein Empfänger (oder eine Belegerteilung) wartet, solange sein Bon
+      // noch nicht angekommen ist: der Server sagte sonst `invalid`. Steht
+      // der Bon in diesem Paket, entscheidet sich das nach der Antwort (der
+      // Eintrag kommt in der nächsten Runde wieder); sonst bleibt er für
+      // diesen Lauf liegen und hält die anderen nicht auf.
+      final waiting = await _outbox.pendingReceipts([
+        for (final e in batch) ?receiptOfEntry(e),
+      ]);
+      final inBatch = {
+        for (final e in batch)
+          if (e.kind == 'receipt') e.ref,
+      };
+      final ready = <OutboxEntry>[];
       for (final entry in batch) {
+        final receipt = receiptOfEntry(entry);
+        if (receipt != null && waiting.contains(receipt)) {
+          if (!inBatch.contains(receipt)) seen.add(entry.id);
+          continue;
+        }
+        ready.add(entry);
+      }
+
+      final packet = <(OutboxEntry, Map<String, Object?>)>[];
+      for (final entry in ready) {
         final Map<String, Object?>? body;
         try {
           body = await _payloads.build(entry);

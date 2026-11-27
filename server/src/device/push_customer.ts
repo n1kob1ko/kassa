@@ -13,15 +13,16 @@ export const VAT_ID_REQUIRED_ABOVE_CENTS = 1_000_000;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Text ohne NUL-Zeichen: PostgreSQL nimmt es nicht an, es wäre sonst ein Fehler 500 statt einer falschen Eingabe. */
+export const noNul = z.string().refine((s) => !s.includes('\u0000'), 'NUL-Zeichen');
+
 /** Pflichttext ohne Leerzeichen vorn und hinten, 1 bis 80 Zeichen (wie `checkRecipient` am Tablet). */
-export const customerText = z
-  .string()
+export const customerText = noNul
   .transform((s) => s.trim())
   .pipe(z.string().min(1).max(CUSTOMER_TEXT_MAX));
 
 /** Die UID: ohne Leerzeichen vorn und hinten höchstens 20 Zeichen, leer ist keine (`null`). */
-export const customerVatId = z
-  .string()
+export const customerVatId = noNul
   .transform((s) => s.trim())
   .pipe(z.string().max(CUSTOMER_VAT_ID_MAX))
   .nullable()

@@ -70,6 +70,23 @@ export function customerBody(input: CustomerInput) {
   };
 }
 
+export type CustomerBody = ReturnType<typeof customerBody>;
+
+/**
+ * Beim Bearbeiten nur die Felder, die sich gegenüber [stored] wirklich ändern (verglichen wie gespeichert: ohne
+ * Leerzeichen am Rand, leere UID als `null`). Leer, wenn sich nichts ändert: dann geht nichts an den Server, und
+ * die Tablets holen den Kunden nicht noch einmal.
+ */
+export function customerChanges(stored: Customer, input: CustomerInput): Partial<CustomerBody> {
+  const next = customerBody(input);
+  const changes: Partial<CustomerBody> = {};
+  if (next.name !== stored.name) changes.name = next.name;
+  if (next.addressLine1 !== stored.addressLine1) changes.addressLine1 = next.addressLine1;
+  if (next.addressLine2 !== stored.addressLine2) changes.addressLine2 = next.addressLine2;
+  if (next.vatId !== stored.vatId) changes.vatId = next.vatId;
+  return changes;
+}
+
 /** Aktive zuerst, archivierte am Ende, je nach Name: wie der Server sortiert. */
 export function sortCustomers(list: Customer[]): Customer[] {
   return [...list].sort(
@@ -97,9 +114,8 @@ export function useCreateCustomer(b: string) {
 
 export function useUpdateCustomer(b: string) {
   const queryClient = useQueryClient();
-  return useMutation<Customer, ApiError, CustomerInput & { id: string }>({
-    mutationFn: async ({ id, ...input }) =>
-      (await api.patch<{ customer: Customer }>(`${base(b)}/${id}`, customerBody(input))).customer,
+  return useMutation<Customer, ApiError, Partial<CustomerBody> & { id: string }>({
+    mutationFn: async ({ id, ...changes }) => (await api.patch<{ customer: Customer }>(`${base(b)}/${id}`, changes)).customer,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: customersKey(b) }),
   });
 }

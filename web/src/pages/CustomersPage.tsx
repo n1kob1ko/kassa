@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import {
+  customerChanges,
   customerProblems,
   customerProblemsFrom,
   CUSTOMER_TEXT_MAX,
@@ -75,7 +76,12 @@ function CustomerDialog({
       return;
     }
     const onError = (err: ApiError) => setProblems(customerProblemsFrom(err));
-    if (editing) update.mutate({ id: customer.id, ...values }, { onSuccess: onClose, onError });
+    if (editing) {
+      // Nichts geändert: nichts senden, der Dialog geht zu.
+      const changes = customerChanges(customer, values);
+      if (Object.keys(changes).length === 0) onClose();
+      else update.mutate({ id: customer.id, ...changes }, { onSuccess: onClose, onError });
+    }
     else create.mutate(values, { onSuccess: onClose, onError });
   };
 

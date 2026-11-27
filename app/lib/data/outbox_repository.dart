@@ -42,6 +42,26 @@ class OutboxCounts {
   final int rejected;
 }
 
+/// Arten von Einträgen, die zu einem Bon gehören, und wie ihr `ref` den Bon
+/// nennt. Der Server kennt sie nur, wenn er den Bon schon hat (sonst
+/// `invalid`, für immer); darum wartet so ein Eintrag, solange der Bon selbst
+/// noch in der Liste steht. Weitere Arten kommen hierher.
+const _receiptOf = <String, String Function(String ref)>{
+  // ref = `<Bon>/<Fassung>`
+  'recipient': _beforeSlash,
+  // ref = `<Bon>/<Art>` (Belegerteilung, Task 15)
+  'delivery': _beforeSlash,
+};
+
+String _beforeSlash(String ref) {
+  final i = ref.indexOf('/');
+  return i < 0 ? ref : ref.substring(0, i);
+}
+
+/// Der Bon, auf den [e] wartet, oder `null`, wenn es nicht zu einem Bon
+/// gehört.
+String? receiptOfEntry(OutboxEntry e) => _receiptOf[e.kind]?.call(e.ref);
+
 class OutboxRepository {
   OutboxRepository(this._db);
 
@@ -72,6 +92,21 @@ class OutboxRepository {
           rev: r.rev,
         ),
     ];
+  }
+
+  /// Die Bons aus [ids], deren eigener Eintrag `receipt` noch wartet.
+  Future<Set<String>> pendingReceipts(Iterable<String> ids) async {
+    final wanted = ids.toSet();
+    if (wanted.isEmpty) return const {};
+    final rows =
+        await (_db.select(_db.outboxRows)..where(
+              (t) =>
+                  t.kind.equals('receipt') &
+                  t.state.equals(_pending) &
+                  t.ref.isIn(wanted),
+            ))
+            .get();
+    return {for (final r in rows) r.ref};
   }
 
   /// Nimmt einen gesendeten Eintrag aus der Liste, aber nur, wenn er sich seit

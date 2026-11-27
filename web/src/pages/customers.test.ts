@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { ApiError } from '../api/client';
-import { customerBody, customerProblems, customerProblemsFrom, sortCustomers, type Customer } from '../api/customers';
+import { customerBody, customerChanges, customerProblems, customerProblemsFrom, sortCustomers, type Customer } from '../api/customers';
 
 const MUSTER = { name: 'Muster GmbH', addressLine1: 'Musterweg 1', addressLine2: '1010 Wien', vatId: 'ATU00000000' };
 
@@ -43,5 +43,22 @@ describe('Firmenkunden', () => {
     const c = (id: string, name: string, archived = false): Customer => ({ ...MUSTER, id, name, archived, vatId: null, updatedAt: '2026-11-27T10:00:00.000Z' });
     const sorted = sortCustomers([c('1', 'Zeta OG'), c('2', 'Alpha KG', true), c('3', 'Muster GmbH'), c('4', 'Ärztehaus GmbH')]);
     expect(sorted.map((x) => x.name)).toEqual(['Ärztehaus GmbH', 'Muster GmbH', 'Zeta OG', 'Alpha KG']);
+  });
+});
+
+describe('Speichern nach dem Bearbeiten', () => {
+  const stored: Customer = { id: '1', ...MUSTER, archived: false, updatedAt: '2026-11-27T10:00:00.000Z' };
+  const input = { ...MUSTER };
+
+  test('ohne Änderung geht nichts an den Server, auch nicht mit Leerzeichen am Rand', () => {
+    expect(customerChanges(stored, input)).toEqual({});
+    expect(customerChanges(stored, { ...input, name: ' Muster GmbH ' })).toEqual({});
+    expect(customerChanges({ ...stored, vatId: null }, { ...input, vatId: '  ' })).toEqual({});
+  });
+
+  test('nur die geänderten Felder, eine geleerte UID als null', () => {
+    expect(customerChanges(stored, { ...input, addressLine1: 'Musterweg 2 ' })).toEqual({ addressLine1: 'Musterweg 2' });
+    expect(customerChanges(stored, { ...input, name: 'Muster AG', vatId: '' })).toEqual({ name: 'Muster AG', vatId: null });
+    expect(customerChanges({ ...stored, vatId: null }, input)).toEqual({ vatId: 'ATU00000000' });
   });
 });

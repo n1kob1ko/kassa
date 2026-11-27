@@ -234,8 +234,13 @@ class _CustomerPickerState extends ConsumerState<CustomerPicker> {
   /// Der gewählte Anfangsbuchstabe, `null` für alle.
   String? _initial;
 
-  late Future<({List<Customer> customers, List<String> initials})> _load =
-      _read();
+  /// Die zuletzt gelesene Liste; `null`, bis sie das erste Mal da ist. Beim
+  /// Neulesen bleibt sie stehen, bis die neue da ist (kein Flackern).
+  ({List<Customer> customers, List<String> initials})? _data;
+
+  /// Zählt jedes Neulesen: ein älteres Ergebnis, das nach einem neueren
+  /// ankommt, gilt nicht mehr.
+  int _generation = 0;
 
   /// Solange ein Kunde übernommen wird oder das Formular offen ist, tun
   /// weitere Tipps nichts.
@@ -249,12 +254,18 @@ class _CustomerPickerState extends ConsumerState<CustomerPicker> {
   @override
   void initState() {
     super.initState();
-    _changes = ref.read(customerRepositoryProvider).watchChanges().listen((_) {
-      if (!mounted) return;
-      setState(() {
-        _load = _read();
-      });
-    });
+    _reload();
+    _changes = ref
+        .read(customerRepositoryProvider)
+        .watchChanges()
+        .listen((_) => _reload());
+  }
+
+  Future<void> _reload() async {
+    final generation = ++_generation;
+    final data = await _read();
+    if (!mounted || generation != _generation) return;
+    setState(() => _data = data);
   }
 
   @override
@@ -324,9 +335,7 @@ class _CustomerPickerState extends ConsumerState<CustomerPicker> {
     if (saved) {
       widget.onChosen();
     } else {
-      setState(() {
-        _load = _read();
-      });
+      await _reload();
     }
   }
 
@@ -345,10 +354,9 @@ class _CustomerPickerState extends ConsumerState<CustomerPicker> {
           onBack: widget.onClose,
         ),
         Expanded(
-          child: FutureBuilder(
-            future: _load,
-            builder: (context, snapshot) {
-              final data = snapshot.data;
+          child: Builder(
+            builder: (context) {
+              final data = _data;
               if (data == null) return const SizedBox.shrink();
               final initial = data.initials.contains(_initial)
                   ? _initial

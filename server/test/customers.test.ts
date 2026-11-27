@@ -134,3 +134,25 @@ test('Verlauf nennt customer.create und customer.update mit Kennung und Feldern,
     { action: 'customer.update', detail: { customerId: id, fields: ['name', 'archived'] } },
   ]);
 });
+
+test('ein NUL-Zeichen in einem Feld: 422 wie jede andere falsche Eingabe, nicht 500', async () => {
+  const b = await insertBusiness(a.db);
+  const cases: [string, string][] = [
+    ['name', 'name_invalid'],
+    ['addressLine1', 'address_line1_invalid'],
+    ['addressLine2', 'address_line2_invalid'],
+    ['vatId', 'vat_id_invalid'],
+  ];
+  for (const [field, code] of cases) {
+    const res = await create(b, { ...MUSTER, [field]: 'Muster\u0000GmbH' });
+    expect(res.statusCode, field).toBe(422);
+    expect(res.json().error.code).toBe(code);
+  }
+  const id = (await create(b, MUSTER)).json().customer.id;
+  for (const [field, code] of cases) {
+    const res = await patch(b, id, { [field]: '\u0000' });
+    expect(res.statusCode, field).toBe(422);
+    expect(res.json().error.code).toBe(code);
+  }
+  expect((await list(b)).json().customers).toHaveLength(1);
+});

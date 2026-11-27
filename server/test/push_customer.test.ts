@@ -222,3 +222,28 @@ describe('recipient', () => {
     for (const word of ['Geheim', 'ATU99999999']) expect(all).not.toContain(word);
   });
 });
+
+describe('NUL-Zeichen', () => {
+  test('customer und recipient mit NUL in einem Text: invalid, nichts geschrieben', async () => {
+    const bon = sampleReceipt();
+    expect(statuses(await send([entry(1, 'receipt', bon)]))).toEqual(['accepted']);
+    const bad = [
+      customer(2, { name: 'Muster\u0000GmbH' }),
+      customer(3, { addressLine1: '\u0000' }),
+      customer(4, { vatId: 'ATU\u0000' }),
+      recipient(5, bon.id, { addressLine2: '1010\u0000Wien' }),
+      recipient(6, bon.id, { vatId: '\u0000' }),
+      recipient(7, bon.id, { staffName: 'Che\u0000fin' }),
+      recipient(8, bon.id, { staffId: '\u0000' }),
+    ];
+    const at = new Date('2026-11-18T12:34:00.000Z');
+    f.now.value = at;
+    expect(statuses(await send(bad))).toEqual(Array(7).fill('rejected/invalid'));
+    // Abgelehnt von der Prüfung, nicht erst von der Datenbank (dann stünde sqlState statt der Felder im Bericht).
+    expect((await rejectedAt(businessId, at)).map((r) => r.paths)).toEqual([
+      ['name'], ['addressLine1'], ['vatId'], ['addressLine2'], ['vatId'], ['staffName'], ['staffId'],
+    ]);
+    expect(await recipientRows(businessId, bon.id)).toEqual([]);
+    for (const c of bad.slice(0, 3)) expect(await customerRow(businessId, c.id as string)).toBeUndefined();
+  });
+});

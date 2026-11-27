@@ -773,9 +773,10 @@ void main() {
 
     // Der eigene Eintrag ist gesendet: jetzt gilt der Stand des Servers.
     await t.runAsync(
-      () => containerOf(
-        t,
-      ).read(databaseProvider).customStatement('DELETE FROM outbox'),
+      () =>
+          containerOf(t)
+              .read(databaseProvider)
+              .customStatement('DELETE FROM outbox'),
     );
     await t.runAsync(
       () => repo.applyServer([
@@ -793,5 +794,50 @@ void main() {
     expect(_key('customer-row-${muster.id}'), findsNothing);
     expect(_key('customer-row-$neu'), findsOneWidget);
     expect(_key('customer-picker'), findsOneWidget);
+  });
+  testWidgets('während die Auswahl nach einem Abgleich neu liest, bleibt die '
+      'alte Liste stehen, kein Flackern', (t) async {
+    await openInvoiceKassa(t, ['cola']);
+    final repo = _customers(t);
+    final muster = await repo.save(
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+    );
+    await _payCash(t);
+    await _tap(t, 'invoice-button');
+    expect(_key('customer-row-${muster.id}'), findsOneWidget);
+
+    // Jeder Frame zwischen der Änderung und der neuen Liste zeigt die alte.
+    var missing = 0;
+    var frames = 0;
+    await t.runAsync(
+      () => repo.applyServer(const [
+        WireCustomer(
+          id: 'c0000000-0000-4000-8000-00000000000f',
+          name: 'Neu KG',
+          addressLine1: 'Musterweg 5',
+          addressLine2: '1010 Wien',
+          vatId: null,
+          archived: false,
+        ),
+      ]),
+    );
+    for (var i = 0; i < 20; i++) {
+      await t.pump();
+      frames++;
+      if (find.byKey(Key('customer-row-${muster.id}')).evaluate().isEmpty) {
+        missing++;
+      }
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+    }
+    expect(frames, 20);
+    expect(missing, 0);
+    await t.pumpAndSettle();
+    expect(
+      _key('customer-row-c0000000-0000-4000-8000-00000000000f'),
+      findsOneWidget,
+    );
+    expect(_key('customer-row-${muster.id}'), findsOneWidget);
   });
 }

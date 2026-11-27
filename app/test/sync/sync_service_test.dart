@@ -1004,11 +1004,13 @@ void main() {
         h.db.customerRows,
       )..where((t) => t.id.equals(customerId))).getSingleOrNull(),
     );
-    String colaName(Harness h) => h.run(
-      (h.db.select(
-        h.db.itemRows,
-      )..where((t) => t.id.equals('cola'))).getSingle(),
-    ).name;
+    String colaName(Harness h) => h
+        .run(
+          (h.db.select(
+            h.db.itemRows,
+          )..where((t) => t.id.equals('cola'))).getSingle(),
+        )
+        .name;
 
     test('Nachholen: mit catchUpPending kommt ein Kunde mit Änderungs-Nummer '
         'unter dem eigenen pullCursor an; pullCursor und Artikel bleiben; '
@@ -1134,11 +1136,10 @@ void main() {
 
         h.run(h.service.syncNow());
         final first = h.server.pushRequests.first;
-        expect([for (final e in first) e['kind']], [
-          'customer',
-          'recipient',
-          'day',
-        ]);
+        expect(
+          [for (final e in first) e['kind']],
+          ['customer', 'recipient', 'day'],
+        );
         expect(first[0], {
           'seq': ids['customer'],
           'kind': 'customer',
@@ -1173,13 +1174,181 @@ void main() {
         final pushes = h.server.pushRequests.length;
         h.run(h.service.syncNow());
         expect(h.run(h.db.select(h.db.reportRows).get()), hasLength(1));
+        expect([
+          for (final r in h.server.pushRequests.skip(pushes))
+            for (final e in r) e['kind'],
+        ], everyElement('report'));
+        h.close();
+      });
+    });
+  });
+
+  group('Einträge, die auf ihren Bon warten', () {
+    const receiptId = 'b0000000-0000-4000-8000-0000000000b1';
+
+    /// Ein Bon ohne Zeilen; der Trigger stellt ihn in die Liste.
+    void addReceipt(Harness h, String id) {
+      final number = h.run(
+        h.db
+            .customSelect('SELECT COUNT(*) AS n FROM receipts')
+            .getSingle()
+            .then((r) => r.read<int>('n') + 1),
+      );
+      h.run(
+        h.db
+            .into(h.db.receiptRows)
+            .insert(
+              ReceiptRowsCompanion.insert(
+                id: id,
+                number: number,
+                createdAt: start,
+                staffId: 'chefin',
+                staffName: 'Chefin',
+                kind: 'sale',
+                goodsCents: 990,
+                depositCents: 0,
+                totalCents: 990,
+              ),
+            ),
+      );
+    }
+
+    /// Fassung 0 des Empfängers zum Bon und ihr Eintrag.
+    void addRecipient(Harness h, String id) {
+      h.run(
+        h.db
+            .into(h.db.receiptRecipientRows)
+            .insert(
+              ReceiptRecipientRowsCompanion.insert(
+                receiptId: id,
+                version: 0,
+                name: 'Muster GmbH',
+                addressLine1: 'Musterweg 1',
+                addressLine2: '1010 Wien',
+                createdAt: start,
+                staffId: 'chefin',
+                staffName: 'Chefin',
+              ),
+            ),
+      );
+      h.run(
+        h.db.customStatement(
+          "INSERT INTO outbox (kind, ref) VALUES ('recipient', '$id/0')",
+        ),
+      );
+    }
+
+    int idOf(Harness h, String kind) => h.run(
+      h.db
+          .customSelect("SELECT id FROM outbox WHERE kind = '$kind'")
+          .getSingle()
+          .then((r) => r.read<int>('id')),
+    );
+    List<String> sentKinds(Harness h, {int from = 0}) => [
+      for (final r in h.server.pushRequests.skip(from))
+        for (final e in r) e['kind']! as String,
+    ];
+    String? stateOf(Harness h, String kind) => h.run(
+      h.db
+          .customSelect("SELECT state FROM outbox WHERE kind = '$kind'")
+          .getSingleOrNull()
+          .then((r) => r?.read<String>('state')),
+    );
+
+    test('Bon bekommt error, Empfänger im selben Paket: er geht nicht hinauf, '
+        'bleibt wartend; im nächsten Lauf mit dem Bon geht er hinauf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        addReceipt(h, receiptId);
+        addRecipient(h, receiptId);
+        h.server.pushStatuses[idOf(h, 'receipt')] = 'error';
+        h.run(h.service.syncNow());
+        expect(sentKinds(h), ['receipt']);
+        expect(stateOf(h, 'recipient'), 'pending');
+        expect(h.counts().rejected, 0);
+
+        h.server.pushStatuses.clear();
+        final before = h.server.pushRequests.length;
+        h.run(h.service.syncNow());
+        expect(sentKinds(h, from: before), ['receipt', 'recipient']);
+        expect(h.counts().pending, 0);
+        expect(h.counts().rejected, 0);
+        h.close();
+      });
+    });
+
+    test('Bon bekommt error, Empfänger in einem späteren Paket desselben '
+        'Laufs: er wartet, die Einträge danach gehen trotzdem hinauf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        addReceipt(h, receiptId);
+        for (var i = 0; i < 100; i++) {
+          h.addDay('vor-$i');
+        }
+        addRecipient(h, receiptId);
+        h.addDay('danach');
+        h.server.pushStatuses[idOf(h, 'receipt')] = 'error';
+        h.run(h.service.syncNow());
+        expect(h.server.pushRequests, hasLength(2));
+        expect(sentKinds(h), isNot(contains('recipient')));
         expect(
-          [
-            for (final r in h.server.pushRequests.skip(pushes))
-              for (final e in r) e['kind'],
-          ],
-          everyElement('report'),
+          [for (final e in h.server.pushRequests[1]) (e['day']! as Map)['id']],
+          ['vor-99', 'danach'],
         );
+        expect(stateOf(h, 'recipient'), 'pending');
+        expect(h.counts().rejected, 0);
+
+        h.server.pushStatuses.clear();
+        final before = h.server.pushRequests.length;
+        h.run(h.service.syncNow());
+        expect(sentKinds(h, from: before), ['receipt', 'recipient']);
+        expect(h.counts().pending, 0);
+        h.close();
+      });
+    });
+
+    test('Empfänger zu einem längst gesendeten Bon geht sofort hinauf, und '
+        'ein wartender hält die Liste dahinter nicht auf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        // Längst gesendet: kein Eintrag receipt mehr.
+        addReceipt(h, 'b0000000-0000-4000-8000-0000000000b2');
+        h.run(
+          h.db.customStatement("DELETE FROM outbox WHERE kind = 'receipt'"),
+        );
+        addRecipient(h, 'b0000000-0000-4000-8000-0000000000b2');
+        h.run(h.service.syncNow());
+        expect(sentKinds(h), ['recipient']);
+        expect(h.counts().pending, 0);
+
+        // Ein Bon mit error, sein Empfänger wartet; ein Firmenkunde und ein
+        // weiterer Bon dahinter gehen hinauf.
+        addReceipt(h, receiptId);
+        addRecipient(h, receiptId);
+        final saved = h.run(
+          CustomerRepository(h.db, FixedClock(start)).save(
+            name: 'Muster GmbH',
+            addressLine1: 'Musterweg 1',
+            addressLine2: '1010 Wien',
+          ),
+        );
+        addReceipt(h, 'b0000000-0000-4000-8000-0000000000b3');
+        final ids = [
+          for (final r in h.run(
+            h.db
+                .customSelect(
+                  "SELECT id FROM outbox WHERE kind = 'receipt' ORDER BY id",
+                )
+                .get(),
+          ))
+            r.read<int>('id'),
+        ];
+        h.server.pushStatuses[ids.first] = 'error';
+        final before = h.server.pushRequests.length;
+        h.run(h.service.syncNow());
+        expect(sentKinds(h, from: before), ['receipt', 'customer', 'receipt']);
+        expect(h.server.pushRequests[before][1]['id'], saved.id);
+        expect(stateOf(h, 'recipient'), 'pending');
         h.close();
       });
     });
