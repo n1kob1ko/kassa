@@ -39,6 +39,7 @@ export async function testApp(
     now: overrides.now ?? (() => now.value),
     ...(overrides.randomCode ? { randomCode: overrides.randomCode } : {}),
     ...(overrides.maxReleaseBytes ? { maxReleaseBytes: overrides.maxReleaseBytes } : {}),
+    ...(overrides.receiptPageAddresses ? { receiptPageAddresses: overrides.receiptPageAddresses } : {}),
   }, opts);
   return {
     app,

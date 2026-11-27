@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
+import { isReceiptPagePath } from './public/receipt_page.js';
 
 const CONTENT_SECURITY_POLICY =
   "default-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
@@ -37,7 +38,9 @@ function cacheControl(root: string, filePath: string): string {
  */
 export async function registerWeb(app: FastifyInstance, webDir: string | undefined): Promise<void> {
   const https = app.deps.config.publicUrl.startsWith('https://');
-  app.addHook('onSend', async (_req, reply, payload) => {
+  app.addHook('onSend', async (req, reply, payload) => {
+    // Die Seite eines Bons setzt ihre eigenen, strengeren Kopfzeilen (public/receipt_page.ts).
+    if (isReceiptPagePath(req.url)) return payload;
     reply.header('x-content-type-options', 'nosniff');
     reply.header('referrer-policy', 'same-origin');
     reply.header('x-frame-options', 'DENY');
@@ -66,7 +69,7 @@ export async function registerWeb(app: FastifyInstance, webDir: string | undefin
   app.get('/*', async (req, reply) => {
     const path = req.url.split('?')[0]!;
     const lastSegment = path.slice(path.lastIndexOf('/') + 1);
-    if (SERVER_AREAS.some((area) => inArea(path, area)) || FILE_ENDING.test(lastSegment)) {
+    if (SERVER_AREAS.some((area) => inArea(path, area)) || isReceiptPagePath(path) || FILE_ENDING.test(lastSegment)) {
       return reply.callNotFound();
     }
     reply.header('cache-control', 'no-cache');

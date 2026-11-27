@@ -1,10 +1,10 @@
-import { isIPv4, isIPv6 } from 'node:net';
+import { isIP, isIPv4, isIPv6 } from 'node:net';
 import type { FastifyRequest } from 'fastify';
 import type { Config } from './config.js';
 
 /**
  * Die Internet-Adresse des Gegenübers, etwa für Grenzen bei Fehlversuchen.
- * Nennt CLIENT_IP_HEADER eine Kopfzeile und trägt die Anfrage genau einen nicht leeren Wert dafür, gilt dieser.
+ * Nennt CLIENT_IP_HEADER eine Kopfzeile und trägt die Anfrage genau einen Wert dafür, der eine IP-Adresse ist, gilt dieser.
  * Sonst die Adresse der Verbindung. X-Forwarded-For und req.ip gelten nie, weil der Client sie selbst setzen kann.
  */
 export function clientAddress(req: FastifyRequest, config: Pick<Config, 'clientIpHeader'>): string {
@@ -13,7 +13,8 @@ export function clientAddress(req: FastifyRequest, config: Pick<Config, 'clientI
     // Node fasst mehrfach gesendete Kopfzeilen mit Komma zusammen: Das ist dann kein einzelner Wert.
     if (typeof v === 'string' && !v.includes(',')) {
       const value = v.trim();
-      if (value !== '') return value;
+      // Nur eine echte Adresse (IPv4 oder IPv6) gilt; sonst die Adresse der Verbindung.
+      if (isIP(value) !== 0) return value;
     }
   }
   return req.socket.remoteAddress ?? '';

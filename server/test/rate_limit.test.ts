@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { rateKey } from '../src/client_address.js';
+import type { FastifyRequest } from 'fastify';
+import { clientAddress } from '../src/client_address.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createBusiness } from './support/businesses.js';
 import { createPairingCode, PAIR_DEVICE } from './support/device.js';
@@ -119,5 +121,24 @@ describe('Grenzen über alle Adressen', () => {
     expect((await pair(good, ipv4(500))).statusCode).toBe(429);
     a.now.value = new Date(t0.getTime() + 15 * MINUTE);
     expect((await pair(good, ipv4(501))).statusCode).toBe(200);
+  });
+});
+
+describe('clientAddress', () => {
+  const req = (value: string | string[] | undefined) =>
+    ({ headers: value === undefined ? {} : { 'x-real-ip': value }, socket: { remoteAddress: '10.0.0.1' } }) as unknown as FastifyRequest;
+  const config = { clientIpHeader: 'x-real-ip' };
+
+  test('eine echte IPv4- oder IPv6-Adresse in der Kopfzeile gilt', () => {
+    expect(clientAddress(req('203.0.113.9'), config)).toBe('203.0.113.9');
+    expect(clientAddress(req(' 2001:db8::7 '), config)).toBe('2001:db8::7');
+  });
+
+  test('ein Wert, der keine IP-Adresse ist, fällt auf die Adresse der Verbindung zurück', () => {
+    for (const v of ['nicht-ip', 'unknown', '203.0.113.300', '1.2.3', 'example.com', '203.0.113.9:443', '', '   ']) {
+      expect(clientAddress(req(v), config), v).toBe('10.0.0.1');
+    }
+    expect(clientAddress(req(['203.0.113.9', '203.0.113.10']), config)).toBe('10.0.0.1');
+    expect(clientAddress(req('203.0.113.9'), {})).toBe('10.0.0.1');
   });
 });

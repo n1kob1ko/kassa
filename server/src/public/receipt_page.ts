@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type pg from 'pg';
 import { loadTimeZone } from '../admin/overview.js';
@@ -5,7 +6,7 @@ import { taxLinesOf } from '../admin/tax.js';
 import { clientAddress, rateKey } from '../client_address.js';
 import type { Db } from '../db/db.js';
 import { setBusiness, withSystem } from '../db/tenant.js';
-import { SlidingWindow } from '../rate_limit.js';
+import { MissLimiter } from './miss_limiter.js';
 import { isSafeSvg, qrSvg, rksvQrText } from './qr.js';
 
 // Die öffentliche Seite eines Bons: GET /beleg/<Schlüssel>, ohne Anmeldung. Wer den Schlüssel nicht kennt, erfährt
@@ -15,7 +16,7 @@ import { isSafeSvg, qrSvg, rksvQrText } from './qr.js';
 const TOKEN = /^[A-Za-z0-9_-]{22}$/;
 const PREFIX = '/beleg/';
 
-/** Höchstens so viele Fehlversuche je Adresse in WINDOW_MS, danach 429 für den Rest des Fensters. */
+/** Höchstens so viele VERSCHIEDENE Fehlversuche je Adresse in WINDOW_MS, danach 429 für den Rest des Fensters. */
 export const MAX_FAILURES = 10;
 export const WINDOW_MS = 10 * 60 * 1000;
 
@@ -165,7 +166,7 @@ export function renderReceiptPage(view: ReceiptPageView): string {
     );
   }
 
-  const meta = [`<p class="meta"><span>Bon Nr. ${view.number}</span><span>${esc(view.createdAt)}</span></p>`];
+  const meta = [`<p class="meta"><span>Bon Nr. ${esc(String(view.number))}</span><span>${esc(view.createdAt)}</span></p>`];
   if (view.cashBoxId) meta.push(`<p class="muted">Kassen-ID: ${esc(view.cashBoxId)}</p>`);
   out.push(`<section class="block">\n${meta.join('\n')}\n</section>`);
 
@@ -184,7 +185,7 @@ export function renderReceiptPage(view: ReceiptPageView): string {
   if (view.footer) out.push(`<p class="footer">${esc(view.footer)}</p>`);
   if (view.test) out.push('<p class="test">TESTBON, keine gültige Rechnung</p>');
 
-  return document(`Bon ${view.number} · ${b.name}`, out.filter(Boolean).join('\n'));
+  return document(`Bon ${String(view.number)} · ${b.name}`, out.filter(Boolean).join('\n'));
 }
 
 function messagePage(title: string, heading: string, text: string): string {
@@ -195,7 +196,7 @@ function messagePage(title: string, heading: string, text: string): string {
 export const NOT_FOUND_PAGE = messagePage(
   'Bon nicht gefunden',
   'Diesen Bon gibt es nicht.',
-  'Bitte den QR-Code am Bon noch einmal scannen.',
+  'Ein neuer Bon ist vielleicht noch nicht da. Bitte in ein paar Minuten noch einmal versuchen.',
 );
 export const TOO_MANY_PAGE = messagePage('Zu viele Versuche', 'Zu viele Versuche.', 'Bitte in ein paar Minuten noch einmal versuchen.');
 const ERROR_PAGE = messagePage('Fehler', 'Das hat nicht geklappt.', 'Bitte später noch einmal versuchen.');
@@ -281,6 +282,12 @@ function discountLabel(d: Discount): string {
   return (p === null || p === undefined ? `Rabatt ${name}` : `Rabatt ${p} % ${name}`).trimEnd();
 }
 
+/** Der Betrag eines Rabatts mit dem Vorzeichen der Rabatt-Summe ([total], beim Storno unter 0); ohne Rabatt 0. */
+function signedAmount(d: Discount, total: number): number {
+  const cents = Math.abs(Number(d?.amountCents ?? 0));
+  return total < 0 ? -cents : cents;
+}
+
 /** Nur die letzten vier Ziffern eines Gutschein-Codes; ein kurzer Code ganz verdeckt. */
 function maskedCode(code: string | null | undefined): string {
   const c = code ?? '';
@@ -301,7 +308,6 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
   const lines: PageRow[] = [];
   let depositReturnCents = 0;
   let voucherSaleCents = 0;
-  let lineDiscountCents = 0;
   const gross: Record<number, number> = { 20: 0, 10: 0, 13: 0, 0: 0, 19: 0 };
   for (const l of d.lines) {
     gross[20]! += l.gross20_cents;
@@ -309,7 +315,6 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
     gross[13]! += l.gross13_cents;
     gross[0]! += l.gross0_cents;
     gross[19]! += l.gross19_cents;
-    lineDiscountCents += l.discount_cents;
     const manyTimes = l.quantity > 1 || l.quantity < -1;
     if (l.item_id.startsWith(DEPOSIT_RETURN_PREFIX)) {
       // "Pfand zurück": der Betrag ist das Pfand der Zeile, nicht der Warenwert 0.
@@ -331,13 +336,15 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
     lines.push({ label: `${l.quantity} x ${label}`, cents: goods });
     if (manyTimes) lines.push({ label: `je ${amount(l.unit_price_cents)}`, sub: true });
     for (const o of l.options ?? []) lines.push({ label: optionText(o), sub: true });
-    if (l.discount_cents !== 0) lines.push({ label: discountLabel(l.discount), cents: -l.discount_cents, sub: true });
+    // Nur der eigene Rabatt der Zeile, wie am Papier. discount_cents trägt dazu den Anteil am Bon-Rabatt.
+    const own = signedAmount(l.discount, l.discount_cents);
+    if (own !== 0) lines.push({ label: discountLabel(l.discount), cents: -own, sub: true });
   }
 
   const sums: PageRow[] = [];
   const special = SPECIAL_TITLES[r.kind] ?? null;
-  // Der Rabatt auf den ganzen Bon: alle Rabatte minus die der Zeilen (beim Storno mit Minus).
-  const receiptDiscountCents = r.discount_cents - lineDiscountCents;
+  // Der Rabatt auf den ganzen Bon, wie am Papier; beim Storno mit Minus.
+  const receiptDiscountCents = signedAmount(r.discount, r.discount_cents);
   if (receiptDiscountCents !== 0) {
     sums.push({ label: 'Zwischensumme', cents: r.goods_cents + receiptDiscountCents });
     sums.push({ label: discountLabel(r.discount), cents: -receiptDiscountCents });
@@ -495,73 +502,93 @@ async function qrOf(rksv: ReceiptData['rksv']): Promise<ReceiptPageView['qr']> {
   return isSafeSvg(svg) ? { svg, damaged: rksv.damaged } : null;
 }
 
-/** Der Schlüssel aus der Adresse, roh (ohne Dekodieren) und nur in der genauen Form; sonst null. */
-function tokenOf(url: string): string | null {
-  const path = url.split('?')[0]!;
+/** Ob die Adresse zur Seite eines Bons gehört: `/beleg` in jeder Schreibweise, auch mit mehreren Schrägstrichen davor. */
+export function isReceiptPagePath(url: string): boolean {
+  return /^\/+beleg(\/|$)/i.test(url.split('?')[0]!);
+}
+
+/** Der Schlüssel aus dem Pfad, roh (ohne Dekodieren) und nur in der genauen Form `/beleg/<22 Zeichen>`; sonst null. */
+function tokenOf(path: string): string | null {
   if (!path.startsWith(PREFIX)) return null;
   const token = path.slice(PREFIX.length);
   return TOKEN.test(token) ? token : null;
 }
 
-function sendPage(reply: FastifyReply, status: number, html: string): FastifyReply {
-  return reply.code(status).type('text/html; charset=utf-8').send(html);
+/** Ein kurzer Prüfwert eines Fehlversuchs (64 Bit): damit zählt derselbe falsche Schlüssel nur einmal. Nie der Schlüssel. */
+function missHash(path: string): string {
+  return createHash('sha256').update(path).digest('base64url').slice(0, 11);
 }
 
-/** Kopfzeilen jeder Antwort unter /beleg/, nach denen des ganzen Servers (Hook der Adresse läuft danach). */
-async function pageHeaders(_req: FastifyRequest, reply: FastifyReply, payload: unknown): Promise<unknown> {
-  reply.header('cache-control', 'no-store');
-  reply.header('x-robots-tag', 'noindex, nofollow');
-  reply.header('referrer-policy', 'no-referrer');
-  reply.header('content-security-policy', CONTENT_SECURITY_POLICY);
-  reply.header('x-content-type-options', 'nosniff');
-  reply.removeHeader('set-cookie');
-  return payload;
-}
+export type ReceiptPageOptions = {
+  /** Höchstens so viele Adressen merkt sich die Bremse (Vorgabe 50 000); Tests setzen eine kleine Zahl. */
+  maxAddresses?: number;
+};
+
+export type ReceiptPage = {
+  /** Antwort auf eine Adresse unter /beleg mit kaputter Prozent-Kodierung (FST_ERR_BAD_URL): wie ein Fehlversuch. */
+  answerBadUrl(req: FastifyRequest, reply: FastifyReply): Promise<FastifyReply>;
+};
 
 /**
- * GET /beleg/<Schlüssel>: die Seite des Bons. Vor der Verwaltung im Browser registrieren. Jede Methode außer GET und
- * HEAD bekommt die Seite "gibt es nicht", bevor ein Körper gelesen wird.
+ * Die Seite eines Bons unter /beleg/<Schlüssel>. Ein Hook vor allem anderen nimmt jede Anfrage, deren Pfad mit /beleg
+ * beginnt (jede Schreibweise, jede Methode), bevor ein Körper gelesen wird: /beleg/… bekommt nie die Verwaltung.
+ * Vor registerWeb aufrufen.
  */
-export function installReceiptPage(app: FastifyInstance): void {
+export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOptions = {}): ReceiptPage {
   const { db, now, config } = app.deps;
-  // Je App eine Zählung. Begrenzt: abgelaufene Adressen fallen heraus, höchstens 50 000 Adressen (siehe SlidingWindow).
-  const failures = new SlidingWindow(MAX_FAILURES, WINDOW_MS);
+  const https = config.publicUrl.startsWith('https://');
+  // Je App eine Zählung, begrenzt (siehe MissLimiter).
+  const misses = new MissLimiter(MAX_FAILURES, WINDOW_MS, opts.maxAddresses);
 
-  const onlyRead = async (req: FastifyRequest, reply: FastifyReply) => {
-    if (req.method === 'GET' || req.method === 'HEAD') return;
-    return sendPage(reply, 404, NOT_FOUND_PAGE);
-  };
+  /** Jede Antwort unter /beleg trägt dieselben Kopfzeilen, gesetzt hier (der Hook der Verwaltung lässt /beleg aus). */
+  function sendPage(reply: FastifyReply, status: number, html: string): FastifyReply {
+    reply.header('cache-control', 'no-store');
+    reply.header('x-robots-tag', 'noindex, nofollow');
+    reply.header('referrer-policy', 'no-referrer');
+    reply.header('content-security-policy', CONTENT_SECURITY_POLICY);
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('x-frame-options', 'DENY');
+    if (https) reply.header('strict-transport-security', 'max-age=31536000');
+    reply.removeHeader('set-cookie');
+    return reply.code(status).type('text/html; charset=utf-8').send(html);
+  }
 
-  const handler = async (req: FastifyRequest, reply: FastifyReply) => {
+  async function answer(req: FastifyRequest, reply: FastifyReply, badUrl: boolean): Promise<FastifyReply> {
     const at = now();
     const address = rateKey(clientAddress(req, config));
-    // Vor jeder Arbeit einen Platz reservieren (auch gleichzeitige Anfragen halten die Grenze). Nur ein Fehlversuch
-    // behält ihn; eine abgewiesene Anfrage zählt nicht, die Sperre verlängert sich also nicht selbst.
-    if (!failures.hit(address, at)) {
-      const seconds = Math.max(Math.ceil(failures.retryAfterMs(address, at) / 1000), 1);
-      reply.header('retry-after', String(seconds));
+    // Gesperrt ist nur eine Adresse, die selbst MAX_FAILURES verschiedene Fehlversuche hat; dann jede Methode, jeder Schlüssel.
+    const wait = misses.blockedMs(address, at);
+    if (wait > 0) {
+      reply.header('retry-after', String(Math.max(Math.ceil(wait / 1000), 1)));
       return sendPage(reply, 429, TOO_MANY_PAGE);
     }
-    let failed = false;
+    const path = req.url.split('?')[0]!;
+    const miss = () => {
+      misses.miss(address, missHash(path), at);
+      return sendPage(reply, 404, NOT_FOUND_PAGE);
+    };
+    if (badUrl) return miss();
+    // Andere Methoden verraten nichts (immer dieselbe Seite) und zählen darum nicht.
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendPage(reply, 404, NOT_FOUND_PAGE);
     try {
       // Ein kaputter Schlüssel fragt die Datenbank nicht, bekommt aber dieselbe Antwort wie ein unbekannter.
-      const token = tokenOf(req.url);
+      const token = tokenOf(path);
       const data = token === null ? null : await loadReceipt(db, token, req.log);
-      if (data === null) {
-        failed = true;
-        return sendPage(reply, 404, NOT_FOUND_PAGE);
-      }
+      if (data === null) return miss();
       return sendPage(reply, 200, renderReceiptPage(buildView(data, await qrOf(data.rksv))));
     } catch (err) {
       // Nur der Fehler, nie die Adresse (sie trägt den Schlüssel).
       req.log.error({ err }, 'Seite eines Bons nicht gebaut');
       return sendPage(reply, 500, ERROR_PAGE);
-    } finally {
-      if (!failed) failures.release(address, at);
     }
-  };
-
-  for (const url of ['/beleg', '/beleg/*']) {
-    app.all(url, { onRequest: onlyRead, onSend: pageHeaders }, handler);
   }
+
+  app.addHook('onRequest', async (req, reply) => {
+    if (!isReceiptPagePath(req.url)) return;
+    return answer(req, reply, false);
+  });
+  // Die Adressen selbst, damit /beleg/… nie in den Rückfall der Verwaltung läuft; der Hook oben antwortet vorher.
+  for (const url of ['/beleg', '/beleg/*']) app.all(url, (req, reply) => answer(req, reply, false));
+
+  return { answerBadUrl: (req, reply) => answer(req, reply, true) };
 }

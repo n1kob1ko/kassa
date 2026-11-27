@@ -1,5 +1,11 @@
 import cookie from '@fastify/cookie';
-import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
+import Fastify, {
+  type FastifyError,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+  type FastifyServerOptions,
+} from 'fastify';
 import { installBackupRoutes } from './admin/backups.js';
 import { installBusinessRoutes } from './admin/businesses.js';
 import { installCustomerRoutes } from './admin/customers.js';
@@ -19,7 +25,7 @@ import { installPairRoutes } from './device/pair.js';
 import { installFileRoutes } from './files/routes.js';
 import { installPullRoutes } from './device/pull.js';
 import { installPushRoutes } from './device/push.js';
-import { installReceiptPage } from './public/receipt_page.js';
+import { installReceiptPage, isReceiptPagePath, type ReceiptPage } from './public/receipt_page.js';
 import { clientAddress } from './client_address.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
@@ -36,6 +42,8 @@ export type AppDeps = {
   randomCode?: () => number;
   /** Höchste Größe einer Installationsdatei. Vorgabe 200 MB; Tests setzen eine kleine Grenze. */
   maxReleaseBytes?: number;
+  /** Wie viele Adressen sich die Bremse der Seite eines Bons merkt. Vorgabe 50 000; Tests setzen eine kleine Zahl. */
+  receiptPageAddresses?: number;
 };
 
 export const BODY_LIMIT = 1024 * 1024;
@@ -85,6 +93,30 @@ export function loggerOptions(stream?: { write(msg: string): void }): FastifySer
   };
 }
 
+/**
+ * Fehler, die Fastify vor jeder Route meldet (kaputte Prozent-Kodierung, zu langer Parameter). Unter /beleg (jede
+ * Schreibweise) antwortet die Seite eines Bons wie bei einem Fehlversuch; sonst genau die Antwort, die Fastify ohne
+ * diese Einstellung gibt.
+ */
+function frameworkError(page: () => ReceiptPage | undefined) {
+  return (err: FastifyError, req: FastifyRequest, reply: FastifyReply) => {
+    const receiptPage = page();
+    if (err.code === 'FST_ERR_BAD_URL' && receiptPage && isReceiptPagePath(req.url)) {
+      return receiptPage.answerBadUrl(req, reply);
+    }
+    const internal = err.code === 'FST_ERR_ASYNC_CONSTRAINT';
+    const body = internal
+      ? '{"error":"Internal Server Error","message":"Unexpected error from async constraint","statusCode":500}'
+      : JSON.stringify({ error: 'Bad Request', code: err.code, message: err.message, statusCode: err.statusCode });
+    reply.hijack();
+    reply.raw.writeHead(internal ? 500 : err.statusCode ?? 400, {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    reply.raw.end(body);
+  };
+}
+
 /** Alles, was Zustand hält (Zähler, Sperren), gehört hierher und nicht in Modul-Variablen: Tests bauen viele Apps. */
 export async function buildApp(
   deps: AppDeps,
@@ -92,7 +124,9 @@ export async function buildApp(
 ): Promise<FastifyInstance> {
   // Kopfzeilen wie X-Forwarded-For kann jeder Client setzen. Die Adresse des Clients liest clientAddress().
   const timeouts = opts.timeouts ?? DEFAULT_TIMEOUTS;
+  let receiptPage: ReceiptPage | undefined;
   const app = Fastify({
+    frameworkErrors: frameworkError(() => receiptPage),
     trustProxy: false,
     bodyLimit: BODY_LIMIT,
     logger: opts.logger ?? false,
@@ -105,12 +139,13 @@ export async function buildApp(
   app.server.headersTimeout = Math.min(timeouts.headersMs, timeouts.requestMs);
   installErrorHandling(app);
   app.decorate('deps', deps);
+  // Die öffentliche Seite eines Bons vor allem anderen: ihr Hook nimmt jede Adresse unter /beleg (jede Schreibweise),
+  // bevor ein Körper gelesen wird; /beleg/… bekommt nie die Seite der Verwaltung.
+  receiptPage = installReceiptPage(app, { maxAddresses: deps.receiptPageAddresses });
   // Zuerst: der Hook für die Sicherheits-Kopfzeilen gilt nur für Adressen, die nach ihm dazukommen.
   await registerWeb(app, deps.config.webDir);
   await app.register(cookie);
 
-  // Die öffentliche Seite eines Bons, vor allem anderen: /beleg/… bekommt nie die Seite der Verwaltung.
-  installReceiptPage(app);
   app.get('/healthz', async () => ({ ok: true }));
   installAuth(app);
   await installReleaseRoutes(app);

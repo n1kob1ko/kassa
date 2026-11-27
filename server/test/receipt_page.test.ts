@@ -7,10 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { loggerOptions } from '../src/app.js';
 import { withSystem } from '../src/db/tenant.js';
+import { MissLimiter } from '../src/public/miss_limiter.js';
 import { isSafeSvg, qrSvg, rksvQrText } from '../src/public/qr.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
-import { pushEntries } from './support/push.js';
+import { pushEntries, sampleReceiptV2 } from './support/push.js';
 import { freshToken, readStufe1b, voidOfV3 } from './support/stufe_1b.js';
 import type { TestUser } from './support/users.js';
 
@@ -22,7 +23,7 @@ const QR_PAIRS = (
 ).pairs;
 
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
-const NOT_FOUND_TEXT = 'Diesen Bon gibt es nicht.';
+const NOT_FOUND_TEXT = 'Diesen Bon gibt es nicht. Ein neuer Bon ist vielleicht noch nicht da. Bitte in ein paar Minuten noch einmal versuchen.';
 
 let a: TestApp;
 let provider: TestUser;
@@ -129,12 +130,15 @@ describe('Seite eines Bons', () => {
     }
     expect(bodies.size).toBe(1);
     expect(headers.size).toBe(1);
-    expect([...bodies][0]).toContain(NOT_FOUND_TEXT);
-    // Auch ohne Schlüssel, mit Schrägstrich am Ende und mit Unterpfad.
-    for (const url of ['/beleg', '/beleg/', `/beleg/${token}/`, `/beleg/${token}/x`]) {
+    expect(visibleText([...bodies][0]!)).toBe(NOT_FOUND_TEXT);
+    // Auch ohne Schlüssel, mit Schrägstrich am Ende, mit Unterpfad, mit kaputter Prozent-Kodierung, in anderer
+    // Schreibweise und mit doppeltem Schrägstrich: Körper und Kopfzeilen Byte für Byte gleich.
+    for (const url of ['/beleg', '/beleg/', `/beleg/${token}/`, `/beleg/${token}/x`, '/beleg/%zz', '//beleg/x', '/BELEG/x', `/Beleg/${token}`]) {
       const r = await a.app.inject({ method: 'GET', url, remoteAddress: nextAddress() });
       expect(r.statusCode, url).toBe(404);
       expect(r.body, url).toBe([...bodies][0]);
+      const { date: _date, ...rest } = r.headers;
+      expect(JSON.stringify(rest), url).toBe([...headers][0]);
     }
   });
 
@@ -183,7 +187,7 @@ describe('Seite eines Bons', () => {
         // Mit der Verwaltung im selben Server bekommt /beleg/… nie deren Seite.
         const p = await w.app.inject({ method: 'GET', url: `/beleg/${freshToken()}` });
         expect(p.statusCode).toBe(404);
-        expect(p.body).toContain(NOT_FOUND_TEXT);
+        expect(visibleText(p.body)).toBe(NOT_FOUND_TEXT);
         expect(p.headers['content-security-policy']).toBe(CSP);
       } finally {
         await w.close();
@@ -403,8 +407,11 @@ describe('Der Schlüssel steht nie im Protokoll', () => {
       expect((await get(r.publicToken)).statusCode).toBe(200);
       expect((await get(r.publicToken, 'HEAD')).statusCode).toBe(200);
       expect((await get(r.publicToken, 'POST')).statusCode).toBe(404);
-      for (let i = 0; i < 10; i++) expect((await get(wrong)).statusCode).toBe(404);
+      // Derselbe falsche Schlüssel zählt einmal; neun weitere verschiedene, dann ist die Adresse gesperrt.
+      for (let i = 0; i < 3; i++) expect((await get(wrong)).statusCode).toBe(404);
+      for (let i = 0; i < 9; i++) expect((await get(freshToken())).statusCode).toBe(404);
       expect((await get(wrong)).statusCode).toBe(429);
+      expect((await t.app.inject({ method: 'GET', url: `/beleg/${wrong}%zz`, remoteAddress: '203.0.113.78' })).statusCode).toBe(404);
       expect((await get(r.publicToken)).statusCode).toBe(429);
       // Groß geschrieben ist es nicht die Seite, aber der Schlüssel bleibt trotzdem draußen.
       await t.app.inject({ method: 'GET', url: `/BELEG/${r.publicToken}`, remoteAddress: ip });
@@ -417,6 +424,151 @@ describe('Der Schlüssel steht nie im Protokoll', () => {
       await t.close();
     }
   });
+});
+
+describe('Nachbesserung 1: kaputte Adresse, Sperre je Adresse, gleiche falsche Schlüssel', () => {
+  let s: Site;
+  let r: Record<string, any>;
+  beforeAll(async () => {
+    s = await siteFor(a, provider);
+    [r] = fixtureReceipts() as [Record<string, any>];
+    await send(a, s, [['receipt', r]]);
+  });
+
+  test('derselbe falsche Schlüssel 30-mal ist nie 429; zehn verschiedene, dann ist der elfte 429, auch ein richtiger', async () => {
+    const ip = nextAddress();
+    const same = freshToken();
+    for (let i = 0; i < 30; i++) expect((await page(same, ip)).statusCode, `Versuch ${i + 1}`).toBe(404);
+    // Der eine Schlüssel zählt einmal: noch neun weitere verschiedene gehen.
+    for (let i = 0; i < 9; i++) expect((await page(freshToken(), ip)).statusCode).toBe(404);
+    expect((await page(freshToken(), ip)).statusCode).toBe(429);
+    expect((await page(same, ip)).statusCode).toBe(429);
+    // Wie im Brief: eine gesperrte Adresse bekommt auch für den richtigen Schlüssel 429.
+    expect((await page(r.publicToken, ip)).statusCode).toBe(429);
+    // Eine Adresse mit nur einem oft wiederholten Schlüssel bleibt frei.
+    const reloader = nextAddress();
+    for (let i = 0; i < 12; i++) await page(same, reloader);
+    expect((await page(r.publicToken, reloader)).statusCode).toBe(200);
+  });
+
+  test('/beleg/%zz: dieselbe Seite mit allen Kopfzeilen, zählt als Fehlversuch; /api/%zz bleibt die Antwort von Fastify', async () => {
+    const ip = nextAddress();
+    const missing = await page(freshToken(), nextAddress());
+    for (let i = 0; i < 10; i++) {
+      const res = await a.app.inject({ method: 'GET', url: `/beleg/%zz${i}`, remoteAddress: ip });
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toBe(missing.body);
+      expect(res.headers['content-security-policy']).toBe(CSP);
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.headers['referrer-policy']).toBe('no-referrer');
+      expect(res.body).not.toContain('%zz');
+    }
+    const blocked = await page(r.publicToken, ip);
+    expect(blocked.statusCode).toBe(429);
+    expect((await a.app.inject({ method: 'GET', url: '/BELEG/%zz', remoteAddress: ip })).statusCode).toBe(429);
+    const api = await a.app.inject({ method: 'GET', url: '/api/%zz' });
+    expect(api.statusCode).toBe(400);
+    expect(api.headers['content-type']).toBe('application/json');
+    expect(api.json()).toEqual({ error: 'Bad Request', code: 'FST_ERR_BAD_URL', message: "'/api/%zz' is not a valid url component", statusCode: 400 });
+  });
+
+  test('andere Methoden von einer gesperrten Adresse bekommen 429, nie die Verwaltung', async () => {
+    const ip = nextAddress();
+    for (let i = 0; i < 10; i++) await page(freshToken(), ip);
+    for (const method of ['POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'] as const) {
+      const res = await a.app.inject({ method, url: `/beleg/${r.publicToken}`, remoteAddress: ip, payload: method === 'HEAD' ? undefined : '{}' });
+      expect(res.statusCode, method).toBe(429);
+      expect(res.headers['content-security-policy'], method).toBe(CSP);
+    }
+  });
+
+  test('/BELEG/<x>, //beleg/<x> und /Beleg fallen nie auf die Seite der Verwaltung', async () => {
+    const webDir = await mkdtemp(join(tmpdir(), 'kassa-web-'));
+    try {
+      await writeFile(join(webDir, 'index.html'), '<!doctype html><title>Verwaltung</title>');
+      const w = await testApp({ config: { webDir } });
+      try {
+        const reference = await w.app.inject({ method: 'GET', url: `/beleg/${freshToken()}`, remoteAddress: '192.0.2.10' });
+        expect(reference.statusCode).toBe(404);
+        let n = 10;
+        for (const url of [`/BELEG/${r.publicToken}`, '//beleg/x', '///beleg/', '/Beleg', '/bElEg/x/y', '/beleg/%zz']) {
+          for (const method of ['GET', 'POST'] as const) {
+            const res = await w.app.inject({ method, url, remoteAddress: `192.0.2.${++n}` });
+            expect(res.statusCode, `${method} ${url}`).toBe(404);
+            expect(res.body, `${method} ${url}`).toBe(reference.body);
+            expect(res.body).not.toContain('Verwaltung');
+            expect(res.headers['content-security-policy']).toBe(CSP);
+            expect(res.headers['x-robots-tag']).toBe('noindex, nofollow');
+          }
+        }
+        // Die Verwaltung selbst bleibt, wie sie war.
+        const admin = await w.app.inject({ method: 'GET', url: '/betriebe' });
+        expect(admin.body).toContain('Verwaltung');
+        expect(admin.headers['referrer-policy']).toBe('same-origin');
+      } finally {
+        await w.close();
+      }
+    } finally {
+      await rm(webDir, { recursive: true, force: true });
+    }
+  });
+
+  test('volle Tabelle: eine neue Adresse bekommt ihre Seite, die älteste Adresse fällt heraus', async () => {
+    const t = await testApp({ receiptPageAddresses: 3 });
+    try {
+      const p = await createProvider(t.app, t.db);
+      const site = await siteFor(t, p);
+      const [rr] = fixtureReceipts() as [Record<string, any>];
+      await send(t, site, [['receipt', rr]]);
+      const get = (token: string, ip: string) => t.app.inject({ method: 'GET', url: `/beleg/${token}`, remoteAddress: ip });
+      // Die älteste Adresse ist gesperrt.
+      for (let i = 0; i < 10; i++) await get(freshToken(), '192.0.2.1');
+      expect((await get(rr.publicToken, '192.0.2.1')).statusCode).toBe(429);
+      // Drei weitere Adressen mit je einem Fehlversuch: die Tabelle ist voll, die älteste fällt heraus.
+      for (const ip of ['192.0.2.2', '192.0.2.3', '192.0.2.4']) expect((await get(freshToken(), ip)).statusCode).toBe(404);
+      expect((await get(rr.publicToken, '192.0.2.1')).statusCode).toBe(200);
+      // Eine ganz neue Adresse bei voller Tabelle bekommt ihre Seite, nicht 429.
+      expect((await get(rr.publicToken, '192.0.2.99')).statusCode).toBe(200);
+      expect((await get(freshToken(), '192.0.2.98')).statusCode).toBe(404);
+    } finally {
+      await t.close();
+    }
+  });
+
+  test('Kartenzahlung mit Rabatten: die Seite zeigt Art und letzte vier Ziffern, nie eine ganze Kartennummer', async () => {
+    const v2 = sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z', number: 5 });
+    await send(a, s, [['receipt', v2]]);
+    const token = freshToken();
+    // Ein Bon in v: 2 hat keinen Schlüssel; für diesen Test bekommt er einen.
+    await withSystem(a.db, (c) => c.query('insert into receipt_links (token, business_id, receipt_id) values ($1, $2, $3)', [token, s.businessId, v2.id]));
+    const res = await page(token, nextAddress());
+    expect(res.statusCode).toBe(200);
+    const text = visibleText(res.body);
+    expect(text).toContain('Karte');
+    expect(text).toContain('VISA **** 4242');
+    expect(text).toContain('davon Trinkgeld 0,64');
+    expect(text).toContain('Zwischensumme');
+    expect(text).toContain('Rabatt 10 % Aktion -1,65');
+    expect(text).toContain('Rabatt 10 % Stammgast -1,19');
+    expect(text).not.toContain('TX-BEISPIEL-1');
+    expect(text).not.toMatch(/\d{5,}/);
+    expect(text).not.toContain('Anna');
+  });
+});
+
+test('MissLimiter: Speicher begrenzt, je Adresse höchstens max Prüfwerte, derselbe zählt einmal', () => {
+  const m = new MissLimiter(10, 600_000, 100);
+  const t0 = new Date('2026-11-27T10:00:00Z');
+  for (let i = 0; i < 1000; i++) m.miss(`a${i}`, 'h', t0);
+  expect(m.size).toBe(100);
+  for (let i = 0; i < 50; i++) m.miss('x', `h${i}`, t0);
+  expect(m.blockedMs('x', t0)).toBe(600_000);
+  for (let i = 0; i < 50; i++) m.miss('y', 'same', t0);
+  expect(m.blockedMs('y', t0)).toBe(0);
+  expect(m.size).toBe(100);
+  // Nach dem Fenster ist alles weg.
+  expect(m.blockedMs('x', new Date(t0.getTime() + 600_001))).toBe(0);
+  expect(m.size).toBe(0);
 });
 
 describe('QR-Code', () => {
