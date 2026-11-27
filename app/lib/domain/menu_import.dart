@@ -3,7 +3,8 @@
 
 import 'dart:convert';
 
-import 'cart.dart' show isReservedItemId;
+import 'cart.dart'
+    show isDepositReturnItemId, isOpenAmountItemId, isVoucherSaleItemId;
 import 'catalog.dart';
 import 'menu_dictionary.dart';
 import 'staff.dart';
@@ -95,9 +96,14 @@ Catalog parseMenuFile(String jsonText) {
       ok = false;
     }
     // An der Kassa vergeben: freier Betrag (open-amount-20 usw.), Pfand
-    // zurück (deposit-return-25 usw.) und Gutschein (voucher-sale).
-    if (isReservedItemId(id)) {
+    // zurück (deposit-return-25 usw.) und Gutschein (voucher-sale), wie
+    // isReservedItemId in cart.dart.
+    if (isOpenAmountItemId(id)) {
       fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
+    } else if (isDepositReturnItemId(id)) {
+      fail('Die Kennung darf nicht mit "deposit-return-" beginnen.');
+    } else if (isVoucherSaleItemId(id)) {
+      fail('Die Kennung darf nicht "voucher-sale" sein.');
     }
     final name = _text(a['name']);
     if (name == null) fail('Name fehlt.');

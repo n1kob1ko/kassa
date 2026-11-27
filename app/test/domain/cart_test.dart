@@ -858,6 +858,26 @@ void main() {
       expect(c.setLineDiscount('g1', null).lines.first.discount, isNull);
     });
 
+    test('discountBaseCents: Zwischensumme ohne Gutschein-Zeilen', () {
+      final p = cartCard.addVoucherSale(valueCents: 2500).pricing;
+      // Teigtaschen 6,50 + Cola 2,90 = 9,40 € (das Pfand 0,25 € zählt nie).
+      expect((p.discountBaseCents, p.subtotalCents), (940, 3440));
+      expect(cartCard.pricing.discountBaseCents, cartCard.pricing.subtotalCents);
+      expect(
+        cart
+            .setDepositReturn(depositCents: 25, quantity: 2)
+            .pricing
+            .discountBaseCents,
+        cart.pricing.subtotalCents,
+      );
+    });
+
+    test('setLineDiscount mit null auf Pfand zurück wirft nicht', () {
+      final c = cart.setDepositReturn(depositCents: 25, quantity: 2);
+      final r = c.setLineDiscount(c.lines.last.lineId, null);
+      expect((r.lines.last.discount, r.totalCents), (null, c.totalCents));
+    });
+
     test('Bon-Rabatt als Betrag: rechnet ohne Gutschein-Zeilen', () {
       final c = cartCard
           .addVoucherSale(valueCents: 2500)

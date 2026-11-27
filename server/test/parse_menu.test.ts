@@ -65,7 +65,11 @@ describe('gemeinsame Beispiele mit der App', () => {
   });
 
   test('Kennungen für Pfand zurück und Gutschein sind vergeben', () => {
-    for (const id of ['deposit-return-25', 'deposit-return-100', 'voucher-sale']) {
+    for (const [id, message] of [
+      ['deposit-return-25', 'Die Kennung darf nicht mit "deposit-return-" beginnen.'],
+      ['deposit-return-100', 'Die Kennung darf nicht mit "deposit-return-" beginnen.'],
+      ['voucher-sale', 'Die Kennung darf nicht "voucher-sale" sein.'],
+    ]) {
       const text = JSON.stringify({
         betrieb: 'X',
         kategorien: [{ id: 'a', name: 'A' }],
@@ -79,7 +83,7 @@ describe('gemeinsame Beispiele mit der App', () => {
       }
       expect(thrown).toBeInstanceOf(MenuImportError);
       expect((thrown as MenuImportError).problems).toEqual([
-        `Artikel "${id}": Die Kennung darf nicht mit "open-amount-" beginnen.`,
+        `Artikel "${id}": ${message}`,
       ]);
     }
     // Nur genau diese Kennung ist für den Gutschein vergeben.

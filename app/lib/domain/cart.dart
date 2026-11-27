@@ -336,6 +336,13 @@ class CartPricing {
   /// Summe der Gutschein-Zeilen (verkaufte Gutscheine). Steht im Warenwert.
   final int voucherSaleCents;
 
+  /// Wovon der Bon-Rabatt rechnet und woran er gekappt wird: die
+  /// Zwischensumme ohne die Gutschein-Zeilen.
+  int get discountBaseCents => _discountBase(subtotalCents, voucherSaleCents);
+
+  static int _discountBase(int subtotalCents, int voucherSaleCents) =>
+      subtotalCents - voucherSaleCents;
+
   /// Was die gewählten Gutscheine decken, in ihrer Reihenfolge; ein
   /// Gutschein, der nichts deckt, fehlt.
   final List<VoucherUse> voucherUses;
@@ -598,7 +605,8 @@ class Cart {
     for (var i = 0; i < lines.length; i++) {
       if (lines[i].isVoucherSale) voucherSale += after[i];
     }
-    final receipt = discount?.of(subtotal - voucherSale) ?? 0;
+    final receipt =
+        discount?.of(CartPricing._discountBase(subtotal, voucherSale)) ?? 0;
     // 3. Auf die Zeilen verteilt, nie auf Gutschein-Zeilen ("Pfand zurück"
     // hat Warenwert 0).
     final share = allocate(receipt, [

@@ -131,6 +131,30 @@ void main() {
     }
   });
 
+  test('Meldung nennt die vergebene Kennung wörtlich', () {
+    for (final (id, message) in [
+      (
+        'deposit-return-25',
+        'Die Kennung darf nicht mit "deposit-return-" beginnen.',
+      ),
+      ('voucher-sale', 'Die Kennung darf nicht "voucher-sale" sein.'),
+    ]) {
+      final bad =
+          '{"betrieb":"X","kategorien":[{"id":"a","name":"A"}],'
+          '"artikel":[{"id":"$id","name":"X","preis_cent":100,'
+          '"kategorie":"a","mwst":20}]}';
+      expect(
+        () => parseMenuFile(bad),
+        throwsA(
+          isA<MenuImportException>().having((e) => e.problems, 'problems', [
+            'Artikel "$id": $message',
+          ]),
+        ),
+        reason: id,
+      );
+    }
+  });
+
   test('kein JSON, fehlende Pflichtangabe, BOM', () {
     expect(
       () => parseMenuFile('hallo'),
