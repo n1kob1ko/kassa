@@ -47,18 +47,22 @@ function Comparison({ data }: { data: Overview }) {
   );
 }
 
-function Payments({ data }: { data: Overview }) {
+/** Bar und Karte; mit Gutschein bezahlt als dritte Art, nur wenn nicht 0. */
+export function OverviewPayments({ data }: { data: Overview }) {
   const cash = Math.max(0, data.cashCents);
   const card = Math.max(0, data.cardCents);
-  const total = cash + card;
+  const voucher = Math.max(0, data.voucherCents);
+  const withVoucher = data.voucherCents !== 0;
+  const total = cash + card + (withVoucher ? voucher : 0);
   const parts = [
     { key: 'cash', label: 'Bar', cents: data.cashCents, part: cash, tone: styles.cash },
     { key: 'card', label: 'Karte', cents: data.cardCents, part: card, tone: styles.cardPay },
+    ...(withVoucher ? [{ key: 'voucher', label: 'Gutschein', cents: data.voucherCents, part: voucher, tone: styles.voucherPay }] : []),
   ];
   return (
     <Card className={styles.payments} aria-labelledby="umsatz-zahlung">
       <h2 id="umsatz-zahlung" className={styles.cardTitle}>
-        Bar und Karte
+        {withVoucher ? 'Bar, Karte und Gutschein' : 'Bar und Karte'}
       </h2>
       <div className={styles.split} aria-hidden="true">
         {parts.map((p) =>
@@ -67,7 +71,7 @@ function Payments({ data }: { data: Overview }) {
           ) : null,
         )}
       </div>
-      <dl className={styles.payFigures}>
+      <dl className={styles.payFigures} data-three={withVoucher || undefined}>
         {parts.map((p) => (
           <div key={p.key} className={styles.payFigure}>
             <dt className={styles.payLabel}>
@@ -179,7 +183,7 @@ function Content({ data, refreshing }: { data: Overview; refreshing: boolean }) 
             label={data.range === 'today' ? 'Umsatz pro Stunde' : 'Umsatz pro Tag'}
           />
         </Card>
-        <Payments data={data} />
+        <OverviewPayments data={data} />
         <TopItems data={data} />
         <Categories data={data} />
       </div>

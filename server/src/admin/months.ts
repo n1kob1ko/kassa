@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
+import { DEPOSIT_RETURN_ITEM_PREFIX, VOUCHER_SALE_ITEM_ID } from '../device/push_schema.js';
 import { ApiError } from '../errors.js';
 import { loadTimeZone } from './overview.js';
 import { GROSS_COLUMNS, RATES, sumTaxLines, taxLinesOf } from './tax.js';
@@ -14,20 +15,45 @@ import { tipsByStaff } from './tips.js';
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const NOT_FOUND = 'Diese Abrechnung gibt es nicht.';
 
-/** Summen über Bons in `group by`; Verkauf zählt eins hoch, Storno eins herunter. Auch für den Tag (days.ts). */
+/**
+ * Ob ein Bon bar bzw. mit Karte bezahlt hat, aus den Spalten von receipts (mit Vorsatz `p`, etwa `r.`). `mixed` ohne
+ * Gutschein ist bar und Karte (v: 2); mit Gutschein (v: 3) zählt die Art, die einen Betrag hat. Wie `paymentKind` am Tablet.
+ */
+export const hasCash = (p = '') =>
+  `(${p}payment_kind = 'cash' or (${p}payment_kind = 'mixed' and (${p}voucher_cents = 0 or ${p}cash_cents <> 0)))`;
+export const hasCard = (p = '') =>
+  `(${p}payment_kind = 'card' or (${p}payment_kind = 'mixed' and (${p}voucher_cents = 0 or ${p}card_cents <> 0)))`;
+
+/** Umsatz eines Bons: die Summe ohne verkaufte Gutscheine (Spalten von receipts mit Vorsatz `p`). */
+export const revenueOf = (p = '') => `(${p}total_cents - ${p}voucher_sale_cents)`;
+
+/**
+ * Summe der Mengen der Zeilen eines Bons aus `receipts` (ohne Alias), deren Kennung `match` erfüllt. Nur für Bons, bei
+ * denen `guard` gilt: alte Bons haben solche Zeilen nie, für sie wird nichts gelesen.
+ */
+const lineQuantity = (guard: string, match: string) =>
+  `case when ${guard} then (select coalesce(sum(l.quantity), 0) from receipt_lines l
+     where l.business_id = receipts.business_id and l.receipt_id = receipts.id and ${match}) else 0 end`;
+
+/** Summen über Bons aus `receipts` (ohne Alias) in `group by`; Verkauf zählt eins hoch, Storno eins herunter. Auch für den Tag (days.ts). */
 export const RECEIPT_SUMS = `
   coalesce(sum(case when kind = 'voided' then -1 else 1 end), 0)::float8 as count,
   coalesce(sum(case when kind = 'voided' then 1 else 0 end), 0)::float8 as void_count,
   coalesce(-sum(total_cents) filter (where kind = 'voided'), 0)::float8 as voided,
-  coalesce(sum(total_cents), 0)::float8 as revenue,
-  coalesce(sum(case when payment_kind in ('cash', 'mixed') then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as cash_count,
-  coalesce(sum(case when payment_kind is distinct from 'cash' then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as card_count,
+  coalesce(sum(${revenueOf()}), 0)::float8 as revenue,
+  coalesce(sum(case when ${hasCash()} then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as cash_count,
+  coalesce(sum(case when payment_kind is null or ${hasCard()} then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as card_count,
   coalesce(sum(cash_cents), 0)::float8 as cash,
   coalesce(sum(card_cents), 0)::float8 as card,
   coalesce(sum(deposit_cents), 0)::float8 as deposit,
   coalesce(sum(tip_cents), 0)::float8 as tip,
   coalesce(sum(discount_cents), 0)::float8 as discount,
-  coalesce(sum(case when discount_cents <> 0 then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as discount_count`;
+  coalesce(sum(case when discount_cents <> 0 then case when kind = 'voided' then -1 else 1 end else 0 end), 0)::float8 as discount_count,
+  coalesce(sum(voucher_cents), 0)::float8 as voucher_paid,
+  coalesce(sum(voucher_sale_cents), 0)::float8 as voucher_sold,
+  coalesce(sum(${lineQuantity('voucher_sale_cents <> 0', `l.item_id = '${VOUCHER_SALE_ITEM_ID}'`)}), 0)::float8 as voucher_sold_count,
+  coalesce(-sum(deposit_return_cents), 0)::float8 as deposit_return,
+  coalesce(sum(${lineQuantity('deposit_return_cents <> 0', `starts_with(l.item_id, '${DEPOSIT_RETURN_ITEM_PREFIX}')`)}), 0)::float8 as deposit_return_count`;
 
 export type ReceiptSums = {
   count: number;
@@ -42,7 +68,26 @@ export type ReceiptSums = {
   tip: number;
   discount: number;
   discount_count: number;
+  voucher_paid: number;
+  voucher_sold: number;
+  voucher_sold_count: number;
+  deposit_return: number;
+  deposit_return_count: number;
 };
+
+/**
+ * Die Felder aus Stufe 1b, wie am Tablet (`ReceiptTally`): mit Gutschein bezahlt, verkaufte Gutscheine (Anzahl, Summe)
+ * und Pfand zurück (Stück, Summe positiv). Ein Storno zieht ab. Bons in v: 1 und v: 2 haben hier überall 0.
+ */
+export function voucherFigures(s: ReceiptSums) {
+  return {
+    voucherPaidCents: s.voucher_paid,
+    voucherSoldCount: s.voucher_sold_count,
+    voucherSoldCents: s.voucher_sold,
+    depositReturnCount: s.deposit_return_count,
+    depositReturnCents: s.deposit_return,
+  };
+}
 
 /** Die neuen Felder von Tag und Abrechnung: Rabatte, Karten-Trinkgeld und was am Kartenkonto ankommt. */
 export function paymentFigures(s: ReceiptSums, tips: { staffName: string; cents: number }[]) {
@@ -148,7 +193,8 @@ export function installMonthRoutes(app: FastifyInstance): void {
 
         const total: ReceiptSums = {
           count: 0, void_count: 0, voided: 0, revenue: 0, cash_count: 0, card_count: 0, cash: 0, card: 0, deposit: 0,
-          tip: 0, discount: 0, discount_count: 0,
+          tip: 0, discount: 0, discount_count: 0, voucher_paid: 0, voucher_sold: 0, voucher_sold_count: 0, deposit_return: 0,
+          deposit_return_count: 0,
         };
         for (const s of sums.values()) for (const k of Object.keys(total) as (keyof ReceiptSums)[]) total[k] += s[k];
         // Steuer je Monat gerechnet, dann über die Monate addiert.
@@ -164,7 +210,7 @@ export function installMonthRoutes(app: FastifyInstance): void {
           rows = (
             await c.query<{ day: string; count: number; revenue: number }>(
               `select to_char(created_at at time zone $1, 'YYYY-MM-DD') as day,
-                      sum(case when kind = 'voided' then -1 else 1 end)::float8 as count, sum(total_cents)::float8 as revenue
+                      sum(case when kind = 'voided' then -1 else 1 end)::float8 as count, sum(${revenueOf()})::float8 as revenue
                  from receipts
                 where ${COUNTED} and to_char(created_at at time zone $1, 'YYYY-MM') = $3
                 group by 1 order by 1`,
@@ -189,6 +235,7 @@ export function installMonthRoutes(app: FastifyInstance): void {
           cardRevenueCents: total.card,
           depositCents: total.deposit,
           ...paymentFigures(total, tips),
+          ...voucherFigures(total),
           taxLines,
           rows,
         };

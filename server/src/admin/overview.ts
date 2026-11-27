@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { z } from 'zod';
 import { requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
+import { DEPOSIT_RETURN_ITEM_PREFIX, VOUCHER_SALE_ITEM_ID } from '../device/push_schema.js';
 import { ApiError } from '../errors.js';
 
 // Rechnet die Zahlen der Übersicht genau wie app/lib/data/stats_repository.dart. Kalendertage gelten in der
@@ -95,16 +96,17 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           await c.query<{
             id: string;
             kind: string;
-            total_cents: number;
+            revenue_cents: number;
             deposit_cents: number;
             cash_cents: number;
             card_cents: number;
+            voucher_cents: number;
             local_day: string;
             local_hour: number;
             in_current: boolean;
             in_previous: boolean;
           }>(
-            `select id, kind, total_cents, deposit_cents, cash_cents, card_cents,
+            `select id, kind, total_cents - voucher_sale_cents as revenue_cents, deposit_cents, cash_cents, card_cents, voucher_cents,
                     to_char(created_at at time zone $1, 'YYYY-MM-DD') as local_day,
                     extract(hour from created_at at time zone $1)::int as local_hour,
                     created_at >= $2 as in_current,
@@ -119,16 +121,18 @@ export function installOverviewRoutes(app: FastifyInstance): void {
         ).rows;
 
         const current = rows.filter((r) => r.in_current);
-        const previousRevenue = rows.filter((r) => r.in_previous).reduce((s, r) => s + r.total_cents, 0);
+        // Umsatz ist überall ohne verkaufte Gutscheine: auch im Vergleich und in den Balken.
+        const previousRevenue = rows.filter((r) => r.in_previous).reduce((s, r) => s + r.revenue_cents, 0);
 
         let revenue = 0;
         let receiptCount = 0;
         let voidCount = 0;
         let cash = 0;
         let card = 0;
+        let voucher = 0;
         let deposit = 0;
         for (const r of current) {
-          revenue += r.total_cents;
+          revenue += r.revenue_cents;
           deposit += r.deposit_cents;
           if (r.kind === 'voided') {
             receiptCount -= 1;
@@ -139,6 +143,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           // Aus den Zahlungen: ein gemischter Bon zählt mit seinem Teil zu bar und mit dem Rest zur Karte.
           cash += r.cash_cents;
           card += r.card_cents;
+          voucher += r.voucher_cents;
         }
 
         // Balken
@@ -154,7 +159,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
             buckets = starts.rows.map((s) => ({
               label: String(s.h),
               start: s.start.toISOString(),
-              cents: current.filter((r) => r.local_hour === s.h).reduce((sum, r) => sum + r.total_cents, 0),
+              cents: current.filter((r) => r.local_hour === s.h).reduce((sum, r) => sum + r.revenue_cents, 0),
             }));
           }
         } else {
@@ -169,21 +174,24 @@ export function installOverviewRoutes(app: FastifyInstance): void {
             return {
               label: `${d}.${m}.`,
               start: s.start.toISOString(),
-              cents: current.filter((r) => r.local_day === s.day).reduce((sum, r) => sum + r.total_cents, 0),
+              cents: current.filter((r) => r.local_day === s.day).reduce((sum, r) => sum + r.revenue_cents, 0),
             };
           });
         }
 
         // Artikel und Kategorien aus den Zeilen. Später gesendete Bons geben den Namen vor (wie am Tablet). Der Betrag
-        // einer Zeile ist die Summe ihrer Beträge je Satz: der Wert nach Rabatt.
+        // einer Zeile ist die Summe ihrer Beträge je Satz: der Wert nach Rabatt. Gutschein-Zeilen und "Pfand zurück" sind
+        // keine Artikel: sie fehlen hier (das zurückgegebene Pfand steht in der Zeile Pfand).
         const order = new Map(current.map((r, i) => [r.id, i]));
         const lines = current.length
           ? (
               await c.query<{ receipt_id: string; item_id: string; name: string; cents: number; quantity: number }>(
                 `select receipt_id, item_id, name, quantity,
                         (gross20_cents + gross10_cents + gross13_cents + gross0_cents + gross19_cents)::float8 as cents
-                   from receipt_lines where receipt_id = any($1::uuid[]) order by position`,
-                [current.map((r) => r.id)],
+                   from receipt_lines
+                  where receipt_id = any($1::uuid[]) and item_id <> $2 and not starts_with(item_id, $3)
+                  order by position`,
+                [current.map((r) => r.id), VOUCHER_SALE_ITEM_ID, DEPOSIT_RETURN_ITEM_PREFIX],
               )
             ).rows
           : [];
@@ -231,6 +239,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
           buckets,
           cashCents: cash,
           cardCents: card,
+          voucherCents: voucher,
           topItems,
           byCategory,
         };

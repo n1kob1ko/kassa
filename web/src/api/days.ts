@@ -51,6 +51,14 @@ export type DayDetail = DayHead & {
   cardAccountCents: number;
   /** Trinkgeld auf Karte je Person, nach Name. */
   tipsByStaff: { staffName: string; cents: number }[];
+  /** Mit Gutschein bezahlt. */
+  voucherPaidCents: number;
+  /** Verkaufte Gutscheine: Anzahl und Summe; nicht im Umsatz. */
+  voucherSoldCount: number;
+  voucherSoldCents: number;
+  /** Pfand zurück: Stück und Summe, als positive Zahl. */
+  depositReturnCount: number;
+  depositReturnCents: number;
   taxLines: TaxLine[];
 };
 

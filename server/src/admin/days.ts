@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
-import { grossOf, GROSS_SUMS, paymentFigures, RECEIPT_SUMS, type ReceiptSums } from './months.js';
+import { grossOf, GROSS_SUMS, paymentFigures, RECEIPT_SUMS, revenueOf, voucherFigures, type ReceiptSums } from './months.js';
 import { taxLinesOf } from './tax.js';
 import { tipsByStaff } from './tips.js';
 
@@ -52,7 +52,7 @@ export function installDayRoutes(app: FastifyInstance): void {
       const rows = (
         await c.query<DayRow & { revenue_cents: number }>(
           `select ${COLUMNS}, coalesce(t.revenue, 0)::int as revenue_cents ${FROM}
-             left join (select business_id, business_day_id, sum(total_cents) as revenue
+             left join (select business_id, business_day_id, sum(${revenueOf()}) as revenue
                           from receipts where ${REVENUE_KINDS} group by business_id, business_day_id) t
                on t.business_id = d.business_id and t.business_day_id = d.id
             order by d.opened_at desc, d.id desc limit $1`,
@@ -112,6 +112,7 @@ export function installDayRoutes(app: FastifyInstance): void {
         voidedCents: totals.voided,
         depositCents: totals.deposit,
         ...paymentFigures(totals, tips),
+        ...voucherFigures(totals),
         taxLines: taxLinesOf(grossOf(gross)),
       };
     });

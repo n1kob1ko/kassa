@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, siteFor, type Site } from './support/admin_data.js';
 import { sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
+import { sendStufe1b } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -192,5 +193,36 @@ describe('Tage', () => {
       receiptCount: 2, revenueCents: 1595, cashCents: 990, cardCents: 605, cashReceiptCount: 1, cardReceiptCount: 1,
       discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: 605, tipsByStaff: [],
     });
+  });
+});
+
+describe('Tag mit Gutscheinen und Pfand zurück (Stufe 1b)', () => {
+  const NEW = ['voucherPaidCents', 'voucherSoldCount', 'voucherSoldCents', 'depositReturnCount', 'depositReturnCents'] as const;
+
+  test('Monat mit Gutschein-Verkauf, Gutschein-Zahlung und Pfand-Auszahlung: Umsatz ohne verkauften Gutschein, die fünf neuen Zahlen stimmen', async () => {
+    const s = await siteFor(a, provider, 'Gutscheine');
+    const fx = await sendStufe1b(a, s);
+    const d = (await detail(s, fx.day.id)).json();
+    // Jede Zahl des Tages wie die App (gemeinsame Datei stufe_1b.json).
+    for (const [k, v] of Object.entries(fx.expected.day)) expect(d[k], k).toEqual(v);
+    expect([d.revenueCents, d.cashCents, d.cardCents]).toEqual([2710, 4245, 0]);
+    expect(NEW.map((k) => d[k])).toEqual([965, 1, 2500, 3, 75]);
+    expect([d.receiptCount, d.cashReceiptCount, d.cardReceiptCount]).toEqual([4, 3, 0]);
+    expect(d.cashCents + d.cardCents + d.voucherPaidCents - d.voucherSoldCents).toBe(d.revenueCents);
+    // Die Liste der Tage rechnet den Umsatz wie das Detail.
+    expect((await list(s)).json().days.map((x: { revenueCents: number }) => x.revenueCents)).toEqual([2710]);
+  });
+
+  test('Tag nur mit Bons in v: 1 und v: 2: die fünf neuen Zahlen sind 0', async () => {
+    const s = await siteFor(a, provider, 'Alt 1b');
+    const day = sampleDay();
+    await send(a, s, [
+      ['day', day],
+      ['receipt', sampleReceipt({ businessDayId: day.id, number: 1 })],
+      ['receipt', sampleReceiptV2({ businessDayId: day.id, number: 2 })],
+    ]);
+    const d = (await detail(s, day.id)).json();
+    expect(d).toMatchObject({ receiptCount: 2, revenueCents: 2526, cashCents: 1990, cardCents: 536, cashReceiptCount: 2, cardReceiptCount: 1 });
+    expect(NEW.map((k) => d[k])).toEqual([0, 0, 0, 0, 0]);
   });
 });

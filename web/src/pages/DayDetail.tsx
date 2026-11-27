@@ -51,6 +51,21 @@ function CountFigure(props: { label: string; receipts: number; cents: number; te
   );
 }
 
+/** Eine Zahl mit einer Anzahl klein daneben, die keine Bons zählt ("1 Gutschein", "3 Stück"). */
+function NoteFigure(props: { label: string; note: string; cents: number; testId: string }) {
+  return (
+    <div className={styles.figure}>
+      <dt>
+        {props.label}{' '}
+        <span className={styles.note} data-testid={`${props.testId}-count`}>
+          {props.note}
+        </span>
+      </dt>
+      <dd data-testid={props.testId}>{money(props.cents)}</dd>
+    </div>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className={styles.detail} role="status" aria-busy="true">
@@ -117,6 +132,24 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
         <CountFigure label="Bar" receipts={d.cashReceiptCount} cents={d.cashCents} testId="cash" />
         <CountFigure label="Karte" receipts={d.cardReceiptCount} cents={d.cardCents} testId="card" />
         {d.voidCount > 0 && <CountFigure label="Storniert" receipts={d.voidCount} cents={d.voidedCents} testId="voided" quiet />}
+        {/* Wie am Tablet: Gutscheine und Pfand zurück nur, wenn es sie gibt. */}
+        {d.voucherPaidCents !== 0 && <Figure label="Mit Gutschein bezahlt" cents={d.voucherPaidCents} testId="voucher-paid" />}
+        {(d.voucherSoldCount !== 0 || d.voucherSoldCents !== 0) && (
+          <NoteFigure
+            label="Gutscheine verkauft"
+            note={count(d.voucherSoldCount, 'Gutschein', 'Gutscheine')}
+            cents={d.voucherSoldCents}
+            testId="voucher-sold"
+          />
+        )}
+        {(d.depositReturnCount !== 0 || d.depositReturnCents !== 0) && (
+          <NoteFigure
+            label="Pfand zurück"
+            note={count(d.depositReturnCount, 'Stück')}
+            cents={d.depositReturnCents}
+            testId="deposit-return"
+          />
+        )}
         {/* Wie am Tablet (income_card.dart): Rabatte mit Minus, wenn Anzahl oder Summe nicht 0 sind; der Block
             Trinkgeld, sobald jemand Trinkgeld hat, auch wenn die Summe des Tages 0 ist (Storno eines anderen Tages). */}
         {(d.discountCount !== 0 || d.discountCents !== 0) && (

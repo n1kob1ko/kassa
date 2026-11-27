@@ -220,11 +220,19 @@
   background: var(--solid);
 }
 
+.voucherPay {
+  background: var(--accent-snack);
+}
+
 .payFigures {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-xxl);
   margin: 0;
+}
+
+.payFigures[data-three] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .payFigure {

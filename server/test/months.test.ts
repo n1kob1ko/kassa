@@ -5,6 +5,7 @@ import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
 import { pairDevice } from './support/device.js';
 import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
+import { sendStufe1b, voidOfV3 } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -342,5 +343,71 @@ describe('Monate', () => {
     ]);
     expect((await list(s)).json().months).toEqual([{ month: '2026-10', receiptCount: 2, revenueCents: 1400 }]);
     expect((await summary(s, '2026-10', '2026-10')).json()).toMatchObject({ receiptCount: 2, revenueCents: 1400, cashRevenueCents: 1400 });
+  });
+});
+
+describe('Monate mit Gutscheinen und Pfand zurück (Stufe 1b)', () => {
+  const NEW = ['voucherPaidCents', 'voucherSoldCount', 'voucherSoldCents', 'depositReturnCount', 'depositReturnCents'] as const;
+  const newFigures = (body: Record<string, unknown>) => NEW.map((k) => body[k]);
+
+  test('Monat mit Gutschein-Verkauf, Gutschein-Zahlung und Pfand-Auszahlung: Umsatz ohne verkauften Gutschein, die fünf neuen Zahlen stimmen', async () => {
+    const s = await siteFor(a, provider);
+    const fx = await sendStufe1b(a, s);
+    a.now.value = new Date(fx.now);
+    const chef = await createChef(a.db, s.businessId);
+
+    const r = await summary(s, '2026-10', '2026-10', chef.cookie);
+    expect(r.statusCode).toBe(200);
+    const body = r.json();
+    // Die ganze Abrechnung wie die App (gemeinsame Datei stufe_1b.json).
+    expect(body).toEqual(fx.expected.summary);
+    // Von Hand: 18,20 + 25,00 + 9,65 − 0,75 ohne den Gutschein über 25,00.
+    expect(body.revenueCents).toBe(2710);
+    expect(newFigures(body)).toEqual([965, 1, 2500, 3, 75]);
+    expect([body.cashRevenueCents, body.cardRevenueCents]).toEqual([4245, 0]);
+    // Der Bon nur mit Gutschein zählt weder bei bar noch bei Karte.
+    expect([body.receiptCount, body.cashReceiptCount, body.cardReceiptCount]).toEqual([4, 3, 0]);
+    expect(body.cashRevenueCents + body.cardRevenueCents + body.voucherPaidCents - body.voucherSoldCents).toBe(body.revenueCents);
+    expect(body.rows).toEqual([{ key: '2026-10-14', receiptCount: 4, revenueCents: 2710 }]);
+    expect((await list(s, chef.cookie)).json().months).toEqual(fx.expected.months);
+  });
+
+  test('Storno von Gutschein-Zahlung und Pfand-Auszahlung im nächsten Monat: die neuen Zahlen ziehen ab', async () => {
+    const s = await siteFor(a, provider);
+    const fx = await sendStufe1b(a, s);
+    const [, , c, d] = fx.receipts as [unknown, unknown, Record<string, any>, Record<string, any>];
+    const at = '2026-11-02T09:00:00.000Z';
+    await send(a, s, [
+      ['receipt', voidOfV3(c, { id: randomUUID(), number: 5, createdAt: at, businessDayId: null })],
+      ['receipt', voidOfV3(d, { id: randomUUID(), number: 6, createdAt: at, businessDayId: null })],
+    ]);
+    a.now.value = new Date('2026-12-05T11:00:00.000Z');
+    const chef = await createChef(a.db, s.businessId);
+
+    const nov = (await summary(s, '2026-11', '2026-11', chef.cookie)).json();
+    expect([nov.revenueCents, nov.cashRevenueCents, nov.cardRevenueCents]).toEqual([-890, 75, 0]);
+    expect(newFigures(nov)).toEqual([-965, 0, 0, -3, -75]);
+    expect([nov.receiptCount, nov.voidCount, nov.voidedCents]).toEqual([-2, 2, 890]);
+    const both = (await summary(s, '2026-10', '2026-11', chef.cookie)).json();
+    // Übrig bleiben A (bar 18,20) und B (Gutschein über 25,00 bar verkauft).
+    expect([both.revenueCents, both.cashRevenueCents, both.cardRevenueCents]).toEqual([1820, 4320, 0]);
+    expect(newFigures(both)).toEqual([0, 1, 2500, 0, 0]);
+    expect(both.rows).toEqual([
+      { key: '2026-10', receiptCount: 4, revenueCents: 2710 },
+      { key: '2026-11', receiptCount: -2, revenueCents: -890 },
+    ]);
+  });
+
+  test('Monat nur mit Bons in v: 1 und v: 2: die alten Zahlen wie bisher, die fünf neuen 0', async () => {
+    const s = await siteFor(a, provider);
+    a.now.value = new Date('2026-12-15T12:00:00.000Z');
+    await send(a, s, [
+      ['receipt', receipt('2026-10-05T09:00:00.000Z', { number: 1 })],
+      ['receipt', sampleReceiptV2({ createdAt: '2026-10-06T09:00:00.000Z', number: 2 })],
+    ]);
+    const body = (await summary(s, '2026-10', '2026-10')).json();
+    expect(body).toMatchObject({ receiptCount: 2, revenueCents: 990 + 1536, cashRevenueCents: 990 + 1000, cardRevenueCents: 536 });
+    expect([body.cashReceiptCount, body.cardReceiptCount]).toEqual([2, 1]);
+    expect(newFigures(body)).toEqual([0, 0, 0, 0, 0]);
   });
 });

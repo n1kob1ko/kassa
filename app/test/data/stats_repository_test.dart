@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
@@ -322,5 +325,82 @@ void main() {
     expect(v.topItems, isEmpty);
     expect(v.byCategory, isEmpty);
     expect(v.buckets.map((b) => b.cents), [0]);
+  });
+  test('die gemeinsame Datei stufe_1b.json: die Zahlen des Tablets für die '
+      'vier Bons, so wie der Server sie nachrechnet', () {
+    // Die Datei schreibt test/sync/shared_fixtures_test.dart aus einer echten
+    // Datenbank; hier stehen dieselben Zahlen von Hand.
+    final file = File('../shared/fixtures/stats/stufe_1b.json');
+    final fx = jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
+    final expected = fx['expected']! as Map<String, Object?>;
+    final receipts = fx['receipts']! as List<Object?>;
+    expect([for (final r in receipts) (r! as Map)['v']], [3, 3, 3, 3]);
+    expect(
+      [for (final r in receipts) (r! as Map)['totalCents']],
+      [1820, 2500, 965, -75],
+    );
+
+    (int, int, int, int, int) newFigures(Map<String, Object?> m) => (
+      m['voucherPaidCents']! as int,
+      m['voucherSoldCount']! as int,
+      m['voucherSoldCents']! as int,
+      m['depositReturnCount']! as int,
+      m['depositReturnCents']! as int,
+    );
+    final day = expected['day']! as Map<String, Object?>;
+    final summary = expected['summary']! as Map<String, Object?>;
+    expect(
+      (day['revenueCents'], day['cashCents'], day['cardCents']),
+      (2710, 4245, 0),
+    );
+    expect(newFigures(day), (965, 1, 2500, 3, 75));
+    expect(
+      (day['receiptCount'], day['cashReceiptCount'], day['cardReceiptCount']),
+      (4, 3, 0),
+    );
+    expect(
+      (
+        summary['revenueCents'],
+        summary['cashRevenueCents'],
+        summary['cardRevenueCents'],
+      ),
+      (2710, 4245, 0),
+    );
+    expect(newFigures(summary), (965, 1, 2500, 3, 75));
+    expect(summary['rows'], [
+      {'key': '2026-10-14', 'receiptCount': 4, 'revenueCents': 2710},
+    ]);
+    expect(expected['months'], [
+      {'month': '2026-10', 'receiptCount': 4, 'revenueCents': 2710},
+    ]);
+    // Bar + Karte + mit Gutschein bezahlt − Gutscheine verkauft = Umsatz.
+    int identity(Map<String, Object?> m, String cash, String card) =>
+        (m[cash]! as int) +
+        (m[card]! as int) +
+        (m['voucherPaidCents']! as int) -
+        (m['voucherSoldCents']! as int);
+    expect(identity(day, 'cashCents', 'cardCents'), day['revenueCents']);
+    expect(
+      identity(summary, 'cashRevenueCents', 'cardRevenueCents'),
+      summary['revenueCents'],
+    );
+
+    final days30 =
+        (expected['overview']! as Map<String, Object?>)['days30']!
+            as Map<String, Object?>;
+    expect(
+      (
+        days30['revenueCents'],
+        days30['cashCents'],
+        days30['cardCents'],
+        days30['voucherCents'],
+        days30['receiptCount'],
+      ),
+      (2710, 4245, 0, 965, 4),
+    );
+    expect(
+      [for (final i in days30['topItems']! as List) (i as Map)['name']],
+      [cola.name, huhnBowl.name, teigtaschen.name],
+    );
   });
 }

@@ -30,3 +30,9 @@ test('paymentKindText und discountText', () => {
   expect(discountText({ percent: null, reason: 'staff' })).toBe('Rabatt Mitarbeiter');
   expect(discountText({ percent: null, reason: 'xyz' })).toBe('Rabatt xyz');
 });
+
+test('Filter Gutschein: in der Adresse "zahlung=gutschein"', () => {
+  expect(filterFromParams(new URLSearchParams('zahlung=gutschein'))).toEqual({ ...none, payment: 'voucher' });
+  expect(filterToParams({ ...none, payment: 'voucher' }, new URLSearchParams('')).toString()).toBe('zahlung=gutschein');
+  expect(paymentKindText('voucher')).toBe('Gutschein');
+});

@@ -40,6 +40,20 @@ function IncomeRow({
   );
 }
 
+/** Eine Zeile der Einnahmen mit einer Anzahl klein daneben, die keine Bons zählt ("1 Gutschein", "3 Stück"). */
+function NoteRow({ label, note, cents, testId }: { label: string; note: string; cents: number; testId: string }) {
+  return (
+    <div className={styles.row} data-tone="normal">
+      <dt className={styles.label}>
+        {label} <span className={styles.note} data-testid={`${testId}-count`}>{note}</span>
+      </dt>
+      <dd className={styles.amount} data-testid={testId}>
+        {money(cents)}
+      </dd>
+    </div>
+  );
+}
+
 /** Eine Zeile mit Betrag ohne Anzahl Bons; `person` eingerückt und ruhig (Trinkgeld je Person). */
 function AmountRow({ label, cents, testId, tone = 'normal' }: { label: string; cents: number; testId: string; tone?: 'normal' | 'person' }) {
   return (
@@ -146,6 +160,24 @@ export function PeriodDetailView({ period, query }: { period: Period | null; que
           <IncomeRow label="Gesamt" receipts={s.receiptCount} cents={s.revenueCents} testId="total" tone="total" />
           {s.voidCount > 0 && (
             <IncomeRow label="Storniert" receipts={s.voidCount} cents={s.voidedCents} testId="voided" tone="muted" />
+          )}
+          {/* Wie am Tablet: Gutscheine und Pfand zurück nur, wenn es sie gibt. */}
+          {s.voucherPaidCents !== 0 && <AmountRow label="Mit Gutschein bezahlt" cents={s.voucherPaidCents} testId="voucher-paid" />}
+          {(s.voucherSoldCount !== 0 || s.voucherSoldCents !== 0) && (
+            <NoteRow
+              label="Gutscheine verkauft"
+              note={count(s.voucherSoldCount, 'Gutschein', 'Gutscheine')}
+              cents={s.voucherSoldCents}
+              testId="voucher-sold"
+            />
+          )}
+          {(s.depositReturnCount !== 0 || s.depositReturnCents !== 0) && (
+            <NoteRow
+              label="Pfand zurück"
+              note={count(s.depositReturnCount, 'Stück')}
+              cents={s.depositReturnCents}
+              testId="deposit-return"
+            />
           )}
           {/* Wie am Tablet (income_card.dart): Rabatte mit Minus, wenn Anzahl oder Summe nicht 0 sind; der Block
               Trinkgeld, sobald jemand Trinkgeld hat, auch wenn die Summe 0 ist. */}

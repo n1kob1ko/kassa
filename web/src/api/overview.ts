@@ -21,6 +21,8 @@ export type Overview = {
   buckets: Bucket[];
   cashCents: number;
   cardCents: number;
+  /** Mit Gutschein bezahlt (ab App 1.12.0). */
+  voucherCents: number;
   topItems: { name: string; quantity: number; cents: number }[];
   byCategory: { name: string; cents: number }[];
 };

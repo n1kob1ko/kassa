@@ -4,7 +4,6 @@ import {
   filterFromParams,
   filterToParams,
   isFiltered,
-  paymentKindText,
   useReceipt,
   useReceipts,
   type ReceiptFilter,
@@ -23,14 +22,16 @@ import { Segmented } from '../ui/Segmented';
 import { Switch } from '../ui/Switch';
 import { BusinessName, useBusinessContext } from './BusinessLayout';
 import { ReceiptChips, ReceiptDetailView, SPECIAL_NAMES } from './ReceiptDetail';
+import { paymentKindsText } from './receipt_payments';
 import { useDetailRoute } from './useDetailRoute';
 import styles from './ReceiptsPage.module.css';
 
-type PaymentChoice = 'all' | 'cash' | 'card';
+type PaymentChoice = 'all' | 'cash' | 'card' | 'voucher';
 const PAYMENTS: { value: PaymentChoice; label: string }[] = [
   { value: 'all', label: 'Alle' },
   { value: 'cash', label: 'Bar' },
   { value: 'card', label: 'Karte' },
+  { value: 'voucher', label: 'Gutschein' },
 ];
 
 function Amount({ receipt }: { receipt: ReceiptHead }) {
@@ -169,7 +170,7 @@ export function ReceiptsPage() {
                 <span className={styles.number}>Bon {r.number}</span>{' '}
                 <span className={styles.meta}>
                   <span className={styles.time}>{timeText(new Date(r.createdAt))}</span>{' '}
-                  <span className={styles.who}>{[r.registerName, r.staffName, paymentKindText(r.paymentKind)].filter(Boolean).join(' · ')}</span>
+                  <span className={styles.who}>{[r.registerName, r.staffName, paymentKindsText(r.paymentKinds)].filter(Boolean).join(' · ')}</span>
                 </span>{' '}
                 <span className={styles.chips}>
                   <ReceiptChips receipt={r} />

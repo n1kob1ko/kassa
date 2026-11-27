@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
+import { hasCard, hasCash } from './months.js';
 import { loadTimeZone } from './overview.js';
 
 const PAGE_SIZE = 50;
@@ -37,7 +38,7 @@ function decodeMarker(raw: string): { t: string; i: string } {
 
 const listQuery = z.object({
   day: z.string().optional(),
-  payment: z.enum(['cash', 'card']).optional(),
+  payment: z.enum(['cash', 'card', 'voucher']).optional(),
   voided: z.literal('1').optional(),
   before: z.string().optional(),
 });
@@ -53,7 +54,9 @@ const VOIDED = `exists (select 1 from receipts v where v.business_id = r.busines
 const HEAD = `
   r.id, r.number, coalesce(g.name, '') as register_name, r.created_at, r.kind,
   r.payload->>'staffName' as staff_name, r.total_cents, r.payment_kind, r.is_test,
-  ${VOIDED} as voided,
+  ${VOIDED} as voided, r.voucher_cents,
+  array_remove(array[case when r.voucher_cents <> 0 then 'voucher' end, case when ${hasCash('r.')} then 'cash' end,
+                     case when ${hasCard('r.')} then 'card' end], null) as payment_kinds,
   to_char(r.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_micros`;
 const FROM = `from receipts r left join registers g on g.business_id = r.business_id and g.id = r.register_id`;
 
@@ -68,6 +71,8 @@ type HeadRow = {
   payment_kind: string | null;
   is_test: boolean;
   voided: boolean;
+  voucher_cents: number;
+  payment_kinds: string[];
   created_micros: string;
 };
 
@@ -81,6 +86,10 @@ function head(r: HeadRow) {
     staffName: r.staff_name ?? '',
     totalCents: r.total_cents,
     paymentKind: r.payment_kind,
+    /** Mit Gutschein bezahlt; 0 bei Bons vor v: 3. */
+    voucherCents: r.voucher_cents,
+    /** Alle Arten der Zahlungen des Bons, in der Reihenfolge Gutschein, bar, Karte. */
+    paymentKinds: r.payment_kinds,
     test: r.is_test,
     voided: r.voided,
   };
@@ -117,8 +126,10 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         where.push(`r.created_at >= (${d}::date::timestamp at time zone ${z})`);
         where.push(`r.created_at < ((${d}::date + 1)::timestamp at time zone ${z})`);
       }
-      // Ein gemischter Bon (bar und Karte) steht unter beiden Filtern.
-      if (q.payment) where.push(`r.payment_kind in (${add(q.payment)}, 'mixed')`);
+      // Ein Bon steht unter jeder Art, mit der er bezahlt ist: ein gemischter (bar und Karte) unter beiden.
+      if (q.payment === 'cash') where.push(hasCash('r.'));
+      if (q.payment === 'card') where.push(hasCard('r.'));
+      if (q.payment === 'voucher') where.push('r.voucher_cents <> 0');
       // Beide Hälften eines Paars: der Storno-Bon und der Verkauf, auf den er sich bezieht.
       if (q.voided) where.push(`(r.kind = 'voided' or ${VOIDED})`);
       if (before) {
@@ -157,13 +168,15 @@ export function installReceiptRoutes(app: FastifyInstance): void {
             voided_by: string | null;
             payments: Record<string, unknown>[] | null;
             payment: Record<string, unknown> | null;
+            vouchers: { code: string; valueCents: number; linePosition: number }[] | null;
             discount: Discount | null;
             tip_cents: number;
             discount_cents: number;
           }
         >(
           `select ${HEAD}, r.goods_cents, r.deposit_cents, r.voids_receipt_id, r.tip_cents, r.discount_cents,
-                  r.payload->'payments' as payments, r.payload->'payment' as payment, r.payload->'discount' as discount,
+                  r.payload->'payments' as payments, r.payload->'payment' as payment, r.payload->'vouchers' as vouchers,
+                  r.payload->'discount' as discount,
                   (select v.id from receipts v where v.business_id = r.business_id and v.voids_receipt_id = r.id and v.kind = 'voided'
                     order by v.created_at, v.id limit 1) as voided_by
              ${FROM} where r.id = $1`,
@@ -236,7 +249,12 @@ export function installReceiptRoutes(app: FastifyInstance): void {
           providerTxCode: p.providerTxCode ?? null,
           cardScheme: p.cardScheme,
           cardLast4: p.cardLast4,
+          // Ab v: 3 bei einer Gutschein-Zahlung: Code und was danach am Gutschein blieb. Die Kennung bleibt am Server.
+          voucherCode: p.voucherCode ?? null,
+          voucherBalanceAfterCents: p.voucherBalanceAfterCents ?? null,
         })),
+        // Die auf diesem Bon verkauften Gutscheine (ab v: 3), beim Storno mit negativem Wert.
+        vouchers: (r.vouchers ?? []).map((v) => ({ code: v.code, valueCents: v.valueCents, linePosition: v.linePosition })),
         tipCents: r.tip_cents,
         discountCents: r.discount_cents,
         discount: discountOf(r.discount),

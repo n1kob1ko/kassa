@@ -4,6 +4,9 @@ import { OVERVIEW_REFRESH_MS } from './overview';
 
 export type ReceiptKind = 'sale' | 'voided' | 'start' | 'month' | 'year' | 'zero' | 'collective' | 'closing';
 
+/** Die Arten einer Zahlung. */
+export type PaymentKind = 'voucher' | 'cash' | 'card';
+
 /** Eine Zeile von `GET /api/admin/businesses/:b/receipts`. */
 export type ReceiptHead = {
   id: string;
@@ -13,8 +16,12 @@ export type ReceiptHead = {
   kind: ReceiptKind;
   staffName: string;
   totalCents: number;
-  /** `mixed`: ein Teil bar, der Rest mit Karte. */
-  paymentKind: 'cash' | 'card' | 'mixed' | null;
+  /** `mixed`: mehr als eine Art (bar und Karte, oder Gutschein und bar oder Karte). Alle Arten in `paymentKinds`. */
+  paymentKind: PaymentKind | 'mixed' | null;
+  /** Mit Gutschein bezahlt; 0 bei Bons vor App 1.12.0. */
+  voucherCents: number;
+  /** Alle Arten der Zahlungen, in der Reihenfolge Gutschein, bar, Karte; ohne Zahlung leer. */
+  paymentKinds: PaymentKind[];
   test: boolean;
   /** Ein Verkauf, den ein Storno-Bon storniert hat. */
   voided: boolean;
@@ -53,7 +60,13 @@ export type Payment = {
   providerTxCode: string | null;
   cardScheme: string | null;
   cardLast4: string | null;
+  /** Bei einer Gutschein-Zahlung: der Code (8 Ziffern) und was danach am Gutschein blieb. */
+  voucherCode: string | null;
+  voucherBalanceAfterCents: number | null;
 };
+
+/** Ein auf dem Bon verkaufter Gutschein; am Storno-Bon mit negativem Wert. */
+export type SoldVoucher = { code: string; valueCents: number; linePosition: number };
 
 /** Antwort von `GET …/receipts/:id`. Die Signatur selbst (JWS, Zertifikat) kommt nie mit, nur ihr Zustand. */
 export type ReceiptDetail = ReceiptHead & {
@@ -62,6 +75,8 @@ export type ReceiptDetail = ReceiptHead & {
   lines: ReceiptLine[];
   /** Nach Stelle; ein Bon aus App 1.10.0 hat eine Zahlung an Stelle 0. */
   payments: Payment[];
+  /** Die verkauften Gutscheine, nach Zeile. */
+  vouchers: SoldVoucher[];
   tipCents: number;
   /** Summe aller Rabatte des Bons, positiv. */
   discountCents: number;
@@ -72,7 +87,7 @@ export type ReceiptDetail = ReceiptHead & {
   rksv: { cashBoxId: string | null; damaged: boolean; probe: boolean } | null;
 };
 
-const PAYMENT_KIND_TEXTS = { cash: 'Bar', card: 'Karte', mixed: 'Bar + Karte' } as const;
+const PAYMENT_KIND_TEXTS = { cash: 'Bar', card: 'Karte', voucher: 'Gutschein', mixed: 'Bar + Karte' } as const;
 
 /** Die Zahlungsart in Worten; ohne Zahlung (Sonderbeleg) leer. */
 export function paymentKindText(kind: ReceiptHead['paymentKind']): string {
@@ -95,16 +110,16 @@ export function discountText(d: { percent: number | null; reason: string }): str
 }
 
 /** Die Filter der Liste, so wie der Server sie liest. `null` heißt: nicht gefiltert. */
-export type ReceiptFilter = { day: string | null; payment: 'cash' | 'card' | null; voidedOnly: boolean };
+export type ReceiptFilter = { day: string | null; payment: PaymentKind | null; voidedOnly: boolean };
 
 /** In der Adresse stehen die Filter deutsch (`?tag=2026-11-19&zahlung=karte&stornos=1`), Vorgaben gar nicht. */
 const PARAMS = { day: 'tag', payment: 'zahlung', voided: 'stornos' } as const;
-const PAYMENT_WORDS = { cash: 'bar', card: 'karte' } as const;
+const PAYMENT_WORDS = { cash: 'bar', card: 'karte', voucher: 'gutschein' } as const;
 
 export function filterFromParams(params: URLSearchParams): ReceiptFilter {
   const day = params.get(PARAMS.day);
   const word = params.get(PARAMS.payment);
-  const payment = word === PAYMENT_WORDS.cash ? 'cash' : word === PAYMENT_WORDS.card ? 'card' : null;
+  const payment = (Object.keys(PAYMENT_WORDS) as PaymentKind[]).find((k) => PAYMENT_WORDS[k] === word) ?? null;
   return {
     day: day !== null && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null,
     payment,

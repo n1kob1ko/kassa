@@ -3,7 +3,6 @@ import { Link, type To } from 'react-router';
 import type { ApiError } from '../api/client';
 import {
   discountText,
-  paymentKindText,
   useReceipt,
   type Payment as PaymentData,
   type ReceiptDetail,
@@ -15,6 +14,7 @@ import { dateText, money, timeText } from '../format';
 import { Button } from '../ui/Button';
 import { ChevronRightIcon } from '../ui/icons';
 import { StatusChip } from '../ui/StatusChip';
+import { paymentKindsText, voucherCodeText } from './receipt_payments';
 import styles from './ReceiptDetail.module.css';
 
 type LinkTarget = { to: To; state: unknown };
@@ -102,11 +102,34 @@ function PairLink({
   );
 }
 
+/** Eine Gutschein-Zahlung: "Gutschein 1234 5678" mit Betrag, darunter das Restguthaben, wie am Bon des Tablets. */
+function VoucherPayment({ p }: { p: PaymentData }) {
+  return (
+    <dl className={styles.figures} data-testid={`payment-${p.position}`}>
+      <div className={styles.figure}>
+        <dt>Zahlungsart</dt>
+        <dd data-testid="payment-kind">Gutschein</dd>
+      </div>
+      <div className={styles.figure}>
+        <dt data-testid="voucher-label">{p.voucherCode ? `Gutschein ${voucherCodeText(p.voucherCode)}` : 'Gutschein'}</dt>
+        <dd data-testid="voucher-amount">{money(p.amountCents)}</dd>
+      </div>
+      {p.voucherBalanceAfterCents !== null && (
+        <div className={styles.figure}>
+          <dt>Restguthaben</dt>
+          <dd data-testid="voucher-balance">{money(p.voucherBalanceAfterCents)}</dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
 /**
  * Eine Zahlung des Bons: Art, bei mehreren oder mit Trinkgeld der Betrag (bei Karte mit Trinkgeld, so wie ihn das
  * Terminal gebucht hat, darunter "davon Trinkgeld"), bei Karte Karte und Kennung, bei bar Gegeben und Rückgeld.
  */
 function Payment({ receipt, p, several }: { receipt: ReceiptDetail; p: PaymentData; several: boolean }) {
+  if (p.kind === 'voucher') return <VoucherPayment p={p} />;
   const card = p.kind === 'card';
   const tip = card ? p.tipCents : 0;
   const cardText = [p.cardScheme, p.cardLast4 ? `endet auf ${p.cardLast4}` : null].filter(Boolean).join(', ');
@@ -159,20 +182,40 @@ function Payment({ receipt, p, several }: { receipt: ReceiptDetail; p: PaymentDa
   );
 }
 
-/** Alle Zahlungen des Bons nach Stelle; bei mehreren steht die Zahlungsart des Bons darüber ("Bar + Karte"). */
+/** Alle Zahlungen des Bons nach Stelle; bei mehreren steht die Zahlungsart des Bons darüber ("Gutschein + Bar"). */
 function Payments({ receipt }: { receipt: ReceiptDetail }) {
   if (receipt.payments.length === 0) return null;
   const several = receipt.payments.length > 1;
   return (
     <section className={styles.section} aria-labelledby="bon-zahlung">
       <h3 id="bon-zahlung" className={styles.sectionTitle}>
-        {several ? `Zahlungen · ${paymentKindText(receipt.paymentKind)}` : 'Zahlung'}
+        {several ? `Zahlungen · ${paymentKindsText(receipt.paymentKinds)}` : 'Zahlung'}
       </h3>
       <div className={styles.payments}>
         {receipt.payments.map((p) => (
           <Payment key={p.position} receipt={receipt} p={p} several={several} />
         ))}
       </div>
+    </section>
+  );
+}
+
+/** Die auf dem Bon verkauften Gutscheine mit Code und Wert. */
+function SoldVouchers({ receipt }: { receipt: ReceiptDetail }) {
+  if (receipt.vouchers.length === 0) return null;
+  return (
+    <section className={styles.section} aria-labelledby="bon-gutscheine">
+      <h3 id="bon-gutscheine" className={styles.sectionTitle}>
+        {receipt.vouchers.length === 1 ? 'Verkaufter Gutschein' : 'Verkaufte Gutscheine'}
+      </h3>
+      <dl className={styles.figures}>
+        {receipt.vouchers.map((v) => (
+          <div key={v.linePosition} className={styles.figure}>
+            <dt data-testid="sold-voucher">Gutschein {voucherCodeText(v.code)}</dt>
+            <dd data-testid="sold-voucher-value">{money(v.valueCents)}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
@@ -272,6 +315,8 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
       </div>
 
       <Payments receipt={r} />
+
+      <SoldVouchers receipt={r} />
 
       {signature && (
         <section className={styles.section} aria-labelledby="bon-signatur">

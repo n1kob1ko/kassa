@@ -5,6 +5,7 @@ import { withBusiness } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, setTimeZone, siteFor } from './support/admin_data.js';
 import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
+import { sendStufe1b } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -328,5 +329,36 @@ describe('Umsätze', () => {
     expect((await overview(s2.businessId, 'today')).json().revenueCents).toBe(0);
     const anonymous = await a.app.inject({ method: 'GET', url: `/api/admin/businesses/${s1.businessId}/overview?range=today` });
     expect(anonymous.statusCode).toBe(401);
+  });
+});
+
+describe('Umsätze mit Gutscheinen und Pfand zurück (Stufe 1b)', () => {
+  test('Gutschein und Pfand zurück stehen nicht bei meistverkauft', async () => {
+    const s = await siteFor(a, provider);
+    const fx = await sendStufe1b(a, s);
+    const chef = await createChef(a.db, s.businessId);
+    a.now.value = new Date(fx.now);
+    const fields = ['revenueCents', 'previousRevenueCents', 'receiptCount', 'voidCount', 'buckets', 'cashCents', 'cardCents', 'voucherCents', 'topItems', 'byCategory'];
+    for (const range of ['today', 'days7', 'days30']) {
+      const body = (await overview(s.businessId, range, chef.cookie)).json();
+      for (const k of fields) expect(body[k], `${range}.${k}`).toEqual(fx.expected.overview[range]![k]);
+    }
+    const days30 = (await overview(s.businessId, 'days30', chef.cookie)).json();
+    // Von Hand: Umsatz ohne den Gutschein über 25,00; bar 18,20 + 25,00 − 0,75; mit Gutschein bezahlt 9,65.
+    expect(days30).toMatchObject({ revenueCents: 2710, cashCents: 4245, cardCents: 0, voucherCents: 965, receiptCount: 4 });
+    expect(days30.topItems.map((i: { name: string }) => i.name)).toEqual(['Cola 0,33 l', 'Huhn Bowl', 'Teigtaschen']);
+    expect(days30.byCategory.map((c: { name: string }) => c.name)).not.toContain('Sonstiges');
+    expect(days30.byCategory.reduce((sum: number, c: { cents: number }) => sum + c.cents, 0)).toBe(days30.revenueCents);
+    expect(days30.buckets.reduce((sum: number, b: { cents: number }) => sum + b.cents, 0)).toBe(days30.revenueCents);
+    // Eine Woche später steht der Tag im Vergleich: auch dort ohne den verkauften Gutschein.
+    a.now.value = new Date('2026-10-21T12:00:00.000Z');
+    expect((await overview(s.businessId, 'days7', chef.cookie)).json()).toMatchObject({ revenueCents: 0, previousRevenueCents: 2710, voucherCents: 0 });
+  });
+
+  test('ohne Gutschein ist voucherCents 0', async () => {
+    const s = await siteFor(a, provider);
+    a.now.value = new Date('2026-11-19T12:00:00.000Z');
+    await send(a, s, [['receipt', sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z' })]]);
+    expect((await overview(s.businessId, 'today')).json()).toMatchObject({ revenueCents: 1536, cashCents: 1000, cardCents: 536, voucherCents: 0 });
   });
 });

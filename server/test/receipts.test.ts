@@ -4,6 +4,7 @@ import { withBusiness } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { allKeys, createProvider, FORBIDDEN_KEYS, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
 import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
+import { sendStufe1b } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 let a: TestApp;
@@ -253,6 +254,74 @@ describe('Bons', () => {
     for (const url of [`/api/admin/businesses/${s.businessId}/receipts`, `/api/admin/businesses/${s.businessId}/receipts/${r.id}`]) {
       const keys = allKeys((await get(url)).json());
       expect([...keys].filter((k) => FORBIDDEN_KEYS.includes(k))).toEqual([]);
+    }
+  });
+});
+
+describe('Bons mit Gutscheinen (Stufe 1b)', () => {
+  test('Filter voucher zeigt nur Bons mit Gutschein-Zahlung; das Detail trägt Code und Restguthaben', async () => {
+    const s = await siteFor(a, provider);
+    const fx = await sendStufe1b(a, s);
+    const [cash, sold, paid, payout] = fx.receipts as Record<string, any>[] as [Record<string, any>, Record<string, any>, Record<string, any>, Record<string, any>];
+    // Dazu ein Bon mit Gutschein und bar und sein Storno: beide stehen unter dem Filter, auch unter bar, nicht unter Karte.
+    const voucherId = paid.payments[0].voucherId;
+    const code = paid.payments[0].voucherCode;
+    const mixedPayments = [
+      { ...paid.payments[0], position: 0, amountCents: 500, givenCents: 500, voucherBalanceAfterCents: 1035 },
+      { ...cash.payments[0], position: 1, amountCents: 465, givenCents: 500, changeCents: 35 },
+    ];
+    const mixed = { ...paid, id: randomUUID(), number: 5, createdAt: '2026-10-14T11:00:00.000Z', publicToken: null, payments: mixedPayments };
+    await send(a, s, [['receipt', mixed]]);
+
+    const ids = async (q: string) => (await list(s, q)).json().receipts.map((r: { id: string }) => r.id);
+    expect(await ids('?payment=voucher')).toEqual([mixed.id, paid.id]);
+    expect(await ids('?payment=cash')).toEqual([mixed.id, payout.id, sold.id, cash.id]);
+    expect(await ids('?payment=card')).toEqual([]);
+
+    const rows = (await list(s)).json().receipts as Record<string, unknown>[];
+    expect(rows.map((r) => [r.number, r.paymentKind, r.voucherCents, r.paymentKinds])).toEqual([
+      [5, 'mixed', 500, ['voucher', 'cash']],
+      [4, 'cash', 0, ['cash']],
+      [3, 'voucher', 965, ['voucher']],
+      [2, 'cash', 0, ['cash']],
+      [1, 'cash', 0, ['cash']],
+    ]);
+
+    const detail = async (id: string) => (await get(`/api/admin/businesses/${s.businessId}/receipts/${id}`)).json();
+    const p = await detail(paid.id);
+    expect(p).toMatchObject({ paymentKind: 'voucher', voucherCents: 965, paymentKinds: ['voucher'], vouchers: [] });
+    expect(p.payments).toEqual([{
+      position: 0, kind: 'voucher', amountCents: 965, givenCents: 965, changeCents: 0, tipCents: 0, tipStaffName: null,
+      provider: null, providerTxCode: null, cardScheme: null, cardLast4: null,
+      voucherCode: code, voucherBalanceAfterCents: 1535,
+    }]);
+    // Nie die Kennung des Gutscheins in der Zahlung.
+    expect(JSON.stringify(p)).not.toContain(voucherId);
+    const m = await detail(mixed.id);
+    expect(m.payments.map((x: Record<string, unknown>) => [x.kind, x.amountCents, x.voucherCode, x.voucherBalanceAfterCents])).toEqual([
+      ['voucher', 500, code, 1035],
+      ['cash', 465, null, null],
+    ]);
+    // Der verkaufte Gutschein mit Wert und Code.
+    const v = await detail(sold.id);
+    expect(v.vouchers).toEqual([{ code, valueCents: 2500, linePosition: 0 }]);
+    expect(v.voucherCents).toBe(0);
+  });
+
+  test('Bon in v: 1 und v: 2: voucherCents 0, keine verkauften Gutscheine, Zahlungen ohne Code', async () => {
+    const s = await siteFor(a, provider);
+    const v1 = bon('2026-11-19T08:00:00.000Z', { number: 1 });
+    const v2 = sampleReceiptV2({ createdAt: '2026-11-19T09:00:00.000Z', number: 2 });
+    await send(a, s, [['receipt', v1], ['receipt', v2]]);
+    expect(((await list(s)).json().receipts as Record<string, unknown>[]).map((r) => [r.voucherCents, r.paymentKinds])).toEqual([
+      [0, ['cash', 'card']],
+      [0, ['cash']],
+    ]);
+    expect(await (async () => (await list(s, '?payment=voucher')).json().receipts)()).toEqual([]);
+    for (const id of [v1.id, v2.id]) {
+      const d = (await get(`/api/admin/businesses/${s.businessId}/receipts/${id}`)).json();
+      expect(d.vouchers).toEqual([]);
+      for (const p of d.payments) expect([p.voucherCode, p.voucherBalanceAfterCents]).toEqual([null, null]);
     }
   });
 });

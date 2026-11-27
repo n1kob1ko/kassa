@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' show Random;
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show Value;
@@ -14,6 +15,7 @@ import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/period_report.dart';
+import 'package:kassa/domain/pricing.dart' show TaxLine;
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/domain/stats.dart';
@@ -22,6 +24,7 @@ import 'package:kassa/sync/push_wire.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/sales.dart';
+import '../support/voucher_deposit_day.dart';
 
 const _anna = Staff(id: 'anna', name: 'Anna', role: StaffRole.staff);
 const _chefin = Staff(id: 'chefin', name: 'Chefin', role: StaffRole.chef);
@@ -743,4 +746,182 @@ void main() {
     );
     _checkFile('rksv/dep.json', content);
   });
+  test(
+    'Stufe 1b: die Beispieldatei stufe_1b.json (Barbon, Gutschein-Verkauf, '
+    'Gutschein-Zahlung, Pfand zurück) stimmt mit der Rechnung der App',
+    () async {
+      // Fester Zufall: derselbe Schlüssel der Seite und derselbe Code bei
+      // jedem Lauf. Eigener Samen, denn der Schlüssel gilt am Server über
+      // alle Betriebe.
+      await shop.close();
+      shop = await TestShop.open(random: Random(71215));
+      final at = DateTime(2026, 10, 14, 10);
+      final now = DateTime(2026, 11, 2, 12);
+      final dayId = _id('dddddddd', 1);
+      final ids = [for (var i = 1; i <= 4; i++) _id('b1b1b1b1', i)];
+      await shop.insertDay(dayId, DateTime(2026, 10, 14, 8));
+      shop.clock.value = at;
+      await sellVoucherDepositDay(shop, ids: ids);
+      expect(await shop.count('receipts'), 4);
+
+      // Die Kennungen des Gutscheins und der Mitarbeiterin würfelt die App:
+      // in der Datei stehen feste.
+      final voucherId = (await shop.vouchers.soldOn(ids[1])).single.id;
+      final fixed = {voucherId: _id('cccccccc', 1), shop.anna.id: 'anna'};
+      Object? normalize(Object? v) => switch (v) {
+        final String s => fixed[s] ?? s,
+        final List<Object?> l => [for (final x in l) normalize(x)],
+        final Map<String, Object?> m => {
+          for (final e in m.entries) e.key: normalize(e.value),
+        },
+        _ => v,
+      };
+
+      final day = (await shop.days.summary())!;
+      List<Map<String, Object?>> taxJson(List<TaxLine> lines) => [
+        for (final t in lines)
+          {
+            'percent': t.rate.percent,
+            'grossCents': t.grossCents,
+            'netCents': t.netCents,
+            'taxCents': t.taxCents,
+          },
+      ];
+      final dayJson = <String, Object?>{
+        'receiptCount': day.receiptCount,
+        'revenueCents': day.revenueCents,
+        'cashCents': day.cashRevenueCents,
+        'cardCents': day.cardRevenueCents,
+        'cashReceiptCount': day.cashReceiptCount,
+        'cardReceiptCount': day.cardReceiptCount,
+        'voidCount': day.voidCount,
+        'voidedCents': day.voidedCents,
+        'depositCents': day.depositCents,
+        'discountCount': day.discountCount,
+        'discountCents': day.discountCents,
+        'cardTipCents': day.cardTipCents,
+        'cardAccountCents': day.cardAccountCents,
+        'tipsByStaff': [
+          for (final x in day.tipsByStaff)
+            {'staffName': x.staffName, 'cents': x.cents},
+        ],
+        'taxLines': taxJson(day.taxLines),
+        'voucherPaidCents': day.voucherPaidCents,
+        'voucherSoldCount': day.voucherSoldCount,
+        'voucherSoldCents': day.voucherSoldCents,
+        'depositReturnCount': day.depositReturnCount,
+        'depositReturnCents': day.depositReturnCents,
+      };
+
+      shop.clock.value = now;
+      final month = YearMonth(2026, 10);
+      final choice = await shop.periods.choice();
+      expect(choice.first, month);
+      expect(choice.last, month);
+      final r = await shop.periods.report(MonthRange(month, month));
+      final usedItems = {
+        for (final id in ids)
+          for (final l in (await shop.receipts.byId(id)).lines) l.itemId,
+      };
+      Future<Map<String, Object?>> overviewJson(StatsRange range) async {
+        final o = await shop.stats.overview(range);
+        return {..._overviewJson(o), 'voucherCents': o.voucherCents};
+      }
+
+      final content = <String, Object?>{
+        'now': _iso(now),
+        'timeZone': 'UTC',
+        'categories': [
+          for (final c in catalog.categories)
+            {'id': c.id, 'name': c.name, 'position': c.position},
+        ],
+        'items': [
+          for (final i in catalog.items)
+            if (usedItems.contains(i.id))
+              {
+                'id': i.id,
+                'name': i.name,
+                'priceCents': i.priceCents,
+                'categoryId': i.categoryId,
+                'taxPercent': i.taxRate.percent,
+                'depositCents': i.depositCents,
+              },
+        ],
+        'day': normalize(
+          (await PushPayloads(
+            shop.db,
+          ).build(OutboxEntry(id: 1, kind: 'day', ref: dayId, rev: 0)))!['day'],
+        ),
+        'receipts': [for (final id in ids) normalize(await payloadOf(id))]
+          ..sort(
+            (a, b) => ((a! as Map)['number'] as int).compareTo(
+              (b! as Map)['number'] as int,
+            ),
+          ),
+        'expected': {
+          'day': dayJson,
+          'overview': {
+            'today': await overviewJson(StatsRange.today),
+            'days7': await overviewJson(StatsRange.days7),
+            'days30': await overviewJson(StatsRange.days30),
+          },
+          'months': [
+            {
+              'month': month.key,
+              'receiptCount': r.receiptCount,
+              'revenueCents': r.revenueCents,
+            },
+          ],
+          'summary': {
+            'from': month.key,
+            'to': month.key,
+            'testMode': r.testMode,
+            'receiptCount': r.receiptCount,
+            'cashReceiptCount': r.cashReceiptCount,
+            'cardReceiptCount': r.cardReceiptCount,
+            'voidCount': r.voidCount,
+            'voidedCents': r.voidedCents,
+            'revenueCents': r.revenueCents,
+            'cashRevenueCents': r.cashRevenueCents,
+            'cardRevenueCents': r.cardRevenueCents,
+            'depositCents': r.depositCents,
+            'discountCount': r.discountCount,
+            'discountCents': r.discountCents,
+            'cardTipCents': r.cardTipCents,
+            'cardAccountCents': r.cardAccountCents,
+            'tipsByStaff': [
+              for (final x in r.tipsByStaff)
+                {'staffName': x.staffName, 'cents': x.cents},
+            ],
+            'taxLines': taxJson(r.taxLines),
+            'voucherPaidCents': r.voucherPaidCents,
+            'voucherSoldCount': r.voucherSoldCount,
+            'voucherSoldCents': r.voucherSoldCents,
+            'depositReturnCount': r.depositReturnCount,
+            'depositReturnCents': r.depositReturnCents,
+            'rows': [
+              for (final row in r.rows)
+                {
+                  'key':
+                      '${row.start.year}-'
+                      '${row.start.month.toString().padLeft(2, '0')}-'
+                      '${row.start.day.toString().padLeft(2, '0')}',
+                  'receiptCount': row.receiptCount,
+                  'revenueCents': row.revenueCents,
+                },
+            ],
+          },
+        },
+      };
+      // Die Bons sind in der Form v: 3, mit Gutschein und Pfand zurück.
+      final receipts = content['receipts']! as List;
+      expect([for (final x in receipts) (x! as Map)['v']], [3, 3, 3, 3]);
+      _checkFile('stats/stufe_1b.json', content);
+    },
+    skip: DateTime.now().timeZoneOffset == Duration.zero
+        ? false
+        : 'Dieser Test braucht ein Gerät in UTC (die Beispieldatei sagt '
+              '"timeZone": "UTC"). GitHub und die Entwicklungsumgebung laufen '
+              'in UTC.',
+  );
 }

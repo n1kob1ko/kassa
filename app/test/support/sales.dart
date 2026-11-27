@@ -2,6 +2,8 @@
 // Mitarbeiter Anna (Rolle staff) und Chef (Rolle chef). Spätere Tests
 // erweitern die Klasse um ihre Repositories.
 
+import 'dart:math' show Random;
+
 import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:kassa/core/clock.dart';
@@ -67,7 +69,9 @@ class TestShop {
   final Staff anna;
   final Staff chef;
 
-  static Future<TestShop> open() async {
+  /// [random] geht an das [ReceiptRepository] (Schlüssel der Seite, Codes
+  /// der Gutscheine); ohne ist es dessen Vorgabe.
+  static Future<TestShop> open({Random? random}) async {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
     final db = KassaDatabase(NativeDatabase.memory());
     final clock = FixedClock(DateTime(2026, 11, 17, 11));
@@ -85,7 +89,7 @@ class TestShop {
       role: StaffRole.chef,
     );
     final days = DayRepository(db, clock);
-    final receipts = ReceiptRepository(db, clock, days);
+    final receipts = ReceiptRepository(db, clock, days, random: random);
     final stats = StatsRepository(db, clock);
     final periods = PeriodReportRepository(db, clock);
     return TestShop._(
