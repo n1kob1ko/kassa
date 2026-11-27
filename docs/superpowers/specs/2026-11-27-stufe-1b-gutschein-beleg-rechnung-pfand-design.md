@@ -112,9 +112,9 @@ In den Einstellungen der Kassa (nur Chef), Abschnitt "Zahlen" bekommt drei Schal
 | Pfand zurück | aus, alle, nur Chef | aus |
 | Gutschein | aus, an | aus |
 | Rechnung an Firma | aus, an | aus |
-| Kundenbon | immer drucken, digital und Druck auf Wunsch | immer drucken |
+| Kundenbon | immer drucken, drucken und digital, digital und Druck auf Wunsch | immer drucken |
 
-"Nur Chef" wirkt wie in 1a: Für Mitarbeiter fehlt die Taste, eine PIN-Abfrage mitten im Ablauf gibt es nicht. "Digital und Druck auf Wunsch" lässt sich nur wählen, wenn die Kassa mit dem Server gekoppelt ist; sonst ist die Wahl grau und sagt, warum.
+"Nur Chef" wirkt wie in 1a: Für Mitarbeiter fehlt die Taste, eine PIN-Abfrage mitten im Ablauf gibt es nicht. Die zwei digitalen Werte lassen sich nur wählen, wenn die Kassa mit dem Server gekoppelt ist; sonst sind sie grau und sagen, warum.
 
 **Kopf der Bon-Spalte.** Dort können jetzt bis zu drei Dinge stehen: "Freier Betrag", "Pfand zurück", "Gutschein". Regel: Darf die angemeldete Person genau eines davon, steht dessen Taste dort wie heute. Darf sie zwei oder drei, steht dort eine Taste "Mehr"; sie öffnet in der Bon-Spalte ein Blatt mit einer großen Taste je Funktion. So bleibt eine Kassa, die nur den freien Betrag nutzt, genau wie in 1.11.0.
 
@@ -153,7 +153,7 @@ Ablauf (Blatt in der Bon-Spalte beziehungsweise im Detail):
 Regeln:
 
 - Der Empfänger wird als eigener Eintrag zum Bon gespeichert, mit einer Kopie von Name, Adresse und UID. Ändert jemand später den Firmenkunden, bleiben alte Rechnungen, wie sie waren. Der Bon selbst und seine Signatur ändern sich nicht.
-- Die Rechnung ist derselbe Beleg: gleiche Bon-Nummer, gleicher QR-Code. Über den Zeilen steht "Rechnung" und der Block "An: Name, Adresse, UID". Die Bon-Nummer ist die Rechnungsnummer. Netto und Steuer je Satz und die UID des Betriebs stehen schon heute am Bon.
+- Die Rechnung ist derselbe Beleg: gleiche Bon-Nummer, gleicher QR-Code. Über den Zeilen steht "Rechnung" und der Block "An: Name, Adresse, UID". Die Rechnungsnummer ist die Kassen-ID mit der Bon-Nummer ("Rechnung Nr. KASSA-1 / 1042"), weil Bon-Nummern je Kassa zählen. Netto und Steuer je Satz und die UID des Betriebs stehen schon heute am Bon.
 - Ein Empfänger lässt sich korrigieren (Tippfehler). Jede Fassung bleibt gespeichert; es gilt die letzte.
 - Liegt die Summe über 400 €, zeigt "Verkauf fertig" einen ruhigen Hinweis: "Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden."
 - Firmenkunden und Empfänger gehen zum Server. Im Browser gibt es eine Seite "Firmenkunden" (anlegen, ändern, archivieren); im Detail eines Bons steht der Empfänger. Änderungen kommen wie bei den Artikeln auf alle Tablets des Betriebs.
@@ -161,9 +161,9 @@ Regeln:
 
 ### 5.4 Digitaler Beleg
 
-**Die Seite.** Jeder Bon ab dieser Version bekommt am Tablet beim Abschließen einen zufälligen Schlüssel (mindestens 128 Bit). Der Server zeigt unter `/b/<Schlüssel>` den Bon als Seite: Betrieb, Zeilen, Rabatte, Steuer je Satz, Zahlungen, QR-Code der Signatur, gegebenenfalls Rechnungsempfänger und "storniert am …". Die Seite braucht keine Anmeldung, setzt keine Cookies, ist für Suchmaschinen gesperrt, lässt sich drucken und passt aufs Handy. Wer den Schlüssel nicht kennt, findet nichts: Ein falscher Schlüssel gibt dieselbe Antwort wie ein unbekannter, und die Adresse ist gegen Durchprobieren gebremst. Bons aus älteren Versionen haben keine Seite. Die Seite bleibt abrufbar, solange der Server den Bon hat.
+**Die Seite.** Jeder Bon ab dieser Version bekommt am Tablet beim Abschließen einen zufälligen Schlüssel (mindestens 128 Bit). Der Server zeigt unter `/b/<Schlüssel>` den Bon als Seite: Betrieb, Zeilen, Rabatte, Steuer je Satz, Zahlungen, QR-Code der Signatur, gegebenenfalls Rechnungsempfänger und "storniert am …". Die Seite braucht keine Anmeldung, setzt keine Cookies, ist für Suchmaschinen gesperrt, lässt sich drucken und passt aufs Handy. Wer den Schlüssel nicht kennt, findet nichts: Ein falscher Schlüssel gibt dieselbe Antwort wie ein unbekannter, und die Adresse ist gegen Durchprobieren gebremst. Bons aus älteren Versionen haben keine Seite. Ein Übungs-Bon hat eine Seite mit demselben Vermerk wie am Papier. Die Seite bleibt abrufbar, solange der Server den Bon hat.
 
-**An der Kassa.** Ist "Kundenbon" auf "digital und Druck auf Wunsch":
+**An der Kassa.** Bei "immer drucken" ist alles wie in 1.11.0: kein QR-Code, nirgends. Bei "drucken und digital" druckt die Kassa wie heute und zeigt zusätzlich den QR-Code auf "Verkauf fertig". Bei "digital und Druck auf Wunsch":
 
 ```
 Verkauf fertig            Bon 1042
@@ -180,7 +180,8 @@ Rückgeld                    3,20 €
 - Hat der Server den Bon nach 3 Sekunden nicht bestätigt (kein Internet, Server nicht erreichbar), druckt die Kassa den Bon von selbst, wie heute, und sagt: "Kein Internet, Bon wird gedruckt." Ist kein Drucker eingerichtet, sagt sie: "Kein Internet: Der digitale Bon ist erst später abrufbar." und zeigt den QR-Code trotzdem.
 - "Bon drucken" druckt jederzeit, auch später aus "Bons" (bis Geschäftsschluss ist das Pflicht, die Kassa kann es immer).
 - Am Bon wird gespeichert, wie der Beleg erteilt wurde: "gedruckt" oder "digital angeboten". Das steht im Detail des Bons am Tablet und im Browser und geht mit dem Bon zum Server.
-- In "Bons" zeigt das Detail jedes neuen Bons den QR-Code der Seite, auch wenn "immer drucken" gewählt ist. So kann ein Betrieb beides anbieten.
+- In "Bons" zeigt das Detail eines Bons den QR-Code seiner Seite, wenn einer der zwei digitalen Werte gewählt und die Kassa gekoppelt ist.
+- Den Schlüssel bekommt jeder Bon ab dieser Version, auch bei "immer drucken". So hat ein Bon seine Seite, wenn der Betrieb später umstellt.
 
 Die Kassa zeigt den QR-Code auf ihrem eigenen Bildschirm. Der Betrieb muss das Tablet so stellen oder drehen, dass der Kunde ihn sieht; das steht in der Prüfliste und neben dem Schalter.
 
@@ -198,7 +199,7 @@ Anderer Betrag            (Zahlenfeld)
 - Wert von 1,00 € bis 500,00 €. Jeder Gutschein ist eine eigene Zeile "Gutschein 25,00 €" mit Menge 1; Minus nimmt sie weg.
 - Die Zeile bekommt keinen Rabatt (auch keinen Anteil am Bon-Rabatt), kommt nicht auf den Küchenbon und steht nicht bei "meistverkauft".
 - Ein Bon, auf dem ein Gutschein verkauft wird, lässt sich nicht mit einem Gutschein bezahlen.
-- Beim Abschließen entsteht der Gutschein mit einem zufälligen Code aus 8 Ziffern (gezeigt als "1234 5678"), der an dieser Kassa noch nicht vergeben ist. Nach dem Kundenbon druckt die Kassa je Gutschein einen eigenen Abschnitt: Logo und Name des Betriebs, "Gutschein", Wert, Code in großen Ziffern, Datum. "Verkauf fertig" zeigt Wert und Code auch am Bildschirm; ohne Drucker schreibt der Betrieb den Code auf seine eigene Karte. Der Abschnitt lässt sich aus "Bons" nachdrucken.
+- Beim Abschließen entsteht der Gutschein mit einem zufälligen Code aus 8 Ziffern (gezeigt als "1234 5678"). Die Kassa vergibt keinen Code, den sie schon kennt. Der Gutschein selbst hat eine eigene Kennung; der Code ist nur zum Tippen. Nach dem Kundenbon druckt die Kassa je Gutschein einen eigenen Abschnitt: Logo und Name des Betriebs, "Gutschein", Wert, Code in großen Ziffern, Datum. "Verkauf fertig" zeigt Wert und Code auch am Bildschirm; ohne Drucker schreibt der Betrieb den Code auf seine eigene Karte. Der Abschnitt lässt sich aus "Bons" nachdrucken.
 - Ein verkaufter Gutschein ist kein Umsatz. Das Geld dafür (bar oder Karte) steht bei den Einnahmen. Bei der Signatur zählt der Verkauf zum Satz 0.
 
 **Prüfen.** Reiter "Prüfen": Code tippen, die Kassa zeigt Wert, Guthaben und die Bewegungen mit Datum.
@@ -214,7 +215,7 @@ Bleibt am Gutschein              15,35 €
                     [ Einlösen 9,65 € ]
 ```
 
-- Nach der achten Ziffer sucht die Kassa von selbst. Kennt sie den Code nicht: "Diesen Gutschein kennt die Kassa nicht." Ist er leer: "Dieser Gutschein ist aufgebraucht." Ist er storniert: "Dieser Gutschein ist storniert."
+- Nach der achten Ziffer sucht die Kassa von selbst. Kennt sie den Code nicht: "Diesen Gutschein kennt die Kassa nicht." Ist er leer: "Dieser Gutschein ist aufgebraucht." Ist er storniert: "Dieser Gutschein ist storniert." Passen zwei Gutscheine zum Code (zwei Kassen haben ohne Abgleich denselben vergeben, bei 8 Ziffern sehr selten), zeigt die Kassa beide mit Wert und Datum, und die Person wählt.
 - Reicht das Guthaben für alles, schließt "Einlösen" den Bon sofort ab. Die Lade bleibt zu. "Verkauf fertig" zeigt "Mit Gutschein bezahlt" und was am Gutschein bleibt.
 - Reicht es nicht, heißt die Taste "Einlösen 5,00 €, Rest 4,65 €". Danach steht im Summenblock eine Reihe "Gutschein 1234 5678 −5,00 €" (mit × zum Entfernen) und "Noch zu zahlen 4,65 €". Den Rest zahlt der Gast bar, mit Karte (ab dem Kleinstbetrag des Terminals) oder mit einem weiteren Gutschein.
 - Ändert sich der Bon danach, rechnet die Kassa neu: Die gewählten Gutscheine decken in ihrer Reihenfolge so viel, wie sie können. Abgebucht wird erst beim Abschließen, im selben Schritt wie der Bon. Bis dahin ist nichts am Gutschein verändert. Die gewählten Gutscheine überstehen einen Neustart der App wie der offene Bon.
@@ -222,7 +223,9 @@ Bleibt am Gutschein              15,35 €
 - Am Bon steht je Gutschein "Gutschein 1234 5678 5,00 €" und "Restguthaben 0,00 €".
 - Storno eines Bons, der mit Gutschein bezahlt wurde: Das Guthaben kommt zurück. Storno eines Bons, auf dem ein Gutschein verkauft wurde: nur, solange der Gutschein unberührt ist; er gilt danach als storniert. Sonst sagt die Kassa: "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren."
 
-**Mehrere Kassen und ein neues Tablet.** Jeder Gutschein und jede Bewegung (Verkauf, Einlösung, Storno) geht mit dem Bon zum Server. Der Server schickt Gutscheine und Bewegungen an alle Tablets des Betriebs. Ein Tablet rechnet das Guthaben aus allen Bewegungen, die es kennt. Damit gilt ein Gutschein an jeder Kassa des Betriebs, sobald sie abgeglichen ist, und ein Ersatz-Tablet kennt nach dem Koppeln alle offenen Gutscheine. Sind zwei Kassen ohne Internet, kann derselbe Gutschein an beiden eingelöst werden; das Guthaben fällt dann unter 0, und die Verwaltung im Browser zeigt ihn als "überzogen". An einer einzelnen Kassa ist doppeltes Einlösen ausgeschlossen.
+**Mehrere Kassen und ein neues Tablet.** Jeder Gutschein und jede Bewegung (Verkauf, Einlösung, Storno) geht mit dem Bon zum Server. Der Server schickt Gutscheine und Bewegungen an alle Tablets des Betriebs. Ein Tablet rechnet das Guthaben aus allen Bewegungen, die es kennt. Damit gilt ein Gutschein an jeder Kassa des Betriebs, sobald sie abgeglichen ist, und ein Ersatz-Tablet kennt nach dem Koppeln alle offenen Gutscheine. Sind zwei Kassen ohne Internet, kann derselbe Gutschein an beiden eingelöst werden; das Guthaben fällt dann unter 0, und die Verwaltung im Browser zeigt ihn als "überzogen". An einer einzelnen Kassa ist doppeltes Einlösen ausgeschlossen. Dasselbe gilt für das Storno eines Gutschein-Verkaufs: Die Kassa entscheidet nach dem, was sie kennt. Wurde der Gutschein inzwischen an einer anderen Kassa eingelöst, fällt sein Guthaben unter 0 und er steht als "überzogen" da. "Storniert" ist kein eigener Zustand, sondern folgt aus den Bewegungen.
+
+**Übungsmodus.** Solange die Kassa im Probebetrieb ist, sind ihre Bons Übungs-Bons. Ein Gutschein von einem Übungs-Bon ist ein Übungs-Gutschein: Er lässt sich nur im Probebetrieb einlösen, zählt in keiner Summe und steht im Browser getrennt. Im echten Betrieb sagt die Kassa dazu: "Das ist ein Übungs-Gutschein."
 
 **Browser.** Neue Seite "Gutscheine": Liste mit Code, Datum, Wert, Guthaben und Zustand; im Detail die Bewegungen mit dem jeweiligen Bon; oben die Summe aller offenen Guthaben.
 
@@ -290,7 +293,7 @@ App 1.12.0 Build 14, Datenbank am Tablet 9, Server-Migration 0005, Bon `v: 3`. R
 1. Pfand zurück ist eine Zeile am Bon mit Minus. Fällt der Bon unter 0, zahlt die Kassa bar aus.
 2. Pfand-Beträge kommen aus der Speisekarte; einen freien Pfand-Betrag gibt es nicht.
 3. Der Rechnungsempfänger wird nach dem Bezahlen erfasst, nicht davor. Das ist die einzige Stelle mit Tastatur.
-4. Die Rechnung ist der Bon mit Empfänger, mit derselben Nummer. Eine eigene Rechnungsnummer gibt es nicht.
+4. Die Rechnung ist der Bon mit Empfänger. Die Rechnungsnummer ist Kassen-ID plus Bon-Nummer, einen eigenen Nummernkreis gibt es nicht.
 5. Der digitale Beleg ist eine Seite am Server hinter einem QR-Code. E-Mail gibt es nicht.
 6. Bei "digital und Druck auf Wunsch" druckt die Kassa von selbst, wenn der Server den Bon nach 3 Sekunden nicht hat.
 7. Die Seite eines Bons bleibt abrufbar, solange der Server den Bon hat.
@@ -300,6 +303,10 @@ App 1.12.0 Build 14, Datenbank am Tablet 9, Server-Migration 0005, Bon `v: 3`. R
 11. Ein Bon mit verkauftem Gutschein lässt sich nur stornieren, solange der Gutschein unberührt ist.
 12. Im Kopf der Bon-Spalte steht "Mehr", sobald dort zwei oder drei Funktionen erlaubt sind.
 13. Alles kommt in einer Version (1.12.0), gebaut in der Reihenfolge aus Abschnitt 6.
+14. Gutscheine aus dem Probebetrieb sind Übungs-Gutscheine und gelten im echten Betrieb nicht.
+15. "Kundenbon" hat drei Werte; bei "immer drucken" gibt es keinen QR-Code.
+
+Der Entwurf wurde am 27.11.2026 von einem zweiten Prüfer gegengelesen. Seine fünf Fragen (gleicher Code an zwei Kassen, Gutscheine im Probebetrieb, QR-Code bei ausgeschalteten Schaltern, Storno eines anderswo eingelösten Gutscheins, Rechnungsnummer bei mehreren Kassen) sind in 5.1, 5.3, 5.4 und 5.5 beantwortet.
 
 ## 9. Offen
 
