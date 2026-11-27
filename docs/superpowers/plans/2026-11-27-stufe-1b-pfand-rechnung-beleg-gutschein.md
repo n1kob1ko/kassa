@@ -16,7 +16,7 @@
 - Plan und alle Doku auf Deutsch mit einfachen Worten. Namen im Code englisch. Texte an der Kassa deutsch mit österreichischen Begriffen (bonieren, Bon, Storno).
 - Jeder neue Text an der Kassa steht in allen fünf ARB-Dateien (`de`, `en`, `zh`, `tr`, `ar`), Schlüssel englisch in lowerCamelCase mit Bereich vorn. Nach jeder Änderung an den ARB-Dateien: `~/flutter/bin/flutter gen-l10n` (die Datei `build/l10n_untranslated.json` bleibt leer) und `~/flutter/bin/dart run tool/l10n_review.dart` (sonst scheitert `test/l10n_review_test.dart`; das Werkzeug schreibt die Listen in `docs/uebersetzungen/*.md` neu, sie gehören in denselben Commit). Wörter: Pfand zurück = Deposit return, 退押金, Depozito iadesi, إرجاع الرهن. Gutschein = Voucher, 礼券, Hediye çeki, قسيمة. Rechnung = Invoice, 发票, Fatura, فاتورة. Guthaben = Balance, 余额, Bakiye, الرصيد. Firmenkunde = Business customer, 企业客户, Kurumsal müşteri, عميل شركة.
 - Kundenbon, Rechnung, Gutschein-Abschnitt (`receipt_layout.dart`, `voucher_layout.dart`), Berichte (`report_layout.dart`), die Seite des Bons am Server und die Bildschirme der Einrichtung bleiben Deutsch.
-- Tests zuerst (TDD). "Vorhanden" heißt: Der Test gab es schon in 1.11.0 (Commit `a06aeb3`). Kein vorhandener Test verliert eine Erwartung. Vorhandene Erwartungen ändern sich nur an den Stellen, die dieser Plan beim Namen nennt (Task 1: Datenbank-Version 8 wird 9; Task 5: Liste der Server-Migrationen bekommt `0005`; Task 8 und Task 20: Bilder der Einstellungen; Task 12: dritte Ausnahme in `test/no_text_field_test.dart`). Jede davon steht im Bericht der Aufgabe und wird Niko genannt.
+- Tests zuerst (TDD). "Vorhanden" heißt: Der Test gab es schon in 1.11.0 (Commit `a06aeb3`). Kein vorhandener Test verliert eine Erwartung. Vorhandene Erwartungen ändern sich nur an den Stellen, die dieser Plan beim Namen nennt (Task 1: Datenbank-Version 8 wird 9, und zwei Vergleiche aller Trigger bekommen die neuen Schutz-Trigger dazu; Task 5: Liste der Server-Migrationen bekommt `0005`; Task 8 und Task 20: Bilder der Einstellungen; Task 12: dritte Ausnahme in `test/no_text_field_test.dart`). Jede davon steht im Bericht der Aufgabe und wird Niko genannt.
 - **HARD STOP:** Lehnt die Sitzung einen Befehl oder eine Änderung ab (Sicherheitsprüfung, Berechtigung), wird nichts umgangen: nicht derselbe Schritt auf anderem Weg, kein anderer Dateiname, kein anderes Werkzeug. Die Aufgabe endet mit `BLOCKED` und dem Wortlaut der Ablehnung. `.claude/settings.json` gehört Niko und wird nie angefasst. Nichts wird gelöscht außer Dateien, die die Aufgabe selbst angelegt hat.
 - Datenbank am Tablet: Version 8 wird 9, mit Migration und Test auf einer Datenbank aus 1.11.0 (`test/data/fixtures/kassa_v8.sqlite`). Der Schlüssel der Installationsdatei wird nicht angefasst. `app/lib/rksv/` wird nicht angefasst.
 - Version: App `1.12.0+14`, Server-Migration `0005`. `0001` bis `0004` nie ändern. Bon im Abgleich `v: 3`; der Server nimmt `v: 1` und `v: 2` weiter an.
@@ -117,8 +117,9 @@ final ReceiptMode receiptMode;            // alwaysPrint
 Regeln für Schritt 9 (`_stepTo9`):
 - Bestehende Zeilen bekommen die Vorgaben; kein Bon aus 1.11.0 bekommt einen `publicToken`.
 - Die Tabellen `voucher_movements`, `receipt_recipients` und `receipt_deliveries` nehmen kein UPDATE und kein DELETE an (Trigger wie bei den Bons). `vouchers` nimmt kein DELETE an und kein UPDATE von `code` und `valueCents`.
-- Schritt 9 setzt den Stand des Abholens (`sync_state.pull_cursor`) auf 0. So holt das Tablet nach dem Update einmal alles neu ab und bekommt auch Firmenkunden und Gutscheine, die der Server schon kennt (1.11.0 hat sie überlesen). `initialPullDone` und die Kopplung bleiben.
-- Liste "noch zu senden": Ein neuer Empfänger legt einen Eintrag `recipient` mit `ref = '<receiptId>/<version>'` an, eine neue Belegerteilung einen Eintrag `delivery` mit `ref = '<receiptId>/<kind>'` (Trigger in `_createOutboxTriggers`, auch für eine frische Installation). Firmenkunden bekommen keinen Trigger (Task 12 trägt sie selbst ein, damit Kunden vom Server kein Echo erzeugen).
+- `SyncStateRows` bekommt `catchUpPending` (bool, Vorgabe false). Schritt 9 setzt es auf wahr, wenn das erste Laden schon erledigt ist (`initial_pull_done`). So weiß das Tablet nach dem Update, dass es Firmenkunden und Gutscheine nachholen muss, die der Server schon kennt (1.11.0 hat sie überlesen; das Nachholen selbst bauen Task 13 und 16). `pull_cursor`, `initialPullDone` und die Kopplung bleiben, wie sie sind.
+- Liste "noch zu senden": Für die neuen Tabellen gibt es **keine** Trigger. Task 12 und Task 15 tragen Empfänger (`recipient`, `ref = '<receiptId>/<version>'`), Belegerteilung (`delivery`, `ref = '<receiptId>/<kind>'`) und Firmenkunden (`customer`) selbst ein, im selben Datenbank-Schritt wie die Zeile. So bleibt die Liste der Trigger für "noch zu senden" wie in 1.11.0.
+- Die neuen Schutz-Trigger (kein UPDATE, kein DELETE) sind die einzigen neuen Trigger. Zwei vorhandene Tests vergleichen alle Trigger vor und nach dem Update (`migration_v7_test.dart:122`, `migration_v8_test.dart:172`); ihre Erwartung wird "die alten und genau die neuen Schutz-Trigger" (genannte Änderung, erst nach Nikos Ja).
 - `kassa_v8.sqlite` entsteht mit `tool/make_kassa_v8_fixture.dart` aus dem Code von 1.11.0, **bevor** `database.dart` geändert wird (Muster: `tool/make_kassa_v7_fixture.dart`). Inhalt: ein Tag, ein Bar-Bon aus `cart`, ein Bon "Teil bar, Rest Karte" mit Trinkgeld, ein Bon mit Zeilen- und Bon-Rabatt, ein Bon mit freiem Betrag, ein Storno, ein offener Bon mit Rabatt als Entwurf, eine offene Kartenzahlung mit Bar-Teil und Trinkgeld, alle vier Schalter aus 1a an, gekoppelt mit erfundener Kassen-Kennung, `pull_cursor` 57, erstes Laden erledigt.
 
 - [ ] **Step 1: `kassa_v8.sqlite` aus dem jetzigen Stand erzeugen** (`cd app && ~/flutter/bin/dart run tool/make_kassa_v8_fixture.dart`), Datei einchecken.
@@ -138,16 +139,12 @@ test('8 → 9: Bons, Zahlungen, Entwurf und offene Kartenzahlung aus 1.11.0 blei
       [{'split_payment': 1, 'card_tip': 1, 'discount_access': 'all', 'open_amount_access': 'all'}]);
   expect((await SettingsRepository(db).readDraft()), isNotNull);
   expect(await CardPaymentRepository(db).pending(), hasLength(1));
-  expect(await rows(db, 'SELECT pull_cursor, initial_pull_done, register_id IS NOT NULL AS paired FROM sync_state'),
-      [{'pull_cursor': 0, 'initial_pull_done': 1, 'paired': 1}]);   // die Datei ist gekoppelt und hatte pull_cursor 57
+  expect(await rows(db, 'SELECT pull_cursor, initial_pull_done, catch_up_pending FROM sync_state'),
+      [{'pull_cursor': 57, 'initial_pull_done': 1, 'catch_up_pending': 1}]);   // frische Installation: catch_up_pending 0
 });
 test('die neuen Tabellen: Bewegungen, Empfänger und Belegerteilung nehmen kein UPDATE und kein DELETE', ...);   // je ein INSERT, dann UPDATE und DELETE: beide werfen
 test('ein Gutschein behält Code und Wert: UPDATE von code oder value_cents und DELETE werfen', ...);
-test('ein neuer Empfänger und eine neue Belegerteilung stehen in der Liste "noch zu senden"', () async {
-  // INSERT in receipt_recipients (r1, 0) und receipt_deliveries (r1, 'printed')
-  expect(await rows(db, "SELECT kind, ref FROM outbox WHERE kind IN ('recipient','delivery') ORDER BY id"),
-      [{'kind': 'recipient', 'ref': 'r1/0'}, {'kind': 'delivery', 'ref': 'r1/printed'}]);
-});
+test('die Trigger für "noch zu senden" sind dieselben wie in 1.11.0; neu sind nur Schutz-Trigger der neuen Tabellen', ...);
 test('frische Installation und Migration haben dasselbe Schema (drift_schema_v9)', ...);   // Muster aus migration_v8_test.dart
 // settings_repository_test.dart
 test('neue Schalter: Vorgaben aus, speichern und lesen', ...);   // depositReturnAccess chefOnly, voucherEnabled, invoiceEnabled, receiptMode digitalOnRequest
@@ -1014,7 +1011,7 @@ Spec 5.3.
 - Test: die neuen Dateien, `app/test/domain/receipt_layout_test.dart`, `app/test/no_text_field_test.dart`
 
 **Interfaces:**
-- Consumes: `CustomerRows`, `ReceiptRecipientRows`, der Trigger für `recipient` (Task 1), `RegisterSettings.invoiceEnabled`.
+- Consumes: `CustomerRows`, `ReceiptRecipientRows` (Task 1), `RegisterSettings.invoiceEnabled`.
 - Produces:
 
 ```dart
@@ -1047,7 +1044,7 @@ Future<PrintOutcome> printInvoice(Receipt receipt, ReceiptRecipient recipient);
 
 Regeln:
 - `checkRecipient`: Name leer → `nameMissing`; eine der zwei Adress-Zeilen leer → `addressMissing`; UID leer und `receiptTotalCents > invoiceVatIdRequiredAboveCents` → `vatIdMissing`; ein Feld über der Grenze → `tooLong`. Alles wird vorn und hinten von Leerzeichen befreit.
-- `save` schreibt den Kunden mit `updatedAt` und trägt **selbst** einen Eintrag `customer` (ref = Kennung) in die Liste "noch zu senden" ein, im selben Datenbank-Schritt. `setRecipient` vergibt `version` = höchste Fassung + 1 (erste ist 0), setzt bei einem Firmenkunden `lastUsedAt` (das zählt nicht als Änderung, kein Eintrag `customer`) und speichert eine Kopie von Name, Adresse und UID. Der Bon und seine Signatur ändern sich nicht (der Test vergleicht die Zeile in `receipts` und das Protokoll vorher und nachher).
+- `save` schreibt den Kunden mit `updatedAt` und trägt **selbst** einen Eintrag `customer` (ref = Kennung) in die Liste "noch zu senden" ein, im selben Datenbank-Schritt. `setRecipient` vergibt `version` = höchste Fassung + 1 (erste ist 0), setzt bei einem Firmenkunden `lastUsedAt` (das zählt nicht als Änderung, kein Eintrag `customer`) speichert eine Kopie von Name, Adresse und UID und trägt selbst einen Eintrag `recipient` (ref = `<receiptId>/<version>`) in "noch zu senden" ein, im selben Datenbank-Schritt. Der Bon und seine Signatur ändern sich nicht (der Test vergleicht die Zeile in `receipts` und das Protokoll vorher und nachher).
 - Taste `invoice-button` ("Rechnung an Firma") auf "Verkauf fertig" und im Detail eines Bons, wenn `invoiceEnabled`. Sie fehlt bei einem Storno-Bon, bei einem stornierten Bon, bei Sonderbelegen und bei einem Bon mit dem Vermerk TESTBON (dieselbe Regel wie in `layoutReceipt`). Hat der Bon schon einen Empfänger, steht dort `invoice-recipient` (Name) mit `invoice-print` ("Rechnung drucken") und `invoice-change` ("Ändern").
 - `customer-picker` (Blatt): Reihen `customer-row-<id>` (Name, erste Adress-Zeile), darüber die Tasten `customer-initial-<X>` für `initials()` und `customer-initial-all`; `customer-new` ("Neuer Kunde"). Ein Tipp auf eine Reihe zeigt den Kunden mit `invoice-print`.
 - `customer-form` (eigene Seite über die ganze Breite, damit die Tastatur Platz hat): Felder `customer-name`, `customer-address1`, `customer-address2`, `customer-vat`, Schalter `customer-keep` ("Als Firmenkunde speichern", an), `customer-save` ("Übernehmen"), `customer-cancel`. "Übernehmen" ist grau, solange `checkRecipient` etwas findet; unter dem Feld steht der Grund. Mit `customer-keep` aus entsteht kein Firmenkunde, nur der Empfänger (`customerId` leer). "Ändern" öffnet das Formular mit den Werten der letzten Fassung; gespeichert wird eine neue Fassung, die alte bleibt.
@@ -1114,7 +1111,7 @@ Spec 5.3 (Abgleich, Browser).
 - Test: die neuen Dateien, `server/test/{pull,receipts}.test.ts`, `app/test/sync/{push_wire,server_changes}_test.dart`
 
 **Interfaces:**
-- Consumes: die Tabellen `customers` und `receipt_recipients` aus `0005` (Task 5), `CustomerRepository` (Task 12), die Einträge `customer` und `recipient` in der Liste "noch zu senden" (Task 1 und 12).
+- Consumes: die Tabellen `customers` und `receipt_recipients` aus `0005` (Task 5), `CustomerRepository` (Task 12), die Einträge `customer` und `recipient` in der Liste "noch zu senden" (Task 12), `SyncStateRows.catchUpPending` (Task 1).
 - Produces:
 
 ```jsonc
@@ -1135,6 +1132,7 @@ Regeln:
 - `customer`: anlegen oder ändern; die Fassung mit dem neueren `updatedAt` gewinnt, eine ältere ist `duplicate`. Jede Änderung zählt `change_seq` weiter. `customer` kommt in `WRITE_KINDS`.
 - `recipient`: anfügen; dieselbe (`receiptId`, `version`) noch einmal ist `duplicate`; kennt der Server den Bon nicht, ist es `invalid`. Die Felder werden wie am Tablet geprüft (Pflicht, Längen), sonst `invalid`.
 - Abholen: `customers` zählt in derselben Reihe von Änderungs-Nummern wie die Artikel. Ein Tablet mit 1.10.0 oder 1.11.0 überliest die neue Liste (der Test liest die Antwort mit dem Schema von 1.11.0: die bekannten Listen sind unverändert).
+- **Nachholen nach dem Update:** Ist `catchUpPending` wahr, holt `SyncService` vor dem normalen Abholen einmal alle Seiten ab `since = 0` bis zum eigenen `pullCursor` und gibt sie an `ServerChanges.applyCatchUp(PullResponse page)`. Das spielt nur die neuen Listen ein (hier `customers`, ab Task 16 auch Gutscheine und Bewegungen), fasst Artikel, Kategorien, Mitarbeiter und `pullCursor` nicht an und lässt sich gefahrlos wiederholen. Nach der letzten Seite setzt `ServerChanges.finishCatchUp()` `catchUpPending` auf falsch; bricht der Lauf ab, bleibt es wahr und der nächste Abgleich beginnt wieder bei 0. Das erste Laden nach dem Koppeln (`replaceAll`) spielt die neuen Listen selbst ein.
 - Tablet: `PullResponse.customers` ist leer, wenn die Liste fehlt. `ServerChanges` schreibt Kunden über `CustomerRepository.applyServer(List<WireCustomer>)`: anlegen oder ändern, **ohne** Eintrag in "noch zu senden", `lastUsedAt` bleibt. Wartet für denselben Kunden noch ein eigener Eintrag `customer`, bleibt die Fassung des Tablets stehen.
 - Browser: Seite "Firmenkunden" unter `/b/:b/firmenkunden` (Eintrag in der Navigation nach "Mitarbeiter"): Liste, anlegen, ändern, archivieren, mit denselben Pflichtfeldern und Längen; Muster `StaffPage`. `ReceiptDetail` zeigt "Rechnung an" mit Name, Adresse, UID.
 
@@ -1156,6 +1154,7 @@ test('das Detail trägt den letzten Empfänger', ...);
 test('Einträge customer und recipient gehen in der Form oben hinaus', ...);
 // server_changes_test.dart
 test('Kunden vom Server: angelegt und geändert ohne Eintrag in "noch zu senden"; ein eigener, noch nicht gesendeter Kunde bleibt', ...);
+test('Nachholen: mit catchUpPending kommt ein Kunde mit Änderungs-Nummer unter dem eigenen pullCursor an; pullCursor und Artikel bleiben; danach ist catchUpPending falsch; ein Abbruch mittendrin lässt es wahr', ...);   // sync_service_test.dart
 ```
 
 - [ ] **Step 2: Laufen lassen, sie scheitern**
@@ -1259,7 +1258,7 @@ Spec 5.4 (An der Kassa). Review Focus 5.
 - Test: die neuen Dateien, `app/test/features/{sale_service,bons}_test.dart`, `app/test/sync/push_wire_test.dart`
 
 **Interfaces:**
-- Consumes: `Receipt.publicToken` (Task 4), `ReceiptDeliveryRows` und der Trigger `delivery` (Task 1), `RegisterSettings.receiptMode`, `serverUrl`/`hasServer`, der Zustand "gekoppelt", der Eintrag `delivery` am Server (Task 14).
+- Consumes: `Receipt.publicToken` (Task 4), `ReceiptDeliveryRows` (Task 1), `RegisterSettings.receiptMode`, `serverUrl`/`hasServer`, der Zustand "gekoppelt", der Eintrag `delivery` am Server (Task 14).
 - Produces:
 
 ```dart
@@ -1269,7 +1268,7 @@ String? receiptPageUrl(String? publicToken);     // '$serverUrl/beleg/$publicTok
 enum DeliveryKind { printed, digital }
 class ReceiptDelivery { receiptId, kind, at }
 class DeliveryRepository {
-  Future<void> record(String receiptId, DeliveryKind kind, {required DateTime at});   // das zweite Mal ändert nichts
+  Future<void> record(String receiptId, DeliveryKind kind, {required DateTime at});   // schreibt die Zeile und den Eintrag `delivery` in "noch zu senden"; das zweite Mal ändert nichts
   Future<List<ReceiptDelivery>> of(String receiptId);
 }
 // data/outbox_repository.dart
@@ -1373,6 +1372,7 @@ Future<bool> mergeFromServer(List<WireVoucher> vouchers, List<WireVoucherMovemen
 
 Regeln:
 - Der Server schickt jeden Gutschein und jede Bewegung des Betriebs an jedes Tablet, auch an das, von dem sie kommen. Der Gutschein hat immer eine kleinere Änderungs-Nummer als seine erste Bewegung. 1.10.0 und 1.11.0 überlesen die Listen.
+- Nachholen nach dem Update: `applyCatchUp` (Task 13) spielt ab jetzt auch `vouchers` und `voucherMovements` ein (Test: ein Gutschein mit Änderungs-Nummer unter dem eigenen `pullCursor` ist nach dem Nachholen bekannt).
 - Tablet: `mergeFromServer` fügt an, was es noch nicht kennt (Gutschein nach Kennung, Bewegung nach Gutschein und Bon), und ändert nichts Vorhandenes. Danach ruft `ServerChanges` `refreshVouchers`, wenn etwas Neues dabei war. Das Guthaben ist weiter die Summe aller bekannten Bewegungen.
 - Zwei Gutscheine mit demselben Code (einer von hier, einer vom Server): `findByCode` gibt beide, `VoucherCodeEntry` lässt wählen (gebaut in Task 10, hier mit echtem Abgleich geprüft).
 - Zustand am Server nach derselben Regel wie am Tablet; beide prüfen gegen `shared/fixtures/vouchers/states.json` (Bewegungen → Guthaben und Zustand: gültig, aufgebraucht, storniert, überzogen, storniert und anderswo eingelöst = überzogen).
@@ -1597,7 +1597,7 @@ Die Prüfliste, in einfachen Worten und zum Abhaken, Aufbau wie `docs/testen/stu
 - **G. Sprachen:** die neuen Blätter einmal in Englisch und Arabisch ansehen.
 - Hinweise oben: Kartenzahlungen im Test sind echte Buchungen; im Probebetrieb entstehen Übungs-Gutscheine, die später nicht gelten; die Fragen an die Steuerberatung aus Spec 9.
 
-Abschnitt 10 der Spec bekommt jede Abweichung und Entscheidung aus dem Bau, mindestens diese aus dem Plan: die Punkte 16 bis 19 aus Abschnitt 8; Gutschein-Zeile zählt in `goodsCents`; Umsatz = Summe minus verkaufte Gutscheine; `paymentKind` sieht Gutscheine nicht, ein Bon nur mit Gutschein zählt weder bei "Bar" noch bei "Karte"; nach dem Update holt das Tablet alles neu ab; der Server prüft kein Guthaben; die Bremse der Seite zählt nur Fehlversuche; "Mit Gutschein abschließen", wenn die Auswahl alles deckt; "Als Firmenkunde speichern" lässt sich ausschalten; `delivery` hält "digital" fest, sobald der QR-Code zu sehen ist; die geänderten Erwartungen in vorhandenen Tests (Version 8 → 9 in vier Dateien, Liste der Server-Migrationen, dritte Ausnahme im Textfeld-Test, Bilder der Einstellungen), jede mit Datei und Zeile; was offen bleibt.
+Abschnitt 10 der Spec bekommt jede Abweichung und Entscheidung aus dem Bau, mindestens diese aus dem Plan: die Punkte 16 bis 19 aus Abschnitt 8; Gutschein-Zeile zählt in `goodsCents`; Umsatz = Summe minus verkaufte Gutscheine; `paymentKind` sieht Gutscheine nicht, ein Bon nur mit Gutschein zählt weder bei "Bar" noch bei "Karte"; nach dem Update holt das Tablet Firmenkunden und Gutscheine nach; der Server prüft kein Guthaben; die Bremse der Seite zählt nur Fehlversuche; "Mit Gutschein abschließen", wenn die Auswahl alles deckt; "Als Firmenkunde speichern" lässt sich ausschalten; `delivery` hält "digital" fest, sobald der QR-Code zu sehen ist; die geänderten Erwartungen in vorhandenen Tests (Version 8 → 9 in vier Dateien, Liste der Server-Migrationen, dritte Ausnahme im Textfeld-Test, Bilder der Einstellungen), jede mit Datei und Zeile; was offen bleibt.
 
 - [ ] **Step 1: Version setzen und den Test der Version laufen lassen**
 

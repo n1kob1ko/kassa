@@ -308,7 +308,7 @@ App 1.12.0 Build 14, Datenbank am Tablet 9, Server-Migration 0005, Bon `v: 3`. R
 15. "Kundenbon" hat drei Werte; bei "immer drucken" gibt es keinen QR-Code.
 16. Firmenkunden sucht man über Tasten mit Anfangsbuchstaben, nicht über ein Suchfeld mit Tastatur. Die Tastatur kommt nur bei "Neuer Kunde".
 17. Auf der Seite eines Bons im Internet steht der Code eines Gutscheins nur mit den letzten vier Ziffern.
-18. Nach dem Update holt das Tablet einmal alles neu vom Server ab, damit es Firmenkunden und Gutscheine bekommt, die es vorher überlesen hat.
+18. Nach dem Update holt das Tablet einmal die Firmenkunden und Gutscheine nach, die es vorher überlesen hat. Alles andere bleibt, wie es ist.
 19. Die Seite eines Bons liegt unter `/beleg/<Schlüssel>`, nicht unter `/b/…`: Dort liegt schon die Verwaltung im Browser.
 
 Der Entwurf wurde am 27.11.2026 von einem zweiten Prüfer gegengelesen. Seine fünf Fragen (gleicher Code an zwei Kassen, Gutscheine im Probebetrieb, QR-Code bei ausgeschalteten Schaltern, Storno eines anderswo eingelösten Gutscheins, Rechnungsnummer bei mehreren Kassen) sind in 5.1, 5.3, 5.4 und 5.5 beantwortet.
