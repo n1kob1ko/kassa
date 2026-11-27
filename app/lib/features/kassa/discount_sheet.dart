@@ -22,8 +22,8 @@ import 'cash_sheet.dart' show PayColumnFrame;
 /// Wert vor diesem Rabatt; darunter Grund und Höhe (eine Prozent-Stufe oder
 /// ein Betrag über das Zahlenfeld) und der Wert danach ("Neu"). Ein Rabatt,
 /// der schon da ist, ist vorgewählt. "Übernehmen" geht erst mit Grund und
-/// Höhe und nur, wenn es etwas zu rabattieren gibt; ein Betrag über dem Wert
-/// wird auf den Wert gekappt.
+/// Höhe und nur, wenn es etwas zu rabattieren gibt. Ein Betrag über dem Wert
+/// wird gekappt angezeigt und bleibt gespeichert, wie er getippt ist.
 class DiscountSheet extends ConsumerStatefulWidget {
   const DiscountSheet({super.key, required this.lineId, required this.onClose});
 
@@ -133,8 +133,10 @@ class _DiscountSheetState extends ConsumerState<DiscountSheet> {
     if (reason == null || baseCents <= 0) return null;
     final percent = _percent;
     if (percent != null) return Discount.percent(percent, reason);
-    final cut = _cutOf(baseCents);
-    return cut > 0 ? Discount.amount(cut, reason) : null;
+    // Gespeichert wird der Betrag, wie er getippt ist: der Bon kappt ihn bei
+    // jeder Rechnung auf den Wert, so wächst er mit der Menge mit.
+    final cents = _amount?.cents ?? 0;
+    return cents > 0 ? Discount.amount(cents, reason) : null;
   }
 
   void _set(Discount? discount) {

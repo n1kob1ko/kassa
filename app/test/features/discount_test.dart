@@ -2,11 +2,18 @@
 // öffnet ein Blatt (Grund, Höhe, Neu); ein gesetzter Rabatt ist immer zu
 // sehen; eine Summe von 0,00 € mit Rabatt schließt mit "Abschließen" ab.
 
+import 'dart:async';
+
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/money.dart';
+import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/domain/discount.dart';
+import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/kassa/sale_service.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/primary_button.dart';
@@ -42,8 +49,15 @@ Future<void> openWithDiscount(
   Size size = const Size(1280, 800),
   double textScale = 1.0,
   AppLanguage language = AppLanguage.de,
+  List<Override>? overrides,
 }) async {
-  await pumpKassa(t, pin: pin, size: size, textScale: textScale);
+  await pumpKassa(
+    t,
+    pin: pin,
+    size: size,
+    textScale: textScale,
+    overrides: overrides,
+  );
   await setSettings(
     t,
     (s) => s.copyWith(discountAccess: access, language: language),
@@ -374,11 +388,160 @@ void main() {
       find.descendant(of: row, matching: find.text('−6,50 €')),
       findsOneWidget,
     );
+    // Gespeichert wird der Betrag, wie er getippt ist; gekappt wird beim
+    // Rechnen.
+    expect(cartOf(t).lines[1].discount!.amountCents, 2000);
     expect(
       cartOf(t).lines[1].discount,
-      const Discount.amount(650, DiscountReason.regular),
+      const Discount.amount(2000, DiscountReason.regular),
     );
     expect(textOf(t, const Key('cart-total')), '6,30 €');
+    // Zwei Teigtaschen: der Rabatt wächst mit, bis 13,00 €.
+    await t.tap(find.byKey(Key('qty-plus-${cartOf(t).lines[1].lineId}')));
+    await t.pumpAndSettle();
+    expect(
+      find.descendant(of: row, matching: find.text('−13,00 €')),
+      findsOneWidget,
+    );
+    expect(textOf(t, const Key('cart-total')), '6,30 €');
+    // Drei: 19,50 € Ware, 19,50 € Rabatt; vier: 26,00 €, nur 20,00 € Rabatt.
+    for (var i = 0; i < 2; i++) {
+      await t.tap(find.byKey(Key('qty-plus-${cartOf(t).lines[1].lineId}')));
+      await t.pumpAndSettle();
+    }
+    expect(cartOf(t).lines[1].quantity, 4);
+    expect(
+      find.descendant(of: row, matching: find.text('−20,00 €')),
+      findsOneWidget,
+    );
+    expect(textOf(t, const Key('cart-total')), '12,30 €');
+    // Wieder geöffnet steht der getippte Betrag im Zahlenfeld.
+    await t.tap(row);
+    await t.pumpAndSettle();
+    expect(textOf(t, const Key('given-field')), '20 €');
+    expect(textOf(t, const Key('discount-new')), '6,00 €');
+  });
+
+  testWidgets('Betrag 0 oder nichts zu rabattieren: "Übernehmen" bleibt aus', (
+    t,
+  ) async {
+    await openWithDiscount(t, FeatureAccess.all, ids: ['leitungswasser']);
+    await _openLine(t, 0);
+    await t.tap(find.byKey(const Key('discount-reason-regular')));
+    await _tap(t, 'discount-amount');
+    await tapKeys(t, '5');
+    expect(buttonOf(t, 'discount-apply').onPressed, isNull);
+    await _tap(t, 'discount-back');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    await _openLine(t, 1);
+    await t.tap(find.byKey(const Key('discount-reason-regular')));
+    await _tap(t, 'discount-amount');
+    await tapKeys(t, '0');
+    expect(buttonOf(t, 'discount-apply').onPressed, isNull);
+  });
+
+  testWidgets('zwei schnelle Tipps auf "Abschließen" ergeben genau einen Bon; '
+      'solange gespeichert wird, nimmt der Bon keine Tipps', (t) async {
+    await openWithDiscount(t, FeatureAccess.all, ids: ['teigtaschen']);
+    await _tap(t, 'discount-button');
+    await t.tap(find.byKey(const Key('discount-reason-invitation')));
+    await _tap(t, 'discount-apply');
+    await t.tap(find.byKey(const Key('finish-free')));
+    await t.tap(find.byKey(const Key('finish-free')), warnIfMissed: false);
+    await t.pump();
+    // Ist der Bon noch nicht gespeichert, nimmt die Bon-Spalte keine Tipps.
+    final busy = find.byKey(const Key('cart-busy'));
+    if (busy.evaluate().isNotEmpty) {
+      expect(t.widget<AbsorbPointer>(busy).absorbing, isTrue);
+    }
+    await t.pumpAndSettle();
+    expect(await receiptCount(t), 1);
+    expect(find.byKey(const Key('next-customer')), findsOneWidget);
+    await _tap(t, 'next-customer');
+    // Danach nimmt der Bon wieder Tipps.
+    expect(
+      t.widget<AbsorbPointer>(find.byKey(const Key('cart-busy'))).absorbing,
+      isFalse,
+    );
+    await tapItem(t, 'cola');
+    await t.pumpAndSettle();
+    expect(cartOf(t).lines.single.quantity, 1);
+  });
+
+  testWidgets('während "Abschließen" speichert, nimmt der Bon keine Tipps; '
+      'nach einem Fehler wieder, und der zweite Versuch schreibt einen Bon', (
+    t,
+  ) async {
+    final service = _HeldSaleService.hold = Completer<void>();
+    await openWithDiscount(
+      t,
+      FeatureAccess.all,
+      ids: ['teigtaschen'],
+      overrides: [
+        ...await memoryOverrides(),
+        saleServiceProvider.overrideWith(_HeldSaleService.new),
+      ],
+    );
+    _HeldSaleService.calls.clear();
+    await _tap(t, 'discount-button');
+    await t.tap(find.byKey(const Key('discount-reason-invitation')));
+    await _tap(t, 'discount-apply');
+    await t.tap(find.byKey(const Key('finish-free')));
+    await t.pump();
+    expect(
+      t.widget<AbsorbPointer>(find.byKey(const Key('cart-busy'))).absorbing,
+      isTrue,
+    );
+    final line = cartOf(t).lines.single.lineId;
+    await t.tap(find.byKey(Key('qty-plus-$line')), warnIfMissed: false);
+    await t.tap(find.byKey(Key('qty-minus-$line')), warnIfMissed: false);
+    await t.tap(find.text('Teigtaschen').last, warnIfMissed: false);
+    await t.tap(find.byKey(const Key('discount-button')), warnIfMissed: false);
+    await t.tap(find.byKey(const Key('finish-free')), warnIfMissed: false);
+    await t.pump();
+    expect(cartOf(t).lines.single.quantity, 1);
+    expect(find.byKey(const Key('discount-sheet')), findsNothing);
+    expect(_HeldSaleService.calls, hasLength(1));
+    // Der Fehler gibt den Bon wieder frei, nichts ist gespeichert.
+    service.completeError(StateError('kaputt'));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('finish-free-failed')), findsOneWidget);
+    expect(
+      t.widget<AbsorbPointer>(find.byKey(const Key('cart-busy'))).absorbing,
+      isFalse,
+    );
+    expect(await receiptCount(t), 0);
+    expect(cartOf(t).lines.single.quantity, 1);
+    // Der zweite Versuch nimmt dieselbe Kennung und schreibt genau einen Bon.
+    _HeldSaleService.hold = null;
+    await _tap(t, 'finish-free');
+    expect(_HeldSaleService.calls, hasLength(2));
+    expect(_HeldSaleService.calls[1], _HeldSaleService.calls[0]);
+    expect(await receiptCount(t), 1);
+    expect(find.byKey(const Key('next-customer')), findsOneWidget);
+  });
+
+  testWidgets('der Hinweis nach einer abgelehnten Karte mit Bar-Teil geht '
+      'weg, sobald ein Rabatt auf den Bon kommt', (t) async {
+    await openWithDiscount(t, FeatureAccess.all, ids: ['cola', 'teigtaschen']);
+    await setSettings(t, (s) => s.copyWith(splitPaymentEnabled: true));
+    await _tap(t, 'pay-cash');
+    await _tap(t, 'cash-mode-split');
+    terminalOf(t).next = const CardFailed(CardFailure.declined);
+    await tapKeys(t, '5');
+    await _tap(t, 'split-go');
+    expect(find.byKey(const Key('split-card-failed')), findsOneWidget);
+    // Das Blatt öffnen und zurück ändert den Bon nicht: der Hinweis bleibt.
+    await _tap(t, 'discount-button');
+    await _tap(t, 'discount-back');
+    expect(find.byKey(const Key('split-card-failed')), findsOneWidget);
+    await _tap(t, 'discount-button');
+    await t.tap(find.byKey(const Key('discount-reason-regular')));
+    await _tap(t, 'discount-percent-10');
+    await _tap(t, 'discount-apply');
+    expect(find.byKey(const Key('split-card-failed')), findsNothing);
+    expect(find.byKey(const Key('receipt-discount')), findsOneWidget);
   });
 
   testWidgets('Betrag 1,19 € zeigt "Neu" 5,31 €; ohne Betrag bleibt '
@@ -613,4 +776,26 @@ void main() {
       expect(t.takeException(), isNull, reason: language.name);
     }
   });
+}
+
+/// Ein Verkaufsdienst, dessen "Abschließen" auf [hold] wartet: ein Fehler
+/// dort wird geworfen, sonst speichert er wie der echte. [calls] hält die
+/// Kennungen der Aufrufe.
+class _HeldSaleService extends SaleService {
+  _HeldSaleService(super.ref);
+
+  static Completer<void>? hold;
+  static final calls = <String>[];
+
+  @override
+  Future<SaleResult> completeFree({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) async {
+    calls.add(saleId);
+    final h = hold;
+    if (h != null) await h.future;
+    return super.completeFree(saleId: saleId, cart: cart, staff: staff);
+  }
 }

@@ -127,7 +127,8 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   /// sie weg.
   String? _freeSaleId;
 
-  /// Steht ab dem ersten Tipp auf "Abschließen" bis zum Ergebnis.
+  /// Steht ab dem ersten Tipp auf "Abschließen" bis zum Ergebnis; so lange
+  /// nimmt die Bon-Spalte keine Tipps.
   bool _finishingFree = false;
 
   /// Was die Person eben getippt hat, bis die Datenbank es bestätigt: so
@@ -388,7 +389,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final cart = ref.read(cartProvider);
     if (_finishingFree || staff == null || cart.isEmpty) return;
     if (cart.totalCents != 0) return;
-    _finishingFree = true;
+    setState(() => _finishingFree = true);
     final saleId = _freeSaleId ??= const Uuid().v4();
     final cartCtl = ref.read(cartProvider.notifier);
     try {
@@ -409,7 +410,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         );
       }
     } finally {
-      _finishingFree = false;
+      if (mounted) {
+        setState(() => _finishingFree = false);
+      } else {
+        _finishingFree = false;
+      }
     }
   }
 
@@ -537,23 +542,27 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
           ),
         ),
         switch (side) {
-          _Side.cart => CartPanel(
-            onPayCash: _tapCash,
-            onPayCard: _tapCard,
-            canPay: building == null,
-            onLineDiscount: mayDiscount ? _openDiscount : null,
-            onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
-            onFinishFree: _finishFree,
-            payNotice: switch (_splitFailed) {
-              null => null,
-              final f => SplitCardFailedNotice(
-                cashPartCents: f.cashPartCents,
-                failure: f.failure,
+          _Side.cart => AbsorbPointer(
+            key: const Key('cart-busy'),
+            absorbing: _finishingFree,
+            child: CartPanel(
+              onPayCash: _tapCash,
+              onPayCard: _tapCard,
+              canPay: building == null,
+              onLineDiscount: mayDiscount ? _openDiscount : null,
+              onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
+              onFinishFree: _finishFree,
+              payNotice: switch (_splitFailed) {
+                null => null,
+                final f => SplitCardFailedNotice(
+                  cashPartCents: f.cashPartCents,
+                  failure: f.failure,
+                ),
+              },
+              notice: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [OutageBanner(), LateKitchenNotice()],
               ),
-            },
-            notice: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [OutageBanner(), LateKitchenNotice()],
             ),
           ),
           _Side.paying => _AboveBottomBar(
