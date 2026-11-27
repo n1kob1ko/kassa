@@ -51,7 +51,12 @@ function signatureState(rksv: ReceiptDetail['rksv']): { text: string; tone: 'ok'
   return { text: 'Signiert', tone: 'ok' };
 }
 
-function Line({ line }: { line: ReceiptLine }) {
+/** Ein Rabatt mit Minus; am Storno-Bon (`mirror`) sein Spiegel mit Plus, wie am Tablet. */
+function discountAmount(amountCents: number, mirror: boolean): string {
+  return money(mirror ? Math.abs(amountCents) : -Math.abs(amountCents));
+}
+
+function Line({ line, mirror }: { line: ReceiptLine; mirror: boolean }) {
   return (
     <li className={styles.line}>
       <span className={styles.quantity}>{Math.abs(line.quantity)} ×</span>
@@ -66,7 +71,7 @@ function Line({ line }: { line: ReceiptLine }) {
         ))}
         {line.discount && (
           <span className={styles.lineNote} data-testid={`line-discount-${line.position}`}>
-            {discountText(line.discount)} <span className={styles.surcharge}>{money(-Math.abs(line.discount.amountCents))}</span>
+            {discountText(line.discount)} <span className={styles.surcharge}>{discountAmount(line.discount.amountCents, mirror)}</span>
           </span>
         )}
       </span>
@@ -234,7 +239,7 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
           </h3>
           <ul className={styles.lines} aria-label="Zeilen">
             {r.lines.map((l) => (
-              <Line key={l.position} line={l} />
+              <Line key={l.position} line={l} mirror={r.kind === 'voided'} />
             ))}
           </ul>
         </section>
@@ -244,7 +249,7 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
         {r.discount && (
           <p className={styles.sumRow}>
             <span>{discountText(r.discount)}</span>
-            <span data-testid="discount">{money(-Math.abs(r.discount.amountCents))}</span>
+            <span data-testid="discount">{discountAmount(r.discount.amountCents, r.kind === 'voided')}</span>
           </p>
         )}
         {r.depositCents !== 0 && (

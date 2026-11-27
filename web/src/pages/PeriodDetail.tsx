@@ -147,15 +147,20 @@ export function PeriodDetailView({ period, query }: { period: Period | null; que
           {s.voidCount > 0 && (
             <IncomeRow label="Storniert" receipts={s.voidCount} cents={s.voidedCents} testId="voided" tone="muted" />
           )}
-          {s.discountCents !== 0 && (
-            <IncomeRow label="Rabatte" receipts={s.discountCount} cents={s.discountCents} testId="discounts" />
+          {/* Wie am Tablet (income_card.dart): Rabatte mit Minus, wenn Anzahl oder Summe nicht 0 sind; der Block
+              Trinkgeld, sobald jemand Trinkgeld hat, auch wenn die Summe 0 ist. */}
+          {(s.discountCount !== 0 || s.discountCents !== 0) && (
+            <IncomeRow label="Rabatte" receipts={s.discountCount} cents={-s.discountCents} testId="discounts" />
           )}
-          {s.cardTipCents !== 0 && <AmountRow label="Trinkgeld Karte" cents={s.cardTipCents} testId="card-tip" />}
-          {s.cardTipCents !== 0 &&
-            s.tipsByStaff.map((t) => (
-              <AmountRow key={t.staffName} label={t.staffName} cents={t.cents} testId="card-tip-staff" tone="person" />
-            ))}
-          {s.cardAccountCents !== 0 && <AmountRow label="Am Kartenkonto" cents={s.cardAccountCents} testId="card-account" />}
+          {s.tipsByStaff.length > 0 && (
+            <>
+              <AmountRow label="Trinkgeld Karte" cents={s.cardTipCents} testId="card-tip" />
+              {s.tipsByStaff.map((t, i) => (
+                <AmountRow key={i} label={t.staffName} cents={t.cents} testId="card-tip-staff" tone="person" />
+              ))}
+              <AmountRow label="Am Kartenkonto" cents={s.cardAccountCents} testId="card-account" />
+            </>
+          )}
         </dl>
       </Section>
 
