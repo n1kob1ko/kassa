@@ -1,4 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { paymentKindsText } from '../pages/receipt_payments';
 import { api, ApiError } from './client';
 import { OVERVIEW_REFRESH_MS } from './overview';
 
@@ -87,11 +88,13 @@ export type ReceiptDetail = ReceiptHead & {
   rksv: { cashBoxId: string | null; damaged: boolean; probe: boolean } | null;
 };
 
-const PAYMENT_KIND_TEXTS = { cash: 'Bar', card: 'Karte', voucher: 'Gutschein', mixed: 'Bar + Karte' } as const;
-
-/** Die Zahlungsart in Worten; ohne Zahlung (Sonderbeleg) leer. */
+/**
+ * Die Zahlungsart in Worten; ohne Zahlung (Sonderbeleg) leer. Die Seiten nutzen `paymentKindsText` mit allen Arten des
+ * Bons; dies bleibt für die eine Spalte `paymentKind` und gibt dieselben Wörter ("mixed" aus 1.11.0 ist bar und Karte).
+ */
 export function paymentKindText(kind: ReceiptHead['paymentKind']): string {
-  return kind === null ? '' : PAYMENT_KIND_TEXTS[kind];
+  if (kind === null) return '';
+  return paymentKindsText(kind === 'mixed' ? ['cash', 'card'] : [kind]);
 }
 
 /** Gründe eines Rabatts wie in der App; ein unbekannter Grund steht, wie er kommt. */

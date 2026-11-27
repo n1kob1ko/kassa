@@ -1,15 +1,12 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { handlers } from '../src/device/push.js';
-import { withBusiness } from '../src/db/tenant.js';
+import { withBusiness, withSystem } from '../src/db/tenant.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createBusiness } from './support/businesses.js';
 import { createStaff, fixtureBusiness, pairDevice, syncFixture } from './support/device.js';
-import { asV2, entry, pushEntries, reportKinds, sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
+import { asV2, asV3, entry, pushEntries, receiptV3, reportKinds, sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, type TestUser } from './support/users.js';
-import { randomBytes } from 'node:crypto';
-import { withSystem } from '../src/db/tenant.js';
-import { asV3, receiptV3 } from './support/push.js';
 
 let f: TestApp;
 let provider: TestUser;
@@ -414,7 +411,7 @@ describe('Bon v: 1 und v: 2', () => {
     expect(await reportKinds(f, a)).toEqual([]);
   });
 
-  test('v: 3: rejected/invalid', async () => {
+  test('v: 3 ohne die neuen Felder ist invalid', async () => {
     const res = await push([entry(1, 'receipt', { ...sampleReceiptV2(), v: 3 })]);
     expect(statuses(res)).toEqual(['rejected/invalid']);
     expect(await count(a, 'receipts')).toBe(0);
@@ -636,6 +633,42 @@ describe('Bon v: 3', () => {
     const r = again[0]!.receipt;
     const changed = { ...r, goodsCents: r.goodsCents + 1, totalCents: r.totalCents + 1 };
     expect(statuses(await push([entry(9, 'receipt', changed)]))).toEqual(['rejected/conflict']);
+  });
+
+  test('v: 2 mit Bericht card_last, nach dem Update noch einmal als v: 3: duplicate, kein neuer Bericht', async () => {
+    // Am Tablet von 1.11.0 angenommen (Karte nicht zuletzt), als v: 3 bräche er die Regel payment_order. Er ist schon da.
+    const good = sampleReceiptV2();
+    const [cash, card] = good.payments;
+    const old = sampleReceiptV2({ payments: [{ ...card, position: 0 }, { ...cash, position: 1 }] });
+    expect(statuses(await push([entry(1, 'receipt', old)]))).toEqual(['accepted']);
+    expect(await reportKinds(f, a)).toEqual(['receipt_sums']);
+    expect((await push([entry(2, 'receipt', asV3(old))])).results).toEqual([{ seq: 2, status: 'duplicate' }]);
+    expect(await reportKinds(f, a)).toEqual(['receipt_sums']);
+    expect(await count(a, 'receipts')).toBe(1);
+  });
+
+  test('v: 3, Gutscheine passen nicht zu den Gutschein-Zeilen: angenommen, Bericht receipt_sums nennt vouchers', async () => {
+    const sale = v3(1);
+    const voided = v3(5);
+    const [sold] = sale.vouchers;
+    const other = (valueCents: number, code: string) => ({ ...sold, id: randomUUID(), code, valueCents });
+    const bad = [
+      // Zeigt auf die Cola, nicht auf die Gutschein-Zeile.
+      { ...sale, vouchers: [{ ...sold, linePosition: 0 }] },
+      // Zeigt auf eine Zeile, die es nicht gibt.
+      { ...sale, vouchers: [{ ...sold, linePosition: 7 }] },
+      // Wert 20,00 €, die Zeile sagt 25,00 €.
+      { ...sale, vouchers: [{ ...sold, valueCents: 2000 }] },
+      // Gutschein-Zeile ohne Gutschein.
+      { ...sale, vouchers: [] },
+      // Summe stimmt (30,00 − 5,00), aber ein Wert unter 0 im Verkauf.
+      { ...sale, vouchers: [other(3000, '87654321'), other(-500, '87654322')] },
+      // Storno mit Wert über 0.
+      { ...voided, vouchers: [{ ...voided.vouchers[0], valueCents: 2500 }] },
+    ].map((r, i) => ({ ...r, id: randomUUID(), number: 100 + i, publicToken: newToken() }));
+    expect(statuses(await push(bad.map((r, i) => entry(i + 1, 'receipt', r))))).toEqual(bad.map(() => 'accepted'));
+    const found = await rows(a, "select content from reports where kind = 'receipt_sums' order by (content->>'number')::int");
+    expect(found.map((x) => x.content)).toEqual(bad.map((r) => ({ receiptId: r.id, number: r.number, problems: ['vouchers'] })));
   });
 
   test('v: 3 mit bar vor Gutschein, mit Karte unter 0, mit Gutschein-Zeile und Gutschein-Zahlung: invalid', async () => {

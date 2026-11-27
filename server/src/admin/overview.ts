@@ -5,6 +5,7 @@ import { requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { DEPOSIT_RETURN_ITEM_PREFIX, VOUCHER_SALE_ITEM_ID } from '../device/push_schema.js';
 import { ApiError } from '../errors.js';
+import { revenueOf } from './months.js';
 
 // Rechnet die Zahlen der Übersicht genau wie app/lib/data/stats_repository.dart. Kalendertage gelten in der
 // Zeitzone des Betriebs und werden in PostgreSQL gerechnet (Sommerzeit), Summen sind ganze Cent.
@@ -106,7 +107,7 @@ export function installOverviewRoutes(app: FastifyInstance): void {
             in_current: boolean;
             in_previous: boolean;
           }>(
-            `select id, kind, total_cents - voucher_sale_cents as revenue_cents, deposit_cents, cash_cents, card_cents, voucher_cents,
+            `select id, kind, ${revenueOf()} as revenue_cents, deposit_cents, cash_cents, card_cents, voucher_cents,
                     to_char(created_at at time zone $1, 'YYYY-MM-DD') as local_day,
                     extract(hour from created_at at time zone $1)::int as local_hour,
                     created_at >= $2 as in_current,

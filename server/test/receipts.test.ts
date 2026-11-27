@@ -266,7 +266,7 @@ describe('Bons mit Gutscheinen (Stufe 1b)', () => {
     const s = await siteFor(a, provider);
     const fx = await sendStufe1b(a, s);
     const [cash, sold, paid, payout] = fx.receipts as Record<string, any>[] as [Record<string, any>, Record<string, any>, Record<string, any>, Record<string, any>];
-    // Dazu ein Bon mit Gutschein und bar und sein Storno: beide stehen unter dem Filter, auch unter bar, nicht unter Karte.
+    // Dazu ein Bon mit Gutschein und bar: er steht unter dem Filter voucher und unter bar, nicht unter Karte.
     const voucherId = paid.payments[0].voucherId;
     const code = paid.payments[0].voucherCode;
     const mixedPayments = [

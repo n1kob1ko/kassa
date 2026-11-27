@@ -9,8 +9,8 @@ import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/sync/push_wire.dart';
 
-import '../support/sales.dart' show TestShop, cart, discounted;
-import '../support/sales.dart' show applied, sellVoucher;
+import '../support/sales.dart'
+    show TestShop, applied, cart, discounted, sellVoucher;
 
 /// Das Paket eines Tablets mit Bon `v: 2` (die App baut seit 1.11.0 nur
 /// noch diese Form; `push_request.json` ist das Paket von 1.10.0).

@@ -403,6 +403,21 @@ describe('Monate mit Gutscheinen und Pfand zurück (Stufe 1b)', () => {
     ]);
   });
 
+  test('Storno eines Gutschein-Verkaufs im selben Monat: voucherSoldCount und voucherSoldCents des Monats 0', async () => {
+    const s = await siteFor(a, provider);
+    const fx = await sendStufe1b(a, s);
+    const [, sold] = fx.receipts as [unknown, Record<string, any>];
+    await send(a, s, [['receipt', voidOfV3(sold, { id: randomUUID(), number: 5, createdAt: '2026-10-20T09:00:00.000Z', businessDayId: null })]]);
+    a.now.value = new Date(fx.now);
+    const chef = await createChef(a.db, s.businessId);
+
+    const oct = (await summary(s, '2026-10', '2026-10', chef.cookie)).json();
+    expect([oct.voucherSoldCount, oct.voucherSoldCents]).toEqual([0, 0]);
+    // Die anderen neuen Zahlen und der Umsatz bleiben: der Gutschein war nie Umsatz.
+    expect(newFigures(oct)).toEqual([965, 0, 0, 3, 75]);
+    expect([oct.revenueCents, oct.voidCount]).toEqual([2710, 1]);
+  });
+
   test('Monat nur mit Bons in v: 1 und v: 2: die alten Zahlen wie bisher, die fünf neuen 0', async () => {
     const s = await siteFor(a, provider);
     a.now.value = new Date('2026-12-15T12:00:00.000Z');

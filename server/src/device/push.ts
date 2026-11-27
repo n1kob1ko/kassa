@@ -19,6 +19,7 @@ import {
   paymentColumns,
   receiptEntry,
   ruleViolations,
+  VOUCHER_SALE_ITEM_ID,
   type ParsedReceipt,
   type ParsedReceiptV2,
   type ParsedReceiptV3,
@@ -188,7 +189,20 @@ function sumProblems(v: ParsedReceipt): string[] {
     if (v.kind === 'sale' && v.payment !== null && v.payment.amountCents !== v.totalCents) problems.push('payment');
     return problems;
   }
-  return [...problems, ...sumProblemsV2(v)];
+  return [...problems, ...sumProblemsV2(v), ...(v.v === 3 ? sumProblemsV3(v) : [])];
+}
+
+/**
+ * Passen die verkauften Gutscheine zu den Gutschein-Zeilen? Jeder zeigt auf eine solche Zeile, die Werte ergeben zusammen
+ * voucher_sale_cents, und jeder Wert hat das Vorzeichen des Bons (Verkauf über 0, Storno unter 0).
+ */
+function sumProblemsV3(v: ParsedReceiptV3): string[] {
+  const saleLines = new Set(v.lines.filter((l) => l.itemId === VOUCHER_SALE_ITEM_ID).map((l) => l.position));
+  const sign = v.kind === 'voided' ? -1 : 1;
+  const fits =
+    v.vouchers.every((x) => saleLines.has(x.linePosition) && x.valueCents * sign > 0) &&
+    v.vouchers.reduce((s, x) => s + x.valueCents, 0) === paymentColumns(v).voucherSaleCents;
+  return fits ? [] : ['vouchers'];
 }
 
 function sumProblemsV2(v: ParsedReceiptV2 | ParsedReceiptV3): string[] {
@@ -267,14 +281,33 @@ async function writeReceiptV3(c: pg.PoolClient, ctx: EntryContext, v: ParsedRece
   }
 }
 
+/** Hat der Server den Bon schon: duplicate (auch in älterer Form) oder conflict mit Bericht. Ein neuer Bon: null. */
+async function knownReceipt(c: pg.PoolClient, ctx: EntryContext, v: ParsedReceipt, hash: Buffer): Promise<EntryResult | null> {
+  const row = (await c.query<Existing>('select content_hash from receipts where id = $1', [v.id])).rows[0];
+  if (!row) return null;
+  const existing = row.content_hash;
+  // Ein Tablet nach dem Update (1.10.0 auf 1.11.0, 1.11.0 auf 1.12.0) schickt einen schon gesendeten Bon in der neuen Form.
+  const same = existing.equals(hash) || olderHashes(v).some((h) => existing.equals(h));
+  if (!same) {
+    await report(c, ctx, 'receipt_conflict', { receiptId: v.id, number: v.number });
+    return CONFLICT;
+  }
+  if (v.rksv) await writeRksvEntry(c, ctx, v.id, v.rksv);
+  return DUPLICATE;
+}
+
 async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = receiptEntry.safeParse(body);
   if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.receipt;
-  const rejected = await receiptInvalid(c, ctx, v);
-  if (rejected) return rejected;
   const rksv = v.rksv;
   const hash = receiptHash(v);
+  // Ein Bon, den der Server schon hat (auch in älterer Form), ist duplicate oder conflict: Regeln und Schlüssel gelten nur
+  // für einen neuen Bon.
+  const known = await knownReceipt(c, ctx, v, hash);
+  if (known) return known;
+  const rejected = await receiptInvalid(c, ctx, v);
+  if (rejected) return rejected;
   const sums = paymentColumns(v);
   // Das Original ist der Bon, wie er kam (auch Felder, die der Server noch nicht kennt), der Prüfwert hängt an den gelesenen.
   const payload = JSON.stringify((body as { receipt: unknown }).receipt);
@@ -291,16 +324,11 @@ async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown)
       hash, payload, ctx.at, sums.cashCents, sums.cardCents, sums.tipCents, sums.discountCents,
       sums.voucherCents, sums.voucherSaleCents, sums.depositReturnCents, v.v === 3 ? v.publicToken : null],
   );
+  // Zwischen der Frage oben und hier angekommen (zweite Sendung zur selben Zeit): wie ein schon bekannter Bon.
   if (inserted.rowCount !== 1) {
-    const existing = (await c.query<Existing>('select content_hash from receipts where id = $1', [v.id])).rows[0]!.content_hash;
-    // Ein Tablet nach dem Update (1.10.0 auf 1.11.0, 1.11.0 auf 1.12.0) schickt einen schon gesendeten Bon in der neuen Form.
-    const same = existing.equals(hash) || olderHashes(v).some((h) => existing.equals(h));
-    if (!same) {
-      await report(c, ctx, 'receipt_conflict', { receiptId: v.id, number: v.number });
-      return CONFLICT;
-    }
-    if (rksv) await writeRksvEntry(c, ctx, v.id, rksv);
-    return DUPLICATE;
+    const again = await knownReceipt(c, ctx, v, hash);
+    if (!again) throw new Error('Bon weder eingefügt noch gefunden');
+    return again;
   }
 
   // Zeilen von v: 1 haben keinen Rabatt.
