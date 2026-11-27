@@ -67,8 +67,10 @@ Für die Steuerberatung (ändert höchstens eine Stelle in der Kassa, der Test g
   Oben in der Bon-Spalte gibt es keine Taste "Pfand zurück" (und unter "Mehr" auch nicht). Danach "Bon leeren" tippen, abmelden und wieder als Chef anmelden.
 - [ ] Als Chef einen Artikel bonieren.
   Die Taste "Pfand zurück" ist wieder da. "Bon leeren" tippen.
-- [ ] Unter "Bons" den Bon mit "Bar ausbezahlt" öffnen und "Stornieren" tippen, dann "Ja, stornieren".
-  Der Storno-Bon kommt. Er ist das genaue Spiegelbild: "Pfand zurück" mit Plus, die Summe mit Plus, "Bar ausbezahlt" mit Minus. Der Gast gibt das Geld zurück (im Test nur so tun). Hinweis: Die Rückfrage vor dem Storno sagt hier "Du gibst … bar zurück." mit einem Betrag mit Minus. Das ist bekannt.
+- [ ] Unter "Bons" den Bon mit "Bar ausbezahlt" öffnen und "Stornieren" tippen.
+  Die Rückfrage sagt: "Du bekommst 0,75 € bar zurück." (bei 3 Bechern zu 0,25 €), ohne Minus.
+- [ ] "Ja, stornieren" tippen.
+  Der Storno-Bon kommt. Er ist das genaue Spiegelbild: "Pfand zurück" mit Plus, die Summe mit Plus, "Bar ausbezahlt" mit Minus. Der Gast gibt das Geld zurück (im Test nur so tun).
 - [ ] "Abschluss" öffnen und die Karte "Einnahmen" ansehen (nicht abschließen).
   Es gibt die Zeile "Pfand zurück" mit der Anzahl und der Summe. Das Soll in der Lade stimmt: Die Auszahlung ist abgezogen, der Storno hat sie wieder dazugezählt.
 
@@ -108,8 +110,10 @@ Vorher: Teil A ist gemacht, "Pfand zurück" steht auf "Nur Chef", und du bist al
   Die Kassa sagt: "Dieser Gutschein ist aufgebraucht." Das Blatt schließen, den Bon leeren.
 - [ ] Mit Rest Karte (echtes Terminal): einen Artikel bonieren, der mindestens 1 € mehr kostet als 2 € (zum Beispiel 3,50 €). "Gutschein", Code von Gutschein C, "Einlösen 2,00 €, Rest 1,50 €". Dann "Karte" tippen.
   Am Terminal steht nur der Rest (1,50 €). Mit der Karte zahlen. Am Kundenbon stehen zuerst "Gutschein" mit Code und dann "Karte".
-- [ ] Storno gibt das Guthaben zurück: Unter "Bons" den Bon mit Gutschein B und Rest bar öffnen, "Stornieren" und dann "Ja, stornieren" tippen.
-  Der Storno-Bon kommt. Prüfe danach Gutschein B ("Mehr", "Gutschein", "Prüfen", Code tippen): Das Guthaben ist wieder 2,00 €, unter den Bewegungen steht "Einlösung storniert". (Die Rückfrage vor dem Storno sagt hier noch "Du gibst … bar zurück." für den ganzen Betrag, obwohl nur der Bar-Teil bar zurückgeht. Das ist bekannt.)
+- [ ] Storno gibt das Guthaben zurück: Unter "Bons" den Bon mit Gutschein B und Rest bar öffnen und "Stornieren" tippen.
+  Die Rückfrage sagt zuerst "1,50 € bar zurückgeben." (nur der Bar-Teil) und darunter "Der Gutschein 1234 5678 bekommt 2,00 € zurück." (mit dem Code von Gutschein B).
+- [ ] "Ja, stornieren" tippen.
+  Der Storno-Bon kommt. Prüfe danach Gutschein B ("Mehr", "Gutschein", "Prüfen", Code tippen): Das Guthaben ist wieder 2,00 €, unter den Bewegungen steht "Einlösung storniert".
 - [ ] Storno eines eingelösten Gutscheins geht nicht: Unter "Bons" den Bon öffnen, auf dem die drei Gutscheine verkauft wurden. "Stornieren" und dann "Ja, stornieren" tippen.
   Die Kassa sagt: "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren." Es entsteht kein Storno-Bon.
 - [ ] Im Bon-Detail dieses Verkaufs auf "Gutschein drucken" tippen.
@@ -118,6 +122,10 @@ Vorher: Teil A ist gemacht, "Pfand zurück" steht auf "Nur Chef", und du bist al
   Es stehen die Bons da, die mit Gutschein bezahlt sind. In der Liste steht die Zahlungsart, zum Beispiel "Gutschein + Bar" oder "Gutschein + Karte".
 - [ ] "Abschluss" öffnen und die Karte "Einnahmen" ansehen (nicht abschließen).
   Es gibt die Zeilen "Mit Gutschein bezahlt" (mit der Summe der Einlösungen, ohne die stornierte) und "Gutscheine verkauft" (Anzahl 3, Summe 29,00 €). Der verkaufte Gutschein ist kein Umsatz: Das Geld dafür steht bei "Bar".
+- [ ] Storno eines verkauften Gutscheins: "Mehr", "Gutschein", "10 €", "Auf den Bon" tippen und bar bezahlen. Der Zettel des Gutscheins kommt. Dann unter "Bons" diesen Bon öffnen und "Stornieren" tippen.
+  Die Rückfrage sagt "Du gibst 10,00 € bar zurück." und darunter "Der Gutschein 1234 5678 gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen." (mit dem Code dieses Gutscheins).
+- [ ] "Ja, stornieren" tippen. Den Zettel des Gutscheins vom Gast zurücknehmen (im Test nur so tun) und das Geld zurückgeben.
+  Der Storno-Bon kommt. Prüfe den Gutschein ("Mehr", "Gutschein", "Prüfen", Code tippen): Zustand "Storniert", unter den Bewegungen "Verkauf storniert".
 - [ ] Die Kartenzahlung aus Teil B in der SumUp-App zurückbuchen.
 
 Für das Prüfwerkzeug des Finanzministeriums musst du hier nichts tun.
@@ -165,6 +173,8 @@ Das Tablet so stellen oder drehen, dass der Kunde den QR-Code am Bildschirm sieh
   Die Lade springt auf, aber der Kundenbon druckt nicht. Ist der Küchenbon an, druckt er wie immer. Auf dem Bildschirm stehen der QR-Code, "Bon drucken" und "Nächster Kunde".
 - [ ] "Bon drucken" tippen.
   Jetzt druckt der Kundenbon.
+- [ ] Einen Artikel bonieren, bar bezahlen und gleich "Nächster Kunde" tippen, solange noch der Platzhalter statt des QR-Codes steht.
+  Der neue Bon ist offen. Nach etwa 3 Sekunden druckt der Kundenbon des letzten Verkaufs von selbst, denn der Kunde hat den QR-Code nie gesehen.
 - [ ] Unter "Bons" diesen Bon öffnen.
   Im Detail steht der QR-Code der Seite und die Zeile "Beleg" mit "Digital angeboten" und "Gedruckt", je mit Uhrzeit. (Die Zeile "Beleg" gibt es auch bei "Immer drucken", dann mit "Gedruckt".)
 - [ ] Wenn noch Gutschein A Guthaben hat: einen Bon mit Gutschein A bezahlen und die Seite mit dem Handy öffnen.
