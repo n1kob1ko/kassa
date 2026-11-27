@@ -1,0 +1,20 @@
+{
+  "note": "Erzeugt von app/test/rksv/core/rksv_code_test.dart mit dem Test-Schlüssel aus app/test/rksv/fixtures/test_card.dart. Neu schreiben mit KASSA_WRITE_FIXTURES=1.",
+  "pairs": [
+    {
+      "name": "Verkauf, signiert",
+      "jws": "eyJhbGciOiJFUzI1NiJ9.X1IxLUFUMV9CU1BJTUIwMV8xXzIwMjYtMTEtMjdUMTI6MDM6MDVfNSw4MF8xMSw5MF8wLDAwXzAsMDBfMCwwMF9OZnRPSVpkTXdRQT1fMWEyYjNjX0tKSDZDbjRxZWE0PQ.6W_Of_5-k7KOlRPg7X-2s9vfqodZ5J0PKF7yu4ooXWZPV_W-X6dNHIkqtqNFuUAFYfGbv6TeAwHSicv6bPnp_w",
+      "qrText": "_R1-AT1_BSPIMB01_1_2026-11-27T12:03:05_5,80_11,90_0,00_0,00_0,00_NftOIZdMwQA=_1a2b3c_KJH6Cn4qea4=_6W/Of/5+k7KOlRPg7X+2s9vfqodZ5J0PKF7yu4ooXWZPV/W+X6dNHIkqtqNFuUAFYfGbv6TeAwHSicv6bPnp/w=="
+    },
+    {
+      "name": "Sicherheitseinrichtung ausgefallen",
+      "jws": "eyJhbGciOiJFUzI1NiJ9.X1IxLUFUMV9CU1BJTUIwMV8yXzIwMjYtMTEtMjdUMTI6MTA6MDBfMCwwMF8wLDAwXzAsMDBfMjUsMDBfMCwwMF9GZTZPVWhBOXVEdz1fMWEyYjNjX3V4Q0Q2RlBjNEN3PQ.U2ljaGVyaGVpdHNlaW5yaWNodHVuZyBhdXNnZWZhbGxlbg",
+      "qrText": "_R1-AT1_BSPIMB01_2_2026-11-27T12:10:00_0,00_0,00_0,00_25,00_0,00_Fe6OUhA9uDw=_1a2b3c_uxCD6FPc4Cw=_U2ljaGVyaGVpdHNlaW5yaWNodHVuZyBhdXNnZWZhbGxlbg=="
+    },
+    {
+      "name": "Storno, signiert",
+      "jws": "eyJhbGciOiJFUzI1NiJ9.X1IxLUFUMV9CU1BJTUIwMV8zXzIwMjYtMTEtMjdUMTI6MjA6NDFfLTUsODBfLTExLDkwXzAsMDBfMCwwMF8wLDAwX1UxUlBfMWEyYjNjX01SWWVKUEdBNjlJPQ.oE5qmTnBKAYeJimHAYNe5WqSGr6kVuvLXypUQzS4caodBbol-aNKosAFvUDFL3HCHHWXPLa1_LFh4enhXOr2tQ",
+      "qrText": "_R1-AT1_BSPIMB01_3_2026-11-27T12:20:41_-5,80_-11,90_0,00_0,00_0,00_U1RP_1a2b3c_MRYeJPGA69I=_oE5qmTnBKAYeJimHAYNe5WqSGr6kVuvLXypUQzS4caodBbol+aNKosAFvUDFL3HCHHWXPLa1/LFh4enhXOr2tQ=="
+    }
+  ]
+}

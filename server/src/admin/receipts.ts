@@ -172,11 +172,12 @@ export function installReceiptRoutes(app: FastifyInstance): void {
             discount: Discount | null;
             tip_cents: number;
             discount_cents: number;
+            public_token: string | null;
           }
         >(
           `select ${HEAD}, r.goods_cents, r.deposit_cents, r.voids_receipt_id, r.tip_cents, r.discount_cents,
                   r.payload->'payments' as payments, r.payload->'payment' as payment, r.payload->'vouchers' as vouchers,
-                  r.payload->'discount' as discount,
+                  r.payload->'discount' as discount, r.public_token,
                   (select v.id from receipts v where v.business_id = r.business_id and v.voids_receipt_id = r.id and v.kind = 'voided'
                     order by v.created_at, v.id limit 1) as voided_by
              ${FROM} where r.id = $1`,
@@ -231,6 +232,14 @@ export function installReceiptRoutes(app: FastifyInstance): void {
           [id],
         )
       ).rows[0];
+
+      // Wie der Beleg erteilt wurde (Stufe 1b), je Art höchstens einmal, in der Reihenfolge der Zeit.
+      const deliveries = (
+        await c.query<{ kind: string; at: Date }>(
+          'select kind, at from receipt_deliveries where receipt_id = $1 order by at, kind',
+          [id],
+        )
+      ).rows;
 
       // v: 2 bringt die Liste `payments`, v: 1 eine Zahlung `payment` (oder keine): die wird Stelle 0 ohne Trinkgeld.
       const payments = Array.isArray(r.payments)
@@ -292,6 +301,9 @@ export function installReceiptRoutes(app: FastifyInstance): void {
               },
             }
           : {}),
+        // Beide fehlen, wenn es nichts zu zeigen gibt: so bleibt das Detail eines älteren Bons genau, wie es war.
+        ...(deliveries.length > 0 ? { deliveries: deliveries.map((x) => ({ kind: x.kind, at: x.at.toISOString() })) } : {}),
+        ...(r.public_token ? { pageUrl: `/beleg/${r.public_token}` } : {}),
       };
     });
   });

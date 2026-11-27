@@ -88,7 +88,14 @@ export type ReceiptDetail = ReceiptHead & {
   rksv: { cashBoxId: string | null; damaged: boolean; probe: boolean } | null;
   /** Der Empfänger der Rechnung, die letzte Fassung. Fehlt, wenn der Bon keinen hat. */
   recipient?: ReceiptRecipient;
+  /** Wie der Beleg erteilt wurde, je Art einmal, nach der Zeit. Fehlt, solange nichts erteilt ist. */
+  deliveries?: ReceiptDelivery[];
+  /** Die öffentliche Seite des Bons (`/beleg/<Schlüssel>`). Fehlt bei Bons ohne Schlüssel (vor 1.12.0). */
+  pageUrl?: string;
 };
+
+/** Ein Eintrag der Belegerteilung: Kundenbon gedruckt oder QR-Code am Tablet gezeigt. */
+export type ReceiptDelivery = { kind: 'printed' | 'digital'; at: string };
 
 /** Der Empfänger der Rechnung zu einem Bon: eine Kopie von Name, Adresse und UID, wie sie auf der Rechnung steht. */
 export type ReceiptRecipient = {

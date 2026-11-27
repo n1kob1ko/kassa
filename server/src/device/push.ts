@@ -5,6 +5,7 @@ import { ApiError } from '../errors.js';
 import { writeServerReport } from '../reports.js';
 import { contentHash } from './content_hash.js';
 import { handleCustomer } from './push_customer.js';
+import { handleDelivery } from './push_delivery.js';
 import { handleItemChange } from './push_item_change.js';
 import { handleRecipient } from './push_recipient.js';
 import { handleReport } from './push_report.js';
@@ -364,6 +365,7 @@ export const handlers: Record<string, EntryHandler> = {
   report: handleReport,
   customer: handleCustomer,
   recipient: handleRecipient,
+  delivery: handleDelivery,
 };
 
 /**

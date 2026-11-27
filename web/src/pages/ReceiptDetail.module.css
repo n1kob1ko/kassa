@@ -169,6 +169,12 @@
   overflow-wrap: anywhere;
 }
 
+.figure dd.deliveries {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .figure dd.txCode {
   font-family: ui-monospace, monospace;
   font-weight: 600;

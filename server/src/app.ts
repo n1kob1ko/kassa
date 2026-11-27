@@ -19,6 +19,7 @@ import { installPairRoutes } from './device/pair.js';
 import { installFileRoutes } from './files/routes.js';
 import { installPullRoutes } from './device/pull.js';
 import { installPushRoutes } from './device/push.js';
+import { installReceiptPage } from './public/receipt_page.js';
 import { clientAddress } from './client_address.js';
 import type { Config } from './config.js';
 import type { Db } from './db/db.js';
@@ -53,10 +54,14 @@ export const DEFAULT_TIMEOUTS: Timeouts = { headersMs: 30_000, idleMs: 60_000, r
 
 /**
  * Der Pfad ohne Abfrage. Der geheime Teil eines Installations-Links ist eine Fähigkeit und bleibt aus dem Protokoll:
- * `/laden/<geheim>/kassa-1.2.0.apk` wird zu `/laden/…/kassa-1.2.0.apk`.
+ * `/laden/<geheim>/kassa-1.2.0.apk` wird zu `/laden/…/kassa-1.2.0.apk`. Ebenso der Schlüssel der Seite eines Bons:
+ * alles ab `/beleg/` (in jeder Schreibweise) wird `/beleg/:token`.
  */
-function loggedPath(url: string): string {
-  return url.split('?')[0]!.replace(/^\/laden\/[^/]*/, '/laden/…');
+export function loggedPath(url: string): string {
+  return url
+    .split('?')[0]!
+    .replace(/^\/laden\/[^/]*/, '/laden/…')
+    .replace(/\/beleg\/.*$/is, '/beleg/:token');
 }
 
 /**
@@ -104,6 +109,8 @@ export async function buildApp(
   await registerWeb(app, deps.config.webDir);
   await app.register(cookie);
 
+  // Die öffentliche Seite eines Bons, vor allem anderen: /beleg/… bekommt nie die Seite der Verwaltung.
+  installReceiptPage(app);
   app.get('/healthz', async () => ({ ok: true }));
   installAuth(app);
   await installReleaseRoutes(app);

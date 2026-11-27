@@ -4,6 +4,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/rksv/core/rksv_code.dart';
+import 'package:pointycastle/digests/sha256.dart';
+
+import '../fixtures/test_card.dart';
 
 void main() {
   final v = jsonDecode(
@@ -230,5 +233,79 @@ void main() {
       formatCodeTime(DateTime(2026, 11, 18, 13, 5, 9)),
       '2026-11-18T13:05:09',
     );
+  });
+
+  // Die gemeinsame Datei für den Server (server/src/public/qr.ts): drei Paare
+  // aus JWS und QR-Text, mit dem Code des Tablets und dem Test-Schlüssel aus
+  // test_card.dart. Mit KASSA_WRITE_FIXTURES=1 schreibt der Test sie neu,
+  // sonst vergleicht er.
+  test('qr_text.json: drei Paare aus JWS und QR-Text', () {
+    String signed(String text) => jwsCompact(
+      text,
+      testSigner(
+        SHA256Digest().process(
+          Uint8List.fromList(ascii.encode(jwsSigningInput(text))),
+        ),
+      ),
+    );
+    final chain1 = v['chainFromCashBoxId'] as String;
+    final sale = codeText(
+      fields(
+        '1',
+        DateTime(2026, 11, 27, 12, 3, 5),
+        [580, 1190, 0, 0, 0],
+        enc('1', 1770),
+        chain1,
+      ),
+    );
+    final damaged = codeText(
+      fields(
+        '2',
+        DateTime(2026, 11, 27, 12, 10),
+        [0, 0, 0, 2500, 0],
+        enc('2', 4270),
+        chainValue(signed(sale)),
+      ),
+    );
+    final storno = codeText(
+      fields(
+        '3',
+        DateTime(2026, 11, 27, 12, 20, 41),
+        [-580, -1190, 0, 0, 0],
+        v['stornoMarker'] as String,
+        chainValue(jwsDamaged(damaged)),
+      ),
+    );
+    final pairs = [
+      for (final (name, jws) in [
+        ('Verkauf, signiert', signed(sale)),
+        ('Sicherheitseinrichtung ausgefallen', jwsDamaged(damaged)),
+        ('Storno, signiert', signed(storno)),
+      ])
+        {'name': name, 'jws': jws, 'qrText': qrText(jws)},
+    ];
+    final content = {
+      'note':
+          'Erzeugt von app/test/rksv/core/rksv_code_test.dart mit dem '
+          'Test-Schlüssel aus app/test/rksv/fixtures/test_card.dart. '
+          'Neu schreiben mit KASSA_WRITE_FIXTURES=1.',
+      'pairs': pairs,
+    };
+    final file = File('../shared/fixtures/rksv/qr_text.json');
+    final text = '${const JsonEncoder.withIndent('  ').convert(content)}\n';
+    if (Platform.environment['KASSA_WRITE_FIXTURES'] == '1') {
+      file.writeAsStringSync(text);
+      return;
+    }
+    expect(
+      file.existsSync(),
+      isTrue,
+      reason: '${file.path} fehlt. Mit KASSA_WRITE_FIXTURES=1 schreiben.',
+    );
+    expect(jsonDecode(file.readAsStringSync()), jsonDecode(text));
+    // Die Signatur im QR-Text ist base64 mit '=', nicht url-sicher.
+    for (final p in pairs) {
+      expect(p['qrText']!.split('_').last, endsWith('='));
+    }
   });
 }

@@ -8,7 +8,7 @@ const CONTENT_SECURITY_POLICY =
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 
 /** Adressen, die der Server selbst beantwortet. Dort gibt es nie die Seite, sondern die eigene 404. */
-const SERVER_AREAS = ['/api', '/laden', '/healthz', '/assets'];
+const SERVER_AREAS = ['/api', '/laden', '/healthz', '/assets', '/beleg'];
 
 /** Eine Datei hat eine Endung aus Buchstaben und Ziffern ("favicon.ico"); ein Zeitraum "2026-01..2026-10" nicht. */
 const FILE_ENDING = /\.[A-Za-z0-9]+$/;

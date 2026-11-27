@@ -5,6 +5,7 @@ import {
   discountText,
   useReceipt,
   type Payment as PaymentData,
+  type ReceiptDelivery,
   type ReceiptDetail,
   type ReceiptHead,
   type ReceiptKind,
@@ -239,6 +240,42 @@ function Recipient({ receipt }: { receipt: ReceiptDetail }) {
   );
 }
 
+/** "Gedruckt 12:03" oder "Digital angeboten 12:03", in Wiener Zeit. */
+export function deliveryText(d: ReceiptDelivery): string {
+  return `${d.kind === 'printed' ? 'Gedruckt' : 'Digital angeboten'} ${timeText(new Date(d.at))}`;
+}
+
+/** Zeile "Beleg": wie der Beleg erteilt wurde, dazu der Weg zur Seite des Bons; ohne beides nichts. */
+function Delivery({ receipt }: { receipt: ReceiptDetail }) {
+  const deliveries = receipt.deliveries ?? [];
+  if (deliveries.length === 0 && !receipt.pageUrl) return null;
+  return (
+    <section className={styles.section} aria-label="Beleg">
+      <dl className={styles.figures}>
+        <div className={styles.figure}>
+          <dt data-testid="delivery-title">Beleg</dt>
+          <dd className={styles.deliveries}>
+            {deliveries.length === 0
+              ? 'Noch nicht erteilt'
+              : deliveries.map((d) => (
+                  <span key={d.kind} data-testid="delivery">
+                    {deliveryText(d)}
+                  </span>
+                ))}
+          </dd>
+        </div>
+      </dl>
+      {receipt.pageUrl && (
+        // Die Seite gehört nicht zur Verwaltung: ein eigener Tab, ohne Verweis zurück.
+        <a className={styles.pair} data-testid="page-link" href={receipt.pageUrl} target="_blank" rel="noopener noreferrer">
+          <span>Seite des Bons</span>
+          <ChevronRightIcon size={18} />
+        </a>
+      )}
+    </section>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className={styles.detail} role="status" aria-busy="true">
@@ -338,6 +375,8 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
       <SoldVouchers receipt={r} />
 
       <Recipient receipt={r} />
+
+      <Delivery receipt={r} />
 
       {signature && (
         <section className={styles.section} aria-labelledby="bon-signatur">
