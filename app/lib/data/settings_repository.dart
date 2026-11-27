@@ -36,6 +36,10 @@ class RegisterSettings {
     this.cardTipEnabled = false,
     this.discountAccess = FeatureAccess.off,
     this.openAmountAccess = FeatureAccess.off,
+    this.depositReturnAccess = FeatureAccess.off,
+    this.voucherEnabled = false,
+    this.invoiceEnabled = false,
+    this.receiptMode = ReceiptMode.alwaysPrint,
   });
 
   final bool cashDrawerEnabled;
@@ -72,6 +76,13 @@ class RegisterSettings {
   final FeatureAccess discountAccess;
   final FeatureAccess openAmountAccess;
 
+  /// Die Schalter von Stufe 1b: wer Pfand zurückgeben darf, Gutschein,
+  /// Rechnung an Firma und wie der Kunde seinen Beleg bekommt.
+  final FeatureAccess depositReturnAccess;
+  final bool voucherEnabled;
+  final bool invoiceEnabled;
+  final ReceiptMode receiptMode;
+
   RegisterSettings copyWith({
     bool? cashDrawerEnabled,
     bool? showImages,
@@ -94,6 +105,10 @@ class RegisterSettings {
     bool? cardTipEnabled,
     FeatureAccess? discountAccess,
     FeatureAccess? openAmountAccess,
+    FeatureAccess? depositReturnAccess,
+    bool? voucherEnabled,
+    bool? invoiceEnabled,
+    ReceiptMode? receiptMode,
   }) => RegisterSettings(
     cashDrawerEnabled: cashDrawerEnabled ?? this.cashDrawerEnabled,
     showImages: showImages ?? this.showImages,
@@ -116,6 +131,10 @@ class RegisterSettings {
     cardTipEnabled: cardTipEnabled ?? this.cardTipEnabled,
     discountAccess: discountAccess ?? this.discountAccess,
     openAmountAccess: openAmountAccess ?? this.openAmountAccess,
+    depositReturnAccess: depositReturnAccess ?? this.depositReturnAccess,
+    voucherEnabled: voucherEnabled ?? this.voucherEnabled,
+    invoiceEnabled: invoiceEnabled ?? this.invoiceEnabled,
+    receiptMode: receiptMode ?? this.receiptMode,
   );
 
   /// Kein Drucker mehr: Art `none`, Adresse und Name leer (`copyWith` kann
@@ -139,6 +158,10 @@ class RegisterSettings {
     cardTipEnabled: cardTipEnabled,
     discountAccess: discountAccess,
     openAmountAccess: openAmountAccess,
+    depositReturnAccess: depositReturnAccess,
+    voucherEnabled: voucherEnabled,
+    invoiceEnabled: invoiceEnabled,
+    receiptMode: receiptMode,
   );
 
   /// Kein Küchendrucker mehr: Art `none`, Adresse und Name leer.
@@ -161,6 +184,10 @@ class RegisterSettings {
     cardTipEnabled: cardTipEnabled,
     discountAccess: discountAccess,
     openAmountAccess: openAmountAccess,
+    depositReturnAccess: depositReturnAccess,
+    voucherEnabled: voucherEnabled,
+    invoiceEnabled: invoiceEnabled,
+    receiptMode: receiptMode,
   );
 }
 
@@ -204,6 +231,10 @@ class SettingsRepository {
           cardTip: Value(s.cardTipEnabled),
           discountAccess: Value(s.discountAccess.name),
           openAmountAccess: Value(s.openAmountAccess.name),
+          depositReturnAccess: Value(s.depositReturnAccess.name),
+          voucher: Value(s.voucherEnabled),
+          invoice: Value(s.invoiceEnabled),
+          receiptMode: Value(s.receiptMode.name),
         ),
       );
 
@@ -269,6 +300,18 @@ class SettingsRepository {
             FeatureAccess.values,
             r.openAmountAccess,
             FeatureAccess.off,
+          ),
+          depositReturnAccess: enumByNameOr(
+            FeatureAccess.values,
+            r.depositReturnAccess,
+            FeatureAccess.off,
+          ),
+          voucherEnabled: r.voucher,
+          invoiceEnabled: r.invoice,
+          receiptMode: enumByNameOr(
+            ReceiptMode.values,
+            r.receiptMode,
+            ReceiptMode.alwaysPrint,
           ),
         );
 

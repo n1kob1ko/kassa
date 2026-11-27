@@ -248,6 +248,86 @@ void main() {
     );
   });
 
+  test('neue Schalter: Vorgaben aus, speichern und lesen', () async {
+    var s = await settings.current();
+    expect(
+      (
+        s.depositReturnAccess,
+        s.voucherEnabled,
+        s.invoiceEnabled,
+        s.receiptMode,
+      ),
+      (FeatureAccess.off, false, false, ReceiptMode.alwaysPrint),
+    );
+    // Auch eine gespeicherte Zeile trägt die Vorgaben der Datenbank.
+    await settings.save(const RegisterSettings());
+    final empty = await db.select(db.settingsRows).getSingle();
+    expect(
+      (
+        empty.depositReturnAccess,
+        empty.voucher,
+        empty.invoice,
+        empty.receiptMode,
+      ),
+      ('off', false, false, 'alwaysPrint'),
+    );
+    await settings.save(
+      s.copyWith(
+        depositReturnAccess: FeatureAccess.chefOnly,
+        voucherEnabled: true,
+        invoiceEnabled: true,
+        receiptMode: ReceiptMode.digitalOnRequest,
+      ),
+    );
+    s = await settings.current();
+    expect(
+      (
+        s.depositReturnAccess,
+        s.voucherEnabled,
+        s.invoiceEnabled,
+        s.receiptMode,
+      ),
+      (FeatureAccess.chefOnly, true, true, ReceiptMode.digitalOnRequest),
+    );
+    final row = await db.select(db.settingsRows).getSingle();
+    expect(
+      (row.depositReturnAccess, row.voucher, row.invoice, row.receiptMode),
+      ('chefOnly', true, true, 'digitalOnRequest'),
+    );
+    // withoutPrinter, withoutKitchenPrinter und copyWith reichen sie durch.
+    for (final t in [
+      s.withoutPrinter(),
+      s.withoutKitchenPrinter(),
+      s.copyWith(printerColumns: 32),
+    ]) {
+      expect(
+        (
+          t.depositReturnAccess,
+          t.voucherEnabled,
+          t.invoiceEnabled,
+          t.receiptMode,
+        ),
+        (FeatureAccess.chefOnly, true, true, ReceiptMode.digitalOnRequest),
+      );
+    }
+  });
+
+  test('unbekannter Text in deposit_return_access und receipt_mode gibt die '
+      'Vorgabe', () async {
+    await settings.save(
+      const RegisterSettings(
+        depositReturnAccess: FeatureAccess.all,
+        receiptMode: ReceiptMode.printAndDigital,
+      ),
+    );
+    await db.customStatement(
+      "UPDATE settings SET deposit_return_access = 'bogus', receipt_mode = ''",
+    );
+    final s = await settings.current();
+    expect(s.depositReturnAccess, FeatureAccess.off);
+    expect(s.receiptMode, ReceiptMode.alwaysPrint);
+  });
+
   test('unbekannter Text in discount_access gibt off', () async {
     await settings.save(
       const RegisterSettings(

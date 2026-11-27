@@ -1,4 +1,4 @@
-// Sprachen der Kassa und Art des Küchenbons.
+// Sprachen der Kassa, Art des Küchenbons und des Kundenbons.
 
 import 'dart:ui';
 
@@ -31,3 +31,7 @@ enum AppLanguage {
 
 /// Wohin der Küchenbon geht.
 enum KitchenMode { off, receiptPrinter, kitchenPrinter }
+
+/// Wie der Kunde seinen Beleg bekommt: immer gedruckt, gedruckt und digital,
+/// oder digital und gedruckt nur auf Wunsch.
+enum ReceiptMode { alwaysPrint, printAndDigital, digitalOnRequest }

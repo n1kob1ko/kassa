@@ -188,6 +188,17 @@ class SettingsRows extends Table {
   TextColumn get openAmountAccess =>
       text().withDefault(const Constant('off'))();
 
+  /// Die vier Schalter von Stufe 1b: wer Pfand zurückgeben darf (wie
+  /// [discountAccess]), Gutschein, Rechnung an Firma, und wie der Kunde
+  /// seinen Beleg bekommt (`alwaysPrint`, `printAndDigital` oder
+  /// `digitalOnRequest`, siehe `ReceiptMode`).
+  TextColumn get depositReturnAccess =>
+      text().withDefault(const Constant('off'))();
+  BoolColumn get voucher => boolean().withDefault(const Constant(false))();
+  BoolColumn get invoice => boolean().withDefault(const Constant(false))();
+  TextColumn get receiptMode =>
+      text().withDefault(const Constant('alwaysPrint'))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -290,6 +301,10 @@ class ReceiptRows extends Table {
       integer().withDefault(const Constant(0))();
   TextColumn get discountReason => text().nullable()();
 
+  /// Schlüssel der öffentlichen Seite des Belegs; leer, solange es keine
+  /// gibt (bei allen Bons aus 1.11.0).
+  TextColumn get publicToken => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -359,7 +374,7 @@ class PaymentRows extends Table {
   /// Stelle der Zahlung im Bon, ab 0.
   IntColumn get position => integer().withDefault(const Constant(0))();
 
-  /// `cash` oder `card`.
+  /// `cash`, `card` oder `voucher`.
   TextColumn get kind => text()();
   IntColumn get amountCents => integer()();
   IntColumn get givenCents => integer()();
@@ -377,8 +392,113 @@ class PaymentRows extends Table {
   TextColumn get tipStaffId => text().nullable()();
   TextColumn get tipStaffName => text().nullable()();
 
+  /// Nur bei Zahlung mit Gutschein: welcher Gutschein (Kennung und Code)
+  /// und sein Guthaben nach dieser Zahlung.
+  TextColumn get voucherId => text().nullable()();
+  TextColumn get voucherCode => text().nullable()();
+  IntColumn get voucherBalanceAfterCents => integer().nullable()();
+
   @override
   Set<Column> get primaryKey => {receiptId, position};
+}
+
+/// Ein Gutschein. Code und Wert ändern sich nie, gelöscht wird keiner
+/// (Trigger). Das Guthaben ergibt sich aus den Bewegungen.
+@TableIndex(name: 'vouchers_code', columns: {#code})
+class VoucherRows extends Table {
+  @override
+  String get tableName => 'vouchers';
+
+  TextColumn get id => text()();
+  TextColumn get code => text()();
+  IntColumn get valueCents => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  /// Der Bon und die Zeile, mit denen er verkauft wurde; leer, solange das
+  /// Tablet sie nicht kennt.
+  TextColumn get soldReceiptId => text().nullable()();
+  IntColumn get soldLinePosition => integer().nullable()();
+  BoolColumn get isTest => boolean()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Eine Bewegung am Guthaben eines Gutscheins, höchstens eine je Gutschein
+/// und Bon. Unveränderlich (Trigger).
+class VoucherMovementRows extends Table {
+  @override
+  String get tableName => 'voucher_movements';
+
+  TextColumn get voucherId => text()();
+  TextColumn get receiptId => text()();
+
+  /// `sale`, `redeem`, `void_sale` oder `void_redeem`.
+  TextColumn get kind => text()();
+
+  /// Mit Vorzeichen: positiv lädt das Guthaben auf, negativ zieht ab.
+  IntColumn get amountCents => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {voucherId, receiptId};
+}
+
+/// Ein Firmenkunde für die Rechnung.
+class CustomerRows extends Table {
+  @override
+  String get tableName => 'customers';
+
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get addressLine1 => text()();
+  TextColumn get addressLine2 => text()();
+  TextColumn get vatId => text().nullable()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get lastUsedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Der Empfänger der Rechnung zu einem Bon, eine Zeile je Fassung (ab 0).
+/// Unveränderlich (Trigger): eine Änderung ist eine neue Fassung.
+class ReceiptRecipientRows extends Table {
+  @override
+  String get tableName => 'receipt_recipients';
+
+  TextColumn get receiptId => text()();
+  IntColumn get version => integer()();
+
+  /// Der Firmenkunde, aus dem der Empfänger kommt; leer ohne.
+  TextColumn get customerId => text().nullable()();
+  TextColumn get name => text()();
+  TextColumn get addressLine1 => text()();
+  TextColumn get addressLine2 => text()();
+  TextColumn get vatId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get staffId => text()();
+  TextColumn get staffName => text()();
+
+  @override
+  Set<Column> get primaryKey => {receiptId, version};
+}
+
+/// Wie der Beleg zu einem Bon erteilt wurde, eine Zeile je Art.
+/// Unveränderlich (Trigger).
+class ReceiptDeliveryRows extends Table {
+  @override
+  String get tableName => 'receipt_deliveries';
+
+  TextColumn get receiptId => text()();
+
+  /// `printed` oder `digital`.
+  TextColumn get kind => text()();
+  DateTimeColumn get at => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {receiptId, kind};
 }
 
 /// Eine Kartenzahlung, die gestartet, aber noch nicht als Bon abgeschlossen
@@ -548,7 +668,8 @@ class OutboxRows extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   /// `receipt`, `day`, `cash_movement`, `item_change`, `report`,
-  /// `rksv_certificate` oder `rksv_chain`.
+  /// `rksv_certificate`, `rksv_chain`, `recipient` (Kennung
+  /// `<receiptId>/<version>`) oder `delivery` (Kennung `<receiptId>/<kind>`).
   TextColumn get kind => text()();
 
   /// Kennung der Sache (bei Artikel-Änderungen die Artikel-Kennung).
@@ -617,13 +738,18 @@ class ReportRows extends Table {
     RksvStateRows,
     OutboxRows,
     ReportRows,
+    VoucherRows,
+    VoucherMovementRows,
+    CustomerRows,
+    ReceiptRecipientRows,
+    ReceiptDeliveryRows,
   ],
 )
 class KassaDatabase extends _$KassaDatabase {
   KassaDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -665,6 +791,8 @@ class KassaDatabase extends _$KassaDatabase {
       await _insertRksvState();
       await _createOutboxIndex();
       await _createOutboxTriggers();
+      await _createStep9Guards();
+      await _createStep9OutboxTriggers();
     },
     // Jeder Schritt prüft auch [to], damit die Tests der älteren Schritte
     // genau bis zu ihrer Version migrieren.
@@ -784,6 +912,15 @@ class KassaDatabase extends _$KassaDatabase {
           await _stepTo8(m);
         }
       }
+      if (from < 9 && to >= 9) {
+        // Wie Schritt 7: ganz oder gar nicht, und wiederholbar. Erledigt ist
+        // er, wenn es die Tabelle `vouchers` gibt.
+        final done = await customSelect(
+          "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'vouchers'",
+        ).get();
+        if (done.isEmpty) await _stepTo9(m);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -841,17 +978,8 @@ class KassaDatabase extends _$KassaDatabase {
       for (final action in const ['update', 'delete']) {
         await customStatement('DROP TRIGGER IF EXISTS payments_no_$action');
       }
-      await m.alterTable(
-        TableMigration(
-          paymentRows,
-          newColumns: [
-            paymentRows.position,
-            paymentRows.tipCents,
-            paymentRows.tipStaffId,
-            paymentRows.tipStaffName,
-          ],
-        ),
-      );
+      // In der Form von Version 8: Schritt 9 fügt die Spalten dazu.
+      await _rebuildPaymentsV8();
       await _createReceiptGuards('payments');
 
       await m.addColumn(receiptRows, receiptRows.tipCents);
@@ -888,6 +1016,63 @@ class KassaDatabase extends _$KassaDatabase {
       }
     });
     await customStatement('PRAGMA foreign_keys = ON');
+  }
+
+  /// Schritt 9 in einer Transaktion: Pfand zurück, Gutschein, Rechnung an
+  /// Firma und der digitale Beleg. Neue Spalten mit Vorgabe (kein Bon
+  /// bekommt einen Schlüssel der Seite), fünf neue Tabellen mit ihren
+  /// Triggern. Der Abgleich holt einmal alles neu: 1.11.0 hat Firmenkunden
+  /// und Gutscheine vom Server überlesen. Kopplung und erstes Laden bleiben.
+  Future<void> _stepTo9(Migrator m) async {
+    await transaction(() async {
+      await m.addColumn(settingsRows, settingsRows.depositReturnAccess);
+      await m.addColumn(settingsRows, settingsRows.voucher);
+      await m.addColumn(settingsRows, settingsRows.invoice);
+      await m.addColumn(settingsRows, settingsRows.receiptMode);
+      await m.addColumn(receiptRows, receiptRows.publicToken);
+      await m.addColumn(paymentRows, paymentRows.voucherId);
+      await m.addColumn(paymentRows, paymentRows.voucherCode);
+      await m.addColumn(paymentRows, paymentRows.voucherBalanceAfterCents);
+      await m.createTable(voucherRows);
+      await m.createIndex(vouchersCode);
+      await m.createTable(voucherMovementRows);
+      await m.createTable(customerRows);
+      await m.createTable(receiptRecipientRows);
+      await m.createTable(receiptDeliveryRows);
+      await _createStep9Guards();
+      await _createStep9OutboxTriggers();
+      await customStatement('UPDATE sync_state SET pull_cursor = 0');
+    });
+  }
+
+  /// Bewegungen, Empfänger und Belegerteilung sind unveränderlich. Ein
+  /// Gutschein behält Code und Wert und wird nie gelöscht; dieselben Werte
+  /// noch einmal zu schreiben (wie beim Abgleich) geht.
+  Future<void> _createStep9Guards() async {
+    for (final (table, message) in const [
+      ('voucher_movements', 'Gutschein-Bewegungen sind unveränderlich'),
+      ('receipt_recipients', 'Rechnungsempfänger sind unveränderlich'),
+      ('receipt_deliveries', 'Belegerteilungen sind unveränderlich'),
+    ]) {
+      for (final action in const ['UPDATE', 'DELETE']) {
+        await customStatement(
+          'CREATE TRIGGER ${table}_no_${action.toLowerCase()} '
+          'BEFORE $action ON $table BEGIN '
+          "SELECT RAISE(ABORT, '$message'); END",
+        );
+      }
+    }
+    await customStatement(
+      'CREATE TRIGGER vouchers_no_update_code_value '
+      'BEFORE UPDATE ON vouchers WHEN NEW.code IS NOT OLD.code '
+      'OR NEW.value_cents IS NOT OLD.value_cents BEGIN '
+      "SELECT RAISE(ABORT, 'Code und Wert eines Gutscheins bleiben'); END",
+    );
+    await customStatement(
+      'CREATE TRIGGER vouchers_no_delete '
+      'BEFORE DELETE ON vouchers BEGIN '
+      "SELECT RAISE(ABORT, 'Gutscheine können nicht gelöscht werden'); END",
+    );
   }
 
   /// `pending_card_payments`, wie Version 2 sie angelegt hat.
@@ -929,6 +1114,38 @@ class KassaDatabase extends _$KassaDatabase {
     await customStatement('PRAGMA legacy_alter_table = 1');
     await customStatement(
       'ALTER TABLE "tmp_for_copy_receipts" RENAME TO "receipts"',
+    );
+    await customStatement('PRAGMA legacy_alter_table = 0');
+  }
+
+  /// Die Spalten von `payments` in Version 7.
+  static const _paymentsV7Columns =
+      '"receipt_id", "kind", "amount_cents", "given_cents", "change_cents", '
+      '"provider", "provider_tx_code", "card_scheme", "card_last4"';
+
+  /// `payments` in der Form von Version 8 neu aufbauen (Schlüssel
+  /// `{receiptId, position}`, Trinkgeld), wie `alterTable` es täte; die
+  /// vorhandenen Zahlungen bekommen Stelle 0 und kein Trinkgeld. Die Trigger
+  /// entfernt und legt der Aufrufer an.
+  Future<void> _rebuildPaymentsV8() async {
+    await customStatement(
+      'CREATE TABLE "tmp_for_copy_payments" ("receipt_id" TEXT NOT NULL '
+      'REFERENCES receipts (id), "position" INTEGER NOT NULL DEFAULT 0, '
+      '"kind" TEXT NOT NULL, "amount_cents" INTEGER NOT NULL, '
+      '"given_cents" INTEGER NOT NULL, "change_cents" INTEGER NOT NULL, '
+      '"provider" TEXT NULL, "provider_tx_code" TEXT NULL, '
+      '"card_scheme" TEXT NULL, "card_last4" TEXT NULL, '
+      '"tip_cents" INTEGER NOT NULL DEFAULT 0, "tip_staff_id" TEXT NULL, '
+      '"tip_staff_name" TEXT NULL, PRIMARY KEY ("receipt_id", "position"))',
+    );
+    await customStatement(
+      'INSERT INTO "tmp_for_copy_payments" ($_paymentsV7Columns) '
+      'SELECT $_paymentsV7Columns FROM "payments"',
+    );
+    await customStatement('DROP TABLE "payments"');
+    await customStatement('PRAGMA legacy_alter_table = 1');
+    await customStatement(
+      'ALTER TABLE "tmp_for_copy_payments" RENAME TO "payments"',
     );
     await customStatement('PRAGMA legacy_alter_table = 0');
   }
@@ -1011,21 +1228,12 @@ class KassaDatabase extends _$KassaDatabase {
   /// Zeile anheben, sonst eine neue anlegen. So geht eine Änderung nicht
   /// verloren, die während des Sendens geschieht, und kein Schreiber im Code
   /// kann es vergessen. Ein Bon nimmt seinen Eintrag im Protokoll mit.
+  ///
+  /// Hier die Trigger von Version 6; die von Version 9 legt
+  /// [_createStep9OutboxTriggers] an (ihre Tabellen gibt es in Schritt 6
+  /// noch nicht).
   Future<void> _createOutboxTriggers() async {
-    Future<void> trigger(
-      String table,
-      String event,
-      String kind,
-      String ref,
-    ) => customStatement(
-      'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
-      'AFTER $event ON $table BEGIN '
-      // `kind <> 'item_change'` lässt das UPDATE den Teilindex outbox_entity
-      // nehmen, sonst liest es die ganze Liste.
-      'UPDATE outbox SET rev = rev + 1 '
-      "WHERE kind = '$kind' AND kind <> 'item_change' AND ref = $ref; "
-      "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
-    );
+    final trigger = _createOutboxTrigger;
     await trigger('receipts', 'INSERT', 'receipt', 'NEW.id');
     await trigger('rksv_entries', 'INSERT', 'receipt', 'NEW.receipt_id');
     await trigger('business_days', 'INSERT', 'day', 'NEW.id');
@@ -1042,6 +1250,40 @@ class KassaDatabase extends _$KassaDatabase {
     await trigger('reports', 'INSERT', 'report', 'NEW.id');
     await trigger('reports', 'UPDATE', 'report', 'NEW.id');
   }
+
+  /// Die Trigger der Liste ab Version 9: ein neuer Rechnungsempfänger und
+  /// eine neue Belegerteilung. Gutscheine, ihre Bewegungen und Firmenkunden
+  /// bekommen keinen: Firmenkunden trägt der Code selbst ein, damit Kunden
+  /// vom Server kein Echo erzeugen.
+  Future<void> _createStep9OutboxTriggers() async {
+    await _createOutboxTrigger(
+      'receipt_recipients',
+      'INSERT',
+      'recipient',
+      "NEW.receipt_id || '/' || NEW.version",
+    );
+    await _createOutboxTrigger(
+      'receipt_deliveries',
+      'INSERT',
+      'delivery',
+      "NEW.receipt_id || '/' || NEW.kind",
+    );
+  }
+
+  Future<void> _createOutboxTrigger(
+    String table,
+    String event,
+    String kind,
+    String ref,
+  ) => customStatement(
+    'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
+    'AFTER $event ON $table BEGIN '
+    // `kind <> 'item_change'` lässt das UPDATE den Teilindex outbox_entity
+    // nehmen, sonst liest es die ganze Liste.
+    'UPDATE outbox SET rev = rev + 1 '
+    "WHERE kind = '$kind' AND kind <> 'item_change' AND ref = $ref; "
+    "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
+  );
 
   /// Migration auf Version 6: alles Vorhandene einmal in die Liste, in der
   /// Reihenfolge, in der der Server es braucht (Zertifikat und Kette vor den
