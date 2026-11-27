@@ -289,6 +289,23 @@ class _Header extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
+    final title = Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(l.kassaReceipt, style: text.headlineMedium),
+        const SizedBox(width: KassaTokens.spaceLg),
+        Flexible(
+          child: Text(
+            l.kassaItemCount(count),
+            key: const Key('cart-count'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall!.copyWith(fontSize: 14, color: c.ink2),
+          ),
+        ),
+      ],
+    );
     return SizedBox(
       height: KassaTokens.receiptHeaderHeight,
       child: Padding(
@@ -296,29 +313,24 @@ class _Header extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(l.kassaReceipt, style: text.headlineMedium),
-                  const SizedBox(width: KassaTokens.spaceLg),
-                  Flexible(
-                    child: Text(
-                      l.kassaItemCount(count),
-                      key: const Key('cart-count'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall!.copyWith(
-                        fontSize: 14,
-                        color: c.ink2,
+              child: switch (onOpenAmount) {
+                null => title,
+                // Die Taste "Freier Betrag" nimmt, was sie braucht, höchstens
+                // die Hälfte; den Rest behalten der Titel und die Zahl der
+                // Artikel.
+                final onOpenAmount => LayoutBuilder(
+                  builder: (context, box) => Row(
+                    children: [
+                      Expanded(child: title),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: box.maxWidth / 2),
+                        child: _OpenAmountButton(onTap: onOpenAmount),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              },
             ),
-            if (onOpenAmount case final onOpenAmount?)
-              Flexible(child: _OpenAmountButton(onTap: onOpenAmount)),
             Pressable(
               key: const Key('clear-cart'),
               onTap: empty ? null : onClear,
@@ -491,7 +503,7 @@ class _OpenAmountButton extends StatelessWidget {
       minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
       child: Container(
         height: KassaTokens.drawnControlHeight,
-        padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceLg),
+        padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceSm),
         decoration: BoxDecoration(
           color: c.fill,
           borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
@@ -500,7 +512,7 @@ class _OpenAmountButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(LucideIcons.plus, size: 18, color: c.ink),
-            const SizedBox(width: KassaTokens.spaceSm),
+            const SizedBox(width: KassaTokens.spaceXs),
             Flexible(
               child: Text(
                 L10n.of(context).openAmountTitle,

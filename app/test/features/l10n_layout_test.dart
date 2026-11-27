@@ -9,6 +9,8 @@ import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/core/money.dart';
+import 'package:kassa/domain/feature_access.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
 import 'package:kassa/features/kassa/modifier_panel.dart';
@@ -232,6 +234,115 @@ Future<void> _tour(
   look('Einstellungen Küche');
 }
 
+/// Wie `tapKeys`, scrollt jede Taste vorher in Sicht (kleiner Bildschirm).
+Future<void> _visibleKeys(WidgetTester t, String keys) async {
+  for (final k in keys.split(' ')) {
+    final name = k == ',' ? 'comma' : k;
+    await t.ensureVisible(find.byKey(Key('key-$name')));
+    await t.pumpAndSettle();
+    await tapKeys(t, k);
+  }
+}
+
+Future<void> _tapVisible(WidgetTester t, String key) async {
+  await t.ensureVisible(find.byKey(Key(key)));
+  await t.pumpAndSettle();
+  await _tap(t, key);
+}
+
+/// Kassa mit allen vier Schaltern der Stufe 1a an, der Chef angemeldet, auf
+/// dem Bon eine Huhn Bowl mit Auswahl und 2 × Cola.
+Future<void> _openStufe1a(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+) async {
+  await pumpKassa(t, size: size, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      splitPaymentEnabled: true,
+      cardTipEnabled: true,
+      discountAccess: FeatureAccess.all,
+      openAmountAccess: FeatureAccess.all,
+    ),
+  );
+  await t.tap(find.byKey(const Key('item-huhn-bowl')));
+  await t.pump();
+  await t.tap(find.byKey(const Key('opt-bowl/1/0')));
+  await t.tap(find.byKey(const Key('opt-bowl/0/1')));
+  await t.pump();
+  await t.tap(find.byKey(const Key('add-to-cart')));
+  await t.pump();
+  await tapItem(t, 'cola');
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+}
+
+/// Öffnet das Rabatt-Blatt der ersten Zeile (Tipp auf ihren Preis: der Name
+/// steht in jeder Sprache anders).
+Future<void> _openLineDiscount(WidgetTester t) async {
+  final line = cartOf(t).lines.first;
+  await t.tap(
+    find.descendant(
+      of: find.byKey(Key('line-${line.lineId}')),
+      matching: find.text(formatEuro(line.goodsCents)),
+    ),
+  );
+  await t.pumpAndSettle();
+}
+
+/// Die vier neuen Blätter und die Karte "Zahlen" nacheinander; [look] prüft
+/// jedes Bild.
+Future<void> _tourStufe1a(
+  WidgetTester t,
+  void Function(String screen) look,
+) async {
+  await _tap(t, 'open-amount-button');
+  expect(find.byKey(const Key('open-amount-sheet')), findsOneWidget);
+  await _visibleKeys(t, '1 2 , 5 0');
+  await _tapVisible(t, 'open-rate-10');
+  look('Freier Betrag');
+  await _tap(t, 'open-amount-back');
+
+  await _openLineDiscount(t);
+  expect(find.byKey(const Key('discount-sheet')), findsOneWidget);
+  await _tapVisible(t, 'discount-reason-regular');
+  await _tapVisible(t, 'discount-amount');
+  await _visibleKeys(t, '2');
+  look('Rabatt Zeile mit Zahlenfeld');
+  await _tap(t, 'discount-back');
+
+  await _tap(t, 'discount-button');
+  expect(find.byKey(const Key('discount-sheet')), findsOneWidget);
+  await _tapVisible(t, 'discount-reason-promotion');
+  await _tapVisible(t, 'discount-percent-10');
+  look('Rabatt Bon');
+  await _tap(t, 'discount-back');
+
+  await _tap(t, 'pay-cash');
+  await _tap(t, 'cash-mode-split');
+  await _visibleKeys(t, '5');
+  look('Teil bar');
+  await _tap(t, 'cash-back');
+
+  await _tap(t, 'pay-card');
+  expect(find.byKey(const Key('tip-sheet')), findsOneWidget);
+  look('Trinkgeld');
+  await _tapVisible(t, 'tip-other');
+  await _visibleKeys(t, '9');
+  look('Trinkgeld, Betrag zu klein');
+  await _visibleKeys(t, '9');
+  look('Trinkgeld mit Zahlenfeld');
+  await _tap(t, 'tip-back');
+
+  await _tap(t, 'settings');
+  await t.ensureVisible(find.byKey(const Key('payment-card')));
+  await t.pumpAndSettle();
+  look('Einstellungen Zahlen');
+}
+
 void main() {
   for (final language in AppLanguage.values) {
     for (final size in _sizes) {
@@ -322,6 +433,82 @@ void main() {
       },
     );
     expect(seen, containsAll(['Anmeldung', 'Kassa', 'Bar mit Zahlenfeld']));
+  });
+
+  for (final language in AppLanguage.values) {
+    for (final size in _sizes) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()}: die '
+        'neuen Blätter ohne Überlauf',
+        (t) async {
+          await _openStufe1a(t, language, size);
+          final at =
+              '${language.name} ${size.width.toInt()}×${size.height.toInt()}';
+          final seen = <String>[];
+          await _tourStufe1a(t, (screen) {
+            seen.add(screen);
+            _expectClean(t, '$at $screen');
+            if (!language.isRtl) _expectNoIsolates(t, '$at $screen');
+          });
+          expect(seen, hasLength(8));
+        },
+      );
+    }
+  }
+
+  testWidgets('ar: Beträge und Zahlenfeld der neuen Blätter stehen von links '
+      'nach rechts', (t) async {
+    await _openStufe1a(t, AppLanguage.ar, const Size(1280, 800));
+    void ltr(String key) {
+      final f = find.byKey(Key(key));
+      expect(f, findsOneWidget, reason: key);
+      expect(Directionality.of(t.element(f)), TextDirection.ltr, reason: key);
+    }
+
+    void keypadLtr(String screen) {
+      final one = _rect(t, find.byKey(const Key('key-1')));
+      final three = _rect(t, find.byKey(const Key('key-3')));
+      expect(one.center.dx, lessThan(three.center.dx), reason: screen);
+    }
+
+    final seen = <String>[];
+    await _tourStufe1a(t, (screen) {
+      seen.add(screen);
+      // Das Blatt selbst liest von rechts nach links.
+      final sheet = switch (screen) {
+        'Freier Betrag' => 'open-amount-sheet',
+        'Teil bar' => 'cash-mode-split',
+        'Einstellungen Zahlen' => 'payment-card',
+        _ when screen.startsWith('Rabatt') => 'discount-sheet',
+        _ => 'tip-sheet',
+      };
+      expect(
+        Directionality.of(t.element(find.byKey(Key(sheet)))),
+        TextDirection.rtl,
+        reason: screen,
+      );
+      switch (screen) {
+        case 'Freier Betrag':
+          keypadLtr(screen);
+        case 'Rabatt Zeile mit Zahlenfeld':
+          ltr('discount-new');
+          ltr('discount-target');
+          keypadLtr(screen);
+        case 'Rabatt Bon':
+          ltr('discount-new');
+        case 'Teil bar':
+          ltr('split-rest');
+          ltr('cash-total');
+          keypadLtr(screen);
+        case 'Trinkgeld':
+          ltr('tip-due');
+          ltr('tip-amount');
+        case 'Trinkgeld mit Zahlenfeld':
+          ltr('tip-due');
+          keypadLtr(screen);
+      }
+    });
+    expect(seen, contains('Trinkgeld mit Zahlenfeld'));
   });
 }
 

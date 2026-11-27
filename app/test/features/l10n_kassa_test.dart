@@ -3,7 +3,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/domain/feature_access.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
+import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/kassa_pump.dart';
@@ -41,6 +43,59 @@ void main() {
       expect(find.text('Bon leeren'), findsNothing);
     });
   }
+
+  const discountAndOpen = {
+    AppLanguage.en: (discount: 'Discount', open: 'Open amount'),
+    AppLanguage.zh: (discount: '折扣', open: '自定义金额'),
+    AppLanguage.tr: (discount: 'İndirim', open: 'Serbest tutar'),
+    AppLanguage.ar: (discount: 'خصم', open: 'مبلغ حر'),
+  };
+
+  testWidgets('en, zh, tr, ar: die Tasten "Rabatt" und "Freier Betrag" stehen '
+      'in der Bediensprache', (t) async {
+    for (final MapEntry(key: language, value: texts)
+        in discountAndOpen.entries) {
+      await pumpKassaWith(t, ['cola']);
+      await setSettings(
+        t,
+        (s) => s.copyWith(
+          language: language,
+          discountAccess: FeatureAccess.all,
+          openAmountAccess: FeatureAccess.all,
+        ),
+      );
+      // Mit einem und mit zwei Artikeln: die Taste, der Titel und die Zahl
+      // der Artikel daneben sind ganz zu lesen, ohne Auslassungspunkte.
+      for (final count in [1, 2]) {
+        if (count == 2) {
+          await tapItem(t, 'teigtaschen');
+          await t.pumpAndSettle();
+        }
+        final at = '${language.name}, $count';
+        for (final (key, text) in [
+          ('discount-button', texts.discount),
+          ('open-amount-button', texts.open),
+        ]) {
+          final label = _inKey(key, text);
+          expect(label, findsOneWidget, reason: '$at $key');
+          final box = t.renderObject<RenderParagraph>(
+            find.descendant(of: label, matching: find.byType(RichText)),
+          );
+          expect(box.didExceedMaxLines, isFalse, reason: '$at $key');
+        }
+        final countBox = t.renderObject<RenderParagraph>(
+          find.descendant(
+            of: find.byKey(const Key('cart-count')),
+            matching: find.byType(RichText),
+            matchRoot: true,
+          ),
+        );
+        expect(countBox.didExceedMaxLines, isFalse, reason: '$at cart-count');
+      }
+      expect(_inKey('discount-button', 'Rabatt'), findsNothing);
+      expect(_inKey('open-amount-button', 'Freier Betrag'), findsNothing);
+    }
+  });
 
   testWidgets('tr: Barzahlung bis "Verkauf fertig"', (t) async {
     await pumpKassaWith(t, ['cola', 'teigtaschen']);

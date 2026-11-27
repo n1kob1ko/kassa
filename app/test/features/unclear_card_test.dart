@@ -13,6 +13,8 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/catalog.dart' show TaxRate;
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
@@ -782,6 +784,83 @@ void main() {
     expect(await _receipts(t), isEmpty);
     expect(await _pending(t), 0);
     expect(cartOf(t).totalCents, 965);
+  });
+
+  testWidgets('unklar mit freiem Betrag und Rabatt: "bezahlt" schreibt den '
+      'Bon mit seinen Zeilen, Rabatten und seiner Summe', (t) async {
+    // Teigtaschen 6,50 € mit 10 % Stammgast, Cola 2,90 € plus 0,25 € Pfand,
+    // freier Betrag 12,50 € zu 10 %, auf dem Bon 2,00 € Aktion.
+    var mixed = cartCard.addOpenAmount(
+      amountCents: 1250,
+      rate: TaxRate.reduced1,
+    );
+    mixed = mixed
+        .setLineDiscount(
+          mixed.lines[0].lineId,
+          const Discount.percent(10, DiscountReason.regular),
+        )
+        .setReceiptDiscount(
+          const Discount.amount(200, DiscountReason.promotion),
+        );
+    await _start(t, await _setup(open: [('p1', mixed, _first)]));
+    expect(_sheet, findsOneWidget);
+    expect(textOf(t, const Key('unclear-amount')), '19,50 €');
+    await _tap(t, 'unclear-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(
+      await queryRows(
+        t,
+        'SELECT id, goods_cents, deposit_cents, total_cents, discount_cents, '
+        'discount_percent, discount_amount_cents, discount_reason '
+        'FROM receipts',
+      ),
+      [
+        {
+          'id': 'p1',
+          'goods_cents': 1925,
+          'deposit_cents': 25,
+          'total_cents': 1950,
+          'discount_cents': 265,
+          'discount_percent': null,
+          'discount_amount_cents': 200,
+          'discount_reason': 'promotion',
+        },
+      ],
+    );
+    final lines = await queryRows(
+      t,
+      'SELECT item_id, name, unit_price_cents, quantity, own_discount_percent, '
+      'own_discount_cents, own_discount_reason, discount_cents, gross10_cents '
+      'FROM receipt_lines ORDER BY position',
+    );
+    expect(
+      [for (final l in lines) (l['item_id'], l['name'], l['unit_price_cents'])],
+      [
+        ('teigtaschen', 'Teigtaschen', 650),
+        ('cola', 'Cola 0,33 l', 290),
+        ('open-amount-10', 'Diverses 10 %', 1250),
+      ],
+    );
+    expect(lines[0]['own_discount_percent'], 10);
+    expect(lines[0]['own_discount_cents'], 65);
+    expect(lines[0]['own_discount_reason'], 'regular');
+    expect(lines[2]['own_discount_reason'], isNull);
+    expect(
+      lines[2]['gross10_cents'],
+      1250 - (lines[2]['discount_cents']! as int),
+    );
+    expect(
+      lines.fold<int>(0, (s, l) => s + (l['discount_cents']! as int)),
+      265,
+    );
+    expect(
+      await queryRows(t, 'SELECT kind, amount_cents, tip_cents FROM payments'),
+      [
+        {'kind': 'card', 'amount_cents': 1950, 'tip_cents': 0},
+      ],
+    );
+    expect(await _pending(t), 0);
   });
 
   testWidgets('Tasten des Blatts sind mindestens 48 dp hoch', (t) async {
