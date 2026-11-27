@@ -4,7 +4,9 @@ import { nextChangeSeq, withBusiness, withBusinessWrite } from '../db/tenant.js'
 import { ApiError } from '../errors.js';
 import { writeServerReport } from '../reports.js';
 import { contentHash } from './content_hash.js';
+import { handleCustomer } from './push_customer.js';
 import { handleItemChange } from './push_item_change.js';
+import { handleRecipient } from './push_recipient.js';
 import { handleReport } from './push_report.js';
 import { requireRegister, type Register } from './guard.js';
 import {
@@ -360,10 +362,15 @@ export const handlers: Record<string, EntryHandler> = {
   receipt: handleReceipt,
   item_change: handleItemChange,
   report: handleReport,
+  customer: handleCustomer,
+  recipient: handleRecipient,
 };
 
-/** Arten, die eine Änderungs-Nummer ziehen und darum in withBusinessWrite laufen (ein Bon v: 3 für Gutscheine und Bewegungen). */
-const WRITE_KINDS = new Set(['item_change', 'receipt']);
+/**
+ * Arten, die eine Änderungs-Nummer ziehen und darum in withBusinessWrite laufen (ein Bon v: 3 für Gutscheine und
+ * Bewegungen, ein Firmenkunde für das Holen der anderen Tablets).
+ */
+const WRITE_KINDS = new Set(['item_change', 'receipt', 'customer']);
 
 type Result = { seq: number } & (EntryResult | { status: 'error' });
 type Entry = { seq: number; kind: string } & Record<string, unknown>;

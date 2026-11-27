@@ -6,6 +6,7 @@ import { allKeys, createProvider, FORBIDDEN_KEYS, send, setTimeZone, siteFor, ty
 import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { sendStufe1b } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
+import { pushEntries } from './support/push.js';
 
 let a: TestApp;
 let provider: TestUser;
@@ -326,5 +327,34 @@ describe('Bons mit Gutscheinen (Stufe 1b)', () => {
       expect(d.vouchers).toEqual([]);
       for (const p of d.payments) expect([p.voucherCode, p.voucherBalanceAfterCents]).toEqual([null, null]);
     }
+  });
+});
+
+describe('Rechnungsempfänger (Stufe 1b)', () => {
+  test('das Detail trägt den letzten Empfänger', async () => {
+    const s = await siteFor(a, provider);
+    const r = bon('2026-11-19T08:00:00.000Z');
+    const plain = bon('2026-11-19T08:10:00.000Z');
+    await send(a, s, [['receipt', r], ['receipt', plain]]);
+    const recipient = (version: number, o: Record<string, unknown> = {}) => ({
+      receiptId: r.id, version, customerId: null, name: 'Muster GmbH', addressLine1: 'Musterweg 1', addressLine2: '1010 Wien',
+      vatId: null, createdAt: '2026-11-19T08:05:00.000Z', staffId: 'chefin', staffName: 'Chefin', ...o,
+    });
+    const res = await pushEntries(a.app, s.token, s.deviceId, [
+      { seq: 9001, kind: 'recipient', ...recipient(0) },
+      { seq: 9002, kind: 'recipient', ...recipient(1, { addressLine1: 'Musterweg 2', vatId: 'ATU00000000', createdAt: '2026-11-19T08:20:00.000Z', staffName: 'Anna' }) },
+    ]);
+    expect(res.results.map((x) => x.status)).toEqual(['accepted', 'accepted']);
+
+    const d = (await get(`/api/admin/businesses/${s.businessId}/receipts/${r.id}`)).json();
+    expect(d.recipient).toEqual({
+      name: 'Muster GmbH', addressLine1: 'Musterweg 2', addressLine2: '1010 Wien', vatId: 'ATU00000000',
+      version: 1, createdAt: '2026-11-19T08:20:00.000Z', staffName: 'Anna',
+    });
+    // Ohne Empfänger fehlt das Feld ganz; die Kennung der Mitarbeiterin steht nie darin.
+    expect(Object.keys((await get(`/api/admin/businesses/${s.businessId}/receipts/${plain.id}`)).json())).not.toContain('recipient');
+    expect([...allKeys(d)].filter((k) => FORBIDDEN_KEYS.includes(k))).toEqual([]);
+    // Die Liste bleibt ohne Empfänger.
+    expect(JSON.stringify((await list(s)).json())).not.toContain('Muster GmbH');
   });
 });

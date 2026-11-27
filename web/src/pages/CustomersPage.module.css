@@ -1,0 +1,12 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxl);
+}
+
+/* Die Adresse steht in zwei Zeilen, wie auf der Rechnung. */
+.address {
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}

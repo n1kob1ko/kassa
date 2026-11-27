@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/app_sync_providers.dart';
 import 'package:kassa/core/app_info.dart';
 import 'package:kassa/core/clock.dart';
+import 'package:kassa/data/customer_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
@@ -984,4 +985,203 @@ void main() {
       expect(await container.read(setupCompleteProvider.future), isTrue);
     },
   );
+
+  group('Firmenkunden (Stufe 1b)', () {
+    const customerId = 'c0000000-0000-4000-8000-00000000000a';
+    final muster = <String, Object?>{
+      'id': customerId,
+      'name': 'Muster GmbH',
+      'addressLine1': 'Musterweg 1',
+      'addressLine2': '1010 Wien',
+      'vatId': 'ATU00000000',
+      'archived': false,
+    };
+
+    bool catchUpPending(Harness h) =>
+        h.run(h.db.select(h.db.syncStateRows).getSingle()).catchUpPending;
+    CustomerRow? customer(Harness h) => h.run(
+      (h.db.select(
+        h.db.customerRows,
+      )..where((t) => t.id.equals(customerId))).getSingleOrNull(),
+    );
+    String colaName(Harness h) => h.run(
+      (h.db.select(
+        h.db.itemRows,
+      )..where((t) => t.id.equals('cola'))).getSingle(),
+    ).name;
+
+    test('Nachholen: mit catchUpPending kommt ein Kunde mit Änderungs-Nummer '
+        'unter dem eigenen pullCursor an; pullCursor und Artikel bleiben; '
+        'danach ist catchUpPending falsch; ein Abbruch mittendrin lässt es '
+        'wahr', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        // Wie 1.11.0: der Kunde kam beim Abholen an, die Liste wurde
+        // überlesen, der Cursor steht schon dahinter. Die Migration auf 9
+        // hat catchUpPending gesetzt.
+        h.server.upsert('customers', muster);
+        final cursor = h.server.seq;
+        h.run(
+          h.db
+              .update(h.db.syncStateRows)
+              .write(
+                SyncStateRowsCompanion(
+                  pullCursor: Value(cursor),
+                  catchUpPending: const Value(true),
+                ),
+              ),
+        );
+        // Ein Artikel am Tablet, anders als am Server: das Nachholen fasst
+        // ihn nicht an.
+        h.run(
+          h.db.customStatement(
+            "UPDATE items SET name = 'Tablet-Cola' WHERE id = 'cola'",
+          ),
+        );
+
+        // Abbruch nach der ersten Seite des Nachholens.
+        h.server.breakAfterPages = 1;
+        h.run(h.service.syncNow());
+        expect(h.server.pullRequests, [0, 2]);
+        expect(catchUpPending(h), isTrue);
+        expect(h.state().pullCursor, cursor);
+        expect(h.state().lastError, ServerFailure.offline.name);
+
+        // Der nächste Lauf beginnt wieder bei 0, holt bis zum eigenen Cursor
+        // und dann wie immer ab dem Cursor.
+        h.server.breakAfterPages = null;
+        h.server.pullRequests.clear();
+        h.run(h.service.syncNow());
+        expect(h.server.pullRequests, [0, 2, 4, 6, 8, cursor]);
+        expect(customer(h)?.name, 'Muster GmbH');
+        expect(catchUpPending(h), isFalse);
+        expect(h.state().pullCursor, cursor);
+        expect(h.state().lastError, isNull);
+        expect(colaName(h), 'Tablet-Cola');
+        expect(h.counts().pending, 0);
+
+        // Danach kein Nachholen mehr.
+        h.server.pullRequests.clear();
+        h.run(h.service.syncNow());
+        expect(h.server.pullRequests, [cursor]);
+        h.close();
+      });
+    });
+
+    test('ohne catchUpPending kein Nachholen; neue Kunden kommen beim '
+        'normalen Holen', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        final cursor = h.state().pullCursor;
+        h.server.upsert('customers', muster);
+        h.run(h.service.syncNow());
+        expect(h.server.pullRequests, [cursor]);
+        expect(customer(h)?.name, 'Muster GmbH');
+        h.close();
+      });
+    });
+
+    test('customer und recipient gehen hinauf; abgelehnt ohne Bericht mit '
+        'Name, Adresse oder UID; eine unbekannte Art wird einmal gemeldet und '
+        'hält die anderen nicht auf', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        final repo = CustomerRepository(h.db, FixedClock(start));
+        final saved = h.run(
+          repo.save(
+            name: 'Geheim GmbH',
+            addressLine1: 'Geheimweg 7',
+            addressLine2: '1010 Wien',
+            vatId: 'ATU99999999',
+          ),
+        );
+        h.run(
+          h.db
+              .into(h.db.receiptRecipientRows)
+              .insert(
+                ReceiptRecipientRowsCompanion.insert(
+                  receiptId: 'r1',
+                  version: 0,
+                  name: 'Geheim GmbH',
+                  addressLine1: 'Geheimweg 7',
+                  addressLine2: '1010 Wien',
+                  vatId: const Value('ATU99999999'),
+                  createdAt: start,
+                  staffId: 'chefin',
+                  staffName: 'Chefin',
+                ),
+              ),
+        );
+        h.run(
+          h.db.customStatement(
+            "INSERT INTO outbox (kind, ref) VALUES ('recipient', 'r1/0')",
+          ),
+        );
+        h.run(
+          h.db.customStatement(
+            "INSERT INTO outbox (kind, ref) VALUES ('unbekannt', 'x')",
+          ),
+        );
+        h.addDay('a');
+        final ids = {
+          for (final r in h.run(
+            h.db.customSelect('SELECT id, kind FROM outbox').get(),
+          ))
+            r.read<String>('kind'): r.read<int>('id'),
+        };
+        h.server.pushStatuses[ids['customer']!] = 'rejected';
+        h.server.pushStatuses[ids['recipient']!] = 'rejected';
+
+        h.run(h.service.syncNow());
+        final first = h.server.pushRequests.first;
+        expect([for (final e in first) e['kind']], [
+          'customer',
+          'recipient',
+          'day',
+        ]);
+        expect(first[0], {
+          'seq': ids['customer'],
+          'kind': 'customer',
+          'id': saved.id,
+          'name': 'Geheim GmbH',
+          'addressLine1': 'Geheimweg 7',
+          'addressLine2': '1010 Wien',
+          'vatId': 'ATU99999999',
+          'archived': false,
+          'updatedAt': start.toUtc().toIso8601String(),
+        });
+        expect(first[1]['receiptId'], 'r1');
+        expect(first[1]['version'], 0);
+        final counts = h.counts();
+        // customer und recipient abgelehnt vom Server, die unbekannte Art am
+        // Tablet; der Tag ist angekommen.
+        expect((counts.pending, counts.rejected), (0, 3));
+
+        final reports = h.run(h.db.select(h.db.reportRows).get());
+        expect(reports, hasLength(1));
+        expect(jsonDecode(reports.single.content), {
+          'type': 'OutboxBuildError',
+          'message': 'Eintrag unbekannt: ArgumentError',
+          'stack': '',
+        });
+        for (final word in ['Geheim', 'ATU99999999', '1010 Wien']) {
+          expect(reports.single.content, isNot(contains(word)));
+        }
+
+        // Ein zweiter Lauf meldet nichts Neues und sendet nichts davon
+        // noch einmal.
+        final pushes = h.server.pushRequests.length;
+        h.run(h.service.syncNow());
+        expect(h.run(h.db.select(h.db.reportRows).get()), hasLength(1));
+        expect(
+          [
+            for (final r in h.server.pushRequests.skip(pushes))
+              for (final e in r) e['kind'],
+          ],
+          everyElement('report'),
+        );
+        h.close();
+      });
+    });
+  });
 }

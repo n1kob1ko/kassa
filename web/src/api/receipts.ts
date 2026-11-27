@@ -86,6 +86,20 @@ export type ReceiptDetail = ReceiptHead & {
   voidsReceiptId: string | null;
   voidedByReceiptId: string | null;
   rksv: { cashBoxId: string | null; damaged: boolean; probe: boolean } | null;
+  /** Der Empfänger der Rechnung, die letzte Fassung. Fehlt, wenn der Bon keinen hat. */
+  recipient?: ReceiptRecipient;
+};
+
+/** Der Empfänger der Rechnung zu einem Bon: eine Kopie von Name, Adresse und UID, wie sie auf der Rechnung steht. */
+export type ReceiptRecipient = {
+  name: string;
+  addressLine1: string;
+  addressLine2: string;
+  vatId: string | null;
+  /** Fassung ab 0; jede Korrektur am Tablet ist eine neue. */
+  version: number;
+  createdAt: string;
+  staffName: string;
 };
 
 /**

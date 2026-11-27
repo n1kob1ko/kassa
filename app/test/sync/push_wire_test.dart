@@ -720,6 +720,140 @@ void main() {
   test('Bericht, den es nicht mehr gibt, ergibt null', () async {
     expect(await payloads.build(entry(1, 'report', 'gibt-es-nicht')), isNull);
   });
+
+  test(
+    'Einträge customer und recipient gehen in der Form oben hinaus',
+    () async {
+      const customerId = 'c0000000-0000-4000-8000-000000000001';
+      const receiptId = 'b0000000-0000-4000-8000-000000000001';
+      await db
+          .into(db.customerRows)
+          .insert(
+            CustomerRowsCompanion.insert(
+              id: customerId,
+              name: 'Muster GmbH',
+              addressLine1: 'Musterweg 1',
+              addressLine2: '1010 Wien',
+              vatId: const Value('ATU00000000'),
+              updatedAt: DateTime.utc(2026, 11, 27, 11, 3),
+              lastUsedAt: Value(DateTime.utc(2026, 11, 27, 11, 4)),
+            ),
+          );
+      await db
+          .into(db.customerRows)
+          .insert(
+            CustomerRowsCompanion.insert(
+              id: 'c0000000-0000-4000-8000-000000000002',
+              name: 'Ohne UID KG',
+              addressLine1: 'Musterweg 2',
+              addressLine2: '1010 Wien',
+              archived: const Value(true),
+              updatedAt: DateTime.utc(2026, 11, 27, 11, 5),
+            ),
+          );
+      for (final (version, customer, vat) in [
+        (0, customerId, 'ATU00000000'),
+        (1, null, null),
+      ]) {
+        await db
+            .into(db.receiptRecipientRows)
+            .insert(
+              ReceiptRecipientRowsCompanion.insert(
+                receiptId: receiptId,
+                version: version,
+                customerId: Value(customer),
+                name: 'Muster GmbH',
+                addressLine1: 'Musterweg $version',
+                addressLine2: '1010 Wien',
+                vatId: Value(vat),
+                createdAt: DateTime.utc(2026, 11, 27, 11, 10 + version),
+                staffId: 'chefin',
+                staffName: 'Chefin',
+              ),
+            );
+      }
+
+      Future<Object?> wire(OutboxEntry e) async =>
+          jsonDecode(jsonEncode(await payloads.build(e)));
+      expect(await wire(entry(7, 'customer', customerId)), {
+        'seq': 7,
+        'kind': 'customer',
+        'id': customerId,
+        'name': 'Muster GmbH',
+        'addressLine1': 'Musterweg 1',
+        'addressLine2': '1010 Wien',
+        'vatId': 'ATU00000000',
+        'archived': false,
+        'updatedAt': '2026-11-27T11:03:00.000Z',
+      });
+      expect(
+        await wire(
+          entry(8, 'customer', 'c0000000-0000-4000-8000-000000000002'),
+        ),
+        {
+          'seq': 8,
+          'kind': 'customer',
+          'id': 'c0000000-0000-4000-8000-000000000002',
+          'name': 'Ohne UID KG',
+          'addressLine1': 'Musterweg 2',
+          'addressLine2': '1010 Wien',
+          'vatId': null,
+          'archived': true,
+          'updatedAt': '2026-11-27T11:05:00.000Z',
+        },
+      );
+      expect(await wire(entry(9, 'recipient', '$receiptId/0')), {
+        'seq': 9,
+        'kind': 'recipient',
+        'receiptId': receiptId,
+        'version': 0,
+        'customerId': customerId,
+        'name': 'Muster GmbH',
+        'addressLine1': 'Musterweg 0',
+        'addressLine2': '1010 Wien',
+        'vatId': 'ATU00000000',
+        'createdAt': '2026-11-27T11:10:00.000Z',
+        'staffId': 'chefin',
+        'staffName': 'Chefin',
+      });
+      expect(await wire(entry(10, 'recipient', '$receiptId/1')), {
+        'seq': 10,
+        'kind': 'recipient',
+        'receiptId': receiptId,
+        'version': 1,
+        'customerId': null,
+        'name': 'Muster GmbH',
+        'addressLine1': 'Musterweg 1',
+        'addressLine2': '1010 Wien',
+        'vatId': null,
+        'createdAt': '2026-11-27T11:11:00.000Z',
+        'staffId': 'chefin',
+        'staffName': 'Chefin',
+      });
+
+      // Was es nicht (mehr) gibt oder nicht lesbar ist: nichts zu senden.
+      expect(
+        await payloads.build(entry(11, 'customer', 'gibt-es-nicht')),
+        isNull,
+      );
+      expect(
+        await payloads.build(entry(12, 'recipient', '$receiptId/2')),
+        isNull,
+      );
+      expect(await payloads.build(entry(13, 'recipient', receiptId)), isNull);
+      expect(
+        await payloads.build(entry(14, 'recipient', '$receiptId/x')),
+        isNull,
+      );
+    },
+  );
+
+  test('eine unbekannte Art wirft weiter (SyncService meldet sie und lässt sie liegen)', () async {
+    expect(
+      () => payloads.build(entry(1, 'unbekannt', 'x')),
+      throwsArgumentError,
+    );
+  });
 }
 
 String refOfDay() => '7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21';

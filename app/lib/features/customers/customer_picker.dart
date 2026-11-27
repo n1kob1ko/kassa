@@ -3,6 +3,8 @@
 // das Blatt "Firmenkunde wählen" ([CustomerPicker]). Gesucht wird über Tasten
 // mit den Anfangsbuchstaben, die vorkommen, nie über die Tastatur.
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
@@ -239,6 +241,27 @@ class _CustomerPickerState extends ConsumerState<CustomerPicker> {
   /// weitere Tipps nichts.
   bool _busy = false;
   bool _failed = false;
+
+  /// Bringt der Abgleich Firmenkunden, während die Auswahl offen ist, liest
+  /// sie die Liste neu: ein archivierter verschwindet, ein neuer kommt dazu.
+  StreamSubscription<void>? _changes;
+
+  @override
+  void initState() {
+    super.initState();
+    _changes = ref.read(customerRepositoryProvider).watchChanges().listen((_) {
+      if (!mounted) return;
+      setState(() {
+        _load = _read();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _changes?.cancel();
+    super.dispose();
+  }
 
   Future<({List<Customer> customers, List<String> initials})> _read() async {
     final repo = ref.read(customerRepositoryProvider);

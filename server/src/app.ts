@@ -2,6 +2,7 @@ import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import { installBackupRoutes } from './admin/backups.js';
 import { installBusinessRoutes } from './admin/businesses.js';
+import { installCustomerRoutes } from './admin/customers.js';
 import { installDayRoutes } from './admin/days.js';
 import { installDepRoutes } from './admin/dep.js';
 import { installItemRoutes } from './admin/items.js';
@@ -108,6 +109,7 @@ export async function buildApp(
   await installReleaseRoutes(app);
   installBusinessRoutes(app);
   installStaffRoutes(app);
+  installCustomerRoutes(app);
   installRegisterRoutes(app);
   installOverviewRoutes(app);
   installReceiptRoutes(app);

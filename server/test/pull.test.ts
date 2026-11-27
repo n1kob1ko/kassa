@@ -352,3 +352,71 @@ describe('mit gemeinsamer App', () => {
     }
   });
 });
+
+describe('Firmenkunden (Stufe 1b)', () => {
+  let a: TestApp;
+  let provider: TestUser;
+  beforeAll(async () => {
+    a = await testApp();
+    provider = await createProvider(a.app, a.db);
+  });
+  afterAll(async () => {
+    await a.close();
+  });
+
+  /** Die Schlüssel und Listen, die ein Tablet mit 1.11.0 liest. */
+  const KNOWN_1_11_0 = ['next', 'more', 'business', 'categories', 'items', 'templates', 'staff', 'translations'];
+  const createCustomer = async (b: string, body: object) => {
+    const res = await a.app.inject({ method: 'POST', url: `/api/admin/businesses/${b}/customers`, headers: authed(provider.cookie), payload: body });
+    expect(res.statusCode).toBe(201);
+    return res.json().customer as { id: string };
+  };
+
+  test('customers kommen beim Abholen, archivierte mit archived true; die Antwort passt weiter zum Schema von 1.11.0', async () => {
+    const { id: b } = await createBusiness(a.app, provider.cookie);
+    await createStaff(a.app, provider.cookie, b, { name: 'Chefin', role: 'chef', pin: '1234' });
+    const { token } = await pairDevice(a.app, provider.cookie, b);
+    const without = (await pull(a.app, token, '?since=0')).json();
+    expect(Object.keys(without)).not.toContain('customers');
+
+    const muster = await createCustomer(b, { name: 'Muster GmbH', addressLine1: 'Musterweg 1', addressLine2: '1010 Wien', vatId: 'ATU00000000' });
+    const alt = await createCustomer(b, { name: 'Alt KG', addressLine1: 'Musterweg 2', addressLine2: '1010 Wien' });
+    const archived = await a.app.inject({
+      method: 'PATCH',
+      url: `/api/admin/businesses/${b}/customers/${alt.id}`,
+      headers: authed(provider.cookie),
+      payload: { archived: true },
+    });
+    expect(archived.statusCode).toBe(200);
+
+    const full = (await pull(a.app, token, '?since=0')).json();
+    expect(full.customers).toEqual([
+      { id: muster.id, name: 'Muster GmbH', addressLine1: 'Musterweg 1', addressLine2: '1010 Wien', vatId: 'ATU00000000', archived: false },
+      { id: alt.id, name: 'Alt KG', addressLine1: 'Musterweg 2', addressLine2: '1010 Wien', vatId: null, archived: true },
+    ]);
+    // Gelesen wie von 1.11.0: die bekannten Schlüssel und Listen sind dieselben wie ohne Firmenkunden.
+    const { customers: _c, ...known } = full;
+    expect(Object.keys(known).every((k) => KNOWN_1_11_0.includes(k))).toBe(true);
+    expect({ ...known, next: without.next }).toEqual(without);
+    expect(full.next).toBeGreaterThan(without.next);
+
+    // Ab dem alten Stand nur die Kunden; danach nichts mehr und keine Liste customers.
+    const delta = (await pull(a.app, token, `?since=${without.next}`)).json();
+    expect(delta).toEqual({ next: full.next, more: false, categories: [], items: [], templates: [], staff: [], translations: [], customers: full.customers });
+    expect((await pull(a.app, token, `?since=${full.next}`)).json()).toEqual({
+      next: full.next, more: false, categories: [], items: [], templates: [], staff: [], translations: [],
+    });
+
+    // Seitenweise zählen die Kunden in derselben Reihe: jede Zeile genau einmal.
+    const pages = await pullAll(a.app, token, 0, 3);
+    expect(pages.flatMap((p) => (p as { customers?: { id: string }[] }).customers ?? []).map((c) => c.id)).toEqual([muster.id, alt.id]);
+    expect(pages.flatMap(rowsOf)).toHaveLength(rowsOf(without as Pulled).length);
+
+    // Ein anderer Betrieb sieht die Kunden nicht.
+    const { id: other } = await createBusiness(a.app, provider.cookie);
+    await createStaff(a.app, provider.cookie, other, { name: 'Chefin', role: 'chef', pin: '1234' });
+    const otherToken = (await pairDevice(a.app, provider.cookie, other)).token;
+    const text = JSON.stringify((await pull(a.app, otherToken, '?since=0')).json());
+    for (const s of ['customers', 'Muster GmbH', muster.id]) expect(text).not.toContain(s);
+  });
+});

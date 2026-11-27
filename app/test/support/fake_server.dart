@@ -199,6 +199,8 @@ class FakeServer extends http.BaseClient {
       'templates': [],
       'staff': [],
       if (sendsTranslations) 'translations': [],
+      // Firmenkunden (Stufe 1b): wie am Server nur, wenn die Liste nicht leer ist.
+      'customers': [],
     };
     Map<String, Object?>? business;
     for (final r in page) {
@@ -208,6 +210,7 @@ class FakeServer extends http.BaseClient {
         lists[r.kind]!.add(r.row);
       }
     }
+    if (lists['customers']!.isEmpty) lists.remove('customers');
     return {
       'next': page.isEmpty ? since : page.last.seq,
       'more': after.length > page.length,

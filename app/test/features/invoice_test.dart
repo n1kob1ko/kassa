@@ -13,6 +13,7 @@ import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/customer.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/rksv/rksv_providers.dart';
+import 'package:kassa/sync/wire.dart' show WireCustomer;
 import 'package:kassa/ui/app_toggle.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:kassa/ui/tokens.dart';
@@ -739,5 +740,58 @@ void main() {
     hold.complete();
     await t.pumpAndSettle();
     expect(printer.printedJobs.length, jobs + 1);
+  });
+  testWidgets('Firmenkunden ändern sich beim Abgleich, während die Auswahl '
+      'offen ist: sie liest neu, ein archivierter verschwindet', (t) async {
+    await openInvoiceKassa(t, ['cola']);
+    final repo = _customers(t);
+    final muster = await repo.save(
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+    );
+    await _payCash(t);
+    await _tap(t, 'invoice-button');
+    expect(_key('customer-row-${muster.id}'), findsOneWidget);
+
+    const neu = 'c0000000-0000-4000-8000-00000000000e';
+    await t.runAsync(
+      () => repo.applyServer(const [
+        WireCustomer(
+          id: neu,
+          name: 'Neu KG',
+          addressLine1: 'Musterweg 5',
+          addressLine2: '1010 Wien',
+          vatId: null,
+          archived: false,
+        ),
+      ]),
+    );
+    await t.pumpAndSettle();
+    expect(_key('customer-row-$neu'), findsOneWidget);
+    expect(_key('customer-initial-N'), findsOneWidget);
+
+    // Der eigene Eintrag ist gesendet: jetzt gilt der Stand des Servers.
+    await t.runAsync(
+      () => containerOf(
+        t,
+      ).read(databaseProvider).customStatement('DELETE FROM outbox'),
+    );
+    await t.runAsync(
+      () => repo.applyServer([
+        WireCustomer(
+          id: muster.id,
+          name: 'Muster GmbH',
+          addressLine1: 'Musterweg 1',
+          addressLine2: '1010 Wien',
+          vatId: null,
+          archived: true,
+        ),
+      ]),
+    );
+    await t.pumpAndSettle();
+    expect(_key('customer-row-${muster.id}'), findsNothing);
+    expect(_key('customer-row-$neu'), findsOneWidget);
+    expect(_key('customer-picker'), findsOneWidget);
   });
 }

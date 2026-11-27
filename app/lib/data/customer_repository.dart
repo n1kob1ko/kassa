@@ -2,6 +2,8 @@
 // beim Schreiben selbst in die Liste "noch zu senden" ein, im selben Schritt
 // der Datenbank: `customer` (ref = Kennung) und `recipient` (ref =
 // `<Bon>/<Fassung>`). Der Bon und seine Signatur ändern sich dabei nie.
+// Firmenkunden vom Server kommen über [CustomerRepository.applyServer] ohne
+// Eintrag herein.
 
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -9,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../core/clock.dart';
 import '../domain/customer.dart';
 import '../domain/staff.dart';
+import '../sync/wire.dart' show WireCustomer;
 import 'database.dart';
 
 class CustomerRepository {
@@ -150,6 +153,62 @@ class CustomerRepository {
     await _enqueue('recipient', '$receiptId/${row.version}');
     return _recipient(row);
   });
+
+  /// Übernimmt Firmenkunden vom Server: anlegen oder ändern, ohne Eintrag
+  /// in "noch zu senden". Zuletzt verwendet bleibt, wie es war; ein neuer
+  /// Kunde bekommt als Stand die Uhr des Tablets. Wartet für einen Kunden
+  /// noch ein eigener Eintrag `customer`, bleibt die Fassung des Tablets
+  /// stehen: der Server kennt sie noch nicht. Nur in einer Transaktion des
+  /// Abgleichs aufrufen.
+  Future<void> applyServer(List<WireCustomer> customers) async {
+    if (customers.isEmpty) return;
+    final waiting = await _waitingCustomers();
+    final now = _clock.now();
+    for (final c in customers) {
+      if (waiting.contains(c.id)) continue;
+      final values = CustomerRowsCompanion(
+        name: Value(c.name),
+        addressLine1: Value(c.addressLine1),
+        addressLine2: Value(c.addressLine2),
+        vatId: Value(_vat(c.vatId)),
+        archived: Value(c.archived),
+      );
+      final updated = await (_db.update(
+        _db.customerRows,
+      )..where((t) => t.id.equals(c.id))).write(values);
+      if (updated > 0) continue;
+      await _db
+          .into(_db.customerRows)
+          .insert(values.copyWith(id: Value(c.id), updatedAt: Value(now)));
+    }
+  }
+
+  /// Nach dem ersten Laden ([ServerChanges.replaceAll]): wer weder vom Server
+  /// kam ([keep]) noch auf das Senden wartet, steht nicht mehr zur Wahl
+  /// (archiviert). Bons behalten ihre Kopie von Name und Adresse.
+  Future<void> archiveAllExcept(Set<String> keep) async {
+    final spared = {...keep, ...await _waitingCustomers()};
+    await (_db.update(_db.customerRows)
+          ..where((t) => t.id.isNotIn(spared) & t.archived.equals(false)))
+        .write(const CustomerRowsCompanion(archived: Value(true)));
+  }
+
+  /// Kunden, für die noch ein eigener Eintrag `customer` auf das Senden
+  /// wartet.
+  Future<Set<String>> _waitingCustomers() async => {
+    for (final r
+        in await _db
+            .customSelect(
+              "SELECT ref FROM outbox WHERE kind = 'customer' AND state = 'pending'",
+              readsFrom: {_db.outboxRows},
+            )
+            .get())
+      r.read<String>('ref'),
+  };
+
+  /// Meldet sich, sobald sich ein Firmenkunde ändert, auch durch den Abgleich.
+  Stream<void> watchChanges() =>
+      _db.tableUpdates(TableUpdateQuery.onTable(_db.customerRows)).map((_) {});
 
   /// Die letzte Fassung des Empfängers zum Bon, sonst `null`.
   Future<ReceiptRecipient?> recipientOf(String receiptId) =>

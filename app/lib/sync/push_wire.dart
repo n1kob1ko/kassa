@@ -2,6 +2,8 @@
 // wird beim Senden aus den Tabellen gelesen und in die Form gebracht, die der
 // Server erwartet. Das Gegenstück auf dem Server ist `push_schema.ts`; beide
 // prüfen sich an `shared/fixtures/sync/push_request_v3.json` (Bon `v: 3`).
+// Firmenkunden (`customer`) und Empfänger der Rechnung (`recipient`) gehen
+// flach hinaus, ihre Felder stehen neben `seq` und `kind`.
 // `push_request.json` ist das Paket von 1.10.0 (Bon `v: 1`),
 // `push_request_v2.json` das von 1.11.0 (Bon `v: 2`); der Server nimmt beide
 // weiter an.
@@ -73,6 +75,8 @@ class PushPayloads {
       'receipt' => await _receipt(e.ref),
       'item_change' => _itemChange(e),
       'report' => await _report(e.ref),
+      'customer' => await _customer(e.ref),
+      'recipient' => await _recipient(e.ref),
       _ => throw ArgumentError.value(e.kind, 'kind', 'Unbekannte Art'),
     };
     if (body == null) return null;
@@ -92,6 +96,52 @@ class PushPayloads {
         'value': jsonDecode(value),
         'changedAt': _iso(changedAt),
       },
+    };
+  }
+
+  /// Ein Firmenkunde (Spec 5.3), flach neben `seq` und `kind`. `lastUsedAt`
+  /// bleibt am Tablet.
+  Future<Map<String, Object?>?> _customer(String id) async {
+    final row = await (_db.select(
+      _db.customerRows,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
+    return {
+      'id': row.id,
+      'name': row.name,
+      'addressLine1': row.addressLine1,
+      'addressLine2': row.addressLine2,
+      'vatId': row.vatId,
+      'archived': row.archived,
+      'updatedAt': _iso(row.updatedAt),
+    };
+  }
+
+  /// Eine Fassung des Empfängers der Rechnung, flach neben `seq` und `kind`.
+  /// [ref] ist `<Bon>/<Fassung>`; passt er nicht, gibt es nichts zu senden.
+  Future<Map<String, Object?>?> _recipient(String ref) async {
+    final slash = ref.lastIndexOf('/');
+    if (slash < 0) return null;
+    final receiptId = ref.substring(0, slash);
+    final version = int.tryParse(ref.substring(slash + 1));
+    if (version == null) return null;
+    final row =
+        await (_db.select(_db.receiptRecipientRows)..where(
+              (t) => t.receiptId.equals(receiptId) & t.version.equals(version),
+            ))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return {
+      'receiptId': row.receiptId,
+      'version': row.version,
+      'customerId': row.customerId,
+      'name': row.name,
+      'addressLine1': row.addressLine1,
+      'addressLine2': row.addressLine2,
+      'vatId': row.vatId,
+      'createdAt': _iso(row.createdAt),
+      'staffId': row.staffId,
+      'staffName': row.staffName,
     };
   }
 

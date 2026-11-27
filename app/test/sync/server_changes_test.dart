@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
+import 'package:kassa/data/customer_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
@@ -755,6 +756,199 @@ void main() {
         final wasser = await item('wasser');
         expect((wasser.name, wasser.priceCents), ('Wasser', 250));
       });
+    });
+  });
+
+  group('Firmenkunden (Stufe 1b)', () {
+    late KassaDatabase db;
+    late FakeServer server;
+    late ServerChanges changes;
+    late SyncStateRepository sync;
+    late CustomerRepository customers;
+    final clock = FixedClock(at);
+
+    Map<String, Object?> muster(String id, {String name = 'Muster GmbH'}) => {
+      'id': id,
+      'name': name,
+      'addressLine1': 'Musterweg 1',
+      'addressLine2': '1010 Wien',
+      'vatId': 'ATU00000000',
+      'archived': false,
+    };
+    const a = 'c0000000-0000-4000-8000-00000000000a';
+    const b = 'c0000000-0000-4000-8000-00000000000b';
+
+    Future<List<Map<String, Object?>>> outbox() async => [
+      for (final r
+          in await db
+              .customSelect('SELECT kind, ref FROM outbox ORDER BY id')
+              .get())
+        r.data,
+    ];
+    Future<CustomerRow?> row(String id) => (db.select(
+      db.customerRows,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    Future<bool> catchUpPending() async =>
+        (await db.select(db.syncStateRows).getSingle()).catchUpPending;
+    Future<void> pullAll() async {
+      while (true) {
+        final cursor = (await sync.current()).pullCursor;
+        final page = server.page(cursor);
+        expect(
+          await changes.applyPage(
+            page,
+            at: at,
+            since: cursor,
+            registerId: FakeServer.registerId,
+          ),
+          isTrue,
+        );
+        if (!page.more) return;
+      }
+    }
+
+    setUp(() async {
+      db = KassaDatabase(NativeDatabase.memory());
+      server = FakeServer.beispiel();
+      changes = ServerChanges(db, clock: clock);
+      sync = SyncStateRepository(db);
+      customers = CustomerRepository(db, clock);
+      await sync.saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+    });
+    tearDown(() => db.close());
+
+    test('Kunden vom Server: angelegt und geändert ohne Eintrag in "noch zu '
+        'senden"; ein eigener, noch nicht gesendeter Kunde bleibt', () async {
+      server.upsert('customers', muster(a));
+      await changes.replaceAll(server.pages(), at: at);
+      expect((await row(a))!.name, 'Muster GmbH');
+      expect(await outbox(), isEmpty);
+
+      // Zuletzt verwendet bleibt, wenn der Server den Kunden ändert.
+      await (db.update(db.customerRows)..where((t) => t.id.equals(a))).write(
+        CustomerRowsCompanion(lastUsedAt: Value(DateTime(2026, 11, 17, 9))),
+      );
+      final usedAt = (await row(a))!.lastUsedAt;
+      expect(usedAt, isNotNull);
+      server.change('customers', a, {
+        'name': 'Muster AG',
+        'vatId': null,
+        'addressLine1': 'Musterweg 9',
+      });
+      server.upsert('customers', muster(b, name: 'Beta KG'));
+      await pullAll();
+      final changed = (await row(a))!;
+      expect(
+        (changed.name, changed.addressLine1, changed.vatId, changed.archived),
+        ('Muster AG', 'Musterweg 9', null, false),
+      );
+      expect(changed.lastUsedAt, usedAt);
+      expect((await row(b))!.name, 'Beta KG');
+      expect(await outbox(), isEmpty);
+      expect((await customers.list()).map((c) => c.name), [
+        'Muster AG',
+        'Beta KG',
+      ]);
+
+      // Ein eigener Kunde, der noch auf das Senden wartet, bleibt, wie er ist.
+      final own = await customers.save(
+        name: 'Eigene GmbH',
+        addressLine1: 'Musterweg 3',
+        addressLine2: '1010 Wien',
+      );
+      server.upsert('customers', {...muster(own.id), 'name': 'Server GmbH'});
+      server.archive('customers', b);
+      await pullAll();
+      expect((await row(own.id))!.name, 'Eigene GmbH');
+      expect(await outbox(), [
+        {'kind': 'customer', 'ref': own.id},
+      ]);
+      // Archiviert: nicht mehr zur Wahl.
+      expect((await row(b))!.archived, isTrue);
+      expect((await customers.list()).map((c) => c.name), [
+        // Zuletzt verwendet oben, dann nach Name.
+        'Muster AG',
+        'Eigene GmbH',
+      ]);
+
+      // Nach dem Senden gilt wieder der Server.
+      await db.customStatement('DELETE FROM outbox');
+      server.change('customers', own.id, {'name': 'Server GmbH 2'});
+      await pullAll();
+      expect((await row(own.id))!.name, 'Server GmbH 2');
+      expect(await outbox(), isEmpty);
+    });
+
+    test('replaceAll: Kunden der Seiten, eigene wartende bleiben, andere '
+        'stehen nicht mehr zur Wahl; danach ist nichts nachzuholen', () async {
+      await db
+          .into(db.syncStateRows)
+          .insertOnConflictUpdate(
+            const SyncStateRowsCompanion(
+              id: Value(1),
+              catchUpPending: Value(true),
+            ),
+          );
+      final waiting = await customers.save(
+        name: 'Wartend GmbH',
+        addressLine1: 'Musterweg 4',
+        addressLine2: '1010 Wien',
+      );
+      final gone = await customers.save(
+        name: 'Fremd GmbH',
+        addressLine1: 'Musterweg 5',
+        addressLine2: '1010 Wien',
+      );
+      await db.customStatement("DELETE FROM outbox WHERE ref = '${gone.id}'");
+      server.upsert('customers', muster(a));
+      await changes.replaceAll(server.pages(), at: at);
+      expect((await customers.list()).map((c) => c.name), [
+        'Muster GmbH',
+        'Wartend GmbH',
+      ]);
+      expect((await row(gone.id))!.archived, isTrue);
+      expect(await outbox(), [
+        {'kind': 'customer', 'ref': waiting.id},
+      ]);
+      expect(await catchUpPending(), isFalse);
+    });
+
+    test('applyCatchUp spielt nur die Kunden ein, ohne Artikel und Cursor; '
+        'wiederholt ändert es nichts; finishCatchUp beendet es', () async {
+      await changes.replaceAll(server.pages(), at: at);
+      // Wie 1.11.0: der Kunde kam an, die Liste wurde überlesen.
+      server.upsert('customers', muster(a));
+      server.change('items', 'cola', {'priceCents': 999});
+      final cursor = server.seq;
+      await db
+          .into(db.syncStateRows)
+          .insertOnConflictUpdate(
+            SyncStateRowsCompanion(
+              id: const Value(1),
+              pullCursor: Value(cursor),
+              catchUpPending: const Value(true),
+            ),
+          );
+      final before = await snapshot(db);
+      for (var round = 0; round < 2; round++) {
+        for (final page in server.pages()) {
+          expect(await changes.applyCatchUp(page), isTrue);
+        }
+        expect((await row(a))!.name, 'Muster GmbH');
+        expect(await snapshot(db), before);
+        expect(await outbox(), isEmpty);
+      }
+      await changes.finishCatchUp();
+      expect(await catchUpPending(), isFalse);
+      expect((await sync.current()).pullCursor, cursor);
+      // Ohne catchUpPending tut applyCatchUp nichts.
+      server.change('customers', a, {'name': 'Später GmbH'});
+      expect(await changes.applyCatchUp(server.page(0)), isFalse);
+      expect((await row(a))!.name, 'Muster GmbH');
     });
   });
 }

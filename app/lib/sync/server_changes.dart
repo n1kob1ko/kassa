@@ -1,4 +1,4 @@
-// Übernimmt Speisekarte, Mitarbeiter und Betriebsdaten vom Server in die
+// Übernimmt Speisekarte, Mitarbeiter, Betriebsdaten und Firmenkunden vom Server in die
 // Datenbank des Tablets. Jeder Aufruf ist eine Transaktion: scheitert etwas,
 // bleibt das Tablet genau wie vorher, auch der Cursor.
 //
@@ -8,7 +8,9 @@
 
 import 'package:drift/drift.dart';
 
+import '../core/clock.dart';
 import '../data/catalog_repository.dart';
+import '../data/customer_repository.dart';
 import '../data/database.dart';
 import '../data/outbox_repository.dart';
 import '../data/settings_repository.dart';
@@ -18,9 +20,11 @@ import '../domain/staff.dart';
 import 'wire.dart';
 
 class ServerChanges {
-  ServerChanges(this._db);
+  ServerChanges(this._db, {Clock clock = const SystemClock()})
+    : _customers = CustomerRepository(_db, clock);
 
   final KassaDatabase _db;
+  final CustomerRepository _customers;
 
   /// Ob am Tablet schon ein Chef ist (Mitarbeiter mit PIN und der Rolle Chef).
   Future<bool> hasChef() async {
@@ -58,6 +62,9 @@ class ServerChanges {
       await _db.delete(_db.staffRows).go();
       await _db.delete(_db.translationRows).go();
       await _apply(merged);
+      // Firmenkunden: wer nicht vom Server kam und nicht auf das Senden
+      // wartet, steht nicht mehr zur Wahl.
+      await _customers.archiveAllExcept(merged.customers.keys.toSet());
       // Der Stand des Servers gilt, so wie es die Rückfrage beim Koppeln
       // sagt: Artikel-Änderungen, die noch warten, gehen nie nachträglich
       // hinauf. Bons und alles andere in der Liste bleiben.
@@ -72,6 +79,8 @@ class ServerChanges {
               initialPullDone: const Value(true),
               lastPullAt: Value(at),
               lastError: const Value(null),
+              // Das erste Laden bringt auch die Listen ab Stufe 1b mit.
+              catchUpPending: const Value(false),
             ),
           );
     });
@@ -123,6 +132,41 @@ class ServerChanges {
           );
       return true;
     });
+  }
+
+  /// Ob noch nachzuholen ist, was 1.11.0 beim Abholen überlesen hat
+  /// (gesetzt von der Migration auf Version 9).
+  Future<bool> catchUpPending() async {
+    final state = await (_db.select(
+      _db.syncStateRows,
+    )..where((t) => t.id.equals(1))).getSingleOrNull();
+    return state != null && state.initialPullDone && state.catchUpPending;
+  }
+
+  /// Das Nachholen nach dem Update: spielt aus einer Seite, die ab 0 geholt
+  /// wurde, nur die Listen ein, die 1.11.0 überlesen hat ([_applyNewLists]).
+  /// Artikel, Kategorien, Vorlagen, Mitarbeiter, Betriebsdaten und der
+  /// Cursor bleiben; dieselbe Seite noch einmal ändert nichts.
+  ///
+  /// Gibt `false` zurück und schreibt nichts, wenn nichts (mehr)
+  /// nachzuholen ist, etwa weil das Tablet inzwischen neu gekoppelt wurde.
+  Future<bool> applyCatchUp(PullResponse page) => _db.transaction(() async {
+    if (!await catchUpPending()) return false;
+    await _applyNewLists(_Changes.merge([page]));
+    return true;
+  });
+
+  /// Nach der letzten Seite des Nachholens: es ist erledigt.
+  Future<void> finishCatchUp() =>
+      (_db.update(_db.syncStateRows)..where((t) => t.id.equals(1))).write(
+        const SyncStateRowsCompanion(catchUpPending: Value(false)),
+      );
+
+  /// Die Listen ab Stufe 1b, die ein Tablet mit 1.11.0 überlesen hat. Das
+  /// Nachholen spielt nur sie ein; weitere Listen (Gutscheine, Bewegungen)
+  /// kommen hierher.
+  Future<void> _applyNewLists(_Changes c) async {
+    await _customers.applyServer(c.customers.values.toList());
   }
 
   /// Ein Artikel kann auf einer früheren Seite kommen als seine neue
@@ -276,6 +320,7 @@ class ServerChanges {
             ),
           );
     }
+    await _applyNewLists(c);
     for (final s in c.staff.values) {
       if (s.archived) {
         await (_db.delete(_db.staffRows)..where((t) => t.id.equals(s.id))).go();
@@ -398,6 +443,9 @@ class _Changes {
       for (final t in p.translations) {
         c.translations[t.source] = t;
       }
+      for (final k in p.customers) {
+        c.customers[k.id] = k;
+      }
     }
     return c;
   }
@@ -408,4 +456,5 @@ class _Changes {
   final items = <String, WireItem>{};
   final staff = <String, WireStaff>{};
   final translations = <String, WireTranslation>{};
+  final customers = <String, WireCustomer>{};
 }

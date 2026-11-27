@@ -254,4 +254,59 @@ void main() {
       expect(() => PullResponse.fromJson(json), throwsFormatException);
     });
   });
+
+  group('customers (Stufe 1b)', () {
+    test('fehlt die Liste (wie bei pull_full.json), ist sie leer', () {
+      expect(PullResponse.fromJson(fixture('pull_full')).customers, isEmpty);
+    });
+
+    test('Firmenkunden werden gelesen, vatId darf null sein', () {
+      final json = fixture('pull_full')
+        ..['customers'] = [
+          {
+            'id': 'c0000000-0000-4000-8000-000000000001',
+            'name': 'Muster GmbH',
+            'addressLine1': 'Musterweg 1',
+            'addressLine2': '1010 Wien',
+            'vatId': 'ATU00000000',
+            'archived': false,
+          },
+          {
+            'id': 'c0000000-0000-4000-8000-000000000002',
+            'name': 'Alt KG',
+            'addressLine1': 'Musterweg 2',
+            'addressLine2': '1010 Wien',
+            'vatId': null,
+            'archived': true,
+            'spaeter': 'wird überlesen',
+          },
+        ];
+      final c = PullResponse.fromJson(json).customers;
+      expect(c.map((x) => (x.id, x.name, x.vatId, x.archived)), [
+        (
+          'c0000000-0000-4000-8000-000000000001',
+          'Muster GmbH',
+          'ATU00000000',
+          false,
+        ),
+        ('c0000000-0000-4000-8000-000000000002', 'Alt KG', null, true),
+      ]);
+      expect(c.first.addressLine1, 'Musterweg 1');
+      expect(c.first.addressLine2, '1010 Wien');
+    });
+
+    test('ein Kunde ohne Name ist eine FormatException', () {
+      final json = fixture('pull_full')
+        ..['customers'] = [
+          {
+            'id': 'c1',
+            'addressLine1': 'Musterweg 1',
+            'addressLine2': '1010 Wien',
+            'vatId': null,
+            'archived': false,
+          },
+        ];
+      expect(() => PullResponse.fromJson(json), throwsFormatException);
+    });
+  });
 }

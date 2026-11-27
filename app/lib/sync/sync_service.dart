@@ -371,6 +371,9 @@ class SyncService {
     var changed = false;
     _pulledAll = false;
     try {
+      if (await _changes.catchUpPending()) {
+        changed = await _catchUp(cursor, token);
+      }
       var since = cursor;
       while (true) {
         final page = await _api.pull(token: token, since: since);
@@ -419,12 +422,36 @@ class SyncService {
     }
   }
 
+  /// Das Nachholen nach dem Update auf 1.12.0: alle Seiten ab 0 bis zum
+  /// eigenen [cursor], davon nur die Listen, die 1.11.0 überlesen hat
+  /// (`ServerChanges.applyCatchUp`). Erst nach der letzten Seite ist es
+  /// erledigt; bricht der Lauf ab, beginnt der nächste wieder bei 0.
+  /// `true`, wenn dabei etwas ankam.
+  Future<bool> _catchUp(int cursor, String token) async {
+    var changed = false;
+    var since = 0;
+    while (true) {
+      final page = await _api.pull(token: token, since: since);
+      if (page.more && page.next <= since) {
+        throw const ServerException(ServerFailure.server);
+      }
+      // Inzwischen neu gekoppelt: nichts mehr nachzuholen.
+      if (!await _changes.applyCatchUp(page)) return changed;
+      changed = changed || page.customers.isNotEmpty;
+      if (!page.more || page.next >= cursor) break;
+      since = page.next;
+    }
+    await _changes.finishCatchUp();
+    return changed;
+  }
+
   static bool _hasRows(PullResponse p) =>
       p.business != null ||
       p.categories.isNotEmpty ||
       p.items.isNotEmpty ||
       p.templates.isNotEmpty ||
-      p.staff.isNotEmpty;
+      p.staff.isNotEmpty ||
+      p.customers.isNotEmpty;
 
   /// Lädt fehlende Bilder. Ein neues Bild lässt die Kassa den Katalog neu
   /// lesen.

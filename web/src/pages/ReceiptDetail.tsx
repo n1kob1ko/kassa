@@ -220,6 +220,25 @@ function SoldVouchers({ receipt }: { receipt: ReceiptDetail }) {
   );
 }
 
+/** "Rechnung an": der Empfänger der Rechnung mit Name, Adresse und UID; ohne Empfänger nichts. */
+function Recipient({ receipt }: { receipt: ReceiptDetail }) {
+  const r = receipt.recipient;
+  if (!r) return null;
+  return (
+    <section className={styles.section} aria-labelledby="bon-rechnung">
+      <h3 id="bon-rechnung" className={styles.sectionTitle}>
+        Rechnung an
+      </h3>
+      <address data-testid="recipient" className={styles.recipient}>
+        <span>{r.name}</span>
+        <span>{r.addressLine1}</span>
+        <span>{r.addressLine2}</span>
+        {r.vatId && <span>UID {r.vatId}</span>}
+      </address>
+    </section>
+  );
+}
+
 function DetailSkeleton() {
   return (
     <div className={styles.detail} role="status" aria-busy="true">
@@ -317,6 +336,8 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
       <Payments receipt={r} />
 
       <SoldVouchers receipt={r} />
+
+      <Recipient receipt={r} />
 
       {signature && (
         <section className={styles.section} aria-labelledby="bon-signatur">

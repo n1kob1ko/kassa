@@ -286,3 +286,11 @@
     background: var(--fill);
   }
 }
+
+/* Der Empfänger der Rechnung, Zeile für Zeile wie auf der Rechnung. */
+.recipient {
+  display: flex;
+  flex-direction: column;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}

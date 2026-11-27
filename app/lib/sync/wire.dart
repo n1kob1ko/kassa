@@ -234,6 +234,35 @@ class WireTranslation {
   final Map<String, String> values;
 }
 
+/// Ein Firmenkunde für die Rechnung (Spec 5.3). Archiviert heißt: er steht
+/// nicht mehr zur Wahl; Bons behalten ihre Kopie von Name und Adresse.
+class WireCustomer {
+  const WireCustomer({
+    required this.id,
+    required this.name,
+    required this.addressLine1,
+    required this.addressLine2,
+    required this.vatId,
+    required this.archived,
+  });
+
+  factory WireCustomer.fromJson(Map<String, dynamic> json) => WireCustomer(
+    id: _field(json, 'id'),
+    name: _field(json, 'name'),
+    addressLine1: _field(json, 'addressLine1'),
+    addressLine2: _field(json, 'addressLine2'),
+    vatId: _optional(json, 'vatId'),
+    archived: _field(json, 'archived'),
+  );
+
+  final String id;
+  final String name;
+  final String addressLine1;
+  final String addressLine2;
+  final String? vatId;
+  final bool archived;
+}
+
 /// Eine Seite der Änderungen vom Server.
 class PullResponse {
   const PullResponse({
@@ -245,6 +274,7 @@ class PullResponse {
     required this.templates,
     required this.staff,
     this.translations = const [],
+    this.customers = const [],
   });
 
   factory PullResponse.fromJson(Map<String, dynamic> json) {
@@ -275,6 +305,10 @@ class PullResponse {
       translations: json.containsKey('translations')
           ? _list(json, 'translations', WireTranslation.fromJson)
           : const [],
+      // Der Server schickt die Liste nur, wenn sie nicht leer ist.
+      customers: json.containsKey('customers')
+          ? _list(json, 'customers', WireCustomer.fromJson)
+          : const [],
     );
   }
 
@@ -293,6 +327,9 @@ class PullResponse {
 
   /// Übersetzungen der Namen aus der Speisekarte.
   final List<WireTranslation> translations;
+
+  /// Firmenkunden (ab Stufe 1b); leer, wenn die Liste fehlt.
+  final List<WireCustomer> customers;
 }
 
 /// Antwort auf das Koppeln. Der Schlüssel [token] geht nie in Texte oder

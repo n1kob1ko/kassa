@@ -215,6 +215,23 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         )
       ).rows[0];
 
+      // Die letzte Fassung des Empfängers der Rechnung (Stufe 1b). Nie die Kennung der Mitarbeiterin.
+      const recipient = (
+        await c.query<{
+          name: string;
+          address_line1: string;
+          address_line2: string;
+          vat_id: string | null;
+          version: number;
+          created_at: Date;
+          staff_name: string;
+        }>(
+          `select name, address_line1, address_line2, vat_id, version, created_at, staff_name
+             from receipt_recipients where receipt_id = $1 order by version desc limit 1`,
+          [id],
+        )
+      ).rows[0];
+
       // v: 2 bringt die Liste `payments`, v: 1 eine Zahlung `payment` (oder keine): die wird Stelle 0 ohne Trinkgeld.
       const payments = Array.isArray(r.payments)
         ? [...r.payments].sort((x, y) => Number(x.position) - Number(y.position))
@@ -261,6 +278,20 @@ export function installReceiptRoutes(app: FastifyInstance): void {
         voidsReceiptId: r.voids_receipt_id,
         voidedByReceiptId: r.voided_by,
         rksv: rksv ? { cashBoxId: rksv.cash_box_id, damaged: rksv.damaged, probe: rksv.mode !== 'live' } : null,
+        // Fehlt ohne Empfänger: so bleibt das Detail eines Bons ohne Rechnung genau, wie es war.
+        ...(recipient
+          ? {
+              recipient: {
+                name: recipient.name,
+                addressLine1: recipient.address_line1,
+                addressLine2: recipient.address_line2,
+                vatId: recipient.vat_id,
+                version: recipient.version,
+                createdAt: recipient.created_at.toISOString(),
+                staffName: recipient.staff_name,
+              },
+            }
+          : {}),
       };
     });
   });
