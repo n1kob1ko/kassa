@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/discount.dart';
+import 'package:kassa/rksv/core/rksv_code.dart';
 import 'package:kassa/rksv/dep_export.dart';
 
 import '../support/demo_fixtures.dart';
@@ -15,6 +16,7 @@ import '../support/fake_atrust.dart';
 import '../support/fake_signature_unit.dart';
 import '../support/pruefwerkzeug.dart';
 import '../support/rksv_rig.dart';
+import '../support/sales.dart';
 
 Item _item(String id, int priceCents, TaxRate rate, {int deposit = 0}) => Item(
   id: id,
@@ -475,6 +477,193 @@ void main() {
         ..writeAsStringSync(rig.saver.lastText);
       final crypto = File('${temp.path}/cryptographicMaterialContainer.json')
         ..writeAsStringSync(await cryptographicMaterialContainer(rig, chain));
+      final problems = await checkWithPruefwerkzeug(
+        tool!,
+        dep: dep,
+        crypto: crypto,
+        entryCount: entries.length,
+        workDir: temp,
+      );
+      expect(problems, isEmpty, reason: problems.join('\n\n'));
+    },
+    skip: tool == null
+        ? 'Prüfwerkzeug nicht da: KASSA_RKSV_TOOL zeigt auf keinen Ordner.'
+        : null,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  test(
+    'Kette mit Pfand zurück, Auszahlung, Summe 0, Gutschein-Verkauf und '
+    'Einlösung besteht das Prüfwerkzeug des Finanzministeriums',
+    () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      final temp = await Directory.systemTemp.createTemp('kassa-rksv-');
+      addTearDown(() => temp.delete(recursive: true));
+      // Ein Artikel nur aus Pfand: Preis 0, Pfand 0,25 € (Becher).
+      final pfandArtikel025 = _item(
+        'pfandbecher',
+        0,
+        TaxRate.normal,
+        deposit: 25,
+      );
+
+      // Feste Zeiten in der Vergangenheit, wie oben (R11). Eine eigene Kette
+      // mit eigener Kassen-ID (die Probe zieht sie neu).
+      // Startbeleg am 18.11.2025 17:05:09.
+      rig.clock.value = DateTime(2025, 11, 18, 17, 5, 9);
+      await rig.service.enableProbe(staff: rig.chef);
+      var minute = 0;
+      void tick() =>
+          rig.clock.value = DateTime(2025, 11, 18, 17, 6 + minute++, 9);
+
+      tick();
+      await rig.sell(
+        'pfand-mit-ware',
+        cart.setDepositReturn(depositCents: 25, quantity: 3),
+      );
+      tick();
+      await rig.payout(
+        'pfand-auszahlung',
+        const Cart.empty().setDepositReturn(depositCents: 25, quantity: 3),
+      );
+      tick();
+      // Summe 0 über "Abschließen": bar, gegeben 0.
+      await rig.sell(
+        'pfand-null',
+        const Cart.empty()
+            .add(pfandArtikel025)
+            .setDepositReturn(depositCents: 25, quantity: 1),
+      );
+      tick();
+      await rig.sell(
+        'gutschein-verkauf',
+        cartCard.addVoucherSale(valueCents: 2500),
+      );
+      final v = (await rig.vouchers.soldOn('gutschein-verkauf')).single;
+      tick();
+      await rig.sellWithVoucher('gutschein-ganz', cartCard, v);
+      tick();
+      final rest = (await rig.vouchers.byId(v.id))!;
+      await rig.sellCard(
+        'gutschein-und-karte',
+        cart.applyVoucher(applied(rest)),
+        tipCents: 35,
+      );
+      tick();
+      await rig.receipts.voidReceipt('gutschein-und-karte', staff: rig.chef);
+      tick();
+      await rig.receipts.voidReceipt('pfand-auszahlung', staff: rig.chef);
+
+      expect(await rig.entryKinds(), [
+        'start',
+        ...List.filled(6, 'sale'),
+        'voided',
+        'voided',
+      ]);
+      await rig.verifyChain(1);
+      final entries = await rig.entries(1);
+
+      // Summe, Trinkgeld und Zahlungen (Art Betrag/Trinkgeld) der Bons.
+      Future<List<Object>> money(String id) async {
+        final r = await rig.receipts.byId(id);
+        return [
+          r.totalCents,
+          r.tipCents,
+          for (final p in r.payments)
+            '${p.kind.name} ${p.amountCents}/${p.tipCents}',
+        ];
+      }
+
+      expect(await money('pfand-mit-ware'), [1745, 0, 'cash 1745/0']);
+      expect(await money('pfand-auszahlung'), [-75, 0, 'cash -75/0']);
+      expect(await money('pfand-null'), [0, 0, 'cash 0/0']);
+      expect(await money('gutschein-verkauf'), [3465, 0, 'cash 3465/0']);
+      expect(await money('gutschein-ganz'), [965, 0, 'voucher 965/0']);
+      expect(await money('gutschein-und-karte'), [
+        1820,
+        35,
+        'voucher 1535/0',
+        'card 285/35',
+      ]);
+      expect(v.valueCents, 2500);
+      expect(rest.balanceCents, 1535);
+
+      // Beträge je Satz (Normal, Ermäßigt 1, Ermäßigt 2, Null, Besonders).
+      Future<List<String>> rates(String receiptId) async =>
+          (await rig.codeFieldsOf(receiptId)).sublist(5, 10);
+      // Cola 2,90 zu 20 % und 0,25 Pfand im Satz 0, Huhn Bowl 11,90 und
+      // Teigtaschen 6,50 zu 10 %. Der Gutschein steht im Satz 0, das
+      // Trinkgeld auch.
+      expect(await rates('pfand-mit-ware'), [
+        '5,80',
+        '11,90',
+        '0,00',
+        '-0,25',
+        '0,00',
+      ]);
+      expect(await rates('pfand-auszahlung'), [
+        '0,00',
+        '0,00',
+        '0,00',
+        '-0,75',
+        '0,00',
+      ]);
+      expect(await rates('pfand-null'), [
+        '0,00',
+        '0,00',
+        '0,00',
+        '0,00',
+        '0,00',
+      ]);
+      expect(await rates('gutschein-verkauf'), [
+        '2,90',
+        '6,50',
+        '0,00',
+        '25,25',
+        '0,00',
+      ]);
+      expect(await rates('gutschein-ganz'), [
+        '2,90',
+        '6,50',
+        '0,00',
+        '0,25',
+        '0,00',
+      ]);
+      expect(await rates('gutschein-und-karte'), [
+        '5,80',
+        '11,90',
+        '0,00',
+        '0,85',
+        '0,00',
+      ]);
+
+      // Der Umsatzzähler sinkt mit der Auszahlung um 0,75.
+      final chain = await rig.chainRow(1);
+      final aesKey = (await rig.secrets.aesKey(1))!;
+      Future<int> counterAt(String receiptId) async {
+        final f = await rig.codeFieldsOf(receiptId);
+        return decryptCounter(
+          aesKey: aesKey,
+          cashBoxId: chain.cashBoxId,
+          receiptId: f[3],
+          field: f[10],
+        );
+      }
+
+      expect(
+        await counterAt('pfand-auszahlung'),
+        await counterAt('pfand-mit-ware') - 75,
+      );
+
+      expect(
+        await rig.service.exportProtocol(ExportRange.all, now: rig.clock.now()),
+        ExportOutcome.saved,
+      );
+      final dep = File('${temp.path}/dep-export.json')
+        ..writeAsStringSync(rig.saver.lastText);
+      final crypto = File('${temp.path}/cryptographicMaterialContainer.json')
+        ..writeAsStringSync(await cryptographicMaterialContainer(rig, 1));
       final problems = await checkWithPruefwerkzeug(
         tool!,
         dep: dep,

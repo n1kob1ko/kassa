@@ -5,6 +5,8 @@
 # in app/test_e2e dagegen laufen. Am Ende (auch nach einem Fehler) sind Server,
 # Datenbank und Temp-Ordner weg; ein Cluster, den das Skript nicht gestartet hat,
 # bleibt an.
+# Mit SEED_CODE2=1 legt seed.ts einen zweiten Kopplungscode für eine zweite Kassa
+# desselben Betriebs an; die Tests bekommen ihn als E2E_CODE2.
 #
 # Aufruf: tool/e2e.sh
 set -euo pipefail
@@ -79,9 +81,11 @@ if [ "$up" != "1" ]; then
   exit 1
 fi
 
+export SEED_CODE2=1
 seed="$(cd "$root/server" && npx tsx src/dev/seed.ts)"
 field() { printf '%s' "$seed" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(JSON.parse(s)['$1'])))"; }
 code="$(field code)"
+code2="$(field code2)"
 cookie="$(field cookie)"
 business="$(field businessId)"
 
@@ -89,5 +93,6 @@ cd "$root/app"
 flutter test test_e2e \
   --dart-define=E2E_SERVER="$base" \
   --dart-define=E2E_CODE="$code" \
+  --dart-define=E2E_CODE2="$code2" \
   --dart-define=E2E_COOKIE="$cookie" \
   --dart-define=E2E_BUSINESS="$business"

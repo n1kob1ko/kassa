@@ -19,9 +19,11 @@ import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/rksv_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/data/voucher_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/rksv/card/atrust_card.dart';
 import 'package:kassa/rksv/card/card_facts.dart';
 import 'package:kassa/rksv/card/card_signature_unit.dart';
@@ -367,6 +369,27 @@ class RksvRig {
   }
 
   Future<void> close() => db.close();
+
+  /// Gutscheine und ihre Bewegungen in [db].
+  late final VoucherRepository vouchers = VoucherRepository(db);
+
+  /// Zahlt [cart] (Summe unter 0, etwa nur "Pfand zurück") bar als Anna aus.
+  Future<Receipt> payout(String saleId, Cart cart) =>
+      receipts.finalizePayout(saleId: saleId, cart: cart, staff: anna);
+
+  /// Bezahlt [cart] als Anna ganz mit [voucher], über sein Guthaben.
+  Future<Receipt> sellWithVoucher(String saleId, Cart cart, Voucher voucher) =>
+      receipts.finalizeVoucherSale(
+        saleId: saleId,
+        cart: cart.applyVoucher(
+          AppliedVoucher(
+            voucherId: voucher.id,
+            code: voucher.code,
+            balanceCents: voucher.balanceCents,
+          ),
+        ),
+        staff: anna,
+      );
 
   /// Verkauft [cart] bar als Anna, mit genau passendem Betrag.
   Future<Receipt> sell(String saleId, Cart cart) => receipts.finalizeCashSale(

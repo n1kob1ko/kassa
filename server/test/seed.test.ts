@@ -87,6 +87,32 @@ describe('seed', () => {
     expect(refused?.stderr).toMatch(/PUBLIC_URL/);
   });
 
+  test('als Programm mit SEED_CODE2=1: dazu ein zweiter Kopplungscode, beide koppeln an denselben Betrieb', async () => {
+    const ok = await run('npx', ['tsx', 'src/dev/seed.ts'], {
+      env: { ...envFor(a), SEED_CODE2: '1' },
+      cwd: new URL('..', import.meta.url).pathname,
+    });
+    expect(ok.stdout.trim().split('\n')).toHaveLength(1);
+    const r = JSON.parse(ok.stdout) as { businessId: string; code: string; code2: string };
+    expect(Object.keys(r).sort()).toEqual(['businessId', 'code', 'code2', 'cookie']);
+    expect(r.code2).toMatch(/^\d{8}$/);
+    expect(r.code2).not.toBe(r.code);
+
+    a.now.value = new Date();
+    const registers: string[] = [];
+    for (const code of [r.code, r.code2]) {
+      const pair = await a.app.inject({
+        method: 'POST',
+        url: '/api/device/pair',
+        payload: { code, previousBusinessId: null, appVersion: '1.12.0', deviceModel: null },
+      });
+      expect(pair.statusCode).toBe(200);
+      expect(pair.json().businessId).toBe(r.businessId);
+      registers.push(pair.json().registerId);
+    }
+    expect(new Set(registers).size).toBe(2);
+  });
+
   test('der Dienst kennt seed nicht: weder main.ts noch der Bau', () => {
     expect(readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')).not.toMatch(/seed|dev\//);
     expect(readFileSync(new URL('../tsconfig.build.json', import.meta.url), 'utf8')).toMatch(/"exclude":\s*\["src\/dev"\]/);

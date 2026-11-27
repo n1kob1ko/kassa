@@ -4,6 +4,8 @@
  * {"businessId":…, "code":…, "cookie":…}. Der Aufruf ist `npx tsx src/dev/seed.ts` mit denselben Umgebungsvariablen
  * wie der Server. `tsconfig.build.json` lässt diesen Ordner aus, `main.ts` kennt ihn nicht.
  */
+// Mit SEED_CODE2=1 in den Umgebungsvariablen kommt ein zweiter Kopplungscode "code2" ("Kassa 2") dazu, für eine zweite
+// Kassa desselben Betriebs (tool/e2e.sh).
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -19,6 +21,9 @@ import { createFileStore } from '../storage/file_store.js';
 const MENU_FILE = new URL('../../../shared/fixtures/menu/inputs/beispiel-imbiss.json', import.meta.url);
 
 export type SeedResult = { businessId: string; code: string; cookie: string };
+
+/** Was seed mit SEED_CODE2=1 liefert. */
+export type SeedResultWithCode2 = SeedResult & { code2: string };
 
 /** Weigert sich für jede Adresse außer dem eigenen Rechner, damit nichts in einem echten Dienst landet. */
 export function assertLocalUrl(publicUrl: string | undefined): void {
@@ -69,6 +74,17 @@ export async function seed(env: NodeJS.ProcessEnv): Promise<SeedResult> {
       payload: { name: 'Kassa 1' },
     });
     if (code.statusCode !== 201) throw new Error(`Kopplungscode anlegen: ${code.statusCode}`);
+    if (env.SEED_CODE2 === '1') {
+      const code2 = await app.inject({
+        method: 'POST',
+        url: `/api/admin/businesses/${businessId}/pairing-codes`,
+        headers,
+        payload: { name: 'Kassa 2' },
+      });
+      if (code2.statusCode !== 201) throw new Error(`Zweiten Kopplungscode anlegen: ${code2.statusCode}`);
+      const result: SeedResultWithCode2 = { businessId, code: code.json().code, cookie, code2: code2.json().code };
+      return result;
+    }
     return { businessId, code: code.json().code, cookie };
   } finally {
     await app.close();

@@ -20,14 +20,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/catalog_repository.dart';
+import 'package:kassa/data/customer_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/day_repository.dart';
+import 'package:kassa/data/delivery_repository.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/data/sync_state_repository.dart';
+import 'package:kassa/data/voucher_repository.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/day.dart';
+import 'package:kassa/domain/staff.dart';
+import 'package:kassa/rksv/core/rksv_code.dart' show formatCodeAmount;
 import 'package:kassa/rksv/rksv_journal.dart';
 import 'package:kassa/rksv/rksv_secrets.dart';
 import 'package:kassa/rksv/rksv_service.dart';
@@ -45,6 +51,10 @@ import '../test/support/webp_samples.dart';
 const _server = String.fromEnvironment('E2E_SERVER');
 const _cookie = String.fromEnvironment('E2E_COOKIE');
 const _business = String.fromEnvironment('E2E_BUSINESS');
+
+/// Der zweite Kopplungscode aus `server/src/dev/seed.ts` (SEED_CODE2=1): eine
+/// zweite Kassa desselben Betriebs.
+const _code2 = String.fromEnvironment('E2E_CODE2');
 
 final _skip = _server.isEmpty || _cookie.isEmpty || _business.isEmpty
     ? 'Ohne E2E_SERVER, E2E_COOKIE und E2E_BUSINESS (tool/e2e.sh) läuft '
@@ -132,6 +142,104 @@ class _FixedClock implements Clock {
   @override
   DateTime now() => at;
 }
+
+/// Eine Kassa für die Tests ab Stufe 1b: Datenbank im Speicher, gekoppelt
+/// mit einem Kopplungscode und mit allem vom Server, ohne Signatur (ihre Bons
+/// sind Übungs-Bons, ihre Gutscheine Übungs-Gutscheine). Räumt am Ende des
+/// Tests selbst auf.
+class _Register {
+  _Register._(
+    this.db,
+    this.tokens,
+    this.syncState,
+    this.api,
+    this.sync,
+    this.receipts,
+    this.chef,
+    this.catalog,
+  );
+
+  final KassaDatabase db;
+  final MemoryTokenStore tokens;
+  final SyncStateRepository syncState;
+  final ServerApi api;
+  final SyncService sync;
+  final ReceiptRepository receipts;
+  final Staff chef;
+  final Catalog catalog;
+
+  late final VoucherRepository vouchers = VoucherRepository(db);
+
+  static const clock = SystemClock();
+
+  static Future<_Register> pair(String code) async {
+    final db = KassaDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final client = http.Client();
+    addTearDown(client.close);
+    final fileDir = await Directory.systemTemp.createTemp('kassa-e2e-files');
+    addTearDown(() => fileDir.delete(recursive: true));
+    final tokens = MemoryTokenStore();
+    final syncState = SyncStateRepository(db);
+    final changes = ServerChanges(db);
+    final api = ServerApi(
+      baseUrl: _server,
+      client: client,
+      appVersion: '1.12.0',
+    );
+    final pairing = PairingService(
+      api: api,
+      tokens: tokens,
+      syncState: syncState,
+      changes: changes,
+      clock: clock,
+      onCatalogReplaced: () {},
+    );
+    final sync = SyncService(
+      api: api,
+      tokens: tokens,
+      syncState: syncState,
+      changes: changes,
+      outbox: OutboxRepository(db),
+      payloads: PushPayloads(db),
+      clock: clock,
+      files: FileSync(db, api, () async => fileDir),
+    );
+    addTearDown(sync.dispose);
+    await pairing.pair(code);
+    await pairing.loadInitial();
+    return _Register._(
+      db,
+      tokens,
+      syncState,
+      api,
+      sync,
+      ReceiptRepository(db, clock, DayRepository(db, clock)),
+      (await StaffRepository(db).findByPin('1234'))!,
+      (await CatalogRepository(db, clock: clock).current())!,
+    );
+  }
+
+  /// Gleicht ab und liefert den Fehler des Laufs (null ohne).
+  Future<String?> syncNow() async {
+    await sync.syncNow();
+    return (await syncState.current()).lastError;
+  }
+
+  /// So viele Einträge warten noch in "noch zu senden".
+  Future<int> outboxCount() async =>
+      (await db.customSelect('SELECT COUNT(*) AS c FROM outbox').getSingle())
+          .read<int>('c');
+}
+
+/// Die öffentliche Seite des Bons mit dem Schlüssel [token], ohne Anmeldung.
+Future<http.Response> _receiptPage(String token) =>
+    http.get(Uri.parse('$_server/beleg/$token'));
+
+/// Eine Reihe der Seite des Bons, wie der Server sie schreibt.
+String _pageRow(String label, int cents, {bool sub = false}) =>
+    '<tr${sub ? ' class="sub"' : ''}><th scope="row">$label</th>'
+    '<td>${formatCodeAmount(cents)}</td></tr>';
 
 void main() {
   setUpAll(() {
@@ -504,6 +612,335 @@ void main() {
       expect(day['cardCents'], 536);
       expect(day['cardTipCents'], 64);
       expect(day['discountCount'], 1);
+    },
+    skip: _skip,
+    timeout: const Timeout(Duration(minutes: 1)),
+  );
+
+  test(
+    'Gutschein-Verkauf und Einlösung kommen am Server an; die Seite des Bons '
+    'zeigt dieselben Zahlen',
+    () async {
+      final admin = _Admin();
+      addTearDown(admin.close);
+      final reg = await _Register.pair(
+        (await admin.call(
+              'POST',
+              '/pairing-codes',
+              json: {'name': 'Kassa Gutschein'},
+            ))['code']
+            as String,
+      );
+
+      // Ein Gutschein über 25,00 €, bar verkauft.
+      final sale = await reg.receipts.finalizeCashSale(
+        saleId: 'ffffffff-0000-4000-8000-000000000001',
+        cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+        givenCents: 2500,
+        staff: reg.chef,
+      );
+      final voucher = (await reg.vouchers.byId(
+        sale.soldVouchers.single.voucherId,
+      ))!;
+      expect(await reg.syncNow(), isNull);
+      expect(await reg.outboxCount(), 0);
+      Future<Map<String, dynamic>> onServer() async =>
+          ((await admin.call('GET', '/vouchers'))['vouchers'] as List)
+              .cast<Map<String, dynamic>>()
+              .singleWhere((v) => v['id'] == voucher.id);
+      final before = await onServer();
+      expect(
+        (
+          before['code'],
+          before['valueCents'],
+          before['balanceCents'],
+          before['state'],
+        ),
+        (voucher.code, 2500, 2500, 'active'),
+      );
+
+      // Eingelöst auf 4 × Teigtaschen (über 25,00 €), der Rest bar.
+      final teigtaschen = reg.catalog.item('teigtaschen');
+      final four = const Cart.empty().add(teigtaschen);
+      final cart = four
+          .setQuantity(four.lines.single.lineId, 4)
+          .applyVoucher(applied(voucher));
+      expect(cart.totalCents, greaterThan(2500));
+      final rest = cart.totalCents - 2500;
+      expect(cart.pricing.dueCents, rest);
+      final paid = await reg.receipts.finalizeCashSale(
+        saleId: 'ffffffff-0000-4000-8000-000000000002',
+        cart: cart,
+        givenCents: rest,
+        staff: reg.chef,
+      );
+      expect(
+        [
+          for (final p in paid.payments)
+            (p.kind.name, p.amountCents, p.voucherBalanceAfterCents),
+        ],
+        [('voucher', 2500, 0), ('cash', rest, null)],
+      );
+      expect(await reg.syncNow(), isNull);
+      expect(await reg.outboxCount(), 0);
+
+      // Am Server dasselbe Guthaben wie am Tablet, mit beiden Bewegungen.
+      final tabletBalance = (await reg.vouchers.byId(voucher.id))!.balanceCents;
+      expect(tabletBalance, 0);
+      final after = await onServer();
+      expect(
+        (after['valueCents'], after['balanceCents'], after['state']),
+        (2500, tabletBalance, 'empty'),
+      );
+      final detail = await admin.call('GET', '/vouchers/${voucher.id}');
+      expect(
+        [
+          for (final m in (detail['movements'] as List).cast<Map>())
+            (m['receiptId'], m['amountCents']),
+        ],
+        [(sale.id, 2500), (paid.id, -2500)],
+      );
+      final bon = await admin.call('GET', '/receipts/${paid.id}');
+      expect(bon['totalCents'], paid.totalCents);
+      expect(bon['pageUrl'], '/beleg/${paid.publicToken}');
+
+      // Die Seite des Bons: Summe, Gutschein, Restguthaben und Bar wie am
+      // Tablet.
+      final page = await _receiptPage(paid.publicToken!);
+      expect(page.statusCode, 200);
+      final last4 = voucher.code.substring(voucher.code.length - 4);
+      for (final row in [
+        _pageRow(
+          'SUMME EUR',
+          paid.totalCents,
+        ).replaceFirst('<tr>', '<tr class="strong">'),
+        _pageRow('Gutschein •••• $last4', paid.payments[0].amountCents),
+        _pageRow(
+          'Restguthaben',
+          paid.payments[0].voucherBalanceAfterCents!,
+          sub: true,
+        ),
+        _pageRow('Bar', paid.payments[1].amountCents),
+      ]) {
+        expect(page.body, contains(row));
+      }
+
+      // Ein falscher Schlüssel: 404 (nur einer, der Server bremst Fehlversuche).
+      final token = paid.publicToken!;
+      final wrong =
+          '${token.substring(0, token.length - 1)}'
+          '${token.endsWith('A') ? 'B' : 'A'}';
+      expect((await _receiptPage(wrong)).statusCode, 404);
+    },
+    skip: _skip,
+    timeout: const Timeout(Duration(minutes: 1)),
+  );
+
+  test(
+    'eine zweite Kassa kennt den Gutschein nach dem Abgleich und kann ihn '
+    'einlösen',
+    () async {
+      final admin = _Admin();
+      addTearDown(admin.close);
+      final first = await _Register.pair(
+        (await admin.call(
+              'POST',
+              '/pairing-codes',
+              json: {'name': 'Kassa Gutschein eins'},
+            ))['code']
+            as String,
+      );
+      final sale = await first.receipts.finalizeCashSale(
+        saleId: 'ffffffff-0000-4000-8000-000000000011',
+        cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+        givenCents: 2500,
+        staff: first.chef,
+      );
+      final voucher = (await first.vouchers.byId(
+        sale.soldVouchers.single.voucherId,
+      ))!;
+      expect(await first.syncNow(), isNull);
+      expect(await first.outboxCount(), 0);
+
+      // Die zweite Kassa koppelt mit dem zweiten Code aus seed.ts und holt.
+      final second = await _Register.pair(_code2);
+      final found = await second.vouchers.findByCode(voucher.code);
+      expect(
+        [for (final v in found) (v.id, v.balanceCents)],
+        [(voucher.id, 2500)],
+      );
+
+      // Einlösen an der zweiten Kassa, ganz mit dem Gutschein.
+      final cart = const Cart.empty()
+          .add(second.catalog.item('teigtaschen'))
+          .applyVoucher(applied(found.single));
+      expect(cart.totalCents, lessThan(2500));
+      final redeemed = await second.receipts.finalizeVoucherSale(
+        saleId: 'ffffffff-0000-4000-8000-000000000012',
+        cart: cart,
+        staff: second.chef,
+      );
+      expect(
+        redeemed.payments.single.voucherBalanceAfterCents,
+        2500 - cart.totalCents,
+      );
+      expect(await second.syncNow(), isNull);
+      expect(await second.outboxCount(), 0);
+
+      // Die erste Kassa sieht nach ihrem Abgleich das neue Guthaben.
+      expect((await first.vouchers.byId(voucher.id))!.balanceCents, 2500);
+      expect(await first.syncNow(), isNull);
+      expect(
+        (await first.vouchers.byId(voucher.id))!.balanceCents,
+        2500 - cart.totalCents,
+      );
+    },
+    skip: _skip ?? (_code2.isEmpty ? 'Ohne E2E_CODE2 (tool/e2e.sh).' : null),
+    timeout: const Timeout(Duration(minutes: 1)),
+  );
+
+  test(
+    'Auszahlung, Empfänger und Belegerteilung kommen an',
+    () async {
+      final admin = _Admin();
+      addTearDown(admin.close);
+      final reg = await _Register.pair(
+        (await admin.call(
+              'POST',
+              '/pairing-codes',
+              json: {'name': 'Kassa Auszahlung'},
+            ))['code']
+            as String,
+      );
+
+      // 3 × Pfand zurück zu 0,25 €: ein Bon unter 0, bar ausbezahlt.
+      final payout = await reg.receipts.finalizePayout(
+        saleId: 'ffffffff-0000-4000-8000-000000000021',
+        cart: const Cart.empty().setDepositReturn(
+          depositCents: 25,
+          quantity: 3,
+        ),
+        staff: reg.chef,
+      );
+      expect(payout.totalCents, -75);
+      await CustomerRepository(reg.db, _Register.clock).setRecipient(
+        receiptId: payout.id,
+        name: 'Muster GmbH',
+        addressLine1: 'Musterweg 1',
+        addressLine2: '1010 Wien',
+        vatId: 'ATU00000000',
+        staff: reg.chef,
+      );
+      final shownAt = DateTime.now();
+      await DeliveryRepository(reg.db)
+          .record(payout.id, DeliveryKind.digital, at: shownAt);
+      expect(await reg.syncNow(), isNull);
+      expect(await reg.outboxCount(), 0);
+
+      final bon = await admin.call('GET', '/receipts/${payout.id}');
+      expect(bon['totalCents'], -75);
+      expect(
+        [
+          for (final p in (bon['payments'] as List).cast<Map>())
+            (p['kind'], p['amountCents']),
+        ],
+        [('cash', -75)],
+      );
+      final recipient = bon['recipient'] as Map<String, dynamic>;
+      expect(
+        (
+          recipient['name'],
+          recipient['addressLine1'],
+          recipient['addressLine2'],
+          recipient['vatId'],
+          recipient['version'],
+          recipient['staffName'],
+        ),
+        ('Muster GmbH', 'Musterweg 1', '1010 Wien', 'ATU00000000', 0, 'Chefin'),
+      );
+      final deliveries = (bon['deliveries'] as List).cast<Map>();
+      expect([for (final d in deliveries) d['kind']], ['digital']);
+      expect(
+        DateTime.parse(deliveries.single['at'] as String)
+            .difference(shownAt)
+            .inSeconds
+            .abs(),
+        lessThanOrEqualTo(1),
+      );
+
+      // Die Seite des Bons nennt die Auszahlung wie das Papier.
+      final page = await _receiptPage(payout.publicToken!);
+      expect(page.statusCode, 200);
+      expect(page.body, contains(_pageRow('Bar ausbezahlt', 75)));
+    },
+    skip: _skip,
+    timeout: const Timeout(Duration(minutes: 1)),
+  );
+
+  test(
+    'ein Bon aus 1.11.0, der schon am Server ist, kommt nach dem Update als '
+    'v: 3 noch einmal: duplicate',
+    () async {
+      const registerName = 'Kassa nach dem Update';
+      final admin = _Admin();
+      addTearDown(admin.close);
+      final reg = await _Register.pair(
+        (await admin.call(
+              'POST',
+              '/pairing-codes',
+              json: {'name': registerName},
+            ))['code']
+            as String,
+      );
+      final token = (await reg.tokens.read())!;
+      final deviceId = await reg.syncState.deviceId();
+
+      // So hat 1.11.0 den Bon gesendet (v: 2).
+      final old = jsonDecode(
+        File('../shared/fixtures/sync/receipt_1_11_0_v2.json')
+            .readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final oldEntries = (old['entries'] as List).cast<Map<String, Object?>>();
+      final accepted = await reg.api.push(
+        token: token,
+        deviceId: deviceId,
+        entries: oldEntries,
+      );
+      expect(
+        [for (final r in accepted) (r.seq, r.status)],
+        [(8, PushStatus.accepted)],
+      );
+
+      // Dieselbe Datenbank von 1.11.0 nach dem Update (Migration 8 zu 9):
+      // der Bon geht noch einmal hinaus, jetzt als v: 3.
+      final dir = await Directory.systemTemp.createTemp('kassa-e2e-v8');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = await File(
+        'test/data/fixtures/kassa_v8_receipts_1_11_0.sqlite',
+      ).copy('${dir.path}/kassa.sqlite');
+      final updated = KassaDatabase(NativeDatabase(file));
+      addTearDown(updated.close);
+      final payloads = PushPayloads(updated);
+      final again = <Map<String, Object?>>[
+        for (final e in await OutboxRepository(updated).nextBatch())
+          if (e.kind == 'receipt' &&
+              e.ref == (oldEntries.single['receipt'] as Map)['id'])
+            (await payloads.build(e))!,
+      ];
+      expect([for (final e in again) (e['receipt'] as Map)['v']], [3]);
+      final duplicate = await reg.api.push(
+        token: token,
+        deviceId: deviceId,
+        entries: again,
+      );
+      expect(
+        [for (final r in duplicate) (r.seq, r.status)],
+        [(8, PushStatus.duplicate)],
+      );
+      expect(
+        [for (final r in await admin.receipts(registerName)) r['id']],
+        ['eeeeeeee-1110-4000-8000-000000000001'],
+      );
     },
     skip: _skip,
     timeout: const Timeout(Duration(minutes: 1)),
