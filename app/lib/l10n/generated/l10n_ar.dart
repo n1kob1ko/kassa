@@ -1332,6 +1332,50 @@ class L10nAr extends L10n {
   String get settingsAccessChef => 'للمدير فقط';
 
   @override
+  String get settingsDepositReturn => 'إرجاع الرهن';
+
+  @override
+  String get settingsVoucher => 'قسيمة';
+
+  @override
+  String get settingsVoucherInfo => 'بيع القسائم واستخدامها';
+
+  @override
+  String get settingsInvoice => 'فاتورة لشركة';
+
+  @override
+  String get settingsInvoiceInfo => 'طباعة الفاتورة مع اسم العميل وعنوانه';
+
+  @override
+  String get settingsReceiptTitle => 'فاتورة العميل';
+
+  @override
+  String get settingsReceiptAlways => 'الطباعة دائمًا';
+
+  @override
+  String get settingsReceiptAlwaysInfo => 'بعد كل عملية بيع، كما كان من قبل';
+
+  @override
+  String get settingsReceiptBoth => 'طباعة ونسخة رقمية';
+
+  @override
+  String get settingsReceiptBothInfo => 'الطباعة مع عرض رمز QR أيضًا';
+
+  @override
+  String get settingsReceiptDigital => 'رقمي، والطباعة عند الطلب';
+
+  @override
+  String get settingsReceiptDigitalInfo => 'عرض رمز QR، والطباعة فقط عند النقر';
+
+  @override
+  String get settingsReceiptNeedsServer =>
+      'يعمل فقط عندما يكون Kassa متصلًا بالخادم.';
+
+  @override
+  String get settingsReceiptQrHint =>
+      'يجب أن يتمكن العميل من رؤية رمز QR على الشاشة.';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa الإصدار $version';
   }

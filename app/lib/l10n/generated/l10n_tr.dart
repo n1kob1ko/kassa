@@ -1320,6 +1320,50 @@ class L10nTr extends L10n {
   String get settingsAccessChef => 'Yalnızca yönetici';
 
   @override
+  String get settingsDepositReturn => 'Depozito iadesi';
+
+  @override
+  String get settingsVoucher => 'Hediye çeki';
+
+  @override
+  String get settingsVoucherInfo => 'Hediye çeki sat ve kullan';
+
+  @override
+  String get settingsInvoice => 'Firmaya fatura';
+
+  @override
+  String get settingsInvoiceInfo => 'Fişi müşterinin adı ve adresiyle yazdır';
+
+  @override
+  String get settingsReceiptTitle => 'Müşteri fişi';
+
+  @override
+  String get settingsReceiptAlways => 'Her zaman yazdır';
+
+  @override
+  String get settingsReceiptAlwaysInfo => 'Her satıştan sonra, eskisi gibi';
+
+  @override
+  String get settingsReceiptBoth => 'Yazdır ve dijital';
+
+  @override
+  String get settingsReceiptBothInfo => 'Yazdır ve ayrıca QR kodu göster';
+
+  @override
+  String get settingsReceiptDigital => 'Dijital, istenirse yazdır';
+
+  @override
+  String get settingsReceiptDigitalInfo =>
+      'QR kodu göster, yalnızca dokununca yazdır';
+
+  @override
+  String get settingsReceiptNeedsServer =>
+      'Yalnızca Kassa sunucuya bağlıyken çalışır.';
+
+  @override
+  String get settingsReceiptQrHint => 'Müşteri QR kodu ekranda görebilmelidir.';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa sürüm $version';
   }

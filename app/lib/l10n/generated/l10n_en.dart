@@ -1330,6 +1330,52 @@ class L10nEn extends L10n {
   String get settingsAccessChef => 'Manager only';
 
   @override
+  String get settingsDepositReturn => 'Deposit return';
+
+  @override
+  String get settingsVoucher => 'Voucher';
+
+  @override
+  String get settingsVoucherInfo => 'Sell and redeem vouchers';
+
+  @override
+  String get settingsInvoice => 'Invoice to a business';
+
+  @override
+  String get settingsInvoiceInfo =>
+      'Print the receipt with the customer\'s name and address';
+
+  @override
+  String get settingsReceiptTitle => 'Customer receipt';
+
+  @override
+  String get settingsReceiptAlways => 'Always print';
+
+  @override
+  String get settingsReceiptAlwaysInfo => 'After every sale, as before';
+
+  @override
+  String get settingsReceiptBoth => 'Print and digital';
+
+  @override
+  String get settingsReceiptBothInfo => 'Print and also show the QR code';
+
+  @override
+  String get settingsReceiptDigital => 'Digital, print on request';
+
+  @override
+  String get settingsReceiptDigitalInfo =>
+      'Show the QR code, print only on tap';
+
+  @override
+  String get settingsReceiptNeedsServer =>
+      'Only works when Kassa is connected to the server.';
+
+  @override
+  String get settingsReceiptQrHint =>
+      'The customer must be able to see the QR code on the screen.';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa version $version';
   }

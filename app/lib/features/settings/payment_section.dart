@@ -8,8 +8,9 @@ import 'settings_rows.dart';
 
 /// Die Karte "Zahlen" der Einstellungen: zwei Schalter (Teil bar, Rest Karte;
 /// Trinkgeld bei Kartenzahlung) und zwei Regler, wer Rabatt und freien Betrag
-/// geben darf (Aus, Alle, Nur Chef). Alles ist aus, bis der Chef es
-/// einschaltet. Jede Änderung geht über [onChange] und wird sofort
+/// geben darf (Aus, Alle, Nur Chef); darunter aus Stufe 1b der Regler, wer
+/// Pfand zurückgeben darf, und die Schalter Gutschein und Rechnung an Firma.
+/// Alles ist aus, bis der Chef es einschaltet. Jede Änderung geht über [onChange] und wird sofort
 /// gespeichert.
 class PaymentSection extends StatelessWidget {
   const PaymentSection({
@@ -82,6 +83,35 @@ class PaymentSection extends StatelessWidget {
             'open-amount-access',
             s.openAmountAccess,
             (s, a) => s.copyWith(openAmountAccess: a),
+          ),
+        ),
+        SettingsRow(
+          key: const Key('setting-deposit-return'),
+          title: l.settingsDepositReturn,
+          below: access(
+            'setting-deposit-return',
+            s.depositReturnAccess,
+            (s, a) => s.copyWith(depositReturnAccess: a),
+          ),
+        ),
+        SettingsRow(
+          title: l.settingsVoucher,
+          help: l.settingsVoucherInfo,
+          control: RowToggle(
+            key: const Key('setting-voucher'),
+            label: l.settingsVoucher,
+            value: s.voucherEnabled,
+            onChanged: (v) => onChange((s) => s.copyWith(voucherEnabled: v)),
+          ),
+        ),
+        SettingsRow(
+          title: l.settingsInvoice,
+          help: l.settingsInvoiceInfo,
+          control: RowToggle(
+            key: const Key('setting-invoice'),
+            label: l.settingsInvoice,
+            value: s.invoiceEnabled,
+            onChanged: (v) => onChange((s) => s.copyWith(invoiceEnabled: v)),
           ),
         ),
       ],

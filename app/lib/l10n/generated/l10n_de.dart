@@ -1334,6 +1334,53 @@ class L10nDe extends L10n {
   String get settingsAccessChef => 'Nur Chef';
 
   @override
+  String get settingsDepositReturn => 'Pfand zurück';
+
+  @override
+  String get settingsVoucher => 'Gutschein';
+
+  @override
+  String get settingsVoucherInfo => 'Wertgutscheine verkaufen und einlösen';
+
+  @override
+  String get settingsInvoice => 'Rechnung an Firma';
+
+  @override
+  String get settingsInvoiceInfo =>
+      'Bon mit Name und Adresse des Kunden drucken';
+
+  @override
+  String get settingsReceiptTitle => 'Kundenbon';
+
+  @override
+  String get settingsReceiptAlways => 'Immer drucken';
+
+  @override
+  String get settingsReceiptAlwaysInfo => 'Nach jedem Verkauf, wie bisher';
+
+  @override
+  String get settingsReceiptBoth => 'Drucken und digital';
+
+  @override
+  String get settingsReceiptBothInfo =>
+      'Drucken und zusätzlich den QR-Code zeigen';
+
+  @override
+  String get settingsReceiptDigital => 'Digital und Druck auf Wunsch';
+
+  @override
+  String get settingsReceiptDigitalInfo =>
+      'QR-Code zeigen, drucken nur auf Tipp';
+
+  @override
+  String get settingsReceiptNeedsServer =>
+      'Geht nur, wenn die Kassa mit dem Server verbunden ist.';
+
+  @override
+  String get settingsReceiptQrHint =>
+      'Der Kunde muss den QR-Code am Bildschirm sehen können.';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa Version $version';
   }

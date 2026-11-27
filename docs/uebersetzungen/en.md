@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 458 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 472 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -479,6 +479,20 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Aus | Off | Einstellungen: `settingsAccessOff` |
 | Alle | Everyone | Einstellungen: `settingsAccessAll` |
 | Nur Chef | Manager only | Einstellungen: `settingsAccessChef` |
+| Pfand zurück | Deposit return | Einstellungen: `settingsDepositReturn` |
+| Gutschein | Voucher | Einstellungen: `settingsVoucher` |
+| Wertgutscheine verkaufen und einlösen | Sell and redeem vouchers | Einstellungen: `settingsVoucherInfo` |
+| Rechnung an Firma | Invoice to a business | Einstellungen: `settingsInvoice` |
+| Bon mit Name und Adresse des Kunden drucken | Print the receipt with the customer's name and address | Einstellungen: `settingsInvoiceInfo` |
+| Kundenbon | Customer receipt | Einstellungen: `settingsReceiptTitle` |
+| Immer drucken | Always print | Einstellungen: `settingsReceiptAlways` |
+| Nach jedem Verkauf, wie bisher | After every sale, as before | Einstellungen: `settingsReceiptAlwaysInfo` |
+| Drucken und digital | Print and digital | Einstellungen: `settingsReceiptBoth` |
+| Drucken und zusätzlich den QR-Code zeigen | Print and also show the QR code | Einstellungen: `settingsReceiptBothInfo` |
+| Digital und Druck auf Wunsch | Digital, print on request | Einstellungen: `settingsReceiptDigital` |
+| QR-Code zeigen, drucken nur auf Tipp | Show the QR code, print only on tap | Einstellungen: `settingsReceiptDigitalInfo` |
+| Geht nur, wenn die Kassa mit dem Server verbunden ist. | Only works when Kassa is connected to the server. | Einstellungen: `settingsReceiptNeedsServer` |
+| Der Kunde muss den QR-Code am Bildschirm sehen können. | The customer must be able to see the QR code on the screen. | Einstellungen: `settingsReceiptQrHint` |
 | Kassa Version {version} | Kassa version {version} | Einstellungen: `settingsVersion` |
 | Küche | Kitchen | Einstellungen: `settingsKitchen` |
 | Küchenbon | Kitchen ticket | Einstellungen: `settingsKitchenMode` |

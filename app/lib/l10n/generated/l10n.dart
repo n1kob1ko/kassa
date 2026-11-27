@@ -2372,6 +2372,90 @@ abstract class L10n {
   /// **'Nur Chef'**
   String get settingsAccessChef;
 
+  /// Zeile Pfand zurück: wer Pfand zurückgeben darf.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand zurück'**
+  String get settingsDepositReturn;
+
+  /// Zeile Gutschein (Schalter).
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein'**
+  String get settingsVoucher;
+
+  /// Hilfe zu Gutschein.
+  ///
+  /// In de, this message translates to:
+  /// **'Wertgutscheine verkaufen und einlösen'**
+  String get settingsVoucherInfo;
+
+  /// Zeile Rechnung an Firma (Schalter).
+  ///
+  /// In de, this message translates to:
+  /// **'Rechnung an Firma'**
+  String get settingsInvoice;
+
+  /// Hilfe zu Rechnung an Firma.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon mit Name und Adresse des Kunden drucken'**
+  String get settingsInvoiceInfo;
+
+  /// Karte Kundenbon: wie der Kunde seinen Beleg bekommt.
+  ///
+  /// In de, this message translates to:
+  /// **'Kundenbon'**
+  String get settingsReceiptTitle;
+
+  /// Wert Immer drucken des Kundenbons.
+  ///
+  /// In de, this message translates to:
+  /// **'Immer drucken'**
+  String get settingsReceiptAlways;
+
+  /// Erklärung zu Immer drucken.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach jedem Verkauf, wie bisher'**
+  String get settingsReceiptAlwaysInfo;
+
+  /// Wert Drucken und digital des Kundenbons.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucken und digital'**
+  String get settingsReceiptBoth;
+
+  /// Erklärung zu Drucken und digital.
+  ///
+  /// In de, this message translates to:
+  /// **'Drucken und zusätzlich den QR-Code zeigen'**
+  String get settingsReceiptBothInfo;
+
+  /// Wert Digital und Druck auf Wunsch des Kundenbons.
+  ///
+  /// In de, this message translates to:
+  /// **'Digital und Druck auf Wunsch'**
+  String get settingsReceiptDigital;
+
+  /// Erklärung zu Digital und Druck auf Wunsch.
+  ///
+  /// In de, this message translates to:
+  /// **'QR-Code zeigen, drucken nur auf Tipp'**
+  String get settingsReceiptDigitalInfo;
+
+  /// Steht unter den Werten des Kundenbons, solange die Kassa nicht mit dem Server gekoppelt ist (die zwei digitalen Werte sind dann grau).
+  ///
+  /// In de, this message translates to:
+  /// **'Geht nur, wenn die Kassa mit dem Server verbunden ist.'**
+  String get settingsReceiptNeedsServer;
+
+  /// Steht unter den Werten des Kundenbons, wenn ein digitaler Wert gewählt ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Kunde muss den QR-Code am Bildschirm sehen können.'**
+  String get settingsReceiptQrHint;
+
   /// Version der App ("Kassa" ist der Name der App).
   ///
   /// In de, this message translates to:

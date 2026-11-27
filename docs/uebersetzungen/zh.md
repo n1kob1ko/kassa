@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 458 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 472 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -479,6 +479,20 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Aus | 关闭 | Einstellungen: `settingsAccessOff` |
 | Alle | 所有人 | Einstellungen: `settingsAccessAll` |
 | Nur Chef | 仅店长 | Einstellungen: `settingsAccessChef` |
+| Pfand zurück | 退押金 | Einstellungen: `settingsDepositReturn` |
+| Gutschein | 礼券 | Einstellungen: `settingsVoucher` |
+| Wertgutscheine verkaufen und einlösen | 出售和兑换礼券 | Einstellungen: `settingsVoucherInfo` |
+| Rechnung an Firma | 企业发票 | Einstellungen: `settingsInvoice` |
+| Bon mit Name und Adresse des Kunden drucken | 打印带有顾客名称和地址的小票 | Einstellungen: `settingsInvoiceInfo` |
+| Kundenbon | 顾客小票 | Einstellungen: `settingsReceiptTitle` |
+| Immer drucken | 始终打印 | Einstellungen: `settingsReceiptAlways` |
+| Nach jedem Verkauf, wie bisher | 每笔销售后打印，和以前一样 | Einstellungen: `settingsReceiptAlwaysInfo` |
+| Drucken und digital | 打印和电子 | Einstellungen: `settingsReceiptBoth` |
+| Drucken und zusätzlich den QR-Code zeigen | 打印并同时显示二维码 | Einstellungen: `settingsReceiptBothInfo` |
+| Digital und Druck auf Wunsch | 电子，按需打印 | Einstellungen: `settingsReceiptDigital` |
+| QR-Code zeigen, drucken nur auf Tipp | 显示二维码，点按才打印 | Einstellungen: `settingsReceiptDigitalInfo` |
+| Geht nur, wenn die Kassa mit dem Server verbunden ist. | 仅在 Kassa 已连接服务器时可用。 | Einstellungen: `settingsReceiptNeedsServer` |
+| Der Kunde muss den QR-Code am Bildschirm sehen können. | 顾客必须能看到屏幕上的二维码。 | Einstellungen: `settingsReceiptQrHint` |
 | Kassa Version {version} | Kassa 版本 {version} | Einstellungen: `settingsVersion` |
 | Küche | 厨房 | Einstellungen: `settingsKitchen` |
 | Küchenbon | 厨房单 | Einstellungen: `settingsKitchenMode` |

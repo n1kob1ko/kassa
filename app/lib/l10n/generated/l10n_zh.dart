@@ -1302,6 +1302,48 @@ class L10nZh extends L10n {
   String get settingsAccessChef => '仅店长';
 
   @override
+  String get settingsDepositReturn => '退押金';
+
+  @override
+  String get settingsVoucher => '礼券';
+
+  @override
+  String get settingsVoucherInfo => '出售和兑换礼券';
+
+  @override
+  String get settingsInvoice => '企业发票';
+
+  @override
+  String get settingsInvoiceInfo => '打印带有顾客名称和地址的小票';
+
+  @override
+  String get settingsReceiptTitle => '顾客小票';
+
+  @override
+  String get settingsReceiptAlways => '始终打印';
+
+  @override
+  String get settingsReceiptAlwaysInfo => '每笔销售后打印，和以前一样';
+
+  @override
+  String get settingsReceiptBoth => '打印和电子';
+
+  @override
+  String get settingsReceiptBothInfo => '打印并同时显示二维码';
+
+  @override
+  String get settingsReceiptDigital => '电子，按需打印';
+
+  @override
+  String get settingsReceiptDigitalInfo => '显示二维码，点按才打印';
+
+  @override
+  String get settingsReceiptNeedsServer => '仅在 Kassa 已连接服务器时可用。';
+
+  @override
+  String get settingsReceiptQrHint => '顾客必须能看到屏幕上的二维码。';
+
+  @override
   String settingsVersion(String version) {
     return 'Kassa 版本 $version';
   }

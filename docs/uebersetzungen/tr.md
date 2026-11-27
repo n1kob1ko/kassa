@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 458 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 472 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -479,6 +479,20 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Aus | Kapalı | Einstellungen: `settingsAccessOff` |
 | Alle | Herkes | Einstellungen: `settingsAccessAll` |
 | Nur Chef | Yalnızca yönetici | Einstellungen: `settingsAccessChef` |
+| Pfand zurück | Depozito iadesi | Einstellungen: `settingsDepositReturn` |
+| Gutschein | Hediye çeki | Einstellungen: `settingsVoucher` |
+| Wertgutscheine verkaufen und einlösen | Hediye çeki sat ve kullan | Einstellungen: `settingsVoucherInfo` |
+| Rechnung an Firma | Firmaya fatura | Einstellungen: `settingsInvoice` |
+| Bon mit Name und Adresse des Kunden drucken | Fişi müşterinin adı ve adresiyle yazdır | Einstellungen: `settingsInvoiceInfo` |
+| Kundenbon | Müşteri fişi | Einstellungen: `settingsReceiptTitle` |
+| Immer drucken | Her zaman yazdır | Einstellungen: `settingsReceiptAlways` |
+| Nach jedem Verkauf, wie bisher | Her satıştan sonra, eskisi gibi | Einstellungen: `settingsReceiptAlwaysInfo` |
+| Drucken und digital | Yazdır ve dijital | Einstellungen: `settingsReceiptBoth` |
+| Drucken und zusätzlich den QR-Code zeigen | Yazdır ve ayrıca QR kodu göster | Einstellungen: `settingsReceiptBothInfo` |
+| Digital und Druck auf Wunsch | Dijital, istenirse yazdır | Einstellungen: `settingsReceiptDigital` |
+| QR-Code zeigen, drucken nur auf Tipp | QR kodu göster, yalnızca dokununca yazdır | Einstellungen: `settingsReceiptDigitalInfo` |
+| Geht nur, wenn die Kassa mit dem Server verbunden ist. | Yalnızca Kassa sunucuya bağlıyken çalışır. | Einstellungen: `settingsReceiptNeedsServer` |
+| Der Kunde muss den QR-Code am Bildschirm sehen können. | Müşteri QR kodu ekranda görebilmelidir. | Einstellungen: `settingsReceiptQrHint` |
 | Kassa Version {version} | Kassa sürüm {version} | Einstellungen: `settingsVersion` |
 | Küche | Mutfak | Einstellungen: `settingsKitchen` |
 | Küchenbon | Mutfak fişi | Einstellungen: `settingsKitchenMode` |

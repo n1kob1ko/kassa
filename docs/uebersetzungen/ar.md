@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 458 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 472 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -479,6 +479,20 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Aus | إيقاف | Einstellungen: `settingsAccessOff` |
 | Alle | الجميع | Einstellungen: `settingsAccessAll` |
 | Nur Chef | للمدير فقط | Einstellungen: `settingsAccessChef` |
+| Pfand zurück | إرجاع الرهن | Einstellungen: `settingsDepositReturn` |
+| Gutschein | قسيمة | Einstellungen: `settingsVoucher` |
+| Wertgutscheine verkaufen und einlösen | بيع القسائم واستخدامها | Einstellungen: `settingsVoucherInfo` |
+| Rechnung an Firma | فاتورة لشركة | Einstellungen: `settingsInvoice` |
+| Bon mit Name und Adresse des Kunden drucken | طباعة الفاتورة مع اسم العميل وعنوانه | Einstellungen: `settingsInvoiceInfo` |
+| Kundenbon | فاتورة العميل | Einstellungen: `settingsReceiptTitle` |
+| Immer drucken | الطباعة دائمًا | Einstellungen: `settingsReceiptAlways` |
+| Nach jedem Verkauf, wie bisher | بعد كل عملية بيع، كما كان من قبل | Einstellungen: `settingsReceiptAlwaysInfo` |
+| Drucken und digital | طباعة ونسخة رقمية | Einstellungen: `settingsReceiptBoth` |
+| Drucken und zusätzlich den QR-Code zeigen | الطباعة مع عرض رمز QR أيضًا | Einstellungen: `settingsReceiptBothInfo` |
+| Digital und Druck auf Wunsch | رقمي، والطباعة عند الطلب | Einstellungen: `settingsReceiptDigital` |
+| QR-Code zeigen, drucken nur auf Tipp | عرض رمز QR، والطباعة فقط عند النقر | Einstellungen: `settingsReceiptDigitalInfo` |
+| Geht nur, wenn die Kassa mit dem Server verbunden ist. | يعمل فقط عندما يكون Kassa متصلًا بالخادم. | Einstellungen: `settingsReceiptNeedsServer` |
+| Der Kunde muss den QR-Code am Bildschirm sehen können. | يجب أن يتمكن العميل من رؤية رمز QR على الشاشة. | Einstellungen: `settingsReceiptQrHint` |
 | Kassa Version {version} | Kassa الإصدار {version} | Einstellungen: `settingsVersion` |
 | Küche | المطبخ | Einstellungen: `settingsKitchen` |
 | Küchenbon | تذكرة المطبخ | Einstellungen: `settingsKitchenMode` |

@@ -1937,6 +1937,62 @@
   "@settingsAccessChef": {
     "description": "Segment Nur Chef: nur der Chef darf es."
   },
+  "settingsDepositReturn": "Pfand zurück",
+  "@settingsDepositReturn": {
+    "description": "Zeile Pfand zurück: wer Pfand zurückgeben darf."
+  },
+  "settingsVoucher": "Gutschein",
+  "@settingsVoucher": {
+    "description": "Zeile Gutschein (Schalter)."
+  },
+  "settingsVoucherInfo": "Wertgutscheine verkaufen und einlösen",
+  "@settingsVoucherInfo": {
+    "description": "Hilfe zu Gutschein."
+  },
+  "settingsInvoice": "Rechnung an Firma",
+  "@settingsInvoice": {
+    "description": "Zeile Rechnung an Firma (Schalter)."
+  },
+  "settingsInvoiceInfo": "Bon mit Name und Adresse des Kunden drucken",
+  "@settingsInvoiceInfo": {
+    "description": "Hilfe zu Rechnung an Firma."
+  },
+  "settingsReceiptTitle": "Kundenbon",
+  "@settingsReceiptTitle": {
+    "description": "Karte Kundenbon: wie der Kunde seinen Beleg bekommt."
+  },
+  "settingsReceiptAlways": "Immer drucken",
+  "@settingsReceiptAlways": {
+    "description": "Wert Immer drucken des Kundenbons."
+  },
+  "settingsReceiptAlwaysInfo": "Nach jedem Verkauf, wie bisher",
+  "@settingsReceiptAlwaysInfo": {
+    "description": "Erklärung zu Immer drucken."
+  },
+  "settingsReceiptBoth": "Drucken und digital",
+  "@settingsReceiptBoth": {
+    "description": "Wert Drucken und digital des Kundenbons."
+  },
+  "settingsReceiptBothInfo": "Drucken und zusätzlich den QR-Code zeigen",
+  "@settingsReceiptBothInfo": {
+    "description": "Erklärung zu Drucken und digital."
+  },
+  "settingsReceiptDigital": "Digital und Druck auf Wunsch",
+  "@settingsReceiptDigital": {
+    "description": "Wert Digital und Druck auf Wunsch des Kundenbons."
+  },
+  "settingsReceiptDigitalInfo": "QR-Code zeigen, drucken nur auf Tipp",
+  "@settingsReceiptDigitalInfo": {
+    "description": "Erklärung zu Digital und Druck auf Wunsch."
+  },
+  "settingsReceiptNeedsServer": "Geht nur, wenn die Kassa mit dem Server verbunden ist.",
+  "@settingsReceiptNeedsServer": {
+    "description": "Steht unter den Werten des Kundenbons, solange die Kassa nicht mit dem Server gekoppelt ist (die zwei digitalen Werte sind dann grau)."
+  },
+  "settingsReceiptQrHint": "Der Kunde muss den QR-Code am Bildschirm sehen können.",
+  "@settingsReceiptQrHint": {
+    "description": "Steht unter den Werten des Kundenbons, wenn ein digitaler Wert gewählt ist."
+  },
   "settingsVersion": "Kassa Version {version}",
   "@settingsVersion": {
     "description": "Version der App (\"Kassa\" ist der Name der App).",
