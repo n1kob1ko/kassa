@@ -1506,4 +1506,61 @@ class L10nTr extends L10n {
   String bonsVoidCardBackTip(String amount, String tip) {
     return '$amount tutarını SumUp\'ta iade edin, bunun $tip kadarı bahşiş.';
   }
+
+  @override
+  String get discountTitle => 'İndirim';
+
+  @override
+  String discountOn(String what) {
+    return 'İndirim: $what';
+  }
+
+  @override
+  String get discountWholeReceipt => 'tüm fiş';
+
+  @override
+  String get discountReason => 'Neden';
+
+  @override
+  String get discountReasonRegular => 'Müdavim';
+
+  @override
+  String get discountReasonStaff => 'Personel';
+
+  @override
+  String get discountReasonComplaint => 'Şikayet';
+
+  @override
+  String get discountReasonPromotion => 'Kampanya';
+
+  @override
+  String get discountReasonInvitation => 'İkram';
+
+  @override
+  String get discountHeight => 'Ne kadar';
+
+  @override
+  String get discountAmount => 'Tutar';
+
+  @override
+  String get discountNew => 'Yeni';
+
+  @override
+  String get discountRemove => 'Kaldır';
+
+  @override
+  String get discountApply => 'Uygula';
+
+  @override
+  String get discountLineHint => 'Tek bir satır için fişteki satıra dokunun.';
+
+  @override
+  String discountRowPercent(int percent, String reason) {
+    return '−$percent % $reason';
+  }
+
+  @override
+  String discountRowAmount(String reason) {
+    return 'İndirim $reason';
+  }
 }

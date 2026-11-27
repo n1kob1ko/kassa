@@ -2683,6 +2683,108 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'{amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld.'**
   String bonsVoidCardBackTip(String amount, String tip);
+
+  /// Titel des Blatts Rabatt und Taste Rabatt im Summenblock.
+  ///
+  /// In de, this message translates to:
+  /// **'Rabatt'**
+  String get discountTitle;
+
+  /// Kopf des Blatts Rabatt: worauf der Rabatt geht; what ist "2 × Huhn Bowl" oder "ganzer Bon".
+  ///
+  /// In de, this message translates to:
+  /// **'Rabatt auf: {what}'**
+  String discountOn(String what);
+
+  /// Im Kopf des Blatts Rabatt: der Rabatt geht auf den ganzen Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'ganzer Bon'**
+  String get discountWholeReceipt;
+
+  /// Überschrift über den Gründen im Blatt Rabatt.
+  ///
+  /// In de, this message translates to:
+  /// **'Grund'**
+  String get discountReason;
+
+  /// Grund eines Rabatts: Stammgast.
+  ///
+  /// In de, this message translates to:
+  /// **'Stammgast'**
+  String get discountReasonRegular;
+
+  /// Grund eines Rabatts: Mitarbeiter.
+  ///
+  /// In de, this message translates to:
+  /// **'Mitarbeiter'**
+  String get discountReasonStaff;
+
+  /// Grund eines Rabatts: Reklamation (der Gast war nicht zufrieden).
+  ///
+  /// In de, this message translates to:
+  /// **'Reklamation'**
+  String get discountReasonComplaint;
+
+  /// Grund eines Rabatts: Aktion.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktion'**
+  String get discountReasonPromotion;
+
+  /// Grund eines Rabatts: Einladung (aufs Haus, wählt 100 % vor).
+  ///
+  /// In de, this message translates to:
+  /// **'Einladung'**
+  String get discountReasonInvitation;
+
+  /// Überschrift über den Prozent-Stufen und Betrag im Blatt Rabatt: wie viel Rabatt.
+  ///
+  /// In de, this message translates to:
+  /// **'Höhe'**
+  String get discountHeight;
+
+  /// Taste und Überschrift im Blatt Rabatt: ein Rabatt als Betrag in Euro (öffnet das Zahlenfeld).
+  ///
+  /// In de, this message translates to:
+  /// **'Betrag'**
+  String get discountAmount;
+
+  /// Blatt Rabatt: der Wert nach dem Rabatt.
+  ///
+  /// In de, this message translates to:
+  /// **'Neu'**
+  String get discountNew;
+
+  /// Taste im Blatt Rabatt: den Rabatt wegnehmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Entfernen'**
+  String get discountRemove;
+
+  /// Taste im Blatt Rabatt: den Rabatt setzen.
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get discountApply;
+
+  /// Hinweis im Blatt Rabatt für den ganzen Bon: wie man nur eine Zeile rabattiert.
+  ///
+  /// In de, this message translates to:
+  /// **'Für eine einzelne Zeile die Zeile im Bon antippen.'**
+  String get discountLineHint;
+
+  /// Reihe unter einer Bon-Zeile oder im Summenblock: Rabatt in Prozent mit Grund, etwa "−10 % Stammgast"; das Minus ist U+2212.
+  ///
+  /// In de, this message translates to:
+  /// **'−{percent} % {reason}'**
+  String discountRowPercent(int percent, String reason);
+
+  /// Reihe unter einer Bon-Zeile oder im Summenblock: Rabatt als Betrag mit Grund, etwa "Rabatt Stammgast"; der Betrag steht rechts.
+  ///
+  /// In de, this message translates to:
+  /// **'Rabatt {reason}'**
+  String discountRowAmount(String reason);
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 430 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 447 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -520,6 +520,23 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar-Teil eingeben. | أدخل الجزء النقدي. | Sonstiges: `splitNeedCash` |
 | Rest mit Karte mindestens {amount}. | الباقي بالبطاقة {amount} على الأقل. | Sonstiges: `splitRestTooSmall` |
 | Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | لم يتم الدفع بالبطاقة. أعد {amount} نقدًا أو حاول مرة أخرى. | Sonstiges: `splitCardFailed` |
+| Rabatt | خصم | Sonstiges: `discountTitle` |
+| Rabatt auf: {what} | خصم على: {what} | Sonstiges: `discountOn` |
+| ganzer Bon | الفاتورة كاملة | Sonstiges: `discountWholeReceipt` |
+| Grund | السبب | Sonstiges: `discountReason` |
+| Stammgast | زبون دائم | Sonstiges: `discountReasonRegular` |
+| Mitarbeiter | موظف | Sonstiges: `discountReasonStaff` |
+| Reklamation | شكوى | Sonstiges: `discountReasonComplaint` |
+| Aktion | عرض | Sonstiges: `discountReasonPromotion` |
+| Einladung | ضيافة | Sonstiges: `discountReasonInvitation` |
+| Höhe | المقدار | Sonstiges: `discountHeight` |
+| Betrag | مبلغ | Sonstiges: `discountAmount` |
+| Neu | الجديد | Sonstiges: `discountNew` |
+| Entfernen | إزالة | Sonstiges: `discountRemove` |
+| Übernehmen | تطبيق | Sonstiges: `discountApply` |
+| Für eine einzelne Zeile die Zeile im Bon antippen. | لخصم سطر واحد، المس السطر في الفاتورة. | Sonstiges: `discountLineHint` |
+| −{percent} % {reason} | خصم {percent} % {reason} | Sonstiges: `discountRowPercent` |
+| Rabatt {reason} | خصم {reason} | Sonstiges: `discountRowAmount` |
 
 ## Unsicher
 

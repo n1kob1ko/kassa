@@ -1517,4 +1517,62 @@ class L10nEn extends L10n {
   String bonsVoidCardBackTip(String amount, String tip) {
     return 'Refund $amount in SumUp, incl. tip $tip.';
   }
+
+  @override
+  String get discountTitle => 'Discount';
+
+  @override
+  String discountOn(String what) {
+    return 'Discount on: $what';
+  }
+
+  @override
+  String get discountWholeReceipt => 'whole receipt';
+
+  @override
+  String get discountReason => 'Reason';
+
+  @override
+  String get discountReasonRegular => 'Regular';
+
+  @override
+  String get discountReasonStaff => 'Staff';
+
+  @override
+  String get discountReasonComplaint => 'Complaint';
+
+  @override
+  String get discountReasonPromotion => 'Promotion';
+
+  @override
+  String get discountReasonInvitation => 'On the house';
+
+  @override
+  String get discountHeight => 'How much';
+
+  @override
+  String get discountAmount => 'Amount';
+
+  @override
+  String get discountNew => 'New';
+
+  @override
+  String get discountRemove => 'Remove';
+
+  @override
+  String get discountApply => 'Apply';
+
+  @override
+  String get discountLineHint =>
+      'For a single line, tap that line on the receipt.';
+
+  @override
+  String discountRowPercent(int percent, String reason) {
+    return '−$percent % $reason';
+  }
+
+  @override
+  String discountRowAmount(String reason) {
+    return 'Discount $reason';
+  }
 }

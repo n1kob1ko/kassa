@@ -105,6 +105,35 @@ void main() {
     }
   });
 
+  test('Discount: gleich bei gleichem Prozent, Betrag und Grund', () {
+    const a = Discount.percent(10, DiscountReason.regular);
+    expect(a, const Discount.percent(10, DiscountReason.regular));
+    expect(
+      a.hashCode,
+      const Discount.percent(10, DiscountReason.regular).hashCode,
+    );
+    expect(a, isNot(const Discount.percent(20, DiscountReason.regular)));
+    expect(a, isNot(const Discount.percent(10, DiscountReason.staff)));
+    expect(
+      const Discount.amount(500, DiscountReason.staff),
+      const Discount.amount(500, DiscountReason.staff),
+    );
+    expect(
+      const Discount.amount(500, DiscountReason.staff),
+      isNot(const Discount.amount(400, DiscountReason.staff)),
+    );
+    // 100 % ist nicht dasselbe wie ein Betrag.
+    expect(
+      const Discount.percent(100, DiscountReason.invitation),
+      isNot(const Discount.amount(100, DiscountReason.invitation)),
+    );
+    expect(a.toString(), 'Discount(10 %, regular)');
+    expect(
+      const Discount.amount(119, DiscountReason.complaint).toString(),
+      'Discount(119 Cent, complaint)',
+    );
+  });
+
   test('discountReasonLabel: deutsch, unbekannte Namen bleiben', () {
     expect(
       [for (final r in DiscountReason.values) discountReasonLabel(r.name)],

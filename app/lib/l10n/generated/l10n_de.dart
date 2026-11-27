@@ -1520,4 +1520,62 @@ class L10nDe extends L10n {
   String bonsVoidCardBackTip(String amount, String tip) {
     return '$amount bei SumUp zurückbuchen, davon $tip Trinkgeld.';
   }
+
+  @override
+  String get discountTitle => 'Rabatt';
+
+  @override
+  String discountOn(String what) {
+    return 'Rabatt auf: $what';
+  }
+
+  @override
+  String get discountWholeReceipt => 'ganzer Bon';
+
+  @override
+  String get discountReason => 'Grund';
+
+  @override
+  String get discountReasonRegular => 'Stammgast';
+
+  @override
+  String get discountReasonStaff => 'Mitarbeiter';
+
+  @override
+  String get discountReasonComplaint => 'Reklamation';
+
+  @override
+  String get discountReasonPromotion => 'Aktion';
+
+  @override
+  String get discountReasonInvitation => 'Einladung';
+
+  @override
+  String get discountHeight => 'Höhe';
+
+  @override
+  String get discountAmount => 'Betrag';
+
+  @override
+  String get discountNew => 'Neu';
+
+  @override
+  String get discountRemove => 'Entfernen';
+
+  @override
+  String get discountApply => 'Übernehmen';
+
+  @override
+  String get discountLineHint =>
+      'Für eine einzelne Zeile die Zeile im Bon antippen.';
+
+  @override
+  String discountRowPercent(int percent, String reason) {
+    return '−$percent % $reason';
+  }
+
+  @override
+  String discountRowAmount(String reason) {
+    return 'Rabatt $reason';
+  }
 }

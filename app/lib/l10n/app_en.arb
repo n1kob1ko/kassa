@@ -429,5 +429,22 @@
   "unclearReturnCash": "Give back {amount} in cash.",
   "bonsVoidMixedCash": "Give back {amount} in cash.",
   "bonsVoidCardBack": "Refund {amount} in SumUp.",
-  "bonsVoidCardBackTip": "Refund {amount} in SumUp, incl. tip {tip}."
+  "bonsVoidCardBackTip": "Refund {amount} in SumUp, incl. tip {tip}.",
+  "discountTitle": "Discount",
+  "discountOn": "Discount on: {what}",
+  "discountWholeReceipt": "whole receipt",
+  "discountReason": "Reason",
+  "discountReasonRegular": "Regular",
+  "discountReasonStaff": "Staff",
+  "discountReasonComplaint": "Complaint",
+  "discountReasonPromotion": "Promotion",
+  "discountReasonInvitation": "On the house",
+  "discountHeight": "How much",
+  "discountAmount": "Amount",
+  "discountNew": "New",
+  "discountRemove": "Remove",
+  "discountApply": "Apply",
+  "discountLineHint": "For a single line, tap that line on the receipt.",
+  "discountRowPercent": "−{percent} % {reason}",
+  "discountRowAmount": "Discount {reason}"
 }

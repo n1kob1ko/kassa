@@ -23,6 +23,12 @@ import 'cart_line_row.dart';
 /// unter dem Wort den ersten Grund. [notice] steht über dem Kopf (der
 /// Hinweis zum Ausfall der Signatur), [payNotice] über dem Summenblock (der
 /// Hinweis nach einer gescheiterten Karte mit Bar-Teil).
+///
+/// Ein gesetzter Rabatt steht immer da: unter seiner Zeile und im
+/// Summenblock. Mit [onLineDiscount] öffnet ein Tipp auf Name, Preis oder
+/// Rabatt einer Zeile das Blatt "Rabatt", mit [onReceiptDiscount] steht im
+/// Summenblock die Taste "Rabatt". Ist die Summe 0,00 € und der Bon hat einen
+/// Rabatt, steht mit [onFinishFree] statt "Bar" und "Karte" "Abschließen".
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -31,6 +37,9 @@ class CartPanel extends ConsumerStatefulWidget {
     this.canPay = true,
     this.notice,
     this.payNotice,
+    this.onLineDiscount,
+    this.onReceiptDiscount,
+    this.onFinishFree,
   });
 
   final VoidCallback onPayCash;
@@ -38,6 +47,15 @@ class CartPanel extends ConsumerStatefulWidget {
   final bool canPay;
   final Widget? notice;
   final Widget? payNotice;
+
+  /// Rabatt für die Zeile mit dieser Kennung; null: keine Tippfläche.
+  final ValueChanged<String>? onLineDiscount;
+
+  /// Rabatt auf den ganzen Bon; null: keine Taste "Rabatt".
+  final VoidCallback? onReceiptDiscount;
+
+  /// "Abschließen" bei Summe 0,00 € mit Rabatt.
+  final VoidCallback? onFinishFree;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -68,6 +86,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   void _payCard() {
     _dismissToast();
     widget.onPayCard();
+  }
+
+  void _finishFree() {
+    _dismissToast();
+    widget.onFinishFree?.call();
   }
 
   void _clear() {
@@ -113,6 +136,15 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final tax = taxBreakdown(grossByRate(cart))
         .fold<int>(0, (s, t) => s + t.taxCents);
+    final pricing = cart.pricing;
+    final onLineDiscount = widget.onLineDiscount;
+    final onReceiptDiscount = widget.onReceiptDiscount;
+    // Summe 0,00 € durch einen Rabatt: nichts zu kassieren, nur abschließen.
+    final free =
+        widget.onFinishFree != null &&
+        !cart.isEmpty &&
+        cart.totalCents == 0 &&
+        pricing.discountCents > 0;
     return Container(
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
@@ -145,13 +177,22 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                           flash: _flash[line.lineId] ?? 0,
                           onQuantity: (q) =>
                               controller.setQuantity(line.lineId, q),
+                          discountCents: pricing.lines[i].ownDiscountCents,
+                          onDiscount: onLineDiscount == null
+                              ? null
+                              : () => onLineDiscount(line.lineId),
                         );
                       },
                     ),
             ),
           ),
           ?widget.payNotice,
-          _Totals(cart: cart, taxCents: tax),
+          _Totals(
+            cart: cart,
+            taxCents: tax,
+            receiptDiscountCents: pricing.receiptDiscountCents,
+            onDiscount: cart.isEmpty ? null : onReceiptDiscount,
+          ),
           Padding(
             padding: EdgeInsetsDirectional.fromSTEB(
               12,
@@ -159,36 +200,52 @@ class _CartPanelState extends ConsumerState<CartPanel> {
               12,
               12 + MediaQuery.paddingOf(context).bottom,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: PrimaryButton(
-                    key: const Key('pay-cash'),
-                    label: l.kassaCash,
-                    icon: LucideIcons.banknote,
-                    labelSize: 22,
-                    height: KassaTokens.mainActionHeight,
-                    onPressed: cart.isEmpty || !widget.canPay ? null : _pay,
+            child: free
+                ? SizedBox(
+                    width: double.infinity,
+                    child: PrimaryButton(
+                      key: const Key('finish-free'),
+                      label: l.kassaFinish,
+                      icon: LucideIcons.check,
+                      labelSize: 22,
+                      height: KassaTokens.mainActionHeight,
+                      onPressed: widget.canPay ? _finishFree : null,
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: PrimaryButton(
+                          key: const Key('pay-cash'),
+                          label: l.kassaCash,
+                          icon: LucideIcons.banknote,
+                          labelSize: 22,
+                          height: KassaTokens.mainActionHeight,
+                          onPressed: cart.isEmpty || !widget.canPay
+                              ? null
+                              : _pay,
+                        ),
+                      ),
+                      const SizedBox(width: KassaTokens.spaceLg),
+                      Expanded(
+                        child: PrimaryButton(
+                          key: const Key('pay-card'),
+                          label: l.kassaCard,
+                          sublabel: card.reason,
+                          icon: LucideIcons.creditCard,
+                          solid: true,
+                          // Ausgeschaltet ohne Abdunkeln, damit die Zeile lesbar
+                          // bleibt.
+                          muted: !card.enabled || !widget.canPay,
+                          labelSize: 22,
+                          height: KassaTokens.mainActionHeight,
+                          onPressed: card.enabled && widget.canPay
+                              ? _payCard
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: KassaTokens.spaceLg),
-                Expanded(
-                  child: PrimaryButton(
-                    key: const Key('pay-card'),
-                    label: l.kassaCard,
-                    sublabel: card.reason,
-                    icon: LucideIcons.creditCard,
-                    solid: true,
-                    // Ausgeschaltet ohne Abdunkeln, damit die Zeile lesbar
-                    // bleibt.
-                    muted: !card.enabled || !widget.canPay,
-                    labelSize: 22,
-                    height: KassaTokens.mainActionHeight,
-                    onPressed: card.enabled && widget.canPay ? _payCard : null,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -292,10 +349,20 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _Totals extends StatelessWidget {
-  const _Totals({required this.cart, required this.taxCents});
+  const _Totals({
+    required this.cart,
+    required this.taxCents,
+    this.receiptDiscountCents = 0,
+    this.onDiscount,
+  });
 
   final Cart cart;
   final int taxCents;
+  final int receiptDiscountCents;
+
+  /// Die Taste "Rabatt"; null: keine Taste, die Reihe des Bon-Rabatts ist
+  /// keine Tippfläche.
+  final VoidCallback? onDiscount;
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +383,20 @@ class _Totals extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (onDiscount case final onDiscount?)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _DiscountButton(onTap: onDiscount),
+            ),
+          if (cart.discount case final discount?) ...[
+            DiscountRow(
+              key: const Key('receipt-discount'),
+              discount: discount,
+              cents: receiptDiscountCents,
+              onTap: onDiscount,
+            ),
+            const SizedBox(height: KassaTokens.spaceXs),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -367,6 +448,47 @@ class _Totals extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Rabatt" im Summenblock: öffnet das Blatt für den ganzen Bon.
+class _DiscountButton extends StatelessWidget {
+  const _DiscountButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Pressable(
+      key: const Key('discount-button'),
+      onTap: onTap,
+      minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
+      child: Container(
+        height: KassaTokens.drawnControlHeight,
+        padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceXl),
+        decoration: BoxDecoration(
+          color: c.fill,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.percent, size: 18, color: c.ink),
+            const SizedBox(width: KassaTokens.spaceSm),
+            Flexible(
+              child: Text(
+                L10n.of(context).discountTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.labelLarge,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

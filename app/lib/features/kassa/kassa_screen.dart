@@ -28,6 +28,7 @@ import 'cart_controller.dart';
 import 'cart_panel.dart';
 import 'cash_sheet.dart';
 import 'category_rail.dart';
+import 'discount_sheet.dart';
 import 'item_grid.dart';
 import 'late_kitchen.dart';
 import 'modifier_panel.dart';
@@ -82,7 +83,9 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 /// Bezahlen, mit "Karte" zum Warten auf das Terminal (ist Trinkgeld bei
 /// Kartenzahlung eingeschaltet, zuerst zum Blatt "Trinkgeld"), danach zur
 /// Fertig-Ansicht; die Artikelfläche ist dabei halb ausgeblendet und reagiert
-/// nicht.
+/// nicht. Darf die angemeldete Person Rabatt geben, wird die Bon-Spalte mit
+/// einem Tipp auf eine Zeile oder auf "Rabatt" zum Blatt "Rabatt". Eine Summe
+/// von 0,00 € durch einen Rabatt schließt "Abschließen" ohne Bezahlen ab.
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -91,7 +94,7 @@ class KassaScreen extends ConsumerStatefulWidget {
 }
 
 /// Was die rechte Spalte zeigt.
-enum _Side { cart, paying, tip, waitingForCard, done }
+enum _Side { cart, paying, tip, discount, waitingForCard, done }
 
 class _KassaScreenState extends ConsumerState<KassaScreen>
     with WidgetsBindingObserver {
@@ -115,6 +118,17 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   /// Steht ab dem ersten Tipp auf "Karte" bis zum Ergebnis; ein zweiter Tipp im
   /// selben Bild startet nichts.
   bool _cardRunning = false;
+
+  /// Die Zeile, für die das Blatt "Rabatt" offen ist; null: der ganze Bon.
+  String? _discountLineId;
+
+  /// Die Kennung des Bons für "Abschließen" bei Summe 0: ein neuer Versuch
+  /// nach einem Fehler schreibt denselben Bon. Jede Änderung des Bons nimmt
+  /// sie weg.
+  String? _freeSaleId;
+
+  /// Steht ab dem ersten Tipp auf "Abschließen" bis zum Ergebnis.
+  bool _finishingFree = false;
 
   /// Was die Person eben getippt hat, bis die Datenbank es bestätigt: so
   /// wechselt die Ansicht im selben Bild.
@@ -362,6 +376,43 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     }
   }
 
+  void _openDiscount(String? lineId) => setState(() {
+    _discountLineId = lineId;
+    _side = _Side.discount;
+  });
+
+  /// "Abschließen": ein Bon mit Summe 0,00 € durch einen Rabatt, ohne
+  /// Zahlung und ohne Lade.
+  Future<void> _finishFree() async {
+    final staff = ref.read(sessionProvider);
+    final cart = ref.read(cartProvider);
+    if (_finishingFree || staff == null || cart.isEmpty) return;
+    if (cart.totalCents != 0) return;
+    _finishingFree = true;
+    final saleId = _freeSaleId ??= const Uuid().v4();
+    final cartCtl = ref.read(cartProvider.notifier);
+    try {
+      final result = await ref
+          .read(saleServiceProvider)
+          .completeFree(saleId: saleId, cart: cart, staff: staff);
+      // Der Bon ist gespeichert: der offene Bon und sein Entwurf gehen weg.
+      cartCtl.clear();
+      _freeSaleId = null;
+      if (mounted) _onPaid(result);
+    } catch (_) {
+      if (mounted) {
+        showUndoToast(
+          context,
+          message: L10n.of(context).kassaSaveFailed,
+          stay: _cardMessageStay,
+          viewKey: const Key('finish-free-failed'),
+        );
+      }
+    } finally {
+      _finishingFree = false;
+    }
+  }
+
   void _tapItem(Catalog catalog, Item item) {
     if (catalog.templateOf(item) != null) {
       setState(() => _building = item);
@@ -383,10 +434,17 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final cart = ref.watch(cartProvider);
     final cartCtl = ref.read(cartProvider.notifier);
     ref.listen(cartProvider, (prev, next) {
+      if (!identical(prev, next)) _freeSaleId = null;
       if (_splitFailed != null && !identical(prev, next)) {
         setState(() => _splitFailed = null);
       }
     });
+    final mayDiscount = stored.discountAccess.allows(
+      ref.watch(sessionProvider),
+    );
+    // Wird der Rabatt ausgeschaltet, während das Blatt offen ist, steht
+    // wieder der Bon da.
+    final side = _side == _Side.discount && !mayDiscount ? _Side.cart : _side;
     if (catalog == null) return ColoredBox(color: c.ground);
 
     final favorites = [
@@ -444,13 +502,13 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             padding: EdgeInsets.only(bottom: bottomBar),
             child: AnimatedOpacity(
               key: const Key('item-area-dim'),
-              opacity: _side == _Side.cart ? 1.0 : 0.5,
+              opacity: side == _Side.cart ? 1.0 : 0.5,
               duration: MediaQuery.disableAnimationsOf(context)
                   ? Duration.zero
                   : KassaTokens.motionFade,
               curve: KassaTokens.motionCurve,
               child: IgnorePointer(
-                ignoring: _side != _Side.cart,
+                ignoring: side != _Side.cart,
                 child: building != null && template != null
                     ? ModifierPanel(
                         key: Key('builder-${building.id}'),
@@ -478,11 +536,14 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             ),
           ),
         ),
-        switch (_side) {
+        switch (side) {
           _Side.cart => CartPanel(
             onPayCash: _tapCash,
             onPayCard: _tapCard,
             canPay: building == null,
+            onLineDiscount: mayDiscount ? _openDiscount : null,
+            onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
+            onFinishFree: _finishFree,
             payNotice: switch (_splitFailed) {
               null => null,
               final f => SplitCardFailedNotice(
@@ -509,6 +570,13 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               receiptTotalCents: cart.totalCents,
               onBack: () => setState(() => _side = _Side.cart),
               onPay: (tip) => _payByCard(tipCents: tip),
+            ),
+          ),
+          _Side.discount => _AboveBottomBar(
+            child: DiscountSheet(
+              key: ValueKey(_discountLineId),
+              lineId: _discountLineId,
+              onClose: () => setState(() => _side = _Side.cart),
             ),
           ),
           _Side.waitingForCard => _AboveBottomBar(
@@ -562,9 +630,7 @@ class SplitCardFailedNotice extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l.splitCardFailed(
-                ltrIsolate(context, formatEuro(cashPartCents)),
-              ),
+              l.splitCardFailed(ltrIsolate(context, formatEuro(cashPartCents))),
               style: text.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w700,
                 height: 1.3,

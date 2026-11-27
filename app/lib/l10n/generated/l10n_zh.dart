@@ -1486,4 +1486,61 @@ class L10nZh extends L10n {
   String bonsVoidCardBackTip(String amount, String tip) {
     return '请在 SumUp 中退款 $amount，其中小费 $tip。';
   }
+
+  @override
+  String get discountTitle => '折扣';
+
+  @override
+  String discountOn(String what) {
+    return '折扣对象：$what';
+  }
+
+  @override
+  String get discountWholeReceipt => '整张小票';
+
+  @override
+  String get discountReason => '原因';
+
+  @override
+  String get discountReasonRegular => '常客';
+
+  @override
+  String get discountReasonStaff => '员工';
+
+  @override
+  String get discountReasonComplaint => '投诉';
+
+  @override
+  String get discountReasonPromotion => '促销';
+
+  @override
+  String get discountReasonInvitation => '请客';
+
+  @override
+  String get discountHeight => '幅度';
+
+  @override
+  String get discountAmount => '金额';
+
+  @override
+  String get discountNew => '新价';
+
+  @override
+  String get discountRemove => '移除';
+
+  @override
+  String get discountApply => '应用';
+
+  @override
+  String get discountLineHint => '只给一行打折：点小票上的那一行。';
+
+  @override
+  String discountRowPercent(int percent, String reason) {
+    return '−$percent % $reason';
+  }
+
+  @override
+  String discountRowAmount(String reason) {
+    return '折扣 $reason';
+  }
 }

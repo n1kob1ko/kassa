@@ -44,6 +44,22 @@ class Discount {
     return amountCents < baseCents ? amountCents : baseCents;
   }
 
+  /// Gleich, wenn Prozent, Betrag und Grund gleich sind.
+  @override
+  bool operator ==(Object other) =>
+      other is Discount &&
+      other.percent == percent &&
+      other.amountCents == amountCents &&
+      other.reason == reason;
+
+  @override
+  int get hashCode => Object.hash(percent, amountCents, reason);
+
+  @override
+  String toString() => percent != null
+      ? 'Discount($percent %, ${reason.name})'
+      : 'Discount($amountCents Cent, ${reason.name})';
+
   Map<String, dynamic> toJson() => {
     if (percent != null) 'percent': percent else 'amountCents': amountCents,
     'reason': reason.name,

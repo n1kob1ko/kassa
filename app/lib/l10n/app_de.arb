@@ -2222,5 +2222,91 @@
         "type": "String"
       }
     }
+  },
+  "discountTitle": "Rabatt",
+  "@discountTitle": {
+    "description": "Titel des Blatts Rabatt und Taste Rabatt im Summenblock."
+  },
+  "discountOn": "Rabatt auf: {what}",
+  "@discountOn": {
+    "description": "Kopf des Blatts Rabatt: worauf der Rabatt geht; what ist \"2 × Huhn Bowl\" oder \"ganzer Bon\".",
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "discountWholeReceipt": "ganzer Bon",
+  "@discountWholeReceipt": {
+    "description": "Im Kopf des Blatts Rabatt: der Rabatt geht auf den ganzen Bon."
+  },
+  "discountReason": "Grund",
+  "@discountReason": {
+    "description": "Überschrift über den Gründen im Blatt Rabatt."
+  },
+  "discountReasonRegular": "Stammgast",
+  "@discountReasonRegular": {
+    "description": "Grund eines Rabatts: Stammgast."
+  },
+  "discountReasonStaff": "Mitarbeiter",
+  "@discountReasonStaff": {
+    "description": "Grund eines Rabatts: Mitarbeiter."
+  },
+  "discountReasonComplaint": "Reklamation",
+  "@discountReasonComplaint": {
+    "description": "Grund eines Rabatts: Reklamation (der Gast war nicht zufrieden)."
+  },
+  "discountReasonPromotion": "Aktion",
+  "@discountReasonPromotion": {
+    "description": "Grund eines Rabatts: Aktion."
+  },
+  "discountReasonInvitation": "Einladung",
+  "@discountReasonInvitation": {
+    "description": "Grund eines Rabatts: Einladung (aufs Haus, wählt 100 % vor)."
+  },
+  "discountHeight": "Höhe",
+  "@discountHeight": {
+    "description": "Überschrift über den Prozent-Stufen und Betrag im Blatt Rabatt: wie viel Rabatt."
+  },
+  "discountAmount": "Betrag",
+  "@discountAmount": {
+    "description": "Taste und Überschrift im Blatt Rabatt: ein Rabatt als Betrag in Euro (öffnet das Zahlenfeld)."
+  },
+  "discountNew": "Neu",
+  "@discountNew": {
+    "description": "Blatt Rabatt: der Wert nach dem Rabatt."
+  },
+  "discountRemove": "Entfernen",
+  "@discountRemove": {
+    "description": "Taste im Blatt Rabatt: den Rabatt wegnehmen."
+  },
+  "discountApply": "Übernehmen",
+  "@discountApply": {
+    "description": "Taste im Blatt Rabatt: den Rabatt setzen."
+  },
+  "discountLineHint": "Für eine einzelne Zeile die Zeile im Bon antippen.",
+  "@discountLineHint": {
+    "description": "Hinweis im Blatt Rabatt für den ganzen Bon: wie man nur eine Zeile rabattiert."
+  },
+  "discountRowPercent": "−{percent} % {reason}",
+  "@discountRowPercent": {
+    "description": "Reihe unter einer Bon-Zeile oder im Summenblock: Rabatt in Prozent mit Grund, etwa \"−10 % Stammgast\"; das Minus ist U+2212.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "discountRowAmount": "Rabatt {reason}",
+  "@discountRowAmount": {
+    "description": "Reihe unter einer Bon-Zeile oder im Summenblock: Rabatt als Betrag mit Grund, etwa \"Rabatt Stammgast\"; der Betrag steht rechts.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
   }
 }

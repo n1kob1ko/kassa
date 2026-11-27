@@ -429,5 +429,22 @@
   "unclearReturnCash": "أعد {amount} نقدًا.",
   "bonsVoidMixedCash": "أعد {amount} نقدًا.",
   "bonsVoidCardBack": "استرد {amount} في SumUp.",
-  "bonsVoidCardBackTip": "استرد {amount} في SumUp، منها إكرامية {tip}."
+  "bonsVoidCardBackTip": "استرد {amount} في SumUp، منها إكرامية {tip}.",
+  "discountTitle": "خصم",
+  "discountOn": "خصم على: {what}",
+  "discountWholeReceipt": "الفاتورة كاملة",
+  "discountReason": "السبب",
+  "discountReasonRegular": "زبون دائم",
+  "discountReasonStaff": "موظف",
+  "discountReasonComplaint": "شكوى",
+  "discountReasonPromotion": "عرض",
+  "discountReasonInvitation": "ضيافة",
+  "discountHeight": "المقدار",
+  "discountAmount": "مبلغ",
+  "discountNew": "الجديد",
+  "discountRemove": "إزالة",
+  "discountApply": "تطبيق",
+  "discountLineHint": "لخصم سطر واحد، المس السطر في الفاتورة.",
+  "discountRowPercent": "خصم {percent} % {reason}",
+  "discountRowAmount": "خصم {reason}"
 }

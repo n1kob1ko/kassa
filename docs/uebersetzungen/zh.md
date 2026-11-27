@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 430 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 447 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -520,6 +520,23 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar-Teil eingeben. | 请输入现金部分。 | Sonstiges: `splitNeedCash` |
 | Rest mit Karte mindestens {amount}. | 刷卡部分至少 {amount}。 | Sonstiges: `splitRestTooSmall` |
 | Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | 刷卡未付款。请退还现金 {amount} 或再试一次。 | Sonstiges: `splitCardFailed` |
+| Rabatt | 折扣 | Sonstiges: `discountTitle` |
+| Rabatt auf: {what} | 折扣对象：{what} | Sonstiges: `discountOn` |
+| ganzer Bon | 整张小票 | Sonstiges: `discountWholeReceipt` |
+| Grund | 原因 | Sonstiges: `discountReason` |
+| Stammgast | 常客 | Sonstiges: `discountReasonRegular` |
+| Mitarbeiter | 员工 | Sonstiges: `discountReasonStaff` |
+| Reklamation | 投诉 | Sonstiges: `discountReasonComplaint` |
+| Aktion | 促销 | Sonstiges: `discountReasonPromotion` |
+| Einladung | 请客 | Sonstiges: `discountReasonInvitation` |
+| Höhe | 幅度 | Sonstiges: `discountHeight` |
+| Betrag | 金额 | Sonstiges: `discountAmount` |
+| Neu | 新价 | Sonstiges: `discountNew` |
+| Entfernen | 移除 | Sonstiges: `discountRemove` |
+| Übernehmen | 应用 | Sonstiges: `discountApply` |
+| Für eine einzelne Zeile die Zeile im Bon antippen. | 只给一行打折：点小票上的那一行。 | Sonstiges: `discountLineHint` |
+| −{percent} % {reason} | −{percent} % {reason} | Sonstiges: `discountRowPercent` |
+| Rabatt {reason} | 折扣 {reason} | Sonstiges: `discountRowAmount` |
 
 ## Unsicher
 

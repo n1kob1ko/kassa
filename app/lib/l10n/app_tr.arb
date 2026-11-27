@@ -429,5 +429,22 @@
   "unclearReturnCash": "{amount} nakit iade edin.",
   "bonsVoidMixedCash": "{amount} nakit iade edin.",
   "bonsVoidCardBack": "{amount} tutarını SumUp'ta iade edin.",
-  "bonsVoidCardBackTip": "{amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş."
+  "bonsVoidCardBackTip": "{amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş.",
+  "discountTitle": "İndirim",
+  "discountOn": "İndirim: {what}",
+  "discountWholeReceipt": "tüm fiş",
+  "discountReason": "Neden",
+  "discountReasonRegular": "Müdavim",
+  "discountReasonStaff": "Personel",
+  "discountReasonComplaint": "Şikayet",
+  "discountReasonPromotion": "Kampanya",
+  "discountReasonInvitation": "İkram",
+  "discountHeight": "Ne kadar",
+  "discountAmount": "Tutar",
+  "discountNew": "Yeni",
+  "discountRemove": "Kaldır",
+  "discountApply": "Uygula",
+  "discountLineHint": "Tek bir satır için fişteki satıra dokunun.",
+  "discountRowPercent": "−{percent} % {reason}",
+  "discountRowAmount": "İndirim {reason}"
 }

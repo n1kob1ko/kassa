@@ -429,5 +429,22 @@
   "unclearReturnCash": "请退还现金 {amount}。",
   "bonsVoidMixedCash": "请退还现金 {amount}。",
   "bonsVoidCardBack": "请在 SumUp 中退款 {amount}。",
-  "bonsVoidCardBackTip": "请在 SumUp 中退款 {amount}，其中小费 {tip}。"
+  "bonsVoidCardBackTip": "请在 SumUp 中退款 {amount}，其中小费 {tip}。",
+  "discountTitle": "折扣",
+  "discountOn": "折扣对象：{what}",
+  "discountWholeReceipt": "整张小票",
+  "discountReason": "原因",
+  "discountReasonRegular": "常客",
+  "discountReasonStaff": "员工",
+  "discountReasonComplaint": "投诉",
+  "discountReasonPromotion": "促销",
+  "discountReasonInvitation": "请客",
+  "discountHeight": "幅度",
+  "discountAmount": "金额",
+  "discountNew": "新价",
+  "discountRemove": "移除",
+  "discountApply": "应用",
+  "discountLineHint": "只给一行打折：点小票上的那一行。",
+  "discountRowPercent": "−{percent} % {reason}",
+  "discountRowAmount": "折扣 {reason}"
 }

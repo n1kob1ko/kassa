@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 430 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 447 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -520,6 +520,23 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar-Teil eingeben. | Nakit kısmını girin. | Sonstiges: `splitNeedCash` |
 | Rest mit Karte mindestens {amount}. | Kartla kalan en az {amount}. | Sonstiges: `splitRestTooSmall` |
 | Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | Kart ödenmedi. {amount} nakit iade edin veya tekrar deneyin. | Sonstiges: `splitCardFailed` |
+| Rabatt | İndirim | Sonstiges: `discountTitle` |
+| Rabatt auf: {what} | İndirim: {what} | Sonstiges: `discountOn` |
+| ganzer Bon | tüm fiş | Sonstiges: `discountWholeReceipt` |
+| Grund | Neden | Sonstiges: `discountReason` |
+| Stammgast | Müdavim | Sonstiges: `discountReasonRegular` |
+| Mitarbeiter | Personel | Sonstiges: `discountReasonStaff` |
+| Reklamation | Şikayet | Sonstiges: `discountReasonComplaint` |
+| Aktion | Kampanya | Sonstiges: `discountReasonPromotion` |
+| Einladung | İkram | Sonstiges: `discountReasonInvitation` |
+| Höhe | Ne kadar | Sonstiges: `discountHeight` |
+| Betrag | Tutar | Sonstiges: `discountAmount` |
+| Neu | Yeni | Sonstiges: `discountNew` |
+| Entfernen | Kaldır | Sonstiges: `discountRemove` |
+| Übernehmen | Uygula | Sonstiges: `discountApply` |
+| Für eine einzelne Zeile die Zeile im Bon antippen. | Tek bir satır için fişteki satıra dokunun. | Sonstiges: `discountLineHint` |
+| −{percent} % {reason} | −{percent} % {reason} | Sonstiges: `discountRowPercent` |
+| Rabatt {reason} | İndirim {reason} | Sonstiges: `discountRowAmount` |
 
 ## Unsicher
 

@@ -1518,4 +1518,61 @@ class L10nAr extends L10n {
   String bonsVoidCardBackTip(String amount, String tip) {
     return 'استرد $amount في SumUp، منها إكرامية $tip.';
   }
+
+  @override
+  String get discountTitle => 'خصم';
+
+  @override
+  String discountOn(String what) {
+    return 'خصم على: $what';
+  }
+
+  @override
+  String get discountWholeReceipt => 'الفاتورة كاملة';
+
+  @override
+  String get discountReason => 'السبب';
+
+  @override
+  String get discountReasonRegular => 'زبون دائم';
+
+  @override
+  String get discountReasonStaff => 'موظف';
+
+  @override
+  String get discountReasonComplaint => 'شكوى';
+
+  @override
+  String get discountReasonPromotion => 'عرض';
+
+  @override
+  String get discountReasonInvitation => 'ضيافة';
+
+  @override
+  String get discountHeight => 'المقدار';
+
+  @override
+  String get discountAmount => 'مبلغ';
+
+  @override
+  String get discountNew => 'الجديد';
+
+  @override
+  String get discountRemove => 'إزالة';
+
+  @override
+  String get discountApply => 'تطبيق';
+
+  @override
+  String get discountLineHint => 'لخصم سطر واحد، المس السطر في الفاتورة.';
+
+  @override
+  String discountRowPercent(int percent, String reason) {
+    return 'خصم $percent % $reason';
+  }
+
+  @override
+  String discountRowAmount(String reason) {
+    return 'خصم $reason';
+  }
 }
