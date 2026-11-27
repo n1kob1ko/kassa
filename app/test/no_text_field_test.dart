@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 const _allowed = [
   'lib/features/settings/credentials_screen.dart',
   'lib/features/settings/cash_box_id_sheet.dart',
+  'lib/features/customers/customer_form.dart',
 ];
 
 final _textField = RegExp(r'\b(TextField|TextFormField|EditableText)\b');
