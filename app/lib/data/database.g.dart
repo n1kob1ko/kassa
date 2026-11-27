@@ -10368,6 +10368,21 @@ class $SyncStateRowsTable extends SyncStateRows
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _catchUpPendingMeta = const VerificationMeta(
+    'catchUpPending',
+  );
+  @override
+  late final GeneratedColumn<bool> catchUpPending = GeneratedColumn<bool>(
+    'catch_up_pending',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("catch_up_pending" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -10382,6 +10397,7 @@ class $SyncStateRowsTable extends SyncStateRows
     deviceId,
     lastPushAt,
     photosAutoEnabled,
+    catchUpPending,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10479,6 +10495,15 @@ class $SyncStateRowsTable extends SyncStateRows
         ),
       );
     }
+    if (data.containsKey('catch_up_pending')) {
+      context.handle(
+        _catchUpPendingMeta,
+        catchUpPending.isAcceptableOrUnknown(
+          data['catch_up_pending']!,
+          _catchUpPendingMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10536,6 +10561,10 @@ class $SyncStateRowsTable extends SyncStateRows
         DriftSqlType.bool,
         data['${effectivePrefix}photos_auto_enabled'],
       )!,
+      catchUpPending: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}catch_up_pending'],
+      )!,
     );
   }
 
@@ -10572,6 +10601,11 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
   /// ersten Foto vom Server, siehe `FileSync`). Das geschieht nur ein Mal;
   /// danach gilt, was am Tablet eingestellt wird.
   final bool photosAutoEnabled;
+
+  /// Ob noch nachzuholen ist, was 1.11.0 beim Abholen überlesen hat
+  /// (Firmenkunden und Gutscheine). Setzt Schritt 9 bei einer Kassa, die
+  /// ihr erstes Laden schon hinter sich hat.
+  final bool catchUpPending;
   const SyncStateRow({
     required this.id,
     this.registerId,
@@ -10585,6 +10619,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     this.deviceId,
     this.lastPushAt,
     required this.photosAutoEnabled,
+    required this.catchUpPending,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10615,6 +10650,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       map['last_push_at'] = Variable<DateTime>(lastPushAt);
     }
     map['photos_auto_enabled'] = Variable<bool>(photosAutoEnabled);
+    map['catch_up_pending'] = Variable<bool>(catchUpPending);
     return map;
   }
 
@@ -10646,6 +10682,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           ? const Value.absent()
           : Value(lastPushAt),
       photosAutoEnabled: Value(photosAutoEnabled),
+      catchUpPending: Value(catchUpPending),
     );
   }
 
@@ -10667,6 +10704,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       deviceId: serializer.fromJson<String?>(json['deviceId']),
       lastPushAt: serializer.fromJson<DateTime?>(json['lastPushAt']),
       photosAutoEnabled: serializer.fromJson<bool>(json['photosAutoEnabled']),
+      catchUpPending: serializer.fromJson<bool>(json['catchUpPending']),
     );
   }
   @override
@@ -10685,6 +10723,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       'deviceId': serializer.toJson<String?>(deviceId),
       'lastPushAt': serializer.toJson<DateTime?>(lastPushAt),
       'photosAutoEnabled': serializer.toJson<bool>(photosAutoEnabled),
+      'catchUpPending': serializer.toJson<bool>(catchUpPending),
     };
   }
 
@@ -10701,6 +10740,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     Value<String?> deviceId = const Value.absent(),
     Value<DateTime?> lastPushAt = const Value.absent(),
     bool? photosAutoEnabled,
+    bool? catchUpPending,
   }) => SyncStateRow(
     id: id ?? this.id,
     registerId: registerId.present ? registerId.value : this.registerId,
@@ -10714,6 +10754,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     deviceId: deviceId.present ? deviceId.value : this.deviceId,
     lastPushAt: lastPushAt.present ? lastPushAt.value : this.lastPushAt,
     photosAutoEnabled: photosAutoEnabled ?? this.photosAutoEnabled,
+    catchUpPending: catchUpPending ?? this.catchUpPending,
   );
   SyncStateRow copyWithCompanion(SyncStateRowsCompanion data) {
     return SyncStateRow(
@@ -10745,6 +10786,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
       photosAutoEnabled: data.photosAutoEnabled.present
           ? data.photosAutoEnabled.value
           : this.photosAutoEnabled,
+      catchUpPending: data.catchUpPending.present
+          ? data.catchUpPending.value
+          : this.catchUpPending,
     );
   }
 
@@ -10762,7 +10806,8 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           ..write('blocked: $blocked, ')
           ..write('deviceId: $deviceId, ')
           ..write('lastPushAt: $lastPushAt, ')
-          ..write('photosAutoEnabled: $photosAutoEnabled')
+          ..write('photosAutoEnabled: $photosAutoEnabled, ')
+          ..write('catchUpPending: $catchUpPending')
           ..write(')'))
         .toString();
   }
@@ -10781,6 +10826,7 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     deviceId,
     lastPushAt,
     photosAutoEnabled,
+    catchUpPending,
   );
   @override
   bool operator ==(Object other) =>
@@ -10797,7 +10843,8 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
           other.blocked == this.blocked &&
           other.deviceId == this.deviceId &&
           other.lastPushAt == this.lastPushAt &&
-          other.photosAutoEnabled == this.photosAutoEnabled);
+          other.photosAutoEnabled == this.photosAutoEnabled &&
+          other.catchUpPending == this.catchUpPending);
 }
 
 class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
@@ -10813,6 +10860,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
   final Value<String?> deviceId;
   final Value<DateTime?> lastPushAt;
   final Value<bool> photosAutoEnabled;
+  final Value<bool> catchUpPending;
   const SyncStateRowsCompanion({
     this.id = const Value.absent(),
     this.registerId = const Value.absent(),
@@ -10826,6 +10874,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     this.deviceId = const Value.absent(),
     this.lastPushAt = const Value.absent(),
     this.photosAutoEnabled = const Value.absent(),
+    this.catchUpPending = const Value.absent(),
   });
   SyncStateRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -10840,6 +10889,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     this.deviceId = const Value.absent(),
     this.lastPushAt = const Value.absent(),
     this.photosAutoEnabled = const Value.absent(),
+    this.catchUpPending = const Value.absent(),
   });
   static Insertable<SyncStateRow> custom({
     Expression<int>? id,
@@ -10854,6 +10904,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     Expression<String>? deviceId,
     Expression<DateTime>? lastPushAt,
     Expression<bool>? photosAutoEnabled,
+    Expression<bool>? catchUpPending,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -10868,6 +10919,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
       if (deviceId != null) 'device_id': deviceId,
       if (lastPushAt != null) 'last_push_at': lastPushAt,
       if (photosAutoEnabled != null) 'photos_auto_enabled': photosAutoEnabled,
+      if (catchUpPending != null) 'catch_up_pending': catchUpPending,
     });
   }
 
@@ -10884,6 +10936,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     Value<String?>? deviceId,
     Value<DateTime?>? lastPushAt,
     Value<bool>? photosAutoEnabled,
+    Value<bool>? catchUpPending,
   }) {
     return SyncStateRowsCompanion(
       id: id ?? this.id,
@@ -10898,6 +10951,7 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
       deviceId: deviceId ?? this.deviceId,
       lastPushAt: lastPushAt ?? this.lastPushAt,
       photosAutoEnabled: photosAutoEnabled ?? this.photosAutoEnabled,
+      catchUpPending: catchUpPending ?? this.catchUpPending,
     );
   }
 
@@ -10940,6 +10994,9 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
     if (photosAutoEnabled.present) {
       map['photos_auto_enabled'] = Variable<bool>(photosAutoEnabled.value);
     }
+    if (catchUpPending.present) {
+      map['catch_up_pending'] = Variable<bool>(catchUpPending.value);
+    }
     return map;
   }
 
@@ -10957,7 +11014,8 @@ class SyncStateRowsCompanion extends UpdateCompanion<SyncStateRow> {
           ..write('blocked: $blocked, ')
           ..write('deviceId: $deviceId, ')
           ..write('lastPushAt: $lastPushAt, ')
-          ..write('photosAutoEnabled: $photosAutoEnabled')
+          ..write('photosAutoEnabled: $photosAutoEnabled, ')
+          ..write('catchUpPending: $catchUpPending')
           ..write(')'))
         .toString();
   }
@@ -12916,8 +12974,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   final int id;
 
   /// `receipt`, `day`, `cash_movement`, `item_change`, `report`,
-  /// `rksv_certificate`, `rksv_chain`, `recipient` (Kennung
-  /// `<receiptId>/<version>`) oder `delivery` (Kennung `<receiptId>/<kind>`).
+  /// `rksv_certificate` oder `rksv_chain`.
   final String kind;
 
   /// Kennung der Sache (bei Artikel-Änderungen die Artikel-Kennung).
@@ -22915,6 +22972,7 @@ typedef $$SyncStateRowsTableCreateCompanionBuilder =
       Value<String?> deviceId,
       Value<DateTime?> lastPushAt,
       Value<bool> photosAutoEnabled,
+      Value<bool> catchUpPending,
     });
 typedef $$SyncStateRowsTableUpdateCompanionBuilder =
     SyncStateRowsCompanion Function({
@@ -22930,6 +22988,7 @@ typedef $$SyncStateRowsTableUpdateCompanionBuilder =
       Value<String?> deviceId,
       Value<DateTime?> lastPushAt,
       Value<bool> photosAutoEnabled,
+      Value<bool> catchUpPending,
     });
 
 class $$SyncStateRowsTableFilterComposer
@@ -22998,6 +23057,11 @@ class $$SyncStateRowsTableFilterComposer
 
   ColumnFilters<bool> get photosAutoEnabled => $composableBuilder(
     column: $table.photosAutoEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get catchUpPending => $composableBuilder(
+    column: $table.catchUpPending,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -23070,6 +23134,11 @@ class $$SyncStateRowsTableOrderingComposer
     column: $table.photosAutoEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get catchUpPending => $composableBuilder(
+    column: $table.catchUpPending,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncStateRowsTableAnnotationComposer
@@ -23132,6 +23201,11 @@ class $$SyncStateRowsTableAnnotationComposer
     column: $table.photosAutoEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get catchUpPending => $composableBuilder(
+    column: $table.catchUpPending,
+    builder: (column) => column,
+  );
 }
 
 class $$SyncStateRowsTableTableManager
@@ -23179,6 +23253,7 @@ class $$SyncStateRowsTableTableManager
                 Value<String?> deviceId = const Value.absent(),
                 Value<DateTime?> lastPushAt = const Value.absent(),
                 Value<bool> photosAutoEnabled = const Value.absent(),
+                Value<bool> catchUpPending = const Value.absent(),
               }) => SyncStateRowsCompanion(
                 id: id,
                 registerId: registerId,
@@ -23192,6 +23267,7 @@ class $$SyncStateRowsTableTableManager
                 deviceId: deviceId,
                 lastPushAt: lastPushAt,
                 photosAutoEnabled: photosAutoEnabled,
+                catchUpPending: catchUpPending,
               ),
           createCompanionCallback:
               ({
@@ -23207,6 +23283,7 @@ class $$SyncStateRowsTableTableManager
                 Value<String?> deviceId = const Value.absent(),
                 Value<DateTime?> lastPushAt = const Value.absent(),
                 Value<bool> photosAutoEnabled = const Value.absent(),
+                Value<bool> catchUpPending = const Value.absent(),
               }) => SyncStateRowsCompanion.insert(
                 id: id,
                 registerId: registerId,
@@ -23220,6 +23297,7 @@ class $$SyncStateRowsTableTableManager
                 deviceId: deviceId,
                 lastPushAt: lastPushAt,
                 photosAutoEnabled: photosAutoEnabled,
+                catchUpPending: catchUpPending,
               ),
           withReferenceMapper: (p0) => p0
               .map(

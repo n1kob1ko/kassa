@@ -2236,6 +2236,20 @@
             "default_dart": "const CustomExpression('0')",
             "default_client_dart": null,
             "dsl_features": []
+          },
+          {
+            "name": "catch_up_pending",
+            "getter_name": "catchUpPending",
+            "moor_type": "bool",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "CHECK (\"catch_up_pending\" IN (0, 1))",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "CHECK (\"catch_up_pending\" IN (0, 1))"
+            },
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -3436,7 +3450,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sync_state\" (\"id\" INTEGER NOT NULL, \"register_id\" TEXT NULL, \"register_name\" TEXT NULL, \"business_id\" TEXT NULL, \"pull_cursor\" INTEGER NOT NULL DEFAULT 0, \"initial_pull_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"initial_pull_done\" IN (0, 1)), \"last_pull_at\" INTEGER NULL, \"last_error\" TEXT NULL, \"blocked\" INTEGER NOT NULL DEFAULT 0 CHECK (\"blocked\" IN (0, 1)), \"device_id\" TEXT NULL, \"last_push_at\" INTEGER NULL, \"photos_auto_enabled\" INTEGER NOT NULL DEFAULT 0 CHECK (\"photos_auto_enabled\" IN (0, 1)), PRIMARY KEY (\"id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sync_state\" (\"id\" INTEGER NOT NULL, \"register_id\" TEXT NULL, \"register_name\" TEXT NULL, \"business_id\" TEXT NULL, \"pull_cursor\" INTEGER NOT NULL DEFAULT 0, \"initial_pull_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"initial_pull_done\" IN (0, 1)), \"last_pull_at\" INTEGER NULL, \"last_error\" TEXT NULL, \"blocked\" INTEGER NOT NULL DEFAULT 0 CHECK (\"blocked\" IN (0, 1)), \"device_id\" TEXT NULL, \"last_push_at\" INTEGER NULL, \"photos_auto_enabled\" INTEGER NOT NULL DEFAULT 0 CHECK (\"photos_auto_enabled\" IN (0, 1)), \"catch_up_pending\" INTEGER NOT NULL DEFAULT 0 CHECK (\"catch_up_pending\" IN (0, 1)), PRIMARY KEY (\"id\"));"
         }
       ]
     },

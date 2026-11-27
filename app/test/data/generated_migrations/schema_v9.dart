@@ -2101,6 +2101,15 @@ class SyncState extends Table with TableInfo {
         'NOT NULL DEFAULT 0 CHECK (photos_auto_enabled IN (0, 1))',
     defaultValue: const CustomExpression('0'),
   );
+  late final GeneratedColumn<int> catchUpPending = GeneratedColumn<int>(
+    'catch_up_pending',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL DEFAULT 0 CHECK (catch_up_pending IN (0, 1))',
+    defaultValue: const CustomExpression('0'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2115,6 +2124,7 @@ class SyncState extends Table with TableInfo {
     deviceId,
     lastPushAt,
     photosAutoEnabled,
+    catchUpPending,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;

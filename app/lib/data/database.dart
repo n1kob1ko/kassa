@@ -563,6 +563,12 @@ class SyncStateRows extends Table {
   BoolColumn get photosAutoEnabled =>
       boolean().withDefault(const Constant(false))();
 
+  /// Ob noch nachzuholen ist, was 1.11.0 beim Abholen überlesen hat
+  /// (Firmenkunden und Gutscheine). Setzt Schritt 9 bei einer Kassa, die
+  /// ihr erstes Laden schon hinter sich hat.
+  BoolColumn get catchUpPending =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -668,8 +674,7 @@ class OutboxRows extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   /// `receipt`, `day`, `cash_movement`, `item_change`, `report`,
-  /// `rksv_certificate`, `rksv_chain`, `recipient` (Kennung
-  /// `<receiptId>/<version>`) oder `delivery` (Kennung `<receiptId>/<kind>`).
+  /// `rksv_certificate` oder `rksv_chain`.
   TextColumn get kind => text()();
 
   /// Kennung der Sache (bei Artikel-Änderungen die Artikel-Kennung).
@@ -792,7 +797,6 @@ class KassaDatabase extends _$KassaDatabase {
       await _createOutboxIndex();
       await _createOutboxTriggers();
       await _createStep9Guards();
-      await _createStep9OutboxTriggers();
     },
     // Jeder Schritt prüft auch [to], damit die Tests der älteren Schritte
     // genau bis zu ihrer Version migrieren.
@@ -1021,8 +1025,10 @@ class KassaDatabase extends _$KassaDatabase {
   /// Schritt 9 in einer Transaktion: Pfand zurück, Gutschein, Rechnung an
   /// Firma und der digitale Beleg. Neue Spalten mit Vorgabe (kein Bon
   /// bekommt einen Schlüssel der Seite), fünf neue Tabellen mit ihren
-  /// Triggern. Der Abgleich holt einmal alles neu: 1.11.0 hat Firmenkunden
-  /// und Gutscheine vom Server überlesen. Kopplung und erstes Laden bleiben.
+  /// Schutz-Triggern (keine für die Liste "noch zu senden": die Einträge
+  /// schreibt der Code selbst). Hat die Kassa ihr erstes Laden schon hinter
+  /// sich, merkt sie sich, dass sie Firmenkunden und Gutscheine nachholen
+  /// muss (1.11.0 hat sie überlesen); der Stand des Abholens bleibt.
   Future<void> _stepTo9(Migrator m) async {
     await transaction(() async {
       await m.addColumn(settingsRows, settingsRows.depositReturnAccess);
@@ -1040,8 +1046,10 @@ class KassaDatabase extends _$KassaDatabase {
       await m.createTable(receiptRecipientRows);
       await m.createTable(receiptDeliveryRows);
       await _createStep9Guards();
-      await _createStep9OutboxTriggers();
-      await customStatement('UPDATE sync_state SET pull_cursor = 0');
+      await m.addColumn(syncStateRows, syncStateRows.catchUpPending);
+      await customStatement(
+        'UPDATE sync_state SET catch_up_pending = 1 WHERE initial_pull_done = 1',
+      );
     });
   }
 
@@ -1228,12 +1236,21 @@ class KassaDatabase extends _$KassaDatabase {
   /// Zeile anheben, sonst eine neue anlegen. So geht eine Änderung nicht
   /// verloren, die während des Sendens geschieht, und kein Schreiber im Code
   /// kann es vergessen. Ein Bon nimmt seinen Eintrag im Protokoll mit.
-  ///
-  /// Hier die Trigger von Version 6; die von Version 9 legt
-  /// [_createStep9OutboxTriggers] an (ihre Tabellen gibt es in Schritt 6
-  /// noch nicht).
   Future<void> _createOutboxTriggers() async {
-    final trigger = _createOutboxTrigger;
+    Future<void> trigger(
+      String table,
+      String event,
+      String kind,
+      String ref,
+    ) => customStatement(
+      'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
+      'AFTER $event ON $table BEGIN '
+      // `kind <> 'item_change'` lässt das UPDATE den Teilindex outbox_entity
+      // nehmen, sonst liest es die ganze Liste.
+      'UPDATE outbox SET rev = rev + 1 '
+      "WHERE kind = '$kind' AND kind <> 'item_change' AND ref = $ref; "
+      "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
+    );
     await trigger('receipts', 'INSERT', 'receipt', 'NEW.id');
     await trigger('rksv_entries', 'INSERT', 'receipt', 'NEW.receipt_id');
     await trigger('business_days', 'INSERT', 'day', 'NEW.id');
@@ -1250,40 +1267,6 @@ class KassaDatabase extends _$KassaDatabase {
     await trigger('reports', 'INSERT', 'report', 'NEW.id');
     await trigger('reports', 'UPDATE', 'report', 'NEW.id');
   }
-
-  /// Die Trigger der Liste ab Version 9: ein neuer Rechnungsempfänger und
-  /// eine neue Belegerteilung. Gutscheine, ihre Bewegungen und Firmenkunden
-  /// bekommen keinen: Firmenkunden trägt der Code selbst ein, damit Kunden
-  /// vom Server kein Echo erzeugen.
-  Future<void> _createStep9OutboxTriggers() async {
-    await _createOutboxTrigger(
-      'receipt_recipients',
-      'INSERT',
-      'recipient',
-      "NEW.receipt_id || '/' || NEW.version",
-    );
-    await _createOutboxTrigger(
-      'receipt_deliveries',
-      'INSERT',
-      'delivery',
-      "NEW.receipt_id || '/' || NEW.kind",
-    );
-  }
-
-  Future<void> _createOutboxTrigger(
-    String table,
-    String event,
-    String kind,
-    String ref,
-  ) => customStatement(
-    'CREATE TRIGGER outbox_${table}_${event.toLowerCase()} '
-    'AFTER $event ON $table BEGIN '
-    // `kind <> 'item_change'` lässt das UPDATE den Teilindex outbox_entity
-    // nehmen, sonst liest es die ganze Liste.
-    'UPDATE outbox SET rev = rev + 1 '
-    "WHERE kind = '$kind' AND kind <> 'item_change' AND ref = $ref; "
-    "INSERT OR IGNORE INTO outbox (kind, ref) VALUES ('$kind', $ref); END",
-  );
 
   /// Migration auf Version 6: alles Vorhandene einmal in die Liste, in der
   /// Reihenfolge, in der der Server es braucht (Zertifikat und Kette vor den

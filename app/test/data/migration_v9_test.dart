@@ -137,13 +137,20 @@ void main() {
     expect(
       await rows(
         db,
-        'SELECT pull_cursor, initial_pull_done, '
+        'SELECT pull_cursor, initial_pull_done, catch_up_pending, '
         'register_id IS NOT NULL AS paired FROM sync_state',
       ),
       [
-        {'pull_cursor': 0, 'initial_pull_done': 1, 'paired': 1},
+        {
+          'pull_cursor': 57,
+          'initial_pull_done': 1,
+          'catch_up_pending': 1,
+          'paired': 1,
+        },
       ],
-      reason: 'die Datei ist gekoppelt und hatte pull_cursor 57',
+      reason:
+          'die Datei ist gekoppelt, hatte pull_cursor 57 und das erste '
+          'Laden hinter sich',
     );
     // Nichts Neues in der Liste "noch zu senden", die neuen Tabellen leer.
     expect(await rows(db, 'SELECT * FROM outbox ORDER BY id'), outboxBefore);
@@ -175,23 +182,99 @@ void main() {
     },
   );
 
-  test('Schritt 9 ist wiederholbar: Version zurückgesetzt, die Kassa öffnet '
-      'auf Version 9, und der Stand des Abholens bleibt', () async {
-    final file = await copyFixture('kassa_v8.sqlite');
-    final first = KassaDatabase(NativeDatabase(file));
-    expect(await userVersion(first), 9);
-    await first.customStatement('UPDATE sync_state SET pull_cursor = 12');
-    await first.close();
+  test(
+    'Schritt 9 ist wiederholbar: Version zurückgesetzt, die Kassa öffnet '
+    'auf Version 9, Stand des Abholens und Nachholen-Merker bleiben',
+    () async {
+      final file = await copyFixture('kassa_v8.sqlite');
+      final first = KassaDatabase(NativeDatabase(file));
+      expect(await userVersion(first), 9);
+      await first.customStatement(
+        'UPDATE sync_state SET pull_cursor = 12, catch_up_pending = 0',
+      );
+      await first.close();
 
-    final raw = sqlite.sqlite3.open(file.path);
-    raw.execute('PRAGMA user_version = 8');
-    raw.close();
+      final raw = sqlite.sqlite3.open(file.path);
+      raw.execute('PRAGMA user_version = 8');
+      raw.close();
 
-    final db = KassaDatabase(NativeDatabase(file));
-    addTearDown(db.close);
-    expect(await userVersion(db), 9);
-    expect((await db.select(db.syncStateRows).getSingle()).pullCursor, 12);
-  });
+      final db = KassaDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      expect(await userVersion(db), 9);
+      final sync = await db.select(db.syncStateRows).getSingle();
+      expect((sync.pullCursor, sync.catchUpPending), (12, false));
+    },
+  );
+
+  test(
+    'Nachholen-Merker: nur nach dem ersten Laden gesetzt, neu nie',
+    () async {
+      final fresh = KassaDatabase(NativeDatabase.memory());
+      addTearDown(fresh.close);
+      expect(
+        await rows(fresh, 'SELECT catch_up_pending FROM sync_state'),
+        isEmpty,
+      );
+      await fresh.customStatement('INSERT INTO sync_state (id) VALUES (1)');
+      expect(await rows(fresh, 'SELECT catch_up_pending FROM sync_state'), [
+        {'catch_up_pending': 0},
+      ]);
+
+      // Eine Kassa aus 1.11.0, die ihr erstes Laden noch nicht fertig hat.
+      final file = await copyFixture('kassa_v8.sqlite');
+      final raw = sqlite.sqlite3.open(file.path);
+      raw.execute('UPDATE sync_state SET initial_pull_done = 0');
+      raw.close();
+      final db = KassaDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      expect(
+        await rows(
+          db,
+          'SELECT pull_cursor, initial_pull_done, catch_up_pending '
+          'FROM sync_state',
+        ),
+        [
+          {'pull_cursor': 57, 'initial_pull_done': 0, 'catch_up_pending': 0},
+        ],
+      );
+    },
+  );
+
+  for (final (fixture, version) in const [
+    ('kassa_v7.sqlite', 7),
+    ('kassa_v6.sqlite', 6),
+  ]) {
+    test('Update von Version $version auf 9: payments in der Form von '
+        'Version 8 neu gebaut, die Spalten des Gutscheins leer', () async {
+      final file = await copyFixture(fixture);
+      final raw = sqlite.sqlite3.open(file.path);
+      expect(raw.select('PRAGMA user_version').single.values.single, version);
+      final before = [
+        for (final r in raw.select(
+          'SELECT receipt_id, kind, amount_cents FROM payments '
+          'ORDER BY receipt_id',
+        ))
+          {for (final k in r.keys) k: r[k]},
+      ];
+      raw.close();
+      expect(before, isNotEmpty);
+
+      final db = KassaDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      expect(await userVersion(db), 9);
+      expect(
+        await rows(
+          db,
+          'SELECT receipt_id, kind, amount_cents FROM payments '
+          'WHERE position = 0 AND tip_cents = 0 AND voucher_id IS NULL '
+          'AND voucher_code IS NULL AND voucher_balance_after_cents IS NULL '
+          'ORDER BY receipt_id',
+        ),
+        before,
+      );
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    });
+  }
 
   group('die neuen Tabellen', () {
     late KassaDatabase db;
@@ -277,32 +360,49 @@ void main() {
       );
     });
 
-    test('ein neuer Empfänger und eine neue Belegerteilung stehen in der Liste '
-        '"noch zu senden"', () async {
-      expect(
-        await rows(
-          db,
-          'SELECT kind, ref FROM outbox '
-          "WHERE kind IN ('recipient', 'delivery') ORDER BY id",
-        ),
-        [
-          {'kind': 'recipient', 'ref': 'r1/0'},
-          {'kind': 'delivery', 'ref': 'r1/printed'},
-        ],
-      );
-      // Gutscheine, Bewegungen und Firmenkunden tragen sich nicht ein.
+    test('die Trigger für "noch zu senden" sind dieselben wie in 1.11.0; neu '
+        'sind nur Schutz-Trigger der neuen Tabellen', () async {
+      // Die Einträge aus setUp (Empfänger, Belegerteilung, Bewegung,
+      // Gutschein) und ein Firmenkunde erzeugen keine Zeile in der Liste.
       await db.customStatement(
         'INSERT INTO customers (id, name, address_line1, address_line2, '
         "updated_at) VALUES ('c1', 'Muster GmbH', 'Musterweg 1', "
         "'1010 Wien', 1)",
       );
+      expect(await rows(db, 'SELECT kind, ref FROM outbox'), isEmpty);
+
+      final file = await copyFixture('kassa_v8.sqlite');
+      final raw = sqlite.sqlite3.open(file.path);
+      final before = {
+        for (final r in raw.select(
+          "SELECT name FROM sqlite_master WHERE type = 'trigger'",
+        ))
+          r['name'] as String,
+      };
+      raw.close();
+      final migrated = KassaDatabase(NativeDatabase(file));
+      addTearDown(migrated.close);
+      final after = {
+        for (final r in await rows(
+          migrated,
+          "SELECT name FROM sqlite_master WHERE type = 'trigger'",
+        ))
+          r['name']! as String,
+      };
+      expect(after.containsAll(before), isTrue);
+      expect(after.difference(before), {
+        'voucher_movements_no_update',
+        'voucher_movements_no_delete',
+        'receipt_recipients_no_update',
+        'receipt_recipients_no_delete',
+        'receipt_deliveries_no_update',
+        'receipt_deliveries_no_delete',
+        'vouchers_no_update_code_value',
+        'vouchers_no_delete',
+      });
       expect(
-        await rows(
-          db,
-          'SELECT kind FROM outbox '
-          "WHERE kind NOT IN ('recipient', 'delivery')",
-        ),
-        isEmpty,
+        after.where((n) => n.startsWith('outbox_')).toSet(),
+        before.where((n) => n.startsWith('outbox_')).toSet(),
       );
     });
 
@@ -337,14 +437,18 @@ void main() {
       expect(
         await rows(
           db,
-          'SELECT kind, ref FROM outbox '
-          "WHERE kind IN ('recipient', 'delivery') ORDER BY id",
+          'SELECT receipt_id, version FROM receipt_recipients ORDER BY version',
         ),
         [
-          {'kind': 'recipient', 'ref': 'r1/0'},
-          {'kind': 'delivery', 'ref': 'r1/printed'},
-          {'kind': 'recipient', 'ref': 'r1/1'},
-          {'kind': 'delivery', 'ref': 'r1/digital'},
+          {'receipt_id': 'r1', 'version': 0},
+          {'receipt_id': 'r1', 'version': 1},
+        ],
+      );
+      expect(
+        await rows(db, 'SELECT kind FROM receipt_deliveries ORDER BY kind'),
+        [
+          {'kind': 'digital'},
+          {'kind': 'printed'},
         ],
       );
     });
