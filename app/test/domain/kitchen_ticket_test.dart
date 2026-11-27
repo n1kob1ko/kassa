@@ -157,6 +157,35 @@ void main() {
     );
   });
 
+  test('Pfand zurück und Gutschein kommen nicht auf den Küchenbon', () {
+    final t = build(
+      receipt([
+        line('deposit-return-25', 'Pfand zurück', 3),
+        line('i1', 'Dürüm', 1),
+        line('voucher-sale', 'Gutschein', 1),
+        line('open-amount-20', 'Diverses 20 %', 1),
+      ]),
+    )!;
+    expect([for (final l in t.lines) l.name], ['Tavuk şiş dürüm']);
+    expect(
+      build(
+        receipt([
+          line('deposit-return-50', 'Pfand zurück', 2),
+          line('voucher-sale', 'Gutschein', 1),
+        ]),
+      ),
+      isNull,
+    );
+    expect(
+      build(
+        receipt([
+          line('voucher-sale', 'Gutschein', -1),
+        ], kind: ReceiptKind.voided),
+      ),
+      isNull,
+    );
+  });
+
   test('nur Getränke gibt null', () {
     final t = build(
       receipt([line('i3', 'Cola', 2)]),

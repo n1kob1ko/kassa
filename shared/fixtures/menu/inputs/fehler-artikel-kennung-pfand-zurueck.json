@@ -1,0 +1,18 @@
+{
+  "betrieb": "Beispiel-Imbiss",
+  "kategorien": [
+    {
+      "id": "bowls",
+      "name": "Bowls"
+    }
+  ],
+  "artikel": [
+    {
+      "id": "deposit-return-25",
+      "name": "Huhn Bowl",
+      "preis_cent": 990,
+      "kategorie": "bowls",
+      "mwst": 10
+    }
+  ]
+}

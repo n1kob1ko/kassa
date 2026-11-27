@@ -279,8 +279,10 @@ export function parseMenuFile(jsonText: string): ParsedMenu {
       ok = false;
     }
     itemIds.add(id);
-    // Für den freien Betrag an der Kassa vergeben (open-amount-20 usw.).
-    if (id.startsWith('open-amount-')) {
+    // An der Kassa vergeben: freier Betrag (open-amount-20 usw.), Pfand
+    // zurück (deposit-return-25 usw.) und Gutschein (voucher-sale); wie
+    // isReservedItemId in app/lib/domain/cart.dart.
+    if (id.startsWith('open-amount-') || id.startsWith('deposit-return-') || id === 'voucher-sale') {
       fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
     }
     const name = text(a['name']);

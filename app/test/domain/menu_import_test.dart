@@ -105,6 +105,32 @@ void main() {
     );
   });
 
+  test('Kennungen für Pfand zurück und Gutschein sind vergeben '
+      '(gemeinsame Prüfdateien)', () {
+    for (final name in [
+      'fehler-artikel-kennung-pfand-zurueck.json',
+      'fehler-artikel-kennung-gutschein.json',
+    ]) {
+      final input = File('../shared/fixtures/menu/inputs/$name')
+          .readAsStringSync();
+      final expected = jsonDecode(
+        File('../shared/fixtures/menu/expected/$name').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      expect(expected['problems'], hasLength(1), reason: name);
+      expect(
+        () => parseMenuFile(input),
+        throwsA(
+          isA<MenuImportException>().having(
+            (e) => e.problems,
+            'problems',
+            expected['problems'],
+          ),
+        ),
+        reason: name,
+      );
+    }
+  });
+
   test('kein JSON, fehlende Pflichtangabe, BOM', () {
     expect(
       () => parseMenuFile('hallo'),

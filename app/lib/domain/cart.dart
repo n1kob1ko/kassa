@@ -43,6 +43,109 @@ Item _openAmountItem(int cents, TaxRate rate) => Item(
 bool _isOpenAmountCents(Object? cents) =>
     cents is int && cents >= 1 && cents <= openAmountMaxCents;
 
+const _depositReturnPrefix = 'deposit-return-';
+
+/// Die Kennung des Artikels "Pfand zurück" für [depositCents], etwa
+/// `deposit-return-25`.
+String depositReturnItemId(int depositCents) =>
+    '$_depositReturnPrefix$depositCents';
+
+/// Ob [itemId] die Kennung einer Zeile "Pfand zurück" ist.
+bool isDepositReturnItemId(String itemId) =>
+    itemId.startsWith(_depositReturnPrefix);
+
+/// So steht eine Zeile "Pfand zurück" am Bon, immer deutsch.
+const depositReturnName = 'Pfand zurück';
+
+/// Der Artikel "Pfand zurück": Preis 0, Pfand -[depositCents], Satz 0.
+/// Entsteht im Code, nie im Katalog.
+Item _depositReturnItem(int depositCents) => Item(
+  id: depositReturnItemId(depositCents),
+  name: depositReturnName,
+  priceCents: 0,
+  categoryId: '',
+  taxRate: TaxRate.zero,
+  depositCents: -depositCents,
+  position: 0,
+);
+
+/// Die Kennung des Artikels einer Gutschein-Zeile (ein verkaufter Gutschein).
+const voucherSaleItemId = 'voucher-sale';
+
+/// Ob [itemId] die Kennung einer Gutschein-Zeile ist.
+bool isVoucherSaleItemId(String itemId) => itemId == voucherSaleItemId;
+
+/// So steht eine Gutschein-Zeile am Bon, immer deutsch.
+const voucherSaleName = 'Gutschein';
+
+/// Der kleinste Wert eines Gutscheins: 1,00 €.
+const voucherMinCents = 100;
+
+/// Der größte Wert eines Gutscheins: 500,00 €.
+const voucherMaxCents = 50000;
+
+/// Die Tasten für den Wert eines Gutscheins: 10, 20, 25 und 50 €.
+const voucherPresetCents = [1000, 2000, 2500, 5000];
+
+bool _isVoucherCents(Object? cents) =>
+    cents is int && cents >= voucherMinCents && cents <= voucherMaxCents;
+
+/// Der Artikel einer Gutschein-Zeile: Preis [valueCents], Satz 0. Entsteht im
+/// Code, nie im Katalog.
+Item _voucherSaleItem(int valueCents) => Item(
+  id: voucherSaleItemId,
+  name: voucherSaleName,
+  priceCents: valueCents,
+  categoryId: '',
+  taxRate: TaxRate.zero,
+  position: 0,
+);
+
+/// Ob [itemId] für Zeilen vergeben ist, die im Code entstehen (freier Betrag,
+/// Pfand zurück, Gutschein). Eine Speisekarte darf solche Kennungen nicht
+/// haben, und auf den Küchenbon kommen diese Zeilen nie.
+bool isReservedItemId(String itemId) =>
+    isOpenAmountItemId(itemId) ||
+    isDepositReturnItemId(itemId) ||
+    isVoucherSaleItemId(itemId);
+
+/// Ein Gutschein, der am offenen Bon zum Bezahlen gewählt ist. Abgebucht wird
+/// erst beim Abschließen.
+class AppliedVoucher {
+  const AppliedVoucher({
+    required this.voucherId,
+    required this.code,
+    required this.balanceCents,
+  });
+
+  final String voucherId;
+
+  /// Der Code aus 8 Ziffern, nur zum Tippen.
+  final String code;
+
+  /// Das Guthaben, als der Gutschein gewählt (oder zuletzt gelesen) wurde.
+  final int balanceCents;
+}
+
+/// Was ein gewählter Gutschein von diesem Bon deckt.
+class VoucherUse {
+  const VoucherUse({
+    required this.voucherId,
+    required this.code,
+    required this.amountCents,
+    required this.balanceAfterCents,
+  });
+
+  final String voucherId;
+  final String code;
+
+  /// Über 0, höchstens das Guthaben.
+  final int amountCents;
+
+  /// Das Guthaben nach diesem Bon.
+  final int balanceAfterCents;
+}
+
 /// Gewählte Optionen für einen Artikel einer Auswahl-Vorlage.
 class Selection {
   const Selection._(this._template, this._chosenIds);
@@ -106,6 +209,8 @@ class CartLine {
     this.options = const [],
     this.discount,
     this.isOpenAmount = false,
+    this.isDepositReturn = false,
+    this.isVoucherSale = false,
   });
 
   final String lineId;
@@ -118,6 +223,16 @@ class CartLine {
 
   /// Ein freier Betrag: der Artikel entsteht im Code, nicht im Katalog.
   final bool isOpenAmount;
+
+  /// Eine Zeile "Pfand zurück": Preis 0, Pfand unter 0, höchstens eine je
+  /// Betrag.
+  final bool isDepositReturn;
+
+  /// Eine Gutschein-Zeile: ein verkaufter Gutschein, Menge 1, nie Rabatt.
+  final bool isVoucherSale;
+
+  /// Zeilen, die nie Rabatt bekommen.
+  bool get _takesNoDiscount => isDepositReturn || isVoucherSale;
 
   int get unitPriceCents =>
       item.priceCents + options.fold(0, (sum, o) => sum + o.surchargeCents);
@@ -154,6 +269,8 @@ class CartLine {
     options: options,
     discount: discount,
     isOpenAmount: isOpenAmount,
+    isDepositReturn: isDepositReturn,
+    isVoucherSale: isVoucherSale,
   );
 
   CartLine withDiscount(Discount? d) => CartLine(
@@ -163,6 +280,8 @@ class CartLine {
     options: options,
     discount: d,
     isOpenAmount: isOpenAmount,
+    isDepositReturn: isDepositReturn,
+    isVoucherSale: isVoucherSale,
   );
 }
 
@@ -202,14 +321,30 @@ class CartPricing {
     required this.lines,
     required this.subtotalCents,
     required this.receiptDiscountCents,
+    this.voucherSaleCents = 0,
+    this.voucherUses = const [],
   });
 
   final List<LinePricing> lines;
 
-  /// Warenwert nach Zeilen-Rabatten, vor dem Bon-Rabatt.
+  /// Warenwert nach Zeilen-Rabatten, vor dem Bon-Rabatt. Die Gutschein-Zeilen
+  /// stehen drin; der Bon-Rabatt rechnet aber ohne sie.
   final int subtotalCents;
 
   final int receiptDiscountCents;
+
+  /// Summe der Gutschein-Zeilen (verkaufte Gutscheine). Steht im Warenwert.
+  final int voucherSaleCents;
+
+  /// Was die gewählten Gutscheine decken, in ihrer Reihenfolge; ein
+  /// Gutschein, der nichts deckt, fehlt.
+  final List<VoucherUse> voucherUses;
+
+  /// Was die gewählten Gutscheine zusammen decken.
+  int get voucherCents => voucherUses.fold(0, (s, u) => s + u.amountCents);
+
+  /// Noch zu zahlen: die Summe des Bons ohne das, was Gutscheine decken.
+  int get dueCents => totalCents - voucherCents;
 
   int get discountCents => lines.fold(0, (s, l) => s + l.discountCents);
 
@@ -235,19 +370,33 @@ class CartPricing {
 const _uuid = Uuid();
 
 class Cart {
-  const Cart._(this.lines, [this.discount]);
+  const Cart._(this.lines, [this.discount, this.vouchers = const []]);
 
-  const Cart.empty() : lines = const [], discount = null;
+  const Cart.empty() : lines = const [], discount = null, vouchers = const [];
 
   final List<CartLine> lines;
 
   /// Rabatt auf den ganzen Bon. Ein leerer Bon hat keinen.
   final Discount? discount;
 
-  /// Ein Bon aus [next] mit dem Bon-Rabatt dieses Bons; ein leerer Bon
-  /// verliert ihn.
+  /// Die zum Bezahlen gewählten Gutscheine, in der Reihenfolge des Einlösens.
+  /// Ein leerer Bon und ein Bon mit Gutschein-Zeile haben keine.
+  final List<AppliedVoucher> vouchers;
+
+  /// Ein Bon aus [next] mit dem Bon-Rabatt und den Gutscheinen dieses Bons;
+  /// ein leerer Bon verliert beides.
   Cart _withLines(List<CartLine> next) =>
-      Cart._(next, next.isEmpty ? null : discount);
+      next.isEmpty ? Cart._(next) : Cart._(next, discount, vouchers);
+
+  Cart _withVouchers(List<AppliedVoucher> next) =>
+      Cart._(lines, discount, List.unmodifiable(next));
+
+  CartLine? _line(String lineId) {
+    for (final l in lines) {
+      if (l.lineId == lineId) return l;
+    }
+    return null;
+  }
 
   Cart add(
     Item item, {
@@ -256,7 +405,11 @@ class Cart {
   }) {
     if (item.templateId == null && options.isEmpty) {
       final i = lines.indexWhere(
-        (l) => l.item.id == item.id && l.options.isEmpty && !l.isOpenAmount,
+        (l) =>
+            l.item.id == item.id &&
+            l.options.isEmpty &&
+            !l.isOpenAmount &&
+            !l._takesNoDiscount,
       );
       if (i >= 0) {
         final next = [...lines];
@@ -301,8 +454,105 @@ class Cart {
     ]);
   }
 
+  /// Die Zeile "Pfand zurück" für [depositCents] mit [quantity]; höchstens
+  /// eine Zeile je Betrag. Gibt es sie schon, ändert sich nur die Menge, an
+  /// ihrer Stelle. Menge 0 nimmt sie weg. Wirft [ArgumentError] bei einem
+  /// Betrag unter 1 Cent oder einer Menge außerhalb 0 bis [maxQuantity].
+  Cart setDepositReturn({required int depositCents, required int quantity}) {
+    if (depositCents < 1) {
+      throw ArgumentError.value(depositCents, 'depositCents');
+    }
+    if (quantity < 0 || quantity > maxQuantity) {
+      throw ArgumentError.value(quantity, 'quantity');
+    }
+    final id = depositReturnItemId(depositCents);
+    final i = lines.indexWhere((l) => l.isDepositReturn && l.item.id == id);
+    if (quantity == 0) return i < 0 ? this : remove(lines[i].lineId);
+    if (i >= 0) return setQuantity(lines[i].lineId, quantity);
+    return _withLines([
+      ...lines,
+      CartLine(
+        lineId: _uuid.v4(),
+        item: _depositReturnItem(depositCents),
+        quantity: quantity,
+        isDepositReturn: true,
+      ),
+    ]);
+  }
+
+  /// Die Menge der Zeile "Pfand zurück" für [depositCents]; 0 ohne Zeile.
+  int depositReturnQuantity(int depositCents) {
+    final id = depositReturnItemId(depositCents);
+    for (final l in lines) {
+      if (l.isDepositReturn && l.item.id == id) return l.quantity;
+    }
+    return 0;
+  }
+
+  /// Ein verkaufter Gutschein als neue Zeile mit Menge 1; zwei verschmelzen
+  /// nie. Wirft [ArgumentError] bei einem Wert außerhalb [voucherMinCents]
+  /// bis [voucherMaxCents] und [StateError], wenn Gutscheine zum Bezahlen
+  /// gewählt sind.
+  Cart addVoucherSale({required int valueCents, String? lineId}) {
+    if (vouchers.isNotEmpty) {
+      throw StateError('Der Bon wird mit einem Gutschein bezahlt.');
+    }
+    if (!_isVoucherCents(valueCents)) {
+      throw ArgumentError.value(valueCents, 'valueCents');
+    }
+    return _withLines([
+      ...lines,
+      CartLine(
+        lineId: lineId ?? _uuid.v4(),
+        item: _voucherSaleItem(valueCents),
+        quantity: 1,
+        isVoucherSale: true,
+      ),
+    ]);
+  }
+
+  /// Ob auf dem Bon ein Gutschein verkauft wird.
+  bool get hasVoucherSale => lines.any((l) => l.isVoucherSale);
+
+  /// Wählt [voucher] zum Bezahlen, nach den schon gewählten. Wirft
+  /// [StateError] bei einem leeren Bon, bei einem Bon mit Gutschein-Zeile und
+  /// wenn derselbe Gutschein schon gewählt ist.
+  Cart applyVoucher(AppliedVoucher voucher) {
+    if (lines.isEmpty) throw StateError('Der Bon ist leer.');
+    if (hasVoucherSale) {
+      throw StateError('Auf dem Bon wird ein Gutschein verkauft.');
+    }
+    if (vouchers.any((v) => v.voucherId == voucher.voucherId)) {
+      throw StateError('Der Gutschein ist schon gewählt.');
+    }
+    return _withVouchers([...vouchers, voucher]);
+  }
+
+  /// Nimmt den gewählten Gutschein [voucherId] weg.
+  Cart removeVoucher(String voucherId) => _withVouchers([
+    for (final v in vouchers)
+      if (v.voucherId != voucherId) v,
+  ]);
+
+  /// Der gewählte Gutschein [voucherId] mit neuem Guthaben, an seiner Stelle.
+  Cart withVoucherBalance(String voucherId, int balanceCents) => _withVouchers([
+    for (final v in vouchers)
+      v.voucherId == voucherId
+          ? AppliedVoucher(
+              voucherId: v.voucherId,
+              code: v.code,
+              balanceCents: balanceCents,
+            )
+          : v,
+  ]);
+
+  /// Menge 0 oder darunter nimmt die Zeile weg. Wirft [ArgumentError] bei
+  /// einer Gutschein-Zeile und einer Menge über 1.
   Cart setQuantity(String lineId, int quantity) {
     if (quantity <= 0) return remove(lineId);
+    if (quantity > 1 && (_line(lineId)?.isVoucherSale ?? false)) {
+      throw ArgumentError.value(quantity, 'quantity', 'Gutschein-Zeile');
+    }
     return _withLines([
       for (final l in lines)
         l.lineId == lineId ? l.withQuantity(_cap(quantity)) : l,
@@ -314,15 +564,22 @@ class Cart {
       if (l.lineId != lineId) l,
   ]);
 
-  /// Setzt den Rabatt der Zeile [lineId]; null nimmt ihn weg.
-  Cart setLineDiscount(String lineId, Discount? discount) => _withLines([
-    for (final l in lines) l.lineId == lineId ? l.withDiscount(discount) : l,
-  ]);
+  /// Setzt den Rabatt der Zeile [lineId]; null nimmt ihn weg. Wirft
+  /// [ArgumentError] bei einem Rabatt auf "Pfand zurück" oder eine
+  /// Gutschein-Zeile.
+  Cart setLineDiscount(String lineId, Discount? discount) {
+    if (discount != null && (_line(lineId)?._takesNoDiscount ?? false)) {
+      throw ArgumentError.value(lineId, 'lineId', 'Zeile ohne Rabatt');
+    }
+    return _withLines([
+      for (final l in lines) l.lineId == lineId ? l.withDiscount(discount) : l,
+    ]);
+  }
 
   /// Setzt den Rabatt auf den ganzen Bon; null nimmt ihn weg. Ein leerer Bon
   /// bekommt keinen.
   Cart setReceiptDiscount(Discount? discount) =>
-      Cart._(lines, lines.isEmpty ? null : discount);
+      Cart._(lines, lines.isEmpty ? null : discount, vouchers);
 
   /// Der Bon nach allen Rabatten (Spec 5.4). Bei jedem Aufruf neu gerechnet,
   /// immer gleich für denselben Bon.
@@ -334,12 +591,39 @@ class Cart {
         lines[i].discount?.of(list[i]) ?? 0,
     ];
     final after = [for (var i = 0; i < lines.length; i++) list[i] - own[i]];
-    // 2. Der Bon-Rabatt vom Warenwert nach Zeilen-Rabatten.
+    // 2. Der Bon-Rabatt vom Warenwert nach Zeilen-Rabatten, ohne die
+    // Gutschein-Zeilen.
     final subtotal = after.fold(0, (s, c) => s + c);
-    final receipt = discount?.of(subtotal) ?? 0;
-    // 3. Auf die Zeilen verteilt.
-    final share = allocate(receipt, [for (final a in after) a < 0 ? 0 : a]);
-    // 4. Der Rabatt jeder Zeile auf ihre Steuersätze verteilt.
+    var voucherSale = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].isVoucherSale) voucherSale += after[i];
+    }
+    final receipt = discount?.of(subtotal - voucherSale) ?? 0;
+    // 3. Auf die Zeilen verteilt, nie auf Gutschein-Zeilen ("Pfand zurück"
+    // hat Warenwert 0).
+    final share = allocate(receipt, [
+      for (var i = 0; i < lines.length; i++)
+        lines[i].isVoucherSale || after[i] < 0 ? 0 : after[i],
+    ]);
+    // 4. Was die gewählten Gutscheine decken, der Reihe nach.
+    var rest = subtotal - receipt + depositCents;
+    final uses = <VoucherUse>[];
+    for (final v in vouchers) {
+      if (rest <= 0) break;
+      final balance = v.balanceCents < 0 ? 0 : v.balanceCents;
+      final amount = balance < rest ? balance : rest;
+      if (amount == 0) continue;
+      uses.add(
+        VoucherUse(
+          voucherId: v.voucherId,
+          code: v.code,
+          amountCents: amount,
+          balanceAfterCents: v.balanceCents - amount,
+        ),
+      );
+      rest -= amount;
+    }
+    // 5. Der Rabatt jeder Zeile auf ihre Steuersätze verteilt.
     return CartPricing(
       lines: [
         for (var i = 0; i < lines.length; i++)
@@ -356,6 +640,8 @@ class Cart {
       ],
       subtotalCents: subtotal,
       receiptDiscountCents: receipt,
+      voucherSaleCents: voucherSale,
+      voucherUses: List.unmodifiable(uses),
     );
   }
 
@@ -383,14 +669,23 @@ class Cart {
               'cents': l.item.priceCents,
               'taxPercent': l.item.taxRate.percent,
             },
+          if (l.isDepositReturn)
+            'depositReturn': {'cents': -l.item.depositCents},
+          if (l.isVoucherSale) 'voucherSale': {'cents': l.item.priceCents},
         },
     ],
     if (discount != null) 'discount': discount!.toJson(),
+    if (vouchers.isNotEmpty)
+      'vouchers': [
+        for (final v in vouchers)
+          {'id': v.voucherId, 'code': v.code, 'balanceCents': v.balanceCents},
+      ],
   };
 
   /// Der Bon gegen einen (geänderten) Katalog neu aufgelöst: Zeilenkennung,
   /// Menge, Options-Ids und Rabatte bleiben, Artikel und Optionen kommen aus
-  /// [catalog]. Freie Beträge fragen den Katalog nicht und bleiben.
+  /// [catalog]. Freie Beträge, "Pfand zurück", Gutschein-Zeilen und gewählte
+  /// Gutscheine fragen den Katalog nicht und bleiben.
   /// Es gelten dieselben Regeln wie in [fromJson], zum Beispiel fallen Zeilen
   /// weg, die es nicht mehr gibt.
   Cart rebind(Catalog catalog) => fromJson(toJson(), catalog);
@@ -400,8 +695,14 @@ class Cart {
   /// Ein unlesbarer Rabatt fällt weg, die Zeile bleibt. Eine Zeile mit `open`
   /// ist ein freier Betrag und entsteht ohne den Katalog; ist `open`
   /// unlesbar, außerhalb der Grenzen oder passt nicht zur Kennung, fällt nur
-  /// diese Zeile weg. Ein Entwurf ohne Rabatte und freie Beträge (aus 1.10.0)
-  /// wird gelesen wie bisher. Das Lesen wirft nie wegen des Inhalts.
+  /// diese Zeile weg. Ebenso entstehen Zeilen mit `depositReturn` ("Pfand
+  /// zurück", höchstens eine je Betrag) und `voucherSale` (Gutschein, Menge
+  /// 1) ohne den Katalog; unlesbar oder außerhalb der Grenzen fällt die Zeile
+  /// weg, ein Rabatt daran fällt weg. Unlesbare gewählte Gutscheine fallen
+  /// einzeln weg, alle bei einem leeren Bon oder einem Bon mit Gutschein-Zeile.
+  /// Ein Entwurf ohne Rabatte und freie Beträge (aus 1.10.0) oder ohne die
+  /// Dinge aus Stufe 1b (aus 1.11.0) wird gelesen wie bisher. Das Lesen wirft
+  /// nie wegen des Inhalts.
   static Cart fromJson(Map<String, dynamic> json, Catalog catalog) {
     final rawLines = json['lines'];
     if (rawLines is! List) return const Cart.empty();
@@ -426,6 +727,40 @@ class Cart {
             quantity: _cap(quantity),
             discount: Discount.fromJson(raw['discount']),
             isOpenAmount: true,
+          ),
+        );
+        continue;
+      }
+      if (raw.containsKey('depositReturn')) {
+        final item = _depositReturnItemOf(raw['depositReturn'], itemId);
+        if (item == null || optionIds.isNotEmpty) continue;
+        if (lines.any((l) => l.isDepositReturn && l.item.id == itemId)) {
+          continue;
+        }
+        seen.add(lineId);
+        lines.add(
+          CartLine(
+            lineId: lineId,
+            item: item,
+            quantity: _cap(quantity),
+            isDepositReturn: true,
+          ),
+        );
+        continue;
+      }
+      if (raw.containsKey('voucherSale')) {
+        final cents = raw['voucherSale'] is Map
+            ? (raw['voucherSale'] as Map)['cents']
+            : null;
+        if (!_isVoucherCents(cents) || !isVoucherSaleItemId(itemId)) continue;
+        if (quantity != 1 || optionIds.isNotEmpty) continue;
+        seen.add(lineId);
+        lines.add(
+          CartLine(
+            lineId: lineId,
+            item: _voucherSaleItem(cents as int),
+            quantity: 1,
+            isVoucherSale: true,
           ),
         );
         continue;
@@ -463,11 +798,45 @@ class Cart {
         ),
       );
     }
+    if (lines.isEmpty) return const Cart.empty();
     return Cart._(
       lines,
-      lines.isEmpty ? null : Discount.fromJson(json['discount']),
+      Discount.fromJson(json['discount']),
+      lines.any((l) => l.isVoucherSale)
+          ? const []
+          : _vouchersOf(json['vouchers']),
     );
   }
+}
+
+/// Die gewählten Gutscheine aus dem Feld `vouchers` eines Entwurfs; unlesbare
+/// und doppelte fallen weg.
+List<AppliedVoucher> _vouchersOf(Object? raw) {
+  if (raw is! List) return const [];
+  final result = <AppliedVoucher>[];
+  for (final v in raw) {
+    if (v is! Map) continue;
+    final id = v['id'];
+    final code = v['code'];
+    final balance = v['balanceCents'];
+    if (id is! String || code is! String || balance is! int) continue;
+    if (result.any((r) => r.voucherId == id)) continue;
+    result.add(
+      AppliedVoucher(voucherId: id, code: code, balanceCents: balance),
+    );
+  }
+  return List.unmodifiable(result);
+}
+
+/// Der Artikel "Pfand zurück" aus dem Feld `depositReturn` eines Entwurfs;
+/// null, wenn es unlesbar ist, der Betrag unter 1 Cent liegt oder nicht zu
+/// [itemId] passt.
+Item? _depositReturnItemOf(Object? raw, String itemId) {
+  if (raw is! Map) return null;
+  final cents = raw['cents'];
+  if (cents is! int || cents < 1) return null;
+  if (depositReturnItemId(cents) != itemId) return null;
+  return _depositReturnItem(cents);
 }
 
 int _cap(int q) => q > maxQuantity ? maxQuantity : q;

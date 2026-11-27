@@ -3,7 +3,7 @@
 
 import 'dart:convert';
 
-import 'cart.dart' show isOpenAmountItemId;
+import 'cart.dart' show isReservedItemId;
 import 'catalog.dart';
 import 'menu_dictionary.dart';
 import 'staff.dart';
@@ -94,8 +94,9 @@ Catalog parseMenuFile(String jsonText) {
       problems.add('Artikel "$id" kommt doppelt vor.');
       ok = false;
     }
-    // Für den freien Betrag an der Kassa vergeben (open-amount-20 usw.).
-    if (isOpenAmountItemId(id)) {
+    // An der Kassa vergeben: freier Betrag (open-amount-20 usw.), Pfand
+    // zurück (deposit-return-25 usw.) und Gutschein (voucher-sale).
+    if (isReservedItemId(id)) {
       fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
     }
     final name = _text(a['name']);

@@ -12,7 +12,13 @@ import 'package:kassa/domain/discount.dart';
 /// teils mit eigenem Satz; jede dritte Zeile mit Rabatt (Prozent aus
 /// [discountPercents] oder Betrag bis zum Doppelten des Werts); jeder zweite
 /// Bon mit Bon-Rabatt.
-Cart randomCart(Random random) {
+///
+/// Mit [withStufe1b] kommen nach den Zeilen dazu: bei jedem zweiten Bon 0 bis 2
+/// Zeilen "Pfand zurück" (0,25 oder 1,00 €, Menge 1 bis 60), dann entweder
+/// 1 bis 2 Gutschein-Zeilen (1,00 bis 500,00 €) oder 0 bis 3 gewählte
+/// Gutscheine (Guthaben 0 bis 50,00 €). Ohne den Schalter ist der Bon genau
+/// wie bisher (dieselben Zufallszahlen in derselben Reihenfolge).
+Cart randomCart(Random random, {bool withStufe1b = false}) {
   T pick<T>(List<T> list) => list[random.nextInt(list.length)];
   Discount randomDiscount(int valueCents) {
     final reason = pick(DiscountReason.values);
@@ -59,6 +65,37 @@ Cart randomCart(Random random) {
     if (n % 3 == 0) {
       final line = cart.lines.last;
       cart = cart.setLineDiscount(lineId, randomDiscount(line.goodsCents));
+    }
+  }
+  if (withStufe1b) {
+    if (random.nextBool()) {
+      for (final cents in [25, 100]) {
+        if (random.nextBool()) {
+          cart = cart.setDepositReturn(
+            depositCents: cents,
+            quantity: 1 + random.nextInt(60),
+          );
+        }
+      }
+    }
+    if (random.nextBool()) {
+      for (var k = 1 + random.nextInt(2); k > 0; k--) {
+        cart = cart.addVoucherSale(
+          valueCents:
+              voucherMinCents +
+              random.nextInt(voucherMaxCents - voucherMinCents + 1),
+        );
+      }
+    } else {
+      for (var k = random.nextInt(4); k > 0; k--) {
+        cart = cart.applyVoucher(
+          AppliedVoucher(
+            voucherId: 'v$k',
+            code: '${10000000 + k}',
+            balanceCents: random.nextInt(5001),
+          ),
+        );
+      }
     }
   }
   if (random.nextBool()) {

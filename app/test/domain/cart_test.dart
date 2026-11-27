@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
@@ -636,6 +638,559 @@ void main() {
       }, catalog);
       expect(read.lines.single.isOpenAmount, isFalse);
       expect(read.totalCents, 630);
+    });
+  });
+
+  group('Stufe 1b: Pfand zurück, Gutschein-Zeile, gewählte Gutscheine', () {
+    final cart = sales.cart;
+    final cartCard = sales.cartCard;
+    const a = AppliedVoucher(
+      voucherId: 'v-a',
+      code: '11112222',
+      balanceCents: 500,
+    );
+    const b = AppliedVoucher(
+      voucherId: 'v-b',
+      code: '33334444',
+      balanceCents: 300,
+    );
+
+    /// Der Text, den 1.11.0 (Commit a06aeb3) mit `jsonEncode` für
+    /// `sales.cart` schreibt. Die Zeilenkennungen sind zufällig und stehen
+    /// hier als `<L0>`, `<L1>`.
+    String draft1_11_0(List<String> lineIds) =>
+        '{"lines":[{"lineId":"<L0>","itemId":"cola","quantity":2,'
+                '"optionIds":[]},{"lineId":"<L1>","itemId":"huhn-bowl",'
+                '"quantity":1,"optionIds":["bowl/0/1","bowl/1/1"]}]}'
+            .replaceAll('<L0>', lineIds[0])
+            .replaceAll('<L1>', lineIds[1]);
+
+    test(
+      'Pfand zurück: eine Zeile je Betrag, Summe sinkt, Menge 0 nimmt sie weg',
+      () {
+        final c = cart.setDepositReturn(depositCents: 25, quantity: 3);
+        final line = c.lines.last;
+        expect(
+          (
+            line.item.id,
+            line.item.name,
+            line.quantity,
+            line.goodsCents,
+            line.depositCents,
+            line.isDepositReturn,
+          ),
+          ('deposit-return-25', 'Pfand zurück', 3, 0, -75, true),
+        );
+        expect((c.goodsCents, c.depositCents, c.totalCents), (1770, -25, 1745));
+        expect(
+          c.setDepositReturn(depositCents: 25, quantity: 5).lines,
+          hasLength(3),
+        );
+        expect(c.depositReturnQuantity(25), 3);
+        expect(
+          c.setDepositReturn(depositCents: 25, quantity: 0).totalCents,
+          1820,
+        );
+        expect(
+          const Cart.empty()
+              .setDepositReturn(depositCents: 25, quantity: 3)
+              .totalCents,
+          -75,
+        );
+        expect(
+          () => c.setLineDiscount(
+            line.lineId,
+            const Discount.percent(10, DiscountReason.regular),
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('Pfand zurück: Artikel, Grenzen, Menge wie bei jeder Zeile', () {
+      expect(depositReturnItemId(25), 'deposit-return-25');
+      expect(depositReturnName, 'Pfand zurück');
+      expect(isDepositReturnItemId('deposit-return-100'), isTrue);
+      expect(isDepositReturnItemId('cola'), isFalse);
+      final c = const Cart.empty()
+          .add(cola)
+          .setDepositReturn(depositCents: 100, quantity: 2)
+          .setDepositReturn(depositCents: 25, quantity: 1);
+      final line = c.lines[1];
+      expect(
+        (
+          line.item.priceCents,
+          line.item.depositCents,
+          line.item.taxRate,
+          line.options.length,
+          line.isVoucherSale,
+          line.isOpenAmount,
+        ),
+        (0, -100, TaxRate.zero, 0, false, false),
+      );
+      expect(c.lines.map((l) => l.item.id), [
+        'cola',
+        'deposit-return-100',
+        'deposit-return-25',
+      ]);
+      expect(c.depositReturnQuantity(50), 0);
+      expect(cola.depositCents, 25);
+      expect(c.depositCents, 25 - 200 - 25);
+      // Ändern behält die Stelle der Zeile.
+      final more = c.setDepositReturn(depositCents: 100, quantity: 7);
+      expect(more.lines.map((l) => (l.item.id, l.quantity)), [
+        ('cola', 1),
+        ('deposit-return-100', 7),
+        ('deposit-return-25', 1),
+      ]);
+      expect(more.lines[1].lineId, line.lineId);
+      // setQuantity wie bei jeder Zeile.
+      expect(c.setQuantity(line.lineId, 4).depositReturnQuantity(100), 4);
+      expect(c.setQuantity(line.lineId, 0).depositReturnQuantity(100), 0);
+      for (final (cents, quantity) in [(0, 1), (-25, 1), (25, -1), (25, 100)]) {
+        expect(
+          () => c.setDepositReturn(depositCents: cents, quantity: quantity),
+          throwsArgumentError,
+          reason: '$cents/$quantity',
+        );
+      }
+      expect(
+        c
+            .setDepositReturn(depositCents: 25, quantity: 99)
+            .depositReturnQuantity(25),
+        99,
+      );
+      // Ohne Zeile nimmt Menge 0 nichts weg.
+      expect(
+        c.setDepositReturn(depositCents: 50, quantity: 0).lines,
+        hasLength(3),
+      );
+      expect(
+        const Cart.empty()
+            .setDepositReturn(depositCents: 25, quantity: 0)
+            .isEmpty,
+        isTrue,
+      );
+    });
+
+    test('Pfand zurück bekommt keinen Anteil am Bon-Rabatt', () {
+      final c = cart
+          .setDepositReturn(depositCents: 25, quantity: 2)
+          .setReceiptDiscount(
+            const Discount.percent(10, DiscountReason.promotion),
+          );
+      final p = c.pricing;
+      expect(p.lines.last.discountCents, 0);
+      expect(p.receiptDiscountCents, 177);
+      expect(p.totalCents, 1770 - 177 + 50 - 50);
+      expect(p.grossByRate.values.fold<int>(0, (s, v) => s + v), p.goodsCents);
+    });
+
+    test('Gutschein-Zeile: eigene Zeile je Tipp, Satz 0, kein Rabatt, kein Anteil am Bon-Rabatt', () {
+      final c = cartCard
+          .addVoucherSale(valueCents: 2500)
+          .setReceiptDiscount(
+            const Discount.percent(10, DiscountReason.promotion),
+          );
+      expect(
+        (
+          c.pricing.voucherSaleCents,
+          c.pricing.receiptDiscountCents,
+          c.goodsCents,
+          c.totalCents,
+        ),
+        (2500, 94, 3346, 3371),
+      );
+      expect(c.pricing.lines.last.discountCents, 0);
+      expect(c.pricing.grossByRate[TaxRate.zero], 2500);
+      expect(() => c.setQuantity(c.lines.last.lineId, 2), throwsArgumentError);
+      for (final cents in [99, 50001]) {
+        expect(
+          () => const Cart.empty().addVoucherSale(valueCents: cents),
+          throwsArgumentError,
+        );
+      }
+    });
+
+    test('Gutschein-Zeile: Artikel, Grenzen, neue Zeile je Tipp, Minus nimmt sie weg', () {
+      expect(voucherSaleItemId, 'voucher-sale');
+      expect(voucherSaleName, 'Gutschein');
+      expect((voucherMinCents, voucherMaxCents), (100, 50000));
+      expect(voucherPresetCents, [1000, 2000, 2500, 5000]);
+      expect(isVoucherSaleItemId('voucher-sale'), isTrue);
+      expect(isVoucherSaleItemId('voucher-sale-2'), isFalse);
+      final c = const Cart.empty()
+          .addVoucherSale(valueCents: 100, lineId: 'g1')
+          .addVoucherSale(valueCents: 50000);
+      expect(c.hasVoucherSale, isTrue);
+      expect(cartCard.hasVoucherSale, isFalse);
+      expect(
+        [
+          for (final l in c.lines)
+            (
+              l.item.id,
+              l.item.name,
+              l.item.priceCents,
+              l.item.taxRate,
+              l.item.depositCents,
+              l.quantity,
+              l.isVoucherSale,
+              l.isDepositReturn,
+            ),
+        ],
+        [
+          ('voucher-sale', 'Gutschein', 100, TaxRate.zero, 0, 1, true, false),
+          ('voucher-sale', 'Gutschein', 50000, TaxRate.zero, 0, 1, true, false),
+        ],
+      );
+      expect(c.lines.first.lineId, 'g1');
+      expect(c.pricing.voucherSaleCents, 50100);
+      expect(c.setQuantity('g1', 1).lines, hasLength(2));
+      expect(c.setQuantity('g1', 0).lines, hasLength(1));
+      expect(
+        () => c.setLineDiscount(
+          'g1',
+          const Discount.amount(50, DiscountReason.regular),
+        ),
+        throwsArgumentError,
+      );
+      // Ohne Rabatt zu setzen geht (nimmt nichts weg, was es gäbe).
+      expect(c.setLineDiscount('g1', null).lines.first.discount, isNull);
+    });
+
+    test('Bon-Rabatt als Betrag: rechnet ohne Gutschein-Zeilen', () {
+      final c = cartCard
+          .addVoucherSale(valueCents: 2500)
+          .setReceiptDiscount(
+            const Discount.amount(5000, DiscountReason.promotion),
+          );
+      final p = c.pricing;
+      expect(p.receiptDiscountCents, 940);
+      expect((p.goodsCents, p.totalCents), (2500, 2525));
+      expect(p.lines.last.discountCents, 0);
+      expect(p.grossByRate, {TaxRate.zero: 2500});
+    });
+
+    test(
+      'gewählte Gutscheine decken der Reihe nach; noch zu zahlen ist der Rest',
+      () {
+        final c = cartCard.applyVoucher(a).applyVoucher(b);
+        expect(
+          [
+            for (final u in c.pricing.voucherUses)
+              (u.voucherId, u.amountCents, u.balanceAfterCents),
+          ],
+          [('v-a', 500, 0), ('v-b', 300, 0)],
+        );
+        expect((c.pricing.voucherCents, c.pricing.dueCents), (800, 165));
+        final big = cartCard
+            .applyVoucher(
+              const AppliedVoucher(
+                voucherId: 'v-c',
+                code: '55556666',
+                balanceCents: 2500,
+              ),
+            )
+            .applyVoucher(a);
+        expect(
+          [
+            for (final u in big.pricing.voucherUses)
+              (u.voucherId, u.amountCents, u.balanceAfterCents),
+          ],
+          [('v-c', 965, 1535)],
+        );
+        expect(big.pricing.dueCents, 0);
+        expect(c.removeVoucher('v-a').pricing.dueCents, 665);
+        expect(c.withVoucherBalance('v-a', 100).pricing.dueCents, 565);
+        expect(() => c.applyVoucher(a), throwsStateError);
+        expect(() => c.addVoucherSale(valueCents: 1000), throwsStateError);
+        expect(
+          () => cartCard.addVoucherSale(valueCents: 1000).applyVoucher(a),
+          throwsStateError,
+        );
+      },
+    );
+
+    test('gewählte Gutscheine: Code, Reihenfolge, leerer Bon, Summe bis 0', () {
+      final c = cartCard.applyVoucher(a).applyVoucher(b);
+      expect([for (final v in c.vouchers) v.voucherId], ['v-a', 'v-b']);
+      expect(c.pricing.voucherUses.first.code, '11112222');
+      expect(cartCard.vouchers, isEmpty);
+      expect(cartCard.pricing.voucherUses, isEmpty);
+      expect(cartCard.pricing.dueCents, cartCard.totalCents);
+      // Ohne den gewählten Gutschein ändern removeVoucher und
+      // withVoucherBalance nichts.
+      expect(c.removeVoucher('v-x').vouchers, hasLength(2));
+      expect(c.withVoucherBalance('v-x', 0).pricing.dueCents, 165);
+      // Ein Gutschein mit Guthaben 0 deckt nichts und fehlt in der Liste.
+      expect(
+        [
+          for (final u in c.withVoucherBalance('v-a', 0).pricing.voucherUses)
+            u.voucherId,
+        ],
+        ['v-b'],
+      );
+      // Ändert sich der Bon, rechnen die Gutscheine neu; sie bleiben.
+      final more = c.add(cola);
+      expect(more.vouchers, hasLength(2));
+      expect(more.pricing.dueCents, 165 + 315);
+      // Summe 0 oder darunter: nichts wird gedeckt.
+      final low = const Cart.empty()
+          .add(cola)
+          .setDepositReturn(depositCents: 315, quantity: 1)
+          .applyVoucher(a);
+      expect(low.totalCents, 0);
+      expect(low.pricing.voucherUses, isEmpty);
+      expect(low.pricing.dueCents, 0);
+      final minus = low.setDepositReturn(depositCents: 400, quantity: 1);
+      expect(minus.pricing.voucherUses, isEmpty);
+      expect(minus.pricing.dueCents, minus.totalCents);
+      expect(
+        () => const Cart.empty().applyVoucher(a),
+        throwsStateError,
+      );
+      // Der letzten Zeile weg: keine gewählten Gutscheine mehr.
+      final one = const Cart.empty().add(cola).applyVoucher(a);
+      expect(one.remove(one.lines.single.lineId).vouchers, isEmpty);
+      expect(one.setQuantity(one.lines.single.lineId, 0).vouchers, isEmpty);
+      // Gutscheine bleiben bei Rabatten.
+      expect(
+        c
+            .setReceiptDiscount(
+              const Discount.percent(10, DiscountReason.promotion),
+            )
+            .vouchers,
+        hasLength(2),
+      );
+    });
+
+    test('Entwurf: Pfand zurück, Gutschein-Zeile und gewählte Gutscheine überstehen toJson und fromJson; ohne sie ist das JSON wie in 1.11.0', () {
+      final c = cart
+          .setDepositReturn(depositCents: 25, quantity: 2)
+          .applyVoucher(a);
+      final back = Cart.fromJson(c.toJson(), catalog);
+      expect(
+        (back.totalCents, back.pricing.dueCents, back.vouchers.single.code),
+        (c.totalCents, c.pricing.dueCents, '11112222'),
+      );
+      expect(
+        jsonEncode(cart.toJson()),
+        draft1_11_0([for (final l in cart.lines) l.lineId]),
+      );
+      expect(
+        Cart.fromJson({...c.toJson(), 'vouchers': 'kaputt'}, catalog).vouchers,
+        isEmpty,
+      );
+    });
+
+    test('Entwurf: die Felder im JSON', () {
+      final c = const Cart.empty()
+          .add(cola)
+          .setDepositReturn(depositCents: 25, quantity: 2)
+          .applyVoucher(a);
+      final json = c.toJson();
+      expect((json['lines'] as List)[1], {
+        'lineId': c.lines[1].lineId,
+        'itemId': 'deposit-return-25',
+        'quantity': 2,
+        'optionIds': <String>[],
+        'depositReturn': {'cents': 25},
+      });
+      expect(json['vouchers'], [
+        {'id': 'v-a', 'code': '11112222', 'balanceCents': 500},
+      ]);
+      final g = const Cart.empty().addVoucherSale(
+        valueCents: 2500,
+        lineId: 'g',
+      );
+      expect(g.toJson(), {
+        'lines': [
+          {
+            'lineId': 'g',
+            'itemId': 'voucher-sale',
+            'quantity': 1,
+            'optionIds': <String>[],
+            'voucherSale': {'cents': 2500},
+          },
+        ],
+      });
+      final back = Cart.fromJson(g.toJson(), catalog).lines.single;
+      expect(
+        (back.isVoucherSale, back.item.priceCents, back.item.taxRate),
+        (true, 2500, TaxRate.zero),
+      );
+      final dep = Cart.fromJson(json, catalog).lines[1];
+      expect(
+        (dep.isDepositReturn, dep.quantity, dep.depositCents),
+        (true, 2, -50),
+      );
+      // rebind lässt alles stehen, auch ohne die Kennungen im Katalog.
+      final r = c.rebind(catalog);
+      expect(r.toJson(), json);
+      expect(g.rebind(catalog).toJson(), g.toJson());
+    });
+
+    group('Entwurf mit kaputten neuen Feldern: nur diese Zeile fällt weg', () {
+      Map<String, dynamic> draft(Map<String, dynamic> bad) => {
+        'lines': [
+          {
+            'lineId': 'a',
+            'itemId': 'cola',
+            'quantity': 2,
+            'optionIds': <String>[],
+          },
+          {'lineId': 'x', 'quantity': 1, 'optionIds': <String>[], ...bad},
+        ],
+      };
+      for (final (name, bad) in <(String, Map<String, dynamic>)>[
+        (
+          'Pfand kein Objekt',
+          {'itemId': 'deposit-return-25', 'depositReturn': 25},
+        ),
+        (
+          'Pfand 0',
+          {
+            'itemId': 'deposit-return-0',
+            'depositReturn': {'cents': 0},
+          },
+        ),
+        (
+          'Pfand unter 0',
+          {
+            'itemId': 'deposit-return--25',
+            'depositReturn': {'cents': -25},
+          },
+        ),
+        (
+          'Pfand als Text',
+          {
+            'itemId': 'deposit-return-25',
+            'depositReturn': {'cents': '25'},
+          },
+        ),
+        (
+          'Pfand passt nicht zur Kennung',
+          {
+            'itemId': 'deposit-return-50',
+            'depositReturn': {'cents': 25},
+          },
+        ),
+        (
+          'Pfand mit Optionen',
+          {
+            'itemId': 'deposit-return-25',
+            'optionIds': ['reis'],
+            'depositReturn': {'cents': 25},
+          },
+        ),
+        (
+          'Gutschein unter 1,00 €',
+          {
+            'itemId': 'voucher-sale',
+            'voucherSale': {'cents': 99},
+          },
+        ),
+        (
+          'Gutschein über 500,00 €',
+          {
+            'itemId': 'voucher-sale',
+            'voucherSale': {'cents': 50001},
+          },
+        ),
+        (
+          'Gutschein kein Objekt',
+          {'itemId': 'voucher-sale', 'voucherSale': 'x'},
+        ),
+        (
+          'Gutschein mit falscher Kennung',
+          {
+            'itemId': 'cola',
+            'voucherSale': {'cents': 2500},
+          },
+        ),
+        (
+          'Gutschein Menge 2',
+          {
+            'itemId': 'voucher-sale',
+            'quantity': 2,
+            'voucherSale': {'cents': 2500},
+          },
+        ),
+      ]) {
+        test(name, () {
+          final read = Cart.fromJson(draft(bad), catalog);
+          expect(read.lines.map((l) => l.lineId), ['a']);
+        });
+      }
+    });
+
+    test('Entwurf: eine zweite Zeile "Pfand zurück" mit demselben Betrag fällt weg', () {
+      Map<String, dynamic> ret(String lineId, int quantity) => {
+        'lineId': lineId,
+        'itemId': 'deposit-return-25',
+        'quantity': quantity,
+        'optionIds': <String>[],
+        'depositReturn': {'cents': 25},
+      };
+      final read = Cart.fromJson({
+        'lines': [ret('r1', 2), ret('r2', 5)],
+      }, catalog);
+      expect(read.lines.map((l) => (l.lineId, l.quantity)), [('r1', 2)]);
+    });
+
+    test('Entwurf: kaputte gewählte Gutscheine fallen einzeln weg', () {
+      final read = Cart.fromJson({
+        'lines': [
+          {
+            'lineId': 'a',
+            'itemId': 'cola',
+            'quantity': 2,
+            'optionIds': <String>[],
+          },
+        ],
+        'vouchers': [
+          {'id': 'v-a', 'code': '11112222', 'balanceCents': 500},
+          'kaputt',
+          {'id': 'v-b', 'code': 33334444, 'balanceCents': 300},
+          {'id': 'v-c', 'code': '55556666', 'balanceCents': '1'},
+          {'code': '77778888', 'balanceCents': 1},
+          {'id': 'v-a', 'code': '11112222', 'balanceCents': 500},
+          {'id': 'v-d', 'code': '99990000', 'balanceCents': 0},
+        ],
+      }, catalog);
+      expect([for (final v in read.vouchers) v.voucherId], ['v-a', 'v-d']);
+      // Ein Bon mit Gutschein-Zeile hat keine gewählten Gutscheine.
+      final withSale = Cart.fromJson({
+        ...const Cart.empty().addVoucherSale(valueCents: 1000).toJson(),
+        'vouchers': [
+          {'id': 'v-a', 'code': '11112222', 'balanceCents': 500},
+        ],
+      }, catalog);
+      expect(withSale.hasVoucherSale, isTrue);
+      expect(withSale.vouchers, isEmpty);
+      // Ein leerer Bon auch nicht.
+      expect(
+        Cart.fromJson({
+          'lines': <Object>[],
+          'vouchers': [
+            {'id': 'v-a', 'code': '11112222', 'balanceCents': 500},
+          ],
+        }, catalog).vouchers,
+        isEmpty,
+      );
+    });
+
+    test('isReservedItemId', () {
+      for (final id in [
+        'open-amount-20',
+        'deposit-return-25',
+        'voucher-sale',
+      ]) {
+        expect(isReservedItemId(id), isTrue, reason: id);
+      }
+      for (final id in ['cola', 'voucher-sale-1', 'deposit-25']) {
+        expect(isReservedItemId(id), isFalse, reason: id);
+      }
     });
   });
 }

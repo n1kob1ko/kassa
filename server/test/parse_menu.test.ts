@@ -64,6 +64,33 @@ describe('gemeinsame Beispiele mit der App', () => {
     ]);
   });
 
+  test('Kennungen für Pfand zurück und Gutschein sind vergeben', () => {
+    for (const id of ['deposit-return-25', 'deposit-return-100', 'voucher-sale']) {
+      const text = JSON.stringify({
+        betrieb: 'X',
+        kategorien: [{ id: 'a', name: 'A' }],
+        artikel: [{ id, name: 'X', preis_cent: 100, kategorie: 'a', mwst: 20 }],
+      });
+      let thrown: unknown;
+      try {
+        parseMenuFile(text);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(MenuImportError);
+      expect((thrown as MenuImportError).problems).toEqual([
+        `Artikel "${id}": Die Kennung darf nicht mit "open-amount-" beginnen.`,
+      ]);
+    }
+    // Nur genau diese Kennung ist für den Gutschein vergeben.
+    const ok = JSON.stringify({
+      betrieb: 'X',
+      kategorien: [{ id: 'a', name: 'A' }],
+      artikel: [{ id: 'voucher-sale-2', name: 'X', preis_cent: 100, kategorie: 'a', mwst: 20 }],
+    });
+    expect(() => parseMenuFile(ok)).not.toThrow();
+  });
+
   test('jede Meldung aus menu_import.dart kommt in einem Beispiel vor', () => {
     const dart = readFileSync(
       join(import.meta.dirname, '../../app/lib/domain/menu_import.dart'),
