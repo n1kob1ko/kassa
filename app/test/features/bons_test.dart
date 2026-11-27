@@ -13,6 +13,7 @@ import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/features/kassa/late_kitchen.dart';
 import 'package:kassa/features/login/session.dart';
@@ -1125,5 +1126,101 @@ void main() {
         expect(box.didExceedMaxLines, isFalse);
       });
     }
+  });
+
+  testWidgets('Detail: Gutschein nachdrucken; Storno nach dem Einlösen zeigt '
+      'den Grund und speichert nichts', (t) async {
+    await pumpBonsWithSales(t, 0);
+    await setUpPrinter(t);
+    // Bon 1: zwei Gutscheine verkauft; Bon 2: der erste teils eingelöst.
+    final sold = await sellCash(
+      t,
+      cart: const Cart.empty()
+          .addVoucherSale(valueCents: 2500)
+          .add(cola)
+          .addVoucherSale(valueCents: 1000),
+    );
+    final first = sold.soldVouchers.first;
+    final staff = containerOf(t).read(sessionProvider)!;
+    await containerOf(t)
+        .read(receiptRepositoryProvider)
+        .finalizeVoucherSale(
+          saleId: 'einloesen',
+          cart: const Cart.empty()
+              .add(cola)
+              .applyVoucher(
+                AppliedVoucher(
+                  voucherId: first.voucherId,
+                  code: first.code,
+                  balanceCents: 2500,
+                ),
+              ),
+          staff: staff,
+        );
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+
+    for (final (i, v) in sold.soldVouchers.indexed) {
+      expect(
+        find.descendant(
+          of: find.byKey(Key('detail-voucher-$i')),
+          matching: find.text(formatEuro(v.valueCents)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        textOf(t, Key('detail-voucher-code-$i')),
+        formatVoucherCode(v.code),
+      );
+      expect(
+        t.getSize(find.byKey(Key('detail-voucher-print-$i'))).height,
+        greaterThanOrEqualTo(48),
+      );
+    }
+    await t.ensureVisible(find.byKey(const Key('detail-voucher-print-1')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('detail-voucher-print-1')));
+    await t.pumpAndSettle();
+    // Nur der Abschnitt, kein Bon.
+    expect(printerOf(t).log, ['voucher:${sold.soldVouchers[1].voucherId}']);
+    expect(printerOf(t).voucherSlips.single.voucher.valueCents, 1000);
+    expect(printerOf(t).voucherSlips.single.soldAt, sold.createdAt);
+
+    final before = await receiptCount(t);
+    await _startVoid(t, 1);
+    await t.tap(find.byKey(const Key('confirm-void')));
+    await t.pumpAndSettle();
+    expect(
+      textOf(t, const Key('void-failure')),
+      'Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht '
+      'stornieren.',
+    );
+    expect(await receiptCount(t), before);
+    expect(
+      await queryRows(
+        t,
+        "SELECT kind FROM voucher_movements WHERE kind LIKE 'void%'",
+      ),
+      isEmpty,
+    );
+    // Nichts mehr gedruckt.
+    expect(printerOf(t).log, hasLength(1));
+  });
+
+  testWidgets('Detail ohne Drucker: Wert und Code, keine Taste zum Drucken', (
+    t,
+  ) async {
+    await pumpBonsWithSales(t, 0);
+    final sold = await sellCash(
+      t,
+      cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+    );
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+    expect(
+      textOf(t, const Key('detail-voucher-code-0')),
+      formatVoucherCode(sold.soldVouchers.single.code),
+    );
+    expect(find.byKey(const Key('detail-voucher-print-0')), findsNothing);
   });
 }

@@ -1674,4 +1674,76 @@ class L10nAr extends L10n {
 
   @override
   String get kassaPayOutDone => 'ادفع للزبون';
+
+  @override
+  String get kassaVoucher => 'قسيمة';
+
+  @override
+  String get voucherSell => 'بيع';
+
+  @override
+  String get voucherCheck => 'تحقّق';
+
+  @override
+  String get voucherOther => 'مبلغ آخر';
+
+  @override
+  String get voucherAdd => 'أضف إلى الفاتورة';
+
+  @override
+  String voucherRange(String min, String max) {
+    return 'من $min إلى $max';
+  }
+
+  @override
+  String get voucherNotWithRedeem => 'تُدفع هذه الفاتورة بقسيمة.';
+
+  @override
+  String get voucherCode => 'الرمز';
+
+  @override
+  String get voucherValue => 'القيمة';
+
+  @override
+  String get voucherBalance => 'الرصيد';
+
+  @override
+  String get voucherUnknown => 'هذه القسيمة غير معروفة في الصندوق.';
+
+  @override
+  String get voucherStateActive => 'صالحة';
+
+  @override
+  String get voucherStateEmpty => 'مستنفدة';
+
+  @override
+  String get voucherStateVoided => 'ملغاة';
+
+  @override
+  String get voucherStateOverdrawn => 'رصيد سالب';
+
+  @override
+  String get voucherIsTest => 'قسيمة تجريبية';
+
+  @override
+  String get voucherMoveSale => 'بيعت';
+
+  @override
+  String get voucherMoveRedeem => 'استُخدمت';
+
+  @override
+  String get voucherMoveVoidSale => 'أُلغي البيع';
+
+  @override
+  String get voucherMoveVoidRedeem => 'أُلغي الاستخدام';
+
+  @override
+  String get voucherPrint => 'اطبع القسيمة';
+
+  @override
+  String get bonsVoidVoucherRedeemed =>
+      'تم استخدام القسيمة بالفعل. لا يمكن إلغاء هذه الفاتورة.';
+
+  @override
+  String get bonsVoucherPrinted => 'تمت طباعة القسيمة';
 }

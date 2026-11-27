@@ -1676,4 +1676,77 @@ class L10nEn extends L10n {
 
   @override
   String get kassaPayOutDone => 'Pay out';
+
+  @override
+  String get kassaVoucher => 'Voucher';
+
+  @override
+  String get voucherSell => 'Sell';
+
+  @override
+  String get voucherCheck => 'Check';
+
+  @override
+  String get voucherOther => 'Other amount';
+
+  @override
+  String get voucherAdd => 'Add to receipt';
+
+  @override
+  String voucherRange(String min, String max) {
+    return 'From $min to $max';
+  }
+
+  @override
+  String get voucherNotWithRedeem =>
+      'This receipt is being paid with a voucher.';
+
+  @override
+  String get voucherCode => 'Code';
+
+  @override
+  String get voucherValue => 'Value';
+
+  @override
+  String get voucherBalance => 'Balance';
+
+  @override
+  String get voucherUnknown => 'The register does not know this voucher.';
+
+  @override
+  String get voucherStateActive => 'Valid';
+
+  @override
+  String get voucherStateEmpty => 'Used up';
+
+  @override
+  String get voucherStateVoided => 'Voided';
+
+  @override
+  String get voucherStateOverdrawn => 'Overdrawn';
+
+  @override
+  String get voucherIsTest => 'Test voucher';
+
+  @override
+  String get voucherMoveSale => 'Sold';
+
+  @override
+  String get voucherMoveRedeem => 'Redeemed';
+
+  @override
+  String get voucherMoveVoidSale => 'Sale voided';
+
+  @override
+  String get voucherMoveVoidRedeem => 'Redemption voided';
+
+  @override
+  String get voucherPrint => 'Print voucher';
+
+  @override
+  String get bonsVoidVoucherRedeemed =>
+      'The voucher has already been redeemed. This receipt cannot be voided.';
+
+  @override
+  String get bonsVoucherPrinted => 'Voucher printed';
 }

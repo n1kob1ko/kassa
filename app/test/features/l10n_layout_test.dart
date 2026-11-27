@@ -539,6 +539,33 @@ void main() {
       );
     }
   }
+
+  // Stufe 1b: der Gutschein (Kopf, beide Reiter, "Verkauf fertig" mit einem
+  // verkauften Gutschein, das Detail in "Bons" und "Mehr"), in allen
+  // Sprachen, bei beiden Größen und bei der größten Schrift (1,3).
+  for (final language in AppLanguage.values) {
+    for (final (size, scale) in [
+      for (final size in _sizes) (size, 1.0),
+      (const Size(1280, 800), KassaTokens.maxTextScale),
+    ]) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+        'Schrift $scale: Gutschein verkaufen und prüfen ohne Überlauf',
+        (t) async {
+          final at =
+              '${language.name} ${size.width.toInt()}×'
+              '${size.height.toInt()} $scale';
+          final seen = <String>[];
+          await _tourVoucher(t, language, size, scale, (screen) {
+            seen.add(screen);
+            _expectClean(t, '$at $screen');
+            if (!language.isRtl) _expectNoIsolates(t, '$at $screen');
+          });
+          expect(seen, hasLength(8));
+        },
+      );
+    }
+  }
 }
 
 /// Jeder Text unter [key] ist ganz zu lesen, ohne Auslassungspunkte.
@@ -627,4 +654,98 @@ Future<void> _awaitPreview(WidgetTester t) async {
     }
   }
   expect(image, findsOneWidget);
+}
+
+/// Kassa mit Gutschein an, Drucker eingerichtet, der Chef angemeldet: die
+/// Taste "Gutschein" allein im Kopf, "Verkaufen" (mit dem Grund unter der
+/// grauen Taste), "Anderer Betrag", "Verkauf fertig" mit dem Gutschein,
+/// "Prüfen" mit dem Übungs-Gutschein, "Prüfen" mit einem unbekannten Code,
+/// das Detail in "Bons", dann mit freiem Betrag das Blatt "Mehr"; [look]
+/// prüft jedes Bild.
+Future<void> _tourVoucher(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+  void Function(String screen) look,
+) async {
+  await pumpKassa(t, size: size, textScale: scale, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      voucherEnabled: true,
+      printerKind: PrinterKind.network,
+      printerAddress: '192.168.0.50',
+    ),
+  );
+  final at = '${language.name} ${size.width.toInt()} $scale';
+  look('Kassa mit Gutschein');
+  _expectWholeKey(t, 'voucher-button', at);
+
+  await _tap(t, 'voucher-button');
+  look('Gutschein Verkaufen');
+  for (final key in [
+    'voucher-tab-sell',
+    'voucher-tab-check',
+    'voucher-preset-2500',
+    'voucher-other',
+    'voucher-add',
+    'voucher-add-reason',
+  ]) {
+    _expectWholeKey(t, key, at);
+  }
+
+  await _tap(t, 'voucher-other');
+  look('Gutschein Anderer Betrag');
+  await _tapVisible(t, 'voucher-preset-2500');
+  await _tap(t, 'voucher-add');
+
+  await _tap(t, 'pay-cash');
+  await _tapVisible(t, 'finish-sale');
+  await t.ensureVisible(find.byKey(const Key('sold-voucher-print-0')));
+  await t.pumpAndSettle();
+  look('Verkauf fertig mit Gutschein');
+  _expectWholeKey(t, 'sold-voucher-0', at);
+  await _tapVisible(t, 'next-customer');
+
+  final db = containerOf(t).read(databaseProvider);
+  final code = (await db.customSelect('SELECT code FROM vouchers').getSingle())
+      .read<String>('code');
+  await _tap(t, 'voucher-button');
+  await _tap(t, 'voucher-tab-check');
+  for (final d in code.split('')) {
+    await t.tap(find.byKey(Key('key-$d')));
+    await t.pump();
+  }
+  await t.pumpAndSettle();
+  look('Gutschein Prüfen');
+  _expectWholeKey(t, 'voucher-check-state', at);
+  _expectWholeKey(t, 'voucher-check-test', at);
+  _expectWholeKey(t, 'voucher-check-movement-0', at);
+
+  await t.ensureVisible(find.byKey(const Key('key-back')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(const Key('key-back')));
+  await t.pump();
+  final last = code.endsWith('0') ? '1' : '0';
+  await t.tap(find.byKey(Key('key-$last')));
+  await t.pumpAndSettle();
+  look('Gutschein Prüfen unbekannt');
+  _expectWholeKey(t, 'voucher-code-problem', at);
+  await _tap(t, 'voucher-back');
+
+  await t.tap(find.byKey(const Key('tab-Bons')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(const Key('receipt-1')));
+  await t.pumpAndSettle();
+  look('Bons mit Gutschein');
+  _expectWholeKey(t, 'detail-voucher-0', at);
+  await t.tap(find.byKey(const Key('tab-Kassa')));
+  await t.pumpAndSettle();
+
+  await setSettings(t, (s) => s.copyWith(openAmountAccess: FeatureAccess.all));
+  await _tap(t, 'more-button');
+  look('Mehr mit Gutschein');
+  _expectWholeKey(t, 'more-voucher', at);
 }

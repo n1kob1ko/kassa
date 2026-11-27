@@ -12,6 +12,7 @@ import '../domain/print_document.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_layout.dart';
 import '../domain/report_layout.dart';
+import '../domain/voucher_layout.dart';
 import '../rksv/setup_facts.dart';
 import 'escpos.dart';
 
@@ -97,6 +98,15 @@ abstract interface class ReceiptPrinter {
 
   /// Druckt den Zettel "Angaben für FinanzOnline" ([layoutSetupFacts]).
   Future<PrintOutcome> printSetupFacts(SetupFacts facts);
+
+  /// Druckt den Abschnitt eines verkauften Gutscheins ([layoutVoucher]):
+  /// [soldAt] ist die Zeit des Verkaufs, [isTest] macht ihn zum
+  /// Übungs-Gutschein. Öffnet nie die Lade.
+  Future<PrintOutcome> printVoucher(
+    SoldVoucher voucher, {
+    required DateTime soldAt,
+    required bool isTest,
+  });
 
   /// Druckt den Tagesabschluss ([layoutDayReport]). Öffnet nie die Lade;
   /// [drawer] sagt nur, ob der Zettel die Lade ausweist.
@@ -210,6 +220,25 @@ class EscPosPrinter implements ReceiptPrinter {
     checkStatus: true,
     bytes: () async => encodeEscPos(
       layoutSetupFacts(facts, business, clock.now(), columns: columns),
+    ),
+  );
+
+  @override
+  Future<PrintOutcome> printVoucher(
+    SoldVoucher voucher, {
+    required DateTime soldAt,
+    required bool isTest,
+  }) => _run(
+    checkStatus: true,
+    bytes: () async => encodeEscPos(
+      layoutVoucher(
+        voucher,
+        business,
+        soldAt: soldAt,
+        isTest: isTest,
+        columns: columns,
+      ),
+      columns: columns,
     ),
   );
 

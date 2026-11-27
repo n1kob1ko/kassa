@@ -193,4 +193,10 @@ class _ThrowingPrinter implements ReceiptPrinter {
   }) async => throw StateError('x');
   @override
   Future<PrintOutcome> printRaster(bytes) async => throw StateError('x');
+  @override
+  Future<PrintOutcome> printVoucher(
+    voucher, {
+    required soldAt,
+    required isTest,
+  }) async => throw StateError('x');
 }

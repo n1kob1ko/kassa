@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 478 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 501 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -124,6 +124,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Pfand zurück | 退押金 | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | 现金退付 {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | 需退付 | Kassa: `kassaPayOutDone` |
+| Gutschein | 礼券 | Kassa: `kassaVoucher` |
 
 ## Kartenzahlung
 
@@ -286,6 +287,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | 请在 SumUp 中退款 {amount}，其中小费 {tip}。 | Bons: `bonsVoidCardBackTip` |
 | Zwischensumme | 小计 | Bons: `bonsSubtotal` |
 | davon Trinkgeld | 其中小费 | Bons: `bonsTipIncluded` |
+| Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | 礼券已被使用，此小票无法作废。 | Bons: `bonsVoidVoucherRedeemed` |
+| Gutschein gedruckt | 礼券已打印 | Bons: `bonsVoucherPrinted` |
 
 ## Artikel
 
@@ -568,6 +571,26 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Diverses {percent} % | 杂项 {percent} % | Sonstiges: `openAmountLine` |
 | Zurück | 退还 | Sonstiges: `depositReturnTotal` |
 | Auf den Bon | 加入小票 | Sonstiges: `depositReturnAdd` |
+| Verkaufen | 出售 | Sonstiges: `voucherSell` |
+| Prüfen | 查询 | Sonstiges: `voucherCheck` |
+| Anderer Betrag | 其他金额 | Sonstiges: `voucherOther` |
+| Auf den Bon | 加入小票 | Sonstiges: `voucherAdd` |
+| Von {min} bis {max} | {min} 至 {max} | Sonstiges: `voucherRange` |
+| Dieser Bon wird mit einem Gutschein bezahlt. | 此小票正在用礼券支付。 | Sonstiges: `voucherNotWithRedeem` |
+| Code | 券码 | Sonstiges: `voucherCode` |
+| Wert | 面值 | Sonstiges: `voucherValue` |
+| Guthaben | 余额 | Sonstiges: `voucherBalance` |
+| Diesen Gutschein kennt die Kassa nicht. | 收银系统里没有这张礼券。 | Sonstiges: `voucherUnknown` |
+| Gültig | 有效 | Sonstiges: `voucherStateActive` |
+| Aufgebraucht | 已用完 | Sonstiges: `voucherStateEmpty` |
+| Storniert | 已作废 | Sonstiges: `voucherStateVoided` |
+| Überzogen | 已透支 | Sonstiges: `voucherStateOverdrawn` |
+| Übungs-Gutschein | 测试礼券 | Sonstiges: `voucherIsTest` |
+| Verkauft | 售出 | Sonstiges: `voucherMoveSale` |
+| Eingelöst | 已使用 | Sonstiges: `voucherMoveRedeem` |
+| Verkauf storniert | 销售已作废 | Sonstiges: `voucherMoveVoidSale` |
+| Einlösung storniert | 使用已作废 | Sonstiges: `voucherMoveVoidRedeem` |
+| Gutschein drucken | 打印礼券 | Sonstiges: `voucherPrint` |
 
 ## Unsicher
 

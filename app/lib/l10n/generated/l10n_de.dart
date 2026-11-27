@@ -1680,4 +1680,77 @@ class L10nDe extends L10n {
 
   @override
   String get kassaPayOutDone => 'Auszahlen';
+
+  @override
+  String get kassaVoucher => 'Gutschein';
+
+  @override
+  String get voucherSell => 'Verkaufen';
+
+  @override
+  String get voucherCheck => 'Prüfen';
+
+  @override
+  String get voucherOther => 'Anderer Betrag';
+
+  @override
+  String get voucherAdd => 'Auf den Bon';
+
+  @override
+  String voucherRange(String min, String max) {
+    return 'Von $min bis $max';
+  }
+
+  @override
+  String get voucherNotWithRedeem =>
+      'Dieser Bon wird mit einem Gutschein bezahlt.';
+
+  @override
+  String get voucherCode => 'Code';
+
+  @override
+  String get voucherValue => 'Wert';
+
+  @override
+  String get voucherBalance => 'Guthaben';
+
+  @override
+  String get voucherUnknown => 'Diesen Gutschein kennt die Kassa nicht.';
+
+  @override
+  String get voucherStateActive => 'Gültig';
+
+  @override
+  String get voucherStateEmpty => 'Aufgebraucht';
+
+  @override
+  String get voucherStateVoided => 'Storniert';
+
+  @override
+  String get voucherStateOverdrawn => 'Überzogen';
+
+  @override
+  String get voucherIsTest => 'Übungs-Gutschein';
+
+  @override
+  String get voucherMoveSale => 'Verkauft';
+
+  @override
+  String get voucherMoveRedeem => 'Eingelöst';
+
+  @override
+  String get voucherMoveVoidSale => 'Verkauf storniert';
+
+  @override
+  String get voucherMoveVoidRedeem => 'Einlösung storniert';
+
+  @override
+  String get voucherPrint => 'Gutschein drucken';
+
+  @override
+  String get bonsVoidVoucherRedeemed =>
+      'Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren.';
+
+  @override
+  String get bonsVoucherPrinted => 'Gutschein gedruckt';
 }

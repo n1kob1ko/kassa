@@ -242,7 +242,9 @@ void main() {
     // 100 % auf die Ware: es bleibt das Pfand der Cola, 0,25 €.
     expect(cartOf(t).totalCents, 25);
     await _tap(t, 'more-button');
-    expect(find.byKey(const Key('more-voucher')), findsNothing);
+    // Gutschein verkaufen steht seit Task 10 im Blatt "Mehr"; Bezahlen mit
+    // Gutschein gibt es unter 0 trotzdem nicht (unten).
+    expect(find.byKey(const Key('more-voucher')), findsOneWidget);
     await _tap(t, 'more-deposit-return');
     await _tapTimes(t, 'deposit-return-plus-25', 2);
     await _tap(t, 'deposit-return-add');

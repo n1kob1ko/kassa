@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 478 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 501 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -124,6 +124,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Pfand zurück | Depozito iadesi | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | Nakit öde {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | Geri öde | Kassa: `kassaPayOutDone` |
+| Gutschein | Hediye çeki | Kassa: `kassaVoucher` |
 
 ## Kartenzahlung
 
@@ -286,6 +287,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | {amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş. | Bons: `bonsVoidCardBackTip` |
 | Zwischensumme | Ara toplam | Bons: `bonsSubtotal` |
 | davon Trinkgeld | bunun bahşişi | Bons: `bonsTipIncluded` |
+| Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | Hediye çeki zaten kullanıldı. Bu fiş iptal edilemez. | Bons: `bonsVoidVoucherRedeemed` |
+| Gutschein gedruckt | Hediye çeki yazdırıldı | Bons: `bonsVoucherPrinted` |
 
 ## Artikel
 
@@ -568,6 +571,26 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Diverses {percent} % | Çeşitli {percent} % | Sonstiges: `openAmountLine` |
 | Zurück | İade | Sonstiges: `depositReturnTotal` |
 | Auf den Bon | Fişe ekle | Sonstiges: `depositReturnAdd` |
+| Verkaufen | Sat | Sonstiges: `voucherSell` |
+| Prüfen | Kontrol et | Sonstiges: `voucherCheck` |
+| Anderer Betrag | Başka tutar | Sonstiges: `voucherOther` |
+| Auf den Bon | Fişe ekle | Sonstiges: `voucherAdd` |
+| Von {min} bis {max} | {min} ile {max} arası | Sonstiges: `voucherRange` |
+| Dieser Bon wird mit einem Gutschein bezahlt. | Bu fiş bir hediye çekiyle ödeniyor. | Sonstiges: `voucherNotWithRedeem` |
+| Code | Kod | Sonstiges: `voucherCode` |
+| Wert | Değer | Sonstiges: `voucherValue` |
+| Guthaben | Bakiye | Sonstiges: `voucherBalance` |
+| Diesen Gutschein kennt die Kassa nicht. | Kasa bu hediye çekini tanımıyor. | Sonstiges: `voucherUnknown` |
+| Gültig | Geçerli | Sonstiges: `voucherStateActive` |
+| Aufgebraucht | Bitti | Sonstiges: `voucherStateEmpty` |
+| Storniert | İptal edildi | Sonstiges: `voucherStateVoided` |
+| Überzogen | Eksi bakiye | Sonstiges: `voucherStateOverdrawn` |
+| Übungs-Gutschein | Test hediye çeki | Sonstiges: `voucherIsTest` |
+| Verkauft | Satıldı | Sonstiges: `voucherMoveSale` |
+| Eingelöst | Kullanıldı | Sonstiges: `voucherMoveRedeem` |
+| Verkauf storniert | Satış iptal edildi | Sonstiges: `voucherMoveVoidSale` |
+| Einlösung storniert | Kullanım iptal edildi | Sonstiges: `voucherMoveVoidRedeem` |
+| Gutschein drucken | Hediye çekini yazdır | Sonstiges: `voucherPrint` |
 
 ## Unsicher
 

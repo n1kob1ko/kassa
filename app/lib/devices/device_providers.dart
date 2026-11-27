@@ -220,6 +220,13 @@ class _NoPrinter implements ReceiptPrinter {
   Future<PrintOutcome> printSetupFacts(SetupFacts facts) async => _outcome;
 
   @override
+  Future<PrintOutcome> printVoucher(
+    SoldVoucher voucher, {
+    required DateTime soldAt,
+    required bool isTest,
+  }) async => _outcome;
+
+  @override
   Future<PrintOutcome> printDayReport(
     DaySummary summary, {
     required String? registerName,

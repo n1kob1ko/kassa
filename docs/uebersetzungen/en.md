@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 478 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 501 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -124,6 +124,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Pfand zurück | Deposit return | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | Pay out cash {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | Pay out | Kassa: `kassaPayOutDone` |
+| Gutschein | Voucher | Kassa: `kassaVoucher` |
 
 ## Kartenzahlung
 
@@ -286,6 +287,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | Refund {amount} in SumUp, incl. tip {tip}. | Bons: `bonsVoidCardBackTip` |
 | Zwischensumme | Subtotal | Bons: `bonsSubtotal` |
 | davon Trinkgeld | of which tip | Bons: `bonsTipIncluded` |
+| Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | The voucher has already been redeemed. This receipt cannot be voided. | Bons: `bonsVoidVoucherRedeemed` |
+| Gutschein gedruckt | Voucher printed | Bons: `bonsVoucherPrinted` |
 
 ## Artikel
 
@@ -568,6 +571,26 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Diverses {percent} % | Misc. {percent} % | Sonstiges: `openAmountLine` |
 | Zurück | Refund | Sonstiges: `depositReturnTotal` |
 | Auf den Bon | Add to receipt | Sonstiges: `depositReturnAdd` |
+| Verkaufen | Sell | Sonstiges: `voucherSell` |
+| Prüfen | Check | Sonstiges: `voucherCheck` |
+| Anderer Betrag | Other amount | Sonstiges: `voucherOther` |
+| Auf den Bon | Add to receipt | Sonstiges: `voucherAdd` |
+| Von {min} bis {max} | From {min} to {max} | Sonstiges: `voucherRange` |
+| Dieser Bon wird mit einem Gutschein bezahlt. | This receipt is being paid with a voucher. | Sonstiges: `voucherNotWithRedeem` |
+| Code | Code | Sonstiges: `voucherCode` |
+| Wert | Value | Sonstiges: `voucherValue` |
+| Guthaben | Balance | Sonstiges: `voucherBalance` |
+| Diesen Gutschein kennt die Kassa nicht. | The register does not know this voucher. | Sonstiges: `voucherUnknown` |
+| Gültig | Valid | Sonstiges: `voucherStateActive` |
+| Aufgebraucht | Used up | Sonstiges: `voucherStateEmpty` |
+| Storniert | Voided | Sonstiges: `voucherStateVoided` |
+| Überzogen | Overdrawn | Sonstiges: `voucherStateOverdrawn` |
+| Übungs-Gutschein | Test voucher | Sonstiges: `voucherIsTest` |
+| Verkauft | Sold | Sonstiges: `voucherMoveSale` |
+| Eingelöst | Redeemed | Sonstiges: `voucherMoveRedeem` |
+| Verkauf storniert | Sale voided | Sonstiges: `voucherMoveVoidSale` |
+| Einlösung storniert | Redemption voided | Sonstiges: `voucherMoveVoidRedeem` |
+| Gutschein drucken | Print voucher | Sonstiges: `voucherPrint` |
 
 ## Unsicher
 
@@ -577,4 +600,4 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Kassa: `kassaPaidExact` | Passend bezahlt | Exact amount | Neu "Exact amount" (vorher "Paid exact"). Steht bei "Verkauf fertig", wenn kein Rückgeld bleibt. |
 | Kopfleiste und Reiter: `shellTabKassa` | Kassa | Register | Der Reiter "Kassa" heißt "Register". Passt das? |
 
-Gleich wie Deutsch (bitte kurz prüfen, ob das so passt): `kassaTagVegan` (VEGAN), `dateMonthApril` (April), `dateMonthAugust` (August), `dateMonthSeptember` (September), `dateMonthNovember` (November), `itemsVegan` (Vegan), `closeReasonBank` (Bank), `dateMonthShortFebruary` (Feb), `dateMonthShortApril` (Apr), `dateMonthShortAugust` (Aug), `dateMonthShortSeptember` (Sep), `dateMonthShortNovember` (Nov).
+Gleich wie Deutsch (bitte kurz prüfen, ob das so passt): `kassaTagVegan` (VEGAN), `dateMonthApril` (April), `dateMonthAugust` (August), `dateMonthSeptember` (September), `dateMonthNovember` (November), `itemsVegan` (Vegan), `closeReasonBank` (Bank), `dateMonthShortFebruary` (Feb), `dateMonthShortApril` (Apr), `dateMonthShortAugust` (Aug), `dateMonthShortSeptember` (Sep), `dateMonthShortNovember` (Nov), `voucherCode` (Code).

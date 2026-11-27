@@ -34,10 +34,17 @@ class CartController extends Notifier<Cart> {
   void addOpenAmount({required int amountCents, required TaxRate rate}) =>
       _set(state.addOpenAmount(amountCents: amountCents, rate: rate));
 
+  /// Ein verkaufter Gutschein über [valueCents] als eigene Zeile (siehe
+  /// [Cart.addVoucherSale]).
+  void addVoucherSale({required int valueCents}) =>
+      _set(state.addVoucherSale(valueCents: valueCents));
+
   /// Die Menge einer Zeile. Bei einer Zeile "Pfand zurück" geht sie über
-  /// [Cart.setDepositReturn]: höchstens 99, 0 nimmt die Zeile weg.
+  /// [Cart.setDepositReturn]: höchstens 99, 0 nimmt die Zeile weg. Eine
+  /// Gutschein-Zeile hat immer die Menge 1: mehr ändert nichts.
   void setQuantity(String lineId, int quantity) {
     final line = state.lines.where((l) => l.lineId == lineId).firstOrNull;
+    if (line != null && line.isVoucherSale && quantity > 1) return;
     if (line != null && line.isDepositReturn) {
       setDepositReturns({
         -line.item.depositCents: quantity.clamp(0, maxQuantity),

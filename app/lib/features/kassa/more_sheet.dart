@@ -14,16 +14,12 @@ import 'cash_sheet.dart' show PayColumnFrame;
 /// Was im Kopf der Bon-Spalte stehen kann.
 enum HeadAction { openAmount, depositReturn, voucher }
 
-/// Ob der Gutschein schon ein Blatt hat. Erst dann liefert [headActions] ihn,
-/// auch wenn der Schalter an ist.
-const voucherHeadActionReady = false;
-
 /// Die Funktionen, die [staff] im Kopf der Bon-Spalte sieht, in dieser
 /// Reihenfolge: der freie Betrag, wenn er erlaubt ist (wie in 1a); "Pfand
 /// zurück", wenn der Schalter die Person erlaubt und die Speisekarte einen
-/// Pfand-Betrag kennt; der Gutschein, wenn er an ist (und sein Blatt da ist,
-/// siehe [voucherHeadActionReady]). Eine: ihre Taste steht im Kopf; zwei oder
-/// drei: die Taste "Mehr"; keine: nichts.
+/// Pfand-Betrag kennt; der Gutschein, wenn er an ist (für alle Personen).
+/// Eine: ihre Taste steht im Kopf; zwei oder drei: die Taste "Mehr"; keine:
+/// nichts.
 List<HeadAction> headActions({
   required RegisterSettings settings,
   required Staff staff,
@@ -33,7 +29,7 @@ List<HeadAction> headActions({
   if (settings.depositReturnAccess.allows(staff) &&
       depositAmounts(catalog).isNotEmpty)
     HeadAction.depositReturn,
-  if (voucherHeadActionReady && settings.voucherEnabled) HeadAction.voucher,
+  if (settings.voucherEnabled) HeadAction.voucher,
 ];
 
 /// Beschriftung, Zeichen und Schlüssel einer Funktion im Kopf ([headKey]) und
@@ -55,8 +51,7 @@ List<HeadAction> headActions({
     moreKey: const Key('more-deposit-return'),
   ),
   HeadAction.voucher => (
-    // Bis der Gutschein sein Blatt hat: der Text seines Schalters.
-    label: l.settingsVoucher,
+    label: l.kassaVoucher,
     icon: LucideIcons.gift,
     headKey: const Key('voucher-button'),
     moreKey: const Key('more-voucher'),

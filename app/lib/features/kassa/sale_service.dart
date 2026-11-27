@@ -26,7 +26,9 @@ class SaleResult {
     required this.receipt,
     required this.print,
     Future<PrintOutcome?>? kitchen,
-  }) : kitchen = kitchen ?? Future.value();
+    Future<List<PrintOutcome>>? voucherPrints,
+  }) : kitchen = kitchen ?? Future.value(),
+       voucherPrints = voucherPrints ?? Future.value(const []);
 
   /// Der gespeicherte Bon.
   final Receipt receipt;
@@ -42,6 +44,13 @@ class SaleResult {
   /// Ergebnis; [print] und der gespeicherte Bon bleiben davon unberührt.
   /// Wirft nie.
   final Future<PrintOutcome?> kitchen;
+
+  /// Die Abschnitte der verkauften Gutscheine, je Gutschein ein Ergebnis in
+  /// der Reihenfolge der Zeilen. Sie kommen nach dem Kundenbon und nur, wenn
+  /// er ohne Fehler gedruckt ist; sonst (und ohne verkauften Gutschein) ist
+  /// die Liste leer: "Gutschein drucken" in "Verkauf fertig" holt sie nach.
+  /// Wirft nie.
+  final Future<List<PrintOutcome>> voucherPrints;
 }
 
 sealed class CardSaleOutcome {
@@ -155,6 +164,9 @@ class SaleService {
 
   /// Der Küchenbon je `saleId`, wie [_prints].
   final Map<String, Future<PrintOutcome?>> _kitchenPrints = {};
+
+  /// Die Abschnitte der Gutscheine je `saleId`, wie [_prints].
+  final Map<String, Future<List<PrintOutcome>>> _voucherPrints = {};
 
   /// Barverkäufe, bei denen der Befehl für die Lade nicht beim Drucker
   /// angekommen ist: "Nochmal drucken" in der Fertig-Ansicht holt ihn nach.
@@ -290,6 +302,7 @@ class SaleService {
               receipt: known,
               print: print,
               kitchen: _kitchenPrints[paymentId],
+              voucherPrints: _voucherPrints[paymentId],
             ),
           );
         }
@@ -521,6 +534,7 @@ class SaleService {
         receipt: receipt,
         print: known,
         kitchen: _kitchenPrints[key],
+        voucherPrints: _voucherPrints[key],
       );
     }
     final (print, kitchen) = _withKitchen(
@@ -533,9 +547,74 @@ class SaleService {
         queued: queued,
       ),
     );
+    final vouchers = _vouchersAfter(
+      receipt,
+      print,
+      startWhen: (customer) => customer.ok,
+    );
     _prints[key] = print;
     _kitchenPrints[key] = kitchen;
-    return SaleResult(receipt: receipt, print: print, kitchen: kitchen);
+    _voucherPrints[key] = vouchers;
+    return SaleResult(
+      receipt: receipt,
+      print: print,
+      kitchen: kitchen,
+      voucherPrints: vouchers,
+    );
+  }
+
+  /// Die Abschnitte der Gutscheine von [receipt], einer nach dem anderen in
+  /// der Reihenfolge der Zeilen, sobald das Ergebnis des Kundenbons
+  /// ([customer]) feststeht und [startWhen] es erlaubt (heute: der Bon ist
+  /// ohne Fehler gedruckt). Ohne verkauften Gutschein oder ohne Erlaubnis
+  /// eine leere Liste. Wirft nie.
+  Future<List<PrintOutcome>> _vouchersAfter(
+    Receipt receipt,
+    Future<PrintOutcome> customer, {
+    required bool Function(PrintOutcome customer) startWhen,
+  }) async {
+    if (receipt.kind != ReceiptKind.sale || receipt.soldVouchers.isEmpty) {
+      return const [];
+    }
+    final PrintOutcome outcome;
+    try {
+      outcome = await customer;
+    } catch (_) {
+      return const [];
+    }
+    if (!startWhen(outcome)) return const [];
+    final sold = [...receipt.soldVouchers]
+      ..sort((a, b) => a.linePosition.compareTo(b.linePosition));
+    return [for (final v in sold) await printVoucher(receipt, v)];
+  }
+
+  /// Druckt den Abschnitt des Gutscheins [voucher], der auf [receipt]
+  /// verkauft wurde ("Gutschein drucken" in "Verkauf fertig" und in "Bons").
+  /// Ohne eingerichteten Drucker `notSetUp`, ein unerwarteter Fehler ist
+  /// `unreachable`. Ob es ein Übungs-Gutschein ist, sagt der Gutschein
+  /// selbst; findet die Kassa ihn nicht, druckt sie ihn als Übung (lieber
+  /// ungültig als falsch gültig). Wirft nie.
+  Future<PrintOutcome> printVoucher(
+    Receipt receipt,
+    SoldVoucher voucher,
+  ) async {
+    if ((await _settings()).printerKind == PrinterKind.none) {
+      return const PrintOutcome.failed(PrintProblem.notSetUp);
+    }
+    try {
+      final known = await _ref
+          .read(voucherRepositoryProvider)
+          .byId(voucher.voucherId);
+      return await _ref
+          .read(receiptPrinterProvider)
+          .printVoucher(
+            voucher,
+            soldAt: receipt.createdAt,
+            isTest: known?.isTest ?? true,
+          );
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
   }
 
   Future<String> _businessName() async {

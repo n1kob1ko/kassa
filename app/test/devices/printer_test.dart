@@ -10,6 +10,7 @@ import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
 import 'package:kassa/domain/report_layout.dart';
+import 'package:kassa/domain/voucher_layout.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 
 import '../support/report_samples.dart';
@@ -367,6 +368,34 @@ void main() {
       );
     },
   );
+
+  test('printVoucher schickt den Abschnitt des Gutscheins, nach der '
+      'Zustandsfrage', () async {
+    final t = RecordingTransport();
+    const v = SoldVoucher(
+      voucherId: 'v',
+      code: '12345678',
+      valueCents: 2500,
+      linePosition: 0,
+    );
+    final at = DateTime(2026, 11, 17, 11);
+    final outcome = await printerOf(t)
+        .printVoucher(v, soldAt: at, isTest: true);
+    expect(outcome.ok, isTrue);
+    expect(t.sent, [
+      encodeEscPos(
+        layoutVoucher(v, business, soldAt: at, isTest: true),
+        columns: 48,
+      ),
+    ]);
+    expect(t.asked, [escposStatusPrinter]);
+    expect(
+      (await printerOf(
+        null,
+      ).printVoucher(v, soldAt: at, isTest: false)).problem,
+      PrintProblem.notSetUp,
+    );
+  });
 
   test('testPrint schickt den Testdruck', () async {
     final t = RecordingTransport();

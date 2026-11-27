@@ -853,6 +853,51 @@ void main() {
       expect(t.takeException(), isNull, reason: language.name);
     }
   });
+
+  testWidgets('Bon-Rabatt zählt keinen Gutschein: 9,40 € Ware und ein '
+      'Gutschein über 25,00 €, 10 % sind 0,94 €, Summe 33,46 €', (t) async {
+    // Frühlingsrollen 4,90 € und Edamame 4,50 €, ohne Pfand.
+    await openWithDiscount(
+      t,
+      FeatureAccess.all,
+      ids: const ['fruehlingsrollen', 'edamame'],
+    );
+    await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+    await _tap(t, 'voucher-button');
+    await _tap(t, 'voucher-preset-2500');
+    await _tap(t, 'voucher-add');
+    expect(textOf(t, const Key('cart-total')), '34,40 €');
+
+    await _tap(t, 'discount-button');
+    // Der Wert vor dem Rabatt ist die Ware ohne den Gutschein.
+    expect(textOf(t, const Key('discount-target')), '9,40 €');
+    await _tap(t, 'discount-percent-10');
+    await _tap(t, 'discount-reason-promotion');
+    expect(textOf(t, const Key('discount-new')), '8,46 €');
+    await _tap(t, 'discount-apply');
+
+    final pricing = cartOf(t).pricing;
+    expect(pricing.receiptDiscountCents, 94);
+    final voucher = cartOf(t).lines.indexWhere((l) => l.isVoucherSale);
+    expect(pricing.lines[voucher].discountCents, 0);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('receipt-discount')),
+        matching: find.text('−0,94 €'),
+      ),
+      findsOneWidget,
+    );
+    final line = cartOf(t).lines[voucher];
+    expect(find.byKey(Key('line-discount-${line.lineId}')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(Key('line-${line.lineId}')),
+        matching: find.text('25,00 €'),
+      ),
+      findsOneWidget,
+    );
+    expect(textOf(t, const Key('cart-total')), '33,46 €');
+  });
 }
 
 /// Ein Verkaufsdienst, dessen "Abschließen" auf [hold] wartet: ein Fehler

@@ -2442,5 +2442,105 @@
   "kassaPayOutDone": "Auszahlen",
   "@kassaPayOutDone": {
     "description": "Verkauf fertig nach einer Auszahlung: über dem Betrag, den die Person dem Kunden gibt (an Stelle von Rückgeld)."
+  },
+  "kassaVoucher": "Gutschein",
+  "@kassaVoucher": {
+    "description": "Taste im Kopf der Bon-Spalte und im Blatt Mehr, Titel des Blatts Gutschein und Name der Gutschein-Zeile am Bildschirm; gespeichert und gedruckt wird immer der deutsche Name."
+  },
+  "voucherSell": "Verkaufen",
+  "@voucherSell": {
+    "description": "Blatt Gutschein: Reiter zum Verkaufen eines Gutscheins."
+  },
+  "voucherCheck": "Prüfen",
+  "@voucherCheck": {
+    "description": "Blatt Gutschein: Reiter zum Prüfen eines Gutscheins (Code tippen, Guthaben sehen)."
+  },
+  "voucherOther": "Anderer Betrag",
+  "@voucherOther": {
+    "description": "Blatt Gutschein, Verkaufen: Taste für einen Wert über das Zahlenfeld statt der Vorschläge."
+  },
+  "voucherAdd": "Auf den Bon",
+  "@voucherAdd": {
+    "description": "Blatt Gutschein, Verkaufen: legt den Gutschein als Zeile auf den Bon."
+  },
+  "voucherRange": "Von {min} bis {max}",
+  "@voucherRange": {
+    "description": "Blatt Gutschein: Grund unter der grauen Taste Auf den Bon, wenn der Wert außerhalb der Grenzen liegt; min und max wie \"1,00 €\" und \"500,00 €\".",
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "voucherNotWithRedeem": "Dieser Bon wird mit einem Gutschein bezahlt.",
+  "@voucherNotWithRedeem": {
+    "description": "Blatt Gutschein: Grund unter der grauen Taste Auf den Bon, wenn am Bon schon Gutscheine zum Bezahlen gewählt sind."
+  },
+  "voucherCode": "Code",
+  "@voucherCode": {
+    "description": "Überschrift über dem Code eines Gutscheins (8 Ziffern) beim Prüfen, in Verkauf fertig und im Bon-Detail."
+  },
+  "voucherValue": "Wert",
+  "@voucherValue": {
+    "description": "Wert eines Gutscheins beim Verkauf (Überschrift über den Vorschlägen) und beim Prüfen."
+  },
+  "voucherBalance": "Guthaben",
+  "@voucherBalance": {
+    "description": "Prüfen: was am Gutschein noch übrig ist."
+  },
+  "voucherUnknown": "Diesen Gutschein kennt die Kassa nicht.",
+  "@voucherUnknown": {
+    "description": "Prüfen: kein Gutschein hat den getippten Code."
+  },
+  "voucherStateActive": "Gültig",
+  "@voucherStateActive": {
+    "description": "Prüfen: Zustand eines Gutscheins mit Guthaben."
+  },
+  "voucherStateEmpty": "Aufgebraucht",
+  "@voucherStateEmpty": {
+    "description": "Prüfen: Zustand eines Gutscheins ohne Guthaben (ganz eingelöst)."
+  },
+  "voucherStateVoided": "Storniert",
+  "@voucherStateVoided": {
+    "description": "Prüfen: Zustand eines Gutscheins, dessen Verkauf storniert ist."
+  },
+  "voucherStateOverdrawn": "Überzogen",
+  "@voucherStateOverdrawn": {
+    "description": "Prüfen: Zustand eines Gutscheins mit Guthaben unter 0 (an zwei Kassen ohne Abgleich eingelöst)."
+  },
+  "voucherIsTest": "Übungs-Gutschein",
+  "@voucherIsTest": {
+    "description": "Prüfen: Schild bei einem Gutschein, der im Probebetrieb verkauft wurde."
+  },
+  "voucherMoveSale": "Verkauft",
+  "@voucherMoveSale": {
+    "description": "Prüfen: Bewegung, der Gutschein wurde verkauft."
+  },
+  "voucherMoveRedeem": "Eingelöst",
+  "@voucherMoveRedeem": {
+    "description": "Prüfen: Bewegung, mit dem Gutschein wurde bezahlt."
+  },
+  "voucherMoveVoidSale": "Verkauf storniert",
+  "@voucherMoveVoidSale": {
+    "description": "Prüfen: Bewegung, der Verkauf des Gutscheins wurde storniert."
+  },
+  "voucherMoveVoidRedeem": "Einlösung storniert",
+  "@voucherMoveVoidRedeem": {
+    "description": "Prüfen: Bewegung, der Bon, der mit dem Gutschein bezahlt wurde, wurde storniert."
+  },
+  "voucherPrint": "Gutschein drucken",
+  "@voucherPrint": {
+    "description": "Verkauf fertig und Bon-Detail: druckt den Abschnitt eines verkauften Gutscheins (noch einmal)."
+  },
+  "bonsVoidVoucherRedeemed": "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren.",
+  "@bonsVoidVoucherRedeemed": {
+    "description": "Storno eines Bons, auf dem ein Gutschein verkauft wurde, der schon eingelöst ist."
+  },
+  "bonsVoucherPrinted": "Gutschein gedruckt",
+  "@bonsVoucherPrinted": {
+    "description": "Bon-Detail: Hinweis, nachdem der Abschnitt eines Gutscheins gedruckt ist."
   }
 }

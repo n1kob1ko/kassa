@@ -17,6 +17,8 @@ import '../../ui/tokens.dart';
 /// die Namen der Speisekarte. Ein freier Betrag heißt "Diverses 20 %" in der
 /// Bediensprache, eine Zeile "Pfand zurück" ebenso; sie zeigt das
 /// zurückgegebene Pfand mit Minus ("−0,75 €"), und ihr Plus ist bei 99 grau.
+/// Eine Gutschein-Zeile heißt "Gutschein" in der Bediensprache, zeigt den
+/// Wert und hat kein Plus (Menge immer 1); Minus nimmt sie weg.
 ///
 /// Hat die Zeile einen Rabatt, steht darunter eine kleine Reihe mit Höhe,
 /// Grund und dem Betrag des Rabatts ([discountCents]). Mit [onDiscount] sind
@@ -93,7 +95,7 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
     final l = L10n.of(context);
     final menuText = ref.watch(menuTextProvider);
     final name = cartLineName(l, menuText, line);
-    final info = line.item.info;
+    final info = line.isVoucherSale ? null : line.item.info;
     final sub = line.options.isNotEmpty
         ? line.options.map((o) => menuText(o.name)).join(l.uiListSeparator)
         : (info == null ? null : menuText(info));
@@ -167,14 +169,19 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
                   ),
                 ),
               ),
-              _StepButton(
-                key: Key('qty-plus-$id'),
-                icon: LucideIcons.plus,
-                label: l.kassaOneMore(name),
-                onTap: line.isDepositReturn && line.quantity >= maxQuantity
-                    ? null
-                    : () => widget.onQuantity(line.quantity + 1),
-              ),
+              if (line.isVoucherSale)
+                // Kein Plus: jeder Gutschein ist eine eigene Zeile. Der Platz
+                // bleibt, damit die Preise untereinander stehen.
+                const SizedBox(width: KassaTokens.minTap)
+              else
+                _StepButton(
+                  key: Key('qty-plus-$id'),
+                  icon: LucideIcons.plus,
+                  label: l.kassaOneMore(name),
+                  onTap: line.isDepositReturn && line.quantity >= maxQuantity
+                      ? null
+                      : () => widget.onQuantity(line.quantity + 1),
+                ),
               const SizedBox(width: KassaTokens.spaceSm),
               _discountTarget(
                 AlignmentDirectional.centerEnd,
@@ -295,8 +302,8 @@ class DiscountRow extends StatelessWidget {
 
 /// Der Name einer Bon-Zeile am Bildschirm, in der Bediensprache: ein freier
 /// Betrag heißt [L10n.openAmountLine] ("Diverses 20 %"), eine Zeile "Pfand
-/// zurück" [L10n.kassaDepositReturn], sonst der Name aus der Speisekarte über
-/// [menuText].
+/// zurück" [L10n.kassaDepositReturn], eine Gutschein-Zeile [L10n.kassaVoucher],
+/// sonst der Name aus der Speisekarte über [menuText].
 String cartLineName(
   L10n l,
   String Function(String source) menuText,
@@ -305,6 +312,8 @@ String cartLineName(
     ? l.openAmountLine(line.item.taxRate.percent)
     : line.isDepositReturn
     ? l.kassaDepositReturn
+    : line.isVoucherSale
+    ? l.kassaVoucher
     : menuText(line.item.name);
 
 /// "−10 % Stammgast" oder "Rabatt Stammgast", in der Bediensprache.

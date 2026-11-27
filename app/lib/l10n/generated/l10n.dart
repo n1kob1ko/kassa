@@ -2971,6 +2971,144 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Auszahlen'**
   String get kassaPayOutDone;
+
+  /// Taste im Kopf der Bon-Spalte und im Blatt Mehr, Titel des Blatts Gutschein und Name der Gutschein-Zeile am Bildschirm; gespeichert und gedruckt wird immer der deutsche Name.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein'**
+  String get kassaVoucher;
+
+  /// Blatt Gutschein: Reiter zum Verkaufen eines Gutscheins.
+  ///
+  /// In de, this message translates to:
+  /// **'Verkaufen'**
+  String get voucherSell;
+
+  /// Blatt Gutschein: Reiter zum Prüfen eines Gutscheins (Code tippen, Guthaben sehen).
+  ///
+  /// In de, this message translates to:
+  /// **'Prüfen'**
+  String get voucherCheck;
+
+  /// Blatt Gutschein, Verkaufen: Taste für einen Wert über das Zahlenfeld statt der Vorschläge.
+  ///
+  /// In de, this message translates to:
+  /// **'Anderer Betrag'**
+  String get voucherOther;
+
+  /// Blatt Gutschein, Verkaufen: legt den Gutschein als Zeile auf den Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf den Bon'**
+  String get voucherAdd;
+
+  /// Blatt Gutschein: Grund unter der grauen Taste Auf den Bon, wenn der Wert außerhalb der Grenzen liegt; min und max wie "1,00 €" und "500,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Von {min} bis {max}'**
+  String voucherRange(String min, String max);
+
+  /// Blatt Gutschein: Grund unter der grauen Taste Auf den Bon, wenn am Bon schon Gutscheine zum Bezahlen gewählt sind.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Bon wird mit einem Gutschein bezahlt.'**
+  String get voucherNotWithRedeem;
+
+  /// Überschrift über dem Code eines Gutscheins (8 Ziffern) beim Prüfen, in Verkauf fertig und im Bon-Detail.
+  ///
+  /// In de, this message translates to:
+  /// **'Code'**
+  String get voucherCode;
+
+  /// Wert eines Gutscheins beim Verkauf (Überschrift über den Vorschlägen) und beim Prüfen.
+  ///
+  /// In de, this message translates to:
+  /// **'Wert'**
+  String get voucherValue;
+
+  /// Prüfen: was am Gutschein noch übrig ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Guthaben'**
+  String get voucherBalance;
+
+  /// Prüfen: kein Gutschein hat den getippten Code.
+  ///
+  /// In de, this message translates to:
+  /// **'Diesen Gutschein kennt die Kassa nicht.'**
+  String get voucherUnknown;
+
+  /// Prüfen: Zustand eines Gutscheins mit Guthaben.
+  ///
+  /// In de, this message translates to:
+  /// **'Gültig'**
+  String get voucherStateActive;
+
+  /// Prüfen: Zustand eines Gutscheins ohne Guthaben (ganz eingelöst).
+  ///
+  /// In de, this message translates to:
+  /// **'Aufgebraucht'**
+  String get voucherStateEmpty;
+
+  /// Prüfen: Zustand eines Gutscheins, dessen Verkauf storniert ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Storniert'**
+  String get voucherStateVoided;
+
+  /// Prüfen: Zustand eines Gutscheins mit Guthaben unter 0 (an zwei Kassen ohne Abgleich eingelöst).
+  ///
+  /// In de, this message translates to:
+  /// **'Überzogen'**
+  String get voucherStateOverdrawn;
+
+  /// Prüfen: Schild bei einem Gutschein, der im Probebetrieb verkauft wurde.
+  ///
+  /// In de, this message translates to:
+  /// **'Übungs-Gutschein'**
+  String get voucherIsTest;
+
+  /// Prüfen: Bewegung, der Gutschein wurde verkauft.
+  ///
+  /// In de, this message translates to:
+  /// **'Verkauft'**
+  String get voucherMoveSale;
+
+  /// Prüfen: Bewegung, mit dem Gutschein wurde bezahlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Eingelöst'**
+  String get voucherMoveRedeem;
+
+  /// Prüfen: Bewegung, der Verkauf des Gutscheins wurde storniert.
+  ///
+  /// In de, this message translates to:
+  /// **'Verkauf storniert'**
+  String get voucherMoveVoidSale;
+
+  /// Prüfen: Bewegung, der Bon, der mit dem Gutschein bezahlt wurde, wurde storniert.
+  ///
+  /// In de, this message translates to:
+  /// **'Einlösung storniert'**
+  String get voucherMoveVoidRedeem;
+
+  /// Verkauf fertig und Bon-Detail: druckt den Abschnitt eines verkauften Gutscheins (noch einmal).
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein drucken'**
+  String get voucherPrint;
+
+  /// Storno eines Bons, auf dem ein Gutschein verkauft wurde, der schon eingelöst ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren.'**
+  String get bonsVoidVoucherRedeemed;
+
+  /// Bon-Detail: Hinweis, nachdem der Abschnitt eines Gutscheins gedruckt ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein gedruckt'**
+  String get bonsVoucherPrinted;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

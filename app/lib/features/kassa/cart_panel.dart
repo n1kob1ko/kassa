@@ -34,9 +34,10 @@ import 'cart_line_row.dart';
 ///
 /// Im Kopf steht höchstens eine Taste, auch am leeren Bon: mit
 /// [onOpenAmount] "Freier Betrag", mit [onDepositReturn] "Pfand zurück",
-/// mit [onMore] "Mehr" (die Kassa setzt genau eine davon). Ohne alle drei
-/// ist der Kopf genau der von 1.10.0. Eine Zeile "Pfand zurück" ist keine
-/// Tippfläche für den Rabatt; ihre Menge geht über "Pfand zurück".
+/// mit [onVoucher] "Gutschein", mit [onMore] "Mehr" (die Kassa setzt genau
+/// eine davon). Ohne alle vier ist der Kopf genau der von 1.10.0. Eine Zeile
+/// "Pfand zurück" ist keine Tippfläche für den Rabatt; ihre Menge geht über
+/// "Pfand zurück". Eine Gutschein-Zeile auch nicht.
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -50,6 +51,7 @@ class CartPanel extends ConsumerStatefulWidget {
     this.onFinishFree,
     this.onOpenAmount,
     this.onDepositReturn,
+    this.onVoucher,
     this.onMore,
     this.onPayOut,
   });
@@ -74,6 +76,9 @@ class CartPanel extends ConsumerStatefulWidget {
 
   /// Öffnet das Blatt "Pfand zurück"; null: keine Taste im Kopf.
   final VoidCallback? onDepositReturn;
+
+  /// Öffnet das Blatt "Gutschein"; null: keine Taste im Kopf.
+  final VoidCallback? onVoucher;
 
   /// Öffnet das Blatt "Mehr"; null: keine Taste im Kopf.
   final VoidCallback? onMore;
@@ -122,8 +127,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     widget.onPayOut?.call();
   }
 
-  /// Die Taste im Kopf: "Freier Betrag", "Pfand zurück" oder "Mehr"; null:
-  /// keine.
+  /// Die Taste im Kopf: "Freier Betrag", "Pfand zurück", "Gutschein" oder
+  /// "Mehr"; null: keine.
   _HeadAction? _headAction(L10n l) {
     VoidCallback tap(VoidCallback f) => () {
       _dismissToast();
@@ -143,6 +148,15 @@ class _CartPanelState extends ConsumerState<CartPanel> {
         key: const Key('deposit-return-button'),
         label: l.kassaDepositReturn,
         icon: LucideIcons.undo2,
+        onTap: tap(f),
+        halfAtMost: false,
+      );
+    }
+    if (widget.onVoucher case final f?) {
+      return (
+        key: const Key('voucher-button'),
+        label: l.kassaVoucher,
+        icon: LucideIcons.gift,
         onTap: tap(f),
         halfAtMost: false,
       );
@@ -254,7 +268,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                               controller.setQuantity(line.lineId, q),
                           discountCents: pricing.lines[i].ownDiscountCents,
                           onDiscount:
-                              onLineDiscount == null || line.isDepositReturn
+                              onLineDiscount == null ||
+                                  line.isDepositReturn ||
+                                  line.isVoucherSale
                               ? null
                               : () => onLineDiscount(line.lineId),
                         );
@@ -366,7 +382,7 @@ class _Header extends StatelessWidget {
   final bool empty;
   final VoidCallback onClear;
 
-  /// "Freier Betrag", "Pfand zurück" oder "Mehr"; null: keine Taste.
+  /// "Freier Betrag", "Pfand zurück", "Gutschein" oder "Mehr"; null: keine.
   final _HeadAction? action;
 
   @override

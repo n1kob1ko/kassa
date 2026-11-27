@@ -39,6 +39,7 @@ import 'outage_banner.dart';
 import 'sale_done.dart';
 import 'sale_service.dart';
 import 'tip_sheet.dart';
+import 'voucher_sheet.dart';
 
 const _favoritesId = 'favorites';
 
@@ -91,9 +92,10 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 /// von 0,00 € durch einen Rabatt schließt "Abschließen" ohne Bezahlen ab.
 /// Darf die Person einen freien Betrag bonieren, wird die Bon-Spalte mit
 /// "Freier Betrag" im Kopf zum Blatt "Freier Betrag"; ebenso mit "Pfand
-/// zurück" zum Blatt "Pfand zurück". Darf sie beides, steht im Kopf "Mehr"
-/// mit einem Blatt, das zu beiden führt. Liegt die Summe unter 0, zahlt "Bar
-/// auszahlen" den Betrag bar aus.
+/// zurück" zum Blatt "Pfand zurück", ebenso mit "Gutschein" zum Blatt
+/// "Gutschein" (Verkaufen und Prüfen). Darf sie zwei oder drei davon, steht im
+/// Kopf "Mehr" mit einem Blatt, das zu allen führt. Liegt die Summe unter 0,
+/// zahlt "Bar auszahlen" den Betrag bar aus.
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -110,6 +112,7 @@ enum _Side {
   openAmount,
   more,
   depositReturn,
+  voucher,
   waitingForCard,
   done,
 }
@@ -502,6 +505,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         ? const <HeadAction>[]
         : headActions(settings: stored, staff: staff, catalog: catalog);
     final mayDepositReturn = actions.contains(HeadAction.depositReturn);
+    final mayVoucher = actions.contains(HeadAction.voucher);
     // Wird der Rabatt, der freie Betrag oder "Pfand zurück" ausgeschaltet,
     // während sein Blatt offen ist, steht wieder der Bon da, auch wenn das
     // Recht später zurückkommt: das Blatt öffnet sich nicht von selbst. Ebenso
@@ -509,6 +513,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     if ((_side == _Side.discount && !mayDiscount) ||
         (_side == _Side.openAmount && !mayOpenAmount) ||
         (_side == _Side.depositReturn && !mayDepositReturn) ||
+        (_side == _Side.voucher && !mayVoucher) ||
         (_side == _Side.more && actions.length < 2)) {
       _side = _Side.cart;
     }
@@ -518,8 +523,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       () => _side = switch (action) {
         HeadAction.openAmount => _Side.openAmount,
         HeadAction.depositReturn => _Side.depositReturn,
-        // Der Gutschein hat noch kein Blatt (siehe voucherHeadActionReady).
-        HeadAction.voucher => _Side.cart,
+        HeadAction.voucher => _Side.voucher,
       },
     );
     final single = actions.length == 1 ? actions.single : null;
@@ -635,6 +639,9 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onDepositReturn: single == HeadAction.depositReturn
                   ? () => open(HeadAction.depositReturn)
                   : null,
+              onVoucher: single == HeadAction.voucher
+                  ? () => open(HeadAction.voucher)
+                  : null,
               onMore: actions.length >= 2
                   ? () => setState(() => _side = _Side.more)
                   : null,
@@ -689,6 +696,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
           _Side.depositReturn => _AboveBottomBar(
             child: DepositReturnSheet(
               amounts: depositAmounts(catalog),
+              onClose: () => setState(() => _side = _Side.cart),
+            ),
+          ),
+          _Side.voucher => _AboveBottomBar(
+            child: VoucherSheet(
               onClose: () => setState(() => _side = _Side.cart),
             ),
           ),

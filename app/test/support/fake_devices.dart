@@ -26,6 +26,35 @@ class FakePrinter implements ReceiptPrinter {
       if (e.startsWith('print')) e.substring(e.indexOf(':') + 1),
   ];
 
+  /// Was gedruckt wurde, in der Reihenfolge, je Auftrag mit seiner Art:
+  /// `receipt` (ein Bon, mit oder ohne Lade, [id] ist die Bon-Id), `voucher`
+  /// (ein Abschnitt, [id] ist die Kennung des Gutscheins), `drawer`, `test`,
+  /// `setup`, `day-report`, `period-report` und `raster`.
+  List<({String kind, String? id})> get printedJobs => [
+    for (final e in log)
+      switch (e.split(':')) {
+        ['print' || 'print+drawer', final id] => (kind: 'receipt', id: id),
+        [final kind, final id] => (kind: kind, id: id),
+        [final kind, ...] => (kind: kind, id: null),
+        [] => (kind: '', id: null),
+      },
+  ];
+
+  /// Die Abschnitte der Gutscheine aus [printVoucher], in der Reihenfolge
+  /// (im Protokoll als `voucher:<Kennung>`).
+  final List<({SoldVoucher voucher, DateTime soldAt, bool isTest})>
+  voucherSlips = [];
+
+  @override
+  Future<PrintOutcome> printVoucher(
+    SoldVoucher voucher, {
+    required DateTime soldAt,
+    required bool isTest,
+  }) {
+    voucherSlips.add((voucher: voucher, soldAt: soldAt, isTest: isTest));
+    return _call('voucher:${voucher.voucherId}');
+  }
+
   /// Wie oft der Befehl für die Lade geschickt wurde: allein (`drawer`) oder
   /// mit einem Bon (`print+drawer:`).
   int get drawerOpened =>

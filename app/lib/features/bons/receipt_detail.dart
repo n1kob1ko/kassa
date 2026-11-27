@@ -5,11 +5,13 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/app_language.dart';
 import '../../core/money.dart';
 import '../../data/providers.dart';
-import '../../data/receipt_repository.dart' show NotInCurrentChainException;
+import '../../data/receipt_repository.dart'
+    show NotInCurrentChainException, VoucherSaleRedeemedException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
 import '../../domain/discount.dart';
 import '../../domain/receipt.dart';
+import '../../domain/voucher.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
 import '../../ui/ltr.dart';
@@ -50,6 +52,9 @@ class ReceiptDetail extends ConsumerStatefulWidget {
 
 class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
   bool _asking = false;
+
+  /// Ob ein Bondrucker eingerichtet ist (aus dem letzten Bild).
+  bool _hasPrinter = false;
   bool _busy = false;
 
   /// Warum der letzte Storno nicht geklappt hat, sonst `null`.
@@ -97,9 +102,11 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         _busy = false;
       });
     } catch (e) {
-      final failure = e is NotInCurrentChainException
-          ? await _notInChainFailure()
-          : VoidFailure.failed;
+      final failure = switch (e) {
+        NotInCurrentChainException() => await _notInChainFailure(),
+        VoucherSaleRedeemedException() => VoidFailure.voucherRedeemed,
+        _ => VoidFailure.failed,
+      };
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -120,8 +127,12 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     return VoidFailure.olderThanProbe;
   }
 
-  /// Zeigt das Ergebnis des Druckens als Hinweis unten, ohne "Rückgängig".
-  Future<void> _announce(Future<PrintOutcome> print) async {
+  /// Zeigt das Ergebnis des Druckens als Hinweis unten, ohne "Rückgängig";
+  /// gedruckt sagt er [okText] (ohne: "Bon gedruckt").
+  Future<void> _announce(
+    Future<PrintOutcome> print, {
+    String Function(L10n l)? okText,
+  }) async {
     final outcome = await print;
     if (!mounted) return;
     // Ohne Drucker gibt es nichts zu melden.
@@ -130,7 +141,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     showUndoToast(
       context,
       message: outcome.ok
-          ? l.kassaPrinted
+          ? (okText?.call(l) ?? l.kassaPrinted)
           : printProblemText(l, outcome.problem!),
     );
   }
@@ -184,6 +195,22 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     }
   }
 
+  /// Solange ein Gutschein druckt, tun weitere Tipps darauf nichts.
+  bool _printingVoucher = false;
+
+  Future<void> _printVoucher(Receipt receipt, SoldVoucher voucher) async {
+    if (_printingVoucher) return;
+    _printingVoucher = true;
+    try {
+      await _announce(
+        ref.read(saleServiceProvider).printVoucher(receipt, voucher),
+        okText: (l) => l.bonsVoucherPrinted,
+      );
+    } finally {
+      _printingVoucher = false;
+    }
+  }
+
   /// Solange "Küchenbon drucken" läuft, tun weitere Tipps darauf nichts.
   bool _printingKitchen = false;
 
@@ -222,6 +249,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     final settings =
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final hasPrinter = settings.printerKind != PrinterKind.none;
+    _hasPrinter = hasPrinter;
     final canVoid =
         receipt != null &&
         receipt.kind == ReceiptKind.sale &&
@@ -463,6 +491,17 @@ class _Body extends StatelessWidget {
       padding: EdgeInsets.zero,
       children: [
         for (final l in r.lines) _LineRow(l),
+        for (final (i, v) in r.soldVouchers.indexed)
+          _VoucherRow(
+            index: i,
+            voucher: v,
+            // Nur ein Verkauf, der gilt: ein stornierter Gutschein bekommt
+            // keinen neuen Abschnitt.
+            onPrint:
+                state._hasPrinter && r.kind == ReceiptKind.sale && !r.isVoided
+                ? () => state._printVoucher(r, v)
+                : null,
+          ),
         // Der Rabatt auf den ganzen Bon, über der Zwischensumme der Zeilen.
         if (r.discount case final d? when d.amountCents != 0) ...[
           _AmountRow(l.bonsSubtotal, formatEuro(r.subtotalCents)),
@@ -591,6 +630,106 @@ class _Body extends StatelessWidget {
 /// Unter der Zahlung: links der QR-Code (180 dp), rechts die Kassen-ID und
 /// klein, was der Code ist, bzw. dass die Signatur ausgefallen war (beim
 /// Testbon mit "Testbon" darüber).
+/// Ein Gutschein, der auf dem Bon verkauft wurde: "Gutschein" mit Wert und
+/// Code, mit [onPrint] daneben "Gutschein drucken".
+class _VoucherRow extends StatelessWidget {
+  const _VoucherRow({
+    required this.index,
+    required this.voucher,
+    required this.onPrint,
+  });
+
+  final int index;
+  final SoldVoucher voucher;
+  final VoidCallback? onPrint;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final tabular = const [FontFeature.tabularFigures()];
+    final print = onPrint;
+    return Container(
+      key: Key('detail-voucher-$index'),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.accentSoft,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  l.kassaVoucher,
+                  style: text.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: c.accentInk,
+                  ),
+                ),
+              ),
+              const SizedBox(width: KassaTokens.spaceMd),
+              Ltr(
+                child: Text(
+                  formatEuro(voucher.valueCents),
+                  maxLines: 1,
+                  style: text.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: tabular,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: KassaTokens.spaceXxs),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                l.voucherCode,
+                style: text.bodyMedium!.copyWith(color: c.ink2),
+              ),
+              const SizedBox(width: KassaTokens.spaceMd),
+              Expanded(
+                child: Ltr(
+                  child: Text(
+                    formatVoucherCode(voucher.code),
+                    key: Key('detail-voucher-code-$index'),
+                    textAlign: ltrAlign(context, TextAlign.end),
+                    maxLines: 1,
+                    style: text.titleLarge!.copyWith(
+                      letterSpacing: 1,
+                      fontFeatures: tabular,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (print != null) ...[
+            const SizedBox(height: KassaTokens.spaceMd),
+            PrimaryButton(
+              key: Key('detail-voucher-print-$index'),
+              label: l.voucherPrint,
+              icon: LucideIcons.printer,
+              filled: false,
+              height: 64,
+              onPressed: print,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _SignatureBlock extends StatelessWidget {
   const _SignatureBlock(this.stamp);
 

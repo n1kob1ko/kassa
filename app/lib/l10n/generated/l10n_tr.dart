@@ -1662,4 +1662,76 @@ class L10nTr extends L10n {
 
   @override
   String get kassaPayOutDone => 'Geri öde';
+
+  @override
+  String get kassaVoucher => 'Hediye çeki';
+
+  @override
+  String get voucherSell => 'Sat';
+
+  @override
+  String get voucherCheck => 'Kontrol et';
+
+  @override
+  String get voucherOther => 'Başka tutar';
+
+  @override
+  String get voucherAdd => 'Fişe ekle';
+
+  @override
+  String voucherRange(String min, String max) {
+    return '$min ile $max arası';
+  }
+
+  @override
+  String get voucherNotWithRedeem => 'Bu fiş bir hediye çekiyle ödeniyor.';
+
+  @override
+  String get voucherCode => 'Kod';
+
+  @override
+  String get voucherValue => 'Değer';
+
+  @override
+  String get voucherBalance => 'Bakiye';
+
+  @override
+  String get voucherUnknown => 'Kasa bu hediye çekini tanımıyor.';
+
+  @override
+  String get voucherStateActive => 'Geçerli';
+
+  @override
+  String get voucherStateEmpty => 'Bitti';
+
+  @override
+  String get voucherStateVoided => 'İptal edildi';
+
+  @override
+  String get voucherStateOverdrawn => 'Eksi bakiye';
+
+  @override
+  String get voucherIsTest => 'Test hediye çeki';
+
+  @override
+  String get voucherMoveSale => 'Satıldı';
+
+  @override
+  String get voucherMoveRedeem => 'Kullanıldı';
+
+  @override
+  String get voucherMoveVoidSale => 'Satış iptal edildi';
+
+  @override
+  String get voucherMoveVoidRedeem => 'Kullanım iptal edildi';
+
+  @override
+  String get voucherPrint => 'Hediye çekini yazdır';
+
+  @override
+  String get bonsVoidVoucherRedeemed =>
+      'Hediye çeki zaten kullanıldı. Bu fiş iptal edilemez.';
+
+  @override
+  String get bonsVoucherPrinted => 'Hediye çeki yazdırıldı';
 }

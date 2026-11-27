@@ -1640,4 +1640,75 @@ class L10nZh extends L10n {
 
   @override
   String get kassaPayOutDone => '需退付';
+
+  @override
+  String get kassaVoucher => '礼券';
+
+  @override
+  String get voucherSell => '出售';
+
+  @override
+  String get voucherCheck => '查询';
+
+  @override
+  String get voucherOther => '其他金额';
+
+  @override
+  String get voucherAdd => '加入小票';
+
+  @override
+  String voucherRange(String min, String max) {
+    return '$min 至 $max';
+  }
+
+  @override
+  String get voucherNotWithRedeem => '此小票正在用礼券支付。';
+
+  @override
+  String get voucherCode => '券码';
+
+  @override
+  String get voucherValue => '面值';
+
+  @override
+  String get voucherBalance => '余额';
+
+  @override
+  String get voucherUnknown => '收银系统里没有这张礼券。';
+
+  @override
+  String get voucherStateActive => '有效';
+
+  @override
+  String get voucherStateEmpty => '已用完';
+
+  @override
+  String get voucherStateVoided => '已作废';
+
+  @override
+  String get voucherStateOverdrawn => '已透支';
+
+  @override
+  String get voucherIsTest => '测试礼券';
+
+  @override
+  String get voucherMoveSale => '售出';
+
+  @override
+  String get voucherMoveRedeem => '已使用';
+
+  @override
+  String get voucherMoveVoidSale => '销售已作废';
+
+  @override
+  String get voucherMoveVoidRedeem => '使用已作废';
+
+  @override
+  String get voucherPrint => '打印礼券';
+
+  @override
+  String get bonsVoidVoucherRedeemed => '礼券已被使用，此小票无法作废。';
+
+  @override
+  String get bonsVoucherPrinted => '礼券已打印';
 }

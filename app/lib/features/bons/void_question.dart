@@ -16,12 +16,16 @@ enum VoidFailure {
   olderThanProbe,
 
   /// Der Bon gehört nicht zur laufenden Kette, und die Kassa ist in Betrieb.
-  fromTestTime;
+  fromTestTime,
+
+  /// Auf dem Bon wurde ein Gutschein verkauft, der schon eingelöst ist.
+  voucherRedeemed;
 
   String text(L10n l) => switch (this) {
     VoidFailure.failed => l.bonsVoidFailed,
     VoidFailure.olderThanProbe => l.bonsVoidOlderThanProbe,
     VoidFailure.fromTestTime => l.bonsVoidFromTestTime,
+    VoidFailure.voucherRedeemed => l.bonsVoidVoucherRedeemed,
   };
 }
 

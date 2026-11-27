@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 478 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 501 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -124,6 +124,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Pfand zurück | إرجاع الرهن | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | صرف نقدًا {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | ادفع للزبون | Kassa: `kassaPayOutDone` |
+| Gutschein | قسيمة | Kassa: `kassaVoucher` |
 
 ## Kartenzahlung
 
@@ -286,6 +287,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | استرد {amount} في SumUp، منها إكرامية {tip}. | Bons: `bonsVoidCardBackTip` |
 | Zwischensumme | المجموع الفرعي | Bons: `bonsSubtotal` |
 | davon Trinkgeld | منها إكرامية | Bons: `bonsTipIncluded` |
+| Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | تم استخدام القسيمة بالفعل. لا يمكن إلغاء هذه الفاتورة. | Bons: `bonsVoidVoucherRedeemed` |
+| Gutschein gedruckt | تمت طباعة القسيمة | Bons: `bonsVoucherPrinted` |
 
 ## Artikel
 
@@ -568,6 +571,26 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Diverses {percent} % | متفرقات {percent} % | Sonstiges: `openAmountLine` |
 | Zurück | المُرجَع | Sonstiges: `depositReturnTotal` |
 | Auf den Bon | أضف إلى الفاتورة | Sonstiges: `depositReturnAdd` |
+| Verkaufen | بيع | Sonstiges: `voucherSell` |
+| Prüfen | تحقّق | Sonstiges: `voucherCheck` |
+| Anderer Betrag | مبلغ آخر | Sonstiges: `voucherOther` |
+| Auf den Bon | أضف إلى الفاتورة | Sonstiges: `voucherAdd` |
+| Von {min} bis {max} | من {min} إلى {max} | Sonstiges: `voucherRange` |
+| Dieser Bon wird mit einem Gutschein bezahlt. | تُدفع هذه الفاتورة بقسيمة. | Sonstiges: `voucherNotWithRedeem` |
+| Code | الرمز | Sonstiges: `voucherCode` |
+| Wert | القيمة | Sonstiges: `voucherValue` |
+| Guthaben | الرصيد | Sonstiges: `voucherBalance` |
+| Diesen Gutschein kennt die Kassa nicht. | هذه القسيمة غير معروفة في الصندوق. | Sonstiges: `voucherUnknown` |
+| Gültig | صالحة | Sonstiges: `voucherStateActive` |
+| Aufgebraucht | مستنفدة | Sonstiges: `voucherStateEmpty` |
+| Storniert | ملغاة | Sonstiges: `voucherStateVoided` |
+| Überzogen | رصيد سالب | Sonstiges: `voucherStateOverdrawn` |
+| Übungs-Gutschein | قسيمة تجريبية | Sonstiges: `voucherIsTest` |
+| Verkauft | بيعت | Sonstiges: `voucherMoveSale` |
+| Eingelöst | استُخدمت | Sonstiges: `voucherMoveRedeem` |
+| Verkauf storniert | أُلغي البيع | Sonstiges: `voucherMoveVoidSale` |
+| Einlösung storniert | أُلغي الاستخدام | Sonstiges: `voucherMoveVoidRedeem` |
+| Gutschein drucken | اطبع القسيمة | Sonstiges: `voucherPrint` |
 
 ## Unsicher
 

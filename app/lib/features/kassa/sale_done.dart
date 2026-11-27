@@ -7,6 +7,8 @@ import '../../core/money.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
+import '../../domain/receipt.dart';
+import '../../domain/voucher.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
@@ -28,6 +30,11 @@ import 'sale_service.dart';
 /// wird nie gewartet. Geht die Ansicht weg ("Nächster Kunde"), übernimmt der
 /// Hinweis über dem Bon ([LateKitchenNotice]) einen Küchenbon, der noch läuft
 /// oder gescheitert ist.
+///
+/// Je verkauftem Gutschein steht unter dem Rückgeld eine Reihe
+/// `sold-voucher-<n>` mit Wert und Code ("1234 5678"), mit Drucker dazu
+/// "Gutschein drucken"; scheitert ein Abschnitt, steht der Grund in seiner
+/// Reihe. Ohne Drucker schreibt der Betrieb den Code von hier ab.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -60,12 +67,48 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   /// `ref` nicht mehr lesen.
   late final LateKitchen _late;
 
+  /// Je verkauftem Gutschein das letzte Ergebnis seines Abschnitts; `null`,
+  /// solange keiner gedruckt ist oder er gerade druckt.
+  late final List<PrintOutcome?> _voucherOutcomes = List.filled(
+    widget.result.receipt.soldVouchers.length,
+    null,
+  );
+
+  /// Die Gutscheine, deren "Gutschein drucken" gerade läuft.
+  final Set<int> _voucherPrinting = {};
+
   @override
   void initState() {
     super.initState();
     _late = ref.read(lateKitchenProvider.notifier);
     _await(widget.result.print);
     _awaitKitchen(widget.result.kitchen);
+    widget.result.voucherPrints.then((outcomes) {
+      if (!mounted) return;
+      setState(() {
+        for (final (i, o) in outcomes.indexed) {
+          if (i < _voucherOutcomes.length && !_voucherPrinting.contains(i)) {
+            _voucherOutcomes[i] = o;
+          }
+        }
+      });
+    }, onError: (Object _) {});
+  }
+
+  Future<void> _printVoucher(int index, SoldVoucher voucher) async {
+    if (_voucherPrinting.contains(index)) return;
+    setState(() {
+      _voucherPrinting.add(index);
+      _voucherOutcomes[index] = null;
+    });
+    final outcome = await ref
+        .read(saleServiceProvider)
+        .printVoucher(widget.result.receipt, voucher);
+    if (!mounted) return;
+    setState(() {
+      _voucherPrinting.remove(index);
+      _voucherOutcomes[index] = outcome;
+    });
   }
 
   @override
@@ -255,6 +298,17 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               ],
                             ),
                     ),
+                    for (final (i, v) in receipt.soldVouchers.indexed) ...[
+                      const SizedBox(height: KassaTokens.spaceXl),
+                      _SoldVoucherRow(
+                        index: i,
+                        voucher: v,
+                        canPrint: settings.printerKind != PrinterKind.none,
+                        printing: _voucherPrinting.contains(i),
+                        outcome: _voucherOutcomes[i],
+                        onPrint: () => _printVoucher(i, v),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -271,6 +325,123 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
               onPressed: widget.onNext,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ein verkaufter Gutschein in "Verkauf fertig": "Gutschein" mit dem Wert,
+/// darunter groß der Code; mit [canPrint] "Gutschein drucken", über der Taste
+/// der Grund, wenn der letzte Abschnitt gescheitert ist.
+class _SoldVoucherRow extends StatelessWidget {
+  const _SoldVoucherRow({
+    required this.index,
+    required this.voucher,
+    required this.canPrint,
+    required this.printing,
+    required this.outcome,
+    required this.onPrint,
+  });
+
+  final int index;
+  final SoldVoucher voucher;
+  final bool canPrint;
+  final bool printing;
+  final PrintOutcome? outcome;
+  final VoidCallback onPrint;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final problem = outcome?.problem;
+    final tabular = const [FontFeature.tabularFigures()];
+    return Container(
+      key: Key('sold-voucher-$index'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: problem == null ? c.card : c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+        border: Border.all(
+          color: problem == null ? c.line : c.warnBg,
+          width: KassaTokens.borderButton,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  l.kassaVoucher,
+                  style: text.bodyLarge!.copyWith(color: c.accentInk),
+                ),
+              ),
+              const SizedBox(width: KassaTokens.spaceMd),
+              Ltr(
+                child: Text(
+                  formatEuro(voucher.valueCents),
+                  maxLines: 1,
+                  style: text.titleLarge!.copyWith(fontFeatures: tabular),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: KassaTokens.spaceXs),
+          Text(
+            l.voucherCode,
+            style: text.bodySmall!.copyWith(
+              fontWeight: FontWeight.w600,
+              color: c.ink2,
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Ltr(
+              child: Text(
+                formatVoucherCode(voucher.code),
+                key: Key('sold-voucher-code-$index'),
+                maxLines: 1,
+                style: text.displayLarge!.copyWith(
+                  fontSize: 34,
+                  letterSpacing: 1.5,
+                  color: c.ink,
+                  fontFeatures: tabular,
+                ),
+              ),
+            ),
+          ),
+          if (problem != null) ...[
+            const SizedBox(height: KassaTokens.spaceSm),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                printProblemText(l, problem),
+                key: Key('sold-voucher-problem-$index'),
+                style: text.bodyLarge!.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: c.warnInk,
+                ),
+              ),
+            ),
+          ],
+          if (canPrint) ...[
+            const SizedBox(height: KassaTokens.spaceMd),
+            PrimaryButton(
+              key: Key('sold-voucher-print-$index'),
+              label: l.voucherPrint,
+              icon: LucideIcons.printer,
+              filled: false,
+              height: 64,
+              onPressed: printing ? null : onPrint,
+            ),
+          ],
         ],
       ),
     );

@@ -78,28 +78,65 @@ void main() {
     expect(of(openChefOnly, staff: _chef), [HeadAction.openAmount]);
   });
 
-  test('headActions liefert den Gutschein in dieser Version noch nie, auch '
-      'wenn der Schalter an ist', () {
-    expect(voucherHeadActionReady, isFalse);
+  testWidgets('Gutschein an: voucher-button allein, mit freiem Betrag '
+      'zusammen unter Mehr', (t) async {
+    const voucher = RegisterSettings(voucherEnabled: true);
+    for (final staff in [_anna, _chef]) {
+      expect(headActions(settings: voucher, staff: staff, catalog: catalog), [
+        HeadAction.voucher,
+      ]);
+    }
     const all = RegisterSettings(
       openAmountAccess: FeatureAccess.all,
       depositReturnAccess: FeatureAccess.all,
       voucherEnabled: true,
     );
-    for (final staff in [_anna, _chef]) {
-      expect(headActions(settings: all, staff: staff, catalog: catalog), [
-        HeadAction.openAmount,
-        HeadAction.depositReturn,
-      ]);
-    }
-    expect(
-      headActions(
-        settings: const RegisterSettings(voucherEnabled: true),
-        staff: _chef,
-        catalog: catalog,
-      ),
-      isEmpty,
+    expect(headActions(settings: all, staff: _anna, catalog: catalog), [
+      HeadAction.openAmount,
+      HeadAction.depositReturn,
+      HeadAction.voucher,
+    ]);
+
+    await pumpKassa(t);
+    await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+    expect(find.byKey(const Key('voucher-button')), findsOneWidget);
+    expect(find.byKey(const Key('more-button')), findsNothing);
+    expect(textOf(t, const Key('voucher-button')), 'Gutschein');
+    await _tap(t, 'voucher-button');
+    expect(find.byKey(const Key('voucher-sheet')), findsOneWidget);
+    await _tap(t, 'voucher-back');
+    expect(find.byKey(const Key('voucher-sheet')), findsNothing);
+
+    await setSettings(
+      t,
+      (s) => s.copyWith(openAmountAccess: FeatureAccess.all),
     );
+    expect(find.byKey(const Key('voucher-button')), findsNothing);
+    expect(find.byKey(const Key('open-amount-button')), findsNothing);
+    expect(find.byKey(const Key('more-button')), findsOneWidget);
+    await _tap(t, 'more-button');
+    expect(find.byKey(const Key('more-open-amount')), findsOneWidget);
+    expect(find.byKey(const Key('more-voucher')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('more-voucher')),
+        matching: find.text('Gutschein'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      t.getSize(find.byKey(const Key('more-voucher'))).height,
+      greaterThanOrEqualTo(48),
+    );
+    await _tap(t, 'more-voucher');
+    expect(find.byKey(const Key('more-sheet')), findsNothing);
+    expect(find.byKey(const Key('voucher-sheet')), findsOneWidget);
+
+    // Wird der Gutschein ausgeschaltet, während sein Blatt offen ist, steht
+    // wieder der Bon da.
+    await setSettings(t, (s) => s.copyWith(voucherEnabled: false));
+    expect(find.byKey(const Key('voucher-sheet')), findsNothing);
+    expect(find.byKey(const Key('open-amount-button')), findsOneWidget);
   });
 
   testWidgets('nur freier Betrag an: der Kopf ist wie in 1.11.0 '
@@ -152,8 +189,8 @@ void main() {
     expect(find.byKey(const Key('more-sheet')), findsOneWidget);
     expect(find.byKey(const Key('more-open-amount')), findsOneWidget);
     expect(find.byKey(const Key('more-deposit-return')), findsOneWidget);
-    // Der Gutschein kommt erst mit seinem Blatt.
-    expect(find.byKey(const Key('more-voucher')), findsNothing);
+    // Der Gutschein hat sein Blatt (Task 10): er steht im Blatt "Mehr".
+    expect(find.byKey(const Key('more-voucher')), findsOneWidget);
     for (final key in ['more-open-amount', 'more-deposit-return']) {
       final size = t.getSize(find.byKey(Key(key)));
       expect(size.height, greaterThanOrEqualTo(48), reason: key);

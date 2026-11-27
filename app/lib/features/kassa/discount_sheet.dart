@@ -70,13 +70,16 @@ class _DiscountSheetState extends ConsumerState<DiscountSheet> {
     return rest == 0 ? '$euros' : '$euros,${rest.toString().padLeft(2, '0')}';
   }
 
-  /// Die Zeile des Blatts. Eine Zeile "Pfand zurück" bekommt nie Rabatt: für
-  /// sie schließt das Blatt wie für eine Zeile, die es nicht mehr gibt.
+  /// Die Zeile des Blatts. Eine Zeile "Pfand zurück" und eine Gutschein-Zeile
+  /// bekommen nie Rabatt: für sie schließt das Blatt wie für eine Zeile, die
+  /// es nicht mehr gibt.
   CartLine? _lineOf(Cart cart) {
     final id = widget.lineId;
     if (id == null) return null;
     for (final l in cart.lines) {
-      if (l.lineId == id) return l.isDepositReturn ? null : l;
+      if (l.lineId == id) {
+        return l.isDepositReturn || l.isVoucherSale ? null : l;
+      }
     }
     return null;
   }
@@ -176,7 +179,10 @@ class _DiscountSheetState extends ConsumerState<DiscountSheet> {
       });
       return const PayColumnFrame(child: SizedBox.expand());
     }
-    final base = line == null ? cart.pricing.subtotalCents : line.goodsCents;
+    // Der ganze Bon: ohne die Gutschein-Zeilen, sie bekommen keinen Anteil.
+    final base = line == null
+        ? cart.pricing.discountBaseCents
+        : line.goodsCents;
     final String what;
     if (line == null) {
       what = l.discountWholeReceipt;

@@ -3,6 +3,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/feature_access.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:flutter/rendering.dart';
@@ -216,6 +217,78 @@ void main() {
         findsNothing,
       );
       expect(_inKey('more-button', 'Mehr'), findsNothing);
+    }
+  });
+
+  const voucher = {
+    AppLanguage.en: (
+      head: 'Voucher',
+      sell: 'Sell',
+      check: 'Check',
+      add: 'Add to receipt',
+      print: 'Print voucher',
+    ),
+    AppLanguage.zh: (
+      head: '礼券',
+      sell: '出售',
+      check: '查询',
+      add: '加入小票',
+      print: '打印礼券',
+    ),
+    AppLanguage.tr: (
+      head: 'Hediye çeki',
+      sell: 'Sat',
+      check: 'Kontrol et',
+      add: 'Fişe ekle',
+      print: 'Hediye çekini yazdır',
+    ),
+    AppLanguage.ar: (
+      head: 'قسيمة',
+      sell: 'بيع',
+      check: 'تحقّق',
+      add: 'أضف إلى الفاتورة',
+      print: 'اطبع القسيمة',
+    ),
+  };
+
+  testWidgets('en, zh, tr, ar: "Gutschein", seine Reiter, "Auf den Bon" und '
+      '"Gutschein drucken" stehen in der Bediensprache', (t) async {
+    for (final MapEntry(key: language, value: texts) in voucher.entries) {
+      await pumpKassa(t);
+      await setSettings(
+        t,
+        (s) => s.copyWith(
+          language: language,
+          voucherEnabled: true,
+          printerKind: PrinterKind.network,
+          printerAddress: '192.168.0.50',
+        ),
+      );
+      expect(_inKey('voucher-button', texts.head), findsOneWidget);
+      await t.tap(find.byKey(const Key('voucher-button')));
+      await t.pumpAndSettle();
+      expect(_inKey('voucher-tab-sell', texts.sell), findsOneWidget);
+      expect(_inKey('voucher-tab-check', texts.check), findsOneWidget);
+      expect(_inKey('voucher-add', texts.add), findsOneWidget);
+      await t.tap(find.byKey(const Key('voucher-preset-1000')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('voucher-add')));
+      await t.pumpAndSettle();
+      // Die Zeile heißt am Bildschirm in der Bediensprache.
+      expect(find.text(texts.head), findsWidgets);
+      expect(find.text('Gutschein'), findsNothing);
+      await t.tap(find.byKey(const Key('pay-cash')));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      expect(
+        _inKey('sold-voucher-print-0', texts.print),
+        findsOneWidget,
+        reason: language.name,
+      );
+      expect(_inKey('sold-voucher-print-0', 'Gutschein drucken'), findsNothing);
     }
   });
 }

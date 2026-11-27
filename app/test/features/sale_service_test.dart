@@ -1455,6 +1455,141 @@ void main() {
       );
     });
   });
+
+  group('Gutschein', () {
+    final voucherCart = const Cart.empty()
+        .addVoucherSale(valueCents: 2500)
+        .add(cola)
+        .addVoucherSale(valueCents: 1000);
+
+    Future<SaleResult> sellVouchers([String id = 'g1']) => service.completeCash(
+      saleId: id,
+      cart: voucherCart,
+      givenCents: 3815,
+      staff: shop.anna,
+    );
+
+    test('ohne verkauften Gutschein ist voucherPrints leer', () async {
+      await configure(drawer: false);
+      final r = await sell();
+      expect((await r.print).ok, isTrue);
+      expect(await r.voucherPrints, isEmpty);
+      expect(printer.log, ['print:s1']);
+    });
+
+    test('nach dem Kundenbon je Gutschein ein Abschnitt, in der Reihenfolge '
+        'der Zeilen', () async {
+      await configure(drawer: false);
+      final r = await sellVouchers();
+      final outcomes = await r.voucherPrints;
+      expect([for (final o in outcomes) o.ok], [true, true]);
+      final sold = r.receipt.soldVouchers;
+      expect(printer.log, [
+        'print:g1',
+        'voucher:${sold[0].voucherId}',
+        'voucher:${sold[1].voucherId}',
+      ]);
+      expect(
+        [for (final s in printer.voucherSlips) s.voucher.valueCents],
+        [2500, 1000],
+      );
+      expect(
+        [for (final s in printer.voucherSlips) s.soldAt],
+        [r.receipt.createdAt, r.receipt.createdAt],
+      );
+      // Ohne laufende Signatur sind es Übungs-Gutscheine.
+      expect([for (final s in printer.voucherSlips) s.isTest], [true, true]);
+    });
+
+    test('der Abschnitt wartet auf den Kundenbon', () async {
+      await configure(drawer: false);
+      final hold = printer.hold = Completer<void>();
+      final r = await sellVouchers();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(printer.log, ['print:g1']);
+      printer.hold = null;
+      hold.complete();
+      expect(await r.voucherPrints, hasLength(2));
+      expect(printer.log, hasLength(3));
+    });
+
+    test('Kundenbon gescheitert: kein Abschnitt von selbst', () async {
+      await configure(drawer: false);
+      printer.next = const PrintOutcome.failed(PrintProblem.paperOut);
+      final r = await sellVouchers();
+      expect((await r.print).ok, isFalse);
+      expect(await r.voucherPrints, isEmpty);
+      expect(printer.log, ['print:g1']);
+    });
+
+    test(
+      'ohne Drucker: nichts gedruckt, printVoucher ergibt notSetUp',
+      () async {
+        await configure(kind: PrinterKind.none);
+        final r = await sellVouchers();
+        expect(await r.voucherPrints, isEmpty);
+        final o = await service.printVoucher(
+          r.receipt,
+          r.receipt.soldVouchers.first,
+        );
+        expect(o.problem, PrintProblem.notSetUp);
+        expect(printer.log, isEmpty);
+      },
+    );
+
+    test('zweimal dieselbe saleId: die Abschnitte nur einmal', () async {
+      await configure(drawer: false);
+      final a = await sellVouchers();
+      await a.voucherPrints;
+      final b = await sellVouchers();
+      expect(await b.voucherPrints, hasLength(2));
+      expect(printer.log, hasLength(3));
+    });
+
+    test('printVoucher druckt nur den Abschnitt, mit dem Ergebnis des '
+        'Druckers', () async {
+      await configure(drawer: false);
+      final r = await sellVouchers();
+      await r.voucherPrints;
+      printer.log.clear();
+      printer.voucherSlips.clear();
+      printer.next = const PrintOutcome.failed(PrintProblem.coverOpen);
+      final second = r.receipt.soldVouchers[1];
+      final o = await service.printVoucher(r.receipt, second);
+      expect(o.problem, PrintProblem.coverOpen);
+      expect(printer.log, ['voucher:${second.voucherId}']);
+      expect(printer.voucherSlips.single.voucher.code, second.code);
+    });
+
+    test('Küchenbon am Bondrucker: Kundenbon, Küchenbon, dann die '
+        'Abschnitte', () async {
+      await configure(drawer: false);
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          kitchenMode: KitchenMode.receiptPrinter,
+        ),
+      );
+      for (var i = 0; i < 100; i++) {
+        if (container.read(settingsStreamProvider).value?.kitchenMode ==
+            KitchenMode.receiptPrinter) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      final r = await sellVouchers();
+      await r.kitchen;
+      await r.voucherPrints;
+      expect(printer.printedJobs.map((p) => p.kind), [
+        'receipt',
+        'raster',
+        'voucher',
+        'voucher',
+      ]);
+      // Auf den Küchenbon kommt nur die Cola, nie eine Gutschein-Zeile.
+      expect([for (final l in rendered.single.$1.lines) l.name], [cola.name]);
+    });
+  });
 }
 
 /// Offene Zahlungen, deren Schreiben scheitern kann.
