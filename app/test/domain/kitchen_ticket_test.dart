@@ -129,6 +129,34 @@ void main() {
     expect([for (final l in t.lines) l.name], ['Tavuk şiş dürüm']);
   });
 
+  test('freier Betrag kommt nicht auf den Küchenbon; ein Bon nur aus freien '
+      'Beträgen gibt null', () {
+    final t = build(
+      receipt([
+        line('open-amount-20', 'Diverses 20 %', 1),
+        line('i1', 'Dürüm', 1),
+        line('open-amount-0', 'Diverses 0 %', 2),
+      ]),
+    )!;
+    expect([for (final l in t.lines) l.name], ['Tavuk şiş dürüm']);
+    expect(
+      build(
+        receipt([
+          line('open-amount-10', 'Diverses 10 %', 1),
+          line('open-amount-13', 'Diverses 13 %', 1),
+        ]),
+      ),
+      isNull,
+    );
+    expect(
+      build(
+        receipt([line('open-amount-20', 'Diverses 20 %', -1)],
+            kind: ReceiptKind.voided),
+      ),
+      isNull,
+    );
+  });
+
   test('nur Getränke gibt null', () {
     final t = build(
       receipt([line('i3', 'Cola', 2)]),

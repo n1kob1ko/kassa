@@ -32,6 +32,7 @@ import 'discount_sheet.dart';
 import 'item_grid.dart';
 import 'late_kitchen.dart';
 import 'modifier_panel.dart';
+import 'open_amount_sheet.dart';
 import 'outage_banner.dart';
 import 'sale_done.dart';
 import 'sale_service.dart';
@@ -86,6 +87,8 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 /// nicht. Darf die angemeldete Person Rabatt geben, wird die Bon-Spalte mit
 /// einem Tipp auf eine Zeile oder auf "Rabatt" zum Blatt "Rabatt". Eine Summe
 /// von 0,00 € durch einen Rabatt schließt "Abschließen" ohne Bezahlen ab.
+/// Darf die Person einen freien Betrag bonieren, wird die Bon-Spalte mit
+/// "Freier Betrag" im Kopf zum Blatt "Freier Betrag".
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -94,7 +97,7 @@ class KassaScreen extends ConsumerStatefulWidget {
 }
 
 /// Was die rechte Spalte zeigt.
-enum _Side { cart, paying, tip, discount, waitingForCard, done }
+enum _Side { cart, paying, tip, discount, openAmount, waitingForCard, done }
 
 class _KassaScreenState extends ConsumerState<KassaScreen>
     with WidgetsBindingObserver {
@@ -447,9 +450,16 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final mayDiscount = stored.discountAccess.allows(
       ref.watch(sessionProvider),
     );
-    // Wird der Rabatt ausgeschaltet, während das Blatt offen ist, steht
-    // wieder der Bon da.
-    final side = _side == _Side.discount && !mayDiscount ? _Side.cart : _side;
+    final mayOpenAmount = stored.openAmountAccess.allows(
+      ref.watch(sessionProvider),
+    );
+    // Wird der Rabatt oder der freie Betrag ausgeschaltet, während sein Blatt
+    // offen ist, steht wieder der Bon da.
+    final side =
+        (_side == _Side.discount && !mayDiscount) ||
+            (_side == _Side.openAmount && !mayOpenAmount)
+        ? _Side.cart
+        : _side;
     if (catalog == null) return ColoredBox(color: c.ground);
 
     final favorites = [
@@ -556,6 +566,9 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onLineDiscount: mayDiscount ? _openDiscount : null,
               onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
               onFinishFree: _finishFree,
+              onOpenAmount: mayOpenAmount
+                  ? () => setState(() => _side = _Side.openAmount)
+                  : null,
               payNotice: switch (_splitFailed) {
                 null => null,
                 final f => SplitCardFailedNotice(
@@ -589,6 +602,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             child: DiscountSheet(
               key: ValueKey(_discountLineId),
               lineId: _discountLineId,
+              onClose: () => setState(() => _side = _Side.cart),
+            ),
+          ),
+          _Side.openAmount => _AboveBottomBar(
+            child: OpenAmountSheet(
               onClose: () => setState(() => _side = _Side.cart),
             ),
           ),

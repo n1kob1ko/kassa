@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 447 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 452 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -537,6 +537,11 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Für eine einzelne Zeile die Zeile im Bon antippen. | For a single line, tap that line on the receipt. | Sonstiges: `discountLineHint` |
 | −{percent} % {reason} | −{percent} % {reason} | Sonstiges: `discountRowPercent` |
 | Rabatt {reason} | Discount {reason} | Sonstiges: `discountRowAmount` |
+| Freier Betrag | Open amount | Sonstiges: `openAmountTitle` |
+| Betrag | Amount | Sonstiges: `openAmountAmount` |
+| Steuersatz | Tax rate | Sonstiges: `openAmountTax` |
+| Auf den Bon | Add to receipt | Sonstiges: `openAmountAdd` |
+| Diverses {percent} % | Misc. {percent} % | Sonstiges: `openAmountLine` |
 
 ## Unsicher
 

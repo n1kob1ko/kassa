@@ -1575,4 +1575,21 @@ class L10nEn extends L10n {
   String discountRowAmount(String reason) {
     return 'Discount $reason';
   }
+
+  @override
+  String get openAmountTitle => 'Open amount';
+
+  @override
+  String get openAmountAmount => 'Amount';
+
+  @override
+  String get openAmountTax => 'Tax rate';
+
+  @override
+  String get openAmountAdd => 'Add to receipt';
+
+  @override
+  String openAmountLine(int percent) {
+    return 'Misc. $percent %';
+  }
 }

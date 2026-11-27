@@ -3,6 +3,7 @@
 // Preise, keine Summe. Gezeichnet und gedruckt wird er an anderer Stelle.
 
 import '../core/app_language.dart';
+import 'cart.dart' show isOpenAmountItemId;
 import 'catalog.dart';
 import 'menu_dictionary.dart';
 import 'receipt.dart';
@@ -67,8 +68,8 @@ class KitchenTexts {
 }
 
 /// `null`, wenn der Bon kein Verkauf oder Storno ist oder keine Zeile für die
-/// Küche hat. Ein Artikel, den [categoryOfItem] nicht kennt (gelöscht), zählt
-/// als Küche.
+/// Küche hat. Freie Beträge kommen nie auf den Zettel. Ein Artikel, den
+/// [categoryOfItem] nicht kennt (gelöscht), zählt als Küche.
 KitchenTicket? buildKitchenTicket(
   Receipt receipt, {
   required AppLanguage language,
@@ -84,7 +85,8 @@ KitchenTicket? buildKitchenTicket(
 
   final lines = [
     for (final l in receipt.lines)
-      if (!skipCategories.contains(categoryOfItem[l.itemId]))
+      if (!isOpenAmountItemId(l.itemId) &&
+          !skipCategories.contains(categoryOfItem[l.itemId]))
         KitchenLine(
           quantity: l.quantity.abs(),
           name: dictionary.text(l.name, language),

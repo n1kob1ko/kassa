@@ -1578,4 +1578,21 @@ class L10nDe extends L10n {
   String discountRowAmount(String reason) {
     return 'Rabatt $reason';
   }
+
+  @override
+  String get openAmountTitle => 'Freier Betrag';
+
+  @override
+  String get openAmountAmount => 'Betrag';
+
+  @override
+  String get openAmountTax => 'Steuersatz';
+
+  @override
+  String get openAmountAdd => 'Auf den Bon';
+
+  @override
+  String openAmountLine(int percent) {
+    return 'Diverses $percent %';
+  }
 }

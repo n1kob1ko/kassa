@@ -199,6 +199,32 @@ void main() {
     },
   );
 
+  test('freier Betrag: "Diverses 20 %" bei meistverkauft, "Sonstiges" bei '
+      'den Kategorien', () async {
+    await sellCart(
+      's1',
+      const Cart.empty()
+          .add(teigtaschen)
+          .addOpenAmount(amountCents: 1250, rate: TaxRate.normal)
+          .addOpenAmount(amountCents: 300, rate: TaxRate.normal)
+          .addOpenAmount(amountCents: 400, rate: TaxRate.reduced1),
+    );
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(o.topItems.map((i) => (i.name, i.quantity, i.cents)), [
+      ('Diverses 20 %', 2, 1550),
+      ('Teigtaschen', 1, 650),
+      ('Diverses 10 %', 1, 400),
+    ]);
+    final teigtaschenCategory = catalog.categories
+        .firstWhere((k) => k.id == teigtaschen.categoryId)
+        .name;
+    expect(o.byCategory.map((c) => (c.name, c.cents)), [
+      ('Sonstiges', 1950),
+      (teigtaschenCategory, 650),
+    ]);
+    expect(o.byCategory.fold<int>(0, (s, c) => s + c.cents), o.revenueCents);
+  });
+
   test('Übersicht zählt den Kartenanteil', () async {
     await shop.sell('s1'); // 1820 bar
     final card = await shop.sellCard('c1');

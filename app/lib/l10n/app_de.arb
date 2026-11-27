@@ -2308,5 +2308,30 @@
         "type": "String"
       }
     }
+  },
+  "openAmountTitle": "Freier Betrag",
+  "@openAmountTitle": {
+    "description": "Taste im Kopf der Bon-Spalte und Titel des Blatts Freier Betrag: ein Betrag ohne Artikel."
+  },
+  "openAmountAmount": "Betrag",
+  "@openAmountAmount": {
+    "description": "Überschrift über dem Zahlenfeld im Blatt Freier Betrag."
+  },
+  "openAmountTax": "Steuersatz",
+  "@openAmountTax": {
+    "description": "Überschrift über den Tasten der Steuersätze im Blatt Freier Betrag."
+  },
+  "openAmountAdd": "Auf den Bon",
+  "@openAmountAdd": {
+    "description": "Taste im Blatt Freier Betrag: den Betrag als eigene Zeile auf den Bon legen."
+  },
+  "openAmountLine": "Diverses {percent} %",
+  "@openAmountLine": {
+    "description": "Name einer Bon-Zeile mit freiem Betrag am Bildschirm, etwa \"Diverses 20 %\"; gespeichert und gedruckt wird immer der deutsche Name.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   }
 }

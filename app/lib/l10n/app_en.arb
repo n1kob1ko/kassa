@@ -446,5 +446,10 @@
   "discountApply": "Apply",
   "discountLineHint": "For a single line, tap that line on the receipt.",
   "discountRowPercent": "−{percent} % {reason}",
-  "discountRowAmount": "Discount {reason}"
+  "discountRowAmount": "Discount {reason}",
+  "openAmountTitle": "Open amount",
+  "openAmountAmount": "Amount",
+  "openAmountTax": "Tax rate",
+  "openAmountAdd": "Add to receipt",
+  "openAmountLine": "Misc. {percent} %"
 }

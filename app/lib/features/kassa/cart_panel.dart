@@ -29,6 +29,8 @@ import 'cart_line_row.dart';
 /// Rabatt einer Zeile das Blatt "Rabatt", mit [onReceiptDiscount] steht im
 /// Summenblock die Taste "Rabatt". Ist die Summe 0,00 € und der Bon hat einen
 /// Rabatt, steht mit [onFinishFree] statt "Bar" und "Karte" "Abschließen".
+/// Mit [onOpenAmount] steht im Kopf die Taste "Freier Betrag", auch am leeren
+/// Bon; ohne ist der Kopf genau der von 1.10.0.
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -40,6 +42,7 @@ class CartPanel extends ConsumerStatefulWidget {
     this.onLineDiscount,
     this.onReceiptDiscount,
     this.onFinishFree,
+    this.onOpenAmount,
   });
 
   final VoidCallback onPayCash;
@@ -56,6 +59,9 @@ class CartPanel extends ConsumerStatefulWidget {
 
   /// "Abschließen" bei Summe 0,00 € mit Rabatt.
   final VoidCallback? onFinishFree;
+
+  /// Öffnet das Blatt "Freier Betrag"; null: keine Taste im Kopf.
+  final VoidCallback? onOpenAmount;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -91,6 +97,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   void _finishFree() {
     _dismissToast();
     widget.onFinishFree?.call();
+  }
+
+  void _openAmount() {
+    _dismissToast();
+    widget.onOpenAmount?.call();
   }
 
   void _clear() {
@@ -156,7 +167,12 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       child: Column(
         children: [
           ?widget.notice,
-          _Header(count: count, empty: cart.isEmpty, onClear: _clear),
+          _Header(
+            count: count,
+            empty: cart.isEmpty,
+            onClear: _clear,
+            onOpenAmount: widget.onOpenAmount == null ? null : _openAmount,
+          ),
           Expanded(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -258,11 +274,15 @@ class _Header extends StatelessWidget {
     required this.count,
     required this.empty,
     required this.onClear,
+    this.onOpenAmount,
   });
 
   final int count;
   final bool empty;
   final VoidCallback onClear;
+
+  /// "Freier Betrag"; null: keine Taste.
+  final VoidCallback? onOpenAmount;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +317,8 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
+            if (onOpenAmount case final onOpenAmount?)
+              Flexible(child: _OpenAmountButton(onTap: onOpenAmount)),
             Pressable(
               key: const Key('clear-cart'),
               onTap: empty ? null : onClear,
@@ -448,6 +470,47 @@ class _Totals extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Freier Betrag" im Kopf der Bon-Spalte: öffnet das Blatt.
+class _OpenAmountButton extends StatelessWidget {
+  const _OpenAmountButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Pressable(
+      key: const Key('open-amount-button'),
+      onTap: onTap,
+      minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
+      child: Container(
+        height: KassaTokens.drawnControlHeight,
+        padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceLg),
+        decoration: BoxDecoration(
+          color: c.fill,
+          borderRadius: BorderRadius.circular(KassaTokens.radiusLg),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.plus, size: 18, color: c.ink),
+            const SizedBox(width: KassaTokens.spaceSm),
+            Flexible(
+              child: Text(
+                L10n.of(context).openAmountTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.labelLarge,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

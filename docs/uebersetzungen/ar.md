@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 447 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 452 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -537,6 +537,11 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Für eine einzelne Zeile die Zeile im Bon antippen. | لخصم سطر واحد، المس السطر في الفاتورة. | Sonstiges: `discountLineHint` |
 | −{percent} % {reason} | خصم {percent} % {reason} | Sonstiges: `discountRowPercent` |
 | Rabatt {reason} | خصم {reason} | Sonstiges: `discountRowAmount` |
+| Freier Betrag | مبلغ حر | Sonstiges: `openAmountTitle` |
+| Betrag | المبلغ | Sonstiges: `openAmountAmount` |
+| Steuersatz | نسبة الضريبة | Sonstiges: `openAmountTax` |
+| Auf den Bon | أضف إلى الفاتورة | Sonstiges: `openAmountAdd` |
+| Diverses {percent} % | متفرقات {percent} % | Sonstiges: `openAmountLine` |
 
 ## Unsicher
 

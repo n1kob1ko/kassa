@@ -2785,6 +2785,36 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Rabatt {reason}'**
   String discountRowAmount(String reason);
+
+  /// Taste im Kopf der Bon-Spalte und Titel des Blatts Freier Betrag: ein Betrag ohne Artikel.
+  ///
+  /// In de, this message translates to:
+  /// **'Freier Betrag'**
+  String get openAmountTitle;
+
+  /// Überschrift über dem Zahlenfeld im Blatt Freier Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Betrag'**
+  String get openAmountAmount;
+
+  /// Überschrift über den Tasten der Steuersätze im Blatt Freier Betrag.
+  ///
+  /// In de, this message translates to:
+  /// **'Steuersatz'**
+  String get openAmountTax;
+
+  /// Taste im Blatt Freier Betrag: den Betrag als eigene Zeile auf den Bon legen.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf den Bon'**
+  String get openAmountAdd;
+
+  /// Name einer Bon-Zeile mit freiem Betrag am Bildschirm, etwa "Diverses 20 %"; gespeichert und gedruckt wird immer der deutsche Name.
+  ///
+  /// In de, this message translates to:
+  /// **'Diverses {percent} %'**
+  String openAmountLine(int percent);
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

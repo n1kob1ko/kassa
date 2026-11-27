@@ -13,7 +13,7 @@ import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import 'cart_controller.dart';
-import 'cart_line_row.dart' show discountReasonText;
+import 'cart_line_row.dart' show cartLineName, discountReasonText;
 import 'cash_inputs.dart';
 import 'cash_sheet.dart' show PayColumnFrame;
 
@@ -181,7 +181,7 @@ class _DiscountSheetState extends ConsumerState<DiscountSheet> {
     } else {
       final name = nameIsolateIn(
         context,
-        ref.watch(menuTextProvider)(line.item.name),
+        cartLineName(l, ref.watch(menuTextProvider), line),
       );
       what = line.quantity > 1 ? '${line.quantity} × $name' : name;
     }

@@ -8,6 +8,41 @@ import 'discount.dart';
 
 const int maxQuantity = 99;
 
+/// Der höchste freie Betrag: 9.999,99 €.
+const openAmountMaxCents = 999999;
+
+/// Die Sätze für einen freien Betrag: 20, 10, 13 und 0 %.
+const openAmountRates = [
+  TaxRate.normal,
+  TaxRate.reduced1,
+  TaxRate.reduced2,
+  TaxRate.zero,
+];
+
+const _openAmountPrefix = 'open-amount-';
+
+/// Die Kennung des Artikels eines freien Betrags, etwa `open-amount-20`.
+String openAmountItemId(TaxRate rate) => '$_openAmountPrefix${rate.percent}';
+
+/// Ob [itemId] die Kennung eines freien Betrags ist.
+bool isOpenAmountItemId(String itemId) => itemId.startsWith(_openAmountPrefix);
+
+/// So steht ein freier Betrag am Bon, immer deutsch: "Diverses 20 %".
+String openAmountName(TaxRate rate) => 'Diverses ${rate.percent} %';
+
+/// Der Artikel eines freien Betrags: entsteht im Code, nie im Katalog.
+Item _openAmountItem(int cents, TaxRate rate) => Item(
+  id: openAmountItemId(rate),
+  name: openAmountName(rate),
+  priceCents: cents,
+  categoryId: '',
+  taxRate: rate,
+  position: 0,
+);
+
+bool _isOpenAmountCents(Object? cents) =>
+    cents is int && cents >= 1 && cents <= openAmountMaxCents;
+
 /// Gewählte Optionen für einen Artikel einer Auswahl-Vorlage.
 class Selection {
   const Selection._(this._template, this._chosenIds);
@@ -70,6 +105,7 @@ class CartLine {
     required this.quantity,
     this.options = const [],
     this.discount,
+    this.isOpenAmount = false,
   });
 
   final String lineId;
@@ -79,6 +115,9 @@ class CartLine {
 
   /// Rabatt auf diese Zeile.
   final Discount? discount;
+
+  /// Ein freier Betrag: der Artikel entsteht im Code, nicht im Katalog.
+  final bool isOpenAmount;
 
   int get unitPriceCents =>
       item.priceCents + options.fold(0, (sum, o) => sum + o.surchargeCents);
@@ -114,6 +153,7 @@ class CartLine {
     quantity: q,
     options: options,
     discount: discount,
+    isOpenAmount: isOpenAmount,
   );
 
   CartLine withDiscount(Discount? d) => CartLine(
@@ -122,6 +162,7 @@ class CartLine {
     quantity: quantity,
     options: options,
     discount: d,
+    isOpenAmount: isOpenAmount,
   );
 }
 
@@ -215,7 +256,7 @@ class Cart {
   }) {
     if (item.templateId == null && options.isEmpty) {
       final i = lines.indexWhere(
-        (l) => l.item.id == item.id && l.options.isEmpty,
+        (l) => l.item.id == item.id && l.options.isEmpty && !l.isOpenAmount,
       );
       if (i >= 0) {
         final next = [...lines];
@@ -230,6 +271,32 @@ class Cart {
         item: item,
         quantity: 1,
         options: List.unmodifiable(options),
+      ),
+    ]);
+  }
+
+  /// Ein freier Betrag als neue Zeile mit Menge 1; zwei freie Beträge
+  /// verschmelzen nie. Wirft [ArgumentError] bei einem Betrag unter 1 Cent
+  /// oder über [openAmountMaxCents] und bei einem Satz außerhalb von
+  /// [openAmountRates].
+  Cart addOpenAmount({
+    required int amountCents,
+    required TaxRate rate,
+    String? lineId,
+  }) {
+    if (!_isOpenAmountCents(amountCents)) {
+      throw ArgumentError.value(amountCents, 'amountCents');
+    }
+    if (!openAmountRates.contains(rate)) {
+      throw ArgumentError.value(rate, 'rate');
+    }
+    return _withLines([
+      ...lines,
+      CartLine(
+        lineId: lineId ?? _uuid.v4(),
+        item: _openAmountItem(amountCents, rate),
+        quantity: 1,
+        isOpenAmount: true,
       ),
     ]);
   }
@@ -311,6 +378,11 @@ class Cart {
           'quantity': l.quantity,
           'optionIds': [for (final o in l.options) o.id],
           if (l.discount != null) 'discount': l.discount!.toJson(),
+          if (l.isOpenAmount)
+            'open': {
+              'cents': l.item.priceCents,
+              'taxPercent': l.item.taxRate.percent,
+            },
         },
     ],
     if (discount != null) 'discount': discount!.toJson(),
@@ -318,16 +390,18 @@ class Cart {
 
   /// Der Bon gegen einen (geänderten) Katalog neu aufgelöst: Zeilenkennung,
   /// Menge, Options-Ids und Rabatte bleiben, Artikel und Optionen kommen aus
-  /// [catalog].
+  /// [catalog]. Freie Beträge fragen den Katalog nicht und bleiben.
   /// Es gelten dieselben Regeln wie in [fromJson], zum Beispiel fallen Zeilen
   /// weg, die es nicht mehr gibt.
   Cart rebind(Catalog catalog) => fromJson(toJson(), catalog);
 
   /// Zeilen, deren Artikel oder Option es im Katalog nicht mehr gibt, mit
   /// Menge unter 1, mit falschen Typen oder mit doppelter Kennung fallen weg.
-  /// Ein unlesbarer Rabatt fällt weg, die Zeile bleibt. Ein Entwurf ohne
-  /// Rabatte (aus 1.10.0) wird gelesen wie bisher. Das Lesen wirft nie wegen
-  /// des Inhalts.
+  /// Ein unlesbarer Rabatt fällt weg, die Zeile bleibt. Eine Zeile mit `open`
+  /// ist ein freier Betrag und entsteht ohne den Katalog; ist `open`
+  /// unlesbar, außerhalb der Grenzen oder passt nicht zur Kennung, fällt nur
+  /// diese Zeile weg. Ein Entwurf ohne Rabatte und freie Beträge (aus 1.10.0)
+  /// wird gelesen wie bisher. Das Lesen wirft nie wegen des Inhalts.
   static Cart fromJson(Map<String, dynamic> json, Catalog catalog) {
     final rawLines = json['lines'];
     if (rawLines is! List) return const Cart.empty();
@@ -341,6 +415,21 @@ class Cart {
       final optionIds = raw['optionIds'] ?? const [];
       if (lineId is! String || itemId is! String || quantity is! int) continue;
       if (quantity < 1 || optionIds is! List || seen.contains(lineId)) continue;
+      if (raw.containsKey('open')) {
+        final item = _openAmountItemOf(raw['open'], itemId);
+        if (item == null || optionIds.isNotEmpty) continue;
+        seen.add(lineId);
+        lines.add(
+          CartLine(
+            lineId: lineId,
+            item: item,
+            quantity: _cap(quantity),
+            discount: Discount.fromJson(raw['discount']),
+            isOpenAmount: true,
+          ),
+        );
+        continue;
+      }
       final Item item;
       try {
         item = catalog.item(itemId);
@@ -382,6 +471,23 @@ class Cart {
 }
 
 int _cap(int q) => q > maxQuantity ? maxQuantity : q;
+
+/// Der Artikel des freien Betrags aus dem Feld `open` eines Entwurfs; null,
+/// wenn es unlesbar ist, außerhalb der Grenzen liegt oder nicht zu [itemId]
+/// passt.
+Item? _openAmountItemOf(Object? open, String itemId) {
+  if (open is! Map) return null;
+  final cents = open['cents'];
+  final percent = open['taxPercent'];
+  if (!_isOpenAmountCents(cents) || percent is! int) return null;
+  for (final rate in openAmountRates) {
+    if (rate.percent == percent) {
+      if (openAmountItemId(rate) != itemId) return null;
+      return _openAmountItem(cents as int, rate);
+    }
+  }
+  return null;
+}
 
 /// Zieht [discountCents] von den Beträgen je Satz ab, verteilt nach den
 /// Beträgen über 0, in der Reihenfolge von [TaxRate.values]. Alle Sätze aus

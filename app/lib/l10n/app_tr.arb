@@ -446,5 +446,10 @@
   "discountApply": "Uygula",
   "discountLineHint": "Tek bir satır için fişteki satıra dokunun.",
   "discountRowPercent": "−{percent} % {reason}",
-  "discountRowAmount": "İndirim {reason}"
+  "discountRowAmount": "İndirim {reason}",
+  "openAmountTitle": "Serbest tutar",
+  "openAmountAmount": "Tutar",
+  "openAmountTax": "KDV oranı",
+  "openAmountAdd": "Fişe ekle",
+  "openAmountLine": "Çeşitli {percent} %"
 }

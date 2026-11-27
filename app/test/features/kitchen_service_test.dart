@@ -375,6 +375,30 @@ void main() {
       expect(rendered, isEmpty);
     });
 
+    test('am Bondrucker, nur freie Beträge: kitchen null, kein Zettel, keine '
+        'Frage an den Drucker', () async {
+      await configure(KitchenMode.receiptPrinter);
+      final r = await container
+          .read(saleServiceProvider)
+          .completeCash(
+            saleId: 's1',
+            cart: const Cart.empty()
+                .addOpenAmount(amountCents: 1250, rate: TaxRate.normal)
+                .addOpenAmount(amountCents: 300, rate: TaxRate.reduced1),
+            givenCents: 2000,
+            staff: shop.anna,
+          );
+      expect((await r.print).ok, isTrue);
+      expect(await r.kitchen, isNull);
+      await container.read(receiptPrinterProvider).testPrint();
+      expect(receiptT().sent, [
+        encodeEscPos(layoutReceipt(r.receipt, catalog.business)),
+        isNot(raster),
+      ]);
+      expect(receiptT().asked, 2); // Bon und Testdruck, nicht der Küchenbon
+      expect(rendered, isEmpty);
+    });
+
     test('am Bondrucker: Kundenbon, dann Raster, je eigener Auftrag', () async {
       await configure(KitchenMode.receiptPrinter);
       final r = await sell();

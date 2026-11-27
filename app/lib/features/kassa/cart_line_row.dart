@@ -14,7 +14,8 @@ import '../../ui/tokens.dart';
 /// Eine Zeile des Bons: Name mit Zusatzzeile, Minus, Menge, Plus, Preis.
 /// Steigt [flash], leuchtet die Zeile einmal auf. Die Namen stehen in der
 /// Bediensprache und brechen um, statt gekürzt zu werden; der Bon selbst hält
-/// die Namen der Speisekarte.
+/// die Namen der Speisekarte. Ein freier Betrag heißt "Diverses 20 %" in der
+/// Bediensprache.
 ///
 /// Hat die Zeile einen Rabatt, steht darunter eine kleine Reihe mit Höhe,
 /// Grund und dem Betrag des Rabatts ([discountCents]). Mit [onDiscount] sind
@@ -90,7 +91,7 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
     final instant = MediaQuery.disableAnimationsOf(context);
     final l = L10n.of(context);
     final menuText = ref.watch(menuTextProvider);
-    final name = menuText(line.item.name);
+    final name = cartLineName(l, menuText, line);
     final info = line.item.info;
     final sub = line.options.isNotEmpty
         ? line.options.map((o) => menuText(o.name)).join(l.uiListSeparator)
@@ -284,6 +285,17 @@ class DiscountRow extends StatelessWidget {
     );
   }
 }
+
+/// Der Name einer Bon-Zeile am Bildschirm, in der Bediensprache: ein freier
+/// Betrag heißt [L10n.openAmountLine] ("Diverses 20 %"), sonst der Name aus
+/// der Speisekarte über [menuText].
+String cartLineName(
+  L10n l,
+  String Function(String source) menuText,
+  CartLine line,
+) => line.isOpenAmount
+    ? l.openAmountLine(line.item.taxRate.percent)
+    : menuText(line.item.name);
 
 /// "−10 % Stammgast" oder "Rabatt Stammgast", in der Bediensprache.
 String discountLabel(BuildContext context, Discount discount) {

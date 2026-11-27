@@ -406,4 +406,236 @@ void main() {
       expect(read.discount, isNull);
     });
   });
+
+  group('freier Betrag', () {
+    test('freier Betrag: eigene Zeile je Tipp, Steuersatz zählt, Entwurf bleibt lesbar', () {
+      final c = const Cart.empty()
+          .addOpenAmount(amountCents: 1250, rate: TaxRate.normal)
+          .addOpenAmount(amountCents: 300, rate: TaxRate.normal);
+      expect(
+        [
+          for (final l in c.lines)
+            (l.item.id, l.item.name, l.quantity, l.goodsCents, l.isOpenAmount),
+        ],
+        [
+          ('open-amount-20', 'Diverses 20 %', 1, 1250, true),
+          ('open-amount-20', 'Diverses 20 %', 1, 300, true),
+        ],
+      );
+      expect(c.pricing.grossByRate, {TaxRate.normal: 1550});
+      final back = Cart.fromJson(c.toJson(), catalog);
+      expect([for (final l in back.lines) l.goodsCents], [1250, 300]);
+      expect(c.rebind(catalog).lines, hasLength(2));
+    });
+
+    test('Grenzen: 0, 10.000,00 € und der Satz 19 % werfen ArgumentError', () {
+      for (final cents in [0, 1000000]) {
+        expect(
+          () => const Cart.empty().addOpenAmount(
+            amountCents: cents,
+            rate: TaxRate.normal,
+          ),
+          throwsArgumentError,
+        );
+      }
+      expect(
+        () => const Cart.empty().addOpenAmount(
+          amountCents: 100,
+          rate: TaxRate.special,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        const Cart.empty()
+            .addOpenAmount(amountCents: 999999, rate: TaxRate.zero)
+            .totalCents,
+        999999,
+      );
+    });
+
+    test('Kennung, Name und Sätze', () {
+      expect(openAmountRates, [
+        TaxRate.normal,
+        TaxRate.reduced1,
+        TaxRate.reduced2,
+        TaxRate.zero,
+      ]);
+      expect([for (final r in openAmountRates) openAmountItemId(r)], [
+        'open-amount-20',
+        'open-amount-10',
+        'open-amount-13',
+        'open-amount-0',
+      ]);
+      expect(openAmountName(TaxRate.reduced2), 'Diverses 13 %');
+      expect(isOpenAmountItemId('open-amount-10'), isTrue);
+      expect(isOpenAmountItemId('cola'), isFalse);
+      final line = const Cart.empty()
+          .addOpenAmount(amountCents: 450, rate: TaxRate.reduced1)
+          .lines
+          .single;
+      expect(
+        (
+          line.item.priceCents,
+          line.item.taxRate,
+          line.unitDepositCents,
+          line.options.length,
+        ),
+        (450, TaxRate.reduced1, 0, 0),
+      );
+      expect(
+        const Cart.empty().add(cola).lines.single.isOpenAmount,
+        isFalse,
+      );
+    });
+
+    test('Menge und Rabatt gehen wie bei jeder Zeile; Minus bei Menge 1 nimmt sie weg', () {
+      var c = const Cart.empty()
+          .add(cola)
+          .addOpenAmount(amountCents: 500, rate: TaxRate.reduced1, lineId: 'o');
+      c = c.setQuantity('o', 3);
+      expect(c.lines[1].goodsCents, 1500);
+      expect(c.lines[1].isOpenAmount, isTrue);
+      c = c.setLineDiscount(
+        'o',
+        const Discount.percent(10, DiscountReason.regular),
+      );
+      expect(c.lines[1].isOpenAmount, isTrue);
+      expect(c.pricing.grossByRate[TaxRate.reduced1], 1350);
+      final back = Cart.fromJson(c.toJson(), catalog);
+      expect(back.lines[1].discount, c.lines[1].discount);
+      expect(back.lines[1].quantity, 3);
+      expect(back.totalCents, c.totalCents);
+      c = c.setQuantity('o', 1).setQuantity('o', 0);
+      expect(c.lines.map((l) => l.item.id), ['cola']);
+    });
+
+    test('ein Artikel des Katalogs verschmilzt nie mit einem freien Betrag', () {
+      final c = const Cart.empty()
+          .addOpenAmount(amountCents: 290, rate: TaxRate.normal)
+          .add(cola)
+          .add(cola);
+      expect(c.lines.map((l) => (l.item.id, l.quantity)), [
+        ('open-amount-20', 1),
+        ('cola', 2),
+      ]);
+    });
+
+    test('toJson schreibt "open" mit Betrag und Satz', () {
+      final c = const Cart.empty().addOpenAmount(
+        amountCents: 1250,
+        rate: TaxRate.normal,
+        lineId: 'o',
+      );
+      expect((c.toJson()['lines'] as List).single, {
+        'lineId': 'o',
+        'itemId': 'open-amount-20',
+        'quantity': 1,
+        'optionIds': <String>[],
+        'open': {'cents': 1250, 'taxPercent': 20},
+      });
+      expect(
+        (const Cart.empty().add(cola).toJson()['lines'] as List).single,
+        isNot(contains('open')),
+      );
+    });
+
+    test('rebind mit einem Katalog ohne die Kennung des freien Betrags: die Zeile bleibt', () {
+      final c = const Cart.empty()
+          .add(cola)
+          .addOpenAmount(amountCents: 700, rate: TaxRate.zero);
+      expect(
+        catalog.items.where((i) => isOpenAmountItemId(i.id)),
+        isEmpty,
+      );
+      final r = c.rebind(catalog);
+      expect(r.lines.map((l) => (l.item.id, l.goodsCents)), [
+        ('cola', 290),
+        ('open-amount-0', 700),
+      ]);
+      expect(r.lines[1].item.taxRate, TaxRate.zero);
+    });
+
+    group('Entwurf mit kaputtem freien Betrag: nur diese Zeile fällt weg', () {
+      for (final (name, open) in <(String, Object?)>[
+        ('kein Objekt', 'zwölf Euro'),
+        ('Betrag 0', {'cents': 0, 'taxPercent': 20}),
+        ('Betrag über 9.999,99 €', {'cents': 1000000, 'taxPercent': 20}),
+        ('negativer Betrag', {'cents': -5, 'taxPercent': 20}),
+        ('Betrag als Text', {'cents': '1250', 'taxPercent': 20}),
+        ('Betrag als Kommazahl', {'cents': 12.5, 'taxPercent': 20}),
+        ('Betrag fehlt', {'taxPercent': 20}),
+        ('Satz 19 %', {'cents': 1250, 'taxPercent': 19}),
+        ('Satz 7 %', {'cents': 1250, 'taxPercent': 7}),
+        ('Satz als Text', {'cents': 1250, 'taxPercent': '20'}),
+        ('Satz fehlt', {'cents': 1250}),
+        ('Kennung passt nicht zum Satz', {'cents': 1250, 'taxPercent': 10}),
+      ]) {
+        test(name, () {
+          final read = Cart.fromJson({
+            'lines': [
+              {
+                'lineId': 'a',
+                'itemId': 'cola',
+                'quantity': 2,
+                'optionIds': <String>[],
+              },
+              {
+                'lineId': 'o',
+                'itemId': 'open-amount-20',
+                'quantity': 1,
+                'optionIds': <String>[],
+                'open': open,
+              },
+              {
+                'lineId': 'b',
+                'itemId': 'teigtaschen',
+                'quantity': 1,
+                'optionIds': <String>[],
+              },
+            ],
+            'discount': {'percent': 10, 'reason': 'regular'},
+          }, catalog);
+          expect(read.lines.map((l) => l.lineId), ['a', 'b']);
+          expect(
+            read.discount,
+            const Discount.percent(10, DiscountReason.regular),
+          );
+        });
+      }
+    });
+
+    test('Entwurf: ein gültiger freier Betrag mit falscher Menge oder Optionen fällt weg', () {
+      Map<String, dynamic> open(Object? quantity, {Object? optionIds}) => {
+        'lineId': 'o$quantity$optionIds',
+        'itemId': 'open-amount-10',
+        'quantity': quantity,
+        'optionIds': optionIds ?? <String>[],
+        'open': {'cents': 300, 'taxPercent': 10},
+      };
+      final read = Cart.fromJson({
+        'lines': [
+          open(0),
+          open('1'),
+          open(1, optionIds: ['reis']),
+          open(2),
+        ],
+      }, catalog);
+      expect(read.lines.map((l) => (l.quantity, l.goodsCents)), [(2, 600)]);
+    });
+
+    test('Entwurf aus 1.10.0 (ohne "open") bleibt lesbar', () {
+      final read = Cart.fromJson({
+        'lines': [
+          {
+            'lineId': 'a',
+            'itemId': 'cola',
+            'quantity': 2,
+            'optionIds': <String>[],
+          },
+        ],
+      }, catalog);
+      expect(read.lines.single.isOpenAmount, isFalse);
+      expect(read.totalCents, 630);
+    });
+  });
 }

@@ -30,6 +30,10 @@ class CartController extends Notifier<Cart> {
   void add(Item item, {List<ModifierOption> options = const []}) =>
       _set(state.add(item, options: options));
 
+  /// Ein freier Betrag als eigene Zeile (siehe [Cart.addOpenAmount]).
+  void addOpenAmount({required int amountCents, required TaxRate rate}) =>
+      _set(state.addOpenAmount(amountCents: amountCents, rate: rate));
+
   void setQuantity(String lineId, int quantity) =>
       _set(state.setQuantity(lineId, quantity));
 

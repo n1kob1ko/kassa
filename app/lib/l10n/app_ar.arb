@@ -446,5 +446,10 @@
   "discountApply": "تطبيق",
   "discountLineHint": "لخصم سطر واحد، المس السطر في الفاتورة.",
   "discountRowPercent": "خصم {percent} % {reason}",
-  "discountRowAmount": "خصم {reason}"
+  "discountRowAmount": "خصم {reason}",
+  "openAmountTitle": "مبلغ حر",
+  "openAmountAmount": "المبلغ",
+  "openAmountTax": "نسبة الضريبة",
+  "openAmountAdd": "أضف إلى الفاتورة",
+  "openAmountLine": "متفرقات {percent} %"
 }

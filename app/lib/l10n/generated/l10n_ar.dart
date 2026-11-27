@@ -1575,4 +1575,21 @@ class L10nAr extends L10n {
   String discountRowAmount(String reason) {
     return 'خصم $reason';
   }
+
+  @override
+  String get openAmountTitle => 'مبلغ حر';
+
+  @override
+  String get openAmountAmount => 'المبلغ';
+
+  @override
+  String get openAmountTax => 'نسبة الضريبة';
+
+  @override
+  String get openAmountAdd => 'أضف إلى الفاتورة';
+
+  @override
+  String openAmountLine(int percent) {
+    return 'متفرقات $percent %';
+  }
 }

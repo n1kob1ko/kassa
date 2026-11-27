@@ -1543,4 +1543,21 @@ class L10nZh extends L10n {
   String discountRowAmount(String reason) {
     return '折扣 $reason';
   }
+
+  @override
+  String get openAmountTitle => '自定义金额';
+
+  @override
+  String get openAmountAmount => '金额';
+
+  @override
+  String get openAmountTax => '税率';
+
+  @override
+  String get openAmountAdd => '加入小票';
+
+  @override
+  String openAmountLine(int percent) {
+    return '杂项 $percent %';
+  }
 }

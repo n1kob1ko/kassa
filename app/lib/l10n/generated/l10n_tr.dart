@@ -1563,4 +1563,21 @@ class L10nTr extends L10n {
   String discountRowAmount(String reason) {
     return 'İndirim $reason';
   }
+
+  @override
+  String get openAmountTitle => 'Serbest tutar';
+
+  @override
+  String get openAmountAmount => 'Tutar';
+
+  @override
+  String get openAmountTax => 'KDV oranı';
+
+  @override
+  String get openAmountAdd => 'Fişe ekle';
+
+  @override
+  String openAmountLine(int percent) {
+    return 'Çeşitli $percent %';
+  }
 }

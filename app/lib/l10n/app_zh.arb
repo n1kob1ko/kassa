@@ -446,5 +446,10 @@
   "discountApply": "应用",
   "discountLineHint": "只给一行打折：点小票上的那一行。",
   "discountRowPercent": "−{percent} % {reason}",
-  "discountRowAmount": "折扣 {reason}"
+  "discountRowAmount": "折扣 {reason}",
+  "openAmountTitle": "自定义金额",
+  "openAmountAmount": "金额",
+  "openAmountTax": "税率",
+  "openAmountAdd": "加入小票",
+  "openAmountLine": "杂项 {percent} %"
 }

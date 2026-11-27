@@ -142,6 +142,67 @@ describe('Umsätze', () => {
     expect(before.byCategory).toEqual([{ name: 'Sonstiges', cents: 990 }]);
   });
 
+  test('freier Betrag: "Diverses 20 %" bei meistverkauft, "Sonstiges" bei den Kategorien', async () => {
+    const s = await siteFor(a, provider);
+    await withBusiness(a.db, s.businessId, async (c) => {
+      await c.query(
+        `insert into categories (business_id, id, name, position, change_seq) values ($1, 'getraenke', 'Getränke', 0, nextval('change_seq'))`,
+        [s.businessId],
+      );
+      await c.query(
+        `insert into items (business_id, id, name, price_cents, category_id, tax_percent, deposit_cents, position, change_seq)
+         values ($1, 'cola', 'Cola 0,33 l', 290, 'getraenke', 20, 0, 0, nextval('change_seq'))`,
+        [s.businessId],
+      );
+    });
+    const gross = (cents: number, rate: string) => ({ '20': 0, '10': 0, '13': 0, '0': 0, '19': 0, [rate]: cents });
+    const line = (position: number, itemId: string, name: string, unitPriceCents: number, quantity: number, rate: string) => ({
+      position,
+      itemId,
+      name,
+      info: null,
+      unitPriceCents,
+      quantity,
+      unitDepositCents: 0,
+      gross: gross(unitPriceCents * quantity, rate),
+      options: [],
+      discountCents: 0,
+      discount: null,
+    });
+    const base = sampleReceiptV2();
+    a.now.value = new Date('2026-11-19T12:00:00.000Z');
+    await send(a, s, [
+      [
+        'receipt',
+        {
+          ...base,
+          createdAt: '2026-11-19T09:00:00.000Z',
+          goodsCents: 2530,
+          depositCents: 0,
+          totalCents: 2530,
+          tipCents: 0,
+          discountCents: 0,
+          discount: null,
+          lines: [
+            line(0, 'cola', 'Cola 0,33 l', 290, 2, '20'),
+            line(1, 'open-amount-20', 'Diverses 20 %', 1250, 1, '20'),
+            line(2, 'open-amount-20', 'Diverses 20 %', 300, 1, '20'),
+            line(3, 'open-amount-10', 'Diverses 10 %', 400, 1, '10'),
+          ],
+          payments: [{ ...base.payments[0], amountCents: 2530, givenCents: 3000, changeCents: 470 }],
+        },
+      ],
+    ]);
+    const body = (await overview(s.businessId, 'today')).json();
+    expect(body).toMatchObject({ revenueCents: 2530, receiptCount: 1, cashCents: 2530, cardCents: 0 });
+    expect(body.topItems).toEqual([
+      { name: 'Diverses 20 %', quantity: 2, cents: 1550 },
+      { name: 'Cola 0,33 l', quantity: 2, cents: 580 },
+      { name: 'Diverses 10 %', quantity: 1, cents: 400 },
+    ]);
+    expect(body.byCategory).toEqual([{ name: 'Sonstiges', cents: 1950 }, { name: 'Getränke', cents: 580 }]);
+  });
+
   test('Europe/Vienna: ein Bon um 23:30 UTC zählt zum nächsten Tag', async () => {
     const s = await siteFor(a, provider);
     a.now.value = new Date('2026-11-19T12:00:00.000Z');
