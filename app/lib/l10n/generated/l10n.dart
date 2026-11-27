@@ -2599,6 +2599,90 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Trinkgeld'**
   String get closeReasonTip;
+
+  /// Segment im Blatt Bar bezahlen: der ganze Betrag bar.
+  ///
+  /// In de, this message translates to:
+  /// **'Ganzer Betrag'**
+  String get splitWhole;
+
+  /// Segment im Blatt Bar bezahlen: ein Teil bar, der Rest mit Karte.
+  ///
+  /// In de, this message translates to:
+  /// **'Teil bar'**
+  String get splitPart;
+
+  /// Überschrift über dem Zahlenfeld: der Teil, der bar bezahlt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar-Teil'**
+  String get splitCashPart;
+
+  /// Teil bar: was danach mit Karte bezahlt wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Rest mit Karte'**
+  String get splitRest;
+
+  /// Taste Teil bar: weiter zum Terminal mit dem Rest; amount wie "4,65 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter zur Karte {amount}'**
+  String splitGo(String amount);
+
+  /// Teil bar, unter der Taste: noch kein Bar-Teil getippt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar-Teil eingeben.'**
+  String get splitNeedCash;
+
+  /// Teil bar, unter der Taste: der Rest liegt unter dem Kleinstbetrag der Karte; amount wie "1,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Rest mit Karte mindestens {amount}.'**
+  String splitRestTooSmall(String amount);
+
+  /// Hinweis über der Summe, nachdem die Karte bei Teil bar sicher nicht bezahlt wurde; amount ist der Bar-Teil.
+  ///
+  /// In de, this message translates to:
+  /// **'Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen.'**
+  String splitCardFailed(String amount);
+
+  /// Verkauf fertig, unter "Mit Karte bezahlt": so viel wurde bar bezahlt; amount wie "5,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Bar-Teil {amount}'**
+  String kassaCashPartDone(String amount);
+
+  /// Blatt Unklare Kartenzahlung: der Bar-Teil ist schon bezahlt; amount wie "5,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Bar-Teil {amount} ist schon kassiert.'**
+  String unclearCashPart(String amount);
+
+  /// Blatt Unklare Kartenzahlung, Wirkung von "nicht bezahlt": den Bar-Teil zurückgeben.
+  ///
+  /// In de, this message translates to:
+  /// **'{amount} bar zurückgeben.'**
+  String unclearReturnCash(String amount);
+
+  /// Rückfrage Storno, Bon mit Bar-Teil und Karte: den Bar-Teil zurückgeben.
+  ///
+  /// In de, this message translates to:
+  /// **'{amount} bar zurückgeben.'**
+  String bonsVoidMixedCash(String amount);
+
+  /// Rückfrage Storno, Bon mit Bar-Teil: so viel in SumUp zurückbuchen.
+  ///
+  /// In de, this message translates to:
+  /// **'{amount} bei SumUp zurückbuchen.'**
+  String bonsVoidCardBack(String amount);
+
+  /// Rückfrage Storno, Karte mit Trinkgeld: so viel in SumUp zurückbuchen, davon tip Trinkgeld.
+  ///
+  /// In de, this message translates to:
+  /// **'{amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld.'**
+  String bonsVoidCardBackTip(String amount, String tip);
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

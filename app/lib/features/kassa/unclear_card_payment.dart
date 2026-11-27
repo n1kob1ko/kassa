@@ -227,6 +227,19 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                       style: text.bodyLarge!.copyWith(color: c.ink2),
                     ),
                   ],
+                  if (p.cashPartCents > 0) ...[
+                    const SizedBox(height: KassaTokens.spaceXs),
+                    Text(
+                      l.unclearCashPart(
+                        ltrIsolate(context, formatEuro(p.cashPartCents)),
+                      ),
+                      key: const Key('unclear-cash-part'),
+                      style: text.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: c.ink,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
                     l.unclearStarted(
@@ -362,6 +375,17 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
               ? (printing ? l.unclearEffectPaidPrint : l.unclearEffectPaid)
               : (comesBack ? l.unclearEffectRestore : l.unclearEffectDiscard),
         ),
+        if (!paid && widget.payment.cashPartCents > 0) ...[
+          const SizedBox(height: KassaTokens.spaceMd),
+          _Note(
+            key: const Key('unclear-return-cash'),
+            background: c.warnBg,
+            foreground: c.warnInk,
+            message: l.unclearReturnCash(
+              ltrIsolate(context, formatEuro(widget.payment.cashPartCents)),
+            ),
+          ),
+        ],
         const SizedBox(height: KassaTokens.spaceXxl),
         PrimaryButton(
           key: const Key('unclear-confirm'),

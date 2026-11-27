@@ -1457,4 +1457,64 @@ class L10nEn extends L10n {
 
   @override
   String get closeReasonTip => 'Tip';
+
+  @override
+  String get splitWhole => 'Full amount';
+
+  @override
+  String get splitPart => 'Part cash';
+
+  @override
+  String get splitCashPart => 'Cash part';
+
+  @override
+  String get splitRest => 'Rest by card';
+
+  @override
+  String splitGo(String amount) {
+    return 'Continue to card $amount';
+  }
+
+  @override
+  String get splitNeedCash => 'Enter the cash part.';
+
+  @override
+  String splitRestTooSmall(String amount) {
+    return 'Rest by card at least $amount.';
+  }
+
+  @override
+  String splitCardFailed(String amount) {
+    return 'Card not paid. Give back $amount in cash or try again.';
+  }
+
+  @override
+  String kassaCashPartDone(String amount) {
+    return 'Cash part $amount';
+  }
+
+  @override
+  String unclearCashPart(String amount) {
+    return 'Cash part $amount has already been taken.';
+  }
+
+  @override
+  String unclearReturnCash(String amount) {
+    return 'Give back $amount in cash.';
+  }
+
+  @override
+  String bonsVoidMixedCash(String amount) {
+    return 'Give back $amount in cash.';
+  }
+
+  @override
+  String bonsVoidCardBack(String amount) {
+    return 'Refund $amount in SumUp.';
+  }
+
+  @override
+  String bonsVoidCardBackTip(String amount, String tip) {
+    return 'Refund $amount in SumUp, incl. tip $tip.';
+  }
 }

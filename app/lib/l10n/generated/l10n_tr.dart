@@ -1446,4 +1446,64 @@ class L10nTr extends L10n {
 
   @override
   String get closeReasonTip => 'Bahşiş';
+
+  @override
+  String get splitWhole => 'Tam tutar';
+
+  @override
+  String get splitPart => 'Kısmen nakit';
+
+  @override
+  String get splitCashPart => 'Nakit kısmı';
+
+  @override
+  String get splitRest => 'Kalanı kartla';
+
+  @override
+  String splitGo(String amount) {
+    return 'Karta geç $amount';
+  }
+
+  @override
+  String get splitNeedCash => 'Nakit kısmını girin.';
+
+  @override
+  String splitRestTooSmall(String amount) {
+    return 'Kartla kalan en az $amount.';
+  }
+
+  @override
+  String splitCardFailed(String amount) {
+    return 'Kart ödenmedi. $amount nakit iade edin veya tekrar deneyin.';
+  }
+
+  @override
+  String kassaCashPartDone(String amount) {
+    return 'Nakit kısmı $amount';
+  }
+
+  @override
+  String unclearCashPart(String amount) {
+    return 'Nakit kısmı $amount zaten alındı.';
+  }
+
+  @override
+  String unclearReturnCash(String amount) {
+    return '$amount nakit iade edin.';
+  }
+
+  @override
+  String bonsVoidMixedCash(String amount) {
+    return '$amount nakit iade edin.';
+  }
+
+  @override
+  String bonsVoidCardBack(String amount) {
+    return '$amount tutarını SumUp\'ta iade edin.';
+  }
+
+  @override
+  String bonsVoidCardBackTip(String amount, String tip) {
+    return '$amount tutarını SumUp\'ta iade edin, bunun $tip kadarı bahşiş.';
+  }
 }

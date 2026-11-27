@@ -757,6 +757,80 @@ void main() {
       expect(await cardPayments.pending(), isEmpty);
     });
 
+    test('mit Bar-Teil und Lade: Lade und Bon in einem Druckauftrag; Lade '
+        'aus: nur der Bon', () async {
+      await configure();
+      putOnRegister();
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+      ) as CardSaleDone;
+      expect((await o.sale.print).ok, isTrue);
+      expect(printer.log, ['print+drawer:p1']);
+
+      await configure(drawer: false);
+      putOnRegister();
+      final o2 = await service.payByCard(
+        paymentId: 'p2',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+      ) as CardSaleDone;
+      await o2.sale.print;
+      expect(printer.log, ['print+drawer:p1', 'print:p2']);
+    });
+
+    test('mit Bar-Teil, die Lade ging nicht auf: Nochmal drucken holt sie '
+        'nach', () async {
+      await configure();
+      putOnRegister();
+      printer.next = const PrintOutcome.failed(PrintProblem.unreachable);
+      final o = await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+      ) as CardSaleDone;
+      await o.sale.print;
+      printer.next = const PrintOutcome.ok();
+      await service.printAgain(o.sale.receipt);
+      expect(printer.log, ['print+drawer:p1', 'print+drawer:p1']);
+    });
+
+    test('unklar mit Bar-Teil bestätigen: die Lade geht mit dem Bon auf', () async {
+      await configure();
+      putOnRegister();
+      terminal.next = const CardUnknown();
+      await service.payByCard(
+        paymentId: 'p1',
+        cart: cart,
+        staff: shop.anna,
+        cashPartCents: 1000,
+      );
+      final p = (await cardPayments.pending()).single;
+      final catalog = (await container.read(catalogProvider.future))!;
+      final r = await service.confirmUnclear(p, catalog: catalog);
+      await r.print;
+      expect(printer.log, ['print+drawer:p1']);
+    });
+
+    test('terminalAmountCents: Summe ohne Bar-Teil, mit Trinkgeld', () {
+      expect(
+        terminalAmountCents(totalCents: 1820, cashPartCents: 0, tipCents: 0),
+        1820,
+      );
+      expect(
+        terminalAmountCents(
+          totalCents: 1820,
+          cashPartCents: 1000,
+          tipCents: 80,
+        ),
+        900,
+      );
+    });
+
     test('cartOfPending prüft den Betrag mit Bar-Teil und Trinkgeld', () async {
       final catalog = (await container.read(catalogProvider.future))!;
       PendingCardPayment pending(int amount, int cashPart, int tip) =>

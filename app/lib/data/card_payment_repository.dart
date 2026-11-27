@@ -10,6 +10,16 @@ import '../domain/cart.dart';
 import '../domain/staff.dart';
 import 'database.dart';
 
+/// Was das Terminal bucht: die Summe des Bons [totalCents] ohne den Bar-Teil
+/// [cashPartCents], dazu das Trinkgeld [tipCents]. Die eine Rechnung für das
+/// Schreiben der offenen Zahlung, den Aufruf des Terminals und die Prüfung
+/// beim Wiederaufbau.
+int terminalAmountCents({
+  required int totalCents,
+  required int cashPartCents,
+  required int tipCents,
+}) => totalCents - cashPartCents + tipCents;
+
 class PendingCardPayment {
   const PendingCardPayment({
     required this.id,
@@ -68,7 +78,11 @@ class CardPaymentRepository {
         PendingCardPaymentRowsCompanion.insert(
           id: paymentId,
           cartJson: jsonEncode(cart.toJson()),
-          amountCents: cart.totalCents - cashPartCents + tipCents,
+          amountCents: terminalAmountCents(
+            totalCents: cart.totalCents,
+            cashPartCents: cashPartCents,
+            tipCents: tipCents,
+          ),
           staffId: staff.id,
           staffName: staff.name,
           startedAt: _clock.now(),

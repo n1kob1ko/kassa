@@ -2118,5 +2118,109 @@
   "closeReasonTip": "Trinkgeld",
   "@closeReasonTip": {
     "description": "Grund einer Bargeld-Bewegung: Trinkgeld (nur beim Entnehmen)."
+  },
+  "splitWhole": "Ganzer Betrag",
+  "@splitWhole": {
+    "description": "Segment im Blatt Bar bezahlen: der ganze Betrag bar."
+  },
+  "splitPart": "Teil bar",
+  "@splitPart": {
+    "description": "Segment im Blatt Bar bezahlen: ein Teil bar, der Rest mit Karte."
+  },
+  "splitCashPart": "Bar-Teil",
+  "@splitCashPart": {
+    "description": "Überschrift über dem Zahlenfeld: der Teil, der bar bezahlt wird."
+  },
+  "splitRest": "Rest mit Karte",
+  "@splitRest": {
+    "description": "Teil bar: was danach mit Karte bezahlt wird."
+  },
+  "splitGo": "Weiter zur Karte {amount}",
+  "@splitGo": {
+    "description": "Taste Teil bar: weiter zum Terminal mit dem Rest; amount wie \"4,65 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "splitNeedCash": "Bar-Teil eingeben.",
+  "@splitNeedCash": {
+    "description": "Teil bar, unter der Taste: noch kein Bar-Teil getippt."
+  },
+  "splitRestTooSmall": "Rest mit Karte mindestens {amount}.",
+  "@splitRestTooSmall": {
+    "description": "Teil bar, unter der Taste: der Rest liegt unter dem Kleinstbetrag der Karte; amount wie \"1,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "splitCardFailed": "Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen.",
+  "@splitCardFailed": {
+    "description": "Hinweis über der Summe, nachdem die Karte bei Teil bar sicher nicht bezahlt wurde; amount ist der Bar-Teil.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaCashPartDone": "Bar-Teil {amount}",
+  "@kassaCashPartDone": {
+    "description": "Verkauf fertig, unter \"Mit Karte bezahlt\": so viel wurde bar bezahlt; amount wie \"5,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "unclearCashPart": "Bar-Teil {amount} ist schon kassiert.",
+  "@unclearCashPart": {
+    "description": "Blatt Unklare Kartenzahlung: der Bar-Teil ist schon bezahlt; amount wie \"5,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "unclearReturnCash": "{amount} bar zurückgeben.",
+  "@unclearReturnCash": {
+    "description": "Blatt Unklare Kartenzahlung, Wirkung von \"nicht bezahlt\": den Bar-Teil zurückgeben.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidMixedCash": "{amount} bar zurückgeben.",
+  "@bonsVoidMixedCash": {
+    "description": "Rückfrage Storno, Bon mit Bar-Teil und Karte: den Bar-Teil zurückgeben.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidCardBack": "{amount} bei SumUp zurückbuchen.",
+  "@bonsVoidCardBack": {
+    "description": "Rückfrage Storno, Bon mit Bar-Teil: so viel in SumUp zurückbuchen.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidCardBackTip": "{amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld.",
+  "@bonsVoidCardBackTip": {
+    "description": "Rückfrage Storno, Karte mit Trinkgeld: so viel in SumUp zurückbuchen, davon tip Trinkgeld.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "tip": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -415,5 +415,19 @@
   "tipTooLow": "金额小于应付总额。",
   "kassaTipDone": "其中小费 {amount}",
   "unclearTip": "其中小费 {amount}",
-  "closeReasonTip": "小费"
+  "closeReasonTip": "小费",
+  "splitWhole": "全额",
+  "splitPart": "部分现金",
+  "splitCashPart": "现金部分",
+  "splitRest": "其余刷卡",
+  "splitGo": "继续刷卡 {amount}",
+  "splitNeedCash": "请输入现金部分。",
+  "splitRestTooSmall": "刷卡部分至少 {amount}。",
+  "splitCardFailed": "刷卡未付款。请退还现金 {amount} 或再试一次。",
+  "kassaCashPartDone": "现金部分 {amount}",
+  "unclearCashPart": "现金部分 {amount} 已收取。",
+  "unclearReturnCash": "请退还现金 {amount}。",
+  "bonsVoidMixedCash": "请退还现金 {amount}。",
+  "bonsVoidCardBack": "请在 SumUp 中退款 {amount}。",
+  "bonsVoidCardBackTip": "请在 SumUp 中退款 {amount}，其中小费 {tip}。"
 }

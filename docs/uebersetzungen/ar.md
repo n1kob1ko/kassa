@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 416 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 430 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -119,6 +119,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Weitere Küchenbons nicht gedruckt: {count} | تذاكر مطبخ أخرى لم تُطبع: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | إخفاء | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | منها إكرامية {amount} | Kassa: `kassaTipDone` |
+| Bar-Teil {amount} | الجزء النقدي {amount} | Kassa: `kassaCashPartDone` |
 
 ## Kartenzahlung
 
@@ -180,6 +181,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bestätigen | تأكيد | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | رجوع | Unklare Kartenzahlung: `unclearBack` |
 | Davon Trinkgeld {amount} | منها إكرامية {amount} | Unklare Kartenzahlung: `unclearTip` |
+| Bar-Teil {amount} ist schon kassiert. | تم استلام الجزء النقدي {amount} بالفعل. | Unklare Kartenzahlung: `unclearCashPart` |
+| {amount} bar zurückgeben. | أعد {amount} نقدًا. | Unklare Kartenzahlung: `unclearReturnCash` |
 
 ## Datum
 
@@ -274,6 +277,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Stornieren, Rückbuchung mache ich in SumUp | إلغاء، وسأسترد المبلغ في SumUp | Bons: `bonsVoidConfirmCard` |
 | Ja, stornieren | نعم، إلغاء | Bons: `bonsVoidConfirm` |
 | Auf diesem Bon ist nichts für die Küche. | لا يوجد في هذه الفاتورة شيء للمطبخ. | Bons: `bonsKitchenNothing` |
+| {amount} bar zurückgeben. | أعد {amount} نقدًا. | Bons: `bonsVoidMixedCash` |
+| {amount} bei SumUp zurückbuchen. | استرد {amount} في SumUp. | Bons: `bonsVoidCardBack` |
+| {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | استرد {amount} في SumUp، منها إكرامية {tip}. | Bons: `bonsVoidCardBackTip` |
 
 ## Artikel
 
@@ -506,6 +512,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ja, stimmt | نعم، صحيح | Sonstiges: `tipConfirmYes` |
 | Ändern | تغيير | Sonstiges: `tipConfirmNo` |
 | Der Betrag ist kleiner als die Summe. | المبلغ أقل من الإجمالي. | Sonstiges: `tipTooLow` |
+| Ganzer Betrag | المبلغ كاملًا | Sonstiges: `splitWhole` |
+| Teil bar | جزء نقدًا | Sonstiges: `splitPart` |
+| Bar-Teil | الجزء النقدي | Sonstiges: `splitCashPart` |
+| Rest mit Karte | الباقي بالبطاقة | Sonstiges: `splitRest` |
+| Weiter zur Karte {amount} | متابعة إلى البطاقة {amount} | Sonstiges: `splitGo` |
+| Bar-Teil eingeben. | أدخل الجزء النقدي. | Sonstiges: `splitNeedCash` |
+| Rest mit Karte mindestens {amount}. | الباقي بالبطاقة {amount} على الأقل. | Sonstiges: `splitRestTooSmall` |
+| Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | لم يتم الدفع بالبطاقة. أعد {amount} نقدًا أو حاول مرة أخرى. | Sonstiges: `splitCardFailed` |
 
 ## Unsicher
 

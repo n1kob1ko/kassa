@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 416 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 430 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -119,6 +119,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Weitere Küchenbons nicht gedruckt: {count} | More kitchen tickets not printed: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | Dismiss | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | incl. tip {amount} | Kassa: `kassaTipDone` |
+| Bar-Teil {amount} | Cash part {amount} | Kassa: `kassaCashPartDone` |
 
 ## Kartenzahlung
 
@@ -180,6 +181,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bestätigen | Confirm | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | Back | Unklare Kartenzahlung: `unclearBack` |
 | Davon Trinkgeld {amount} | Including tip {amount} | Unklare Kartenzahlung: `unclearTip` |
+| Bar-Teil {amount} ist schon kassiert. | Cash part {amount} has already been taken. | Unklare Kartenzahlung: `unclearCashPart` |
+| {amount} bar zurückgeben. | Give back {amount} in cash. | Unklare Kartenzahlung: `unclearReturnCash` |
 
 ## Datum
 
@@ -274,6 +277,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Stornieren, Rückbuchung mache ich in SumUp | Void, I'll refund in SumUp | Bons: `bonsVoidConfirmCard` |
 | Ja, stornieren | Yes, void | Bons: `bonsVoidConfirm` |
 | Auf diesem Bon ist nichts für die Küche. | Nothing on this receipt is for the kitchen. | Bons: `bonsKitchenNothing` |
+| {amount} bar zurückgeben. | Give back {amount} in cash. | Bons: `bonsVoidMixedCash` |
+| {amount} bei SumUp zurückbuchen. | Refund {amount} in SumUp. | Bons: `bonsVoidCardBack` |
+| {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | Refund {amount} in SumUp, incl. tip {tip}. | Bons: `bonsVoidCardBackTip` |
 
 ## Artikel
 
@@ -506,6 +512,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ja, stimmt | Yes, that's right | Sonstiges: `tipConfirmYes` |
 | Ändern | Change | Sonstiges: `tipConfirmNo` |
 | Der Betrag ist kleiner als die Summe. | The amount is less than the total. | Sonstiges: `tipTooLow` |
+| Ganzer Betrag | Full amount | Sonstiges: `splitWhole` |
+| Teil bar | Part cash | Sonstiges: `splitPart` |
+| Bar-Teil | Cash part | Sonstiges: `splitCashPart` |
+| Rest mit Karte | Rest by card | Sonstiges: `splitRest` |
+| Weiter zur Karte {amount} | Continue to card {amount} | Sonstiges: `splitGo` |
+| Bar-Teil eingeben. | Enter the cash part. | Sonstiges: `splitNeedCash` |
+| Rest mit Karte mindestens {amount}. | Rest by card at least {amount}. | Sonstiges: `splitRestTooSmall` |
+| Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | Card not paid. Give back {amount} in cash or try again. | Sonstiges: `splitCardFailed` |
 
 ## Unsicher
 

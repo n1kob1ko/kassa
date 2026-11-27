@@ -1426,4 +1426,64 @@ class L10nZh extends L10n {
 
   @override
   String get closeReasonTip => '小费';
+
+  @override
+  String get splitWhole => '全额';
+
+  @override
+  String get splitPart => '部分现金';
+
+  @override
+  String get splitCashPart => '现金部分';
+
+  @override
+  String get splitRest => '其余刷卡';
+
+  @override
+  String splitGo(String amount) {
+    return '继续刷卡 $amount';
+  }
+
+  @override
+  String get splitNeedCash => '请输入现金部分。';
+
+  @override
+  String splitRestTooSmall(String amount) {
+    return '刷卡部分至少 $amount。';
+  }
+
+  @override
+  String splitCardFailed(String amount) {
+    return '刷卡未付款。请退还现金 $amount 或再试一次。';
+  }
+
+  @override
+  String kassaCashPartDone(String amount) {
+    return '现金部分 $amount';
+  }
+
+  @override
+  String unclearCashPart(String amount) {
+    return '现金部分 $amount 已收取。';
+  }
+
+  @override
+  String unclearReturnCash(String amount) {
+    return '请退还现金 $amount。';
+  }
+
+  @override
+  String bonsVoidMixedCash(String amount) {
+    return '请退还现金 $amount。';
+  }
+
+  @override
+  String bonsVoidCardBack(String amount) {
+    return '请在 SumUp 中退款 $amount。';
+  }
+
+  @override
+  String bonsVoidCardBackTip(String amount, String tip) {
+    return '请在 SumUp 中退款 $amount，其中小费 $tip。';
+  }
 }

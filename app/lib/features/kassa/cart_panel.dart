@@ -3,8 +3,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
-import '../../devices/card_terminal.dart';
-import '../../devices/device_providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/pricing.dart';
 import '../../l10n/generated/l10n.dart';
@@ -14,6 +12,7 @@ import '../../ui/primary_button.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
+import 'card_availability.dart';
 import 'cart_controller.dart';
 import 'cart_line_row.dart';
 
@@ -22,7 +21,8 @@ import 'cart_line_row.dart';
 /// aktiv, wenn das Terminal angemeldet ist, Internet da ist und die Summe
 /// mindestens den Kleinstbetrag des Terminals erreicht; sonst nennt eine Zeile
 /// unter dem Wort den ersten Grund. [notice] steht über dem Kopf (der
-/// Hinweis zum Ausfall der Signatur).
+/// Hinweis zum Ausfall der Signatur), [payNotice] über dem Summenblock (der
+/// Hinweis nach einer gescheiterten Karte mit Bar-Teil).
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -30,12 +30,14 @@ class CartPanel extends ConsumerStatefulWidget {
     required this.onPayCard,
     this.canPay = true,
     this.notice,
+    this.payNotice,
   });
 
   final VoidCallback onPayCash;
   final VoidCallback onPayCard;
   final bool canPay;
   final Widget? notice;
+  final Widget? payNotice;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -105,7 +107,9 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     });
     final controller = ref.read(cartProvider.notifier);
     final l = L10n.of(context);
-    final card = _cardAvailability(l, cart);
+    final card = cart.isEmpty
+        ? (enabled: false, reason: null)
+        : cardAvailability(ref, context, cart.totalCents);
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final tax = taxBreakdown(grossByRate(cart))
         .fold<int>(0, (s, t) => s + t.taxCents);
@@ -146,6 +150,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                     ),
             ),
           ),
+          ?widget.payNotice,
           _Totals(cart: cart, taxCents: tax),
           Padding(
             padding: EdgeInsetsDirectional.fromSTEB(
@@ -188,34 +193,6 @@ class _CartPanelState extends ConsumerState<CartPanel> {
         ],
       ),
     );
-  }
-
-  ({bool enabled, String? reason}) _cardAvailability(L10n l, Cart cart) {
-    if (cart.isEmpty) return (enabled: false, reason: null);
-    final status = ref.watch(cardStatusProvider).value;
-    // Solange der Stand noch nicht da ist, bleibt die Taste still aus.
-    if (status == null) return (enabled: false, reason: null);
-    final minimum = ref.read(cardTerminalProvider).minimumCents;
-    final online = ref.watch(internetProvider).value ?? true;
-    return switch (status.state) {
-      CardTerminalState.notConfigured => (
-        enabled: false,
-        reason: l.kassaCardNotSetUp,
-      ),
-      CardTerminalState.loggedOut => (
-        enabled: false,
-        reason: l.kassaCardLoggedOut,
-      ),
-      CardTerminalState.ready when !online => (
-        enabled: false,
-        reason: l.kassaCardNoInternet,
-      ),
-      CardTerminalState.ready when cart.totalCents < minimum => (
-        enabled: false,
-        reason: l.kassaCardFrom(ltrIsolate(context, formatEuro(minimum))),
-      ),
-      CardTerminalState.ready => (enabled: true, reason: null),
-    };
   }
 }
 

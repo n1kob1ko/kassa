@@ -26,6 +26,7 @@ import '../support/demo_fixtures.dart';
 import '../support/fake_devices.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
+import '../support/sales.dart' show cart;
 
 const _failText =
     'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.';
@@ -83,6 +84,36 @@ Future<Receipt> _sellCard(WidgetTester t) async {
         cardScheme: 'VISA',
         cardLast4: '4242',
       );
+}
+
+/// Verkauft den Bon `cart` (18,20 €) mit [cashPartCents] bar und dem Rest
+/// mit Karte, mit [tipCents] Trinkgeld.
+Future<Receipt> _sellSplit(
+  WidgetTester t, {
+  String saleId = 'split-1',
+  int cashPartCents = 0,
+  int tipCents = 0,
+}) {
+  final staff = containerOf(t).read(sessionProvider)!;
+  return containerOf(t)
+      .read(receiptRepositoryProvider)
+      .finalizeCardSale(
+        saleId: saleId,
+        cart: cart,
+        staff: staff,
+        provider: 'sumup',
+        txCode: 'TX-$saleId',
+        cashPartCents: cashPartCents,
+        tipCents: tipCents,
+      );
+}
+
+/// Bons neu öffnen, damit die Liste die eben angelegten Bons zeigt.
+Future<void> _reopenBons(WidgetTester t) async {
+  await t.tap(find.byKey(const Key('tab-Kassa')));
+  await t.pump();
+  await t.tap(find.byKey(const Key('tab-Bons')));
+  await t.pumpAndSettle();
 }
 
 void main() {
@@ -187,6 +218,63 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+
+  testWidgets('Storno-Frage beim gemischten Bon mit Trinkgeld', (t) async {
+    await pumpBonsWithSales(t, 0);
+    await _sellSplit(t, cashPartCents: 1000, tipCents: 80);
+    await _reopenBons(t);
+    await _startVoid(t, 1);
+    expect(
+      textOf(t, const Key('void-cash-back')),
+      '10,00 € bar zurückgeben.',
+    );
+    expect(
+      textOf(t, const Key('void-card-hint')),
+      '9,00 € bei SumUp zurückbuchen, davon 0,80 € Trinkgeld.',
+    );
+    expect(find.text('Du gibst 18,20 € bar zurück.'), findsNothing);
+    expect(
+      find.text('Stornieren, Rückbuchung mache ich in SumUp'),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Storno-Frage beim gemischten Bon ohne Trinkgeld und beim '
+      'Karten-Bon mit Trinkgeld', (t) async {
+    await pumpBonsWithSales(t, 0);
+    await _sellSplit(t, cashPartCents: 1000);
+    await _sellSplit(t, saleId: 'tip-only', tipCents: 80);
+    await _reopenBons(t);
+    await _startVoid(t, 1);
+    expect(
+      textOf(t, const Key('void-cash-back')),
+      '10,00 € bar zurückgeben.',
+    );
+    expect(
+      textOf(t, const Key('void-card-hint')),
+      '8,20 € bei SumUp zurückbuchen.',
+    );
+    await t.tap(find.byKey(const Key('cancel-void')));
+    await t.pumpAndSettle();
+    await _startVoid(t, 2);
+    expect(find.byKey(const Key('void-cash-back')), findsNothing);
+    expect(
+      textOf(t, const Key('void-card-hint')),
+      '19,00 € bei SumUp zurückbuchen, davon 0,80 € Trinkgeld.',
+    );
+  });
+
+  testWidgets('Storno-Frage bei einem Bar-Bon: der Text von 1.10.0', (
+    t,
+  ) async {
+    await pumpBonsWithSales(t, 1);
+    await _startVoid(t, 1);
+    expect(find.text('Du gibst 3,15 € bar zurück.'), findsOneWidget);
+    expect(find.byKey(const Key('void-cash-back')), findsNothing);
+    expect(find.byKey(const Key('void-card-hint')), findsNothing);
+    expect(find.text('Ja, stornieren'), findsOneWidget);
+  });
 
   testWidgets('eine Bar-Zahlung: eine Zeile, dazu "Gegeben" und "Rückgeld"', (
     t,

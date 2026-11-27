@@ -157,14 +157,16 @@ class TypedAmount extends StatelessWidget {
     required this.input,
     required this.keypadKey,
     required this.onKey,
-    required this.onSuggestions,
+    this.onSuggestions,
     this.label,
   });
 
   final KeypadInput input;
   final Key keypadKey;
   final ValueChanged<String> onKey;
-  final VoidCallback onSuggestions;
+
+  /// "Vorschläge"; ohne steht die Taste nicht da.
+  final VoidCallback? onSuggestions;
 
   /// Die Überschrift über dem Feld; ohne steht "Gegeben".
   final String? label;
@@ -191,20 +193,21 @@ class TypedAmount extends StatelessWidget {
                   color: c.ink2,
                 ),
               ),
-              Pressable(
-                key: const Key('show-suggestions'),
-                onTap: onSuggestions,
-                minTapSize: const Size(0, KassaTokens.minTap),
-                child: Container(
-                  height: KassaTokens.drawnControlHeight,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  alignment: Alignment.center,
-                  child: Text(
-                    l.kassaShowSuggestions,
-                    style: text.labelLarge!.copyWith(color: c.accentInk),
+              if (onSuggestions != null)
+                Pressable(
+                  key: const Key('show-suggestions'),
+                  onTap: onSuggestions,
+                  minTapSize: const Size(0, KassaTokens.minTap),
+                  child: Container(
+                    height: KassaTokens.drawnControlHeight,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      l.kassaShowSuggestions,
+                      style: text.labelLarge!.copyWith(color: c.accentInk),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

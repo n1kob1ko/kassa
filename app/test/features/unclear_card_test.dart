@@ -711,6 +711,79 @@ void main() {
     expect(await _pending(t), 0);
   });
 
+  testWidgets('unklar mit Bar-Teil: die offene Zahlung trägt ihn, "bezahlt" '
+      'gibt den Bon mit zwei Zahlungen, "nicht bezahlt" nennt den Betrag zum '
+      'Zurückgeben', (t) async {
+    final terminal = FakeCardTerminal()..next = const CardUnknown();
+    await _start(t, await _setup(terminal: terminal));
+    await setSettings(t, (s) => s.copyWith(splitPaymentEnabled: true));
+    await tapItem(t, 'cola');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    await _tap(t, 'pay-cash');
+    await _tap(t, 'cash-mode-split');
+    await tapKeys(t, '5');
+    await _tap(t, 'split-go');
+    expect(_sheet, findsOneWidget);
+    expect(
+      await queryRows(
+        t,
+        'SELECT amount_cents, cash_part_cents, state FROM pending_card_payments',
+      ),
+      [
+        {'amount_cents': 465, 'cash_part_cents': 500, 'state': 'unknown'},
+      ],
+    );
+    expect(textOf(t, const Key('unclear-amount')), '4,65 €');
+    expect(
+      textOf(t, const Key('unclear-cash-part')),
+      'Bar-Teil 5,00 € ist schon kassiert.',
+    );
+    await _tap(t, 'unclear-not-paid');
+    expect(
+      textOf(t, const Key('unclear-return-cash')),
+      '5,00 € bar zurückgeben.',
+    );
+    await _tap(t, 'unclear-back');
+    expect(find.byKey(const Key('unclear-return-cash')), findsNothing);
+    await _tap(t, 'unclear-paid');
+    expect(find.byKey(const Key('unclear-return-cash')), findsNothing);
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(
+      await queryRows(
+        t,
+        'SELECT position, kind, amount_cents FROM payments ORDER BY position',
+      ),
+      [
+        {'position': 0, 'kind': 'cash', 'amount_cents': 500},
+        {'position': 1, 'kind': 'card', 'amount_cents': 465},
+      ],
+    );
+    expect(await _receipts(t), hasLength(1));
+    expect(await _pending(t), 0);
+  });
+
+  testWidgets('unklar mit Bar-Teil, "nicht bezahlt": nichts gespeichert, der '
+      'Bon kommt zurück', (t) async {
+    final terminal = FakeCardTerminal()..next = const CardUnknown();
+    await _start(t, await _setup(terminal: terminal));
+    await setSettings(t, (s) => s.copyWith(splitPaymentEnabled: true));
+    await tapItem(t, 'cola');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    await _tap(t, 'pay-cash');
+    await _tap(t, 'cash-mode-split');
+    await tapKeys(t, '5');
+    await _tap(t, 'split-go');
+    await _tap(t, 'unclear-not-paid');
+    await _tap(t, 'unclear-confirm');
+    expect(_sheet, findsNothing);
+    expect(await _receipts(t), isEmpty);
+    expect(await _pending(t), 0);
+    expect(cartOf(t).totalCents, 965);
+  });
+
   testWidgets('Tasten des Blatts sind mindestens 48 dp hoch', (t) async {
     await _start(t, await _setup(open: [('p1', cart, _first)]));
     for (final k in ['unclear-paid', 'unclear-not-paid']) {

@@ -1460,4 +1460,64 @@ class L10nDe extends L10n {
 
   @override
   String get closeReasonTip => 'Trinkgeld';
+
+  @override
+  String get splitWhole => 'Ganzer Betrag';
+
+  @override
+  String get splitPart => 'Teil bar';
+
+  @override
+  String get splitCashPart => 'Bar-Teil';
+
+  @override
+  String get splitRest => 'Rest mit Karte';
+
+  @override
+  String splitGo(String amount) {
+    return 'Weiter zur Karte $amount';
+  }
+
+  @override
+  String get splitNeedCash => 'Bar-Teil eingeben.';
+
+  @override
+  String splitRestTooSmall(String amount) {
+    return 'Rest mit Karte mindestens $amount.';
+  }
+
+  @override
+  String splitCardFailed(String amount) {
+    return 'Karte nicht bezahlt. $amount bar zurückgeben oder noch einmal versuchen.';
+  }
+
+  @override
+  String kassaCashPartDone(String amount) {
+    return 'Bar-Teil $amount';
+  }
+
+  @override
+  String unclearCashPart(String amount) {
+    return 'Bar-Teil $amount ist schon kassiert.';
+  }
+
+  @override
+  String unclearReturnCash(String amount) {
+    return '$amount bar zurückgeben.';
+  }
+
+  @override
+  String bonsVoidMixedCash(String amount) {
+    return '$amount bar zurückgeben.';
+  }
+
+  @override
+  String bonsVoidCardBack(String amount) {
+    return '$amount bei SumUp zurückbuchen.';
+  }
+
+  @override
+  String bonsVoidCardBackTip(String amount, String tip) {
+    return '$amount bei SumUp zurückbuchen, davon $tip Trinkgeld.';
+  }
 }

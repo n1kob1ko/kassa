@@ -415,5 +415,19 @@
   "tipTooLow": "The amount is less than the total.",
   "kassaTipDone": "incl. tip {amount}",
   "unclearTip": "Including tip {amount}",
-  "closeReasonTip": "Tip"
+  "closeReasonTip": "Tip",
+  "splitWhole": "Full amount",
+  "splitPart": "Part cash",
+  "splitCashPart": "Cash part",
+  "splitRest": "Rest by card",
+  "splitGo": "Continue to card {amount}",
+  "splitNeedCash": "Enter the cash part.",
+  "splitRestTooSmall": "Rest by card at least {amount}.",
+  "splitCardFailed": "Card not paid. Give back {amount} in cash or try again.",
+  "kassaCashPartDone": "Cash part {amount}",
+  "unclearCashPart": "Cash part {amount} has already been taken.",
+  "unclearReturnCash": "Give back {amount} in cash.",
+  "bonsVoidMixedCash": "Give back {amount} in cash.",
+  "bonsVoidCardBack": "Refund {amount} in SumUp.",
+  "bonsVoidCardBackTip": "Refund {amount} in SumUp, incl. tip {tip}."
 }

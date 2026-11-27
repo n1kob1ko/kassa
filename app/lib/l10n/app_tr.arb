@@ -415,5 +415,19 @@
   "tipTooLow": "Tutar toplamdan küçük.",
   "kassaTipDone": "bunun {amount} kadarı bahşiş",
   "unclearTip": "Bunun {amount} kadarı bahşiş",
-  "closeReasonTip": "Bahşiş"
+  "closeReasonTip": "Bahşiş",
+  "splitWhole": "Tam tutar",
+  "splitPart": "Kısmen nakit",
+  "splitCashPart": "Nakit kısmı",
+  "splitRest": "Kalanı kartla",
+  "splitGo": "Karta geç {amount}",
+  "splitNeedCash": "Nakit kısmını girin.",
+  "splitRestTooSmall": "Kartla kalan en az {amount}.",
+  "splitCardFailed": "Kart ödenmedi. {amount} nakit iade edin veya tekrar deneyin.",
+  "kassaCashPartDone": "Nakit kısmı {amount}",
+  "unclearCashPart": "Nakit kısmı {amount} zaten alındı.",
+  "unclearReturnCash": "{amount} nakit iade edin.",
+  "bonsVoidMixedCash": "{amount} nakit iade edin.",
+  "bonsVoidCardBack": "{amount} tutarını SumUp'ta iade edin.",
+  "bonsVoidCardBackTip": "{amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş."
 }

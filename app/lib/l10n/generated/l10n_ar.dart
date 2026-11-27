@@ -1458,4 +1458,64 @@ class L10nAr extends L10n {
 
   @override
   String get closeReasonTip => 'إكرامية';
+
+  @override
+  String get splitWhole => 'المبلغ كاملًا';
+
+  @override
+  String get splitPart => 'جزء نقدًا';
+
+  @override
+  String get splitCashPart => 'الجزء النقدي';
+
+  @override
+  String get splitRest => 'الباقي بالبطاقة';
+
+  @override
+  String splitGo(String amount) {
+    return 'متابعة إلى البطاقة $amount';
+  }
+
+  @override
+  String get splitNeedCash => 'أدخل الجزء النقدي.';
+
+  @override
+  String splitRestTooSmall(String amount) {
+    return 'الباقي بالبطاقة $amount على الأقل.';
+  }
+
+  @override
+  String splitCardFailed(String amount) {
+    return 'لم يتم الدفع بالبطاقة. أعد $amount نقدًا أو حاول مرة أخرى.';
+  }
+
+  @override
+  String kassaCashPartDone(String amount) {
+    return 'الجزء النقدي $amount';
+  }
+
+  @override
+  String unclearCashPart(String amount) {
+    return 'تم استلام الجزء النقدي $amount بالفعل.';
+  }
+
+  @override
+  String unclearReturnCash(String amount) {
+    return 'أعد $amount نقدًا.';
+  }
+
+  @override
+  String bonsVoidMixedCash(String amount) {
+    return 'أعد $amount نقدًا.';
+  }
+
+  @override
+  String bonsVoidCardBack(String amount) {
+    return 'استرد $amount في SumUp.';
+  }
+
+  @override
+  String bonsVoidCardBackTip(String amount, String tip) {
+    return 'استرد $amount في SumUp، منها إكرامية $tip.';
+  }
 }

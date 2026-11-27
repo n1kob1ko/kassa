@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 416 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 430 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -119,6 +119,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Weitere Küchenbons nicht gedruckt: {count} | 其他未打印的厨房单：{count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | 隐藏 | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | 其中小费 {amount} | Kassa: `kassaTipDone` |
+| Bar-Teil {amount} | 现金部分 {amount} | Kassa: `kassaCashPartDone` |
 
 ## Kartenzahlung
 
@@ -180,6 +181,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bestätigen | 确认 | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | 返回 | Unklare Kartenzahlung: `unclearBack` |
 | Davon Trinkgeld {amount} | 其中小费 {amount} | Unklare Kartenzahlung: `unclearTip` |
+| Bar-Teil {amount} ist schon kassiert. | 现金部分 {amount} 已收取。 | Unklare Kartenzahlung: `unclearCashPart` |
+| {amount} bar zurückgeben. | 请退还现金 {amount}。 | Unklare Kartenzahlung: `unclearReturnCash` |
 
 ## Datum
 
@@ -274,6 +277,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Stornieren, Rückbuchung mache ich in SumUp | 作废，我会在 SumUp 中退款 | Bons: `bonsVoidConfirmCard` |
 | Ja, stornieren | 确定作废 | Bons: `bonsVoidConfirm` |
 | Auf diesem Bon ist nichts für die Küche. | 这张小票上没有需要厨房制作的内容。 | Bons: `bonsKitchenNothing` |
+| {amount} bar zurückgeben. | 请退还现金 {amount}。 | Bons: `bonsVoidMixedCash` |
+| {amount} bei SumUp zurückbuchen. | 请在 SumUp 中退款 {amount}。 | Bons: `bonsVoidCardBack` |
+| {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | 请在 SumUp 中退款 {amount}，其中小费 {tip}。 | Bons: `bonsVoidCardBackTip` |
 
 ## Artikel
 
@@ -506,6 +512,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ja, stimmt | 是的，没错 | Sonstiges: `tipConfirmYes` |
 | Ändern | 修改 | Sonstiges: `tipConfirmNo` |
 | Der Betrag ist kleiner als die Summe. | 金额小于应付总额。 | Sonstiges: `tipTooLow` |
+| Ganzer Betrag | 全额 | Sonstiges: `splitWhole` |
+| Teil bar | 部分现金 | Sonstiges: `splitPart` |
+| Bar-Teil | 现金部分 | Sonstiges: `splitCashPart` |
+| Rest mit Karte | 其余刷卡 | Sonstiges: `splitRest` |
+| Weiter zur Karte {amount} | 继续刷卡 {amount} | Sonstiges: `splitGo` |
+| Bar-Teil eingeben. | 请输入现金部分。 | Sonstiges: `splitNeedCash` |
+| Rest mit Karte mindestens {amount}. | 刷卡部分至少 {amount}。 | Sonstiges: `splitRestTooSmall` |
+| Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | 刷卡未付款。请退还现金 {amount} 或再试一次。 | Sonstiges: `splitCardFailed` |
 
 ## Unsicher
 

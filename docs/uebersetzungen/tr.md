@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 416 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 430 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -119,6 +119,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Weitere Küchenbons nicht gedruckt: {count} | Yazdırılmayan diğer mutfak fişleri: {count} | Kassa: `kassaKitchenLateMore` |
 | Ausblenden | Gizle | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | bunun {amount} kadarı bahşiş | Kassa: `kassaTipDone` |
+| Bar-Teil {amount} | Nakit kısmı {amount} | Kassa: `kassaCashPartDone` |
 
 ## Kartenzahlung
 
@@ -180,6 +181,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bestätigen | Onayla | Unklare Kartenzahlung: `unclearConfirm` |
 | Zurück | Geri | Unklare Kartenzahlung: `unclearBack` |
 | Davon Trinkgeld {amount} | Bunun {amount} kadarı bahşiş | Unklare Kartenzahlung: `unclearTip` |
+| Bar-Teil {amount} ist schon kassiert. | Nakit kısmı {amount} zaten alındı. | Unklare Kartenzahlung: `unclearCashPart` |
+| {amount} bar zurückgeben. | {amount} nakit iade edin. | Unklare Kartenzahlung: `unclearReturnCash` |
 
 ## Datum
 
@@ -274,6 +277,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Stornieren, Rückbuchung mache ich in SumUp | İptal et, iadeyi SumUp'ta yapacağım | Bons: `bonsVoidConfirmCard` |
 | Ja, stornieren | Evet, iptal et | Bons: `bonsVoidConfirm` |
 | Auf diesem Bon ist nichts für die Küche. | Bu fişte mutfak için bir şey yok. | Bons: `bonsKitchenNothing` |
+| {amount} bar zurückgeben. | {amount} nakit iade edin. | Bons: `bonsVoidMixedCash` |
+| {amount} bei SumUp zurückbuchen. | {amount} tutarını SumUp'ta iade edin. | Bons: `bonsVoidCardBack` |
+| {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | {amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş. | Bons: `bonsVoidCardBackTip` |
 
 ## Artikel
 
@@ -506,6 +512,14 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ja, stimmt | Evet, doğru | Sonstiges: `tipConfirmYes` |
 | Ändern | Değiştir | Sonstiges: `tipConfirmNo` |
 | Der Betrag ist kleiner als die Summe. | Tutar toplamdan küçük. | Sonstiges: `tipTooLow` |
+| Ganzer Betrag | Tam tutar | Sonstiges: `splitWhole` |
+| Teil bar | Kısmen nakit | Sonstiges: `splitPart` |
+| Bar-Teil | Nakit kısmı | Sonstiges: `splitCashPart` |
+| Rest mit Karte | Kalanı kartla | Sonstiges: `splitRest` |
+| Weiter zur Karte {amount} | Karta geç {amount} | Sonstiges: `splitGo` |
+| Bar-Teil eingeben. | Nakit kısmını girin. | Sonstiges: `splitNeedCash` |
+| Rest mit Karte mindestens {amount}. | Kartla kalan en az {amount}. | Sonstiges: `splitRestTooSmall` |
+| Karte nicht bezahlt. {amount} bar zurückgeben oder noch einmal versuchen. | Kart ödenmedi. {amount} nakit iade edin veya tekrar deneyin. | Sonstiges: `splitCardFailed` |
 
 ## Unsicher
 

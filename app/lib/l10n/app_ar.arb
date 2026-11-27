@@ -415,5 +415,19 @@
   "tipTooLow": "المبلغ أقل من الإجمالي.",
   "kassaTipDone": "منها إكرامية {amount}",
   "unclearTip": "منها إكرامية {amount}",
-  "closeReasonTip": "إكرامية"
+  "closeReasonTip": "إكرامية",
+  "splitWhole": "المبلغ كاملًا",
+  "splitPart": "جزء نقدًا",
+  "splitCashPart": "الجزء النقدي",
+  "splitRest": "الباقي بالبطاقة",
+  "splitGo": "متابعة إلى البطاقة {amount}",
+  "splitNeedCash": "أدخل الجزء النقدي.",
+  "splitRestTooSmall": "الباقي بالبطاقة {amount} على الأقل.",
+  "splitCardFailed": "لم يتم الدفع بالبطاقة. أعد {amount} نقدًا أو حاول مرة أخرى.",
+  "kassaCashPartDone": "الجزء النقدي {amount}",
+  "unclearCashPart": "تم استلام الجزء النقدي {amount} بالفعل.",
+  "unclearReturnCash": "أعد {amount} نقدًا.",
+  "bonsVoidMixedCash": "أعد {amount} نقدًا.",
+  "bonsVoidCardBack": "استرد {amount} في SumUp.",
+  "bonsVoidCardBackTip": "استرد {amount} في SumUp، منها إكرامية {tip}."
 }

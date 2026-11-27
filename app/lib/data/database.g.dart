@@ -9471,7 +9471,8 @@ class PendingCardPaymentRow extends DataClass
   final String state;
 
   /// Der Teil, der bar bezahlt wird (0 ohne), und das Trinkgeld der Karte.
-  /// [amountCents] ist der Betrag ans Terminal ohne Trinkgeld.
+  /// [amountCents] ist, was das Terminal bucht: der Rest nach dem Bar-Teil
+  /// plus das Trinkgeld.
   final int cashPartCents;
   final int tipCents;
   const PendingCardPaymentRow({

@@ -26,7 +26,10 @@ enum VoidFailure {
 }
 
 /// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] sagt,
-/// warum der letzte Versuch nicht geklappt hat.
+/// warum der letzte Versuch nicht geklappt hat. Ein Bon mit nur einer
+/// Bar-Zahlung oder nur einer Kartenzahlung ohne Trinkgeld zeigt die Texte von
+/// 1.10.0; sonst nennt die Frage den Bar-Teil zum Zurückgeben und den Betrag,
+/// der bei SumUp zurückzubuchen ist (mit Trinkgeld).
 class VoidQuestion extends StatelessWidget {
   const VoidQuestion({
     super.key,
@@ -49,7 +52,27 @@ class VoidQuestion extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
     final amount = formatEuro(receipt.totalCents);
-    final byCard = receipt.cardPayment != null;
+    final card = receipt.cardPayment;
+    final byCard = card != null;
+    // Bar-Teil oder Trinkgeld: die Frage nennt die Beträge einzeln.
+    final detailed =
+        card != null && (receipt.cashCents > 0 || card.tipCents > 0);
+    final cardHint = switch (card) {
+      null => '',
+      _ when !detailed => l.bonsVoidCardHint,
+      Payment(tipCents: > 0) => l.bonsVoidCardBackTip(
+        ltrIsolate(context, formatEuro(card.chargedCents)),
+        ltrIsolate(context, formatEuro(card.tipCents)),
+      ),
+      _ => l.bonsVoidCardBack(
+        ltrIsolate(context, formatEuro(card.chargedCents)),
+      ),
+    };
+    final cashStyle = text.bodyMedium!.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: c.spicyFg,
+    );
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: const EdgeInsets.all(14),
@@ -68,11 +91,15 @@ class VoidQuestion extends StatelessWidget {
           if (!byCard)
             Text(
               l.bonsVoidCashBack(ltrIsolate(context, amount)),
-              style: text.bodyMedium!.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: c.spicyFg,
+              style: cashStyle,
+            ),
+          if (detailed && receipt.cashCents > 0)
+            Text(
+              l.bonsVoidMixedCash(
+                ltrIsolate(context, formatEuro(receipt.cashCents)),
               ),
+              key: const Key('void-cash-back'),
+              style: cashStyle,
             ),
           if (byCard) ...[
             const SizedBox(height: KassaTokens.spaceSm),
@@ -84,7 +111,7 @@ class VoidQuestion extends StatelessWidget {
                 borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
               ),
               child: Text(
-                l.bonsVoidCardHint,
+                cardHint,
                 style: text.bodyMedium!.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/money.dart';
+import '../../data/card_payment_repository.dart';
 import '../../data/providers.dart';
 import '../../data/settings_repository.dart';
 import '../../devices/card_terminal.dart';
@@ -101,6 +102,15 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
 
   /// Der Betrag, auf den das Terminal wartet (mit Trinkgeld).
   int _cardCents = 0;
+
+  /// Der Bar-Teil der Kartenzahlung, die eben vorbereitet wird ("Teil bar");
+  /// 0 ohne.
+  int _cashPartCents = 0;
+
+  /// Die Karte mit Bar-Teil ist sicher gescheitert: der Bar-Teil und der
+  /// Grund, bis sich der Bon ändert oder eine Zahlung beginnt. Wird nicht
+  /// gespeichert.
+  ({int cashPartCents, CardSaleFailed failure})? _splitFailed;
 
   /// Steht ab dem ersten Tipp auf "Karte" bis zum Ergebnis; ein zweiter Tipp im
   /// selben Bild startet nichts.
@@ -253,15 +263,34 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     unawaited(_prepareTerminal());
   }
 
+  /// "Bar": das Blatt "Bar bezahlen"; ein Hinweis nach einer gescheiterten
+  /// Karte mit Bar-Teil geht weg.
+  void _tapCash() => setState(() {
+    _splitFailed = null;
+    _side = _Side.paying;
+  });
+
   /// "Karte": mit Trinkgeld bei Kartenzahlung zuerst das Blatt "Trinkgeld",
   /// sonst direkt zum Terminal.
-  void _tapCard() {
+  void _tapCard() => _toCard(0);
+
+  /// "Weiter zur Karte" im Blatt "Bar bezahlen": der Rest nach [cashPartCents]
+  /// geht wie "Karte" weiter.
+  void _toCard(int cashPartCents) {
     final settings =
         ref.read(settingsStreamProvider).value ?? const RegisterSettings();
     if (settings.cardTipEnabled) {
-      if (_cardRunning || ref.read(cartProvider).isEmpty) return;
-      setState(() => _side = _Side.tip);
+      if (_cardRunning || ref.read(cartProvider).isEmpty) {
+        if (_side == _Side.paying) setState(() => _side = _Side.cart);
+        return;
+      }
+      setState(() {
+        _splitFailed = null;
+        _cashPartCents = cashPartCents;
+        _side = _Side.tip;
+      });
     } else {
+      _cashPartCents = cashPartCents;
       _payByCard();
     }
   }
@@ -269,13 +298,21 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   Future<void> _payByCard({int tipCents = 0}) async {
     final staff = ref.read(sessionProvider);
     final cart = ref.read(cartProvider);
+    final cashPartCents = _cashPartCents;
     if (_cardRunning || staff == null || cart.isEmpty) {
-      if (_side == _Side.tip) setState(() => _side = _Side.cart);
+      if (_side == _Side.tip || _side == _Side.paying) {
+        setState(() => _side = _Side.cart);
+      }
       return;
     }
     _cardRunning = true;
     setState(() {
-      _cardCents = cart.totalCents + tipCents;
+      _splitFailed = null;
+      _cardCents = terminalAmountCents(
+        totalCents: cart.totalCents,
+        cashPartCents: cashPartCents,
+        tipCents: tipCents,
+      );
       _side = _Side.waitingForCard;
     });
     CardSaleOutcome? outcome;
@@ -286,6 +323,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             paymentId: const Uuid().v4(),
             cart: cart,
             staff: staff,
+            cashPartCents: cashPartCents,
             tipCents: tipCents,
           );
     } catch (_) {
@@ -303,6 +341,13 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     switch (outcome) {
       case CardSaleDone(:final sale):
         _onPaid(sale);
+      case final CardSaleFailed failure when cashPartCents > 0:
+        // Der Bar-Teil liegt schon in der Hand: der Hinweis bleibt stehen,
+        // bis sich der Bon ändert oder eine Zahlung beginnt.
+        setState(() {
+          _side = _Side.cart;
+          _splitFailed = (cashPartCents: cashPartCents, failure: failure);
+        });
       case CardSaleFailed():
         setState(() => _side = _Side.cart);
         showUndoToast(
@@ -337,6 +382,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final showImages = _imagesOverride ?? stored.showImages;
     final cart = ref.watch(cartProvider);
     final cartCtl = ref.read(cartProvider.notifier);
+    ref.listen(cartProvider, (prev, next) {
+      if (_splitFailed != null && !identical(prev, next)) {
+        setState(() => _splitFailed = null);
+      }
+    });
     if (catalog == null) return ColoredBox(color: c.ground);
 
     final favorites = [
@@ -430,9 +480,16 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         ),
         switch (_side) {
           _Side.cart => CartPanel(
-            onPayCash: () => setState(() => _side = _Side.paying),
+            onPayCash: _tapCash,
             onPayCard: _tapCard,
             canPay: building == null,
+            payNotice: switch (_splitFailed) {
+              null => null,
+              final f => SplitCardFailedNotice(
+                cashPartCents: f.cashPartCents,
+                failure: f.failure,
+              ),
+            },
             notice: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [OutageBanner(), LateKitchenNotice()],
@@ -443,11 +500,12 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               cart: cart,
               onBack: () => setState(() => _side = _Side.cart),
               onPaid: _onPaid,
+              onSplit: _toCard,
             ),
           ),
           _Side.tip => _AboveBottomBar(
             child: TipSheet(
-              dueCents: cart.totalCents,
+              dueCents: cart.totalCents - _cashPartCents,
               receiptTotalCents: cart.totalCents,
               onBack: () => setState(() => _side = _Side.cart),
               onPay: (tip) => _payByCard(tipCents: tip),
@@ -467,6 +525,60 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
           ),
         },
       ],
+    );
+  }
+}
+
+/// Über dem Summenblock, nachdem die Karte mit Bar-Teil sicher nicht bezahlt
+/// wurde: den Bar-Teil zurückgeben oder noch einmal versuchen, darunter der
+/// Grund. Bleibt stehen, bis die Kassa ihn wegnimmt.
+class SplitCardFailedNotice extends StatelessWidget {
+  const SplitCardFailedNotice({
+    super.key,
+    required this.cashPartCents,
+    required this.failure,
+  });
+
+  final int cashPartCents;
+  final CardSaleFailed failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    return Container(
+      key: const Key('split-card-failed'),
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.warnBg,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
+      ),
+      child: Semantics(
+        liveRegion: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.splitCardFailed(
+                ltrIsolate(context, formatEuro(cashPartCents)),
+              ),
+              style: text.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+                color: c.warnInk,
+              ),
+            ),
+            const SizedBox(height: KassaTokens.spaceXxs),
+            Text(
+              cardSaleFailedText(context, failure),
+              style: text.bodyMedium!.copyWith(color: c.warnInk),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

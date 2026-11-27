@@ -263,7 +263,11 @@ class SaleService {
       try {
         result = await terminal.pay(
           paymentId: paymentId,
-          amountCents: rest + tipCents,
+          amountCents: terminalAmountCents(
+            totalCents: cart.totalCents,
+            cashPartCents: cashPartCents,
+            tipCents: tipCents,
+          ),
           title: 'Bon ${await _businessName()}',
         );
       } catch (_) {
@@ -340,8 +344,12 @@ class SaleService {
         jsonDecode(p.cartJson) as Map<String, dynamic>,
         catalog,
       );
-      if (cart.isEmpty ||
-          cart.totalCents - p.cashPartCents + p.tipCents != p.amountCents) {
+      final expected = terminalAmountCents(
+        totalCents: cart.totalCents,
+        cashPartCents: p.cashPartCents,
+        tipCents: p.tipCents,
+      );
+      if (cart.isEmpty || expected != p.amountCents) {
         return null;
       }
       return cart;
@@ -434,9 +442,16 @@ class SaleService {
     }
   }
 
+  /// Druck nach einer Kartenzahlung. Mit Bar-Teil geht die Lade auf, wenn sie
+  /// eingeschaltet ist, im selben Auftrag wie beim Barverkauf.
   Future<SaleResult> _printCard(Receipt receipt) async {
     final settings = await _settings();
-    return _printSale(receipt.id, receipt, settings, openDrawer: false);
+    return _printSale(
+      receipt.id,
+      receipt,
+      settings,
+      openDrawer: settings.cashDrawerEnabled && receipt.cashCents > 0,
+    );
   }
 
   /// Bon und Küchenbon eines eben abgeschlossenen Verkaufs, je [key] nur
@@ -500,9 +515,9 @@ class SaleService {
     }
   }
 
-  /// "Nochmal drucken" in der Fertig-Ansicht. Ist bei diesem Barverkauf die
-  /// Lade nicht aufgegangen (und ist sie eingeschaltet), geht sie jetzt mit
-  /// dem Bon auf. Ist der Bon schon gedruckt und fehlt nur die Lade, öffnet
+  /// "Nochmal drucken" in der Fertig-Ansicht. Ist bei diesem Verkauf mit
+  /// Bargeld (bar oder mit Bar-Teil) die Lade nicht aufgegangen (und ist sie
+  /// eingeschaltet), geht sie jetzt mit dem Bon auf. Ist der Bon schon gedruckt und fehlt nur die Lade, öffnet
   /// sich nur die Lade: der Gast bekommt keinen zweiten Bon.
   Future<PrintOutcome> printAgain(Receipt receipt) async {
     final settings = await _settings();
