@@ -12,6 +12,7 @@ import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/invoice_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/signature_pump.dart';
@@ -385,6 +386,88 @@ void main() {
       await t.pumpAndSettle();
       expect(_inKey('finish-voucher', texts.finish), findsOneWidget);
       expect(_inKey('finish-voucher', 'Mit Gutschein abschließen'), findsNothing);
+    }
+  });
+
+  const invoice = {
+    AppLanguage.en: (
+      button: 'Invoice to company',
+      title: 'Choose business customer',
+      add: 'New customer',
+      name: 'Company name',
+      save: 'Apply',
+      print: 'Print invoice',
+    ),
+    AppLanguage.zh: (
+      button: '企业发票',
+      title: '选择企业客户',
+      add: '新客户',
+      name: '公司名称',
+      save: '确定',
+      print: '打印发票',
+    ),
+    AppLanguage.tr: (
+      button: 'Şirkete fatura',
+      title: 'Kurumsal müşteri seç',
+      add: 'Yeni müşteri',
+      name: 'Şirket adı',
+      save: 'Uygula',
+      print: 'Faturayı yazdır',
+    ),
+    AppLanguage.ar: (
+      button: 'فاتورة لشركة',
+      title: 'اختر عميل شركة',
+      add: 'عميل جديد',
+      name: 'اسم الشركة',
+      save: 'اعتماد',
+      print: 'اطبع الفاتورة',
+    ),
+  };
+
+  testWidgets('en, zh, tr, ar: "Rechnung an Firma", "Firmenkunde wählen", '
+      'das Formular und "Rechnung drucken" stehen in der Bediensprache', (
+    t,
+  ) async {
+    for (final MapEntry(key: language, value: texts) in invoice.entries) {
+      await openInvoiceKassa(t, ['cola'], language: language);
+      await t.tap(find.byKey(const Key('pay-cash')));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const Key('invoice-button')));
+      await t.pumpAndSettle();
+      expect(_inKey('invoice-button', texts.button), findsOneWidget);
+      expect(_inKey('invoice-button', 'Rechnung an Firma'), findsNothing);
+      await t.tap(find.byKey(const Key('invoice-button')));
+      await t.pumpAndSettle();
+      expect(find.text(texts.title), findsOneWidget, reason: language.name);
+      expect(_inKey('customer-new', texts.add), findsOneWidget);
+      await t.tap(find.byKey(const Key('customer-new')));
+      await t.pumpAndSettle();
+      expect(find.text(texts.name), findsOneWidget, reason: language.name);
+      expect(find.text('Name der Firma'), findsNothing);
+      await t.enterText(find.byKey(const Key('customer-name')), 'Muster GmbH');
+      await t.enterText(
+        find.byKey(const Key('customer-address1')),
+        'Musterweg 1',
+      );
+      await t.enterText(find.byKey(const Key('customer-address2')), '1010 Wien');
+      await t.pumpAndSettle();
+      expect(_inKey('customer-save', texts.save), findsOneWidget);
+      await t.ensureVisible(find.byKey(const Key('customer-save')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('customer-save')));
+      await t.pumpAndSettle();
+      expect(_inKey('invoice-print', texts.print), findsOneWidget);
+      // Der Ausdruck bleibt Deutsch.
+      await t.ensureVisible(find.byKey(const Key('invoice-print')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('invoice-print')));
+      await t.pumpAndSettle();
+      expect(printerOf(t).lastText, contains('RECHNUNG'));
+      expect(printerOf(t).lastText, contains('An:'));
     }
   });
 }

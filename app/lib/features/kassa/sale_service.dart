@@ -16,6 +16,7 @@ import '../../devices/device_providers.dart';
 import '../../devices/printer.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
+import '../../domain/customer.dart';
 import '../../domain/receipt.dart';
 import '../../domain/staff.dart';
 import '../../rksv/setup_facts.dart';
@@ -726,6 +727,27 @@ class SaleService {
   /// Druckt den Bon noch einmal, ohne die Lade (Bon-Detail).
   Future<PrintOutcome> reprint(Receipt receipt) async =>
       _output(receipt, await _settings(), openDrawer: false);
+
+  /// Druckt [receipt] als Rechnung an [recipient] ("Rechnung drucken" in
+  /// "Verkauf fertig" und in "Bons"): derselbe Bon mit "RECHNUNG" und dem
+  /// Empfänger darüber. Die Lade bleibt zu, ein Küchenbon kommt nicht. Ohne
+  /// eingerichteten Drucker `notSetUp`, ein unerwarteter Fehler ist
+  /// `unreachable`. Wirft nie.
+  Future<PrintOutcome> printInvoice(
+    Receipt receipt,
+    ReceiptRecipient recipient,
+  ) async {
+    if ((await _settings()).printerKind == PrinterKind.none) {
+      return const PrintOutcome.failed(PrintProblem.notSetUp);
+    }
+    try {
+      return await _ref
+          .read(receiptPrinterProvider)
+          .printReceipt(receipt, recipient: recipient);
+    } catch (_) {
+      return const PrintOutcome.failed(PrintProblem.unreachable);
+    }
+  }
 
   /// Druckt den Zettel "Angaben für FinanzOnline" über denselben Drucker wie
   /// die Bons: ohne eingerichteten Drucker `notSetUp`, ein unerwarteter

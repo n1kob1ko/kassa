@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 519 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 542 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,29 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Dieser Gutschein liegt schon am Bon. | This voucher is already on the receipt. | Sonstiges: `voucherAlreadyOnReceipt` |
 | Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | The balance has changed. Please check again. | Sonstiges: `voucherChanged` |
 | Gutschein {code} | Voucher {code} | Sonstiges: `voucherWithCode` |
+| Rechnung an Firma | Invoice to company | Sonstiges: `invoiceButton` |
+| Rechnung an | Invoice to | Sonstiges: `invoiceRecipient` |
+| Rechnung drucken | Print invoice | Sonstiges: `invoicePrint` |
+| Ändern | Change | Sonstiges: `invoiceChange` |
+| Rechnung gedruckt. | Invoice printed. | Sonstiges: `invoicePrinted` |
+| Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden. | Over 400 €: An invoice needs the customer's name and address. | Sonstiges: `invoiceHint400` |
+| Firmenkunde wählen | Choose business customer | Sonstiges: `customerPickerTitle` |
+| Alle | All | Sonstiges: `customerAll` |
+| Neuer Kunde | New customer | Sonstiges: `customerNew` |
+| Noch kein Firmenkunde gespeichert. | No business customer saved yet. | Sonstiges: `customerEmpty` |
+| Empfänger der Rechnung | Invoice recipient | Sonstiges: `customerFormTitle` |
+| Name der Firma | Company name | Sonstiges: `customerName` |
+| Straße und Hausnummer | Street and number | Sonstiges: `customerAddress1` |
+| PLZ und Ort | Postcode and city | Sonstiges: `customerAddress2` |
+| UID (wenn vorhanden) | VAT ID (if any) | Sonstiges: `customerVatId` |
+| Als Firmenkunde speichern | Save as business customer | Sonstiges: `customerKeep` |
+| Übernehmen | Apply | Sonstiges: `customerSave` |
+| Abbrechen | Cancel | Sonstiges: `customerCancel` |
+| Das hat nicht geklappt. Bitte noch einmal. | That didn't work. Please try again. | Sonstiges: `customerSaveFailed` |
+| Bitte den Namen eintragen. | Please enter the name. | Sonstiges: `customerNameMissing` |
+| Bitte die Adresse eintragen. | Please enter the address. | Sonstiges: `customerAddressMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | Over 10.000 € the invoice needs the customer's VAT ID. | Sonstiges: `customerVatIdMissing` |
+| Der Text ist zu lang. | The text is too long. | Sonstiges: `customerTooLong` |
 
 ## Unsicher
 

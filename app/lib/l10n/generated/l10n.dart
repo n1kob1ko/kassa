@@ -3217,6 +3217,144 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Gutschein {code}'**
   String voucherWithCode(String code);
+
+  /// Verkauf fertig und Bon-Detail: Taste, die nach dem Bezahlen einen Firmenkunden als Empfänger der Rechnung wählt.
+  ///
+  /// In de, this message translates to:
+  /// **'Rechnung an Firma'**
+  String get invoiceButton;
+
+  /// Verkauf fertig und Bon-Detail: Überschrift über dem Namen des Empfängers der Rechnung.
+  ///
+  /// In de, this message translates to:
+  /// **'Rechnung an'**
+  String get invoiceRecipient;
+
+  /// Verkauf fertig und Bon-Detail: Taste, die den Bon als Rechnung an den Empfänger druckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Rechnung drucken'**
+  String get invoicePrint;
+
+  /// Verkauf fertig und Bon-Detail: Taste, die den Empfänger der Rechnung korrigiert (neue Fassung).
+  ///
+  /// In de, this message translates to:
+  /// **'Ändern'**
+  String get invoiceChange;
+
+  /// Verkauf fertig und Bon-Detail: die Rechnung ist gedruckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Rechnung gedruckt.'**
+  String get invoicePrinted;
+
+  /// Verkauf fertig: ruhiger Hinweis, wenn die Summe über 400 € liegt und der Bon noch keinen Empfänger hat.
+  ///
+  /// In de, this message translates to:
+  /// **'Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden.'**
+  String get invoiceHint400;
+
+  /// Blatt Firmenkunde wählen: Titel.
+  ///
+  /// In de, this message translates to:
+  /// **'Firmenkunde wählen'**
+  String get customerPickerTitle;
+
+  /// Blatt Firmenkunde wählen: Taste über den Anfangsbuchstaben, die alle Firmenkunden zeigt.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle'**
+  String get customerAll;
+
+  /// Blatt Firmenkunde wählen: Taste, die das Formular für einen neuen Kunden öffnet.
+  ///
+  /// In de, this message translates to:
+  /// **'Neuer Kunde'**
+  String get customerNew;
+
+  /// Blatt Firmenkunde wählen: noch kein Firmenkunde gespeichert.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch kein Firmenkunde gespeichert.'**
+  String get customerEmpty;
+
+  /// Formular für den Empfänger der Rechnung: Titel.
+  ///
+  /// In de, this message translates to:
+  /// **'Empfänger der Rechnung'**
+  String get customerFormTitle;
+
+  /// Formular Empfänger der Rechnung: Beschriftung des Felds für den Namen (Pflicht).
+  ///
+  /// In de, this message translates to:
+  /// **'Name der Firma'**
+  String get customerName;
+
+  /// Formular Empfänger der Rechnung: Beschriftung der ersten Adress-Zeile (Pflicht).
+  ///
+  /// In de, this message translates to:
+  /// **'Straße und Hausnummer'**
+  String get customerAddress1;
+
+  /// Formular Empfänger der Rechnung: Beschriftung der zweiten Adress-Zeile (Pflicht).
+  ///
+  /// In de, this message translates to:
+  /// **'PLZ und Ort'**
+  String get customerAddress2;
+
+  /// Formular Empfänger der Rechnung: Beschriftung des Felds für die UID des Kunden (Pflicht erst über 10.000 €).
+  ///
+  /// In de, this message translates to:
+  /// **'UID (wenn vorhanden)'**
+  String get customerVatId;
+
+  /// Formular Empfänger der Rechnung: Schalter, ob der Kunde für später gespeichert wird.
+  ///
+  /// In de, this message translates to:
+  /// **'Als Firmenkunde speichern'**
+  String get customerKeep;
+
+  /// Formular Empfänger der Rechnung: Taste, die den Empfänger übernimmt.
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get customerSave;
+
+  /// Formular Empfänger der Rechnung: Taste, die ohne Speichern zurückgeht.
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get customerCancel;
+
+  /// Formular Empfänger der Rechnung: das Speichern hat nicht geklappt.
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte noch einmal.'**
+  String get customerSaveFailed;
+
+  /// Formular Empfänger der Rechnung: Grund unter dem Feld Name, wenn er fehlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte den Namen eintragen.'**
+  String get customerNameMissing;
+
+  /// Formular Empfänger der Rechnung: Grund unter einer leeren Adress-Zeile.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte die Adresse eintragen.'**
+  String get customerAddressMissing;
+
+  /// Formular Empfänger der Rechnung: Grund unter dem Feld UID, wenn der Bon über 10.000 € liegt.
+  ///
+  /// In de, this message translates to:
+  /// **'Über 10.000 € braucht die Rechnung die UID des Kunden.'**
+  String get customerVatIdMissing;
+
+  /// Formular Empfänger der Rechnung: Grund unter einem Feld mit zu langem Text.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Text ist zu lang.'**
+  String get customerTooLong;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

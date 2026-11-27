@@ -1809,4 +1809,75 @@ class L10nAr extends L10n {
   String voucherWithCode(String code) {
     return 'قسيمة $code';
   }
+
+  @override
+  String get invoiceButton => 'فاتورة لشركة';
+
+  @override
+  String get invoiceRecipient => 'الفاتورة إلى';
+
+  @override
+  String get invoicePrint => 'اطبع الفاتورة';
+
+  @override
+  String get invoiceChange => 'تغيير';
+
+  @override
+  String get invoicePrinted => 'طُبعت الفاتورة.';
+
+  @override
+  String get invoiceHint400 =>
+      'أكثر من 400 €: تحتاج الفاتورة إلى اسم العميل وعنوانه.';
+
+  @override
+  String get customerPickerTitle => 'اختر عميل شركة';
+
+  @override
+  String get customerAll => 'الكل';
+
+  @override
+  String get customerNew => 'عميل جديد';
+
+  @override
+  String get customerEmpty => 'لا يوجد عميل شركة محفوظ بعد.';
+
+  @override
+  String get customerFormTitle => 'مستلم الفاتورة';
+
+  @override
+  String get customerName => 'اسم الشركة';
+
+  @override
+  String get customerAddress1 => 'الشارع ورقم المبنى';
+
+  @override
+  String get customerAddress2 => 'الرمز البريدي والمدينة';
+
+  @override
+  String get customerVatId => 'الرقم الضريبي (إن وُجد)';
+
+  @override
+  String get customerKeep => 'احفظ كعميل شركة';
+
+  @override
+  String get customerSave => 'اعتماد';
+
+  @override
+  String get customerCancel => 'إلغاء';
+
+  @override
+  String get customerSaveFailed => 'لم ينجح ذلك. يرجى المحاولة مرة أخرى.';
+
+  @override
+  String get customerNameMissing => 'يُرجى إدخال الاسم.';
+
+  @override
+  String get customerAddressMissing => 'يُرجى إدخال العنوان.';
+
+  @override
+  String get customerVatIdMissing =>
+      'فوق 10.000 € تحتاج الفاتورة إلى الرقم الضريبي للعميل.';
+
+  @override
+  String get customerTooLong => 'النص طويل جدًا.';
 }

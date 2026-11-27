@@ -3,6 +3,7 @@
 
 import '../rksv/setup_facts.dart';
 import 'business_info.dart';
+import 'customer.dart';
 import 'pricing.dart';
 import 'print_builder.dart';
 import 'print_document.dart';
@@ -22,11 +23,16 @@ String _taxText(TaxLine t) =>
 
 /// Setzt [r] zu Druckzeilen für Papier mit [columns] Zeichen je Zeile.
 /// [voidedNumber] ist bei einem Storno-Bon die Nummer des stornierten Bons.
+/// Mit [recipient] ist es die Rechnung: nach dem Kopf des Betriebs
+/// "RECHNUNG", die Rechnungsnummer ([invoiceNumber]) und "An:" mit dem
+/// Empfänger, dann der Bon, wie er ist (gleiche Nummer, gleicher QR-Code).
+/// Ohne [recipient] ist jede Zeile wie vorher.
 List<PrintOp> layoutReceipt(
   Receipt r,
   BusinessInfo business, {
   int columns = 48,
   int? voidedNumber,
+  ReceiptRecipient? recipient,
 }) {
   final b = PrintBuilder(columns);
 
@@ -35,6 +41,21 @@ List<PrintOp> layoutReceipt(
   final vatId = business.vatId;
   if (vatId != null && vatId.isNotEmpty) b.centered('UID $vatId');
   b.rule();
+
+  // 2. Rechnung: Nummer und Empfänger
+  if (recipient != null) {
+    b.centered('RECHNUNG', bold: true);
+    b.centered('Rechnung Nr. ${invoiceNumber(r)}');
+    b.text('An:');
+    b.indented(recipient.name);
+    b.indented(recipient.addressLine1);
+    b.indented(recipient.addressLine2);
+    final customerVat = recipient.vatId;
+    if (customerVat != null && customerVat.isNotEmpty) {
+      b.indented('UID $customerVat');
+    }
+    b.rule();
+  }
 
   // 3. Storno oder Sonderbeleg
   // Das Wort steht immer da, die Nummer des stornierten Bons nur, wenn sie
@@ -148,7 +169,7 @@ List<PrintOp> layoutReceipt(
   }
 
   // 10. Testbon: ohne Eintrag im Protokoll und bei der Probe-Signatur
-  if (rksv == null || rksv.probe) {
+  if (isTestReceipt(r)) {
     b.blank();
     b.text('TESTBON', align: PrintAlign.center, bold: true);
     b.text('Keine gültige Rechnung', align: PrintAlign.center);

@@ -21,6 +21,7 @@ import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
+import '../customers/customer_picker.dart';
 import '../kassa/cart_line_row.dart' show discountReasonText;
 import '../kassa/kitchen_service.dart';
 import '../kassa/late_kitchen.dart';
@@ -40,6 +41,9 @@ import 'void_question.dart';
 /// [all] sind die Bons des Tages (für Namen und Nummern der Storno-Paare).
 /// Der Aufrufer gibt der Spalte je Bon einen eigenen Schlüssel, damit eine
 /// offene Rückfrage nicht zu einem anderen Bon wandert.
+/// Ist "Rechnung an Firma" an, steht bei einem Verkauf, der gilt und kein
+/// Testbon ist, die Rechnung ([InvoiceBox]) über der Signatur; "Rechnung an
+/// Firma" öffnet an Stelle des Bons das Blatt "Firmenkunde wählen".
 class ReceiptDetail extends ConsumerStatefulWidget {
   const ReceiptDetail({super.key, required this.receipt, required this.all});
 
@@ -55,6 +59,15 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
 
   /// Ob ein Bondrucker eingerichtet ist (aus dem letzten Bild).
   bool _hasPrinter = false;
+
+  /// Ob "Rechnung an Firma" bei diesem Bon steht (aus dem letzten Bild).
+  bool _invoice = false;
+
+  /// "Rechnung an Firma" ist getippt: an Stelle des Bons steht das Blatt
+  /// "Firmenkunde wählen".
+  bool _picking = false;
+
+  void _pick() => setState(() => _picking = true);
   bool _busy = false;
 
   /// Warum der letzte Storno nicht geklappt hat, sonst `null`.
@@ -250,6 +263,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final hasPrinter = settings.printerKind != PrinterKind.none;
     _hasPrinter = hasPrinter;
+    _invoice = receipt != null && showsInvoice(settings, receipt);
     final canVoid =
         receipt != null &&
         receipt.kind == ReceiptKind.sale &&
@@ -318,6 +332,12 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
       ),
       child: receipt == null
           ? const _NothingSelected()
+          : _picking && _invoice
+          ? CustomerPicker(
+              receipt: receipt,
+              onChosen: () => setState(() => _picking = false),
+              onClose: () => setState(() => _picking = false),
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -644,6 +664,11 @@ class _Body extends StatelessWidget {
             ],
           ),
         ),
+        if (state._invoice)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: InvoiceBox(receipt: r, onPick: state._pick),
+          ),
         if (rksv != null) _SignatureBlock(rksv),
       ],
     );

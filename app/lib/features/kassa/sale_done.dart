@@ -14,6 +14,7 @@ import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/print_problem_text.dart';
 import '../../ui/tokens.dart';
+import '../customers/customer_picker.dart';
 import 'cash_sheet.dart';
 import 'kitchen_service.dart';
 import 'late_kitchen.dart';
@@ -40,6 +41,10 @@ import 'sale_service.dart';
 /// Gutschein bezahlt" (`paid-by-voucher`); die Lade ist zu. Je
 /// Gutschein-Zahlung steht darunter eine Reihe `voucher-left-<n>` mit dem
 /// Code und dem, was am Gutschein bleibt.
+///
+/// Ist "Rechnung an Firma" an und der Bon kein Testbon, steht darunter die
+/// Rechnung ([InvoiceBox], über 400 € mit Hinweis); "Rechnung an Firma"
+/// öffnet an Stelle der Ansicht das Blatt "Firmenkunde wählen".
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -81,6 +86,10 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
 
   /// Die Gutscheine, deren "Gutschein drucken" gerade läuft.
   final Set<int> _voucherPrinting = {};
+
+  /// "Rechnung an Firma" ist getippt: an Stelle der Ansicht steht das Blatt
+  /// "Firmenkunde wählen".
+  bool _picking = false;
 
   @override
   void initState() {
@@ -194,6 +203,16 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     final showPrint =
         settings.printerKind != PrinterKind.none &&
         outcome?.problem != PrintProblem.notSetUp;
+    final invoice = showsInvoice(settings, receipt);
+    if (_picking && invoice) {
+      return PayColumnFrame(
+        child: CustomerPicker(
+          receipt: receipt,
+          onChosen: () => setState(() => _picking = false),
+          onClose: () => setState(() => _picking = false),
+        ),
+      );
+    }
     return PayColumnFrame(
       child: Column(
         children: [
@@ -333,6 +352,14 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                         printing: _voucherPrinting.contains(i),
                         outcome: _voucherOutcomes[i],
                         onPrint: () => _printVoucher(i, v),
+                      ),
+                    ],
+                    if (invoice) ...[
+                      const SizedBox(height: KassaTokens.spaceXl),
+                      InvoiceBox(
+                        receipt: receipt,
+                        showHint: true,
+                        onPick: () => setState(() => _picking = true),
                       ),
                     ],
                   ],

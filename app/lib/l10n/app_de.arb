@@ -2637,5 +2637,97 @@
         "type": "String"
       }
     }
+  },
+  "invoiceButton": "Rechnung an Firma",
+  "@invoiceButton": {
+    "description": "Verkauf fertig und Bon-Detail: Taste, die nach dem Bezahlen einen Firmenkunden als Empfänger der Rechnung wählt."
+  },
+  "invoiceRecipient": "Rechnung an",
+  "@invoiceRecipient": {
+    "description": "Verkauf fertig und Bon-Detail: Überschrift über dem Namen des Empfängers der Rechnung."
+  },
+  "invoicePrint": "Rechnung drucken",
+  "@invoicePrint": {
+    "description": "Verkauf fertig und Bon-Detail: Taste, die den Bon als Rechnung an den Empfänger druckt."
+  },
+  "invoiceChange": "Ändern",
+  "@invoiceChange": {
+    "description": "Verkauf fertig und Bon-Detail: Taste, die den Empfänger der Rechnung korrigiert (neue Fassung)."
+  },
+  "invoicePrinted": "Rechnung gedruckt.",
+  "@invoicePrinted": {
+    "description": "Verkauf fertig und Bon-Detail: die Rechnung ist gedruckt."
+  },
+  "invoiceHint400": "Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden.",
+  "@invoiceHint400": {
+    "description": "Verkauf fertig: ruhiger Hinweis, wenn die Summe über 400 € liegt und der Bon noch keinen Empfänger hat."
+  },
+  "customerPickerTitle": "Firmenkunde wählen",
+  "@customerPickerTitle": {
+    "description": "Blatt Firmenkunde wählen: Titel."
+  },
+  "customerAll": "Alle",
+  "@customerAll": {
+    "description": "Blatt Firmenkunde wählen: Taste über den Anfangsbuchstaben, die alle Firmenkunden zeigt."
+  },
+  "customerNew": "Neuer Kunde",
+  "@customerNew": {
+    "description": "Blatt Firmenkunde wählen: Taste, die das Formular für einen neuen Kunden öffnet."
+  },
+  "customerEmpty": "Noch kein Firmenkunde gespeichert.",
+  "@customerEmpty": {
+    "description": "Blatt Firmenkunde wählen: noch kein Firmenkunde gespeichert."
+  },
+  "customerFormTitle": "Empfänger der Rechnung",
+  "@customerFormTitle": {
+    "description": "Formular für den Empfänger der Rechnung: Titel."
+  },
+  "customerName": "Name der Firma",
+  "@customerName": {
+    "description": "Formular Empfänger der Rechnung: Beschriftung des Felds für den Namen (Pflicht)."
+  },
+  "customerAddress1": "Straße und Hausnummer",
+  "@customerAddress1": {
+    "description": "Formular Empfänger der Rechnung: Beschriftung der ersten Adress-Zeile (Pflicht)."
+  },
+  "customerAddress2": "PLZ und Ort",
+  "@customerAddress2": {
+    "description": "Formular Empfänger der Rechnung: Beschriftung der zweiten Adress-Zeile (Pflicht)."
+  },
+  "customerVatId": "UID (wenn vorhanden)",
+  "@customerVatId": {
+    "description": "Formular Empfänger der Rechnung: Beschriftung des Felds für die UID des Kunden (Pflicht erst über 10.000 €)."
+  },
+  "customerKeep": "Als Firmenkunde speichern",
+  "@customerKeep": {
+    "description": "Formular Empfänger der Rechnung: Schalter, ob der Kunde für später gespeichert wird."
+  },
+  "customerSave": "Übernehmen",
+  "@customerSave": {
+    "description": "Formular Empfänger der Rechnung: Taste, die den Empfänger übernimmt."
+  },
+  "customerCancel": "Abbrechen",
+  "@customerCancel": {
+    "description": "Formular Empfänger der Rechnung: Taste, die ohne Speichern zurückgeht."
+  },
+  "customerSaveFailed": "Das hat nicht geklappt. Bitte noch einmal.",
+  "@customerSaveFailed": {
+    "description": "Formular Empfänger der Rechnung: das Speichern hat nicht geklappt."
+  },
+  "customerNameMissing": "Bitte den Namen eintragen.",
+  "@customerNameMissing": {
+    "description": "Formular Empfänger der Rechnung: Grund unter dem Feld Name, wenn er fehlt."
+  },
+  "customerAddressMissing": "Bitte die Adresse eintragen.",
+  "@customerAddressMissing": {
+    "description": "Formular Empfänger der Rechnung: Grund unter einer leeren Adress-Zeile."
+  },
+  "customerVatIdMissing": "Über 10.000 € braucht die Rechnung die UID des Kunden.",
+  "@customerVatIdMissing": {
+    "description": "Formular Empfänger der Rechnung: Grund unter dem Feld UID, wenn der Bon über 10.000 € liegt."
+  },
+  "customerTooLong": "Der Text ist zu lang.",
+  "@customerTooLong": {
+    "description": "Formular Empfänger der Rechnung: Grund unter einem Feld mit zu langem Text."
   }
 }

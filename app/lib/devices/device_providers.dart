@@ -10,6 +10,7 @@ import '../data/providers.dart';
 import '../data/settings_repository.dart';
 import '../domain/kitchen_ticket.dart';
 import '../domain/receipt.dart';
+import '../domain/customer.dart';
 import '../domain/day.dart';
 import '../domain/period_report.dart';
 import '../rksv/setup_facts.dart';
@@ -208,6 +209,7 @@ class _NoPrinter implements ReceiptPrinter {
   Future<PrintOutcome> printReceipt(
     Receipt receipt, {
     bool openDrawer = false,
+    ReceiptRecipient? recipient,
   }) async => _outcome;
 
   @override

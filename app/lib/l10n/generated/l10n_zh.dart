@@ -1773,4 +1773,73 @@ class L10nZh extends L10n {
   String voucherWithCode(String code) {
     return '礼券 $code';
   }
+
+  @override
+  String get invoiceButton => '企业发票';
+
+  @override
+  String get invoiceRecipient => '发票抬头';
+
+  @override
+  String get invoicePrint => '打印发票';
+
+  @override
+  String get invoiceChange => '修改';
+
+  @override
+  String get invoicePrinted => '发票已打印。';
+
+  @override
+  String get invoiceHint400 => '超过 400 €：发票需要客户的名称和地址。';
+
+  @override
+  String get customerPickerTitle => '选择企业客户';
+
+  @override
+  String get customerAll => '全部';
+
+  @override
+  String get customerNew => '新客户';
+
+  @override
+  String get customerEmpty => '还没有保存的企业客户。';
+
+  @override
+  String get customerFormTitle => '发票收件人';
+
+  @override
+  String get customerName => '公司名称';
+
+  @override
+  String get customerAddress1 => '街道和门牌号';
+
+  @override
+  String get customerAddress2 => '邮编和城市';
+
+  @override
+  String get customerVatId => '增值税号（如有）';
+
+  @override
+  String get customerKeep => '保存为企业客户';
+
+  @override
+  String get customerSave => '确定';
+
+  @override
+  String get customerCancel => '取消';
+
+  @override
+  String get customerSaveFailed => '未成功，请重试。';
+
+  @override
+  String get customerNameMissing => '请输入名称。';
+
+  @override
+  String get customerAddressMissing => '请输入地址。';
+
+  @override
+  String get customerVatIdMissing => '超过 10.000 € 时，发票需要客户的增值税号。';
+
+  @override
+  String get customerTooLong => '文字太长。';
 }

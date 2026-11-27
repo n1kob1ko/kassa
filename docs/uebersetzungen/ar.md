@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 519 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 542 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,29 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Dieser Gutschein liegt schon am Bon. | هذه القسيمة موجودة بالفعل في الفاتورة. | Sonstiges: `voucherAlreadyOnReceipt` |
 | Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | تغيّر الرصيد. يُرجى المراجعة مرة أخرى. | Sonstiges: `voucherChanged` |
 | Gutschein {code} | قسيمة {code} | Sonstiges: `voucherWithCode` |
+| Rechnung an Firma | فاتورة لشركة | Sonstiges: `invoiceButton` |
+| Rechnung an | الفاتورة إلى | Sonstiges: `invoiceRecipient` |
+| Rechnung drucken | اطبع الفاتورة | Sonstiges: `invoicePrint` |
+| Ändern | تغيير | Sonstiges: `invoiceChange` |
+| Rechnung gedruckt. | طُبعت الفاتورة. | Sonstiges: `invoicePrinted` |
+| Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden. | أكثر من 400 €: تحتاج الفاتورة إلى اسم العميل وعنوانه. | Sonstiges: `invoiceHint400` |
+| Firmenkunde wählen | اختر عميل شركة | Sonstiges: `customerPickerTitle` |
+| Alle | الكل | Sonstiges: `customerAll` |
+| Neuer Kunde | عميل جديد | Sonstiges: `customerNew` |
+| Noch kein Firmenkunde gespeichert. | لا يوجد عميل شركة محفوظ بعد. | Sonstiges: `customerEmpty` |
+| Empfänger der Rechnung | مستلم الفاتورة | Sonstiges: `customerFormTitle` |
+| Name der Firma | اسم الشركة | Sonstiges: `customerName` |
+| Straße und Hausnummer | الشارع ورقم المبنى | Sonstiges: `customerAddress1` |
+| PLZ und Ort | الرمز البريدي والمدينة | Sonstiges: `customerAddress2` |
+| UID (wenn vorhanden) | الرقم الضريبي (إن وُجد) | Sonstiges: `customerVatId` |
+| Als Firmenkunde speichern | احفظ كعميل شركة | Sonstiges: `customerKeep` |
+| Übernehmen | اعتماد | Sonstiges: `customerSave` |
+| Abbrechen | إلغاء | Sonstiges: `customerCancel` |
+| Das hat nicht geklappt. Bitte noch einmal. | لم ينجح ذلك. يرجى المحاولة مرة أخرى. | Sonstiges: `customerSaveFailed` |
+| Bitte den Namen eintragen. | يُرجى إدخال الاسم. | Sonstiges: `customerNameMissing` |
+| Bitte die Adresse eintragen. | يُرجى إدخال العنوان. | Sonstiges: `customerAddressMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | فوق 10.000 € تحتاج الفاتورة إلى الرقم الضريبي للعميل. | Sonstiges: `customerVatIdMissing` |
+| Der Text ist zu lang. | النص طويل جدًا. | Sonstiges: `customerTooLong` |
 
 ## Unsicher
 

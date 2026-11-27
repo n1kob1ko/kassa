@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 519 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 542 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,29 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Dieser Gutschein liegt schon am Bon. | 这张礼券已在小票上。 | Sonstiges: `voucherAlreadyOnReceipt` |
 | Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | 余额已变动，请再看一遍。 | Sonstiges: `voucherChanged` |
 | Gutschein {code} | 礼券 {code} | Sonstiges: `voucherWithCode` |
+| Rechnung an Firma | 企业发票 | Sonstiges: `invoiceButton` |
+| Rechnung an | 发票抬头 | Sonstiges: `invoiceRecipient` |
+| Rechnung drucken | 打印发票 | Sonstiges: `invoicePrint` |
+| Ändern | 修改 | Sonstiges: `invoiceChange` |
+| Rechnung gedruckt. | 发票已打印。 | Sonstiges: `invoicePrinted` |
+| Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden. | 超过 400 €：发票需要客户的名称和地址。 | Sonstiges: `invoiceHint400` |
+| Firmenkunde wählen | 选择企业客户 | Sonstiges: `customerPickerTitle` |
+| Alle | 全部 | Sonstiges: `customerAll` |
+| Neuer Kunde | 新客户 | Sonstiges: `customerNew` |
+| Noch kein Firmenkunde gespeichert. | 还没有保存的企业客户。 | Sonstiges: `customerEmpty` |
+| Empfänger der Rechnung | 发票收件人 | Sonstiges: `customerFormTitle` |
+| Name der Firma | 公司名称 | Sonstiges: `customerName` |
+| Straße und Hausnummer | 街道和门牌号 | Sonstiges: `customerAddress1` |
+| PLZ und Ort | 邮编和城市 | Sonstiges: `customerAddress2` |
+| UID (wenn vorhanden) | 增值税号（如有） | Sonstiges: `customerVatId` |
+| Als Firmenkunde speichern | 保存为企业客户 | Sonstiges: `customerKeep` |
+| Übernehmen | 确定 | Sonstiges: `customerSave` |
+| Abbrechen | 取消 | Sonstiges: `customerCancel` |
+| Das hat nicht geklappt. Bitte noch einmal. | 未成功，请重试。 | Sonstiges: `customerSaveFailed` |
+| Bitte den Namen eintragen. | 请输入名称。 | Sonstiges: `customerNameMissing` |
+| Bitte die Adresse eintragen. | 请输入地址。 | Sonstiges: `customerAddressMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | 超过 10.000 € 时，发票需要客户的增值税号。 | Sonstiges: `customerVatIdMissing` |
+| Der Text ist zu lang. | 文字太长。 | Sonstiges: `customerTooLong` |
 
 ## Unsicher
 

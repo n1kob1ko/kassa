@@ -5,6 +5,7 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/device_providers.dart';
 import 'package:kassa/devices/printer.dart';
+import 'package:kassa/domain/customer.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
 
@@ -22,6 +23,7 @@ class _YearFails extends FakePrinter {
   Future<PrintOutcome> printReceipt(
     Receipt receipt, {
     bool openDrawer = false,
+    ReceiptRecipient? recipient,
   }) async {
     if (receipt.kind == ReceiptKind.year) {
       log.add('failed:${receipt.id}');

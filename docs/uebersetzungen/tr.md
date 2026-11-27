@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 519 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 542 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,29 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Dieser Gutschein liegt schon am Bon. | Bu hediye çeki zaten fişte. | Sonstiges: `voucherAlreadyOnReceipt` |
 | Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | Bakiye değişti. Lütfen tekrar kontrol edin. | Sonstiges: `voucherChanged` |
 | Gutschein {code} | Hediye çeki {code} | Sonstiges: `voucherWithCode` |
+| Rechnung an Firma | Şirkete fatura | Sonstiges: `invoiceButton` |
+| Rechnung an | Fatura alıcısı | Sonstiges: `invoiceRecipient` |
+| Rechnung drucken | Faturayı yazdır | Sonstiges: `invoicePrint` |
+| Ändern | Değiştir | Sonstiges: `invoiceChange` |
+| Rechnung gedruckt. | Fatura yazdırıldı. | Sonstiges: `invoicePrinted` |
+| Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden. | 400 € üzeri: Fatura için müşterinin adı ve adresi gerekir. | Sonstiges: `invoiceHint400` |
+| Firmenkunde wählen | Kurumsal müşteri seç | Sonstiges: `customerPickerTitle` |
+| Alle | Tümü | Sonstiges: `customerAll` |
+| Neuer Kunde | Yeni müşteri | Sonstiges: `customerNew` |
+| Noch kein Firmenkunde gespeichert. | Henüz kayıtlı kurumsal müşteri yok. | Sonstiges: `customerEmpty` |
+| Empfänger der Rechnung | Fatura bilgileri | Sonstiges: `customerFormTitle` |
+| Name der Firma | Şirket adı | Sonstiges: `customerName` |
+| Straße und Hausnummer | Sokak ve numara | Sonstiges: `customerAddress1` |
+| PLZ und Ort | Posta kodu ve şehir | Sonstiges: `customerAddress2` |
+| UID (wenn vorhanden) | KDV numarası (varsa) | Sonstiges: `customerVatId` |
+| Als Firmenkunde speichern | Kurumsal müşteri olarak kaydet | Sonstiges: `customerKeep` |
+| Übernehmen | Uygula | Sonstiges: `customerSave` |
+| Abbrechen | Vazgeç | Sonstiges: `customerCancel` |
+| Das hat nicht geklappt. Bitte noch einmal. | Olmadı. Lütfen tekrar deneyin. | Sonstiges: `customerSaveFailed` |
+| Bitte den Namen eintragen. | Lütfen adı girin. | Sonstiges: `customerNameMissing` |
+| Bitte die Adresse eintragen. | Lütfen adresi girin. | Sonstiges: `customerAddressMissing` |
+| Über 10.000 € braucht die Rechnung die UID des Kunden. | 10.000 € üzerinde faturada müşterinin KDV numarası gerekir. | Sonstiges: `customerVatIdMissing` |
+| Der Text ist zu lang. | Metin çok uzun. | Sonstiges: `customerTooLong` |
 
 ## Unsicher
 

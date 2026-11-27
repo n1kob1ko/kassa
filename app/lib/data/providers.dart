@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../core/app_info.dart';
 import '../core/clock.dart';
 import '../domain/catalog.dart';
+import '../domain/customer.dart';
 import '../domain/day.dart';
 import '../domain/menu_dictionary.dart';
 import '../domain/receipt.dart';
@@ -18,6 +19,7 @@ import '../sync/server_changes.dart';
 import '../sync/token_store.dart';
 import 'card_payment_repository.dart';
 import 'catalog_repository.dart';
+import 'customer_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
 import 'outbox_repository.dart';
@@ -82,6 +84,18 @@ final receiptRepositoryProvider = Provider(
 final voucherRepositoryProvider = Provider<VoucherRepository>(
   (ref) => VoucherRepository(ref.watch(databaseProvider)),
 );
+
+final customerRepositoryProvider = Provider<CustomerRepository>(
+  (ref) =>
+      CustomerRepository(ref.watch(databaseProvider), ref.watch(clockProvider)),
+);
+
+/// Die letzte Fassung des Rechnungsempfängers eines Bons, `null` ohne.
+final receiptRecipientProvider =
+    StreamProvider.family<ReceiptRecipient?, String>(
+      (ref, receiptId) =>
+          ref.watch(customerRepositoryProvider).watchRecipient(receiptId),
+    );
 
 final cardPaymentRepositoryProvider = Provider(
   (ref) => CardPaymentRepository(

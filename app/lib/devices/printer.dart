@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import '../core/clock.dart';
 import '../domain/business_info.dart';
+import '../domain/customer.dart';
 import '../domain/day.dart';
 import '../domain/period_report.dart';
 import '../domain/print_document.dart';
@@ -91,8 +92,13 @@ abstract interface class ReceiptPrinter {
   /// Auftrags die für die Geldlade: ein Aufruf, eine Verbindung. Meldet der
   /// Drucker, dass er nicht drucken kann (Papier leer, Deckel offen), geht der
   /// Befehl für die Lade allein hinaus, und das Ergebnis ist das Problem des
-  /// Druckers.
-  Future<PrintOutcome> printReceipt(Receipt receipt, {bool openDrawer = false});
+  /// Druckers. Mit [recipient] wird der Bon als Rechnung an diesen Empfänger
+  /// gedruckt ([layoutReceipt]).
+  Future<PrintOutcome> printReceipt(
+    Receipt receipt, {
+    bool openDrawer = false,
+    ReceiptRecipient? recipient,
+  });
   Future<PrintOutcome> openDrawer();
   Future<PrintOutcome> testPrint();
 
@@ -172,6 +178,7 @@ class EscPosPrinter implements ReceiptPrinter {
   Future<PrintOutcome> printReceipt(
     Receipt receipt, {
     bool openDrawer = false,
+    ReceiptRecipient? recipient,
   }) => _run(
     checkStatus: true,
     openDrawer: openDrawer,
@@ -193,6 +200,7 @@ class EscPosPrinter implements ReceiptPrinter {
             business,
             columns: columns,
             voidedNumber: voidedNumber,
+            recipient: recipient,
           ),
         ],
         qrAsImage: qrAsImage,

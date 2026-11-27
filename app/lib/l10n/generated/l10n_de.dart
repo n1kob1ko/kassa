@@ -1816,4 +1816,75 @@ class L10nDe extends L10n {
   String voucherWithCode(String code) {
     return 'Gutschein $code';
   }
+
+  @override
+  String get invoiceButton => 'Rechnung an Firma';
+
+  @override
+  String get invoiceRecipient => 'Rechnung an';
+
+  @override
+  String get invoicePrint => 'Rechnung drucken';
+
+  @override
+  String get invoiceChange => 'Ändern';
+
+  @override
+  String get invoicePrinted => 'Rechnung gedruckt.';
+
+  @override
+  String get invoiceHint400 =>
+      'Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden.';
+
+  @override
+  String get customerPickerTitle => 'Firmenkunde wählen';
+
+  @override
+  String get customerAll => 'Alle';
+
+  @override
+  String get customerNew => 'Neuer Kunde';
+
+  @override
+  String get customerEmpty => 'Noch kein Firmenkunde gespeichert.';
+
+  @override
+  String get customerFormTitle => 'Empfänger der Rechnung';
+
+  @override
+  String get customerName => 'Name der Firma';
+
+  @override
+  String get customerAddress1 => 'Straße und Hausnummer';
+
+  @override
+  String get customerAddress2 => 'PLZ und Ort';
+
+  @override
+  String get customerVatId => 'UID (wenn vorhanden)';
+
+  @override
+  String get customerKeep => 'Als Firmenkunde speichern';
+
+  @override
+  String get customerSave => 'Übernehmen';
+
+  @override
+  String get customerCancel => 'Abbrechen';
+
+  @override
+  String get customerSaveFailed => 'Das hat nicht geklappt. Bitte noch einmal.';
+
+  @override
+  String get customerNameMissing => 'Bitte den Namen eintragen.';
+
+  @override
+  String get customerAddressMissing => 'Bitte die Adresse eintragen.';
+
+  @override
+  String get customerVatIdMissing =>
+      'Über 10.000 € braucht die Rechnung die UID des Kunden.';
+
+  @override
+  String get customerTooLong => 'Der Text ist zu lang.';
 }

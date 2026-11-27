@@ -1812,4 +1812,75 @@ class L10nEn extends L10n {
   String voucherWithCode(String code) {
     return 'Voucher $code';
   }
+
+  @override
+  String get invoiceButton => 'Invoice to company';
+
+  @override
+  String get invoiceRecipient => 'Invoice to';
+
+  @override
+  String get invoicePrint => 'Print invoice';
+
+  @override
+  String get invoiceChange => 'Change';
+
+  @override
+  String get invoicePrinted => 'Invoice printed.';
+
+  @override
+  String get invoiceHint400 =>
+      'Over 400 €: An invoice needs the customer\'s name and address.';
+
+  @override
+  String get customerPickerTitle => 'Choose business customer';
+
+  @override
+  String get customerAll => 'All';
+
+  @override
+  String get customerNew => 'New customer';
+
+  @override
+  String get customerEmpty => 'No business customer saved yet.';
+
+  @override
+  String get customerFormTitle => 'Invoice recipient';
+
+  @override
+  String get customerName => 'Company name';
+
+  @override
+  String get customerAddress1 => 'Street and number';
+
+  @override
+  String get customerAddress2 => 'Postcode and city';
+
+  @override
+  String get customerVatId => 'VAT ID (if any)';
+
+  @override
+  String get customerKeep => 'Save as business customer';
+
+  @override
+  String get customerSave => 'Apply';
+
+  @override
+  String get customerCancel => 'Cancel';
+
+  @override
+  String get customerSaveFailed => 'That didn\'t work. Please try again.';
+
+  @override
+  String get customerNameMissing => 'Please enter the name.';
+
+  @override
+  String get customerAddressMissing => 'Please enter the address.';
+
+  @override
+  String get customerVatIdMissing =>
+      'Over 10.000 € the invoice needs the customer\'s VAT ID.';
+
+  @override
+  String get customerTooLong => 'The text is too long.';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/customer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/print_document.dart';
@@ -854,5 +855,108 @@ void main() {
         'Rabatt 5 % geburtstag',
       );
     });
+  });
+
+  test('Rechnung: RECHNUNG, Rechnung Nr. KASSA-1 / 1042, An: mit Name, '
+      'Adresse und UID; ohne Empfänger ist der Bon Zeile für Zeile wie '
+      'vorher', () async {
+    final sale = await saleOf(cart, given: 2000);
+    // Bon Nr. 1042 der Kassa KASSA-1 im echten Betrieb.
+    final r = Receipt(
+      id: sale.id,
+      number: 1042,
+      createdAt: sale.createdAt,
+      staffId: sale.staffId,
+      staffName: sale.staffName,
+      businessDayId: sale.businessDayId,
+      kind: sale.kind,
+      lines: sale.lines,
+      payments: sale.payments,
+      rksv: const RksvStamp(
+        cashBoxId: 'KASSA-1',
+        qrText: _qrText,
+        damaged: false,
+        probe: false,
+      ),
+      goodsCents: sale.goodsCents,
+      depositCents: sale.depositCents,
+      totalCents: sale.totalCents,
+    );
+    final recipient = ReceiptRecipient(
+      receiptId: r.id,
+      version: 0,
+      customerId: 'k1',
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+      vatId: 'ATU00000000',
+      createdAt: DateTime(2026, 11, 17, 11, 5),
+      staffId: 's',
+      staffName: 'Anna',
+    );
+    String describe(PrintOp o) => switch (o) {
+      PrintText() => 'text ${o.align} ${o.bold} ${o.size} ${o.text}',
+      PrintFeed() => 'feed ${o.lines}',
+      PrintQr() => 'qr ${o.data}',
+      PrintCut() => 'cut',
+      PrintDrawerKick() => 'drawer',
+    };
+    final plain = [for (final o in layoutReceipt(r, business)) describe(o)];
+    final invoiceOps = layoutReceipt(r, business, recipient: recipient);
+    final invoice = [for (final o in invoiceOps) describe(o)];
+
+    // Nach dem Kopf des Betriebs (bis zur ersten Linie) der Block der
+    // Rechnung mit einer eigenen Linie, dann der Bon, wie er ist.
+    final head = plain.indexOf(
+      'text ${PrintAlign.left} false '
+      '${PrintSize.normal} ${'-' * 48}',
+    );
+    expect(head, greaterThan(0));
+    expect(invoice.sublist(0, head + 1), plain.sublist(0, head + 1));
+    final block = texts(invoiceOps.sublist(head + 1, head + 9));
+    expect(block, [
+      'RECHNUNG',
+      'Rechnung Nr. KASSA-1 / 1042',
+      'An:',
+      '    Muster GmbH',
+      '    Musterweg 1',
+      '    1010 Wien',
+      '    UID ATU00000000',
+      '-' * 48,
+    ]);
+    final title = invoiceOps[head + 1] as PrintText;
+    expect(title.bold, isTrue);
+    expect(title.align, PrintAlign.center);
+    expect((invoiceOps[head + 2] as PrintText).align, PrintAlign.center);
+    expect(invoice.sublist(head + 9), plain.sublist(head + 1));
+    expect(invoice.length, plain.length + 8);
+    // Gleiche Nummer, gleicher QR-Code, kein TESTBON.
+    expect(
+      texts(invoiceOps),
+      contains(row('Bon Nr. 1042', '17.11.2026 11:00')),
+    );
+    expect(invoiceOps.whereType<PrintQr>().single.data, _qrText);
+    expect(texts(invoiceOps), isNot(contains('TESTBON')));
+
+    // Ohne UID fehlt die Zeile, ohne Kassen-ID steht nur die Nummer.
+    final noVat = ReceiptRecipient(
+      receiptId: r.id,
+      version: 1,
+      customerId: null,
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+      vatId: null,
+      createdAt: DateTime(2026, 11, 17, 11, 6),
+      staffId: 's',
+      staffName: 'Anna',
+    );
+    final t = texts(layoutReceipt(r, business, recipient: noVat));
+    expect(t.where((x) => x.contains('UID ATU00000000')), isEmpty);
+    expect(t, contains('UID ATU12345678'));
+    expect(
+      texts(layoutReceipt(sale, business, recipient: noVat)),
+      contains('Rechnung Nr. 1'),
+    );
   });
 }

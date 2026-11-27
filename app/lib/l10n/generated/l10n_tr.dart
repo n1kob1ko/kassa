@@ -1796,4 +1796,75 @@ class L10nTr extends L10n {
   String voucherWithCode(String code) {
     return 'Hediye çeki $code';
   }
+
+  @override
+  String get invoiceButton => 'Şirkete fatura';
+
+  @override
+  String get invoiceRecipient => 'Fatura alıcısı';
+
+  @override
+  String get invoicePrint => 'Faturayı yazdır';
+
+  @override
+  String get invoiceChange => 'Değiştir';
+
+  @override
+  String get invoicePrinted => 'Fatura yazdırıldı.';
+
+  @override
+  String get invoiceHint400 =>
+      '400 € üzeri: Fatura için müşterinin adı ve adresi gerekir.';
+
+  @override
+  String get customerPickerTitle => 'Kurumsal müşteri seç';
+
+  @override
+  String get customerAll => 'Tümü';
+
+  @override
+  String get customerNew => 'Yeni müşteri';
+
+  @override
+  String get customerEmpty => 'Henüz kayıtlı kurumsal müşteri yok.';
+
+  @override
+  String get customerFormTitle => 'Fatura bilgileri';
+
+  @override
+  String get customerName => 'Şirket adı';
+
+  @override
+  String get customerAddress1 => 'Sokak ve numara';
+
+  @override
+  String get customerAddress2 => 'Posta kodu ve şehir';
+
+  @override
+  String get customerVatId => 'KDV numarası (varsa)';
+
+  @override
+  String get customerKeep => 'Kurumsal müşteri olarak kaydet';
+
+  @override
+  String get customerSave => 'Uygula';
+
+  @override
+  String get customerCancel => 'Vazgeç';
+
+  @override
+  String get customerSaveFailed => 'Olmadı. Lütfen tekrar deneyin.';
+
+  @override
+  String get customerNameMissing => 'Lütfen adı girin.';
+
+  @override
+  String get customerAddressMissing => 'Lütfen adresi girin.';
+
+  @override
+  String get customerVatIdMissing =>
+      '10.000 € üzerinde faturada müşterinin KDV numarası gerekir.';
+
+  @override
+  String get customerTooLong => 'Metin çok uzun.';
 }

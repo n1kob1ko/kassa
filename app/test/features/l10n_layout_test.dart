@@ -11,6 +11,7 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/core/money.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/catalog.dart' show TaxRate;
 import 'package:kassa/domain/feature_access.dart';
 import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/features/login/session.dart';
@@ -24,6 +25,7 @@ import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/invoice_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -598,6 +600,35 @@ void main() {
       );
     }
   }
+
+  // Stufe 1b: Rechnung an Firma ("Verkauf fertig" mit "Rechnung an Firma" und
+  // dem Hinweis über 400 €, das Blatt "Firmenkunde wählen" leer und mit
+  // Anfangsbuchstaben, das Formular mit allen vier Gründen, der Empfänger auf
+  // "Verkauf fertig" und im Detail in "Bons"), in allen Sprachen, bei beiden
+  // Größen und bei der größten Schrift (1,3).
+  for (final language in AppLanguage.values) {
+    for (final (size, scale) in [
+      for (final size in _sizes) (size, 1.0),
+      (const Size(1280, 800), KassaTokens.maxTextScale),
+    ]) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+        'Schrift $scale: Rechnung an Firma ohne Überlauf',
+        (t) async {
+          final at =
+              '${language.name} ${size.width.toInt()}×'
+              '${size.height.toInt()} $scale';
+          final seen = <String>[];
+          await _tourInvoice(t, language, size, scale, (screen) {
+            seen.add(screen);
+            _expectClean(t, '$at $screen');
+            if (!language.isRtl) _expectNoIsolates(t, '$at $screen');
+          });
+          expect(seen, hasLength(8));
+        },
+      );
+    }
+  }
 }
 
 /// Jeder Text unter [key] ist ganz zu lesen, ohne Auslassungspunkte.
@@ -896,3 +927,126 @@ Future<void> _tourVoucherRedeem(
   _expectWholeKey(t, 'unclear-voucher', at);
 }
 
+
+/// Kassa im echten Betrieb mit Rechnung an Firma, Drucker und Lade, ein Bon
+/// über 10.000 €: "Verkauf fertig" mit "Rechnung an Firma" und dem Hinweis,
+/// "Firmenkunde wählen" ohne Kunden, das Formular mit allen vier Gründen
+/// (Name fehlt, erste Adress-Zeile zu lang, zweite fehlt, UID fehlt), oben
+/// und unten gerollt, "Verkauf fertig" mit dem Empfänger, das Detail in
+/// "Bons" mit dem Empfänger und mit "Rechnung an Firma", dann "Firmenkunde
+/// wählen" mit Anfangsbuchstaben; [look] prüft jedes Bild.
+Future<void> _tourInvoice(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+  void Function(String screen) look,
+) async {
+  await openInvoiceKassa(
+    t,
+    const [],
+    language: language,
+    size: size,
+    textScale: scale,
+  );
+  final at = '${language.name} ${size.width.toInt()} $scale';
+  final cart = containerOf(t).read(cartProvider.notifier);
+  cart.addOpenAmount(amountCents: 600000, rate: TaxRate.normal);
+  cart.addOpenAmount(amountCents: 400001, rate: TaxRate.normal);
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-cash');
+  await _tapVisible(t, 'finish-sale');
+  await t.ensureVisible(find.byKey(const Key('invoice-button')));
+  await t.pumpAndSettle();
+  look('Verkauf fertig mit Rechnung an Firma');
+  _expectWholeKey(t, 'invoice-button', at);
+  _expectWholeKey(t, 'invoice-hint', at);
+
+  await _tapVisible(t, 'invoice-button');
+  look('Firmenkunde wählen leer');
+  _expectWholeKey(t, 'customer-empty', at);
+  _expectWholeKey(t, 'customer-new', at);
+
+  await _tap(t, 'customer-new');
+  await t.enterText(find.byKey(const Key('customer-address1')), 'M' * 81);
+  await t.pumpAndSettle();
+  for (final key in [
+    'customer-name-problem',
+    'customer-address1-problem',
+    'customer-address2-problem',
+    'customer-vat-problem',
+  ]) {
+    expect(find.byKey(Key(key)), findsOneWidget, reason: '$at $key');
+  }
+  look('Formular mit vier Gründen');
+  for (final key in [
+    'customer-name-problem',
+    'customer-address1-problem',
+    'customer-address2-problem',
+    'customer-vat-problem',
+  ]) {
+    _expectWholeKey(t, key, at);
+  }
+  await t.ensureVisible(find.byKey(const Key('customer-save')));
+  await t.pumpAndSettle();
+  look('Formular unten');
+  _expectWholeKey(t, 'customer-keep', at);
+  _expectWholeKey(t, 'customer-save', at);
+  _expectWholeKey(t, 'customer-cancel', at);
+
+  await t.enterText(find.byKey(const Key('customer-name')), 'Muster GmbH');
+  await t.enterText(find.byKey(const Key('customer-address1')), 'Musterweg 1');
+  await t.enterText(find.byKey(const Key('customer-address2')), '1010 Wien');
+  await t.enterText(find.byKey(const Key('customer-vat')), 'ATU00000000');
+  await t.pumpAndSettle();
+  await _tapVisible(t, 'customer-save');
+  await t.ensureVisible(find.byKey(const Key('invoice-change')));
+  await t.pumpAndSettle();
+  look('Verkauf fertig mit Empfänger');
+  _expectWholeKey(t, 'invoice-box', at);
+  await _tapVisible(t, 'next-customer');
+
+  final repo = containerOf(t).read(customerRepositoryProvider);
+  await repo.save(
+    name: 'Beispiel KG',
+    addressLine1: 'Beispielgasse 2',
+    addressLine2: '1020 Wien',
+  );
+  await repo.save(
+    name: '1. Wiener Bau',
+    addressLine1: 'Musterweg 3',
+    addressLine2: '1030 Wien',
+  );
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-cash');
+  await _tapVisible(t, 'finish-sale');
+  await _tapVisible(t, 'next-customer');
+
+  await t.tap(find.byKey(const Key('tab-Bons')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(const Key('receipt-1')));
+  await t.pumpAndSettle();
+  await t.ensureVisible(find.byKey(const Key('invoice-box')));
+  await t.pumpAndSettle();
+  look('Bons mit Empfänger');
+  _expectWholeKey(t, 'invoice-box', at);
+
+  await t.tap(find.byKey(const Key('receipt-2')));
+  await t.pumpAndSettle();
+  await t.ensureVisible(find.byKey(const Key('invoice-button')));
+  await t.pumpAndSettle();
+  look('Bons mit Rechnung an Firma');
+  _expectWholeKey(t, 'invoice-button', at);
+
+  await _tapVisible(t, 'invoice-button');
+  look('Firmenkunde wählen mit Anfangsbuchstaben');
+  for (final key in [
+    'customer-initial-all',
+    'customer-initial-B',
+    'customer-initial-M',
+    'customer-initial-#',
+  ]) {
+    _expectWholeKey(t, key, at);
+  }
+}

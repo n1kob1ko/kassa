@@ -7,9 +7,13 @@ import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/devices/printer_discovery.dart';
+import 'package:kassa/domain/business_info.dart';
+import 'package:kassa/domain/customer.dart';
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/domain/period_report.dart';
+import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/receipt_layout.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 
@@ -77,11 +81,33 @@ class FakePrinter implements ReceiptPrinter {
     return next;
   }
 
+  /// Je Bon aus [printReceipt] der Bon und sein Empfänger (bei einer
+  /// Rechnung), in der Reihenfolge.
+  final List<({Receipt receipt, ReceiptRecipient? recipient})> receiptJobs = [];
+
+  /// Die Zeilen des letzten Bons aus [printReceipt], wie [layoutReceipt] sie
+  /// setzt (mit einem festen Betrieb), durch Zeilenumbrüche getrennt; leer,
+  /// solange keiner gedruckt ist.
+  String get lastText {
+    if (receiptJobs.isEmpty) return '';
+    final job = receiptJobs.last;
+    return [
+      for (final op in layoutReceipt(
+        job.receipt,
+        const BusinessInfo(name: 'Beispiel-Imbiss'),
+        recipient: job.recipient,
+      ))
+        if (op is PrintText) op.text,
+    ].join('\n');
+  }
+
   @override
   Future<PrintOutcome> printReceipt(
     Receipt receipt, {
     bool openDrawer = false,
+    ReceiptRecipient? recipient,
   }) async {
+    receiptJobs.add((receipt: receipt, recipient: recipient));
     if (!openDrawer) return _call('print:${receipt.id}');
     final o = await _call('print+drawer:${receipt.id}');
     final sent = kickGoesOut ?? o.ok;
