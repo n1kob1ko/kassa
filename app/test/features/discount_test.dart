@@ -20,6 +20,7 @@ import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
+import '../support/demo_fixtures.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -500,7 +501,22 @@ void main() {
     await t.tap(find.byKey(const Key('discount-button')), warnIfMissed: false);
     await t.tap(find.byKey(const Key('finish-free')), warnIfMissed: false);
     await t.pump();
+    // Auch Kategorien und Artikel nehmen keine Tipps: sonst löschte das
+    // Speichern den nächsten Artikel gleich wieder.
+    expect(find.byKey(const Key('item-teigtaschen')), findsOneWidget);
+    await t.tap(find.byKey(const Key('item-teigtaschen')), warnIfMissed: false);
+    await t.pump();
+    expect(cartOf(t).lines.map((l) => (l.item.id, l.quantity)), [
+      ('teigtaschen', 1),
+    ]);
+    final cola = catalog.item('cola');
+    await t.tap(find.byKey(Key('cat-${cola.categoryId}')), warnIfMissed: false);
+    await t.pump();
+    // Die Kategorie hat nicht gewechselt.
+    expect(find.byKey(const Key('item-teigtaschen')), findsOneWidget);
+    expect(find.byKey(const Key('item-cola')), findsNothing);
     expect(cartOf(t).lines.single.quantity, 1);
+    expect(cartOf(t).lines.map((l) => l.item.id), ['teigtaschen']);
     expect(find.byKey(const Key('discount-sheet')), findsNothing);
     expect(_HeldSaleService.calls, hasLength(1));
     // Der Fehler gibt den Bon wieder frei, nichts ist gespeichert.
@@ -520,6 +536,14 @@ void main() {
     expect(_HeldSaleService.calls[1], _HeldSaleService.calls[0]);
     expect(await receiptCount(t), 1);
     expect(find.byKey(const Key('next-customer')), findsOneWidget);
+    // Genau der Bon von vorher: eine Teigtasche, ganz rabattiert.
+    expect(
+      await queryRows(t, 'SELECT quantity, discount_cents FROM receipt_lines'),
+      [
+        {'quantity': 1, 'discount_cents': 650},
+      ],
+    );
+    expect(cartOf(t).isEmpty, isTrue);
   });
 
   testWidgets('der Hinweis nach einer abgelehnten Karte mit Bar-Teil geht '

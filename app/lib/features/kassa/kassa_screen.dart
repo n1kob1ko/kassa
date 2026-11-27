@@ -496,10 +496,14 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       children: [
         Padding(
           padding: EdgeInsets.only(bottom: bottomBar),
-          child: CategoryRail(
-            entries: entries,
-            selectedId: selected,
-            onSelected: _selectCategory,
+          // Solange "Abschließen" speichert, kommt nichts Neues auf den Bon.
+          child: IgnorePointer(
+            ignoring: _finishingFree,
+            child: CategoryRail(
+              entries: entries,
+              selectedId: selected,
+              onSelected: _selectCategory,
+            ),
           ),
         ),
         Expanded(
@@ -513,7 +517,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
                   : KassaTokens.motionFade,
               curve: KassaTokens.motionCurve,
               child: IgnorePointer(
-                ignoring: side != _Side.cart,
+                ignoring: side != _Side.cart || _finishingFree,
                 child: building != null && template != null
                     ? ModifierPanel(
                         key: Key('builder-${building.id}'),
