@@ -188,6 +188,33 @@ class SaleService {
     );
   }
 
+  /// Schließt einen Bon mit Summe 0,00 € ab (etwa eine Einladung mit 100 %
+  /// Rabatt ohne Pfand): eine Bar-Zahlung über 0 ohne Rückgeld, die Lade
+  /// bleibt zu. Bei einer anderen Summe [ArgumentError], und nichts wird
+  /// gespeichert.
+  Future<SaleResult> completeFree({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) async {
+    if (cart.totalCents != 0) {
+      throw ArgumentError.value(
+        cart.totalCents,
+        'cart',
+        'Die Summe des Bons ist nicht 0,00 €',
+      );
+    }
+    final receipt = await _ref
+        .read(receiptRepositoryProvider)
+        .finalizeCashSale(
+          saleId: saleId,
+          cart: cart,
+          givenCents: 0,
+          staff: staff,
+        );
+    return _printSale(saleId, receipt, await _settings(), openDrawer: false);
+  }
+
   /// Nimmt die Kartenzahlung für [cart] am Terminal an: [cashPartCents] ist
   /// schon bar bezahlt, die Karte bucht den Rest und das Trinkgeld
   /// [tipCents] (für [staff]). Die offene Zahlung steht mit beiden Beträgen in

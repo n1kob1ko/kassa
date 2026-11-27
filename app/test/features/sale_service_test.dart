@@ -18,6 +18,7 @@ import 'package:kassa/devices/mono_image.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/kitchen_ticket.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
@@ -544,6 +545,58 @@ void main() {
     expect(r.receipt.kind, ReceiptKind.voided);
     expect((await r.print).ok, isTrue);
     expect(printer.log, ['print:${r.receipt.id}']);
+  });
+
+  group('completeFree', () {
+    final free = const Cart.empty()
+        .add(teigtaschen)
+        .setReceiptDiscount(
+          const Discount.percent(100, DiscountReason.invitation),
+        );
+
+    test('completeFree: Bon gespeichert, der Druckauftrag öffnet die Lade '
+        'nicht', () async {
+      await configure();
+      final r = await service.completeFree(
+        saleId: 'f1',
+        cart: free,
+        staff: shop.anna,
+      );
+      expect((await r.print).ok, isTrue);
+      expect(printer.log.single, startsWith('print:'));
+      expect(printer.log, ['print:f1']);
+      final p = r.receipt.payments.single;
+      expect(
+        (
+          r.receipt.totalCents,
+          p.kind,
+          p.amountCents,
+          p.givenCents,
+          p.changeCents,
+        ),
+        (0, PaymentKind.cash, 0, 0, 0),
+      );
+      expect(await shop.count('receipts'), 1);
+    });
+
+    test('completeFree mit Summe über 0: ArgumentError, nichts '
+        'gespeichert', () async {
+      await configure();
+      // Mit Pfand ist die Summe das Pfand, auch bei 100 % Rabatt.
+      final withDeposit = const Cart.empty()
+          .add(cola)
+          .setReceiptDiscount(
+            const Discount.percent(100, DiscountReason.invitation),
+          );
+      for (final c in [cart, withDeposit]) {
+        await expectLater(
+          service.completeFree(saleId: 'f1', cart: c, staff: shop.anna),
+          throwsArgumentError,
+        );
+      }
+      expect(await shop.count('receipts'), 0);
+      expect(printer.log, isEmpty);
+    });
   });
 
   test('reprint druckt den Bon noch einmal, ohne Lade', () async {

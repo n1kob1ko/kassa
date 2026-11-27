@@ -4,7 +4,7 @@ import 'package:kassa/domain/pricing.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_rules.dart';
 
-import '../support/sales.dart' show cart;
+import '../support/sales.dart' show cart, discounted;
 
 void main() {
   /// Die Zeilen von `cart` (1770 Warenwert, 50 Pfand) als Zeilen eines Bons.
@@ -111,5 +111,49 @@ void main() {
       ),
       returnsNormally,
     );
+  });
+
+  test('discountSums: Zeilen-Rabatte ergeben den Rabatt des Bons, Preis mal '
+      'Menge minus Rabatt ergibt den Warenwert', () {
+    final p = discounted.pricing;
+    List<ReceiptLine> linesWith(List<int> discounts) => [
+      for (var i = 0; i < discounted.lines.length; i++)
+        ReceiptLine(
+          position: i,
+          itemId: discounted.lines[i].item.id,
+          name: discounted.lines[i].item.name,
+          unitPriceCents: discounted.lines[i].unitPriceCents,
+          quantity: discounted.lines[i].quantity,
+          unitDepositCents: discounted.lines[i].unitDepositCents,
+          grossByRate: p.lines[i].grossByRate,
+          discountCents: discounts[i],
+        ),
+    ];
+    ReceiptRule? broken(List<int> lineDiscounts, int discountCents) {
+      try {
+        checkReceiptRules(
+          goodsCents: 1486,
+          depositCents: 50,
+          totalCents: 1536,
+          discountCents: discountCents,
+          lines: linesWith(lineDiscounts),
+          payments: const [
+            Payment(
+              kind: PaymentKind.cash,
+              amountCents: 1536,
+              givenCents: 2000,
+              changeCents: 464,
+            ),
+          ],
+        );
+        return null;
+      } on ReceiptRuleViolation catch (e) {
+        return e.rule;
+      }
+    }
+
+    expect(broken([58, 226], 284), isNull);
+    expect(broken([58, 226], 280), ReceiptRule.discountSums);
+    expect(broken([58, 220], 278), ReceiptRule.discountSums);
   });
 }

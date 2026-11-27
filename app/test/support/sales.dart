@@ -13,6 +13,7 @@ import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/stats_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 
@@ -24,6 +25,15 @@ final Cart cart = const Cart.empty()
     .add(cola)
     .add(cola)
     .add(huhnBowl, options: [xxl, nudeln]);
+
+/// [cart] mit 10 % Stammgast auf der Huhn Bowl und 10 % Aktion auf dem Bon:
+/// Rabatt 2,84 €, Summe 15,36 € (wie im Beispiel aus Task 9).
+final Cart discounted = cart
+    .setLineDiscount(
+      cart.lines[1].lineId,
+      const Discount.percent(10, DiscountReason.regular),
+    )
+    .setReceiptDiscount(const Discount.percent(10, DiscountReason.promotion));
 
 /// Ein kleiner Bon für Kartenzahlungen: 1 x Teigtaschen, 1 x Cola.
 final Cart cartCard = const Cart.empty().add(teigtaschen).add(cola);

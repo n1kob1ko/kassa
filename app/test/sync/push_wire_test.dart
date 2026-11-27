@@ -9,7 +9,7 @@ import 'package:kassa/data/database.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/sync/push_wire.dart';
 
-import '../support/sales.dart' show TestShop, cart;
+import '../support/sales.dart' show TestShop, cart, discounted;
 
 /// Das Paket eines Tablets mit Bon `v: 2` (die App baut seit 1.11.0 nur
 /// noch diese Form; `push_request.json` ist das Paket von 1.10.0).
@@ -474,6 +474,40 @@ void main() {
       expect(l['discountCents'], 0);
       expect(l['discount'], isNull);
     }
+  });
+
+  test('Bon mit Rabatt geht mit discountCents, discount und den Feldern der '
+      'Zeilen hinaus', () async {
+    final shop = await TestShop.open();
+    addTearDown(shop.close);
+    await shop.receipts.finalizeCashSale(
+      saleId: 'r1',
+      cart: discounted,
+      givenCents: 2000,
+      staff: shop.anna,
+    );
+    final built = await PushPayloads(shop.db).build(entry(1, 'receipt', 'r1'));
+    final r = jsonDecode(jsonEncode(built))['receipt'] as Map<String, dynamic>;
+    expect((r['goodsCents'], r['totalCents']), (1486, 1536));
+    expect(r['discountCents'], 284);
+    expect(r['discount'], {
+      'percent': 10,
+      'amountCents': 165,
+      'reason': 'promotion',
+    });
+    final lines = (r['lines'] as List).cast<Map<String, dynamic>>();
+    expect([for (final l in lines) l['discountCents']], [58, 226]);
+    expect(
+      [for (final l in lines) l['discount']],
+      [
+        null,
+        {'percent': 10, 'amountCents': 119, 'reason': 'regular'},
+      ],
+    );
+    expect(
+      [for (final l in lines) (l['gross']['20'], l['gross']['10'])],
+      [(522, 0), (0, 964)],
+    );
   });
 
   test('Bericht, den es nicht mehr gibt, ergibt null', () async {

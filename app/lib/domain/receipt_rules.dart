@@ -34,7 +34,7 @@ enum ReceiptRule {
   /// Summe der Zahlungen ohne Trinkgeld = Summe des Bons.
   paymentsEqualTotal,
 
-  /// Summe des Bons = Warenwert plus Pfand.
+  /// Summe des Bons = Warenwert nach Rabatt plus Pfand.
   totalIsGoodsPlusDeposit,
 
   /// Beträge der Zeilen je Satz zusammen = Warenwert.
@@ -48,6 +48,10 @@ enum ReceiptRule {
 
   /// Stellen 0, 1, 2 … ohne Lücke.
   positions,
+
+  /// Rabatte der Zeilen zusammen = Rabatt des Bons, und Preis mal Menge
+  /// minus Rabatt der Zeilen zusammen = Warenwert.
+  discountSums,
 }
 
 class ReceiptRuleViolation implements Exception {
@@ -66,6 +70,7 @@ void checkReceiptRules({
   required int goodsCents,
   required int depositCents,
   required int totalCents,
+  int discountCents = 0,
   required List<ReceiptLine> lines,
   required List<Payment> payments,
 }) {
@@ -104,4 +109,13 @@ void checkReceiptRules({
   for (var i = 0; i < payments.length; i++) {
     require(payments[i].position == i, ReceiptRule.positions);
   }
+  require(
+    lines.fold<int>(0, (sum, l) => sum + l.discountCents) == discountCents &&
+        lines.fold<int>(
+              0,
+              (sum, l) => sum + l.unitPriceCents * l.quantity - l.discountCents,
+            ) ==
+            goodsCents,
+    ReceiptRule.discountSums,
+  );
 }

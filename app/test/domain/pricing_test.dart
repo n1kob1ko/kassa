@@ -4,6 +4,7 @@ import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/pricing.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/sales.dart' show discounted;
 
 void main() {
   test('Steuer pro Satz, Pfand ohne Steuer', () {
@@ -64,5 +65,12 @@ void main() {
         plus.map((t) => (t.rate, -t.grossCents, -t.netCents, -t.taxCents)),
       );
     }
+  });
+
+  test('grossByRate eines Bons mit Rabatt: die Beträge nach Rabatt', () {
+    expect(grossByRate(discounted), {
+      TaxRate.normal: 522,
+      TaxRate.reduced1: 964,
+    });
   });
 }

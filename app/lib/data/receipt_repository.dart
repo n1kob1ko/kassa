@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../core/clock.dart';
 import '../domain/cart.dart';
 import '../domain/catalog.dart';
-import '../domain/pricing.dart';
+import '../domain/discount.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_rules.dart';
 import '../domain/staff.dart';
@@ -102,6 +102,8 @@ class ReceiptRepository {
         goodsCents: cart.goodsCents,
         depositCents: cart.depositCents,
         totalCents: cart.totalCents,
+        discountCents: cart.pricing.discountCents,
+        discount: _receiptDiscountOf(cart),
         payments: [
           Payment(
             kind: PaymentKind.cash,
@@ -168,6 +170,8 @@ class ReceiptRepository {
             goodsCents: cart.goodsCents,
             depositCents: cart.depositCents,
             totalCents: cart.totalCents,
+            discountCents: cart.pricing.discountCents,
+            discount: _receiptDiscountOf(cart),
             payments: [
               if (cashPartCents > 0)
                 Payment(
@@ -203,8 +207,12 @@ class ReceiptRepository {
     });
   }
 
+  /// Die Zeilen des Bons aus [Cart.pricing]: Beträge je Satz nach Rabatt,
+  /// der Rabatt der Zeile und ihr eigener Rabatt. Der Einzelpreis bleibt der
+  /// Preis vor Rabatt.
   Future<List<ReceiptLine>> _linesOf(Cart cart) async {
     final groupNames = await _groupNamesOf(cart);
+    final pricing = cart.pricing;
     return [
       for (var i = 0; i < cart.lines.length; i++)
         ReceiptLine(
@@ -223,10 +231,36 @@ class ReceiptRepository {
                 surchargeCents: o.surchargeCents,
               ),
           ],
-          grossByRate: grossByRateOfLine(cart.lines[i]),
+          grossByRate: pricing.lines[i].grossByRate,
+          discountCents: pricing.lines[i].discountCents,
+          discount: _discountOf(
+            cart.lines[i].discount,
+            pricing.lines[i].ownDiscountCents,
+          ),
         ),
     ];
   }
+
+  /// Der Bon-Rabatt von [cart] mit seinem Betrag, sonst `null`.
+  static ReceiptDiscount? _receiptDiscountOf(Cart cart) =>
+      _discountOf(cart.discount, cart.pricing.receiptDiscountCents);
+
+  static ReceiptDiscount? _discountOf(Discount? d, int amountCents) => d == null
+      ? null
+      : ReceiptDiscount(
+          percent: d.percent,
+          amountCents: amountCents,
+          reason: d.reason.name,
+        );
+
+  /// Derselbe Rabatt mit negativem Betrag, für den Storno.
+  static ReceiptDiscount? _negated(ReceiptDiscount? d) => d == null
+      ? null
+      : ReceiptDiscount(
+          percent: d.percent,
+          amountCents: -d.amountCents,
+          reason: d.reason,
+        );
 
   /// Storniert einen Bon durch einen neuen Storno-Bon mit negativen Beträgen.
   /// Die Rolle der Person prüft der Aufrufer, nicht das Repository. Läuft die
@@ -266,11 +300,15 @@ class ReceiptRepository {
               grossByRate: {
                 for (final e in l.grossByRate.entries) e.key: -e.value,
               },
+              discountCents: -l.discountCents,
+              discount: _negated(l.discount),
             ),
         ],
         goodsCents: -original.goodsCents,
         depositCents: -original.depositCents,
         totalCents: -original.totalCents,
+        discountCents: -original.discountCents,
+        discount: _negated(original.discount),
         // Jede Zahlung gespiegelt. Das Trinkgeld bleibt bei der Person,
         // die kassiert hat, nicht bei der, die storniert (Spec 5.4a).
         payments: [
@@ -410,6 +448,8 @@ class ReceiptRepository {
     required int goodsCents,
     required int depositCents,
     required int totalCents,
+    int discountCents = 0,
+    ReceiptDiscount? discount,
     required List<Payment> payments,
   }) async {
     final tipCents = payments.fold<int>(0, (sum, p) => sum + p.tipCents);
@@ -432,6 +472,7 @@ class ReceiptRepository {
       goodsCents: goodsCents,
       depositCents: depositCents,
       totalCents: totalCents,
+      discountCents: discountCents,
       lines: lines,
       payments: payments,
     );
@@ -456,6 +497,10 @@ class ReceiptRepository {
             depositCents: depositCents,
             totalCents: totalCents,
             tipCents: Value(tipCents),
+            discountCents: Value(discountCents),
+            discountPercent: Value(discount?.percent),
+            discountAmountCents: Value(discount?.amountCents ?? 0),
+            discountReason: Value(discount?.reason),
           ),
         );
     for (final l in lines) {
@@ -477,6 +522,10 @@ class ReceiptRepository {
               gross13Cents: Value(gross(TaxRate.reduced2)),
               gross0Cents: Value(gross(TaxRate.zero)),
               gross19Cents: Value(gross(TaxRate.special)),
+              discountCents: Value(l.discountCents),
+              ownDiscountPercent: Value(l.discount?.percent),
+              ownDiscountCents: Value(l.discount?.amountCents ?? 0),
+              ownDiscountReason: Value(l.discount?.reason),
             ),
           );
       for (var i = 0; i < l.options.length; i++) {
@@ -796,6 +845,14 @@ class ReceiptRepository {
                   }.entries)
                     if (e.value != 0) e.key: e.value,
                 },
+                discountCents: l.discountCents,
+                discount: l.ownDiscountReason == null
+                    ? null
+                    : ReceiptDiscount(
+                        percent: l.ownDiscountPercent,
+                        amountCents: l.ownDiscountCents,
+                        reason: l.ownDiscountReason!,
+                      ),
               ),
           ],
           // Sonderbelege haben keine Zahlung.
@@ -820,6 +877,14 @@ class ReceiptRepository {
           goodsCents: r.goodsCents,
           depositCents: r.depositCents,
           totalCents: r.totalCents,
+          discountCents: r.discountCents,
+          discount: r.discountReason == null
+              ? null
+              : ReceiptDiscount(
+                  percent: r.discountPercent,
+                  amountCents: r.discountAmountCents,
+                  reason: r.discountReason!,
+                ),
         ),
     ];
   }

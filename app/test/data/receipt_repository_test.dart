@@ -9,9 +9,11 @@ import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/receipt.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/rksv_rig.dart';
 import '../support/sales.dart';
 
 void main() {
@@ -754,6 +756,169 @@ void main() {
         ],
         [(0, PaymentKind.card, -590, 'sumup')],
       );
+    });
+  });
+
+  group('Rabatt', () {
+    test('Bon mit Zeilen-Rabatt und Bon-Rabatt', () async {
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'r1',
+        cart: discounted,
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      expect(
+        (
+          r.goodsCents,
+          r.depositCents,
+          r.totalCents,
+          r.discountCents,
+          r.subtotalCents,
+        ),
+        (1486, 50, 1536, 284, 1651),
+      );
+      expect(
+        (
+          r.discount!.percent,
+          r.discount!.amountCents,
+          r.discount!.reason,
+          r.discount!.label,
+        ),
+        (10, 165, 'promotion', 'Rabatt 10 % Aktion'),
+      );
+      expect(
+        [
+          for (final l in r.lines)
+            (l.goodsCents, l.discountCents, l.discount?.amountCents),
+        ],
+        [(580, 58, null), (1190, 226, 119)],
+      );
+      expect(
+        (r.lines[1].discount!.percent, r.lines[1].discount!.reason),
+        (10, 'regular'),
+      );
+      expect(r.grossByRate, {TaxRate.normal: 522, TaxRate.reduced1: 964});
+      expect(
+        (r.payments.single.amountCents, r.payments.single.changeCents),
+        (1536, 464),
+      );
+    });
+
+    test('Storno ist das genaue Spiegelbild, auch der Rabatte', () async {
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'r1',
+        cart: discounted,
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      final v = await shop.receipts.voidReceipt('r1', staff: shop.chef);
+      expect(
+        (v.goodsCents, v.totalCents, v.discountCents, v.discount!.amountCents),
+        (-1486, -1536, -284, -165),
+      );
+      expect(
+        (v.discount!.percent, v.discount!.reason, v.subtotalCents),
+        (10, 'promotion', -1651),
+      );
+      expect(
+        [
+          for (final l in v.lines)
+            (l.quantity, l.discountCents, l.discount?.amountCents),
+        ],
+        [(-2, -58, null), (-1, -226, -119)],
+      );
+      expect(
+        (v.lines[1].discount!.percent, v.lines[1].discount!.reason),
+        (10, 'regular'),
+      );
+      expect(v.grossByRate, {
+        for (final e in r.grossByRate.entries) e.key: -e.value,
+      });
+    });
+
+    test(
+      'Storno eines Bons ohne Rabatt: alle Rabatt-Felder 0 oder leer',
+      () async {
+        await shop.sell('s1');
+        final v = await shop.receipts.voidReceipt('s1', staff: shop.chef);
+        expect(
+          (v.discountCents, v.discount, v.subtotalCents),
+          (0, null, -1770),
+        );
+        expect(
+          [for (final l in v.lines) (l.discountCents, l.discount)],
+          [(0, null), (0, null)],
+        );
+      },
+    );
+
+    test(
+      'Einladung ohne Pfand: Bon über 0,00 € mit einer Bar-Zahlung über 0',
+      () async {
+        final free = const Cart.empty()
+            .add(teigtaschen)
+            .setReceiptDiscount(
+              const Discount.percent(100, DiscountReason.invitation),
+            );
+        final r = await shop.receipts.finalizeCashSale(
+          saleId: 'f1',
+          cart: free,
+          givenCents: 0,
+          staff: shop.anna,
+        );
+        expect(
+          (
+            r.totalCents,
+            r.discountCents,
+            r.payments.single.kind,
+            r.payments.single.amountCents,
+          ),
+          (0, 650, PaymentKind.cash, 0),
+        );
+        expect(r.discount!.label, 'Rabatt 100 % Einladung');
+      },
+    );
+
+    test('mit Signatur: der Bon mit Rabatt besteht die Summenprüfung, die '
+        'signierten Beträge je Satz sind die nach Rabatt', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      await rig.service.enableProbe(staff: rig.chef);
+      String euro(int c) =>
+          '${c < 0 ? '-' : ''}${c.abs() ~/ 100},'
+          '${(c.abs() % 100).toString().padLeft(2, '0')}';
+      List<String> expected(Receipt r) => [
+        for (final rate in [
+          TaxRate.normal,
+          TaxRate.reduced1,
+          TaxRate.reduced2,
+          TaxRate.zero,
+          TaxRate.special,
+        ])
+          euro(
+            (r.grossByRate[rate] ?? 0) +
+                (rate == TaxRate.zero ? r.depositCents + r.tipCents : 0),
+          ),
+      ];
+
+      final r = await rig.sell('d1', discounted);
+      expect(r.rksv, isNotNull);
+      expect(r.grossByRate, {TaxRate.normal: 522, TaxRate.reduced1: 964});
+      expect((await rig.codeFieldsOf('d1')).sublist(5, 10), expected(r));
+      expect((await rig.codeFieldsOf('d1')).sublist(5, 10), [
+        '5,22',
+        '9,64',
+        '0,00',
+        '0,50',
+        '0,00',
+      ]);
+
+      final c = await rig.sellCard('d2', discounted, tipCents: 80);
+      expect((await rig.codeFieldsOf('d2')).sublist(5, 10), expected(c));
+
+      final v = await rig.receipts.voidReceipt('d1', staff: rig.chef);
+      expect((await rig.codeFieldsOf(v.id)).sublist(5, 10), expected(v));
+      await rig.verifyChain(1);
     });
   });
 }

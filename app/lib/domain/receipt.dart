@@ -2,6 +2,7 @@
 // zum Anzeigen und Drucken nötig ist, ohne den Katalog zu brauchen.
 
 import 'catalog.dart';
+import 'discount.dart';
 import 'pricing.dart';
 
 /// Verkauf, Storno-Bon oder ein Sonderbeleg der Signatur (Startbeleg bis
@@ -37,6 +38,29 @@ class ReceiptLineOption {
   final int surchargeCents;
 }
 
+/// Ein Rabatt am gespeicherten Bon: Prozent (leer bei festem Betrag), der
+/// Betrag in Cent und der Grund als Name aus [DiscountReason]. Beim Storno
+/// ist der Betrag negativ, Prozent und Grund bleiben.
+class ReceiptDiscount {
+  const ReceiptDiscount({
+    this.percent,
+    required this.amountCents,
+    required this.reason,
+  });
+
+  final int? percent;
+  final int amountCents;
+  final String reason;
+
+  /// "Rabatt 10 % Stammgast" oder bei festem Betrag "Rabatt Stammgast".
+  /// Deutsch, für Bon und Berichte.
+  String get label {
+    final p = percent;
+    final name = discountReasonLabel(reason);
+    return p == null ? 'Rabatt $name' : 'Rabatt $p % $name';
+  }
+}
+
 class ReceiptLine {
   const ReceiptLine({
     required this.position,
@@ -48,6 +72,8 @@ class ReceiptLine {
     required this.unitDepositCents,
     this.options = const [],
     this.grossByRate = const {},
+    this.discountCents = 0,
+    this.discount,
   });
 
   final int position;
@@ -63,9 +89,16 @@ class ReceiptLine {
   final int unitDepositCents;
   final List<ReceiptLineOption> options;
 
-  /// Brutto-Warenwert der Zeile je Steuersatz, ohne Pfand.
+  /// Brutto-Warenwert der Zeile je Steuersatz nach Rabatt, ohne Pfand.
   final Map<TaxRate, int> grossByRate;
 
+  /// Der eigene Rabatt plus der Anteil am Bon-Rabatt; beim Storno negativ.
+  final int discountCents;
+
+  /// Der eigene Rabatt der Zeile, sonst `null`.
+  final ReceiptDiscount? discount;
+
+  /// Preis mal Menge, vor Rabatt.
   int get goodsCents => unitPriceCents * quantity;
 
   int get depositCents => unitDepositCents * quantity;
@@ -156,6 +189,8 @@ class Receipt {
     required this.goodsCents,
     required this.depositCents,
     required this.totalCents,
+    this.discountCents = 0,
+    this.discount,
   }) : lines = List.unmodifiable(lines),
        payments = List.unmodifiable(payments),
        grossByRate = Map.unmodifiable(
@@ -184,9 +219,23 @@ class Receipt {
 
   /// Leer, wenn der Bon keinen Protokoll-Eintrag hat.
   final RksvStamp? rksv;
+
+  /// Warenwert nach Rabatt, ohne Pfand: [goodsCents] plus [depositCents]
+  /// ergibt [totalCents].
   final int goodsCents;
   final int depositCents;
   final int totalCents;
+
+  /// Summe aller Rabatte (der Zeilen und des Bons), positiv; beim Storno
+  /// negativ.
+  final int discountCents;
+
+  /// Der Rabatt auf den ganzen Bon, sonst `null`.
+  final ReceiptDiscount? discount;
+
+  /// Die Zwischensumme: Warenwert nach den Rabatten der Zeilen, vor dem
+  /// Bon-Rabatt.
+  int get subtotalCents => goodsCents + (discount?.amountCents ?? 0);
 
   /// Summe der Zeilen, Sätze ohne Betrag fehlen.
   final Map<TaxRate, int> grossByRate;
