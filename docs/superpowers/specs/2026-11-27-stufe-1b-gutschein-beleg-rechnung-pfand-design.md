@@ -146,7 +146,7 @@ Ist der Schalter an, steht die Taste "Rechnung an Firma" an zwei Stellen: auf "V
 
 Ablauf (Blatt in der Bon-Spalte beziehungsweise im Detail):
 
-1. Liste der gespeicherten Firmenkunden, zuletzt verwendete oben, mit einem Suchfeld. Ein Tipp wählt den Kunden.
+1. Liste der gespeicherten Firmenkunden, zuletzt verwendete oben. Gesucht wird über Tasten mit den Anfangsbuchstaben, die vorkommen (keine Tastatur). Ein Tipp wählt den Kunden.
 2. "Neuer Kunde": Name (Pflicht), Adresse in zwei Zeilen (Pflicht), UID (frei; Pflicht, wenn der Bon über 10.000 € liegt). Hier, und nur hier, kommt die Tastatur des Tablets. Der Test, der Textfelder in der App verbietet (`test/no_text_field_test.dart`), bekommt dafür eine dritte Ausnahme: genau die Datei mit diesem Formular.
 3. "Rechnung drucken": Der Bon wird als Rechnung gedruckt.
 
@@ -161,7 +161,7 @@ Regeln:
 
 ### 5.4 Digitaler Beleg
 
-**Die Seite.** Jeder Bon ab dieser Version bekommt am Tablet beim Abschließen einen zufälligen Schlüssel (mindestens 128 Bit). Der Server zeigt unter `/b/<Schlüssel>` den Bon als Seite: Betrieb, Zeilen, Rabatte, Steuer je Satz, Zahlungen, QR-Code der Signatur, gegebenenfalls Rechnungsempfänger und "storniert am …". Die Seite braucht keine Anmeldung, setzt keine Cookies, ist für Suchmaschinen gesperrt, lässt sich drucken und passt aufs Handy. Wer den Schlüssel nicht kennt, findet nichts: Ein falscher Schlüssel gibt dieselbe Antwort wie ein unbekannter, und die Adresse ist gegen Durchprobieren gebremst. Bons aus älteren Versionen haben keine Seite. Ein Übungs-Bon hat eine Seite mit demselben Vermerk wie am Papier. Die Seite bleibt abrufbar, solange der Server den Bon hat.
+**Die Seite.** Jeder Bon ab dieser Version bekommt am Tablet beim Abschließen einen zufälligen Schlüssel (mindestens 128 Bit). Der Server zeigt unter `/beleg/<Schlüssel>` den Bon als Seite: Betrieb, Zeilen, Rabatte, Steuer je Satz, Zahlungen, QR-Code der Signatur, gegebenenfalls Rechnungsempfänger und "storniert am …". Die Seite braucht keine Anmeldung, setzt keine Cookies, ist für Suchmaschinen gesperrt, lässt sich drucken und passt aufs Handy. Wer den Schlüssel nicht kennt, findet nichts: Ein falscher Schlüssel gibt dieselbe Antwort wie ein unbekannter, und die Adresse ist gegen Durchprobieren gebremst. Bons aus älteren Versionen haben keine Seite. Ein Übungs-Bon hat eine Seite mit demselben Vermerk wie am Papier. Der Code eines Gutscheins steht auf der Seite nur mit den letzten vier Ziffern ("•••• 5678"); ganz steht er nur am Papier und an der Kassa. Die Seite bleibt abrufbar, solange der Server den Bon hat.
 
 **An der Kassa.** Bei "immer drucken" ist alles wie in 1.11.0: kein QR-Code, nirgends. Bei "drucken und digital" druckt die Kassa wie heute und zeigt zusätzlich den QR-Code auf "Verkauf fertig". Bei "digital und Druck auf Wunsch":
 
@@ -246,7 +246,7 @@ Feste Regeln im Code (die Regeln aus 1a gelten weiter, drei ändern sich):
 - Umsatz eines Bons = Summe des Bons minus verkaufte Gutscheine.
 - Beträge je Steuersatz zusammen = Summe des Bons plus Trinkgeld; Pfand, verkaufte Gutscheine und Trinkgeld zählen zum Satz 0.
 - Reihenfolge der Zahlungen: Gutscheine, bar, höchstens eine Karte zuletzt.
-- Eine Gutschein-Zahlung ist nie höher als das Guthaben zum Zeitpunkt des Abschließens an dieser Kassa. Einzige Ausnahme: Eine Kartenzahlung war unklar und wird nachträglich als bezahlt bestätigt, und das Guthaben hat sich inzwischen geändert. Die Karte ist dann schon belastet, also entsteht der Bon wie geplant, und der Gutschein steht als "überzogen" da.
+- Eine Gutschein-Zahlung ist nie höher als das Guthaben zum Zeitpunkt des Abschließens an dieser Kassa. Einzige Ausnahme: Die Karte ist schon belastet (das Terminal meldet "bezahlt", oder eine unklare Zahlung wird nachträglich als bezahlt bestätigt), und das Guthaben hat sich inzwischen geändert. Die Karte ist dann schon belastet, also entsteht der Bon wie geplant, und der Gutschein steht als "überzogen" da.
 - Eine Zahlung unter 0 gibt es nur bar und nur, wenn die Summe des Bons unter 0 liegt (oder im Storno).
 - Verkaufte Gutscheine und Gutschein-Zahlung stehen nie auf demselben Bon.
 
@@ -306,6 +306,10 @@ App 1.12.0 Build 14, Datenbank am Tablet 9, Server-Migration 0005, Bon `v: 3`. R
 13. Alles kommt in einer Version (1.12.0), gebaut in der Reihenfolge aus Abschnitt 6.
 14. Gutscheine aus dem Probebetrieb sind Übungs-Gutscheine und gelten im echten Betrieb nicht.
 15. "Kundenbon" hat drei Werte; bei "immer drucken" gibt es keinen QR-Code.
+16. Firmenkunden sucht man über Tasten mit Anfangsbuchstaben, nicht über ein Suchfeld mit Tastatur. Die Tastatur kommt nur bei "Neuer Kunde".
+17. Auf der Seite eines Bons im Internet steht der Code eines Gutscheins nur mit den letzten vier Ziffern.
+18. Nach dem Update holt das Tablet einmal alles neu vom Server ab, damit es Firmenkunden und Gutscheine bekommt, die es vorher überlesen hat.
+19. Die Seite eines Bons liegt unter `/beleg/<Schlüssel>`, nicht unter `/b/…`: Dort liegt schon die Verwaltung im Browser.
 
 Der Entwurf wurde am 27.11.2026 von einem zweiten Prüfer gegengelesen. Seine fünf Fragen (gleicher Code an zwei Kassen, Gutscheine im Probebetrieb, QR-Code bei ausgeschalteten Schaltern, Storno eines anderswo eingelösten Gutscheins, Rechnungsnummer bei mehreren Kassen) sind in 5.1, 5.3, 5.4 und 5.5 beantwortet.
 
