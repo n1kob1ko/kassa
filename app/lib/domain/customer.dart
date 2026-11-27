@@ -144,10 +144,14 @@ bool isTestReceipt(Receipt r) {
   return rksv == null || rksv.probe;
 }
 
-/// Ob [r] eine Rechnung bekommen kann: ein Verkauf, der nicht storniert ist
-/// und kein Testbon. Ein Storno-Bon und Sonderbelege nicht.
+/// Ob [r] eine Rechnung bekommen kann: ein Verkauf über 0, der nicht
+/// storniert ist und kein Testbon. Ein Storno-Bon, Sonderbelege und ein Bon
+/// mit Summe 0 oder darunter (etwa eine Auszahlung) nicht.
 bool invoiceAllowed(Receipt r) =>
-    r.kind == ReceiptKind.sale && !r.isVoided && !isTestReceipt(r);
+    r.kind == ReceiptKind.sale &&
+    r.totalCents > 0 &&
+    !r.isVoided &&
+    !isTestReceipt(r);
 
 final _letter = RegExp(r'\p{L}', unicode: true);
 

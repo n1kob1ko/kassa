@@ -4,6 +4,7 @@
 // bleiben, wie sie sind; jede Fassung des Empfängers bleibt gespeichert.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/customer_repository.dart';
@@ -11,13 +12,17 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/customer.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
+import 'package:kassa/rksv/rksv_providers.dart';
+import 'package:kassa/ui/app_toggle.dart';
 import 'package:kassa/ui/primary_button.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
 import '../support/invoice_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
+import '../support/signature_pump.dart';
 
 Finder _key(String key) => find.byKey(Key(key));
 
@@ -285,9 +290,182 @@ void main() {
     );
     expect(printerOf(t).lastText, contains('Musterweg 1'));
     expect(printerOf(t).lastText, isNot(contains('Musterwg 1')));
-    // Der Firmenkunde trägt die Korrektur, es bleibt einer.
+    // "Ändern" ändert keinen Firmenkunden: er bleibt, wie er war, und die
+    // neue Fassung hängt an keinem.
     final saved = (await _customers(t).list()).single;
-    expect(saved.addressLine1, 'Musterweg 1');
+    expect(saved.addressLine1, 'Musterwg 1');
+    expect(
+      await queryRows(
+        t,
+        'SELECT version, customer_id IS NULL AS free FROM receipt_recipients '
+        'ORDER BY version',
+      ),
+      [
+        {'version': 0, 'free': 0},
+        {'version': 1, 'free': 1},
+      ],
+    );
+  });
+
+  /// Kunde A gespeichert, bar bezahlt, A gewählt, "Ändern" offen; liefert A
+  /// und seine Zeile in `customers` und die Einträge `customer` vorher.
+  Future<
+    ({
+      Customer a,
+      List<Map<String, Object?>> row,
+      List<Map<String, Object?>> outbox,
+    })
+  >
+  changeAfterWrongPick(WidgetTester t) async {
+    await openInvoiceKassa(t, ['cola']);
+    final a = await _customers(t).save(
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+    );
+    final row = await queryRows(
+      t,
+      'SELECT name, address_line1, address_line2, vat_id, updated_at '
+      "FROM customers WHERE id = '${a.id}'",
+    );
+    await _payCash(t);
+    await _tap(t, 'invoice-button');
+    await _tap(t, 'customer-row-${a.id}');
+    final outbox = await queryRows(
+      t,
+      "SELECT ref, rev FROM outbox WHERE kind = 'customer' ORDER BY id",
+    );
+    await _tap(t, 'invoice-change');
+    expect(_key('customer-form'), findsOneWidget);
+    await t.enterText(_key('customer-name'), 'Beispiel KG');
+    await t.enterText(_key('customer-address1'), 'Beispielgasse 2');
+    await t.enterText(_key('customer-address2'), '1020 Wien');
+    await t.pumpAndSettle();
+    return (a: a, row: row, outbox: outbox);
+  }
+
+  testWidgets('falschen Kunden gewählt, "Ändern" mit den Daten eines anderen: '
+      'der gespeicherte Kunde bleibt, die neue Fassung hat keinen', (t) async {
+    final (:a, :row, :outbox) = await changeAfterWrongPick(t);
+    // Aus "Ändern" ist "Als Firmenkunde speichern" aus.
+    expect(t.widget<AppToggle>(_key('customer-keep')).value, isFalse);
+    await _tap(t, 'customer-save');
+
+    expect(
+      await queryRows(
+        t,
+        'SELECT name, address_line1, address_line2, vat_id, updated_at '
+        "FROM customers WHERE id = '${a.id}'",
+      ),
+      row,
+    );
+    expect(await queryRows(t, 'SELECT id FROM customers'), hasLength(1));
+    expect(
+      await queryRows(
+        t,
+        "SELECT ref, rev FROM outbox WHERE kind = 'customer' ORDER BY id",
+      ),
+      outbox,
+    );
+    expect(
+      await queryRows(
+        t,
+        'SELECT version, name, address_line1, customer_id '
+        'FROM receipt_recipients ORDER BY version',
+      ),
+      [
+        {
+          'version': 0,
+          'name': 'Muster GmbH',
+          'address_line1': 'Musterweg 1',
+          'customer_id': a.id,
+        },
+        {
+          'version': 1,
+          'name': 'Beispiel KG',
+          'address_line1': 'Beispielgasse 2',
+          'customer_id': null,
+        },
+      ],
+    );
+  });
+
+  testWidgets('"Ändern" mit "Als Firmenkunde speichern" an: ein neuer '
+      'Firmenkunde, der gewählte bleibt', (t) async {
+    final (:a, :row, :outbox) = await changeAfterWrongPick(t);
+    await _tap(t, 'customer-keep');
+    await _tap(t, 'customer-save');
+
+    expect(
+      await queryRows(
+        t,
+        'SELECT name, address_line1, address_line2, vat_id, updated_at '
+        "FROM customers WHERE id = '${a.id}'",
+      ),
+      row,
+    );
+    final others = await queryRows(
+      t,
+      "SELECT id, name FROM customers WHERE id <> '${a.id}'",
+    );
+    expect(others, hasLength(1));
+    expect(others.single['name'], 'Beispiel KG');
+    final b = others.single['id']! as String;
+    expect(
+      await queryRows(
+        t,
+        'SELECT version, customer_id FROM receipt_recipients ORDER BY version',
+      ),
+      [
+        {'version': 0, 'customer_id': a.id},
+        {'version': 1, 'customer_id': b},
+      ],
+    );
+    // Kein neuer Eintrag für A, einer für den neuen.
+    expect(
+      await queryRows(
+        t,
+        "SELECT ref, rev FROM outbox WHERE kind = 'customer' "
+        "AND ref = '${a.id}'",
+      ),
+      [
+        for (final r in outbox)
+          if (r['ref'] == a.id) r,
+      ],
+    );
+    expect(
+      await queryRows(
+        t,
+        "SELECT ref FROM outbox WHERE kind = 'customer' AND ref = '$b'",
+      ),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('Übungsmodus (Probe-Signatur): auf "Verkauf fertig" und in '
+      '"Bons" keine Rechnung an Firma und kein Hinweis', (t) async {
+    await openInvoiceKassa(t, const [], live: false);
+    // Ohne AES-Schlüssel entstünde kein Eintrag im Protokoll.
+    await containerOf(t)
+        .read(rksvSecretsProvider)
+        .writeAesKey(1, Uint8List(32));
+    await seedProbe(t);
+    containerOf(t)
+        .read(cartProvider.notifier)
+        .addOpenAmount(
+          amountCents: invoiceHintAboveCents + 100,
+          rate: TaxRate.normal,
+        );
+    await t.pumpAndSettle();
+    await _payCash(t);
+    final receipt = await lastReceipt(t);
+    expect(receipt.rksv?.probe, isTrue);
+    expect(_key('invoice-button'), findsNothing);
+    expect(_key('invoice-hint'), findsNothing);
+    await _tap(t, 'next-customer');
+    await _tap(t, 'tab-Bons');
+    await _tap(t, 'receipt-${receipt.number}');
+    expect(_key('invoice-button'), findsNothing);
   });
 
   testWidgets('im Detail eines Bons; fehlt bei Storno, storniertem Bon, '
@@ -509,6 +687,24 @@ void main() {
     expect(_key('customer-picker'), findsOneWidget);
     expect(await queryRows(t, 'SELECT * FROM receipt_recipients'), isEmpty);
     expect(await queryRows(t, 'SELECT * FROM customers'), isEmpty);
+  });
+
+  testWidgets('Formular über der Tastatur: ganz nach unten gerollt endet es '
+      'genau über der Tastatur, ohne doppelten Platz', (t) async {
+    await openInvoiceKassa(t, ['cola']);
+    await _payCash(t);
+    await _tap(t, 'invoice-button');
+    await _tap(t, 'customer-new');
+    t.view.viewInsets = const FakeViewPadding(bottom: 400);
+    addTearDown(t.view.resetViewInsets);
+    await t.pumpAndSettle();
+    await t.drag(_key('customer-form-scroll'), const Offset(0, -3000));
+    await t.pumpAndSettle();
+    // Unter "Übernehmen" bleibt nur der Rand des Formulars (24 dp), dann
+    // kommt die Tastatur.
+    final bottom = t.getRect(_key('customer-save')).bottom;
+    expect(bottom, lessThanOrEqualTo(400));
+    expect(bottom, greaterThanOrEqualTo(400 - KassaTokens.spaceHuge - 1));
   });
 
   testWidgets('zweimal schnell auf "Übernehmen" und auf "Rechnung drucken": '

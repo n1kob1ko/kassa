@@ -959,4 +959,51 @@ void main() {
       contains('Rechnung Nr. 1'),
     );
   });
+
+  test('Rechnung: Name und Adress-Zeilen mit 80 Zeichen brechen auf 48 '
+      'Spalten um, ohne Buchstaben zu verlieren und ohne zu lange Zeile', () async {
+    final sale = await saleOf(cart, given: 2000);
+    String eighty(String word) {
+      final words = <String>[];
+      var i = 0;
+      while ([...words, '$word$i'].join(' ').length <= 80) {
+        words.add('$word$i');
+        i++;
+      }
+      final text = words.join(' ');
+      return text + 'x' * (80 - text.length);
+    }
+
+    final name = eighty('Muster');
+    final line1 = eighty('Weg');
+    final line2 = eighty('Wien');
+    expect([name.length, line1.length, line2.length], [80, 80, 80]);
+    final recipient = ReceiptRecipient(
+      receiptId: sale.id,
+      version: 0,
+      customerId: null,
+      name: name,
+      addressLine1: line1,
+      addressLine2: line2,
+      vatId: 'ATU00000000',
+      createdAt: DateTime(2026, 11, 17, 11, 5),
+      staffId: 's',
+      staffName: 'Anna',
+    );
+    final t = texts(layoutReceipt(sale, business, recipient: recipient));
+    for (final line in t) {
+      expect(line.length, lessThanOrEqualTo(48), reason: line);
+    }
+    final start = t.indexOf('An:');
+    final end = t.indexOf('    UID ATU00000000');
+    expect(start, greaterThan(0));
+    expect(end, greaterThan(start));
+    final block = t.sublist(start + 1, end);
+    expect(block.every((l) => l.startsWith('    ')), isTrue, reason: '$block');
+    // Wieder zusammengesetzt steht jeder Buchstabe da, in der Reihenfolge.
+    expect(
+      block.map((l) => l.trim()).join(' '),
+      '$name $line1 $line2',
+    );
+  });
 }

@@ -9,6 +9,8 @@ Receipt _receipt({
   int number = 1042,
   ReceiptKind kind = ReceiptKind.sale,
   String? voidedBy,
+  int total = 1820,
+  List<SoldVoucher> soldVouchers = const [],
   RksvStamp? rksv = const RksvStamp(
     cashBoxId: 'KASSA-1',
     qrText: 'qr',
@@ -27,9 +29,10 @@ Receipt _receipt({
   lines: const [],
   payments: const [],
   rksv: rksv,
-  goodsCents: 0,
+  goodsCents: total,
   depositCents: 0,
-  totalCents: 0,
+  totalCents: total,
+  soldVouchers: soldVouchers,
 );
 
 void main() {
@@ -135,6 +138,30 @@ void main() {
             damaged: true,
             probe: false,
           ),
+        ),
+      ),
+      isTrue,
+    );
+  });
+
+  test('invoiceAllowed: keine Rechnung bei Summe 0 oder darunter; ein Bon '
+      'mit verkauftem Gutschein und Summe über 0 bekommt eine', () {
+    expect(invoiceAllowed(_receipt(total: 1)), isTrue);
+    expect(invoiceAllowed(_receipt(total: 0)), isFalse);
+    // Eine Auszahlung (Pfand zurück, Summe unter 0).
+    expect(invoiceAllowed(_receipt(total: -150)), isFalse);
+    expect(
+      invoiceAllowed(
+        _receipt(
+          total: 2500,
+          soldVouchers: const [
+            SoldVoucher(
+              voucherId: 'v',
+              code: '12345678',
+              valueCents: 2500,
+              linePosition: 0,
+            ),
+          ],
         ),
       ),
       isTrue,

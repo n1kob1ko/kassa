@@ -15,8 +15,8 @@ import '../../ui/tokens.dart';
 import '../login/session.dart';
 
 /// Was im Formular zu Beginn steht: die Werte eines Empfängers oder eines
-/// Firmenkunden, und der Firmenkunde, den "Als Firmenkunde speichern"
-/// ändert (leer: ein neuer).
+/// Firmenkunden, der Firmenkunde, den "Als Firmenkunde speichern" ändert
+/// (leer: ein neuer), und ob der Schalter zu Beginn an ist ([keep]).
 class CustomerFormStart {
   const CustomerFormStart({
     this.customerId,
@@ -24,15 +24,21 @@ class CustomerFormStart {
     this.addressLine1 = '',
     this.addressLine2 = '',
     this.vatId = '',
+    this.keep = true,
   });
 
-  /// Die Werte der letzten Fassung (für "Ändern").
+  /// Die Werte der letzten Fassung (für "Ändern"). "Ändern" ändert nie einen
+  /// gespeicherten Firmenkunden: Wer den falschen gewählt hat und die Daten
+  /// eines anderen tippt, überschriebe ihn sonst. Der Schalter ist aus, die
+  /// neue Fassung hängt an keinem Firmenkunden; schaltet man ihn an, entsteht
+  /// ein neuer. Gespeicherte Firmenkunden ändert man im Browser.
   CustomerFormStart.of(ReceiptRecipient r)
-    : customerId = r.customerId,
+    : customerId = null,
       name = r.name,
       addressLine1 = r.addressLine1,
       addressLine2 = r.addressLine2,
-      vatId = r.vatId ?? '';
+      vatId = r.vatId ?? '',
+      keep = false;
 
   /// Die Werte eines gespeicherten Firmenkunden.
   CustomerFormStart.customer(Customer c)
@@ -40,13 +46,15 @@ class CustomerFormStart {
       name = c.name,
       addressLine1 = c.addressLine1,
       addressLine2 = c.addressLine2,
-      vatId = c.vatId ?? '';
+      vatId = c.vatId ?? '',
+      keep = true;
 
   final String? customerId;
   final String name;
   final String addressLine1;
   final String addressLine2;
   final String vatId;
+  final bool keep;
 }
 
 /// Öffnet das Formular als eigene Seite über die ganze Breite (damit die
@@ -101,7 +109,7 @@ class _CustomerFormState extends ConsumerState<CustomerForm> {
   final _address2Focus = FocusNode();
   final _vatFocus = FocusNode();
 
-  bool _keep = true;
+  late bool _keep = widget.start.keep;
 
   /// Solange gespeichert wird, tun weitere Tipps nichts.
   bool _saving = false;
@@ -242,8 +250,8 @@ class _CustomerFormState extends ConsumerState<CustomerForm> {
                   KassaTokens.spaceHuge,
                   KassaTokens.spaceHuge,
                   KassaTokens.spaceHuge,
-                  KassaTokens.spaceHuge +
-                      MediaQuery.viewInsetsOf(context).bottom,
+                  // Den Platz der Tastatur nimmt schon das Scaffold weg.
+                  KassaTokens.spaceHuge,
                 ),
                 child: Center(
                   child: ConstrainedBox(
