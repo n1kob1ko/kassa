@@ -115,3 +115,56 @@ describe('Pfand zurück und Auszahlung im Detail eines Bons', () => {
     expect(html).not.toContain('Bar ausbezahlt');
   });
 });
+
+// Ein Storno spiegelt jede Zahlung mit Minus. Nur der Storno einer Auszahlung (Summe über 0) heißt "Bar ausbezahlt";
+// jeder Storno, den es in 1.11.0 gab, liest sich wie vorher.
+describe('Storno im Detail eines Bons', () => {
+  const card: Payment = { ...cash, kind: 'card', cardScheme: 'VISA', cardLast4: '4242' };
+
+  test('Storno eines Bar-Verkaufs: "Zahlungsart Bar", kein Betrag, kein "Bar ausbezahlt", wie in 1.11.0', () => {
+    const html = render({
+      kind: 'voided',
+      totalCents: -990,
+      goodsCents: -990,
+      lines: [line({ unitPriceCents: 990, quantity: -1 })],
+      payments: [{ ...cash, amountCents: -990, givenCents: 0, changeCents: 0 }],
+    });
+    expect(byTestId(html, 'payment-kind')).toEqual(['Bar']);
+    expect(byTestId(html, 'payment-amount')).toEqual([]);
+    expect(byTestId(html, 'paid-out')).toEqual([]);
+    expect(byTestId(html, 'given')).toEqual([]);
+    expect(html).not.toContain('Bar ausbezahlt');
+  });
+
+  test('Storno von Bar und Karte: beide mit Betrag mit Minus, wie in 1.11.0', () => {
+    const html = render({
+      kind: 'voided',
+      totalCents: -1500,
+      goodsCents: -1500,
+      paymentKind: 'mixed',
+      paymentKinds: ['cash', 'card'],
+      lines: [line({ unitPriceCents: 1500, quantity: -1 })],
+      payments: [
+        { ...cash, amountCents: -500, givenCents: 0, changeCents: 0 },
+        { ...card, position: 1, amountCents: -1000, givenCents: null, changeCents: null },
+      ],
+    });
+    expect(byTestId(html, 'payment-kind')).toEqual(['Bar', 'Karte']);
+    expect(byTestId(html, 'payment-amount')).toEqual([money(-500), money(-1000)]);
+    expect(byTestId(html, 'paid-out')).toEqual([]);
+    expect(html).not.toContain('Bar ausbezahlt');
+  });
+
+  test('Storno einer Auszahlung: "Bar ausbezahlt" mit Minus, ohne Gegeben und Rückgeld, wie am Papier', () => {
+    const html = render({
+      kind: 'voided',
+      totalCents: 75,
+      depositCents: 75,
+      lines: [depositReturn(0, -3)],
+      payments: [{ ...cash, amountCents: 75, givenCents: 0, changeCents: 0 }],
+    });
+    expect(byTestId(html, 'paid-out')).toEqual([money(-75)]);
+    expect(byTestId(html, 'given')).toEqual([]);
+    expect(byTestId(html, 'change')).toEqual([]);
+  });
+});

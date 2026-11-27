@@ -134,6 +134,9 @@ function VoucherPayment({ p }: { p: PaymentData }) {
   );
 }
 
+/** Ob der Bon eine Auszahlung oder ihr Storno ist, wie am Papier (`isPayoutReceipt`) und auf der Seite des Bons. */
+const isPayout = (r: ReceiptDetail) => (r.kind === 'voided' ? r.totalCents > 0 : r.kind === 'sale' && r.totalCents < 0);
+
 /**
  * Eine Zahlung des Bons: Art, bei mehreren oder mit Trinkgeld der Betrag (bei Karte mit Trinkgeld, so wie ihn das
  * Terminal gebucht hat, darunter "davon Trinkgeld"), bei Karte Karte und Kennung, bei bar Gegeben und Rückgeld.
@@ -141,9 +144,10 @@ function VoucherPayment({ p }: { p: PaymentData }) {
 function Payment({ receipt, p, several }: { receipt: ReceiptDetail; p: PaymentData; several: boolean }) {
   if (p.kind === 'voucher') return <VoucherPayment p={p} />;
   const card = p.kind === 'card';
-  // Eine Auszahlung (bar unter 0) heißt wie am Papier "Bar ausbezahlt", mit dem Betrag ohne Minus und ohne Gegeben
-  // und Rückgeld.
-  if (!card && p.amountCents < 0) {
+  // Eine Auszahlung (ein Verkauf mit Summe unter 0) und ihr Storno (Summe über 0) heißen wie am Papier und auf der
+  // Seite "Bar ausbezahlt", ohne Gegeben und Rückgeld; der Betrag ohne Minus, beim Storno mit. Jeder andere Storno
+  // liest sich wie in 1.11.0.
+  if (!card && isPayout(receipt)) {
     return (
       <dl className={styles.figures} data-testid={`payment-${p.position}`}>
         <div className={styles.figure}>

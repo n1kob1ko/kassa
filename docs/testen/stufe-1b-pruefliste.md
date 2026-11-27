@@ -115,7 +115,7 @@ Vorher: Teil A ist gemacht, "Pfand zurück" steht auf "Nur Chef", und du bist al
 - [ ] "Ja, stornieren" tippen.
   Der Storno-Bon kommt. Prüfe danach Gutschein B ("Mehr", "Gutschein", "Prüfen", Code tippen): Das Guthaben ist wieder 2,00 €, unter den Bewegungen steht "Einlösung storniert".
 - [ ] Storno eines eingelösten Gutscheins geht nicht: Unter "Bons" den Bon öffnen, auf dem die drei Gutscheine verkauft wurden. "Stornieren" und dann "Ja, stornieren" tippen.
-  Die Kassa sagt: "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren." Es entsteht kein Storno-Bon.
+  Die Rückfrage kommt trotzdem, mit den Zeilen zu den Gutscheinen ("… gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen."). Erst nach "Ja, stornieren" sagt die Kassa: "Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren." Es entsteht kein Storno-Bon, und nichts ist geändert.
 - [ ] Im Bon-Detail dieses Verkaufs auf "Gutschein drucken" tippen.
   Die Gutschein-Zettel kommen noch einmal.
 - [ ] Unter "Bons" bei den Filtern "Gutschein" tippen.

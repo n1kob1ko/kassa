@@ -47,6 +47,19 @@ String _text(WidgetTester t, String key) =>
 
 String _code(SoldVoucher v) => formatVoucherCode(v.code);
 
+/// Nichts, oder genau der bekannte Überlauf einer RenderFlex um weniger als
+/// 1 Pixel.
+void _expectNothingOrHeaderOverflow(Object? error) {
+  if (error == null) return;
+  expect(error, isA<FlutterError>());
+  final message = (error as FlutterError).message;
+  final match = RegExp(
+    r'A RenderFlex overflowed by ([0-9.]+) pixels',
+  ).firstMatch(message);
+  expect(match, isNotNull, reason: message);
+  expect(double.parse(match!.group(1)!), lessThan(1), reason: message);
+}
+
 void main() {
   late ProviderContainer c;
   Future<void> pump(WidgetTester t, {Size size = const Size(1280, 800)}) async {
@@ -243,8 +256,9 @@ void main() {
       await openReceipt(t, 2);
       // Bekannt und nicht Teil dieser Prüfung: der Kopf des Bons läuft auf
       // Arabisch mit drei Zahlungsarten in der Pille um 0,3 dp über (siehe
-      // Bericht der Schlussprüfung). Hier zählt nur die Rückfrage.
-      t.takeException();
+      // Bericht der Schlussprüfung). Hier zählt nur die Rückfrage. Jeder
+      // andere Fehler, auch ein Überlauf ab 1 Pixel, lässt den Test scheitern.
+      _expectNothingOrHeaderOverflow(t.takeException());
       await t.tap(find.byKey(const Key('void-receipt')));
       await t.pumpAndSettle();
       expect(find.byKey(const Key('confirm-void')), findsOneWidget);
