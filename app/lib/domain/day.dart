@@ -116,6 +116,11 @@ class DaySummary {
     this.discountCents = 0,
     this.cardTipCents = 0,
     this.tipsByStaff = const [],
+    this.voucherPaidCents = 0,
+    this.voucherSoldCount = 0,
+    this.voucherSoldCents = 0,
+    this.depositReturnCount = 0,
+    this.depositReturnCents = 0,
   });
 
   final BusinessDay day;
@@ -132,10 +137,14 @@ class DaySummary {
   final int voidCount;
   final int voidedCents;
 
-  /// Summe aller Bons des Tages, Storno negativ, mit Pfand, ohne Trinkgeld.
+  /// Summe aller Bons des Tages, Storno negativ, mit Pfand, ohne Trinkgeld,
+  /// ohne verkaufte Gutscheine.
   final int revenueCents;
 
   /// Summe der Zahlungen bar bzw. mit Karte, ohne Trinkgeld, Storno negativ.
+  /// Sie enthalten das Geld für verkaufte Gutscheine und die Auszahlung von
+  /// Pfand (mit Minus). Es gilt: bar + Karte + [voucherPaidCents] −
+  /// [voucherSoldCents] = [revenueCents].
   final int cashRevenueCents;
   final int cardRevenueCents;
   final int depositCents;
@@ -165,6 +174,19 @@ class DaySummary {
 
   /// Dasselbe je Person, nach Name; Personen mit 0 fehlen.
   final List<StaffTip> tipsByStaff;
+
+  /// Mit Gutschein bezahlt (Summe der Gutschein-Zahlungen); ein Storno
+  /// zieht ab.
+  final int voucherPaidCents;
+
+  /// Verkaufte Gutscheine (Anzahl und Summe); ein Storno zieht ab.
+  final int voucherSoldCount;
+  final int voucherSoldCents;
+
+  /// Pfand zurück: Stück und ausbezahltes oder verrechnetes Pfand, positiv;
+  /// ein Storno zieht ab.
+  final int depositReturnCount;
+  final int depositReturnCents;
 
   /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
   int get cardAccountCents => cardRevenueCents + cardTipCents;

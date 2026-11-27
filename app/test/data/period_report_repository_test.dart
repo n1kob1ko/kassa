@@ -8,6 +8,7 @@ import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
 
 import '../support/sales.dart';
+import '../support/voucher_deposit_day.dart';
 
 const sep = YearMonth(2026, 9);
 const okt = YearMonth(2026, 10);
@@ -352,6 +353,85 @@ void main() {
       [for (final x in both.tipsByStaff) (x.staffName, x.cents)],
       [('Chef', 100)],
     );
+  });
+
+  test('ein Monat mit Barbon, Gutschein-Verkauf, Gutschein-Zahlung und '
+      'Pfand-Auszahlung; Storno von C und D im Folgemonat', () async {
+    (int, int, int, int, int) newFigures(PeriodReport r) => (
+      r.voucherPaidCents,
+      r.voucherSoldCount,
+      r.voucherSoldCents,
+      r.depositReturnCount,
+      r.depositReturnCents,
+    );
+    (int, int, int, int, int, int, int) rowOf(PeriodRow x) => (
+      x.receiptCount,
+      x.revenueCents,
+      x.voucherPaidCents,
+      x.voucherSoldCount,
+      x.voucherSoldCents,
+      x.depositReturnCount,
+      x.depositReturnCents,
+    );
+    void identityHolds(PeriodReport r) => expect(
+      r.cashRevenueCents +
+          r.cardRevenueCents +
+          r.voucherPaidCents -
+          r.voucherSoldCents,
+      r.revenueCents,
+    );
+
+    final now = shop.clock.value;
+    shop.clock.value = DateTime(2026, 10, 14, 10);
+    await sellVoucherDepositDay(shop);
+    shop.clock.value = DateTime(2026, 11, 2, 9);
+    await shop.receipts.voidReceipt('c', staff: shop.chef);
+    await shop.receipts.voidReceipt('d', staff: shop.chef);
+    shop.clock.value = DateTime(2026, 12, 5, 11);
+
+    final o = await shop.periods.report(const MonthRange(okt, okt));
+    expect(
+      (o.revenueCents, o.cashRevenueCents, o.cardRevenueCents),
+      (2710, 4245, 0),
+    );
+    expect(newFigures(o), (965, 1, 2500, 3, 75));
+    expect((o.receiptCount, o.cashReceiptCount, o.cardReceiptCount), (4, 3, 0));
+    identityHolds(o);
+    expect(o.rows.map((x) => (x.start, rowOf(x))), [
+      (DateTime(2026, 10, 14), (4, 2710, 965, 1, 2500, 3, 75)),
+    ]);
+    // Im Satz 0 steht weiter alles, was signiert wird, auch der
+    // Gutschein-Verkauf.
+    expect(
+      o.taxLines.where((l) => l.rate == TaxRate.zero).single.grossCents,
+      greaterThanOrEqualTo(2500),
+    );
+
+    final n = await shop.periods.report(const MonthRange(nov, nov));
+    expect(
+      (n.revenueCents, n.cashRevenueCents, n.cardRevenueCents),
+      (-890, 75, 0),
+    );
+    expect(newFigures(n), (-965, 0, 0, -3, -75));
+    identityHolds(n);
+
+    // Über beide Monate: die Zahlen von A und B allein.
+    final both = await shop.periods.report(const MonthRange(okt, nov));
+    expect(
+      (both.revenueCents, both.cashRevenueCents, both.cardRevenueCents),
+      (1820, 4320, 0),
+    );
+    expect(newFigures(both), (0, 1, 2500, 0, 0));
+    expect(
+      (both.receiptCount, both.cashReceiptCount, both.cardReceiptCount),
+      (2, 2, 0),
+    );
+    identityHolds(both);
+    expect(both.rows.map((x) => (x.start, rowOf(x))), [
+      (DateTime(2026, 10), (4, 2710, 965, 1, 2500, 3, 75)),
+      (DateTime(2026, 11), (-2, -890, -965, 0, 0, -3, -75)),
+    ]);
+    shop.clock.value = now;
   });
 }
 

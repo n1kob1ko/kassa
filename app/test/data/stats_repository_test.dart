@@ -6,6 +6,7 @@ import 'package:kassa/domain/stats.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/sales.dart';
+import '../support/voucher_deposit_day.dart';
 
 void main() {
   late TestShop shop;
@@ -284,5 +285,42 @@ void main() {
       ('Pfand', 50),
     ]);
     expect(o.byCategory.fold<int>(0, (s, c) => s + c.cents), o.revenueCents);
+  });
+
+  test('Gutschein und Pfand zurück stehen nicht bei meistverkauft; der Umsatz '
+      'ist ohne den verkauften Gutschein', () async {
+    await sellVoucherDepositDay(shop);
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(
+      (
+        o.revenueCents,
+        o.cashCents,
+        o.cardCents,
+        o.voucherCents,
+        o.receiptCount,
+      ),
+      (2710, 4245, 0, 965, 4),
+    );
+    expect(o.topItems.map((i) => i.name), [
+      cola.name,
+      huhnBowl.name,
+      teigtaschen.name,
+    ]);
+    expect(o.topItems.first.quantity, 3);
+    expect(o.byCategory.fold<int>(0, (s, c) => s + c.cents), o.revenueCents);
+    expect(o.buckets.fold<int>(0, (s, b) => s + b.cents), o.revenueCents);
+
+    // Der Gutschein-Verkauf allein ist kein Umsatz.
+    await shop.receipts.voidReceipt('c', staff: shop.chef);
+    await shop.receipts.voidReceipt('d', staff: shop.chef);
+    await shop.receipts.voidReceipt('a', staff: shop.chef);
+    final v = await shop.stats.overview(StatsRange.today);
+    expect(
+      (v.revenueCents, v.cashCents, v.cardCents, v.voucherCents),
+      (0, 2500, 0, 0),
+    );
+    expect(v.topItems, isEmpty);
+    expect(v.byCategory, isEmpty);
+    expect(v.buckets.map((b) => b.cents), [0]);
   });
 }

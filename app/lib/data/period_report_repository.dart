@@ -11,6 +11,12 @@ import '../domain/receipt.dart';
 import 'database.dart';
 import 'receipt_tally.dart';
 
+typedef _CountedReceipt = ({
+  ReceiptRow receipt,
+  List<PaymentRow> payments,
+  List<ReceiptLineRow> lines,
+});
+
 class PeriodReportRepository {
   PeriodReportRepository(this._db, this._clock);
 
@@ -65,36 +71,20 @@ class PeriodReportRepository {
 
     for (final month in range.months) {
       final rows = await _receiptsOf(month, live);
-      final perDay = <DateTime, (int, int)>{};
-      var monthCount = 0;
-      var monthRevenue = 0;
+      // Je Monat und je Kalendertag nach denselben Regeln wie der Zeitraum.
+      final monthTally = ReceiptTally();
+      final perDay = <DateTime, ReceiptTally>{};
       for (final r in rows) {
-        tally.add(r.receipt, r.payments);
-        final step = r.receipt.kind == ReceiptKind.voided.name ? -1 : 1;
-        final total = r.receipt.totalCents;
-        monthCount += step;
-        monthRevenue += total;
         final t = r.receipt.createdAt;
         final day = DateTime(t.year, t.month, t.day);
-        final old = perDay[day] ?? (0, 0);
-        perDay[day] = (old.$1 + step, old.$2 + total);
+        for (final x in [tally, monthTally, perDay[day] ??= ReceiptTally()]) {
+          x.add(r.receipt, r.payments, r.lines);
+        }
       }
-      monthRows.add(
-        PeriodRow(
-          start: month.start,
-          receiptCount: monthCount,
-          revenueCents: monthRevenue,
-        ),
-      );
+      monthRows.add(_rowOf(month.start, monthTally));
       for (final e
           in perDay.entries.toList()..sort((a, b) => a.key.compareTo(b.key))) {
-        dayRows.add(
-          PeriodRow(
-            start: e.key,
-            receiptCount: e.value.$1,
-            revenueCents: e.value.$2,
-          ),
-        );
+        dayRows.add(_rowOf(e.key, e.value));
       }
       // Steuer je Monat gerechnet, dann über die Monate addiert.
       for (final line in taxBreakdown(await _grossOf(month, live))) {
@@ -139,8 +129,24 @@ class PeriodReportRepository {
       discountCents: tally.discountCents,
       cardTipCents: tally.cardTipCents,
       tipsByStaff: tally.tipsByStaff,
+      voucherPaidCents: tally.voucherPaidCents,
+      voucherSoldCount: tally.voucherSoldCount,
+      voucherSoldCents: tally.voucherSoldCents,
+      depositReturnCount: tally.depositReturnCount,
+      depositReturnCents: tally.depositReturnCents,
     );
   }
+
+  static PeriodRow _rowOf(DateTime start, ReceiptTally t) => PeriodRow(
+    start: start,
+    receiptCount: t.count,
+    revenueCents: t.revenueCents,
+    voucherPaidCents: t.voucherPaidCents,
+    voucherSoldCount: t.voucherSoldCount,
+    voucherSoldCents: t.voucherSoldCents,
+    depositReturnCount: t.depositReturnCount,
+    depositReturnCents: t.depositReturnCents,
+  );
 
   /// Der früheste Monats- oder Jahresbeleg, der nach Ende von [month] entstand.
   Future<String?> signatureReceiptId(YearMonth month) async {
@@ -200,12 +206,10 @@ class PeriodReportRepository {
       _db.receiptRows.createdAt.isBiggerOrEqualValue(m.start) &
       _db.receiptRows.createdAt.isSmallerThanValue(m.end);
 
-  /// Die gezählten Bons des Monats mit ihren Zahlungen, nach Nummer. Ein
-  /// gemischter Bon hat zwei Zahlungen und steht trotzdem einmal da.
-  Future<List<({ReceiptRow receipt, List<PaymentRow> payments})>> _receiptsOf(
-    YearMonth m,
-    bool live,
-  ) async {
+  /// Die gezählten Bons des Monats mit ihren Zahlungen und Zeilen, nach
+  /// Nummer. Ein gemischter Bon hat zwei Zahlungen und steht trotzdem einmal
+  /// da.
+  Future<List<_CountedReceipt>> _receiptsOf(YearMonth m, bool live) async {
     final receipts =
         await (_db.select(_db.receiptRows)
               ..where((_) => _inMonth(m, live))
@@ -221,9 +225,23 @@ class PeriodReportRepository {
       final p = j.readTable(_db.paymentRows);
       (payments[p.receiptId] ??= []).add(p);
     }
+    final lines = <String, List<ReceiptLineRow>>{};
+    for (final j in await (_db.select(_db.receiptLineRows).join([
+      innerJoin(
+        _db.receiptRows,
+        _db.receiptRows.id.equalsExp(_db.receiptLineRows.receiptId),
+      ),
+    ])..where(_inMonth(m, live))).get()) {
+      final l = j.readTable(_db.receiptLineRows);
+      (lines[l.receiptId] ??= []).add(l);
+    }
     return [
       for (final r in receipts)
-        (receipt: r, payments: payments[r.id] ?? const <PaymentRow>[]),
+        (
+          receipt: r,
+          payments: payments[r.id] ?? const <PaymentRow>[],
+          lines: lines[r.id] ?? const <ReceiptLineRow>[],
+        ),
     ];
   }
 

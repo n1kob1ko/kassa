@@ -1,13 +1,19 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
+import 'package:kassa/domain/cart.dart' show isReservedItemId;
+import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
 
+import '../support/random_cart.dart';
 import '../support/sales.dart';
+import '../support/voucher_deposit_day.dart';
 
 void main() {
   late TestShop shop;
@@ -467,4 +473,246 @@ void main() {
       expect(s.cardAccountCents, s.cardRevenueCents);
     },
   );
+
+  group('Pfand zurück und Gutscheine', () {
+    Future<DaySummary> summaryOfToday() async => (await days.summary())!;
+
+    (int, int, int, int, int) newFigures(DaySummary s) => (
+      s.voucherPaidCents,
+      s.voucherSoldCount,
+      s.voucherSoldCents,
+      s.depositReturnCount,
+      s.depositReturnCents,
+    );
+
+    void identityHolds(DaySummary s, [String? reason]) => expect(
+      s.cashRevenueCents +
+          s.cardRevenueCents +
+          s.voucherPaidCents -
+          s.voucherSoldCents,
+      s.revenueCents,
+      reason: reason,
+    );
+
+    test('ein Tag mit Barbon, Gutschein-Verkauf, Gutschein-Zahlung und '
+        'Pfand-Auszahlung', () async {
+      await days.setOpeningFloat(15000);
+      await sellVoucherDepositDay(shop);
+      final s = await summaryOfToday();
+      expect(
+        (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+        (2710, 4245, 0),
+      );
+      expect(newFigures(s), (965, 1, 2500, 3, 75));
+      expect(s.expectedCashCents, s.openingFloatCents + 4245);
+      expect(s.openingFloatCents, 15000);
+      expect(
+        (s.receiptCount, s.cashReceiptCount, s.cardReceiptCount),
+        (4, 3, 0),
+      );
+      identityHolds(s);
+    });
+
+    test('Storno von C und D: voucherPaidCents 0, depositReturnCount 0, '
+        'revenueCents 1820', () async {
+      await days.setOpeningFloat(15000);
+      await sellVoucherDepositDay(shop);
+      await receipts.voidReceipt('c', staff: chef);
+      await receipts.voidReceipt('d', staff: chef);
+      final s = await summaryOfToday();
+      // Die Zahlen von A und B allein.
+      expect(
+        (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+        (1820, 4320, 0),
+      );
+      expect(newFigures(s), (0, 1, 2500, 0, 0));
+      expect(s.expectedCashCents, 15000 + 4320);
+      expect(
+        (s.receiptCount, s.cashReceiptCount, s.cardReceiptCount),
+        (2, 2, 0),
+      );
+      expect((s.voidCount, s.voidedCents), (2, 965 - 75));
+      identityHolds(s);
+    });
+
+    test('ein Bon mit Gutschein und Karte zählt bei Karte, einer mit '
+        'Gutschein und bar bei bar', () async {
+      final voucher = await sellVoucher(shop, 500, saleId: 'g');
+      await shop.sellCard('k', cart: cart.applyVoucher(applied(voucher)));
+      final rest = await sellVoucher(shop, 300, saleId: 'h');
+      await receipts.finalizeCashSale(
+        saleId: 'b',
+        cart: cartCard.applyVoucher(applied(rest)),
+        givenCents: 1000,
+        staff: shop.anna,
+      );
+      final s = await summaryOfToday();
+      expect(
+        (s.receiptCount, s.cashReceiptCount, s.cardReceiptCount),
+        (4, 3, 1),
+      );
+      expect(
+        (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+        (1820 + 965, 500 + 300 + 965 - 300, 1820 - 500),
+      );
+      expect(newFigures(s), (800, 2, 800, 0, 0));
+      identityHolds(s);
+    });
+
+    test(
+      'ein Tag nur mit Bons wie in 1.11.0: die fünf neuen Zahlen sind 0',
+      () async {
+        await shop.sell('a');
+        await shop.sellCard('b', cashPartCents: 300, tipCents: 50);
+        await receipts.finalizeCashSale(
+          saleId: 'c',
+          cart: discounted,
+          givenCents: 2000,
+          staff: shop.anna,
+        );
+        final s = await summaryOfToday();
+        expect(newFigures(s), (0, 0, 0, 0, 0));
+        expect(s.revenueCents, 1820 + 965 + 1536);
+        identityHolds(s);
+      },
+    );
+
+    test('200 zufällige Bons mit Pfand zurück und Gutscheinen, danach alle '
+        'storniert (Einlösungen vor den Verkäufen): Umsatz 0, alle fünf neuen '
+        'Zahlen 0, erwartetes Bargeld = Wechselgeld', () async {
+      await days.setOpeningFloat(15000);
+      final random = Random(20261130);
+      final pool = <String>[];
+      final voucherSales = <Receipt>[];
+      final others = <Receipt>[];
+      var revenue = 0, cash = 0, card = 0;
+      var paid = 0, soldCount = 0, soldCents = 0;
+      var backCount = 0, backCents = 0;
+      var payouts = 0, voucherOnly = 0, redeemed = 0, backs = 0;
+      for (var n = 0; n < 200; n++) {
+        final reason = 'Bon $n';
+        var c = randomCart(random, withStufe1b: true);
+        final all = catalogOf(c);
+        await shop.catalogRepo.importCatalog(
+          Catalog(
+            business: all.business,
+            categories: all.categories,
+            items: [
+              for (final i in all.items)
+                if (!isReservedItemId(i.id)) i,
+            ],
+            templates: all.templates,
+          ),
+        );
+        // Statt der erfundenen Gutscheine echte aus den Verkäufen davor.
+        if (c.vouchers.isNotEmpty) {
+          final count = c.vouchers.length;
+          for (final v in [...c.vouchers]) {
+            c = c.removeVoucher(v.voucherId);
+          }
+          for (final id in ([...pool]..shuffle(random)).take(count)) {
+            final v = (await shop.vouchers.byId(id))!;
+            if (v.balanceCents > 0) c = c.applyVoucher(applied(v));
+          }
+        }
+        final p = c.pricing;
+        final id = 'z$n';
+        final Receipt r;
+        if (p.totalCents < 0) {
+          payouts++;
+          r = await receipts.finalizePayout(
+            saleId: id,
+            cart: c,
+            staff: shop.anna,
+          );
+        } else if (p.voucherCents > 0 && p.dueCents == 0) {
+          voucherOnly++;
+          r = await receipts.finalizeVoucherSale(
+            saleId: id,
+            cart: c,
+            staff: shop.anna,
+          );
+        } else if (n % 3 == 2 && p.dueCents >= 2) {
+          r = await shop.receipts.finalizeCardSale(
+            saleId: id,
+            cart: c,
+            staff: shop.anna,
+            provider: 'sumup',
+            cashPartCents: p.dueCents ~/ 2,
+            tipCents: random.nextInt(300),
+          );
+        } else {
+          r = await receipts.finalizeCashSale(
+            saleId: id,
+            cart: c,
+            givenCents: p.dueCents + random.nextInt(500),
+            staff: shop.anna,
+          );
+        }
+        if (r.voucherCents != 0) redeemed++;
+        if (r.depositReturnQuantity != 0) backs++;
+        revenue += r.revenueCents;
+        for (final x in r.payments) {
+          switch (x.kind) {
+            case PaymentKind.cash:
+              cash += x.amountCents;
+            case PaymentKind.card:
+              card += x.amountCents;
+            case PaymentKind.voucher:
+              paid += x.amountCents;
+          }
+        }
+        soldCount += r.soldVouchers.length;
+        soldCents += r.voucherSaleCents;
+        backCount += r.depositReturnQuantity;
+        backCents -= r.depositReturnCents;
+        if (r.soldVouchers.isEmpty) {
+          others.add(r);
+        } else {
+          voucherSales.add(r);
+          pool.addAll([for (final s in r.soldVouchers) s.voucherId]);
+        }
+
+        final s = await summaryOfToday();
+        expect(
+          (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+          (revenue, cash, card),
+          reason: reason,
+        );
+        expect(newFigures(s), (
+          paid,
+          soldCount,
+          soldCents,
+          backCount,
+          backCents,
+        ), reason: reason);
+        expect(s.expectedCashCents, 15000 + cash, reason: reason);
+        identityHolds(s, reason);
+      }
+      // Damit der Test etwas prüft: jede Art kam vor.
+      expect(payouts, greaterThan(0));
+      expect(voucherOnly, greaterThan(0));
+      expect(redeemed, greaterThan(10));
+      expect(backs, greaterThan(10));
+      expect(voucherSales, isNotEmpty);
+
+      // Erst die Einlösungen und alles andere, dann die Verkäufe.
+      for (final r in [...others.reversed, ...voucherSales.reversed]) {
+        await receipts.voidReceipt(r.id, staff: chef);
+        identityHolds(await summaryOfToday(), 'Storno ${r.id}');
+      }
+      final s = await summaryOfToday();
+      expect(
+        (s.revenueCents, s.cashRevenueCents, s.cardRevenueCents),
+        (0, 0, 0),
+      );
+      expect(newFigures(s), (0, 0, 0, 0, 0));
+      expect(s.expectedCashCents, s.openingFloatCents);
+      expect(s.openingFloatCents, 15000);
+      expect(
+        (s.receiptCount, s.cashReceiptCount, s.cardReceiptCount),
+        (0, 0, 0),
+      );
+    });
+  });
 }

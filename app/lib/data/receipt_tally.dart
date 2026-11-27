@@ -2,9 +2,18 @@
 // Tagesabschluss und die Monatsabrechnung, nach denselben Regeln wie der
 // Server.
 
+import '../domain/cart.dart' show isDepositReturnItemId, isVoucherSaleItemId;
 import '../domain/day.dart' show StaffTip;
 import '../domain/receipt.dart';
 import 'database.dart';
+
+/// Summe der Gutschein-Zeilen (Preis mal Menge), wie
+/// [Receipt.voucherSaleCents]; beim Storno negativ.
+int voucherSaleCentsOf(Iterable<ReceiptLineRow> lines) => lines.fold(
+  0,
+  (sum, l) =>
+      isVoucherSaleItemId(l.itemId) ? sum + l.unitPriceCents * l.quantity : sum,
+);
 
 /// Ein Verkauf zählt eins hoch, ein Storno eins herunter; die Beträge eines
 /// Stornos stehen schon mit Minus in der Datenbank. Der Aufrufer gibt nur
@@ -22,13 +31,24 @@ class ReceiptTally {
   int voidCount = 0;
   int voidedCents = 0;
 
-  /// Summe der Bons mit Pfand, ohne Trinkgeld.
+  /// Summe der Bons mit Pfand, ohne Trinkgeld, ohne verkaufte Gutscheine.
   int revenueCents = 0;
 
   /// Summe der Zahlungen bar bzw. mit Karte, ohne Trinkgeld.
   int cashCents = 0;
   int cardCents = 0;
   int depositCents = 0;
+
+  /// Summe der Gutschein-Zahlungen.
+  int voucherPaidCents = 0;
+
+  /// Gutschein-Zeilen: Anzahl (Menge) und Summe.
+  int voucherSoldCount = 0;
+  int voucherSoldCents = 0;
+
+  /// Zeilen "Pfand zurück": Stück und Pfand als positive Zahl.
+  int depositReturnCount = 0;
+  int depositReturnCents = 0;
 
   /// Bons mit Rabatt und die Summe ihrer Rabatte.
   int discountCount = 0;
@@ -43,7 +63,12 @@ class ReceiptTally {
 
   final Map<String, _Tip> _tips = {};
 
-  void add(ReceiptRow r, Iterable<PaymentRow> payments) {
+  /// [lines] sind die Zeilen des Bons [r], [payments] seine Zahlungen.
+  void add(
+    ReceiptRow r,
+    Iterable<PaymentRow> payments,
+    Iterable<ReceiptLineRow> lines,
+  ) {
     final n = r.number;
     if (firstNumber == null || n < firstNumber!) firstNumber = n;
     if (lastNumber == null || n > lastNumber!) lastNumber = n;
@@ -54,23 +79,37 @@ class ReceiptTally {
       voidCount++;
       voidedCents -= r.totalCents;
     }
-    revenueCents += r.totalCents;
+    final voucherSale = voucherSaleCentsOf(lines);
+    revenueCents += r.totalCents - voucherSale;
+    voucherSoldCents += voucherSale;
     depositCents += r.depositCents;
+    for (final l in lines) {
+      if (isVoucherSaleItemId(l.itemId)) {
+        voucherSoldCount += l.quantity;
+      } else if (isDepositReturnItemId(l.itemId)) {
+        depositReturnCount += l.quantity;
+        depositReturnCents -= l.unitDepositCents * l.quantity;
+      }
+    }
     if (r.discountCents != 0) discountCount += step;
     discountCents += r.discountCents;
     // Bar und Karte aus den Zahlungen, ohne Trinkgeld. Ein gemischter Bon
-    // zählt bei beiden Arten.
+    // zählt bei beiden Arten. Eine Gutschein-Zahlung zählt nur in
+    // [voucherPaidCents], der Bon nicht bei bar oder Karte.
     var hasCash = false;
     var hasCard = false;
     for (final p in payments) {
-      if (p.kind == PaymentKind.cash.name) {
-        cashCents += p.amountCents;
-        hasCash = true;
-      } else if (p.kind == PaymentKind.card.name) {
-        cardCents += p.amountCents;
-        hasCard = true;
-        cardTipCents += p.tipCents;
-        if (p.tipCents != 0) _addTip(r, p);
+      switch (PaymentKind.values.byName(p.kind)) {
+        case PaymentKind.cash:
+          cashCents += p.amountCents;
+          hasCash = true;
+        case PaymentKind.card:
+          cardCents += p.amountCents;
+          hasCard = true;
+          cardTipCents += p.tipCents;
+          if (p.tipCents != 0) _addTip(r, p);
+        case PaymentKind.voucher:
+          voucherPaidCents += p.amountCents;
       }
     }
     if (hasCash) cashCount += step;

@@ -90,11 +90,31 @@ class PeriodRow {
     required this.start,
     required this.receiptCount,
     required this.revenueCents,
+    this.voucherPaidCents = 0,
+    this.voucherSoldCount = 0,
+    this.voucherSoldCents = 0,
+    this.depositReturnCount = 0,
+    this.depositReturnCents = 0,
   });
 
   final DateTime start;
   final int receiptCount;
+
+  /// Ohne verkaufte Gutscheine, wie [PeriodReport.revenueCents].
   final int revenueCents;
+
+  /// Mit Gutschein bezahlt (Summe der Gutschein-Zahlungen); ein Storno
+  /// zieht ab.
+  final int voucherPaidCents;
+
+  /// Verkaufte Gutscheine (Anzahl und Summe); ein Storno zieht ab.
+  final int voucherSoldCount;
+  final int voucherSoldCents;
+
+  /// Pfand zurück: Stück und ausbezahltes oder verrechnetes Pfand, positiv;
+  /// ein Storno zieht ab.
+  final int depositReturnCount;
+  final int depositReturnCents;
 }
 
 class PeriodReport {
@@ -118,6 +138,11 @@ class PeriodReport {
     this.discountCents = 0,
     this.cardTipCents = 0,
     this.tipsByStaff = const [],
+    this.voucherPaidCents = 0,
+    this.voucherSoldCount = 0,
+    this.voucherSoldCents = 0,
+    this.depositReturnCount = 0,
+    this.depositReturnCents = 0,
   });
 
   final MonthRange range;
@@ -135,10 +160,14 @@ class PeriodReport {
   final int voidCount;
   final int voidedCents;
 
-  /// Summe aller gezählten Bons, Storno negativ, mit Pfand, ohne Trinkgeld.
+  /// Summe aller gezählten Bons, Storno negativ, mit Pfand, ohne Trinkgeld,
+  /// ohne verkaufte Gutscheine.
   final int revenueCents;
 
   /// Summe der Zahlungen bar bzw. mit Karte, ohne Trinkgeld, Storno negativ.
+  /// Sie enthalten das Geld für verkaufte Gutscheine und die Auszahlung von
+  /// Pfand (mit Minus). Es gilt: bar + Karte + [voucherPaidCents] −
+  /// [voucherSoldCents] = [revenueCents].
   final int cashRevenueCents;
   final int cardRevenueCents;
   final int depositCents;
@@ -164,6 +193,19 @@ class PeriodReport {
   /// Dasselbe je Person, nach Name; Personen mit 0 fehlen. Liegt nur der
   /// Storno im Zeitraum, steht die Person mit Minus da.
   final List<StaffTip> tipsByStaff;
+
+  /// Mit Gutschein bezahlt (Summe der Gutschein-Zahlungen); ein Storno
+  /// zieht ab.
+  final int voucherPaidCents;
+
+  /// Verkaufte Gutscheine (Anzahl und Summe); ein Storno zieht ab.
+  final int voucherSoldCount;
+  final int voucherSoldCents;
+
+  /// Pfand zurück: Stück und ausbezahltes oder verrechnetes Pfand, positiv;
+  /// ein Storno zieht ab.
+  final int depositReturnCount;
+  final int depositReturnCents;
 
   /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
   int get cardAccountCents => cardRevenueCents + cardTipCents;

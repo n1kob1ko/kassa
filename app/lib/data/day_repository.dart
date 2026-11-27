@@ -216,9 +216,19 @@ class DayRepository {
       ),
     ])..where(_db.receiptRows.businessDayId.equals(day.id))).get();
 
+    final linesOf = <String, List<ReceiptLineRow>>{};
+    for (final j in lines) {
+      final l = j.readTable(_db.receiptLineRows);
+      (linesOf[l.receiptId] ??= []).add(l);
+    }
+
     final tally = ReceiptTally();
     for (final r in receipts) {
-      tally.add(r, payments[r.id] ?? const <PaymentRow>[]);
+      tally.add(
+        r,
+        payments[r.id] ?? const <PaymentRow>[],
+        linesOf[r.id] ?? const <ReceiptLineRow>[],
+      );
     }
     final gross = sumByRate([
       for (final j in lines)
@@ -282,6 +292,11 @@ class DayRepository {
       discountCents: tally.discountCents,
       cardTipCents: tally.cardTipCents,
       tipsByStaff: tally.tipsByStaff,
+      voucherPaidCents: tally.voucherPaidCents,
+      voucherSoldCount: tally.voucherSoldCount,
+      voucherSoldCents: tally.voucherSoldCents,
+      depositReturnCount: tally.depositReturnCount,
+      depositReturnCents: tally.depositReturnCents,
     );
   }
 

@@ -51,8 +51,10 @@ class Overview {
     required this.cardCents,
     required this.topItems,
     required this.byCategory,
+    this.voucherCents = 0,
   });
 
+  /// Summe der Bons ohne verkaufte Gutscheine, ohne Trinkgeld.
   final int revenueCents;
   final int previousRevenueCents;
 
@@ -62,8 +64,13 @@ class Overview {
   /// Storno-Bons im Zeitraum.
   final int voidCount;
   final List<Bucket> buckets;
+
+  /// Summe der Zahlungen bar, mit Karte und mit Gutschein, ohne Trinkgeld.
+  /// Bar und Karte enthalten das Geld für verkaufte Gutscheine und die
+  /// Auszahlung von Pfand (mit Minus).
   final int cashCents;
   final int cardCents;
+  final int voucherCents;
 
   /// Höchstens fünf, nach Menge.
   final List<ItemStat> topItems;

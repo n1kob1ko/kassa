@@ -4,15 +4,23 @@
 import 'package:drift/drift.dart';
 
 import '../core/clock.dart';
+import '../domain/cart.dart' show isDepositReturnItemId, isVoucherSaleItemId;
 import '../domain/receipt.dart';
 import '../domain/stats.dart';
 import 'database.dart';
+import 'receipt_tally.dart' show voucherSaleCentsOf;
 
 const _otherCategory = 'Sonstiges';
 const _depositName = 'Pfand';
 
 /// Die Arten von Bons, die in Umsatz und Anzahl zählen.
 final _counted = [ReceiptKind.sale.name, ReceiptKind.voided.name];
+
+/// Zeilen "Pfand zurück" und Gutschein-Zeilen stehen weder bei meistverkauft
+/// noch bei den Kategorien: sie sind keine Ware. Das Pfand zurück steckt in
+/// der Zeile Pfand.
+bool _isGoods(ReceiptLineRow l) =>
+    !isDepositReturnItemId(l.itemId) && !isVoucherSaleItemId(l.itemId);
 
 /// Wert einer Zeile nach Rabatt, ohne Pfand: Preis mal Menge minus ihr
 /// Rabatt (wie am Server). Beim Storno ist beides negativ.
@@ -72,24 +80,36 @@ class StatsRepository {
       for (final r in receipts)
         if (inRange(r)) r,
     ];
+
+    // Die Zeilen aller geladenen Bons, für den Umsatz ohne verkaufte
+    // Gutscheine auch im Vergleichszeitraum.
+    final allIds = {for (final r in receipts) r.id};
+    final linesOf = <String, List<ReceiptLineRow>>{};
+    for (final l in await _db.select(_db.receiptLineRows).get()) {
+      if (allIds.contains(l.receiptId)) (linesOf[l.receiptId] ??= []).add(l);
+    }
+    int revenueOf(ReceiptRow r) =>
+        r.totalCents - voucherSaleCentsOf(linesOf[r.id] ?? const []);
+
     final previousRevenue = receipts
         .where(
           (r) =>
               !r.createdAt.isBefore(previousFrom) &&
               !r.createdAt.isAfter(previousTo),
         )
-        .fold(0, (s, r) => s + r.totalCents);
+        .fold(0, (s, r) => s + revenueOf(r));
 
     final ids = {for (final r in current) r.id};
-    // Die Zahlungen der Bons im Zeitraum. Bar und Karte kommen aus ihnen,
-    // ohne Trinkgeld; ein gemischter Bon trägt zu beiden bei.
+    // Die Zahlungen der Bons im Zeitraum. Bar, Karte und Gutschein kommen
+    // aus ihnen, ohne Trinkgeld; ein gemischter Bon trägt zu beiden bei.
     final payments = [
       for (final p in await _db.select(_db.paymentRows).get())
         if (ids.contains(p.receiptId)) p,
     ];
-    final lineRows = [
-      for (final l in await _db.select(_db.receiptLineRows).get())
-        if (ids.contains(l.receiptId)) l,
+    final goods = [
+      for (final r in current)
+        for (final l in linesOf[r.id] ?? const <ReceiptLineRow>[])
+          if (_isGoods(l)) l,
     ];
 
     var revenue = 0;
@@ -97,19 +117,23 @@ class StatsRepository {
     var voids = 0;
     var cash = 0;
     var card = 0;
+    var voucher = 0;
     var deposit = 0;
     for (final r in current) {
-      revenue += r.totalCents;
+      revenue += revenueOf(r);
       deposit += r.depositCents;
       final isVoid = r.kind == ReceiptKind.voided.name;
       count += isVoid ? -1 : 1;
       if (isVoid) voids++;
     }
     for (final p in payments) {
-      if (p.kind == PaymentKind.cash.name) {
-        cash += p.amountCents;
-      } else if (p.kind == PaymentKind.card.name) {
-        card += p.amountCents;
+      switch (PaymentKind.values.byName(p.kind)) {
+        case PaymentKind.cash:
+          cash += p.amountCents;
+        case PaymentKind.card:
+          card += p.amountCents;
+        case PaymentKind.voucher:
+          voucher += p.amountCents;
       }
     }
 
@@ -118,11 +142,12 @@ class StatsRepository {
       previousRevenueCents: previousRevenue,
       receiptCount: count,
       voidCount: voids,
-      buckets: _buckets(range, today, now, current),
+      buckets: _buckets(range, today, now, current, revenueOf),
       cashCents: cash,
       cardCents: card,
-      topItems: _topItems(current, lineRows),
-      byCategory: await _byCategory(lineRows, deposit),
+      voucherCents: voucher,
+      topItems: _topItems(current, goods),
+      byCategory: await _byCategory(goods, deposit),
     );
   }
 
@@ -131,6 +156,7 @@ class StatsRepository {
     DateTime today,
     DateTime now,
     List<ReceiptRow> rows,
+    int Function(ReceiptRow) revenueOf,
   ) {
     if (range == StatsRange.today) {
       if (rows.isEmpty) return const [];
@@ -142,7 +168,7 @@ class StatsRepository {
             start: DateTime(now.year, now.month, now.day, h),
             cents: rows
                 .where((r) => r.createdAt.hour == h)
-                .fold(0, (s, r) => s + r.totalCents),
+                .fold(0, (s, r) => s + revenueOf(r)),
           ),
       ];
     }
@@ -161,7 +187,7 @@ class StatsRepository {
                       r.createdAt.month == d.month &&
                       r.createdAt.day == d.day,
                 )
-                .fold(0, (s, r) => s + r.totalCents),
+                .fold(0, (s, r) => s + revenueOf(r)),
           );
         }(),
     ];
