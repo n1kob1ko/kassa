@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 556 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 557 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Eingelöst | Redeemed | Sonstiges: `voucherMoveRedeem` |
 | Verkauf storniert | Sale voided | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | Redemption voided | Sonstiges: `voucherMoveVoidRedeem` |
+| Andere Buchung | Other entry | Sonstiges: `voucherMoveOther` |
 | Gutschein drucken | Print voucher | Sonstiges: `voucherPrint` |
 | Gutschein einlösen | Redeem voucher | Sonstiges: `voucherRedeemTitle` |
 | Zu zahlen | To pay | Sonstiges: `voucherDue` |

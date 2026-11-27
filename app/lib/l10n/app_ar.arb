@@ -498,6 +498,7 @@
   "voucherMoveRedeem": "استُخدمت",
   "voucherMoveVoidSale": "أُلغي البيع",
   "voucherMoveVoidRedeem": "أُلغي الاستخدام",
+  "voucherMoveOther": "قيد آخر",
   "voucherPrint": "اطبع القسيمة",
   "bonsVoidVoucherRedeemed": "تم استخدام القسيمة بالفعل. لا يمكن إلغاء هذه الفاتورة.",
   "bonsVoucherPrinted": "تمت طباعة القسيمة",

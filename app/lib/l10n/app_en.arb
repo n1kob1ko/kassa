@@ -498,6 +498,7 @@
   "voucherMoveRedeem": "Redeemed",
   "voucherMoveVoidSale": "Sale voided",
   "voucherMoveVoidRedeem": "Redemption voided",
+  "voucherMoveOther": "Other entry",
   "voucherPrint": "Print voucher",
   "bonsVoidVoucherRedeemed": "The voucher has already been redeemed. This receipt cannot be voided.",
   "bonsVoucherPrinted": "Voucher printed",

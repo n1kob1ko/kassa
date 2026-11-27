@@ -311,9 +311,11 @@ class WireVoucherMovement {
   });
 
   factory WireVoucherMovement.fromJson(Map<String, dynamic> json) {
+    // Jede Art, die nicht leer ist, kommt an, wie sie ist: eine Art einer
+    // späteren Server-Version darf den Abgleich nicht anhalten.
     final kind = _field<String>(json, 'kind');
-    if (!const {'sale', 'redeem', 'void_sale', 'void_redeem'}.contains(kind)) {
-      throw const FormatException('Unbekannte Art einer Bewegung');
+    if (kind.isEmpty) {
+      throw const FormatException('Leere Art einer Bewegung');
     }
     return WireVoucherMovement(
       voucherId: _field(json, 'voucherId'),
@@ -327,7 +329,8 @@ class WireVoucherMovement {
   final String voucherId;
   final String receiptId;
 
-  /// `sale`, `redeem`, `void_sale` oder `void_redeem`.
+  /// `sale`, `redeem`, `void_sale`, `void_redeem` oder eine Art einer
+  /// späteren Version.
   final String kind;
   final int amountCents;
   final DateTime createdAt;

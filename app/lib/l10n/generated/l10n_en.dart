@@ -1741,6 +1741,9 @@ class L10nEn extends L10n {
   String get voucherMoveVoidRedeem => 'Redemption voided';
 
   @override
+  String get voucherMoveOther => 'Other entry';
+
+  @override
   String get voucherPrint => 'Print voucher';
 
   @override

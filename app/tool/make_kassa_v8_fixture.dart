@@ -63,17 +63,20 @@ void main() {
 }
 
 Future<void> _write() async {
+  // Erst die Version prüfen, dann die eingecheckte Datei löschen: mit dem
+  // Code einer späteren Version bleibt sie, wie sie ist.
+  final probe = KassaDatabase(NativeDatabase.memory());
+  final version = probe.schemaVersion;
+  await probe.close();
+  if (version != 8) {
+    fail(
+      'Abbruch: der Code ist nicht mehr 1.11.0 '
+      '(Datenbank-Version $version statt 8).',
+    );
+  }
   final file = File(_target);
   if (file.existsSync()) file.deleteSync();
   final db = KassaDatabase(NativeDatabase(file));
-  if (db.schemaVersion != 8) {
-    await db.close();
-    file.deleteSync();
-    fail(
-      'Abbruch: der Code ist nicht mehr 1.11.0 '
-      '(Datenbank-Version ${db.schemaVersion} statt 8).',
-    );
-  }
   Future<void> run(String sql) => db.customStatement(sql);
 
   // Löst onCreate aus: Tabellen, Trigger und Indizes von Version 8.

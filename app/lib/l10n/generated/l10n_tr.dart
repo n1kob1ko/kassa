@@ -1726,6 +1726,9 @@ class L10nTr extends L10n {
   String get voucherMoveVoidRedeem => 'Kullanım iptal edildi';
 
   @override
+  String get voucherMoveOther => 'Diğer kayıt';
+
+  @override
   String get voucherPrint => 'Hediye çekini yazdır';
 
   @override

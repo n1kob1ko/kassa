@@ -6,18 +6,24 @@ enum VoucherMovementKind {
   sale('sale'),
   redeem('redeem'),
   voidSale('void_sale'),
-  voidRedeem('void_redeem');
+  voidRedeem('void_redeem'),
+
+  /// Eine Art, die erst eine spätere Version kennt. Die Kassa schreibt sie
+  /// nie selbst; vom Server steht der Text in der Datenbank, wie er kam.
+  /// Das Guthaben bleibt die Summe der Beträge.
+  unknown('');
 
   const VoucherMovementKind(this.dbName);
 
   final String dbName;
 
-  /// Die Art zu [dbName]; wirft [ArgumentError] bei unbekanntem Text.
+  /// Die Art zu [dbName]; [unknown] bei einem Text, den diese Version nicht
+  /// kennt (Abgleich mit einem neueren Server).
   static VoucherMovementKind fromDb(String dbName) {
     for (final k in values) {
-      if (k.dbName == dbName) return k;
+      if (k != unknown && k.dbName == dbName) return k;
     }
-    throw ArgumentError.value(dbName, 'dbName', 'Unbekannte Art');
+    return unknown;
   }
 }
 

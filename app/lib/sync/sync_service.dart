@@ -424,7 +424,7 @@ class SyncService {
     _pulledAll = false;
     try {
       if (await _changes.catchUpPending()) {
-        changed = await _catchUp(cursor, token);
+        await _catchUp(cursor, token);
       }
       var since = cursor;
       while (true) {
@@ -477,10 +477,10 @@ class SyncService {
   /// Das Nachholen nach dem Update auf 1.12.0: alle Seiten ab 0 bis zum
   /// eigenen [cursor], davon nur die Listen, die 1.11.0 überlesen hat
   /// (`ServerChanges.applyCatchUp`). Erst nach der letzten Seite ist es
-  /// erledigt; bricht der Lauf ab, beginnt der nächste wieder bei 0.
-  /// `true`, wenn dabei etwas ankam.
-  Future<bool> _catchUp(int cursor, String token) async {
-    var changed = false;
+  /// erledigt; bricht der Lauf ab, beginnt der nächste wieder bei 0. Diese
+  /// Listen lassen den Katalog nicht neu lesen: Kunden und Gutscheine haben
+  /// ihre eigenen Wege auf den Bildschirm.
+  Future<void> _catchUp(int cursor, String token) async {
     var since = 0;
     while (true) {
       final page = await _api.pull(token: token, since: since);
@@ -488,13 +488,11 @@ class SyncService {
         throw const ServerException(ServerFailure.server);
       }
       // Inzwischen neu gekoppelt: nichts mehr nachzuholen.
-      if (!await _changes.applyCatchUp(page)) return changed;
-      changed = changed || _hasNewListRows(page);
+      if (!await _changes.applyCatchUp(page)) return;
       if (!page.more || page.next >= cursor) break;
       since = page.next;
     }
     await _changes.finishCatchUp();
-    return changed;
   }
 
   static bool _hasRows(PullResponse p) =>
@@ -502,14 +500,7 @@ class SyncService {
       p.categories.isNotEmpty ||
       p.items.isNotEmpty ||
       p.templates.isNotEmpty ||
-      p.staff.isNotEmpty ||
-      _hasNewListRows(p);
-
-  /// Ob die Seite etwas in den Listen ab Stufe 1b trägt.
-  static bool _hasNewListRows(PullResponse p) =>
-      p.customers.isNotEmpty ||
-      p.vouchers.isNotEmpty ||
-      p.voucherMovements.isNotEmpty;
+      p.staff.isNotEmpty;
 
   /// Lädt fehlende Bilder. Ein neues Bild lässt die Kassa den Katalog neu
   /// lesen.

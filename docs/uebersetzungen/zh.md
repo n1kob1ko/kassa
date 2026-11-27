@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 556 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 557 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -609,6 +609,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Eingelöst | 已使用 | Sonstiges: `voucherMoveRedeem` |
 | Verkauf storniert | 销售已作废 | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | 使用已作废 | Sonstiges: `voucherMoveVoidRedeem` |
+| Andere Buchung | 其他记录 | Sonstiges: `voucherMoveOther` |
 | Gutschein drucken | 打印礼券 | Sonstiges: `voucherPrint` |
 | Gutschein einlösen | 使用礼券 | Sonstiges: `voucherRedeemTitle` |
 | Zu zahlen | 应付 | Sonstiges: `voucherDue` |

@@ -1071,6 +1071,61 @@ void main() {
       });
     });
 
+    test('Kunden, Gutscheine und Bewegungen lassen den Katalog nicht neu '
+        'lesen (auch beim Nachholen); ein geänderter Artikel schon', () {
+      fakeAsync((async) {
+        var changed = 0;
+        final h = Harness(async, onChanged: () => changed++);
+        h.server
+          ..upsert('customers', muster)
+          ..upsert('vouchers', {
+            'id': 'e0000000-0000-4000-8000-00000000000a',
+            'code': '12345678',
+            'valueCents': 1000,
+            'createdAt': '2026-11-17T09:00:00.000Z',
+            'isTest': false,
+            'soldReceiptId': 'b0000000-0000-4000-8000-000000000001',
+          })
+          ..putVoucherMovement({
+            'voucherId': 'e0000000-0000-4000-8000-00000000000a',
+            'receiptId': 'b0000000-0000-4000-8000-000000000001',
+            'kind': 'sale',
+            'amountCents': 1000,
+            'createdAt': '2026-11-17T09:00:00.000Z',
+          });
+        h.run(
+          h.db
+              .update(h.db.syncStateRows)
+              .write(
+                SyncStateRowsCompanion(
+                  pullCursor: Value(h.server.seq),
+                  catchUpPending: const Value(true),
+                ),
+              ),
+        );
+        h.run(h.service.syncNow());
+        expect(customer(h)?.name, 'Muster GmbH');
+        expect(changed, 0);
+
+        h.server.putVoucherMovement({
+          'voucherId': 'e0000000-0000-4000-8000-00000000000a',
+          'receiptId': 'b0000000-0000-4000-8000-000000000002',
+          'kind': 'redeem',
+          'amountCents': -400,
+          'createdAt': '2026-11-17T10:00:00.000Z',
+        });
+        async.elapse(const Duration(minutes: 5));
+        h.run(h.service.syncNow());
+        expect(changed, 0);
+
+        h.server.change('items', 'cola', {'priceCents': 310});
+        async.elapse(const Duration(minutes: 5));
+        h.run(h.service.syncNow());
+        expect(changed, 1);
+        h.close();
+      });
+    });
+
     test('ohne catchUpPending kein Nachholen; neue Kunden kommen beim '
         'normalen Holen', () {
       fakeAsync((async) {

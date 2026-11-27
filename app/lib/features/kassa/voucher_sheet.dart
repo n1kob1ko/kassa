@@ -333,6 +333,7 @@ String voucherMovementText(L10n l, VoucherMovementKind kind) => switch (kind) {
   VoucherMovementKind.redeem => l.voucherMoveRedeem,
   VoucherMovementKind.voidSale => l.voucherMoveVoidSale,
   VoucherMovementKind.voidRedeem => l.voucherMoveVoidRedeem,
+  VoucherMovementKind.unknown => l.voucherMoveOther,
 };
 
 /// Was "Prüfen" zeigt: Wert, Guthaben, Zustand (dazu "Übungs-Gutschein")

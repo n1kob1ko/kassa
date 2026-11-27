@@ -498,6 +498,7 @@
   "voucherMoveRedeem": "Kullanıldı",
   "voucherMoveVoidSale": "Satış iptal edildi",
   "voucherMoveVoidRedeem": "Kullanım iptal edildi",
+  "voucherMoveOther": "Diğer kayıt",
   "voucherPrint": "Hediye çekini yazdır",
   "bonsVoidVoucherRedeemed": "Hediye çeki zaten kullanıldı. Bu fiş iptal edilemez.",
   "bonsVoucherPrinted": "Hediye çeki yazdırıldı",

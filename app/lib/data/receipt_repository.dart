@@ -480,21 +480,7 @@ class ReceiptRepository {
         linePosition: l.position,
         isTest: isTest,
       ));
-      out.add(
-        ReceiptLine(
-          position: l.position,
-          itemId: l.itemId,
-          name: l.name,
-          info: 'Code ${formatVoucherCode(code)}',
-          unitPriceCents: l.unitPriceCents,
-          quantity: l.quantity,
-          unitDepositCents: l.unitDepositCents,
-          options: l.options,
-          grossByRate: l.grossByRate,
-          discountCents: l.discountCents,
-          discount: l.discount,
-        ),
-      );
+      out.add(l.withInfo('Code ${formatVoucherCode(code)}'));
     }
     return (out, created);
   }

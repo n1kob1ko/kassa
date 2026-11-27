@@ -105,6 +105,22 @@ class ReceiptLine {
   int get goodsCents => unitPriceCents * quantity;
 
   int get depositCents => unitDepositCents * quantity;
+
+  /// Dieselbe Zeile mit dem Hinweis [info] (etwa der Code eines verkauften
+  /// Gutscheins). Ein neues Feld der Zeile gehört auch hierher.
+  ReceiptLine withInfo(String? info) => ReceiptLine(
+    position: position,
+    itemId: itemId,
+    name: name,
+    info: info,
+    unitPriceCents: unitPriceCents,
+    quantity: quantity,
+    unitDepositCents: unitDepositCents,
+    options: options,
+    grossByRate: grossByRate,
+    discountCents: discountCents,
+    discount: discount,
+  );
 }
 
 class Payment {

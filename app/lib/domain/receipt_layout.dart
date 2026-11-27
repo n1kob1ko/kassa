@@ -147,20 +147,14 @@ List<PrintOp> layoutReceipt(
   // Auszahlung (Summe unter 0, beim Storno darüber) heißt "Bar ausbezahlt",
   // mit dem Betrag ohne Minus (beim Storno mit), ohne "Gegeben".
   final payout = isPayoutReceipt(r);
-  final cashOnlyBesideVouchers =
-      r.kind == ReceiptKind.sale &&
-      r.payments.where((p) => p.kind == PaymentKind.cash).length == 1 &&
-      r.payments.every(
-        (p) => p.kind == PaymentKind.cash || p.kind == PaymentKind.voucher,
-      );
+  final given = givenChangePayment(r);
   for (final p in r.payments) {
     switch (p.kind) {
       case PaymentKind.cash when payout:
         b.row('Bar ausbezahlt', amount(-p.amountCents));
       case PaymentKind.cash:
         b.row('Bar', amount(p.amountCents));
-        if ((r.payments.length == 1 || cashOnlyBesideVouchers) &&
-            p.givenCents != p.amountCents) {
+        if (identical(p, given) && p.givenCents != p.amountCents) {
           b.row('Gegeben', amount(p.givenCents));
           b.row('Rückgeld', amount(p.changeCents));
         }
@@ -233,6 +227,28 @@ bool isPayoutReceipt(Receipt r) => switch (r.kind) {
   ReceiptKind.voided => r.totalCents > 0,
   _ => false,
 };
+
+/// Die Bar-Zahlung von [r], unter der "Gegeben" und "Rückgeld" stehen
+/// dürfen (Papier und Bildschirm in "Bons"): die einzige Zahlung, wenn sie
+/// bar ist, oder bei einem Verkauf die eine Bar-Zahlung, neben der nur
+/// Gutscheine bezahlen (keine Karte). Bei einer Auszahlung keine, dort
+/// steht "Bar ausbezahlt". Das Papier druckt die Reihen nur, wenn gegeben
+/// nicht gleich dem Betrag ist.
+Payment? givenChangePayment(Receipt r) {
+  if (isPayoutReceipt(r)) return null;
+  final cash = [
+    for (final p in r.payments)
+      if (p.kind == PaymentKind.cash) p,
+  ];
+  if (cash.length != 1) return null;
+  if (r.payments.length == 1) return cash.single;
+  final onlyVouchersBeside =
+      r.kind == ReceiptKind.sale &&
+      r.payments.every(
+        (p) => p.kind == PaymentKind.cash || p.kind == PaymentKind.voucher,
+      );
+  return onlyVouchersBeside ? cash.single : null;
+}
 
 /// Ein Testdruck: Betrieb, Zeit, ein Lineal über die volle Breite und die
 /// Umlaute.

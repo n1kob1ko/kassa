@@ -64,20 +64,15 @@ class VoucherRepository {
     List<WireVoucherMovement> movements,
   ) async {
     var added = false;
-    final knownVouchers = vouchers.isEmpty
-        ? const <String>{}
-        : {
-            for (final r
-                in await (_db.selectOnly(_db.voucherRows)
-                      ..addColumns([_db.voucherRows.id])
-                      ..where(
-                        _db.voucherRows.id.isIn([
-                          for (final v in vouchers) v.id,
-                        ]),
-                      ))
-                    .get())
-              r.read(_db.voucherRows.id)!,
-          };
+    final knownVouchers = <String>{
+      for (final part in _parts([for (final v in vouchers) v.id]))
+        for (final r
+            in await (_db.selectOnly(_db.voucherRows)
+                  ..addColumns([_db.voucherRows.id])
+                  ..where(_db.voucherRows.id.isIn(part)))
+                .get())
+          r.read(_db.voucherRows.id)!,
+    };
     for (final v in vouchers) {
       if (!knownVouchers.add(v.id)) continue;
       await _db
@@ -95,20 +90,15 @@ class VoucherRepository {
       added = true;
     }
     final t = _db.voucherMovementRows;
-    final knownMovements = movements.isEmpty
-        ? const <(String, String)>{}
-        : {
-            for (final r
-                in await (_db.selectOnly(t)
-                      ..addColumns([t.voucherId, t.receiptId])
-                      ..where(
-                        t.voucherId.isIn({
-                          for (final m in movements) m.voucherId,
-                        }),
-                      ))
-                    .get())
-              (r.read(t.voucherId)!, r.read(t.receiptId)!),
-          };
+    final knownMovements = <(String, String)>{
+      for (final part in _parts({for (final m in movements) m.voucherId}))
+        for (final r
+            in await (_db.selectOnly(t)
+                  ..addColumns([t.voucherId, t.receiptId])
+                  ..where(t.voucherId.isIn(part)))
+                .get())
+          (r.read(t.voucherId)!, r.read(t.receiptId)!),
+    };
     for (final m in movements) {
       if (!knownMovements.add((m.voucherId, m.receiptId))) continue;
       await _db
@@ -125,6 +115,15 @@ class VoucherRepository {
       added = true;
     }
     return added;
+  }
+
+  /// [ids] in Teilen zu 500: SQLite nimmt in einer Abfrage nur eine
+  /// begrenzte Zahl von Werten (eine neue Kassa koppelt alle Gutscheine).
+  static Iterable<List<String>> _parts(Iterable<String> ids) sync* {
+    final all = ids.toList();
+    for (var i = 0; i < all.length; i += 500) {
+      yield all.sublist(i, i + 500 > all.length ? all.length : i + 500);
+    }
   }
 
   Future<List<Voucher>> _hydrate(List<VoucherRow> rows) async {

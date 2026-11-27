@@ -227,6 +227,56 @@ void main() {
       expect([for (final m in b.movements) m.receiptId], ['bon-y', 'bon-b']);
     });
 
+    test('eine Art, die diese Version nicht kennt, wird gespeichert, wie sie '
+        'kommt; das Guthaben bleibt die Summe der Beträge', () async {
+      expect(
+        await shop.vouchers.mergeFromServer(
+          [wire('n', '77778888')],
+          [
+            move('n', 'bon-n', 'sale', 1000),
+            move('n', 'bon-z', 'top_up', 500),
+          ],
+        ),
+        isTrue,
+      );
+      final stored = await shop.db.select(shop.db.voucherMovementRows).get();
+      expect([for (final r in stored) r.kind], ['sale', 'top_up']);
+      final n = (await shop.vouchers.byId('n'))!;
+      expect((n.balanceCents, n.state), (1500, VoucherState.active));
+      expect(
+        [for (final m in n.movements) m.kind],
+        [VoucherMovementKind.sale, VoucherMovementKind.unknown],
+      );
+      expect(await shop.vouchers.balanceOf('n'), 1500);
+    });
+
+    test('mehr Gutscheine auf einmal, als SQLite in einer Abfrage nennen '
+        'kann (neue Kassa koppeln): alle kommen an, noch einmal ändert '
+        'nichts', () async {
+      const n = 33000;
+      final vouchers = [
+        for (var i = 0; i < n; i++)
+          wire('v$i', (10000000 + i).toString(), valueCents: 100),
+      ];
+      final movements = [
+        for (var i = 0; i < n; i++) move('v$i', 'bon-v$i', 'sale', 100),
+      ];
+      Future<bool> merge() => shop.db.transaction(
+        () => shop.vouchers.mergeFromServer(vouchers, movements),
+      );
+      expect(await merge(), isTrue);
+      Future<int> count(String table) => shop.db
+          .customSelect('SELECT COUNT(*) AS c FROM $table')
+          .getSingle()
+          .then((r) => r.read<int>('c'));
+      expect(
+        (await count('vouchers'), await count('voucher_movements')),
+        (n, n),
+      );
+      expect(await merge(), isFalse);
+      expect(await shop.vouchers.balanceOf('v${n - 1}'), 100);
+    });
+
     test(
       'derselbe Code wie ein eigener Gutschein: findByCode gibt beide',
       () async {

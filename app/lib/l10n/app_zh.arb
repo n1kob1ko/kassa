@@ -498,6 +498,7 @@
   "voucherMoveRedeem": "已使用",
   "voucherMoveVoidSale": "销售已作废",
   "voucherMoveVoidRedeem": "使用已作废",
+  "voucherMoveOther": "其他记录",
   "voucherPrint": "打印礼券",
   "bonsVoidVoucherRedeemed": "礼券已被使用，此小票无法作废。",
   "bonsVoucherPrinted": "礼券已打印",

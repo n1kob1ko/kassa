@@ -1738,6 +1738,9 @@ class L10nAr extends L10n {
   String get voucherMoveVoidRedeem => 'أُلغي الاستخدام';
 
   @override
+  String get voucherMoveOther => 'قيد آخر';
+
+  @override
   String get voucherPrint => 'اطبع القسيمة';
 
   @override

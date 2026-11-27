@@ -1176,6 +1176,45 @@ void main() {
       expect(t.where((x) => x.contains('kein Umsatz')), isEmpty);
     });
 
+    test('Gutschein 5,00 und Bar 4,65, gegeben 5,00: "Gegeben 5,00" und '
+        '"Rückgeld 0,35"; dieselbe Regel (givenChangePayment) gilt am '
+        'Bildschirm', () async {
+      final (paid, _) = await voucherAndCash();
+      final sold = (await shop.receipts.finalizeCashSale(
+        saleId: 'voucher-5b',
+        cart: const Cart.empty().addVoucherSale(valueCents: 500),
+        givenCents: 500,
+        staff: shop.anna,
+      )).soldVouchers.single;
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'voucher-cash-500',
+        cart: cartCard.applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 500,
+          ),
+        ),
+        givenCents: 500,
+        staff: shop.anna,
+      );
+      expect(
+        texts(layoutReceipt(r, business)),
+        containsAllInOrder([
+          row('Bar', '4,65'),
+          row('Gegeben', '5,00'),
+          row('Rückgeld', '0,35'),
+        ]),
+      );
+      expect(givenChangePayment(r)?.kind, PaymentKind.cash);
+      expect(givenChangePayment(r)?.givenCents, 500);
+      // Passend bezahlt steht dieselbe Bar-Zahlung da (der Bildschirm zeigt
+      // sie, das Papier nur bei einem Unterschied).
+      expect(givenChangePayment(paid)?.amountCents, 465);
+      // Eine Auszahlung hat kein "Gegeben".
+      expect(givenChangePayment(await payout()), isNull);
+    });
+
     test(
       'nur mit Gutschein bezahlt: keine Reihe "Bar", Restguthaben 15,35',
       () async {

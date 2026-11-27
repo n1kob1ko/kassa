@@ -2531,6 +2531,10 @@
   "@voucherMoveVoidRedeem": {
     "description": "Prüfen: Bewegung, der Bon, der mit dem Gutschein bezahlt wurde, wurde storniert."
   },
+  "voucherMoveOther": "Andere Buchung",
+  "@voucherMoveOther": {
+    "description": "Prüfen: Bewegung einer Art, die erst eine spätere Version kennt (vom Server)."
+  },
   "voucherPrint": "Gutschein drucken",
   "@voucherPrint": {
     "description": "Verkauf fertig und Bon-Detail: druckt den Abschnitt eines verkauften Gutscheins (noch einmal)."

@@ -1745,6 +1745,9 @@ class L10nDe extends L10n {
   String get voucherMoveVoidRedeem => 'Einlösung storniert';
 
   @override
+  String get voucherMoveOther => 'Andere Buchung';
+
+  @override
   String get voucherPrint => 'Gutschein drucken';
 
   @override

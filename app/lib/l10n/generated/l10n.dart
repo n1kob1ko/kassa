@@ -3092,6 +3092,12 @@ abstract class L10n {
   /// **'Einlösung storniert'**
   String get voucherMoveVoidRedeem;
 
+  /// Prüfen: Bewegung einer Art, die erst eine spätere Version kennt (vom Server).
+  ///
+  /// In de, this message translates to:
+  /// **'Andere Buchung'**
+  String get voucherMoveOther;
+
   /// Verkauf fertig und Bon-Detail: druckt den Abschnitt eines verkauften Gutscheins (noch einmal).
   ///
   /// In de, this message translates to:

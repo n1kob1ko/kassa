@@ -1704,6 +1704,9 @@ class L10nZh extends L10n {
   String get voucherMoveVoidRedeem => '使用已作废';
 
   @override
+  String get voucherMoveOther => '其他记录';
+
+  @override
   String get voucherPrint => '打印礼券';
 
   @override

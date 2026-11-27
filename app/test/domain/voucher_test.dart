@@ -135,14 +135,19 @@ void main() {
 
   test('Arten der Bewegungen heißen in der Datenbank sale, redeem, void_sale, '
       'void_redeem', () {
+    final known = VoucherMovementKind.values.where(
+      (k) => k != VoucherMovementKind.unknown,
+    );
     expect(
-      [for (final k in VoucherMovementKind.values) k.dbName],
+      [for (final k in known) k.dbName],
       ['sale', 'redeem', 'void_sale', 'void_redeem'],
     );
-    for (final k in VoucherMovementKind.values) {
+    for (final k in known) {
       expect(VoucherMovementKind.fromDb(k.dbName), k);
     }
-    expect(() => VoucherMovementKind.fromDb('voidSale'), throwsArgumentError);
+    // Eine Art einer späteren Version bricht nichts ab (Schlussprüfung A-I1).
+    expect(VoucherMovementKind.fromDb('voidSale'), VoucherMovementKind.unknown);
+    expect(VoucherMovementKind.fromDb('top_up'), VoucherMovementKind.unknown);
   });
 
   test('formatVoucherCode und isVoucherCode', () {

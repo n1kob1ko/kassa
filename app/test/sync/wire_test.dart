@@ -309,4 +309,25 @@ void main() {
       expect(() => PullResponse.fromJson(json), throwsFormatException);
     });
   });
+  group('voucherMovements (Stufe 1b)', () {
+    test('eine Art, die diese Version nicht kennt, wird gelesen, wie sie '
+        'kommt; eine leere Art ist eine FormatException', () {
+      Map<String, dynamic> withKind(String kind) => fixture('pull_full')
+        ..['voucherMovements'] = [
+          {
+            'voucherId': 'v1',
+            'receiptId': 'bon-1',
+            'kind': kind,
+            'amountCents': 500,
+            'createdAt': '2026-11-17T09:00:00.000Z',
+          },
+        ];
+      final m = PullResponse.fromJson(withKind('top_up')).voucherMovements;
+      expect(
+        m.map((x) => (x.voucherId, x.receiptId, x.kind, x.amountCents)),
+        [('v1', 'bon-1', 'top_up', 500)],
+      );
+      expect(() => PullResponse.fromJson(withKind('')), throwsFormatException);
+    });
+  });
 }
