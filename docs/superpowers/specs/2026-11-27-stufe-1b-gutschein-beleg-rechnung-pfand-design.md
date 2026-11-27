@@ -147,7 +147,7 @@ Ist der Schalter an, steht die Taste "Rechnung an Firma" an zwei Stellen: auf "V
 Ablauf (Blatt in der Bon-Spalte beziehungsweise im Detail):
 
 1. Liste der gespeicherten Firmenkunden, zuletzt verwendete oben, mit einem Suchfeld. Ein Tipp wählt den Kunden.
-2. "Neuer Kunde": Name (Pflicht), Adresse in zwei Zeilen (Pflicht), UID (frei; Pflicht, wenn der Bon über 10.000 € liegt). Hier, und nur hier, kommt die Tastatur des Tablets.
+2. "Neuer Kunde": Name (Pflicht), Adresse in zwei Zeilen (Pflicht), UID (frei; Pflicht, wenn der Bon über 10.000 € liegt). Hier, und nur hier, kommt die Tastatur des Tablets. Der Test, der Textfelder in der App verbietet (`test/no_text_field_test.dart`), bekommt dafür eine dritte Ausnahme: genau die Datei mit diesem Formular.
 3. "Rechnung drucken": Der Bon wird als Rechnung gedruckt.
 
 Regeln:
@@ -179,7 +179,7 @@ Rückgeld                    3,20 €
 - Der QR-Code erscheint, sobald der Server den Bon bestätigt hat. Bis dahin steht an seiner Stelle ein ruhiger Platzhalter.
 - Hat der Server den Bon nach 3 Sekunden nicht bestätigt (kein Internet, Server nicht erreichbar), druckt die Kassa den Bon von selbst, wie heute, und sagt: "Kein Internet, Bon wird gedruckt." Ist kein Drucker eingerichtet, sagt sie: "Kein Internet: Der digitale Bon ist erst später abrufbar." und zeigt den QR-Code trotzdem.
 - "Bon drucken" druckt jederzeit, auch später aus "Bons" (bis Geschäftsschluss ist das Pflicht, die Kassa kann es immer).
-- Am Bon wird gespeichert, wie der Beleg erteilt wurde: "gedruckt" oder "digital angeboten". Das steht im Detail des Bons am Tablet und im Browser und geht mit dem Bon zum Server.
+- Die Kassa hält zu jedem Bon fest, wie der Beleg erteilt wurde: "gedruckt", sobald der Kundenbon das erste Mal ohne Fehler gedruckt ist, und "digital", sobald der QR-Code das erste Mal gezeigt wurde. Beides sind eigene Einträge mit Zeit (der Bon selbst bleibt unverändert), stehen im Detail des Bons am Tablet und im Browser und gehen zum Server. Das gilt bei jedem Wert des Schalters.
 - In "Bons" zeigt das Detail eines Bons den QR-Code seiner Seite, wenn einer der zwei digitalen Werte gewählt und die Kassa gekoppelt ist.
 - Den Schlüssel bekommt jeder Bon ab dieser Version, auch bei "immer drucken". So hat ein Bon seine Seite, wenn der Betrieb später umstellt.
 
@@ -234,22 +234,23 @@ Bleibt am Gutschein              15,35 €
 Datenbank am Tablet, Schritt 9:
 
 - `payments`: Art `voucher` mit Gutschein (Kennung, Code) und Restguthaben nach dieser Zahlung.
-- `receipts`: Schlüssel der öffentlichen Seite, Art der Belegerteilung, Summe der verkauften Gutscheine.
-- `receipt_lines`: Zeilen "Pfand zurück" und "Gutschein" sind eigene Arten von Zeilen und als solche erkennbar (wie der freie Betrag in 1a an seiner Kennung).
-- Neue Tabellen: Gutscheine, Gutschein-Bewegungen (nur anfügen, eindeutig je Bon und Stelle), Firmenkunden, Rechnungsempfänger je Bon (nur anfügen).
+- `receipts`: Schlüssel der öffentlichen Seite.
+- `receipt_lines`: Zeilen "Pfand zurück" und "Gutschein" sind an ihrer Kennung erkennbar (wie der freie Betrag in 1a). "Pfand zurück" ist eine Zeile mit Preis 0 und Pfand unter 0. "Gutschein" ist eine Zeile zum Satz 0 mit dem Wert als Preis; sie zählt zum Warenwert, bekommt aber nie Rabatt.
+- Neue Tabellen: Gutscheine, Gutschein-Bewegungen (nur anfügen, eindeutig je Gutschein und Bon), Firmenkunden, Rechnungsempfänger je Bon (nur anfügen), Belegerteilung je Bon (nur anfügen).
 - `pending_card_payments` trägt die gewählten Gutscheine mit. Der Entwurf des offenen Bons (`receiptDraft`) trägt Pfand-Rückgaben, Gutschein-Zeilen und gewählte Gutscheine; ein Entwurf aus 1.11.0 bleibt lesbar.
 - `settings`: die vier Schalter.
 
 Feste Regeln im Code (die Regeln aus 1a gelten weiter, drei ändern sich):
 
-- Summe des Bons = Warenwert nach Rabatt + Pfand (verlangt minus zurück) + verkaufte Gutscheine.
+- Summe des Bons = Warenwert nach Rabatt + Pfand (verlangt minus zurück). Verkaufte Gutscheine stehen im Warenwert, als Zeilen zum Satz 0 ohne Rabatt.
+- Umsatz eines Bons = Summe des Bons minus verkaufte Gutscheine.
 - Beträge je Steuersatz zusammen = Summe des Bons plus Trinkgeld; Pfand, verkaufte Gutscheine und Trinkgeld zählen zum Satz 0.
 - Reihenfolge der Zahlungen: Gutscheine, bar, höchstens eine Karte zuletzt.
-- Eine Gutschein-Zahlung ist nie höher als das Guthaben zum Zeitpunkt des Abschließens an dieser Kassa.
+- Eine Gutschein-Zahlung ist nie höher als das Guthaben zum Zeitpunkt des Abschließens an dieser Kassa. Einzige Ausnahme: Eine Kartenzahlung war unklar und wird nachträglich als bezahlt bestätigt, und das Guthaben hat sich inzwischen geändert. Die Karte ist dann schon belastet, also entsteht der Bon wie geplant, und der Gutschein steht als "überzogen" da.
 - Eine Zahlung unter 0 gibt es nur bar und nur, wenn die Summe des Bons unter 0 liegt (oder im Storno).
 - Verkaufte Gutscheine und Gutschein-Zahlung stehen nie auf demselben Bon.
 
-Abgleich: Der Bon geht als `v: 3` zum Server. Der Server versteht `v: 1`, `v: 2` und `v: 3`. Server-Migration 0005: Tabellen für Gutscheine, Bewegungen, Firmenkunden und Empfänger; `receipts` bekommt den Schlüssel der Seite (eindeutig), die Art der Belegerteilung, `voucher_cents` (mit Gutschein bezahlt) und `voucher_sale_cents`.
+Abgleich: Der Bon geht als `v: 3` zum Server. Der Server versteht `v: 1`, `v: 2` und `v: 3`. Server-Migration 0005: Tabellen für Gutscheine, Bewegungen, Firmenkunden und Empfänger; dazu Tabellen für die Belegerteilung und für die Schlüssel der Seiten; `receipts` bekommt `voucher_cents` (mit Gutschein bezahlt), `voucher_sale_cents` und `deposit_return_cents`.
 
 ### 5.7 Auswertungen
 
