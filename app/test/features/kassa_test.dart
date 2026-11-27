@@ -12,6 +12,7 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/kassa_screen.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
@@ -491,6 +492,33 @@ void main() {
     expect(_total(t), '3,15 €');
     expect(cartOf(t).lines.single.item.id, 'cola');
   });
+
+  testWidgets(
+    'Rabatte stehen im Entwurf und sind nach einem Neustart wieder da',
+    (t) async {
+      await pumpKassaWith(t, ['cola']);
+      final cart = containerOf(t).read(cartProvider.notifier);
+      final id = cartOf(t).lines.single.lineId;
+      cart.setLineDiscount(
+        id,
+        const Discount.percent(10, DiscountReason.regular),
+      );
+      cart.setReceiptDiscount(const Discount.amount(100, DiscountReason.staff));
+      await t.pump();
+      expect(await draftOf(t), contains('"discount"'));
+      await pumpKassa(t, sameDatabase: true);
+      await t.pump();
+      expect(cartOf(t).lines.single.discount?.toJson(), {
+        'percent': 10,
+        'reason': 'regular',
+      });
+      expect(cartOf(t).discount?.toJson(), {
+        'amountCents': 100,
+        'reason': 'staff',
+      });
+      expect(cartOf(t).totalCents, 290 - 29 - 100 + 25);
+    },
+  );
 
   testWidgets('Abmelden und Anmelden lässt den Bon stehen', (t) async {
     await pumpKassaWith(t, ['cola', 'pommes']);

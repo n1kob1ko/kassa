@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/discount.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/sales.dart' as sales;
 
 void main() {
   test('gleiche Artikel ohne Auswahl werden eine Zeile', () {
@@ -232,6 +234,176 @@ void main() {
         }, catalog).lines.single.quantity,
         99,
       );
+    });
+  });
+
+  group('Rabatt im offenen Bon', () {
+    final cart = sales.cart;
+
+    test('der Bon ändert sich: Prozent rechnet mit, Betrag wird gekappt, leerer Bon hat keinen Bon-Rabatt', () {
+      final cola = cart.lines[0].lineId, bowl = cart.lines[1].lineId;
+      var c = cart.setLineDiscount(
+        cola,
+        const Discount.percent(10, DiscountReason.regular),
+      );
+      expect(c.setQuantity(cola, 4).pricing.lines[0].ownDiscountCents, 116);
+      c = cart.setLineDiscount(
+        cola,
+        const Discount.amount(500, DiscountReason.staff),
+      );
+      expect(c.setQuantity(cola, 1).pricing.lines[0].ownDiscountCents, 290);
+      c = cart.setReceiptDiscount(
+        const Discount.amount(5000, DiscountReason.staff),
+      );
+      expect(c.pricing.receiptDiscountCents, 1770);
+      expect(c.remove(cola).remove(bowl).discount, isNull);
+    });
+
+    test('add, setQuantity und remove behalten die Rabatte', () {
+      final colaId = cart.lines[0].lineId, bowl = cart.lines[1].lineId;
+      final c = cart
+          .setLineDiscount(
+            colaId,
+            const Discount.percent(10, DiscountReason.regular),
+          )
+          .setReceiptDiscount(
+            const Discount.percent(5, DiscountReason.promotion),
+          );
+      final after = c.add(cola).setQuantity(colaId, 5).remove(bowl);
+      expect(after.lines.single.quantity, 5);
+      expect(after.lines.single.discount?.percent, 10);
+      expect(after.discount?.percent, 5);
+      expect(c.setQuantity(colaId, 0).discount?.percent, 5);
+      expect(c.setQuantity(colaId, 0).setQuantity(bowl, 0).discount, isNull);
+    });
+
+    test('Rabatt ab- und umsetzen, der alte Bon bleibt unverändert', () {
+      final colaId = cart.lines[0].lineId;
+      final c = cart.setLineDiscount(
+        colaId,
+        const Discount.percent(10, DiscountReason.regular),
+      );
+      expect(cart.lines[0].discount, isNull);
+      expect(c.setLineDiscount(colaId, null).lines[0].discount, isNull);
+      expect(
+        c.setLineDiscount('gibt-es-nicht', null).lines[0].discount,
+        isNotNull,
+      );
+      final r = c.setReceiptDiscount(
+        const Discount.percent(10, DiscountReason.regular),
+      );
+      expect(r.setReceiptDiscount(null).discount, isNull);
+      expect(c.discount, isNull);
+      expect(
+        const Cart.empty()
+            .setReceiptDiscount(
+              const Discount.percent(10, DiscountReason.regular),
+            )
+            .discount,
+        isNull,
+      );
+    });
+
+    test('Pfand wird nie rabattiert', () {
+      final c = cart
+          .setLineDiscount(
+            cart.lines[0].lineId,
+            const Discount.percent(100, DiscountReason.invitation),
+          )
+          .setReceiptDiscount(
+            const Discount.amount(99999, DiscountReason.staff),
+          );
+      expect((c.goodsCents, c.depositCents, c.totalCents), (0, 50, 50));
+      expect(c.pricing.lines.map((l) => l.depositCents), [50, 0]);
+    });
+
+    test('Entwurf: Rabatte überstehen toJson, fromJson und rebind; ein Entwurf aus 1.10.0 bleibt lesbar', () {
+      final colaId = cart.lines[0].lineId;
+      final c = cart
+          .setLineDiscount(
+            colaId,
+            const Discount.percent(10, DiscountReason.regular),
+          )
+          .setReceiptDiscount(const Discount.amount(200, DiscountReason.staff));
+      final json = c.toJson();
+      expect((json['lines'] as List)[0]['discount'], {
+        'percent': 10,
+        'reason': 'regular',
+      });
+      expect((json['lines'] as List)[1], isNot(contains('discount')));
+      expect(json['discount'], {'amountCents': 200, 'reason': 'staff'});
+      for (final back in [Cart.fromJson(json, catalog), c.rebind(catalog)]) {
+        expect(back.lines[0].discount?.toJson(), {
+          'percent': 10,
+          'reason': 'regular',
+        });
+        expect(back.lines[1].discount, isNull);
+        expect(back.discount?.toJson(), {
+          'amountCents': 200,
+          'reason': 'staff',
+        });
+        expect(back.totalCents, c.totalCents);
+      }
+      expect(cart.toJson(), isNot(contains('discount')));
+
+      // Ein Entwurf aus 1.10.0 kennt keine Rabatte.
+      final old = {
+        'lines': [
+          {
+            'lineId': 'a',
+            'itemId': 'cola',
+            'quantity': 2,
+            'optionIds': <String>[],
+          },
+        ],
+      };
+      final read = Cart.fromJson(old, catalog);
+      expect(read.lines.single.quantity, 2);
+      expect(read.lines.single.discount, isNull);
+      expect(read.discount, isNull);
+      expect(read.totalCents, 630);
+    });
+
+    group('Entwurf mit kaputtem Rabatt: die Zeile bleibt, ohne Rabatt', () {
+      for (final (name, broken) in <(String, Object?)>[
+        ('falscher Typ', 'zehn Prozent'),
+        ('Prozent als Text', {'percent': '10', 'reason': 'regular'}),
+        ('unbekannter Grund', {'percent': 10, 'reason': 'geburtstag'}),
+        ('Prozent 0', {'percent': 0, 'reason': 'regular'}),
+        ('Prozent 150', {'percent': 150, 'reason': 'regular'}),
+        ('negativer Betrag', {'amountCents': -200, 'reason': 'staff'}),
+      ]) {
+        test(name, () {
+          final read = Cart.fromJson({
+            'lines': [
+              {
+                'lineId': 'a',
+                'itemId': 'cola',
+                'quantity': 2,
+                'optionIds': <String>[],
+                'discount': broken,
+              },
+            ],
+            'discount': broken,
+          }, catalog);
+          expect(read.lines.single.lineId, 'a');
+          expect(read.lines.single.quantity, 2);
+          expect(read.lines.single.discount, isNull);
+          expect(read.discount, isNull);
+          expect(read.totalCents, 630);
+        });
+      }
+    });
+
+    test('Bon-Rabatt in einem Entwurf, dessen Zeilen alle wegfallen: leerer Bon ohne Rabatt', () {
+      final read = Cart.fromJson({
+        'lines': [
+          {'lineId': 'a', 'itemId': 'weg', 'quantity': 1},
+        ],
+        'discount': {'percent': 10, 'reason': 'regular'},
+      }, catalog);
+      expect(read.isEmpty, isTrue);
+      expect(read.discount, isNull);
     });
   });
 }

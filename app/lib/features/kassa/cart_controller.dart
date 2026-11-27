@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
+import '../../domain/discount.dart';
 
 /// Der offene Bon der Kassa. Er gehört zur Kassa, nicht zur angemeldeten
 /// Person: Abmelden und Anmelden lässt ihn stehen. Jede Änderung schreibt den
@@ -33,6 +34,14 @@ class CartController extends Notifier<Cart> {
       _set(state.setQuantity(lineId, quantity));
 
   void remove(String lineId) => _set(state.remove(lineId));
+
+  /// Rabatt auf eine Zeile; null nimmt ihn weg.
+  void setLineDiscount(String lineId, Discount? discount) =>
+      _set(state.setLineDiscount(lineId, discount));
+
+  /// Rabatt auf den ganzen Bon; null nimmt ihn weg.
+  void setReceiptDiscount(Discount? discount) =>
+      _set(state.setReceiptDiscount(discount));
 
   void clear() => _set(const Cart.empty());
 

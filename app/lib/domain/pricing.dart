@@ -17,25 +17,13 @@ class TaxLine {
   final int taxCents;
 }
 
-/// Brutto-Warenwert einer Zeile je Steuersatz, ohne Pfand. Eine Option mit
-/// eigenem Steuersatz zählt zu diesem Satz.
-Map<TaxRate, int> grossByRateOfLine(CartLine line) {
-  final result = <TaxRate, int>{};
-  void put(TaxRate rate, int cents) {
-    if (cents == 0) return;
-    result[rate] = (result[rate] ?? 0) + cents;
-  }
+/// Brutto-Warenwert einer Zeile je Steuersatz vor Rabatt, ohne Pfand. Eine
+/// Option mit eigenem Steuersatz zählt zu diesem Satz.
+Map<TaxRate, int> grossByRateOfLine(CartLine line) => line.listGrossByRate;
 
-  put(line.item.taxRate, line.item.priceCents * line.quantity);
-  for (final o in line.options) {
-    put(o.taxRate ?? line.item.taxRate, o.surchargeCents * line.quantity);
-  }
-  return result;
-}
-
-/// Brutto-Warenwert je Steuersatz, ohne Pfand.
-Map<TaxRate, int> grossByRate(Cart cart) =>
-    sumByRate([for (final l in cart.lines) grossByRateOfLine(l)]);
+/// Brutto-Warenwert je Steuersatz nach Rabatt, ohne Pfand; Sätze mit Summe 0
+/// fehlen.
+Map<TaxRate, int> grossByRate(Cart cart) => cart.pricing.grossByRate;
 
 /// Summe mehrerer Aufteilungen; Sätze mit Summe 0 fehlen.
 Map<TaxRate, int> sumByRate(Iterable<Map<TaxRate, int>> parts) {
