@@ -81,8 +81,9 @@ function CustomerDialog({
       const changes = customerChanges(customer, values);
       if (Object.keys(changes).length === 0) onClose();
       else update.mutate({ id: customer.id, ...changes }, { onSuccess: onClose, onError });
+    } else {
+      create.mutate(values, { onSuccess: onClose, onError });
     }
-    else create.mutate(values, { onSuccess: onClose, onError });
   };
 
   return (

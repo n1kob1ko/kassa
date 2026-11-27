@@ -66,9 +66,31 @@ function AmountRow({ label, cents, testId, tone = 'normal' }: { label: string; c
   );
 }
 
-/** Steuer je Satz (Umsatz brutto und davon MwSt), darunter das Pfand ohne MwSt, wenn es eines gibt. */
-export function TaxTable({ lines, depositCents }: { lines: TaxLine[]; depositCents: number }) {
-  if (lines.length === 0 && depositCents === 0) return null;
+/**
+ * Steuer je Satz (Umsatz brutto und davon MwSt), darunter das Pfand ohne MwSt, wenn es eines gibt. Wie am Tablet
+ * (`report_layout.dart`) unter dem Satz 0 (fehlt er, nach allen Sätzen) "davon Gutscheine", wenn Gutscheine verkauft
+ * wurden: der Betrag steht schon im Umsatz zu 0 %, ist aber kein Umsatz.
+ */
+export function TaxTable({
+  lines,
+  depositCents,
+  voucherSoldCents = 0,
+}: {
+  lines: TaxLine[];
+  depositCents: number;
+  voucherSoldCents?: number;
+}) {
+  if (lines.length === 0 && depositCents === 0 && voucherSoldCents === 0) return null;
+  const vouchers = (
+    <tr key="vouchers">
+      <th scope="row" className={styles.taxSub}>
+        davon Gutscheine
+      </th>
+      <td data-testid="tax-vouchers">{money(voucherSoldCents)}</td>
+      <td />
+    </tr>
+  );
+  const zeroShown = lines.some((l) => l.percent === 0);
   return (
     <table className={styles.tax} aria-label="Steuer">
       <thead>
@@ -81,13 +103,17 @@ export function TaxTable({ lines, depositCents }: { lines: TaxLine[]; depositCen
         </tr>
       </thead>
       <tbody>
-        {lines.map((l) => (
-          <tr key={l.percent}>
-            <th scope="row">MwSt {l.percent} %</th>
-            <td>{money(l.grossCents)}</td>
-            <td className={styles.strongCell}>{money(l.taxCents)}</td>
-          </tr>
-        ))}
+        {lines.flatMap((l) => {
+          const row = (
+            <tr key={l.percent}>
+              <th scope="row">MwSt {l.percent} %</th>
+              <td>{money(l.grossCents)}</td>
+              <td className={styles.strongCell}>{money(l.taxCents)}</td>
+            </tr>
+          );
+          return l.percent === 0 && voucherSoldCents !== 0 ? [row, vouchers] : [row];
+        })}
+        {!zeroShown && voucherSoldCents !== 0 && vouchers}
         {depositCents !== 0 && (
           <tr>
             <th scope="row">Pfand, ohne MwSt</th>
@@ -203,7 +229,7 @@ export function PeriodDetailView({ period, query }: { period: Period | null; que
         </dl>
       )}
 
-      <TaxTable lines={s.taxLines} depositCents={s.depositCents} />
+      <TaxTable lines={s.taxLines} depositCents={s.depositCents} voucherSoldCents={s.voucherSoldCents} />
 
       <Section id="zeitraum-zeilen" title={rowsTitle}>
         {s.rows.length === 0 ? (

@@ -336,3 +336,14 @@ test('Index für Stornos: voids_receipt_id ist pro Betrieb nachschlagbar', async
   expect(r.rows[0]!.indexdef).toMatch(/\(business_id, voids_receipt_id\)/);
   expect(r.rows[0]!.indexdef).toMatch(/WHERE \(voids_receipt_id IS NOT NULL\)/);
 });
+
+test('Index für das Abholen: vouchers, voucher_movements und customers nach (business_id, change_seq)', async () => {
+  const r = await withSystem(t.db, (c) =>
+    c.query<{ tablename: string; indexdef: string }>(
+      `select tablename, indexdef from pg_indexes
+        where tablename in ('vouchers', 'voucher_movements', 'customers') and indexdef like '%(business_id, change_seq)%'
+        order by tablename`,
+    ),
+  );
+  expect(r.rows.map((x) => x.tablename)).toEqual(['customers', 'voucher_movements', 'vouchers']);
+});

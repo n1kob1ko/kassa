@@ -11,7 +11,7 @@ import {
   type ReceiptKind,
   type ReceiptLine,
 } from '../api/receipts';
-import { dateText, money, timeText } from '../format';
+import { dateText, dayKey, money, timeText } from '../format';
 import { Button } from '../ui/Button';
 import { ChevronRightIcon } from '../ui/icons';
 import { StatusChip } from '../ui/StatusChip';
@@ -19,6 +19,15 @@ import { paymentKindsText, voucherCodeText } from './receipt_payments';
 import styles from './ReceiptDetail.module.css';
 
 type LinkTarget = { to: To; state: unknown };
+
+const DEPOSIT_RETURN_PREFIX = 'deposit-return-';
+
+/** Ob die Zeile "Pfand zurück" ist: ihr Betrag ist ihr Pfand (mit Minus), nicht der Warenwert 0. */
+const isDepositReturn = (line: ReceiptLine) => line.itemId.startsWith(DEPOSIT_RETURN_PREFIX);
+
+/** Der Betrag einer Zeile, wie am Papier: bei "Pfand zurück" das Pfand, sonst der Warenwert. */
+const lineCents = (line: ReceiptLine) =>
+  isDepositReturn(line) ? line.unitDepositCents * line.quantity : line.unitPriceCents * line.quantity;
 
 /** Sonderbelege zeigen ihren Namen statt eines Betrags. */
 export const SPECIAL_NAMES: Partial<Record<ReceiptKind, string>> = {
@@ -76,7 +85,7 @@ function Line({ line, mirror }: { line: ReceiptLine; mirror: boolean }) {
           </span>
         )}
       </span>
-      <span className={styles.lineAmount}>{money(line.unitPriceCents * line.quantity)}</span>
+      <span className={styles.lineAmount}>{money(lineCents(line))}</span>
     </li>
   );
 }
@@ -132,6 +141,22 @@ function VoucherPayment({ p }: { p: PaymentData }) {
 function Payment({ receipt, p, several }: { receipt: ReceiptDetail; p: PaymentData; several: boolean }) {
   if (p.kind === 'voucher') return <VoucherPayment p={p} />;
   const card = p.kind === 'card';
+  // Eine Auszahlung (bar unter 0) heißt wie am Papier "Bar ausbezahlt", mit dem Betrag ohne Minus und ohne Gegeben
+  // und Rückgeld.
+  if (!card && p.amountCents < 0) {
+    return (
+      <dl className={styles.figures} data-testid={`payment-${p.position}`}>
+        <div className={styles.figure}>
+          <dt>Zahlungsart</dt>
+          <dd data-testid="payment-kind">Bar</dd>
+        </div>
+        <div className={styles.figure}>
+          <dt>Bar ausbezahlt</dt>
+          <dd data-testid="paid-out">{money(-p.amountCents)}</dd>
+        </div>
+      </dl>
+    );
+  }
   const tip = card ? p.tipCents : 0;
   const cardText = [p.cardScheme, p.cardLast4 ? `endet auf ${p.cardLast4}` : null].filter(Boolean).join(', ');
   return (
@@ -240,9 +265,15 @@ function Recipient({ receipt }: { receipt: ReceiptDetail }) {
   );
 }
 
-/** "Gedruckt 12:03" oder "Digital angeboten 12:03", in Wiener Zeit. */
-export function deliveryText(d: ReceiptDelivery): string {
-  return `${d.kind === 'printed' ? 'Gedruckt' : 'Digital angeboten'} ${timeText(new Date(d.at))}`;
+/**
+ * "Gedruckt 12:03" oder "Digital angeboten 12:03", in Wiener Zeit; an einem anderen Tag als dem des Bons (`receiptAt`)
+ * mit Datum: "Gedruckt 28.11.2026, 09:15".
+ */
+export function deliveryText(d: ReceiptDelivery, receiptAt?: string): string {
+  const at = new Date(d.at);
+  const otherDay = receiptAt !== undefined && dayKey(at) !== dayKey(new Date(receiptAt));
+  const when = otherDay ? `${dateText(at)}, ${timeText(at)}` : timeText(at);
+  return `${d.kind === 'printed' ? 'Gedruckt' : 'Digital angeboten'} ${when}`;
 }
 
 /** Zeile "Beleg": wie der Beleg erteilt wurde, dazu der Weg zur Seite des Bons; ohne beides nichts. */
@@ -259,7 +290,7 @@ function Delivery({ receipt }: { receipt: ReceiptDetail }) {
               ? 'Noch nicht erteilt'
               : deliveries.map((d) => (
                   <span key={d.kind} data-testid="delivery">
-                    {deliveryText(d)}
+                    {deliveryText(d, receipt.createdAt)}
                   </span>
                 ))}
           </dd>
@@ -317,6 +348,8 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
   const at = new Date(r.createdAt);
   const special = SPECIAL_NAMES[r.kind];
   const signature = signatureState(r.rksv);
+  // Nur das verlangte Pfand, wie am Papier; das zurückgegebene steht einmal, bei seinen Zeilen.
+  const depositAskedCents = r.depositCents - r.lines.filter(isDepositReturn).reduce((sum, l) => sum + lineCents(l), 0);
 
   return (
     <div className={styles.detail}>
@@ -351,10 +384,10 @@ export function ReceiptDetailView({ businessId, query, linkTo }: ReceiptDetailVi
             <span data-testid="discount">{discountAmount(r.discount.amountCents, r.kind === 'voided')}</span>
           </p>
         )}
-        {r.depositCents !== 0 && (
+        {depositAskedCents !== 0 && (
           <p className={styles.sumRow}>
             <span>Pfand</span>
-            <span data-testid="deposit">{money(r.depositCents)}</span>
+            <span data-testid="deposit">{money(depositAskedCents)}</span>
           </p>
         )}
         <p className={[styles.sumRow, styles.total].join(' ')}>

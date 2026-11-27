@@ -4,11 +4,7 @@
 import 'dart:convert';
 
 import 'cart.dart'
-    show
-        isDepositReturnItemId,
-        isOpenAmountItemId,
-        isReservedItemId,
-        isVoucherSaleItemId;
+    show isDepositReturnItemId, isOpenAmountItemId, isReservedItemId;
 import 'catalog.dart';
 import 'menu_dictionary.dart';
 import 'staff.dart';
@@ -101,16 +97,17 @@ Catalog parseMenuFile(String jsonText) {
     }
     // An der Kassa vergeben (isReservedItemId in cart.dart): freier Betrag
     // (open-amount-20 usw.), Pfand zurück (deposit-return-25 usw.) und
-    // Gutschein (voucher-sale) mit eigenem Text, jede spätere Form mit dem
-    // allgemeinen.
-    if (isOpenAmountItemId(id)) {
-      fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
-    } else if (isDepositReturnItemId(id)) {
-      fail('Die Kennung darf nicht mit "deposit-return-" beginnen.');
-    } else if (isVoucherSaleItemId(id)) {
-      fail('Die Kennung darf nicht "voucher-sale" sein.');
-    } else if (isReservedItemId(id)) {
-      fail('Die Kennung ist an der Kassa vergeben.');
+    // Gutschein (voucher-sale), jede mit eigenem Text. Eine spätere Form in
+    // isReservedItemId ist damit schon abgelehnt; sie braucht hier ihren
+    // eigenen Text und ein Beispiel in shared/fixtures/menu.
+    if (isReservedItemId(id)) {
+      if (isOpenAmountItemId(id)) {
+        fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
+      } else if (isDepositReturnItemId(id)) {
+        fail('Die Kennung darf nicht mit "deposit-return-" beginnen.');
+      } else {
+        fail('Die Kennung darf nicht "voucher-sale" sein.');
+      }
     }
     final name = _text(a['name']);
     if (name == null) fail('Name fehlt.');

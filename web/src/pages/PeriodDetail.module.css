@@ -140,6 +140,12 @@
   white-space: normal;
 }
 
+/* "davon Gutscheine" unter dem Satz 0: eingerückt wie am Papier. */
+.tax tbody .taxSub {
+  padding-left: var(--space-md);
+  font-weight: 500;
+}
+
 .tax td {
   font-weight: 600;
   color: var(--ink2);

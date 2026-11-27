@@ -8,16 +8,21 @@ import type { Config } from './config.js';
  * Sonst die Adresse der Verbindung. X-Forwarded-For und req.ip gelten nie, weil der Client sie selbst setzen kann.
  */
 export function clientAddress(req: FastifyRequest, config: Pick<Config, 'clientIpHeader'>): string {
-  if (config.clientIpHeader !== undefined) {
-    const v = req.headers[config.clientIpHeader];
-    // Node fasst mehrfach gesendete Kopfzeilen mit Komma zusammen: Das ist dann kein einzelner Wert.
-    if (typeof v === 'string' && !v.includes(',')) {
-      const value = v.trim();
-      // Nur eine echte Adresse (IPv4 oder IPv6) gilt; sonst die Adresse der Verbindung.
-      if (isIP(value) !== 0) return value;
-    }
-  }
-  return req.socket.remoteAddress ?? '';
+  return headerAddress(req, config) ?? req.socket.remoteAddress ?? '';
+}
+
+/**
+ * Die Adresse aus der Kopfzeile CLIENT_IP_HEADER, wenn sie eingestellt ist und die Anfrage genau einen Wert trägt, der
+ * eine IP-Adresse ist; sonst null (dann gilt in clientAddress die Adresse der Verbindung).
+ */
+export function headerAddress(req: FastifyRequest, config: Pick<Config, 'clientIpHeader'>): string | null {
+  if (config.clientIpHeader === undefined) return null;
+  const v = req.headers[config.clientIpHeader];
+  // Node fasst mehrfach gesendete Kopfzeilen mit Komma zusammen: Das ist dann kein einzelner Wert.
+  if (typeof v !== 'string' || v.includes(',')) return null;
+  const value = v.trim();
+  // Nur eine echte Adresse (IPv4 oder IPv6) gilt.
+  return isIP(value) !== 0 ? value : null;
 }
 
 /** Die acht Gruppen (je 0 bis 65535) einer gültigen IPv6-Adresse ohne Zonenkennung. */

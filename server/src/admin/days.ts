@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
-import { grossOf, GROSS_SUMS, paymentFigures, RECEIPT_SUMS, revenueOf, voucherFigures, type ReceiptSums } from './months.js';
+import { grossOf, GROSS_SUMS, paymentFigures, RECEIPT_SUMS, voucherFigures, type ReceiptSums } from './months.js';
+import { revenueOf } from './receipt_sql.js';
 import { taxLinesOf } from './tax.js';
 import { tipsByStaff } from './tips.js';
 

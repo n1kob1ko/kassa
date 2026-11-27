@@ -176,4 +176,37 @@ describe('Offene Gutscheine am Monatsende', () => {
     // Ein Zeitraum: am Ende seines letzten Monats.
     expect((await summary(s, '2026-11', '2026-12', chef)).json().openVoucherCents).toBe(3000);
   });
+
+  test('überzogener Gutschein und ein Storno über die Monatsgrenze: Monat und Liste rechnen gleich', async () => {
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, 'Europe/Vienna');
+    // A: 25,00, im November 9,65 eingelöst. D: 10,00, im November zweimal 9,65 (überzogen, -9,30). C: 10,00 am
+    // 25.11. verkauft, am 2.12. storniert.
+    const A = sale(2500, at('2026-11-05T09:00:00.000Z'));
+    const D = sale(1000, at('2026-11-06T09:00:00.000Z'));
+    const C = sale(1000, at('2026-11-25T09:00:00.000Z'));
+    await send(a, s, [A, D, C].map((x): [string, object] => ['receipt', x.receipt]));
+    await send(a, s, [
+      ['receipt', redeem(A.voucher, at('2026-11-20T09:00:00.000Z'))],
+      ['receipt', redeem(D.voucher, at('2026-11-21T09:00:00.000Z'))],
+      ['receipt', redeem(D.voucher, at('2026-11-22T09:00:00.000Z'))],
+      ['receipt', voidOfV3(C.receipt, { id: randomUUID(), number: 99, createdAt: '2026-12-02T09:00:00.000Z' })],
+    ]);
+    a.now.value = new Date('2027-01-05T10:00:00.000Z');
+    const chef = (await createChefAt(a.db, s.businessId, a.now.value)).cookie;
+
+    // Ende November: A mit 15,35 und C mit 10,00 offen; D zählt nicht (überzogen, nicht -9,30 abgezogen).
+    expect((await summary(s, '2026-11', '2026-11', chef)).json().openVoucherCents).toBe(1535 + 1000);
+    // Ende Dezember: C ist storniert.
+    const december = (await summary(s, '2026-12', '2026-12', chef)).json().openVoucherCents;
+    expect(december).toBe(1535);
+    // Die Liste (alle Bewegungen bis heute) kommt auf dieselbe Summe wie der letzte Monat.
+    const body = (await list(s.businessId, chef)).json();
+    expect(body.openCents).toBe(december);
+    expect(body.vouchers.map((v: Record<string, unknown>) => [v.id, v.balanceCents, v.state])).toEqual([
+      [C.voucher.id, 0, 'voided'],
+      [D.voucher.id, -930, 'overdrawn'],
+      [A.voucher.id, 1535, 'active'],
+    ]);
+  });
 });

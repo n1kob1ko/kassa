@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { isUuid, requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
-import { hasCard, hasCash } from './months.js';
 import { loadTimeZone } from './overview.js';
+import { hasCard, hasCash } from './receipt_sql.js';
 
 const PAGE_SIZE = 50;
 

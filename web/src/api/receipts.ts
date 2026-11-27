@@ -1,5 +1,4 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { paymentKindsText } from '../pages/receipt_payments';
 import { api, ApiError } from './client';
 import { OVERVIEW_REFRESH_MS } from './overview';
 
@@ -7,6 +6,17 @@ export type ReceiptKind = 'sale' | 'voided' | 'start' | 'month' | 'year' | 'zero
 
 /** Die Arten einer Zahlung. */
 export type PaymentKind = 'voucher' | 'cash' | 'card';
+
+/** Die Arten in der Reihenfolge der Zahlungen am Bon: Gutscheine, bar, Karte zuletzt. */
+const KIND_ORDER: PaymentKind[] = ['voucher', 'cash', 'card'];
+const KIND_TEXTS: Record<PaymentKind, string> = { voucher: 'Gutschein', cash: 'Bar', card: 'Karte' };
+
+/** Die Zahlungsart eines Bons aus allen Arten seiner Zahlungen: "Gutschein + Bar", "Bar + Karte"; ohne Zahlung leer. */
+export function paymentKindsText(kinds: readonly PaymentKind[]): string {
+  return KIND_ORDER.filter((k) => kinds.includes(k))
+    .map((k) => KIND_TEXTS[k])
+    .join(' + ');
+}
 
 /** Eine Zeile von `GET /api/admin/businesses/:b/receipts`. */
 export type ReceiptHead = {

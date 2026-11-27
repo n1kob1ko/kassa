@@ -5,7 +5,7 @@ import { requireBusinessAccess } from '../auth/guards.js';
 import { withBusiness } from '../db/tenant.js';
 import { DEPOSIT_RETURN_ITEM_PREFIX, VOUCHER_SALE_ITEM_ID } from '../device/push_schema.js';
 import { ApiError } from '../errors.js';
-import { revenueOf } from './months.js';
+import { revenueOf } from './receipt_sql.js';
 
 // Rechnet die Zahlen der Übersicht genau wie app/lib/data/stats_repository.dart. Kalendertage gelten in der
 // Zeitzone des Betriebs und werden in PostgreSQL gerechnet (Sommerzeit), Summen sind ganze Cent.

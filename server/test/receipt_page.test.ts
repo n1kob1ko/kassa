@@ -9,6 +9,7 @@ import { loggerOptions } from '../src/app.js';
 import { withSystem } from '../src/db/tenant.js';
 import { MissLimiter } from '../src/public/miss_limiter.js';
 import { isSafeSvg, qrSvg, rksvQrText } from '../src/public/qr.js';
+import { discountLabel, qrOf } from '../src/public/receipt_page.js';
 import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
 import { pushEntries, sampleReceiptV2 } from './support/push.js';
@@ -254,6 +255,8 @@ describe('Seite eines Bons', () => {
     expect(soldText).toContain('1 x Gutschein 25,00');
     expect(soldText).toContain('Code •••• 2768');
     expect(soldText).toContain('Gutschein (kein Umsatz) 25,00');
+    // Wie am Papier: eingerückt als "davon" unter dem Satz 0.
+    expect(sold.body).toContain('<tr class="sub"><th scope="row">davon Gutschein (kein Umsatz)</th><td>25,00</td></tr>');
     expect(paidText).toContain('Gutschein •••• 2768 9,65');
     expect(paidText).toContain('Restguthaben 15,35');
     for (const html of [sold.body, paid.body]) {
@@ -352,8 +355,8 @@ describe('Seite eines Bons: Storno, Rechnung, Testbon, fremde Betriebe', () => {
     await send(a, s, [['receipt', sold], ['receipt', mixed]]);
     const res = await page(mixed.publicToken, nextAddress());
     const text = visibleText(res.body);
-    expect(text).toContain('Gutschein •••• 2768 5,00 Restguthaben 20,00 Bar 4,65');
-    expect(text).not.toContain('Gegeben');
+    // Wie am Papier: bar neben nur Gutscheinen, mehr gegeben, also "Gegeben" und "Rückgeld".
+    expect(text).toContain('Gutschein •••• 2768 5,00 Restguthaben 20,00 Bar 4,65 Gegeben 5,00 Rückgeld 0,35');
   });
 
   test('Rechnung: Empfänger der letzten Fassung und Rechnungsnummer; Testbon trägt den Vermerk', async () => {
@@ -465,6 +468,58 @@ describe('Bremse', () => {
     for (let i = 1; i <= 10; i++) expect((await page(freshToken(), `2001:db8:5:6::${i}`)).statusCode).toBe(404);
     expect((await page(r.publicToken, '2001:db8:5:6::ff')).statusCode).toBe(429);
     expect((await page(r.publicToken, '2001:db8:5:7::1')).statusCode).toBe(200);
+  });
+});
+
+describe('Bremse hinter einem Proxy (PUBLIC_URL mit https)', () => {
+  test('ohne CLIENT_IP_HEADER: nie 429 wegen der Bremse; je Fenster eine Fehlerzeile, ohne Schlüssel und ohne Pfad', async () => {
+    const lines: string[] = [];
+    const t = await testApp(
+      { config: { publicUrl: 'https://kassa.example' } },
+      { logger: loggerOptions({ write: (line: string) => void lines.push(line) }) },
+    );
+    try {
+      const keys = Array.from({ length: 15 }, () => freshToken());
+      // Alle Kunden kommen über den Proxy: dieselbe Adresse der Verbindung.
+      for (const k of keys) {
+        expect((await t.app.inject({ method: 'GET', url: `/beleg/${k}`, remoteAddress: '10.0.0.1' })).statusCode).toBe(404);
+      }
+      const warnings = () => lines.filter((l) => l.includes('CLIENT_IP_HEADER'));
+      expect(warnings()).toHaveLength(1);
+      const warning = JSON.parse(warnings()[0]!) as { level: number; msg: string };
+      expect(warning.level).toBe(50);
+      for (const k of keys) expect(warnings()[0]).not.toContain(k);
+      expect(warnings()[0]).not.toContain('/beleg');
+      // Im nächsten Fenster wieder eine Zeile.
+      t.now.value = new Date(t.now.value.getTime() + 10 * 60 * 1000 + 1);
+      expect((await t.app.inject({ method: 'GET', url: `/beleg/${freshToken()}`, remoteAddress: '10.0.0.1' })).statusCode).toBe(404);
+      expect(warnings()).toHaveLength(2);
+    } finally {
+      await t.close();
+    }
+  });
+
+  test('mit CLIENT_IP_HEADER: eine Adresse aus der Kopfzeile wird gebremst; fehlt die Kopfzeile oder ist sie keine Adresse, nie 429', async () => {
+    const lines: string[] = [];
+    const t = await testApp(
+      { config: { publicUrl: 'https://kassa.example', clientIpHeader: 'x-real-ip' } },
+      { logger: loggerOptions({ write: (line: string) => void lines.push(line) }) },
+    );
+    try {
+      const get = (headers: Record<string, string>) =>
+        t.app.inject({ method: 'GET', url: `/beleg/${freshToken()}`, remoteAddress: '10.0.0.1', headers });
+      for (let i = 0; i < 10; i++) expect((await get({ 'x-real-ip': '203.0.113.5' })).statusCode).toBe(404);
+      expect((await get({ 'x-real-ip': '203.0.113.5' })).statusCode).toBe(429);
+      // Eine andere Adresse aus der Kopfzeile ist frei.
+      expect((await get({ 'x-real-ip': '203.0.113.6' })).statusCode).toBe(404);
+      expect(lines.filter((l) => l.includes('CLIENT_IP_HEADER'))).toHaveLength(0);
+      // Ohne Kopfzeile oder mit Unsinn: die Adresse des Proxys, nie gebremst.
+      for (let i = 0; i < 12; i++) expect((await get({})).statusCode).toBe(404);
+      for (let i = 0; i < 12; i++) expect((await get({ 'x-real-ip': 'unknown' })).statusCode).toBe(404);
+      expect(lines.filter((l) => l.includes('CLIENT_IP_HEADER'))).toHaveLength(1);
+    } finally {
+      await t.close();
+    }
   });
 });
 
@@ -630,7 +685,8 @@ describe('Nachbesserung 1: kaputte Adresse, Sperre je Adresse, gleiche falsche S
     expect(text).toContain('Zwischensumme');
     expect(text).toContain('Rabatt 10 % Aktion -1,65');
     expect(text).toContain('Rabatt 10 % Stammgast -1,19');
-    expect(text).not.toContain('TX-BEISPIEL-1');
+    // Wie am Papier: der Beleg-Code der Kartenzahlung, eingerückt unter der Karte (Schlussprüfung C-M3).
+    expect(text).toContain('VISA **** 4242 Beleg TX-BEISPIEL-1');
     expect(text).not.toMatch(/\d{5,}/);
     expect(text).not.toContain('Anna');
   });
@@ -779,6 +835,18 @@ describe('QR-Code', () => {
     expect(isSafeSvg(svg)).toBe(true);
     // Derselbe Text gibt dasselbe Bild.
     expect(await qrSvg(QR_PAIRS[0]!.qrText)).toBe(svg);
+  });
+
+  test('discountLabel: ein Grund wie "constructor" steht als Text da, kein Teil von Object', () => {
+    expect(discountLabel({ percent: 10, amountCents: 100, reason: 'constructor' })).toBe('Rabatt 10 % constructor');
+    expect(discountLabel({ amountCents: 100, reason: 'toString' })).toBe('Rabatt toString');
+    expect(discountLabel({ percent: 10, amountCents: 100, reason: 'promotion' })).toBe('Rabatt 10 % Aktion');
+  });
+
+  test('qrOf: ein Text, zu lang für einen QR-Code, gibt die Seite ohne QR-Code statt eines Fehlers', async () => {
+    const jws = `e30.${Buffer.from('x'.repeat(8000)).toString('base64url')}.c2ln`;
+    await expect(qrSvg(rksvQrText(jws))).rejects.toThrow();
+    expect(await qrOf({ jws, damaged: false, cash_box_id: null, mode: null })).toBeNull();
   });
 
   test('isSafeSvg lehnt Skript, on…=, Verweise und Fremdes ab', () => {

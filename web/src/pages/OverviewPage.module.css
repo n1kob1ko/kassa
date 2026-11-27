@@ -231,8 +231,15 @@
   margin: 0;
 }
 
+/* Mit Gutschein drei Zahlen: nebeneinander, solange jede ganz Platz hat, sonst rutscht eine in die nächste Zeile. */
 .payFigures[data-three] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg) var(--space-xxl);
+}
+
+.payFigures[data-three] > .payFigure {
+  flex: 1 0 auto;
 }
 
 .payFigure {
@@ -263,7 +270,8 @@
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
+  /* Ein Betrag bricht nie mitten in der Zahl. */
+  white-space: nowrap;
 }
 
 .payShare {

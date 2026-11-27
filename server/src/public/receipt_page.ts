@@ -3,7 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import type pg from 'pg';
 import { loadTimeZone } from '../admin/overview.js';
 import { taxLinesOf } from '../admin/tax.js';
-import { clientAddress, rateKey } from '../client_address.js';
+import { clientAddress, headerAddress, rateKey } from '../client_address.js';
 import type { Db } from '../db/db.js';
 import { setBusiness, withSystem } from '../db/tenant.js';
 import { MissLimiter } from './miss_limiter.js';
@@ -214,6 +214,7 @@ type PayloadPayment = {
   tipCents?: number;
   cardScheme?: string | null;
   cardLast4?: string | null;
+  providerTxCode?: string | null;
   voucherCode?: string | null;
   voucherBalanceAfterCents?: number | null;
 };
@@ -275,9 +276,10 @@ const REASONS: Record<string, string> = {
 };
 
 /** "Rabatt 10 % Stammgast" oder bei festem Betrag "Rabatt Stammgast", wie ReceiptDiscount.label am Tablet. */
-function discountLabel(d: Discount): string {
+/** "Rabatt 10 % Aktion" wie am Papier; ein unbekannter Grund steht, wie er kam. */
+export function discountLabel(d: Discount): string {
   const reason = d?.reason ?? '';
-  const name = REASONS[reason] ?? reason;
+  const name = Object.hasOwn(REASONS, reason) ? REASONS[reason]! : reason;
   const p = d?.percent;
   return (p === null || p === undefined ? `Rabatt ${name}` : `Rabatt ${p} % ${name}`).trimEnd();
 }
@@ -359,7 +361,8 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
     note: `Netto ${amount(t.netCents)}`,
     cents: t.grossCents,
   }));
-  if (voucherSaleCents !== 0) taxes.push({ label: 'Gutschein (kein Umsatz)', cents: voucherSaleCents });
+  // Wie am Papier: der Betrag steht schon in der Zeile zum Satz 0, eingerückt als "davon".
+  if (voucherSaleCents !== 0) taxes.push({ label: 'davon Gutschein (kein Umsatz)', cents: voucherSaleCents, sub: true });
 
   // v: 2 und v: 3 bringen `payments`, v: 1 eine Zahlung `payment` (oder keine).
   const list = Array.isArray(r.payments) ? [...r.payments] : r.payment ? [{ ...r.payment, position: 0 }] : [];
@@ -368,6 +371,13 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
   // Eine Auszahlung (Summe unter 0, beim Storno darüber) heißt wie am Papier "Bar ausbezahlt", mit dem Betrag ohne
   // Minus (beim Storno mit), ohne "Gegeben" und "Rückgeld".
   const payout = r.kind === 'voided' ? r.total_cents > 0 : r.kind === 'sale' && r.total_cents < 0;
+  // "Gegeben" und "Rückgeld" wie am Papier (givenChangePayment am Tablet): die einzige Zahlung, oder bei einem Verkauf
+  // die eine Bar-Zahlung, neben der nur Gutscheine bezahlen. Wie am Bildschirm in "Bons" nur bei einem Betrag über 0.
+  const cashCount = list.filter((p) => p.kind === 'cash').length;
+  const givenShown =
+    !payout &&
+    cashCount === 1 &&
+    (list.length === 1 || (r.kind === 'sale' && list.every((p) => p.kind === 'cash' || p.kind === 'voucher')));
   for (const p of list) {
     const cents = Number(p.amountCents ?? 0);
     if (p.kind === 'cash' && payout) {
@@ -375,7 +385,7 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
     } else if (p.kind === 'cash') {
       payments.push({ label: 'Bar', cents });
       const given = Number(p.givenCents ?? cents);
-      if (list.length === 1 && cents > 0 && given !== cents) {
+      if (givenShown && cents > 0 && given !== cents) {
         payments.push({ label: 'Gegeben', cents: given });
         payments.push({ label: 'Rückgeld', cents: Number(p.changeCents ?? 0) });
       }
@@ -389,6 +399,8 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
         const scheme = (p.cardScheme ?? '').trim();
         payments.push({ label: scheme === '' ? `**** ${last4}` : `${scheme} **** ${last4}`, sub: true });
       }
+      const tx = (p.providerTxCode ?? '').trim();
+      if (tx !== '') payments.push({ label: `Beleg ${tx}`, sub: true });
     } else if (p.kind === 'voucher') {
       payments.push({ label: `Gutschein ${maskedCode(p.voucherCode)}`, cents });
       if (typeof p.voucherBalanceAfterCents === 'number') {
@@ -495,7 +507,8 @@ async function loadReceipt(db: Db, token: string, log: FastifyBaseLogger): Promi
 }
 
 /** Der QR-Code zum JWS, nur wenn er sicher eingebettet werden kann. Ein unlesbares JWS gibt keinen QR-Code. */
-async function qrOf(rksv: ReceiptData['rksv']): Promise<ReceiptPageView['qr']> {
+/** Der QR-Code der Signatur; null ohne Signatur, bei einem kaputten Text oder wenn kein QR-Code entsteht. */
+export async function qrOf(rksv: ReceiptData['rksv']): Promise<ReceiptPageView['qr']> {
   if (!rksv) return null;
   let text: string;
   try {
@@ -503,7 +516,13 @@ async function qrOf(rksv: ReceiptData['rksv']): Promise<ReceiptPageView['qr']> {
   } catch {
     return null;
   }
-  const svg = await qrSvg(text);
+  let svg: string;
+  try {
+    svg = await qrSvg(text);
+  } catch {
+    // Etwa ein Text, zu lang für einen QR-Code: die Seite kommt ohne ihn, nicht als Fehler.
+    return null;
+  }
   return isSafeSvg(svg) ? { svg, damaged: rksv.damaged } : null;
 }
 
@@ -576,11 +595,24 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
     return reply.code(status).type('text/html; charset=utf-8').send(html);
   }
 
+  /** Wann zuletzt die Zeile "CLIENT_IP_HEADER fehlt" geschrieben wurde (einmal je Fenster). */
+  let warnedAt: number | null = null;
+
   async function answer(req: FastifyRequest, reply: FastifyReply, badUrl: boolean): Promise<FastifyReply> {
     const at = now();
     const address = rateKey(clientAddress(req, config));
+    // Hinter einem Proxy (https) ist die Adresse der Verbindung die des Proxys, also aller Kunden zusammen: gebremst
+    // wird nur eine Adresse aus der vertrauten Kopfzeile. Sonst nie 429 wegen der Bremse, dafür je Fenster eine
+    // Fehlerzeile (ohne Schlüssel und ohne Pfad).
+    const limited = !https || headerAddress(req, config) !== null;
+    if (!limited && (warnedAt === null || at.getTime() - warnedAt >= WINDOW_MS)) {
+      warnedAt = at.getTime();
+      app.log.error(
+        'Seite eines Bons: CLIENT_IP_HEADER fehlt oder die Anfrage trägt keine Adresse darin; die Bremse gegen Durchprobieren ist aus',
+      );
+    }
     // Gesperrt ist nur eine Adresse, die selbst MAX_FAILURES verschiedene Fehlversuche hat; dann jede Methode, jeder Schlüssel.
-    const wait = misses.blockedMs(address, at);
+    const wait = limited ? misses.blockedMs(address, at) : 0;
     if (wait > 0) {
       reply.header('retry-after', String(Math.max(Math.ceil(wait / 1000), 1)));
       return sendPage(reply, 429, TOO_MANY_PAGE);
@@ -592,7 +624,7 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
     // Vor dem Nachsehen einen Platz reservieren: gleichzeitige Anfragen zählen mit, mehr als MAX_FAILURES verschiedene
     // Schlüssel je Adresse fragen nie die Datenbank. Der Platz endet im finally: Treffer und Fehler geben ihn zurück,
     // ein Fehlversuch wird gespeichert.
-    if (!misses.reserve(address, hash, at)) {
+    if (limited && !misses.reserve(address, hash, at)) {
       reply.header('retry-after', String(Math.max(Math.ceil(misses.blockedMs(address, at) / 1000), 1)));
       return sendPage(reply, 429, TOO_MANY_PAGE);
     }
@@ -611,8 +643,10 @@ export function installReceiptPage(app: FastifyInstance, opts: ReceiptPageOption
       req.log.error({ err }, 'Seite eines Bons nicht gebaut');
       return sendPage(reply, 500, ERROR_PAGE);
     } finally {
-      if (missed) misses.record(address, hash, at);
-      else misses.release(address, hash);
+      if (limited) {
+        if (missed) misses.record(address, hash, at);
+        else misses.release(address, hash);
+      }
     }
   }
 

@@ -184,7 +184,7 @@ export function DayDetailView({ query }: { query: UseQueryResult<DayDetail, ApiE
         )}
       </dl>
 
-      <TaxTable lines={d.taxLines} depositCents={d.depositCents} />
+      <TaxTable lines={d.taxLines} depositCents={d.depositCents} voucherSoldCents={d.voucherSoldCents} />
 
       <section className={styles.section} aria-labelledby="tag-bewegungen">
         <h3 id="tag-bewegungen" className={styles.sectionTitle}>

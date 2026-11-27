@@ -77,3 +77,20 @@ describe('Beleg im Detail eines Bons', () => {
     expect(html).not.toContain('Seite des Bons');
   });
 });
+
+describe('Beleg an einem anderen Tag', () => {
+  test('ein Druck am nächsten Tag zeigt das Datum dazu, am Tag des Bons nur die Zeit', () => {
+    const html = render({
+      deliveries: [
+        { kind: 'digital', at: '2026-11-27T11:01:00.000Z' },
+        { kind: 'printed', at: '2026-11-28T08:15:00.000Z' },
+      ],
+    });
+    expect(byTestId(html, 'delivery')).toEqual(['Digital angeboten 12:01', 'Gedruckt 28.11.2026, 09:15']);
+  });
+
+  test('nach Mitternacht in Wien ist es ein anderer Tag, auch wenn es in UTC noch derselbe ist', () => {
+    const html = render({ deliveries: [{ kind: 'printed', at: '2026-11-27T23:30:00.000Z' }] });
+    expect(byTestId(html, 'delivery')).toEqual(['Gedruckt 28.11.2026, 00:30']);
+  });
+});

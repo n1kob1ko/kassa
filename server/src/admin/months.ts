@@ -5,6 +5,7 @@ import { withBusiness } from '../db/tenant.js';
 import { DEPOSIT_RETURN_ITEM_PREFIX, VOUCHER_SALE_ITEM_ID } from '../device/push_schema.js';
 import { ApiError } from '../errors.js';
 import { loadTimeZone } from './overview.js';
+import { hasCard, hasCash, revenueOf } from './receipt_sql.js';
 import { GROSS_COLUMNS, RATES, sumTaxLines, taxLinesOf } from './tax.js';
 import { tipsByStaff } from './tips.js';
 import { openVoucherCents } from './vouchers.js';
@@ -15,18 +16,6 @@ import { openVoucherCents } from './vouchers.js';
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const NOT_FOUND = 'Diese Abrechnung gibt es nicht.';
-
-/**
- * Ob ein Bon bar bzw. mit Karte bezahlt hat, aus den Spalten von receipts (mit Vorsatz `p`, etwa `r.`). `mixed` ohne
- * Gutschein ist bar und Karte (v: 2); mit Gutschein (v: 3) zählt die Art, die einen Betrag hat. Wie `paymentKind` am Tablet.
- */
-export const hasCash = (p = '') =>
-  `(${p}payment_kind = 'cash' or (${p}payment_kind = 'mixed' and (${p}voucher_cents = 0 or ${p}cash_cents <> 0)))`;
-export const hasCard = (p = '') =>
-  `(${p}payment_kind = 'card' or (${p}payment_kind = 'mixed' and (${p}voucher_cents = 0 or ${p}card_cents <> 0)))`;
-
-/** Umsatz eines Bons: die Summe ohne verkaufte Gutscheine (Spalten von receipts mit Vorsatz `p`). */
-export const revenueOf = (p = '') => `(${p}total_cents - ${p}voucher_sale_cents)`;
 
 /**
  * Summe der Mengen der Zeilen eines Bons aus `receipts` (ohne Alias), deren Kennung `match` erfüllt. Nur für Bons, bei

@@ -28,6 +28,7 @@ create table vouchers (
   primary key (business_id, id)
 );
 create index vouchers_business_code on vouchers (business_id, code);
+create index vouchers_business_change on vouchers (business_id, change_seq);
 
 -- Eine Bewegung am Guthaben, höchstens eine je Gutschein und Bon. Bewusst ohne Fremdschlüssel auf vouchers: eine Einlösung
 -- kann vor dem Verkauf ankommen (andere Kassa), der signierte Bon gilt trotzdem.
@@ -42,6 +43,7 @@ create table voucher_movements (
   primary key (business_id, voucher_id, receipt_id),
   foreign key (business_id, receipt_id) references receipts (business_id, id)
 );
+create index voucher_movements_business_change on voucher_movements (business_id, change_seq);
 
 -- Firmenkunden für die Rechnung.
 create table customers (
@@ -56,6 +58,7 @@ create table customers (
   change_seq bigint not null,
   primary key (business_id, id)
 );
+create index customers_business_change on customers (business_id, change_seq);
 
 -- Empfänger der Rechnung zu einem Bon, eine Zeile je Fassung. Ohne Fremdschlüssel: Pakete können in beliebiger
 -- Reihenfolge ankommen.
