@@ -198,6 +198,34 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('auf 1024 × 600: der Grund für das ausgeschaltete "Zum '
+      'Terminal" steht ganz sichtbar bei den Tasten', (t) async {
+    const screen = Size(1024, 600);
+    await pumpKassa(t, size: screen);
+    await setSettings(t, (s) => s.copyWith(cardTipEnabled: true));
+    await tapItem(t, 'cola');
+    await tapItem(t, 'teigtaschen');
+    await t.pumpAndSettle();
+    await _tap(t, 'pay-card');
+    await _tap(t, 'tip-other');
+    await tapKeys(t, '9');
+    await t.pumpAndSettle();
+    expect(buttonOf(t, 'tip-go').onPressed, isNull);
+    final reason = t.getRect(find.byKey(const Key('tip-too-low')));
+    expect(
+      (Offset.zero & screen).intersect(reason),
+      reason,
+      reason: 'ganz im Bild',
+    );
+    for (final k in ['tip-none', 'tip-go']) {
+      final button = t.getRect(find.byKey(Key(k)));
+      expect(button.overlaps(reason), isFalse, reason: k);
+    }
+    // Nichts deckt die Zeile zu: ein Tipp auf ihre Mitte trifft sie selbst.
+    expect(find.byKey(const Key('tip-too-low')).hitTestable(), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('in jeder Sprache auf 960 × 600 mit Textskala 1,3: nichts läuft '
       'über, auch nicht mit Zahlenfeld und Nachfrage', (t) async {
     for (final language in AppLanguage.values) {

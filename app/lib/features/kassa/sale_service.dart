@@ -229,7 +229,11 @@ class SaleService {
     if (_ref.read(activeCardPaymentProvider) != null) {
       return const CardSaleFailed(CardSaleProblem.alreadyRunning);
     }
-    if (cashPartCents < 0 || tipCents < 0) {
+    // Ein Bar-Teil ab der Summe lässt der Karte nichts: nie starten, auch
+    // nicht bei einem Terminal ohne Kleinstbetrag.
+    if (cashPartCents < 0 ||
+        tipCents < 0 ||
+        (cashPartCents > 0 && cashPartCents >= cart.totalCents)) {
       return const CardSaleFailed(CardSaleProblem.notStarted);
     }
     final terminal = _ref.read(cardTerminalProvider);

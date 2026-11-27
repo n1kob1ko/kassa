@@ -1557,6 +1557,9 @@ class L10nZh extends L10n {
   String get openAmountAdd => '加入小票';
 
   @override
+  String get openAmountNeedTax => '请选择税率';
+
+  @override
   String openAmountLine(int percent) {
     return '杂项 $percent %';
   }

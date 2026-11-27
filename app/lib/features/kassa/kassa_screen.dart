@@ -113,9 +113,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   /// 0 ohne.
   int _cashPartCents = 0;
 
-  /// Die Karte mit Bar-Teil ist sicher gescheitert: der Bar-Teil und der
-  /// Grund, bis sich der Bon ändert oder eine Zahlung beginnt. Wird nicht
-  /// gespeichert.
+  /// Die Karte mit Bar-Teil ist sicher gescheitert (oder das Blatt
+  /// "Trinkgeld" wurde nach "Weiter zur Karte" verlassen): der Bar-Teil und
+  /// der Grund. Steht, bis der Bon bezahlt ist, "Bar" getippt wird oder sich
+  /// der Bon ändert; "Karte" versucht so lange den Rest mit demselben
+  /// Bar-Teil. Wird nicht gespeichert.
   ({int cashPartCents, CardSaleFailed failure})? _splitFailed;
 
   /// Steht ab dem ersten Tipp auf "Karte" bis zum Ergebnis; ein zweiter Tipp im
@@ -275,6 +277,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
 
   void _onPaid(SaleResult result) {
     setState(() {
+      _splitFailed = null;
       _paid = result;
       _side = _Side.done;
     });
@@ -289,8 +292,9 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   });
 
   /// "Karte": mit Trinkgeld bei Kartenzahlung zuerst das Blatt "Trinkgeld",
-  /// sonst direkt zum Terminal.
-  void _tapCard() => _toCard(0);
+  /// sonst direkt zum Terminal. Steht der Hinweis nach einer gescheiterten
+  /// Karte mit Bar-Teil, geht nur der Rest nach diesem Bar-Teil an die Karte.
+  void _tapCard() => _toCard(_splitFailed?.cashPartCents ?? 0);
 
   /// "Weiter zur Karte" im Blatt "Bar bezahlen": der Rest nach [cashPartCents]
   /// geht wie "Karte" weiter.
@@ -303,7 +307,6 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         return;
       }
       setState(() {
-        _splitFailed = null;
         _cashPartCents = cashPartCents;
         _side = _Side.tip;
       });
@@ -312,6 +315,22 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       _payByCard();
     }
   }
+
+  /// Zurück vom Blatt "Trinkgeld". Kam es von "Weiter zur Karte", liegt der
+  /// Bar-Teil vielleicht schon in der Hand: derselbe Hinweis wie nach einer
+  /// abgebrochenen Karte bleibt stehen.
+  void _backFromTip() => setState(() {
+    if (_cashPartCents > 0 && _splitFailed == null) {
+      _splitFailed = (
+        cashPartCents: _cashPartCents,
+        failure: const CardSaleFailed(
+          CardSaleProblem.terminal,
+          terminal: CardFailed(CardFailure.cancelled),
+        ),
+      );
+    }
+    _side = _Side.cart;
+  });
 
   Future<void> _payByCard({int tipCents = 0}) async {
     final staff = ref.read(sessionProvider);
@@ -325,7 +344,6 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     }
     _cardRunning = true;
     setState(() {
-      _splitFailed = null;
       _cardCents = terminalAmountCents(
         totalCents: cart.totalCents,
         cashPartCents: cashPartCents,
@@ -361,7 +379,8 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         _onPaid(sale);
       case final CardSaleFailed failure when cashPartCents > 0:
         // Der Bar-Teil liegt schon in der Hand: der Hinweis bleibt stehen,
-        // bis sich der Bon ändert oder eine Zahlung beginnt.
+        // bis der Bon bezahlt ist, "Bar" getippt wird oder sich der Bon
+        // ändert.
         setState(() {
           _side = _Side.cart;
           _splitFailed = (cashPartCents: cashPartCents, failure: failure);
@@ -454,12 +473,13 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       ref.watch(sessionProvider),
     );
     // Wird der Rabatt oder der freie Betrag ausgeschaltet, während sein Blatt
-    // offen ist, steht wieder der Bon da.
-    final side =
-        (_side == _Side.discount && !mayDiscount) ||
-            (_side == _Side.openAmount && !mayOpenAmount)
-        ? _Side.cart
-        : _side;
+    // offen ist, steht wieder der Bon da, auch wenn das Recht später
+    // zurückkommt: das Blatt öffnet sich nicht von selbst.
+    if ((_side == _Side.discount && !mayDiscount) ||
+        (_side == _Side.openAmount && !mayOpenAmount)) {
+      _side = _Side.cart;
+    }
+    final side = _side;
     if (catalog == null) return ColoredBox(color: c.ground);
 
     final favorites = [
@@ -594,7 +614,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             child: TipSheet(
               dueCents: cart.totalCents - _cashPartCents,
               receiptTotalCents: cart.totalCents,
-              onBack: () => setState(() => _side = _Side.cart),
+              onBack: _backFromTip,
               onPay: (tip) => _payByCard(tipCents: tip),
             ),
           ),

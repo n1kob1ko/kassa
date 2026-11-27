@@ -1589,6 +1589,9 @@ class L10nEn extends L10n {
   String get openAmountAdd => 'Add to receipt';
 
   @override
+  String get openAmountNeedTax => 'Choose a tax rate';
+
+  @override
   String openAmountLine(int percent) {
     return 'Misc. $percent %';
   }

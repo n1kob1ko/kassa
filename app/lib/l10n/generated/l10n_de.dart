@@ -1592,6 +1592,9 @@ class L10nDe extends L10n {
   String get openAmountAdd => 'Auf den Bon';
 
   @override
+  String get openAmountNeedTax => 'Steuersatz wählen';
+
+  @override
   String openAmountLine(int percent) {
     return 'Diverses $percent %';
   }

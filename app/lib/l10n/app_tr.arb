@@ -451,6 +451,7 @@
   "openAmountAmount": "Tutar",
   "openAmountTax": "KDV oranı",
   "openAmountAdd": "Fişe ekle",
+  "openAmountNeedTax": "Vergi oranı seçin",
   "openAmountLine": "Çeşitli {percent} %",
   "closeDiscounts": "İndirimler",
   "closeCardTip": "Kart bahşişi",

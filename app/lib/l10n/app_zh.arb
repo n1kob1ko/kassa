@@ -451,6 +451,7 @@
   "openAmountAmount": "金额",
   "openAmountTax": "税率",
   "openAmountAdd": "加入小票",
+  "openAmountNeedTax": "请选择税率",
   "openAmountLine": "杂项 {percent} %",
   "closeDiscounts": "折扣",
   "closeCardTip": "刷卡小费",

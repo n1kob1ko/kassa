@@ -1577,6 +1577,9 @@ class L10nTr extends L10n {
   String get openAmountAdd => 'Fişe ekle';
 
   @override
+  String get openAmountNeedTax => 'Vergi oranı seçin';
+
+  @override
   String openAmountLine(int percent) {
     return 'Çeşitli $percent %';
   }

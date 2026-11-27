@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 457 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 458 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -546,6 +546,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Betrag | المبلغ | Sonstiges: `openAmountAmount` |
 | Steuersatz | نسبة الضريبة | Sonstiges: `openAmountTax` |
 | Auf den Bon | أضف إلى الفاتورة | Sonstiges: `openAmountAdd` |
+| Steuersatz wählen | اختر نسبة الضريبة | Sonstiges: `openAmountNeedTax` |
 | Diverses {percent} % | متفرقات {percent} % | Sonstiges: `openAmountLine` |
 
 ## Unsicher

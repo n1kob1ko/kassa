@@ -782,6 +782,25 @@ void main() {
       expect(await cardPayments.pending(), isEmpty);
     });
 
+    test('Bar-Teil gleich der Summe oder darüber: nicht gestartet, nichts '
+        'geschrieben, auch bei einem Terminal ohne Kleinstbetrag', () async {
+      terminal.minimum = 0;
+      for (final cashPart in [cart.totalCents, cart.totalCents + 1]) {
+        final o = await service.payByCard(
+          paymentId: 'p1',
+          cart: cart,
+          staff: shop.anna,
+          cashPartCents: cashPart,
+          tipCents: 50,
+        ) as CardSaleFailed;
+        expect(o.problem, CardSaleProblem.notStarted, reason: '$cashPart');
+      }
+      expect(terminal.payments, isEmpty);
+      expect(await cardPayments.pending(), isEmpty);
+      expect(await shop.count('receipts'), 0);
+      expect(container.read(activeCardPaymentProvider), isNull);
+    });
+
     test('unklar mit Bar-Teil und Trinkgeld bestätigen: der Bon trägt beide, '
         'das Trinkgeld für die Person der Zahlung', () async {
       putOnRegister();
@@ -852,22 +871,25 @@ void main() {
       expect(printer.log, ['print+drawer:p1', 'print+drawer:p1']);
     });
 
-    test('unklar mit Bar-Teil bestätigen: die Lade geht mit dem Bon auf', () async {
-      await configure();
-      putOnRegister();
-      terminal.next = const CardUnknown();
-      await service.payByCard(
-        paymentId: 'p1',
-        cart: cart,
-        staff: shop.anna,
-        cashPartCents: 1000,
-      );
-      final p = (await cardPayments.pending()).single;
-      final catalog = (await container.read(catalogProvider.future))!;
-      final r = await service.confirmUnclear(p, catalog: catalog);
-      await r.print;
-      expect(printer.log, ['print+drawer:p1']);
-    });
+    test(
+      'unklar mit Bar-Teil bestätigen: die Lade geht mit dem Bon auf',
+      () async {
+        await configure();
+        putOnRegister();
+        terminal.next = const CardUnknown();
+        await service.payByCard(
+          paymentId: 'p1',
+          cart: cart,
+          staff: shop.anna,
+          cashPartCents: 1000,
+        );
+        final p = (await cardPayments.pending()).single;
+        final catalog = (await container.read(catalogProvider.future))!;
+        final r = await service.confirmUnclear(p, catalog: catalog);
+        await r.print;
+        expect(printer.log, ['print+drawer:p1']);
+      },
+    );
 
     test('terminalAmountCents: Summe ohne Bar-Teil, mit Trinkgeld', () {
       expect(

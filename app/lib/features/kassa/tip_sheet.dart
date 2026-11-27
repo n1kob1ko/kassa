@@ -255,6 +255,22 @@ class _TipSheetState extends ConsumerState<TipSheet> {
           height: KassaTokens.mainActionHeight,
           onPressed: canGo ? _go : null,
         ),
+        // Außerhalb der scrollenden Fläche: auch auf 600 dp Höhe zu sehen.
+        if (_tooLow) ...[
+          const SizedBox(height: KassaTokens.spaceSm),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              l.tipTooLow,
+              key: const Key('tip-too-low'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                color: KassaColors.of(context).warnInk,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -389,7 +405,8 @@ class _GuestPays extends StatelessWidget {
 }
 
 /// Die Zeile "Trinkgeld" mit dem Betrag über der Summe. Liegt der getippte
-/// Betrag darunter, steht in der Warnfarbe, dass er zu klein ist.
+/// Betrag darunter, steht sie in der Warnfarbe; warum "Zum Terminal" aus
+/// ist, steht bei den Tasten.
 class _TipField extends StatelessWidget {
   const _TipField({required this.tipCents, required this.tooLow});
 
@@ -434,20 +451,6 @@ class _TipField extends StatelessWidget {
               ),
             ],
           ),
-          if (tooLow) ...[
-            const SizedBox(height: KassaTokens.spaceMd),
-            Semantics(
-              liveRegion: true,
-              child: Text(
-                l.tipTooLow,
-                key: const Key('tip-too-low'),
-                style: text.bodyLarge!.copyWith(
-                  color: c.warnInk,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

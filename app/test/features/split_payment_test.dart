@@ -210,6 +210,90 @@ void main() {
       {'kind': 'cash', 'amount_cents': 965},
     ]);
     expect(await receiptCount(t), 1);
+    expect(await queryRows(t, 'SELECT id FROM pending_card_payments'), isEmpty);
+  });
+
+  testWidgets('"Karte" bei stehendem Hinweis versucht den Rest mit demselben '
+      'Bar-Teil noch einmal: ein Bon mit zwei Zahlungen, der Hinweis ist '
+      'weg', (t) async {
+    await openSplit(t);
+    terminalOf(t).next = const CardFailed(CardFailure.declined);
+    await tapKeys(t, '5');
+    await _tap(t, 'split-go');
+    expect(find.byKey(const Key('split-card-failed')), findsOneWidget);
+    terminalOf(t).next = const CardPaid(txCode: 'TX2');
+    await _tap(t, 'pay-card');
+    expect(terminalOf(t).payments.last.amountCents, 465);
+    expect(
+      await queryRows(
+        t,
+        'SELECT position, kind, amount_cents FROM payments ORDER BY position',
+      ),
+      [
+        {'position': 0, 'kind': 'cash', 'amount_cents': 500},
+        {'position': 1, 'kind': 'card', 'amount_cents': 465},
+      ],
+    );
+    expect(await receiptCount(t), 1);
+    expect(textOf(t, const Key('cash-part-done')), 'Bar-Teil 5,00 €');
+    expect(find.byKey(const Key('split-card-failed')), findsNothing);
+  });
+
+  testWidgets('"Karte" bei stehendem Hinweis scheitert wieder: der Hinweis '
+      'bleibt mit demselben Bar-Teil', (t) async {
+    await openSplit(t);
+    terminalOf(t).next = const CardFailed(CardFailure.declined);
+    await tapKeys(t, '5');
+    await _tap(t, 'split-go');
+    terminalOf(t).next = const CardFailed(CardFailure.cancelled);
+    await _tap(t, 'pay-card');
+    expect(terminalOf(t).payments.last.amountCents, 465);
+    expect(await receiptCount(t), 0);
+    expect(
+      textOf(t, const Key('split-card-failed')),
+      contains('5,00 € bar zurückgeben'),
+    );
+  });
+
+  testWidgets('mit Trinkgeld: zurück vom Blatt "Trinkgeld" nach "Weiter zur '
+      'Karte" lässt den Hinweis stehen; "Karte" zeigt wieder den Rest', (
+    t,
+  ) async {
+    await _splitFive(t, tip: true);
+    expect(find.byKey(const Key('tip-sheet')), findsOneWidget);
+    await _tap(t, 'tip-back');
+    expect(find.byKey(const Key('tip-sheet')), findsNothing);
+    expect(
+      textOf(t, const Key('split-card-failed')),
+      contains('5,00 € bar zurückgeben'),
+    );
+    await _tap(t, 'pay-card');
+    expect(textOf(t, const Key('tip-due')), '4,65 €');
+    await _tap(t, 'tip-none');
+    expect(terminalOf(t).payments.single.amountCents, 465);
+    expect(
+      await queryRows(
+        t,
+        'SELECT position, kind, amount_cents FROM payments ORDER BY position',
+      ),
+      [
+        {'position': 0, 'kind': 'cash', 'amount_cents': 500},
+        {'position': 1, 'kind': 'card', 'amount_cents': 465},
+      ],
+    );
+    expect(find.byKey(const Key('split-card-failed')), findsNothing);
+  });
+
+  testWidgets('mit Trinkgeld: nach "Bar" ist der Hinweis weg, "Karte" bucht '
+      'wieder die ganze Summe', (t) async {
+    await _splitFive(t, tip: true);
+    await _tap(t, 'tip-back');
+    expect(find.byKey(const Key('split-card-failed')), findsOneWidget);
+    await _tap(t, 'pay-cash');
+    await _tap(t, 'cash-back');
+    expect(find.byKey(const Key('split-card-failed')), findsNothing);
+    await _tap(t, 'pay-card');
+    expect(textOf(t, const Key('tip-due')), '9,65 €');
   });
 
   testWidgets('der Hinweis geht weg, sobald sich der Bon ändert', (t) async {

@@ -341,6 +341,36 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('auf 1024 × 600: mit Betrag und ohne Satz sagt eine Zeile '
+      'unter "Auf den Bon", warum die Taste aus ist; mit Satz ist sie weg', (
+    t,
+  ) async {
+    const screen = Size(1024, 600);
+    await _open(t, size: screen);
+    await _tap(t, 'open-amount-button');
+    expect(find.byKey(const Key('open-amount-reason')), findsNothing);
+    await tapKeys(t, '1 2 , 5 0');
+    await t.pumpAndSettle();
+    expect(buttonOf(t, 'open-amount-add').onPressed, isNull);
+    expect(textOf(t, const Key('open-amount-reason')), 'Steuersatz wählen');
+    final reason = t.getRect(find.byKey(const Key('open-amount-reason')));
+    expect(
+      (Offset.zero & screen).intersect(reason),
+      reason,
+      reason: 'ganz im Bild',
+    );
+    final button = t.getRect(find.byKey(const Key('open-amount-add')));
+    expect(reason.top, greaterThanOrEqualTo(button.bottom));
+    expect(
+      find.byKey(const Key('open-amount-reason')).hitTestable(),
+      findsOneWidget,
+    );
+    await _tap(t, 'open-rate-10');
+    expect(find.byKey(const Key('open-amount-reason')), findsNothing);
+    expect(buttonOf(t, 'open-amount-add').onPressed, isNotNull);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('in jeder Sprache auf 960 × 600 mit Textskala 1,3: nichts läuft '
       'über, weder Kopf noch Blatt noch Zeile', (t) async {
     for (final language in AppLanguage.values) {

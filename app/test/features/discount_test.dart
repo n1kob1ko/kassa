@@ -295,6 +295,59 @@ void main() {
     expect(buttonOf(t, 'discount-apply').onPressed, isNull);
   });
 
+  testWidgets('fällt das Recht weg, während das Blatt offen ist, öffnet es '
+      'sich nicht von selbst, wenn das Recht zurückkommt', (t) async {
+    await openWithDiscount(
+      t,
+      FeatureAccess.chefOnly,
+      pin: '4711',
+      ids: ['teigtaschen'],
+    );
+    await _tap(t, 'discount-button');
+    expect(find.byKey(const Key('discount-sheet')), findsOneWidget);
+    containerOf(t).read(sessionProvider.notifier).logout();
+    await t.pumpAndSettle();
+    await typePin(t, '1234');
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('discount-sheet')), findsNothing);
+    containerOf(t).read(sessionProvider.notifier).logout();
+    await t.pumpAndSettle();
+    await typePin(t, '4711');
+    await t.pumpAndSettle();
+    expect(containerOf(t).read(sessionProvider)?.isChef, isTrue);
+    expect(find.byKey(const Key('discount-sheet')), findsNothing);
+    expect(find.byKey(const Key('discount-button')), findsOneWidget);
+    // Mit dem Schalter: aus und wieder ein, das Blatt bleibt zu.
+    await _tap(t, 'discount-button');
+    expect(find.byKey(const Key('discount-sheet')), findsOneWidget);
+    await setSettings(t, (s) => s.copyWith(discountAccess: FeatureAccess.off));
+    expect(find.byKey(const Key('discount-sheet')), findsNothing);
+    await setSettings(
+      t,
+      (s) => s.copyWith(discountAccess: FeatureAccess.chefOnly),
+    );
+    expect(find.byKey(const Key('discount-sheet')), findsNothing);
+    expect(find.byKey(const Key('discount-button')), findsOneWidget);
+    // Ebenso mit dem Blatt "Freier Betrag".
+    await setSettings(
+      t,
+      (s) => s.copyWith(openAmountAccess: FeatureAccess.all),
+    );
+    await _tap(t, 'open-amount-button');
+    expect(find.byKey(const Key('open-amount-sheet')), findsOneWidget);
+    await setSettings(
+      t,
+      (s) => s.copyWith(openAmountAccess: FeatureAccess.off),
+    );
+    expect(find.byKey(const Key('open-amount-sheet')), findsNothing);
+    await setSettings(
+      t,
+      (s) => s.copyWith(openAmountAccess: FeatureAccess.all),
+    );
+    expect(find.byKey(const Key('open-amount-sheet')), findsNothing);
+    expect(find.byKey(const Key('open-amount-button')), findsOneWidget);
+  });
+
   testWidgets('nur Chef: Anna hat keine Taste; der Rabatt des Chefs bleibt, '
       'Anna kann ihn nicht ändern', (t) async {
     await openWithDiscount(

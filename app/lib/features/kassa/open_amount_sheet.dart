@@ -17,7 +17,8 @@ import 'cash_sheet.dart' show PayColumnFrame;
 /// "Freier Betrag": die rechte Spalte für einen Betrag ohne Artikel. Oben der
 /// Betrag über das Zahlenfeld (höchstens 9.999,99 €), darunter der
 /// Steuersatz (20, 10, 13 oder 0 %; keiner ist vorgewählt). "Auf den Bon"
-/// geht erst mit Betrag über 0 und Satz und legt eine eigene Zeile an.
+/// geht erst mit Betrag über 0 und Satz und legt eine eigene Zeile an; fehlt
+/// mit Betrag nur der Satz, steht das unter der Taste.
 class OpenAmountSheet extends ConsumerStatefulWidget {
   const OpenAmountSheet({super.key, required this.onClose});
 
@@ -144,15 +145,31 @@ class _OpenAmountSheetState extends ConsumerState<OpenAmountSheet> {
           ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                key: const Key('open-amount-add'),
-                label: l.openAmountAdd,
-                icon: LucideIcons.plus,
-                height: KassaTokens.mainActionHeight,
-                onPressed: ready ? () => _add(cents, rate) : null,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PrimaryButton(
+                  key: const Key('open-amount-add'),
+                  label: l.openAmountAdd,
+                  icon: LucideIcons.plus,
+                  height: KassaTokens.mainActionHeight,
+                  onPressed: ready ? () => _add(cents, rate) : null,
+                ),
+                // Außerhalb der scrollenden Fläche: auf 600 dp Höhe liegen
+                // die Steuersätze unter dem Rand, der Grund steht trotzdem da.
+                if (cents >= 1 && rate == null) ...[
+                  const SizedBox(height: KassaTokens.spaceSm),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      l.openAmountNeedTax,
+                      key: const Key('open-amount-reason'),
+                      textAlign: TextAlign.center,
+                      style: text.bodyMedium!.copyWith(color: c.ink2),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],

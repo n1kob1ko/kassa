@@ -2810,6 +2810,12 @@ abstract class L10n {
   /// **'Auf den Bon'**
   String get openAmountAdd;
 
+  /// Zeile unter Auf den Bon im Blatt Freier Betrag, solange ein Betrag getippt und kein Steuersatz gewählt ist: warum die Taste aus ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Steuersatz wählen'**
+  String get openAmountNeedTax;
+
   /// Name einer Bon-Zeile mit freiem Betrag am Bildschirm, etwa "Diverses 20 %"; gespeichert und gedruckt wird immer der deutsche Name.
   ///
   /// In de, this message translates to:

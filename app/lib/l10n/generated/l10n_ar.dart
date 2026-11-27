@@ -1589,6 +1589,9 @@ class L10nAr extends L10n {
   String get openAmountAdd => 'أضف إلى الفاتورة';
 
   @override
+  String get openAmountNeedTax => 'اختر نسبة الضريبة';
+
+  @override
   String openAmountLine(int percent) {
     return 'متفرقات $percent %';
   }

@@ -218,8 +218,11 @@ class FakeCardTerminal implements CardTerminal {
   @override
   String get providerName => 'sumup';
 
+  /// Der Kleinstbetrag; SumUp: 1,00 €.
+  int minimum = 100;
+
   @override
-  int get minimumCents => 100;
+  int get minimumCents => minimum;
 
   @override
   Future<CardTerminalStatus> status() async => statusValue;

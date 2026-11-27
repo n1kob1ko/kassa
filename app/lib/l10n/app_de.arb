@@ -2325,6 +2325,10 @@
   "@openAmountAdd": {
     "description": "Taste im Blatt Freier Betrag: den Betrag als eigene Zeile auf den Bon legen."
   },
+  "openAmountNeedTax": "Steuersatz wählen",
+  "@openAmountNeedTax": {
+    "description": "Zeile unter Auf den Bon im Blatt Freier Betrag, solange ein Betrag getippt und kein Steuersatz gewählt ist: warum die Taste aus ist."
+  },
   "openAmountLine": "Diverses {percent} %",
   "@openAmountLine": {
     "description": "Name einer Bon-Zeile mit freiem Betrag am Bildschirm, etwa \"Diverses 20 %\"; gespeichert und gedruckt wird immer der deutsche Name.",
