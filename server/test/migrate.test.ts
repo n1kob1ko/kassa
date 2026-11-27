@@ -209,3 +209,92 @@ test('0004 läuft auf einer leeren Datenbank mit Stand 0003, die neuen Spalten h
     ]);
   });
 });
+
+test('0005 läuft auf einer Datenbank mit Stand 0004 und alten Bons: neue Spalten 0, receipts bleibt unveränderlich', async () => {
+  await withFreshDb(async (c) => {
+    await migrateTo(c, '0004_payments.sql');
+    const b = await c.query<{ id: string }>(`insert into businesses (name, change_seq) values ('Alt', nextval('change_seq')) returning id`);
+    const biz = b.rows[0]!.id;
+    await c.query(
+      `insert into receipts (business_id, id, register_id, device_id, number, created_at, kind, staff_id, staff_name,
+                             goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload, cash_cents)
+       values ($1, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), 1, now(), 'sale', 's', 'S', 990, 0, 990, 'cash', true, '\\x00', '{}', 990)`,
+      [biz],
+    );
+
+    expect(await migrateTo(c, '0005_vouchers.sql')).toEqual(['0005_vouchers.sql']);
+    expect((await c.query('select cash_cents, voucher_cents, voucher_sale_cents, deposit_return_cents, public_token from receipts')).rows).toEqual([
+      { cash_cents: 990, voucher_cents: 0, voucher_sale_cents: 0, deposit_return_cents: 0, public_token: null },
+    ]);
+    await expect(c.query('update receipts set voucher_cents = 1')).rejects.toThrow(/unveränderlich/);
+    await expect(c.query('delete from receipts')).rejects.toThrow(/unveränderlich/);
+
+    const cols = await c.query(
+      `select column_name, data_type, is_nullable, column_default from information_schema.columns
+        where table_name = 'receipts' and column_name in ('voucher_cents', 'voucher_sale_cents', 'deposit_return_cents', 'public_token')
+        order by column_name`,
+    );
+    expect(cols.rows).toEqual([
+      { column_name: 'deposit_return_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { column_name: 'public_token', data_type: 'text', is_nullable: 'YES', column_default: null },
+      { column_name: 'voucher_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+      { column_name: 'voucher_sale_cents', data_type: 'integer', is_nullable: 'NO', column_default: '0' },
+    ]);
+
+    // Zeilen-Schutz je Betrieb auf allen neuen Tabellen außer receipt_links (die Seite sucht ohne Anmeldung).
+    const tables = ['customers', 'receipt_deliveries', 'receipt_links', 'receipt_recipients', 'voucher_movements', 'vouchers'];
+    const rls = await c.query(
+      `select c.relname, c.relrowsecurity, c.relforcerowsecurity, count(p.policyname)::int as policies
+         from pg_class c left join pg_policies p on p.tablename = c.relname
+        where c.relname = any($1) group by c.relname, c.relrowsecurity, c.relforcerowsecurity order by c.relname`,
+      [tables],
+    );
+    expect(rls.rows).toEqual(
+      tables.map((relname) =>
+        relname === 'receipt_links'
+          ? { relname, relrowsecurity: false, relforcerowsecurity: false, policies: 0 }
+          : { relname, relrowsecurity: true, relforcerowsecurity: true, policies: 1 },
+      ),
+    );
+
+    // Nur anfügen: dieselbe Sperre wie bei receipts.
+    const triggers = await c.query(
+      `select event_object_table as t, string_agg(event_manipulation, ',' order by event_manipulation) as events
+         from information_schema.triggers where action_statement = 'EXECUTE FUNCTION reject_change()' and event_object_table = any($1)
+        group by event_object_table order by event_object_table`,
+      [tables],
+    );
+    expect(triggers.rows).toEqual(
+      ['receipt_deliveries', 'receipt_links', 'receipt_recipients', 'voucher_movements'].map((t) => ({ t, events: 'DELETE,UPDATE' })),
+    );
+
+    // Rechte für den Dienst: anfügen und lesen überall, ändern nur bei den Firmenkunden.
+    const grants = await c.query(
+      `select t, has_table_privilege('kassa_app', t, 'select') as sel, has_table_privilege('kassa_app', t, 'insert') as ins,
+              has_table_privilege('kassa_app', t, 'update') as upd, has_table_privilege('kassa_app', t, 'delete') as del
+         from unnest($1::text[]) as t order by t`,
+      [tables],
+    );
+    expect(grants.rows).toEqual(
+      tables.map((t) => ({ t, sel: true, ins: true, upd: t === 'customers', del: false })),
+    );
+
+    // Die Sperre der neuen Tabellen greift auch für Bewegungen und Schlüssel.
+    const receiptId = (await c.query<{ id: string }>('select id from receipts')).rows[0]!.id;
+    await c.query(`insert into receipt_links (token, business_id, receipt_id) values ('t', $1, $2)`, [biz, receiptId]);
+    await expect(c.query(`update receipt_links set token = 'u'`)).rejects.toThrow(/unveränderlich/);
+    await c.query(
+      `insert into voucher_movements (business_id, voucher_id, receipt_id, kind, amount_cents, created_at, change_seq)
+       values ($1, gen_random_uuid(), $2, 'sale', 2500, now(), nextval('change_seq'))`,
+      [biz, receiptId],
+    );
+    await expect(c.query('delete from voucher_movements')).rejects.toThrow(/unveränderlich/);
+    await expect(
+      c.query(
+        `insert into voucher_movements (business_id, voucher_id, receipt_id, kind, amount_cents, created_at, change_seq)
+         values ($1, gen_random_uuid(), $2, 'refund', 1, now(), 1)`,
+        [biz, receiptId],
+      ),
+    ).rejects.toThrow(/check constraint/);
+  });
+});

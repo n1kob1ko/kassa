@@ -10,6 +10,7 @@ import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/sync/push_wire.dart';
 
 import '../support/sales.dart' show TestShop, cart, discounted;
+import '../support/sales.dart' show applied, sellVoucher;
 
 /// Das Paket eines Tablets mit Bon `v: 2` (die App baut seit 1.11.0 nur
 /// noch diese Form; `push_request.json` ist das Paket von 1.10.0).
@@ -45,6 +46,7 @@ Future<void> insertReceiptOf(
           discountPercent: Value(discount?['percent'] as int?),
           discountAmountCents: Value(discount?['amountCents'] as int? ?? 0),
           discountReason: Value(discount?['reason'] as String?),
+          publicToken: Value(r['publicToken'] as String?),
         ),
       );
   for (final l in (r['lines'] as List).cast<Map<String, dynamic>>()) {
@@ -109,10 +111,34 @@ Future<void> insertReceiptOf(
             providerTxCode: Value(p['providerTxCode'] as String?),
             cardScheme: Value(p['cardScheme'] as String?),
             cardLast4: Value(p['cardLast4'] as String?),
+            voucherId: Value(p['voucherId'] as String?),
+            voucherCode: Value(p['voucherCode'] as String?),
+            voucherBalanceAfterCents: Value(
+              p['voucherBalanceAfterCents'] as int?,
+            ),
           ),
         );
   }
   final e = r['rksv'] as Map<String, dynamic>?;
+  // Verkaufte Gutscheine stehen beim Verkauf; ein Storno zeigt sie aus dem
+  // Verkauf mit negativem Wert.
+  if (r['kind'] == 'sale') {
+    for (final v in (r['vouchers'] as List? ?? const []).cast<Map>()) {
+      await db
+          .into(db.voucherRows)
+          .insert(
+            VoucherRowsCompanion.insert(
+              id: v['id'] as String,
+              code: v['code'] as String,
+              valueCents: v['valueCents'] as int,
+              createdAt: time(r['createdAt'] as String),
+              soldReceiptId: Value(r['id'] as String),
+              soldLinePosition: Value(v['linePosition'] as int),
+              isTest: r['test'] as bool,
+            ),
+          );
+    }
+  }
   if (e != null && withProtocol) {
     await db
         .into(db.rksvEntryRows)
@@ -508,6 +534,151 @@ void main() {
       [for (final l in lines) (l['gross']['20'], l['gross']['10'])],
       [(522, 0), (0, 964)],
     );
+  });
+
+  test(
+    'Bon v: 3: Gutschein-Verkauf geht mit vouchers hinaus, '
+    'Gutschein-Zahlung mit Code und Restguthaben, publicToken ist dabei',
+    () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final voucher = await sellVoucher(shop, 1000, saleId: 'gv');
+      await shop.receipts.finalizeCashSale(
+        saleId: 'einloesen',
+        cart: cart.applyVoucher(applied(voucher)),
+        givenCents: 1000,
+        staff: shop.anna,
+      );
+      await sellVoucher(shop, 2000, saleId: 'gv2');
+      final voided = await shop.receipts.voidReceipt('gv2', staff: shop.anna);
+      final second = (await shop.receipts.byId('gv2')).soldVouchers.single;
+
+      Future<Map<String, dynamic>> wire(String id) async =>
+          jsonDecode(
+                jsonEncode(
+                  await PushPayloads(shop.db).build(entry(1, 'receipt', id)),
+                ),
+              )['receipt']
+              as Map<String, dynamic>;
+      final sale = await wire('gv');
+      final redeem = await wire('einloesen');
+      final voidSale = await wire(voided.id);
+
+      for (final (id, r) in [
+        ('gv', sale),
+        ('einloesen', redeem),
+        (voided.id, voidSale),
+      ]) {
+        expect(r['v'], 3, reason: id);
+        expect(
+          r['publicToken'],
+          matches(RegExp(r'^[A-Za-z0-9_-]{22}$')),
+          reason: id,
+        );
+        expect(
+          r['publicToken'],
+          (await shop.receipts.byId(id)).publicToken,
+          reason: id,
+        );
+      }
+      expect({
+        sale['publicToken'],
+        redeem['publicToken'],
+        voidSale['publicToken'],
+      }, hasLength(3));
+
+      expect(sale['vouchers'], [
+        {
+          'id': voucher.id,
+          'code': voucher.code,
+          'valueCents': 1000,
+          'linePosition': 0,
+        },
+      ]);
+      expect((sale['lines'] as List).single['itemId'], 'voucher-sale');
+      expect(
+        (sale['payments'] as List).single,
+        containsPair('voucherId', null),
+      );
+      expect(
+        (sale['payments'] as List).single,
+        containsPair('voucherCode', null),
+      );
+      expect(
+        (sale['payments'] as List).single,
+        containsPair('voucherBalanceAfterCents', null),
+      );
+
+      expect(redeem['vouchers'], isEmpty);
+      expect(redeem['totalCents'], 1820);
+      expect(redeem['payments'], [
+        {
+          'position': 0,
+          'kind': 'voucher',
+          'amountCents': 1000,
+          'givenCents': 1000,
+          'changeCents': 0,
+          'tipCents': 0,
+          'tipStaffId': null,
+          'tipStaffName': null,
+          'provider': null,
+          'providerTxCode': null,
+          'cardScheme': null,
+          'cardLast4': null,
+          'voucherId': voucher.id,
+          'voucherCode': voucher.code,
+          'voucherBalanceAfterCents': 0,
+        },
+        {
+          'position': 1,
+          'kind': 'cash',
+          'amountCents': 820,
+          'givenCents': 1000,
+          'changeCents': 180,
+          'tipCents': 0,
+          'tipStaffId': null,
+          'tipStaffName': null,
+          'provider': null,
+          'providerTxCode': null,
+          'cardScheme': null,
+          'cardLast4': null,
+          'voucherId': null,
+          'voucherCode': null,
+          'voucherBalanceAfterCents': null,
+        },
+      ]);
+
+      // Das Storno eines Gutschein-Verkaufs zeigt den Gutschein mit negativem Wert.
+      expect(voidSale['voidsReceiptId'], 'gv2');
+      expect(voidSale['vouchers'], [
+        {
+          'id': second.voucherId,
+          'code': second.code,
+          'valueCents': -2000,
+          'linePosition': 0,
+        },
+      ]);
+    },
+  );
+
+  test('push_request_v3.json: was das Tablet für die Beispiel-Bons baut, ist '
+      'genau die Datei', () async {
+    final v3 = jsonDecode(
+      File('../shared/fixtures/sync/push_request_v3.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final expected = (v3['entries'] as List).cast<Map<String, dynamic>>();
+    for (final e in expected) {
+      await insertReceiptOf(db, e['receipt'] as Map<String, dynamic>);
+    }
+    for (final e in expected) {
+      final r = e['receipt'] as Map<String, dynamic>;
+      final built = await payloads.build(
+        entry(e['seq'] as int, 'receipt', r['id'] as String),
+      );
+      // Über JSON, wie es hinausgeht: so zählen auch die Arten der Zahlen.
+      expect(jsonDecode(jsonEncode(built)), e, reason: r['id'] as String);
+    }
+    expect(expected, hasLength(5));
   });
 
   test('Bericht, den es nicht mehr gibt, ergibt null', () async {

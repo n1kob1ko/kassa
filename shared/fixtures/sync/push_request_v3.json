@@ -1,0 +1,416 @@
+{
+  "deviceId": "0b8f6a52-3c1d-4e7a-9f21-5d6c8a1e4b90",
+  "entries": [
+    {
+      "seq": 1,
+      "kind": "receipt",
+      "receipt": {
+        "v": 3,
+        "id": "3b000000-0000-4000-8000-000000000001",
+        "number": 11,
+        "createdAt": "2026-11-27T09:00:00.000Z",
+        "staffId": "staff-anna",
+        "staffName": "Anna",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "sale",
+        "voidsReceiptId": null,
+        "goodsCents": 2820,
+        "depositCents": 25,
+        "totalCents": 2845,
+        "test": true,
+        "tipCents": 0,
+        "discountCents": 0,
+        "discount": null,
+        "publicToken": "Bsp3Verkauf1GutscheinA",
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "cola",
+            "name": "Cola 0,33 l",
+            "info": null,
+            "unitPriceCents": 320,
+            "quantity": 1,
+            "unitDepositCents": 25,
+            "gross": {
+              "20": 320,
+              "10": 0,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          },
+          {
+            "position": 1,
+            "itemId": "voucher-sale",
+            "name": "Gutschein",
+            "info": null,
+            "unitPriceCents": 2500,
+            "quantity": 1,
+            "unitDepositCents": 0,
+            "gross": {
+              "20": 0,
+              "10": 0,
+              "13": 0,
+              "0": 2500,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          }
+        ],
+        "vouchers": [
+          {
+            "id": "3b000000-0000-4000-8000-0000000000a1",
+            "code": "12345678",
+            "valueCents": 2500,
+            "linePosition": 1
+          }
+        ],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "cash",
+            "amountCents": 2845,
+            "givenCents": 3000,
+            "changeCents": 155,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": null,
+            "voucherCode": null,
+            "voucherBalanceAfterCents": null
+          }
+        ],
+        "rksv": null
+      }
+    },
+    {
+      "seq": 2,
+      "kind": "receipt",
+      "receipt": {
+        "v": 3,
+        "id": "3b000000-0000-4000-8000-000000000002",
+        "number": 12,
+        "createdAt": "2026-11-27T09:10:00.000Z",
+        "staffId": "staff-anna",
+        "staffName": "Anna",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "sale",
+        "voidsReceiptId": null,
+        "goodsCents": 990,
+        "depositCents": 0,
+        "totalCents": 990,
+        "test": true,
+        "tipCents": 0,
+        "discountCents": 0,
+        "discount": null,
+        "publicToken": "Bsp3Einloesen2Gutschei",
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "huhn-bowl",
+            "name": "Huhn Bowl",
+            "info": null,
+            "unitPriceCents": 990,
+            "quantity": 1,
+            "unitDepositCents": 0,
+            "gross": {
+              "20": 0,
+              "10": 990,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          }
+        ],
+        "vouchers": [],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "voucher",
+            "amountCents": 500,
+            "givenCents": 500,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": "3b000000-0000-4000-8000-0000000000a1",
+            "voucherCode": "12345678",
+            "voucherBalanceAfterCents": 2000
+          },
+          {
+            "position": 1,
+            "kind": "cash",
+            "amountCents": 490,
+            "givenCents": 500,
+            "changeCents": 10,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": null,
+            "voucherCode": null,
+            "voucherBalanceAfterCents": null
+          }
+        ],
+        "rksv": null
+      }
+    },
+    {
+      "seq": 3,
+      "kind": "receipt",
+      "receipt": {
+        "v": 3,
+        "id": "3b000000-0000-4000-8000-000000000003",
+        "number": 13,
+        "createdAt": "2026-11-27T09:20:00.000Z",
+        "staffId": "staff-anna",
+        "staffName": "Anna",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "voided",
+        "voidsReceiptId": "3b000000-0000-4000-8000-000000000002",
+        "goodsCents": -990,
+        "depositCents": 0,
+        "totalCents": -990,
+        "test": true,
+        "tipCents": 0,
+        "discountCents": 0,
+        "discount": null,
+        "publicToken": "Bsp3Storno3Einloesen_x",
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "huhn-bowl",
+            "name": "Huhn Bowl",
+            "info": null,
+            "unitPriceCents": 990,
+            "quantity": -1,
+            "unitDepositCents": 0,
+            "gross": {
+              "20": 0,
+              "10": -990,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          }
+        ],
+        "vouchers": [],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "voucher",
+            "amountCents": -500,
+            "givenCents": 0,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": "3b000000-0000-4000-8000-0000000000a1",
+            "voucherCode": "12345678",
+            "voucherBalanceAfterCents": 2500
+          },
+          {
+            "position": 1,
+            "kind": "cash",
+            "amountCents": -490,
+            "givenCents": 0,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": null,
+            "voucherCode": null,
+            "voucherBalanceAfterCents": null
+          }
+        ],
+        "rksv": null
+      }
+    },
+    {
+      "seq": 4,
+      "kind": "receipt",
+      "receipt": {
+        "v": 3,
+        "id": "3b000000-0000-4000-8000-000000000004",
+        "number": 14,
+        "createdAt": "2026-11-27T09:30:00.000Z",
+        "staffId": "staff-anna",
+        "staffName": "Anna",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "sale",
+        "voidsReceiptId": null,
+        "goodsCents": 0,
+        "depositCents": -75,
+        "totalCents": -75,
+        "test": true,
+        "tipCents": 0,
+        "discountCents": 0,
+        "discount": null,
+        "publicToken": "Bsp3PfandZurueck4-abcd",
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "deposit-return-25",
+            "name": "Pfand zurück",
+            "info": null,
+            "unitPriceCents": 0,
+            "quantity": 3,
+            "unitDepositCents": -25,
+            "gross": {
+              "20": 0,
+              "10": 0,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          }
+        ],
+        "vouchers": [],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "cash",
+            "amountCents": -75,
+            "givenCents": 0,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": null,
+            "voucherCode": null,
+            "voucherBalanceAfterCents": null
+          }
+        ],
+        "rksv": null
+      }
+    },
+    {
+      "seq": 5,
+      "kind": "receipt",
+      "receipt": {
+        "v": 3,
+        "id": "3b000000-0000-4000-8000-000000000005",
+        "number": 15,
+        "createdAt": "2026-11-27T09:40:00.000Z",
+        "staffId": "staff-anna",
+        "staffName": "Anna",
+        "businessDayId": "7c1e0d34-2a5b-4c86-8d19-0f3e6b9a7d21",
+        "kind": "voided",
+        "voidsReceiptId": "3b000000-0000-4000-8000-000000000001",
+        "goodsCents": -2820,
+        "depositCents": -25,
+        "totalCents": -2845,
+        "test": true,
+        "tipCents": 0,
+        "discountCents": 0,
+        "discount": null,
+        "publicToken": "Bsp3Storno5Verkauf-xyz",
+        "lines": [
+          {
+            "position": 0,
+            "itemId": "cola",
+            "name": "Cola 0,33 l",
+            "info": null,
+            "unitPriceCents": 320,
+            "quantity": -1,
+            "unitDepositCents": 25,
+            "gross": {
+              "20": -320,
+              "10": 0,
+              "13": 0,
+              "0": 0,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          },
+          {
+            "position": 1,
+            "itemId": "voucher-sale",
+            "name": "Gutschein",
+            "info": null,
+            "unitPriceCents": 2500,
+            "quantity": -1,
+            "unitDepositCents": 0,
+            "gross": {
+              "20": 0,
+              "10": 0,
+              "13": 0,
+              "0": -2500,
+              "19": 0
+            },
+            "options": [],
+            "discountCents": 0,
+            "discount": null
+          }
+        ],
+        "vouchers": [
+          {
+            "id": "3b000000-0000-4000-8000-0000000000a1",
+            "code": "12345678",
+            "valueCents": -2500,
+            "linePosition": 1
+          }
+        ],
+        "payments": [
+          {
+            "position": 0,
+            "kind": "cash",
+            "amountCents": -2845,
+            "givenCents": 0,
+            "changeCents": 0,
+            "tipCents": 0,
+            "tipStaffId": null,
+            "tipStaffName": null,
+            "provider": null,
+            "providerTxCode": null,
+            "cardScheme": null,
+            "cardLast4": null,
+            "voucherId": null,
+            "voucherCode": null,
+            "voucherBalanceAfterCents": null
+          }
+        ],
+        "rksv": null
+      }
+    }
+  ]
+}

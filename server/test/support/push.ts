@@ -110,3 +110,23 @@ export function entry(seq: number, kind: string, value: object): object {
   const key = { rksv_certificate: 'certificate', rksv_chain: 'chain', cash_movement: 'movement', item_change: 'change' }[kind] ?? kind;
   return { seq, kind, [key]: value };
 }
+
+/**
+ * Ein Bon in der Form `v: 3` aus `push_request_v3.json`: der Eintrag mit `seq` [seq] (1 Gutschein-Verkauf, 2 Gutschein und
+ * Rest bar, 3 Storno von 2, 4 nur Pfand zurück, 5 Storno von 1), wie er in der Datei steht.
+ */
+export function receiptV3(seq: number, overrides: Record<string, unknown> = {}): Record<string, any> {
+  const request = syncFixture('push_request_v3') as { entries: { seq: number; receipt: Record<string, any> }[] };
+  return { ...request.entries.find((e) => e.seq === seq)!.receipt, ...overrides };
+}
+
+/** Derselbe Bon wie [v2] in der Form `v: 3`: ohne Schlüssel der Seite, ohne Gutscheine, Zahlungen ohne Gutschein-Felder. */
+export function asV3(v2: Record<string, any>): Record<string, any> {
+  return {
+    ...v2,
+    v: 3,
+    publicToken: null,
+    vouchers: [],
+    payments: v2.payments.map((p: object) => ({ ...p, voucherId: null, voucherCode: null, voucherBalanceAfterCents: null })),
+  };
+}

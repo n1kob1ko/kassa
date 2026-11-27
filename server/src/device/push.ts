@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify';
 import type pg from 'pg';
-import { withBusiness, withBusinessWrite } from '../db/tenant.js';
+import { nextChangeSeq, withBusiness, withBusinessWrite } from '../db/tenant.js';
 import { ApiError } from '../errors.js';
 import { writeServerReport } from '../reports.js';
 import { contentHash } from './content_hash.js';
@@ -9,6 +9,7 @@ import { handleReport } from './push_report.js';
 import { requireRegister, type Register } from './guard.js';
 import {
   asV1,
+  asV2,
   certificateEntry,
   chainEntry,
   dayEntry,
@@ -17,8 +18,10 @@ import {
   movementEntry,
   paymentColumns,
   receiptEntry,
+  ruleViolations,
   type ParsedReceipt,
   type ParsedReceiptV2,
+  type ParsedReceiptV3,
 } from './push_schema.js';
 
 export const PUSH_BODY_LIMIT = 2 * 1024 * 1024;
@@ -188,24 +191,88 @@ function sumProblems(v: ParsedReceipt): string[] {
   return [...problems, ...sumProblemsV2(v)];
 }
 
-function sumProblemsV2(v: ParsedReceiptV2): string[] {
+function sumProblemsV2(v: ParsedReceiptV2 | ParsedReceiptV3): string[] {
   const problems: string[] = [];
   const sum = (values: number[]) => values.reduce((s, n) => s + n, 0);
-  const paid = sum(v.payments.map((p) => p.amountCents));
+  const payments: { kind: string; position: number; amountCents: number; tipCents: number }[] = v.payments;
+  const paid = sum(payments.map((p) => p.amountCents));
   if ((v.kind === 'sale' || v.kind === 'voided') && paid !== v.totalCents) problems.push('payments');
-  if (sum(v.payments.map((p) => p.tipCents)) !== v.tipCents) problems.push('tip');
+  if (sum(payments.map((p) => p.tipCents)) !== v.tipCents) problems.push('tip');
   if (sum(v.lines.map((l) => l.discountCents)) !== v.discountCents) problems.push('discount');
   // Höchstens eine Kartenzahlung, und die an letzter Stelle.
-  const byPosition = [...v.payments].sort((a, b) => a.position - b.position);
+  const byPosition = [...payments].sort((a, b) => a.position - b.position);
   const cards = byPosition.filter((p) => p.kind === 'card');
   if (cards.length > 1 || (cards.length === 1 && byPosition.at(-1) !== cards[0])) problems.push('card_last');
   return problems;
+}
+
+/** Prüfwerte, unter denen derselbe Bon in einer älteren Form schon da sein kann (Muster asV1 aus 1a). */
+function olderHashes(v: ParsedReceipt): Buffer[] {
+  const v2 = v.v === 3 ? asV2(v) : v.v === 2 ? v : null;
+  if (v2 === null) return [];
+  const v1 = asV1(v2);
+  return [...(v.v === 3 ? [receiptHash(v2)] : []), ...(v1 === null ? [] : [receiptHash(v1)])];
+}
+
+/** Ein Bon, der eine feste Regel bricht oder einen Schlüssel trägt, den schon ein anderer Bon hat: rejected/invalid. */
+async function receiptInvalid(c: pg.PoolClient, ctx: EntryContext, v: ParsedReceipt): Promise<EntryResult | null> {
+  if (v.v !== 3) return null;
+  const rules = ruleViolations(v);
+  if (rules.length > 0) return { status: 'rejected', reason: 'invalid', paths: rules.map((r) => `receipt.rules.${r}`) };
+  if (v.publicToken === null) return null;
+  // receipt_links hat keinen Zeilen-Schutz: der Schlüssel gilt über alle Betriebe.
+  const link = await c.query<{ business_id: string; receipt_id: string }>(
+    'select business_id, receipt_id from receipt_links where token = $1',
+    [v.publicToken],
+  );
+  const row = link.rows[0];
+  if (row && (row.business_id !== ctx.register.businessId || row.receipt_id !== v.id)) {
+    return { status: 'rejected', reason: 'invalid', paths: ['receipt.publicToken'] };
+  }
+  return null;
+}
+
+/**
+ * Schlüssel der Seite, Gutscheine und Bewegungen eines neuen Bons v: 3, in der Transaktion des Bons. Ein Gutschein entsteht
+ * beim Verkauf (falls noch nicht da), das Storno legt keinen an. Das Guthaben prüft der Server nicht.
+ */
+async function writeReceiptV3(c: pg.PoolClient, ctx: EntryContext, v: ParsedReceiptV3): Promise<void> {
+  const businessId = ctx.register.businessId;
+  if (v.publicToken !== null) {
+    await c.query('insert into receipt_links (token, business_id, receipt_id) values ($1, $2, $3)', [v.publicToken, businessId, v.id]);
+  }
+  const isVoid = v.kind === 'voided';
+  const move = async (voucherId: string, kind: string, amountCents: number) =>
+    c.query(
+      `insert into voucher_movements (business_id, voucher_id, receipt_id, kind, amount_cents, created_at, change_seq)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [businessId, voucherId, v.id, kind, amountCents, v.createdAt, await nextChangeSeq(c)],
+    );
+  for (const sold of v.vouchers) {
+    if (!isVoid) {
+      const exists = await c.query('select 1 from vouchers where business_id = $1 and id = $2', [businessId, sold.id]);
+      if (exists.rowCount === 0) {
+        await c.query(
+          `insert into vouchers (business_id, id, code, value_cents, created_at, is_test, sold_receipt_id, register_id, change_seq)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [businessId, sold.id, sold.code, sold.valueCents, v.createdAt, v.test, v.id, ctx.register.id, await nextChangeSeq(c)],
+        );
+      }
+    }
+    await move(sold.id, isVoid ? 'void_sale' : 'sale', sold.valueCents);
+  }
+  for (const p of v.payments) {
+    if (p.kind !== 'voucher') continue;
+    await move(p.voucherId!, isVoid ? 'void_redeem' : 'redeem', -p.amountCents);
+  }
 }
 
 async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown): Promise<EntryResult> {
   const parsed = receiptEntry.safeParse(body);
   if (!parsed.success) return invalid(parsed.error);
   const v = parsed.data.receipt;
+  const rejected = await receiptInvalid(c, ctx, v);
+  if (rejected) return rejected;
   const rksv = v.rksv;
   const hash = receiptHash(v);
   const sums = paymentColumns(v);
@@ -214,18 +281,20 @@ async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown)
   const inserted = await c.query(
     `insert into receipts (business_id, id, register_id, device_id, number, created_at, kind, staff_id, staff_name, business_day_id,
                            voids_receipt_id, goods_cents, deposit_cents, total_cents, payment_kind, is_test, content_hash, payload, received_at,
-                           cash_cents, card_cents, tip_cents, discount_cents)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+                           cash_cents, card_cents, tip_cents, discount_cents, voucher_cents, voucher_sale_cents, deposit_return_cents,
+                           public_token)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+             $24, $25, $26, $27)
      on conflict do nothing`,
     [ctx.register.businessId, v.id, ctx.register.id, ctx.deviceId, v.number, v.createdAt, v.kind, v.staffId, v.staffName,
       v.businessDayId, v.voidsReceiptId, v.goodsCents, v.depositCents, v.totalCents, sums.paymentKind, v.test,
-      hash, payload, ctx.at, sums.cashCents, sums.cardCents, sums.tipCents, sums.discountCents],
+      hash, payload, ctx.at, sums.cashCents, sums.cardCents, sums.tipCents, sums.discountCents,
+      sums.voucherCents, sums.voucherSaleCents, sums.depositReturnCents, v.v === 3 ? v.publicToken : null],
   );
   if (inserted.rowCount !== 1) {
     const existing = (await c.query<Existing>('select content_hash from receipts where id = $1', [v.id])).rows[0]!.content_hash;
-    // Ein Tablet, das von 1.10.0 auf 1.11.0 ging, schickt einen schon gesendeten Bon noch einmal als v: 2.
-    const old = v.v === 2 ? asV1(v) : null;
-    const same = existing.equals(hash) || (old !== null && existing.equals(receiptHash(old)));
+    // Ein Tablet nach dem Update (1.10.0 auf 1.11.0, 1.11.0 auf 1.12.0) schickt einen schon gesendeten Bon in der neuen Form.
+    const same = existing.equals(hash) || olderHashes(v).some((h) => existing.equals(h));
     if (!same) {
       await report(c, ctx, 'receipt_conflict', { receiptId: v.id, number: v.number });
       return CONFLICT;
@@ -235,7 +304,7 @@ async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown)
   }
 
   // Zeilen von v: 1 haben keinen Rabatt.
-  const lines: ParsedReceiptV2['lines'] = v.v === 2 ? v.lines : v.lines.map((l) => ({ ...l, discountCents: 0, discount: null }));
+  const lines: ParsedReceiptV2['lines'] = v.v === 1 ? v.lines.map((l) => ({ ...l, discountCents: 0, discount: null })) : v.lines;
   for (const l of lines) {
     await c.query(
       `insert into receipt_lines (business_id, receipt_id, position, item_id, name, info, unit_price_cents, quantity, unit_deposit_cents,
@@ -247,6 +316,7 @@ async function handleReceipt(c: pg.PoolClient, ctx: EntryContext, body: unknown)
     );
   }
   if (rksv) await writeRksvEntry(c, ctx, v.id, rksv);
+  if (v.v === 3) await writeReceiptV3(c, ctx, v);
 
   const problems = sumProblems(v);
   if (problems.length > 0) await report(c, ctx, 'receipt_sums', { receiptId: v.id, number: v.number, problems });
@@ -264,8 +334,8 @@ export const handlers: Record<string, EntryHandler> = {
   report: handleReport,
 };
 
-/** Arten, die eine Änderungs-Nummer ziehen und darum in withBusinessWrite laufen. */
-const WRITE_KINDS = new Set(['item_change']);
+/** Arten, die eine Änderungs-Nummer ziehen und darum in withBusinessWrite laufen (ein Bon v: 3 für Gutscheine und Bewegungen). */
+const WRITE_KINDS = new Set(['item_change', 'receipt']);
 
 type Result = { seq: number } & (EntryResult | { status: 'error' });
 type Entry = { seq: number; kind: string } & Record<string, unknown>;

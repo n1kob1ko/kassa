@@ -183,27 +183,69 @@ const receiptV2 = z.object({
   payments: z.array(paymentV2Schema).max(20),
 });
 
+/** Der Code eines Gutscheins: 8 Ziffern. */
+const voucherCode = z.string().regex(/^[0-9]{8}$/);
+
+/** Eine Zahlung in v: 3: wie in v: 2, dazu die Art Gutschein mit Kennung, Code und Restguthaben nach dieser Zahlung. */
+const paymentV3Schema = paymentV2Schema
+  .extend({
+    kind: z.enum(['cash', 'card', 'voucher']),
+    voucherId: uuid.nullable(),
+    voucherCode: voucherCode.nullable(),
+    voucherBalanceAfterCents: nullableCents,
+  })
+  // Ohne Gutschein lässt sich die Bewegung nicht anlegen.
+  .refine((p) => p.kind !== 'voucher' || (p.voucherId !== null && p.voucherCode !== null), {
+    message: 'Eine Gutschein-Zahlung braucht Kennung und Code',
+    path: ['voucherId'],
+  });
+
+/** Ein verkaufter Gutschein am Bon; beim Storno mit negativem Wert. */
+const soldVoucherSchema = z.object({
+  id: uuid,
+  code: voucherCode,
+  valueCents: cents,
+  linePosition: z.number().int().min(0).max(100_000),
+});
+
+/** Bon ab 1.12.0: wie v: 2, dazu der Schlüssel der öffentlichen Seite, verkaufte Gutscheine und Gutschein-Zahlungen. */
+const receiptV3 = receiptV2.extend({
+  v: z.literal(3),
+  publicToken: z.string().regex(/^[A-Za-z0-9_-]{22}$/).nullable(),
+  vouchers: z.array(soldVoucherSchema).max(2000),
+  payments: z.array(paymentV3Schema).max(20),
+});
+
 export const receiptEntry = z.object({
-  receipt: z.discriminatedUnion('v', [receiptV1, receiptV2]),
+  receipt: z.discriminatedUnion('v', [receiptV1, receiptV2, receiptV3]),
 });
 
 export type ParsedReceiptV1 = z.infer<typeof receiptV1>;
 export type ParsedReceiptV2 = z.infer<typeof receiptV2>;
-export type ParsedReceipt = ParsedReceiptV1 | ParsedReceiptV2;
+export type ParsedReceiptV3 = z.infer<typeof receiptV3>;
+export type ParsedReceipt = ParsedReceiptV1 | ParsedReceiptV2 | ParsedReceiptV3;
+
+/** Die Kennung der Gutschein-Zeile und der Anfang der Kennungen von "Pfand zurück", wie am Tablet (`cart.dart`). */
+export const VOUCHER_SALE_ITEM_ID = 'voucher-sale';
+export const DEPOSIT_RETURN_ITEM_PREFIX = 'deposit-return-';
 
 const sum = (values: number[]) => values.reduce((s, n) => s + n, 0);
 
-/** Zahlungsart und Summen für die Spalten von `receipts`. */
+/** Zahlungsart und Summen für die Spalten von `receipts`. Bons v: 1 und v: 2 haben keine Gutscheine und kein Pfand zurück. */
 export function paymentColumns(r: ParsedReceipt): {
-  paymentKind: 'cash' | 'card' | 'mixed' | null;
+  paymentKind: 'cash' | 'card' | 'voucher' | 'mixed' | null;
   cashCents: number;
   cardCents: number;
   tipCents: number;
   discountCents: number;
+  voucherCents: number;
+  voucherSaleCents: number;
+  depositReturnCents: number;
 } {
+  const none = { voucherCents: 0, voucherSaleCents: 0, depositReturnCents: 0 };
   if (r.v === 1) {
     // Wie Migration 0004 für alte Bons: bar ist alles bar, jede andere Art alles Karte.
-    if (r.payment === null) return { paymentKind: null, cashCents: 0, cardCents: 0, tipCents: 0, discountCents: 0 };
+    if (r.payment === null) return { paymentKind: null, cashCents: 0, cardCents: 0, tipCents: 0, discountCents: 0, ...none };
     const cash = r.payment.kind === 'cash';
     return {
       paymentKind: cash ? 'cash' : 'card',
@@ -211,18 +253,71 @@ export function paymentColumns(r: ParsedReceipt): {
       cardCents: cash ? 0 : r.totalCents,
       tipCents: 0,
       discountCents: 0,
+      ...none,
     };
   }
-  const of = (kind: 'cash' | 'card') => r.payments.filter((p) => p.kind === kind);
-  const cash = of('cash');
-  const card = of('card');
-  const paymentKind = cash.length > 0 && card.length > 0 ? 'mixed' : cash.length > 0 ? 'cash' : card.length > 0 ? 'card' : null;
+  const payments: { kind: string; amountCents: number }[] = r.payments;
+  const of = (kind: string) => payments.filter((p) => p.kind === kind);
+  const kinds = (['cash', 'card', 'voucher'] as const).filter((k) => of(k).length > 0);
+  const lines = r.lines;
   return {
-    paymentKind,
-    cashCents: sum(cash.map((p) => p.amountCents)),
-    cardCents: sum(card.map((p) => p.amountCents)),
+    paymentKind: kinds.length > 1 ? 'mixed' : (kinds[0] ?? null),
+    cashCents: sum(of('cash').map((p) => p.amountCents)),
+    cardCents: sum(of('card').map((p) => p.amountCents)),
     tipCents: r.tipCents,
     discountCents: r.discountCents,
+    ...(r.v === 2
+      ? none
+      : {
+          voucherCents: sum(of('voucher').map((p) => p.amountCents)),
+          voucherSaleCents: sum(lines.filter((l) => l.itemId === VOUCHER_SALE_ITEM_ID).map((l) => l.unitPriceCents * l.quantity)),
+          depositReturnCents: sum(
+            lines.filter((l) => l.itemId.startsWith(DEPOSIT_RETURN_ITEM_PREFIX)).map((l) => l.unitDepositCents * l.quantity),
+          ),
+        }),
+  };
+}
+
+/**
+ * Die festen Regeln eines Bons v: 3, die der Server prüft (wie `receipt_rules.dart` am Tablet): Reihenfolge der Zahlungen
+ * (Gutscheine, höchstens eine Bar-Zahlung, höchstens eine Karte zuletzt), eine Zahlung unter 0 nur bar, nur bei einer Summe
+ * unter 0 und als einzige Zahlung (beim Storno gespiegelt), Gutschein-Zeile nie mit Gutschein-Zahlung. Gibt die Namen der
+ * verletzten Regeln zurück; das Guthaben prüft der Server nicht.
+ */
+export function ruleViolations(r: ParsedReceiptV3): string[] {
+  const payments = [...r.payments].sort((a, b) => a.position - b.position);
+  const rank = { voucher: 0, cash: 1, card: 2 } as const;
+  const violations: string[] = [];
+  const ordered = payments.every((p, i) => i === 0 || rank[payments[i - 1]!.kind] <= rank[p.kind]);
+  const count = (kind: string) => payments.filter((p) => p.kind === kind).length;
+  if (!ordered || count('cash') > 1 || count('card') > 1) violations.push('payment_order');
+  const sign = r.kind === 'voided' ? -1 : 1;
+  const negativeOk = payments.every(
+    (p) => p.amountCents * sign >= 0 || (p.kind === 'cash' && r.totalCents * sign < 0 && payments.length === 1),
+  );
+  if (!negativeOk) violations.push('negative_only_cash');
+  if (r.lines.some((l) => l.itemId === VOUCHER_SALE_ITEM_ID) && count('voucher') > 0) violations.push('voucher_not_with_sale');
+  return violations;
+}
+
+/**
+ * Ein v3-Bon in der Form von v2, wenn er sich so schreiben lässt (kein Schlüssel der Seite, keine verkauften Gutscheine,
+ * keine Gutschein-Zahlung, keine Gutschein-Felder), sonst null.
+ */
+export function asV2(r: ParsedReceiptV3): ParsedReceiptV2 | null {
+  if (r.publicToken !== null || r.vouchers.length > 0) return null;
+  if (r.payments.some((p) => p.kind === 'voucher' || p.voucherId !== null || p.voucherCode !== null || p.voucherBalanceAfterCents !== null)) {
+    return null;
+  }
+  // Ohne die Felder, die v: 2 nicht kennt; was übrig bleibt, ist genau ein gelesener v2-Bon.
+  const { publicToken, vouchers, payments, ...base } = r;
+  return {
+    ...base,
+    v: 2,
+    payments: payments.map(({ voucherId, voucherCode, voucherBalanceAfterCents, kind, ...p }) => ({
+      ...p,
+      kind: kind as 'cash' | 'card',
+    })),
   };
 }
 

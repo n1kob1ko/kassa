@@ -7,6 +7,9 @@ import { createBusiness } from './support/businesses.js';
 import { createStaff, fixtureBusiness, pairDevice, syncFixture } from './support/device.js';
 import { asV2, entry, pushEntries, reportKinds, sampleDay, sampleReceipt, sampleReceiptV2 } from './support/push.js';
 import { authed, type TestUser } from './support/users.js';
+import { randomBytes } from 'node:crypto';
+import { withSystem } from '../src/db/tenant.js';
+import { asV3, receiptV3 } from './support/push.js';
 
 let f: TestApp;
 let provider: TestUser;
@@ -480,5 +483,219 @@ describe('Anfrage', () => {
     const res = await post({ deviceId, entries: [] }, `Bearer ${other.token}`);
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('register_blocked');
+  });
+});
+
+describe('Bon v: 3', () => {
+  // Jeder Test in einem eigenen Betrieb: so zählen nur seine Bons, Gutscheine und Berichte.
+  let a: string;
+  let t: string;
+  let reg: string;
+  beforeEach(async () => {
+    a = (await createBusiness(f.app, provider.cookie)).id;
+    await createStaff(f.app, provider.cookie, a, { name: 'Chefin', role: 'chef', pin: '1234' });
+    ({ token: t, registerId: reg } = await pairDevice(f.app, provider.cookie, a));
+  });
+  const push = (entries: object[]) => pushEntries(f.app, t, deviceId, entries);
+  /** Der Schlüssel der Seite gilt über alle Betriebe: jeder Test bekommt eigene. */
+  const newToken = () => randomBytes(16).toString('base64url');
+  const v3 = (seq: number, overrides: Record<string, unknown> = {}) => receiptV3(seq, { publicToken: newToken(), ...overrides });
+  const columns = (id: string) =>
+    rows(a, 'select payment_kind, cash_cents, card_cents, voucher_cents, voucher_sale_cents, deposit_return_cents, total_cents from receipts where id = $1', [id]);
+  const movements = () =>
+    rows(a, 'select voucher_id, receipt_id, kind, amount_cents, change_seq from voucher_movements order by change_seq');
+  const VOUCHER = '3b000000-0000-4000-8000-0000000000a1';
+  const TABLES = ['receipts', 'receipt_lines', 'receipt_links', 'vouchers', 'voucher_movements'];
+  /** Wie count, aber receipt_links hat keinen Zeilen-Schutz: dort zählen nur die Zeilen von [biz]. */
+  const countOf = async (biz: string, table: string) =>
+    table === 'receipt_links'
+      ? Number((await rows(biz, 'select count(*)::int as n from receipt_links where business_id = $1', [biz]))[0].n)
+      : count(biz, table);
+
+  test('v: 3 mit Gutschein-Verkauf: Gutschein, Bewegung sale, voucher_sale_cents; noch einmal gesendet: duplicate, nichts doppelt', async () => {
+    const r = v3(1);
+    expect(statuses(await push([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    expect(await columns(r.id)).toEqual([
+      { payment_kind: 'cash', cash_cents: 2845, card_cents: 0, voucher_cents: 0, voucher_sale_cents: 2500, deposit_return_cents: 0, total_cents: 2845 },
+    ]);
+    const [voucher] = await rows(a, 'select * from vouchers');
+    expect(voucher).toMatchObject({
+      business_id: a, id: VOUCHER, code: '12345678', value_cents: 2500, is_test: true, sold_receipt_id: r.id, register_id: reg,
+    });
+    expect(voucher.created_at.toISOString()).toBe('2026-11-27T09:00:00.000Z');
+    expect(Number(voucher.change_seq)).toBeGreaterThan(0);
+    const moved = await movements();
+    expect(moved.map(({ change_seq, ...m }) => m)).toEqual([{ voucher_id: VOUCHER, receipt_id: r.id, kind: 'sale', amount_cents: 2500 }]);
+    expect(Number(moved[0].change_seq)).toBeGreaterThan(0);
+
+    const before = await Promise.all(TABLES.map((x) => countOf(a, x)));
+    expect(before).toEqual([1, 2, 1, 1, 1]);
+    expect((await push([entry(2, 'receipt', r)])).results).toEqual([{ seq: 2, status: 'duplicate' }]);
+    expect(await Promise.all(TABLES.map((x) => countOf(a, x)))).toEqual(before);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 3 mit Gutschein-Zahlung und Rest bar: payment_kind mixed, voucher_cents 500, Bewegung redeem -500', async () => {
+    // Der Verkauf des Gutscheins ist am Server noch nicht da: der Bon gilt trotzdem, das Tablet hat ihn signiert.
+    const r = v3(2);
+    expect(statuses(await push([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    expect(await columns(r.id)).toEqual([
+      { payment_kind: 'mixed', cash_cents: 490, card_cents: 0, voucher_cents: 500, voucher_sale_cents: 0, deposit_return_cents: 0, total_cents: 990 },
+    ]);
+    expect((await movements()).map(({ change_seq, ...m }) => m)).toEqual([
+      { voucher_id: VOUCHER, receipt_id: r.id, kind: 'redeem', amount_cents: -500 },
+    ]);
+    expect(await count(a, 'vouchers')).toBe(0);
+    expect(await reportKinds(f, a)).toEqual([]);
+
+    // Nur mit Gutschein bezahlt: payment_kind voucher.
+    const only = v3(2, {
+      id: randomUUID(),
+      payments: [{ ...r.payments[0], amountCents: 990, givenCents: 990, voucherBalanceAfterCents: 1510 }],
+    });
+    expect(statuses(await push([entry(2, 'receipt', only)]))).toEqual(['accepted']);
+    expect((await columns(only.id))[0]).toMatchObject({ payment_kind: 'voucher', cash_cents: 0, voucher_cents: 990 });
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 3 Storno: Bewegungen void_redeem und void_sale mit umgekehrtem Vorzeichen', async () => {
+    const [sale, redeem, voidRedeem, voidSale] = [v3(1), v3(2), v3(3), v3(5)];
+    const res = await push([sale, redeem, voidRedeem, voidSale].map((r, i) => entry(i + 1, 'receipt', r)));
+    expect(statuses(res)).toEqual(['accepted', 'accepted', 'accepted', 'accepted']);
+    expect((await movements()).map(({ change_seq, ...m }) => m)).toEqual([
+      { voucher_id: VOUCHER, receipt_id: sale.id, kind: 'sale', amount_cents: 2500 },
+      { voucher_id: VOUCHER, receipt_id: redeem.id, kind: 'redeem', amount_cents: -500 },
+      { voucher_id: VOUCHER, receipt_id: voidRedeem.id, kind: 'void_redeem', amount_cents: 500 },
+      { voucher_id: VOUCHER, receipt_id: voidSale.id, kind: 'void_sale', amount_cents: -2500 },
+    ]);
+    // Ein Gutschein, mit seinem Wert vom Verkauf; das Storno legt keinen an.
+    expect(await rows(a, 'select id, value_cents, sold_receipt_id from vouchers')).toEqual([
+      { id: VOUCHER, value_cents: 2500, sold_receipt_id: sale.id },
+    ]);
+    expect(await columns(voidRedeem.id)).toEqual([
+      { payment_kind: 'mixed', cash_cents: -490, card_cents: 0, voucher_cents: -500, voucher_sale_cents: 0, deposit_return_cents: 0, total_cents: -990 },
+    ]);
+    expect((await columns(voidSale.id))[0]).toMatchObject({ payment_kind: 'cash', cash_cents: -2845, voucher_sale_cents: -2500 });
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 3 nur Pfand zurück: total_cents -75, deposit_return_cents -75, cash_cents -75', async () => {
+    const r = v3(4);
+    expect(statuses(await push([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    expect(await columns(r.id)).toEqual([
+      { payment_kind: 'cash', cash_cents: -75, card_cents: 0, voucher_cents: 0, voucher_sale_cents: 0, deposit_return_cents: -75, total_cents: -75 },
+    ]);
+    expect(await count(a, 'voucher_movements')).toBe(0);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('v: 3 mit publicToken: Zeile in receipt_links; derselbe Schlüssel bei einem zweiten Bon ist invalid', async () => {
+    const r = v3(1);
+    expect(statuses(await push([entry(1, 'receipt', r)]))).toEqual(['accepted']);
+    expect(await rows(a, 'select token, business_id, receipt_id from receipt_links where business_id = $1', [a])).toEqual([
+      { token: r.publicToken, business_id: a, receipt_id: r.id },
+    ]);
+    expect((await rows(a, 'select public_token from receipts where id = $1', [r.id]))[0].public_token).toBe(r.publicToken);
+    // Die Seite sucht ohne Betrieb: die Zeile ist auch ohne gesetzten Betrieb zu finden.
+    const found = await withSystem(f.db, async (c) => (await c.query('select receipt_id from receipt_links where token = $1', [r.publicToken])).rows);
+    expect(found).toEqual([{ receipt_id: r.id }]);
+
+    const second = v3(4, { id: randomUUID(), publicToken: r.publicToken });
+    expect(statuses(await push([entry(2, 'receipt', second)]))).toEqual(['rejected/invalid']);
+    expect(await count(a, 'receipts')).toBe(1);
+    expect(await countOf(a, 'receipt_links')).toBe(1);
+    // Auch in einem anderen Betrieb.
+    const b = (await createBusiness(f.app, provider.cookie)).id;
+    await createStaff(f.app, provider.cookie, b, { name: 'Chefin', role: 'chef', pin: '1234' });
+    const tb = (await pairDevice(f.app, provider.cookie, b)).token;
+    expect(statuses(await pushEntries(f.app, tb, deviceId, [entry(1, 'receipt', v3(4, { publicToken: r.publicToken }))]))).toEqual(['rejected/invalid']);
+    expect(await count(b, 'receipts')).toBe(0);
+    expect(await withSystem(f.db, async (c) => (await c.query('select receipt_id from receipt_links where token = $1', [r.publicToken])).rows)).toEqual(found);
+  });
+
+  test('receipt_1_11_0_v2.json, dann receipt_1_11_0_as_v3.json: duplicate, kein Bericht', async () => {
+    // Beide Dateien schreibt die App: v2 der Code von 1.11.0, as_v3 der heutige aus derselben Datenbank.
+    const v2 = syncFixture('receipt_1_11_0_v2') as { entries: { seq: number; receipt: { v: number } }[] };
+    const as3 = syncFixture('receipt_1_11_0_as_v3') as { entries: { seq: number; receipt: { v: number } }[] };
+    expect(v2.entries.map((e) => e.receipt.v)).toEqual([2]);
+    expect(as3.entries.map((e) => e.receipt.v)).toEqual([3]);
+    expect((await push(v2.entries)).results).toEqual(v2.entries.map((e) => ({ seq: e.seq, status: 'accepted' })));
+    expect((await push(as3.entries)).results).toEqual(as3.entries.map((e) => ({ seq: e.seq, status: 'duplicate' })));
+    expect(await reportKinds(f, a)).toEqual([]);
+    expect(await count(a, 'receipts')).toBe(1);
+  });
+
+  test('receipt_1_10_0_v1.json, dann derselbe Bon als v: 3: duplicate, kein Bericht', async () => {
+    const v1 = syncFixture('receipt_1_10_0_v1') as { entries: { seq: number; kind: string; receipt: Record<string, any> }[] };
+    expect((await push(v1.entries)).results).toEqual(v1.entries.map((e) => ({ seq: e.seq, status: 'accepted' })));
+    const again = v1.entries.map((e) => ({ ...e, receipt: asV3(asV2(e.receipt)) }));
+    expect((await push(again)).results).toEqual(again.map((e) => ({ seq: e.seq, status: 'duplicate' })));
+    expect(await reportKinds(f, a)).toEqual([]);
+    expect(await count(a, 'receipts')).toBe(2);
+    // Mit anderem Betrag ist es ein Konflikt, wie bei v: 2.
+    const r = again[0]!.receipt;
+    const changed = { ...r, goodsCents: r.goodsCents + 1, totalCents: r.totalCents + 1 };
+    expect(statuses(await push([entry(9, 'receipt', changed)]))).toEqual(['rejected/conflict']);
+  });
+
+  test('v: 3 mit bar vor Gutschein, mit Karte unter 0, mit Gutschein-Zeile und Gutschein-Zahlung: invalid', async () => {
+    const redeem = v3(2);
+    const [voucherPay, cashPay] = redeem.payments;
+    const payout = v3(4);
+    const sale = v3(1);
+    const voided = v3(3);
+    const [voidVoucher, voidCash] = voided.payments;
+    const card = { ...payout.payments[0], kind: 'card', provider: 'demo' };
+    const bad = [
+      // Bar vor Gutschein.
+      { ...redeem, payments: [{ ...cashPay, position: 0 }, { ...voucherPay, position: 1 }] },
+      // Zwei Bar-Zahlungen.
+      { ...redeem, payments: [voucherPay, { ...cashPay, amountCents: 245 }, { ...cashPay, position: 2, amountCents: 245 }] },
+      // Karte unter 0 im Verkauf.
+      { ...payout, payments: [card] },
+      // Bar unter 0 bei einer Summe über 0.
+      { ...redeem, payments: [{ ...voucherPay, amountCents: 1000, givenCents: 1000 }, { ...cashPay, amountCents: -10, givenCents: 0, changeCents: 0 }] },
+      // Gutschein-Zeile und Gutschein-Zahlung.
+      { ...sale, payments: [{ ...voucherPay, amountCents: 2845, givenCents: 2845, voucherBalanceAfterCents: 0 }] },
+      // Storno gespiegelt: Bar über 0.
+      { ...voided, payments: [{ ...voidVoucher, amountCents: -1000 }, { ...voidCash, amountCents: 10 }] },
+      // Storno gespiegelt: Bar vor Gutschein.
+      { ...voided, payments: [{ ...voidCash, position: 0 }, { ...voidVoucher, position: 1 }] },
+      // Gutschein-Zahlung ohne Gutschein.
+      { ...redeem, payments: [{ ...voucherPay, voucherId: null }, cashPay] },
+      // Gutschein mit Code, der keine 8 Ziffern hat.
+      { ...sale, vouchers: [{ ...sale.vouchers[0], code: '1234' }] },
+    ];
+    const res = await push(bad.map((b, i) => entry(i + 1, 'receipt', b)));
+    expect(statuses(res)).toEqual(bad.map(() => 'rejected/invalid'));
+    for (const x of TABLES) expect(await countOf(a, x), x).toBe(0);
+    expect(await reportKinds(f, a)).toEqual(bad.map(() => 'push_rejected'));
+    // Dieselben Bons, richtig: angenommen.
+    expect(statuses(await push([redeem, payout, sale, voided].map((r, i) => entry(20 + i, 'receipt', r))))).toEqual([
+      'accepted', 'accepted', 'accepted', 'accepted',
+    ]);
+  });
+
+  test('v: 1 und v: 2 werden weiter angenommen, voucher_cents bleibt 0', async () => {
+    const r1 = sampleReceipt();
+    const r2 = sampleReceiptV2();
+    expect(statuses(await push([entry(1, 'receipt', r1), entry(2, 'receipt', r2)]))).toEqual(['accepted', 'accepted']);
+    const got = await rows(a, 'select voucher_cents, voucher_sale_cents, deposit_return_cents, public_token from receipts');
+    expect(got).toEqual([
+      { voucher_cents: 0, voucher_sale_cents: 0, deposit_return_cents: 0, public_token: null },
+      { voucher_cents: 0, voucher_sale_cents: 0, deposit_return_cents: 0, public_token: null },
+    ]);
+    for (const x of ['receipt_links', 'vouchers', 'voucher_movements']) expect(await countOf(a, x), x).toBe(0);
+    expect(await reportKinds(f, a)).toEqual([]);
+  });
+
+  test('push_request_v3.json wird ganz angenommen, ohne Bericht', async () => {
+    // Die Schlüssel der Seiten aus der Datei kommen in dieser Testdatei nur hier vor.
+    const request = syncFixture('push_request_v3') as { entries: { seq: number }[] };
+    expect((await push(request.entries)).results).toEqual(request.entries.map((e) => ({ seq: e.seq, status: 'accepted' })));
+    expect(await reportKinds(f, a)).toEqual([]);
+    expect(await countOf(a, 'receipt_links')).toBe(5);
+    const balance = await rows(a, 'select sum(amount_cents)::int as cents from voucher_movements where voucher_id = $1', [VOUCHER]);
+    expect(balance).toEqual([{ cents: 0 }]);
   });
 });

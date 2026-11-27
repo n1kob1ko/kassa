@@ -1,9 +1,10 @@
 // Nachrichten zum Senden (Teil C2): ein Eintrag der Liste "noch zu senden"
 // wird beim Senden aus den Tabellen gelesen und in die Form gebracht, die der
 // Server erwartet. Das Gegenstück auf dem Server ist `push_schema.ts`; beide
-// prüfen sich an `shared/fixtures/sync/push_request_v2.json` (Bon `v: 2`).
-// `push_request.json` ist das Paket von 1.10.0 (Bon `v: 1`), das der Server
-// weiter annimmt.
+// prüfen sich an `shared/fixtures/sync/push_request_v3.json` (Bon `v: 3`).
+// `push_request.json` ist das Paket von 1.10.0 (Bon `v: 1`),
+// `push_request_v2.json` das von 1.11.0 (Bon `v: 2`); der Server nimmt beide
+// weiter an.
 
 import 'dart:convert';
 
@@ -11,7 +12,7 @@ import 'package:drift/drift.dart';
 
 import '../data/database.dart';
 import '../data/outbox_repository.dart';
-import '../domain/receipt.dart' show isTestChainMode;
+import '../domain/receipt.dart' show ReceiptKind, isTestChainMode;
 
 /// Was der Server zu einem Eintrag sagt.
 enum PushStatus { accepted, duplicate, rejected, error }
@@ -225,10 +226,24 @@ class PushPayloads {
     ])..where(_db.rksvEntryRows.receiptId.equals(id))).getSingleOrNull();
     final entry = stamp?.readTable(_db.rksvEntryRows);
     final chain = stamp?.readTable(_db.rksvChainRows);
+    // Die verkauften Gutscheine stehen beim Verkauf; ein Storno zeigt die
+    // seines Verkaufs mit negativem Wert.
+    final isVoid = row.kind == ReceiptKind.voided.name;
+    final saleId = isVoid ? row.voidsReceiptId : row.id;
+    final sold = saleId == null
+        ? const <VoucherRow>[]
+        : await (_db.select(_db.voucherRows)
+                ..where(
+                  (t) =>
+                      t.soldReceiptId.equals(saleId) &
+                      t.soldLinePosition.isNotNull(),
+                )
+                ..orderBy([(t) => OrderingTerm.asc(t.soldLinePosition)]))
+              .get();
 
     return {
       'receipt': {
-        'v': 2,
+        'v': 3,
         'id': row.id,
         'number': row.number,
         'createdAt': _iso(row.createdAt),
@@ -252,6 +267,7 @@ class PushPayloads {
                 row.discountAmountCents,
                 row.discountReason!,
               ),
+        'publicToken': row.publicToken,
         'lines': [
           for (final l in lines)
             {
@@ -288,6 +304,15 @@ class PushPayloads {
                     ),
             },
         ],
+        'vouchers': [
+          for (final v in sold)
+            {
+              'id': v.id,
+              'code': v.code,
+              'valueCents': isVoid ? -v.valueCents : v.valueCents,
+              'linePosition': v.soldLinePosition,
+            },
+        ],
         'payments': [
           for (final p in payments)
             {
@@ -303,6 +328,9 @@ class PushPayloads {
               'providerTxCode': p.providerTxCode,
               'cardScheme': p.cardScheme,
               'cardLast4': p.cardLast4,
+              'voucherId': p.voucherId,
+              'voucherCode': p.voucherCode,
+              'voucherBalanceAfterCents': p.voucherBalanceAfterCents,
             },
         ],
         'rksv': entry == null
