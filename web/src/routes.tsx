@@ -31,14 +31,13 @@ export const providerNav: NavItem[] = [
 ];
 
 /**
- * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Gutscheine, Abschlüsse, Speisekarte, Übersetzungen, Kassen,
- * Mitarbeiter, Firmenkunden, Betrieb. Der Anbieter hat davor den Weg zurück zu allen Betrieben (am Handy unter "Mehr").
+ * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Abschlüsse, Speisekarte, Übersetzungen, Kassen,
+ * Mitarbeiter, Firmenkunden, Gutscheine, Betrieb. Der Anbieter hat davor den Weg zurück zu allen Betrieben (am Handy unter "Mehr").
  */
 export function businessNav(businessId: string, provider: boolean): NavItem[] {
   const own: NavItem[] = [
     { to: `/b/${businessId}/umsaetze`, label: 'Umsätze', icon: <ChartIcon size={22} /> },
     { to: `/b/${businessId}/bons`, label: 'Bons', icon: <ReceiptLinesIcon size={22} /> },
-    { to: `/b/${businessId}/gutscheine`, label: 'Gutscheine', icon: <TicketIcon size={22} /> },
     {
       to: `/b/${businessId}/tage`,
       label: 'Abschlüsse',
@@ -51,6 +50,7 @@ export function businessNav(businessId: string, provider: boolean): NavItem[] {
     { to: `/b/${businessId}/kassen`, label: 'Kassen', icon: <TabletIcon size={22} /> },
     { to: `/b/${businessId}/mitarbeiter`, label: 'Mitarbeiter', icon: <UsersIcon size={22} /> },
     { to: `/b/${businessId}/firmenkunden`, label: 'Firmenkunden', icon: <BuildingIcon size={22} /> },
+    { to: `/b/${businessId}/gutscheine`, label: 'Gutscheine', icon: <TicketIcon size={22} /> },
     { to: `/b/${businessId}/betrieb`, label: 'Betrieb', icon: <SlidersIcon size={22} /> },
   ];
   return provider
