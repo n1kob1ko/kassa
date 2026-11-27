@@ -125,6 +125,9 @@ List<PrintOp> layoutReceipt(
         }
         final tx = p.providerTxCode;
         if (tx != null && tx.isNotEmpty) b.indented('Beleg $tx');
+      case PaymentKind.voucher:
+        // Vorerst nur das Wort, Code und Restguthaben folgen (Task 11).
+        b.row('Gutschein', amount(p.amountCents));
     }
   }
 

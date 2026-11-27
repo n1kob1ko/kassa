@@ -475,6 +475,7 @@ class ReceiptRepository {
       discountCents: discountCents,
       lines: lines,
       payments: payments,
+      isVoid: kind == ReceiptKind.voided,
     );
     var signatureDown = false;
     if (signing) signatureDown = await _writeDue(journal, staff);

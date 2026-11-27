@@ -1,6 +1,7 @@
 // Ein gespeicherter Bon. Reines Dart und unveränderlich. Er trägt alles, was
 // zum Anzeigen und Drucken nötig ist, ohne den Katalog zu brauchen.
 
+import 'cart.dart' show isDepositReturnItemId, isVoucherSaleItemId;
 import 'catalog.dart';
 import 'discount.dart';
 import 'pricing.dart';
@@ -24,7 +25,9 @@ extension ReceiptKindX on ReceiptKind {
   };
 }
 
-enum PaymentKind { cash, card }
+/// Art einer Zahlung. In Datenbank und Abgleich steht der Name als Text
+/// (`cash`, `card`, `voucher`).
+enum PaymentKind { cash, card, voucher }
 
 class ReceiptLineOption {
   const ReceiptLineOption({
@@ -118,6 +121,9 @@ class Payment {
     this.providerTxCode,
     this.cardScheme,
     this.cardLast4,
+    this.voucherId,
+    this.voucherCode,
+    this.voucherBalanceAfterCents,
   });
 
   /// Stelle der Zahlung im Bon, ab 0.
@@ -143,11 +149,34 @@ class Payment {
   final String? cardScheme;
   final String? cardLast4;
 
+  /// Nur bei [PaymentKind.voucher]: Kennung und Code des Gutscheins und das
+  /// Guthaben nach dieser Zahlung.
+  final String? voucherId;
+  final String? voucherCode;
+  final int? voucherBalanceAfterCents;
+
   /// Was die Karte gebucht hat: Anteil plus Trinkgeld.
   int get chargedCents => amountCents + tipCents;
 }
 
-/// Wie ein Bon bezahlt ist: nur bar, nur Karte oder beides.
+/// Ein Gutschein, der auf diesem Bon verkauft wurde. [linePosition] ist die
+/// Stelle seiner Zeile; beim Storno ist [valueCents] negativ.
+class SoldVoucher {
+  const SoldVoucher({
+    required this.voucherId,
+    required this.code,
+    required this.valueCents,
+    required this.linePosition,
+  });
+
+  final String voucherId;
+  final String code;
+  final int valueCents;
+  final int linePosition;
+}
+
+/// Wie ein Bon bezahlt ist: nur bar, nur Karte oder beides. Gutscheine
+/// zählen hier nicht mit.
 enum ReceiptPaymentKind { cash, card, mixed }
 
 /// Was das Protokoll der Signatur zu einem Bon weiß.
@@ -191,8 +220,11 @@ class Receipt {
     required this.totalCents,
     this.discountCents = 0,
     this.discount,
+    this.publicToken,
+    List<SoldVoucher> soldVouchers = const [],
   }) : lines = List.unmodifiable(lines),
        payments = List.unmodifiable(payments),
+       soldVouchers = List.unmodifiable(soldVouchers),
        grossByRate = Map.unmodifiable(
          sumByRate([for (final l in lines) l.grossByRate]),
        );
@@ -233,6 +265,13 @@ class Receipt {
   /// Der Rabatt auf den ganzen Bon, sonst `null`.
   final ReceiptDiscount? discount;
 
+  /// Schlüssel der öffentlichen Seite des Bons, leer bei Sonderbelegen und
+  /// bei Bons von vor 1.12.0.
+  final String? publicToken;
+
+  /// Die Gutscheine, die auf diesem Bon verkauft wurden.
+  final List<SoldVoucher> soldVouchers;
+
   /// Die Zwischensumme: Warenwert nach den Rabatten der Zeilen, vor dem
   /// Bon-Rabatt.
   int get subtotalCents => goodsCents + (discount?.amountCents ?? 0);
@@ -248,7 +287,7 @@ class Receipt {
   /// Die Kartenzahlung, sonst `null`.
   Payment? get cardPayment => _first(PaymentKind.card);
 
-  /// `null` bei Sonderbelegen.
+  /// `null` bei Sonderbelegen. Sieht Gutschein-Zahlungen nicht.
   ReceiptPaymentKind? get paymentKind {
     final cash = cashPayment != null, card = cardPayment != null;
     if (cash && card) return ReceiptPaymentKind.mixed;
@@ -262,6 +301,33 @@ class Receipt {
 
   /// Summe der Karten-Anteile, ohne Trinkgeld.
   int get cardCents => _sumOf(PaymentKind.card);
+
+  /// Summe der Gutschein-Zahlungen.
+  int get voucherCents => _sumOf(PaymentKind.voucher);
+
+  /// Summe der Gutschein-Zeilen (Preis mal Menge); beim Storno negativ.
+  int get voucherSaleCents => lines.fold(
+    0,
+    (sum, l) => isVoucherSaleItemId(l.itemId) ? sum + l.goodsCents : sum,
+  );
+
+  /// Pfand der Zeilen "Pfand zurück": im Verkauf höchstens 0.
+  int get depositReturnCents => lines.fold(
+    0,
+    (sum, l) => isDepositReturnItemId(l.itemId) ? sum + l.depositCents : sum,
+  );
+
+  /// Stück der Zeilen "Pfand zurück"; beim Storno negativ.
+  int get depositReturnQuantity => lines.fold(
+    0,
+    (sum, l) => isDepositReturnItemId(l.itemId) ? sum + l.quantity : sum,
+  );
+
+  /// Umsatz: Summe des Bons ohne verkaufte Gutscheine.
+  int get revenueCents => totalCents - voucherSaleCents;
+
+  /// Die Arten der Zahlungen dieses Bons.
+  Set<PaymentKind> get paymentKinds => {for (final p in payments) p.kind};
 
   /// Summe der Trinkgelder.
   int get tipCents => payments.fold(0, (sum, p) => sum + p.tipCents);
