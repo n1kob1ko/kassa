@@ -4,6 +4,8 @@
 // fertig" zeigt Wert und Code. Prüfen sucht nach der achten Ziffer und zeigt
 // Wert, Guthaben, Zustand und die Bewegungen.
 
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
@@ -301,6 +303,63 @@ void main() {
     expect(printerOf(t).printedJobs.map((p) => p.kind), ['receipt']);
     expect(find.byKey(const Key('sold-voucher-code-0')), findsOneWidget);
     expect(find.byKey(const Key('sold-voucher-print-0')), findsOneWidget);
+  });
+
+  testWidgets('"Gutschein drucken" bleibt grau, solange der Abschnitt von '
+      'selbst druckt: kein zweiter Abschnitt', (t) async {
+    await _open(t);
+    await _sell(t, 2500);
+    printerOf(t).hold = Completer<void>();
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pump();
+    await t.pump();
+    await t.ensureVisible(find.byKey(const Key('sold-voucher-print-0')));
+    await t.pump();
+    expect(_button(t, 'sold-voucher-print-0').onPressed, isNull);
+    await t.tap(
+      find.byKey(const Key('sold-voucher-print-0')),
+      warnIfMissed: false,
+    );
+    await t.pump();
+    printerOf(t).hold!.complete();
+    printerOf(t).hold = null;
+    await t.pumpAndSettle();
+    expect(printerOf(t).printedJobs.map((p) => p.kind), ['receipt', 'voucher']);
+    expect(_button(t, 'sold-voucher-print-0').onPressed, isNotNull);
+  });
+
+  testWidgets('scheitert der Kundenbon und gelingt "Nochmal drucken", druckt '
+      'die Kassa danach die Abschnitte', (t) async {
+    await _open(t);
+    printerOf(t).next = const PrintOutcome.failed(PrintProblem.coverOpen);
+    await _sell(t, 2500);
+    await _payCash(t);
+    expect(printerOf(t).printedJobs.map((p) => p.kind), ['receipt']);
+    printerOf(t).next = const PrintOutcome.ok();
+    await _tap(t, 'reprint');
+    expect(printerOf(t).printedJobs.map((p) => p.kind), [
+      'receipt',
+      'receipt',
+      'voucher',
+    ]);
+    expect(find.byKey(const Key('sold-voucher-problem-0')), findsNothing);
+  });
+
+  testWidgets('Prüfen, dann Verkaufen und wieder Prüfen: kein altes Ergebnis '
+      'unter dem leeren Code', (t) async {
+    await _open(t);
+    final sold = await _sellDirect(t, 2500, 'verkauf-tab');
+    await t.pumpAndSettle();
+    await _tap(t, 'voucher-button');
+    await _tap(t, 'voucher-tab-check');
+    await _typeCode(t, sold.soldVouchers.single.code);
+    expect(textOf(t, const Key('voucher-check-value')), '25,00 €');
+    await _tap(t, 'voucher-tab-sell');
+    await _tap(t, 'voucher-tab-check');
+    expect(textOf(t, const Key('voucher-code')), '•••• ••••');
+    expect(find.byKey(const Key('voucher-check-value')), findsNothing);
   });
 
   testWidgets('mit Karte bezahlt: Bon und Abschnitt wie bar', (t) async {

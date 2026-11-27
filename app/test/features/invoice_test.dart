@@ -620,6 +620,49 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('über 10.000 €: ein gespeicherter Kunde ohne UID öffnet das '
+      'Formular mit seinen Werten, ändert ihn aber nicht; eine andere Firma '
+      'dort ersetzt ihn nie', (t) async {
+    await openInvoiceKassa(t, const []);
+    final muster = await _customers(t).save(
+      name: 'Muster GmbH',
+      addressLine1: 'Musterweg 1',
+      addressLine2: '1010 Wien',
+    );
+    final cart = containerOf(t).read(cartProvider.notifier);
+    cart.addOpenAmount(amountCents: 600000, rate: TaxRate.normal);
+    cart.addOpenAmount(amountCents: 400001, rate: TaxRate.normal);
+    await t.pumpAndSettle();
+    await _payCash(t);
+    await _tap(t, 'invoice-button');
+    await _tap(t, 'customer-row-${muster.id}');
+    expect(_key('customer-form'), findsOneWidget);
+    expect(find.text('Muster GmbH'), findsOneWidget);
+    expect(t.widget<AppToggle>(_key('customer-keep')).value, isFalse);
+
+    await _fill(
+      t,
+      name: 'Andere AG',
+      address1: 'Andere Gasse 5',
+      vat: 'ATU00000000',
+    );
+    await _tap(t, 'customer-save');
+    final stored = await _customers(t).list();
+    expect(
+      [for (final c in stored) (c.id, c.name, c.addressLine1, c.vatId)],
+      [(muster.id, 'Muster GmbH', 'Musterweg 1', null)],
+    );
+    expect(
+      await queryRows(
+        t,
+        'SELECT customer_id, name, vat_id FROM receipt_recipients',
+      ),
+      [
+        {'customer_id': null, 'name': 'Andere AG', 'vat_id': 'ATU00000000'},
+      ],
+    );
+  });
+
   testWidgets('Formular: "Weiter" springt ins nächste Feld, "Fertig" '
       'übernimmt; Großschreibung und Autokorrektur je Feld', (t) async {
     await openInvoiceKassa(t, ['cola']);

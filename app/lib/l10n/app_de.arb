@@ -2279,6 +2279,36 @@
       }
     }
   },
+  "bonsVoidCashIn": "Du bekommst {amount} bar zurück.",
+  "@bonsVoidCashIn": {
+    "description": "Rückfrage Storno einer Auszahlung: so viel bekommt die Kassa bar zurück (Betrag ohne Minus).",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidVoucherBack": "Der Gutschein {code} bekommt {amount} zurück.",
+  "@bonsVoidVoucherBack": {
+    "description": "Rückfrage Storno, mit Gutschein bezahlt: so viel bekommt der Gutschein zurück; code ist der Code des Gutscheins.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "bonsVoidVoucherSold": "Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen.",
+  "@bonsVoidVoucherSold": {
+    "description": "Rückfrage Storno eines Bons, auf dem ein Gutschein verkauft wurde: der Gutschein gilt danach nicht mehr, den Abschnitt vom Kunden zurücknehmen.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "discountTitle": "Rabatt",
   "@discountTitle": {
     "description": "Titel des Blatts Rabatt und Taste Rabatt im Summenblock."
@@ -2439,6 +2469,10 @@
       }
     }
   },
+  "kassaDepositReturnDenied": "Pfand zurück ist für dich nicht freigegeben.",
+  "@kassaDepositReturnDenied": {
+    "description": "Hinweis, wenn eine Person ohne das Recht \"Pfand zurück\" (etwa \"Nur Chef\") eine Zeile Pfand zurück erhöhen oder \"Bar auszahlen\" tippen will."
+  },
   "kassaPayOutDone": "Auszahlen",
   "@kassaPayOutDone": {
     "description": "Verkauf fertig nach einer Auszahlung: über dem Betrag, den die Person dem Kunden gibt (an Stelle von Rückgeld)."
@@ -2494,6 +2528,10 @@
   "voucherUnknown": "Diesen Gutschein kennt die Kassa nicht.",
   "@voucherUnknown": {
     "description": "Prüfen: kein Gutschein hat den getippten Code."
+  },
+  "voucherReadFailed": "Das hat nicht geklappt. Bitte noch einmal.",
+  "@voucherReadFailed": {
+    "description": "Code eines Gutscheins eingetippt, aber die Kassa konnte ihre Gutscheine nicht lesen (allgemeiner Fehler, nicht \"unbekannt\")."
   },
   "voucherStateActive": "Gültig",
   "@voucherStateActive": {
@@ -2785,6 +2823,10 @@
   "bonsFilterVoucher": "Gutschein",
   "@bonsFilterVoucher": {
     "description": "Bons: Filter für Bons mit einer Zahlung mit Gutschein."
+  },
+  "bonsCashPaidOut": "Bar ausbezahlt",
+  "@bonsCashPaidOut": {
+    "description": "Bon-Detail einer Auszahlung (Pfand zurück unter 0): so viel ging bar an den Kunden, wie am Papier \"Bar ausbezahlt\"."
   },
   "bonsVoucherLeft": "Restguthaben",
   "@bonsVoucherLeft": {

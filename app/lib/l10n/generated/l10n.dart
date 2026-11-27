@@ -2768,6 +2768,24 @@ abstract class L10n {
   /// **'{amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld.'**
   String bonsVoidCardBackTip(String amount, String tip);
 
+  /// Rückfrage Storno einer Auszahlung: so viel bekommt die Kassa bar zurück (Betrag ohne Minus).
+  ///
+  /// In de, this message translates to:
+  /// **'Du bekommst {amount} bar zurück.'**
+  String bonsVoidCashIn(String amount);
+
+  /// Rückfrage Storno, mit Gutschein bezahlt: so viel bekommt der Gutschein zurück; code ist der Code des Gutscheins.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Gutschein {code} bekommt {amount} zurück.'**
+  String bonsVoidVoucherBack(String code, String amount);
+
+  /// Rückfrage Storno eines Bons, auf dem ein Gutschein verkauft wurde: der Gutschein gilt danach nicht mehr, den Abschnitt vom Kunden zurücknehmen.
+  ///
+  /// In de, this message translates to:
+  /// **'Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen.'**
+  String bonsVoidVoucherSold(String code);
+
   /// Titel des Blatts Rabatt und Taste Rabatt im Summenblock.
   ///
   /// In de, this message translates to:
@@ -2966,6 +2984,12 @@ abstract class L10n {
   /// **'Bar auszahlen {amount}'**
   String kassaPayOut(String amount);
 
+  /// Hinweis, wenn eine Person ohne das Recht "Pfand zurück" (etwa "Nur Chef") eine Zeile Pfand zurück erhöhen oder "Bar auszahlen" tippen will.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand zurück ist für dich nicht freigegeben.'**
+  String get kassaDepositReturnDenied;
+
   /// Verkauf fertig nach einer Auszahlung: über dem Betrag, den die Person dem Kunden gibt (an Stelle von Rückgeld).
   ///
   /// In de, this message translates to:
@@ -3037,6 +3061,12 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Diesen Gutschein kennt die Kassa nicht.'**
   String get voucherUnknown;
+
+  /// Code eines Gutscheins eingetippt, aber die Kassa konnte ihre Gutscheine nicht lesen (allgemeiner Fehler, nicht "unbekannt").
+  ///
+  /// In de, this message translates to:
+  /// **'Das hat nicht geklappt. Bitte noch einmal.'**
+  String get voucherReadFailed;
 
   /// Prüfen: Zustand eines Gutscheins mit Guthaben.
   ///
@@ -3439,6 +3469,12 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Gutschein'**
   String get bonsFilterVoucher;
+
+  /// Bon-Detail einer Auszahlung (Pfand zurück unter 0): so viel ging bar an den Kunden, wie am Papier "Bar ausbezahlt".
+  ///
+  /// In de, this message translates to:
+  /// **'Bar ausbezahlt'**
+  String get bonsCashPaidOut;
 
   /// Bon-Detail: unter einer Zahlung mit Gutschein, was nach diesem Bon am Gutschein bleibt (wie am Papier).
   ///

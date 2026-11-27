@@ -1564,6 +1564,21 @@ class L10nAr extends L10n {
   }
 
   @override
+  String bonsVoidCashIn(String amount) {
+    return 'تستردّ $amount نقدًا.';
+  }
+
+  @override
+  String bonsVoidVoucherBack(String code, String amount) {
+    return 'تستعيد القسيمة $code مبلغ $amount.';
+  }
+
+  @override
+  String bonsVoidVoucherSold(String code) {
+    return 'لن تكون القسيمة $code صالحة بعد ذلك. يرجى استرجاع ورقة القسيمة.';
+  }
+
+  @override
   String get discountTitle => 'خصم';
 
   @override
@@ -1673,6 +1688,9 @@ class L10nAr extends L10n {
   }
 
   @override
+  String get kassaDepositReturnDenied => 'إرجاع الرهن غير مسموح لك.';
+
+  @override
   String get kassaPayOutDone => 'ادفع للزبون';
 
   @override
@@ -1709,6 +1727,9 @@ class L10nAr extends L10n {
 
   @override
   String get voucherUnknown => 'هذه القسيمة غير معروفة في الصندوق.';
+
+  @override
+  String get voucherReadFailed => 'لم ينجح ذلك. يرجى المحاولة مرة أخرى.';
 
   @override
   String get voucherStateActive => 'صالحة';
@@ -1924,6 +1945,9 @@ class L10nAr extends L10n {
 
   @override
   String get bonsFilterVoucher => 'قسيمة';
+
+  @override
+  String get bonsCashPaidOut => 'دُفع نقدًا';
 
   @override
   String get bonsVoucherLeft => 'الرصيد المتبقي';

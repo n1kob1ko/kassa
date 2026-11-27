@@ -444,6 +444,9 @@
   "bonsVoidMixedCash": "أعد {amount} نقدًا.",
   "bonsVoidCardBack": "استرد {amount} في SumUp.",
   "bonsVoidCardBackTip": "استرد {amount} في SumUp، منها إكرامية {tip}.",
+  "bonsVoidCashIn": "تستردّ {amount} نقدًا.",
+  "bonsVoidVoucherBack": "تستعيد القسيمة {code} مبلغ {amount}.",
+  "bonsVoidVoucherSold": "لن تكون القسيمة {code} صالحة بعد ذلك. يرجى استرجاع ورقة القسيمة.",
   "discountTitle": "خصم",
   "discountOn": "خصم على: {what}",
   "discountWholeReceipt": "الفاتورة كاملة",
@@ -477,6 +480,7 @@
   "depositReturnTotal": "المُرجَع",
   "depositReturnAdd": "أضف إلى الفاتورة",
   "kassaPayOut": "صرف نقدًا {amount}",
+  "kassaDepositReturnDenied": "إرجاع الرهن غير مسموح لك.",
   "kassaPayOutDone": "ادفع للزبون",
   "kassaVoucher": "قسيمة",
   "voucherSell": "بيع",
@@ -489,6 +493,7 @@
   "voucherValue": "القيمة",
   "voucherBalance": "الرصيد",
   "voucherUnknown": "هذه القسيمة غير معروفة في الصندوق.",
+  "voucherReadFailed": "لم ينجح ذلك. يرجى المحاولة مرة أخرى.",
   "voucherStateActive": "صالحة",
   "voucherStateEmpty": "مستنفدة",
   "voucherStateVoided": "ملغاة",
@@ -556,5 +561,6 @@
   "closeTaxVouchers": "منها قسائم",
   "bonsPaymentVoucher": "قسيمة",
   "bonsFilterVoucher": "قسيمة",
+  "bonsCashPaidOut": "دُفع نقدًا",
   "bonsVoucherLeft": "الرصيد المتبقي"
 }

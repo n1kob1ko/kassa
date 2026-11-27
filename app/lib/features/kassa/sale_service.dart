@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_sync_providers.dart'
@@ -248,6 +249,18 @@ class SaleService {
 
   /// Bons, die in diesem Lauf schon gedruckt wurden.
   final Set<String> _printedOk = {};
+
+  /// Wie viele Bons der Dienst sich gerade merkt (für Tests).
+  @visibleForTesting
+  int get trackedReceipts => {
+    for (final r in _sales.values) r.receipt.id,
+    ..._firstPrint.keys,
+    ..._printingNow.keys,
+    ..._printStarted,
+    ..._fallbacks.keys,
+    ..._drawerMissing,
+    ..._printedOk,
+  }.length;
 
   /// Speichert den Barverkauf und stößt dann Lade und Druck an. Wartet auf die
   /// Datenbank, nicht auf den Drucker.
@@ -709,11 +722,25 @@ class SaleService {
       if (meanwhile != null) return meanwhile._with(receipt);
       if (mode != ReceiptMode.alwaysPrint) _pushNow();
     }
+    _forgetOthers(receipt.id);
     final result = mode == ReceiptMode.digitalOnRequest
         ? _onRequest(receipt, settings, openDrawer: openDrawer)
         : _autoPrint(receipt, settings, mode, openDrawer: openDrawer);
     _sales[key] = result;
     return result;
+  }
+
+  /// Ein neuer Verkauf ist fertig: der Dienst vergisst die älteren, außer
+  /// einem, dessen Uhr noch läuft oder dessen "Bon drucken" noch druckt
+  /// (dessen Druck nach 3 Sekunden kommt trotzdem, genau einmal). Ihre
+  /// Fertig-Ansicht gibt es nicht mehr; "Bons" druckt ohne diese Listen.
+  void _forgetOthers(String receiptId) {
+    final keep = {receiptId, ..._fallbacks.keys, ..._printingNow.keys};
+    _sales.removeWhere((_, r) => !keep.contains(r.receipt.id));
+    _firstPrint.removeWhere((id, _) => !keep.contains(id));
+    _printStarted.removeWhere((id) => !keep.contains(id));
+    _drawerMissing.removeWhere((id) => !keep.contains(id));
+    _printedOk.removeWhere((id) => !keep.contains(id));
   }
 
   /// Der QR-Code erscheint erst, wenn der Server den Bon hat: der Abgleich
@@ -817,10 +844,12 @@ class SaleService {
     return _drawerOnly(receiptId, settings);
   }
 
-  /// Die Uhr ist abgelaufen: Ist der Bon nicht beim Server und wurde für ihn
-  /// noch kein Druck gestartet, druckt die Kassa ihn genau einmal; ohne
-  /// Drucker sagt sie es nur. Lässt sich die Liste "noch zu senden" nicht
-  /// lesen, gilt der Bon als nicht gesendet. Wirft nie.
+  /// Die Uhr ist abgelaufen: Wurde für den Bon noch kein Druck gestartet und
+  /// ist "digital" für ihn nicht festgehalten (der Code stand nie da), druckt
+  /// die Kassa ihn genau einmal; ohne Drucker sagt sie es nur. Ob der Server
+  /// den Bon schon hat, zählt nicht: wer "Nächster Kunde" tippte, bevor der
+  /// Code kam, bekommt einen gedruckten Bon. Lässt sich die Belegerteilung
+  /// nicht lesen, gilt "digital" als nicht festgehalten. Wirft nie.
   Future<void> _fallbackDue(
     Receipt receipt,
     Completer<ReceiptFallback> done,
@@ -829,16 +858,14 @@ class SaleService {
     var result = ReceiptFallback.none;
     try {
       if (!_printStarted.contains(receipt.id) && !_disposed) {
-        bool sent;
+        bool digital;
         try {
-          sent = await _ref
-              .read(outboxRepositoryProvider)
-              .watchSent(kind: 'receipt', ref: receipt.id)
-              .first;
+          digital = (await _ref.read(deliveryRepositoryProvider).of(receipt.id))
+              .any((d) => d.kind == DeliveryKind.digital);
         } catch (_) {
-          sent = false;
+          digital = false;
         }
-        if (!sent && !_disposed) {
+        if (!digital && !_disposed) {
           final settings = await _settings();
           if (_printStarted.contains(receipt.id) || _disposed) {
             result = ReceiptFallback.none;

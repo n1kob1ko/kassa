@@ -756,6 +756,35 @@ void main() {
     expect(found, ['12345678']);
   });
 
+  testWidgets('Code: lässt sich die Datenbank nicht lesen, steht der '
+      'allgemeine Fehler da, nicht "kennt die Kassa nicht"', (t) async {
+    final broken = _BrokenVouchers();
+    addTearDown(broken.close);
+    final found = <String>[];
+    await pumpApp(
+      t,
+      SingleChildScrollView(
+        child: VoucherCodeEntry(
+          onFound: (v) => found.add(v.code),
+          onCleared: () {},
+        ),
+      ),
+      overrides: [
+        ...await memoryOverrides(),
+        voucherRepositoryProvider.overrideWithValue(broken),
+      ],
+    );
+    await t.pumpAndSettle();
+    await tapKeys(t, '1 2 3 4 5 6 7 8');
+    await t.pumpAndSettle();
+    expect(
+      textOf(t, const Key('voucher-code-problem')),
+      'Das hat nicht geklappt. Bitte noch einmal.',
+    );
+    expect(find.text('Diesen Gutschein kennt die Kassa nicht.'), findsNothing);
+    expect(found, isEmpty);
+  });
+
   testWidgets('zwei Gutscheine mit demselben Code nach dem Abgleich: die '
       'Kassa zeigt beide mit Wert und Datum, gewählt wird einer', (t) async {
     await _open(t);
@@ -886,4 +915,18 @@ class _SlowVouchers extends VoucherRepository {
       ),
     ];
   }
+}
+
+/// Gutscheine, deren Suche nach dem Code immer scheitert.
+class _BrokenVouchers extends VoucherRepository {
+  _BrokenVouchers() : this._(KassaDatabase(NativeDatabase.memory()));
+  _BrokenVouchers._(this._db) : super(_db);
+
+  final KassaDatabase _db;
+
+  Future<void> close() => _db.close();
+
+  @override
+  Future<List<Voucher>> findByCode(String code) =>
+      Future.error(StateError('Platte kaputt'));
 }

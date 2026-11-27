@@ -444,6 +444,9 @@
   "bonsVoidMixedCash": "Give back {amount} in cash.",
   "bonsVoidCardBack": "Refund {amount} in SumUp.",
   "bonsVoidCardBackTip": "Refund {amount} in SumUp, incl. tip {tip}.",
+  "bonsVoidCashIn": "You get {amount} back in cash.",
+  "bonsVoidVoucherBack": "Voucher {code} gets {amount} back.",
+  "bonsVoidVoucherSold": "Voucher {code} is no longer valid afterwards. Please take the voucher slip back.",
   "discountTitle": "Discount",
   "discountOn": "Discount on: {what}",
   "discountWholeReceipt": "whole receipt",
@@ -477,6 +480,7 @@
   "depositReturnTotal": "Refund",
   "depositReturnAdd": "Add to receipt",
   "kassaPayOut": "Pay out cash {amount}",
+  "kassaDepositReturnDenied": "Deposit return is not enabled for you.",
   "kassaPayOutDone": "Pay out",
   "kassaVoucher": "Voucher",
   "voucherSell": "Sell",
@@ -489,6 +493,7 @@
   "voucherValue": "Value",
   "voucherBalance": "Balance",
   "voucherUnknown": "The register does not know this voucher.",
+  "voucherReadFailed": "That didn't work. Please try again.",
   "voucherStateActive": "Valid",
   "voucherStateEmpty": "Used up",
   "voucherStateVoided": "Voided",
@@ -556,5 +561,6 @@
   "closeTaxVouchers": "of which vouchers",
   "bonsPaymentVoucher": "Voucher",
   "bonsFilterVoucher": "Voucher",
+  "bonsCashPaidOut": "Cash paid out",
   "bonsVoucherLeft": "Remaining balance"
 }

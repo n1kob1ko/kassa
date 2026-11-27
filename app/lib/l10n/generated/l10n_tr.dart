@@ -1552,6 +1552,21 @@ class L10nTr extends L10n {
   }
 
   @override
+  String bonsVoidCashIn(String amount) {
+    return '$amount nakit geri alırsınız.';
+  }
+
+  @override
+  String bonsVoidVoucherBack(String code, String amount) {
+    return '$code hediye çeki $amount geri alır.';
+  }
+
+  @override
+  String bonsVoidVoucherSold(String code) {
+    return '$code hediye çeki bundan sonra geçersiz olur. Lütfen çek fişini geri alın.';
+  }
+
+  @override
   String get discountTitle => 'İndirim';
 
   @override
@@ -1661,6 +1676,10 @@ class L10nTr extends L10n {
   }
 
   @override
+  String get kassaDepositReturnDenied =>
+      'Depozito iadesi sizin için açık değil.';
+
+  @override
   String get kassaPayOutDone => 'Geri öde';
 
   @override
@@ -1697,6 +1716,9 @@ class L10nTr extends L10n {
 
   @override
   String get voucherUnknown => 'Kasa bu hediye çekini tanımıyor.';
+
+  @override
+  String get voucherReadFailed => 'Olmadı. Lütfen tekrar deneyin.';
 
   @override
   String get voucherStateActive => 'Geçerli';
@@ -1910,6 +1932,9 @@ class L10nTr extends L10n {
 
   @override
   String get bonsFilterVoucher => 'Hediye çeki';
+
+  @override
+  String get bonsCashPaidOut => 'Nakit ödendi';
 
   @override
   String get bonsVoucherLeft => 'Kalan bakiye';

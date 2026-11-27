@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 557 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 563 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -123,6 +123,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Mehr | 更多 | Kassa: `kassaMore` |
 | Pfand zurück | 退押金 | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | 现金退付 {amount} | Kassa: `kassaPayOut` |
+| Pfand zurück ist für dich nicht freigegeben. | 你没有退押金的权限。 | Kassa: `kassaDepositReturnDenied` |
 | Auszahlen | 需退付 | Kassa: `kassaPayOutDone` |
 | Gutschein | 礼券 | Kassa: `kassaVoucher` |
 | Gutschein | 礼券 | Kassa: `kassaPayVoucher` |
@@ -294,6 +295,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | 请退还现金 {amount}。 | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | 请在 SumUp 中退款 {amount}。 | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | 请在 SumUp 中退款 {amount}，其中小费 {tip}。 | Bons: `bonsVoidCardBackTip` |
+| Du bekommst {amount} bar zurück. | 你收回现金 {amount}。 | Bons: `bonsVoidCashIn` |
+| Der Gutschein {code} bekommt {amount} zurück. | 礼券 {code} 退回 {amount}。 | Bons: `bonsVoidVoucherBack` |
+| Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen. | 此后礼券 {code} 失效。请收回礼券凭条。 | Bons: `bonsVoidVoucherSold` |
 | Zwischensumme | 小计 | Bons: `bonsSubtotal` |
 | davon Trinkgeld | 其中小费 | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | 礼券已被使用，此小票无法作废。 | Bons: `bonsVoidVoucherRedeemed` |
@@ -303,6 +307,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Digital angeboten | 已提供电子版 | Bons: `bonsDeliveryDigital` |
 | Gutschein | 礼券 | Bons: `bonsPaymentVoucher` |
 | Gutschein | 礼券 | Bons: `bonsFilterVoucher` |
+| Bar ausbezahlt | 现金支出 | Bons: `bonsCashPaidOut` |
 | Restguthaben | 剩余余额 | Bons: `bonsVoucherLeft` |
 
 ## Artikel
@@ -600,6 +605,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Wert | 面值 | Sonstiges: `voucherValue` |
 | Guthaben | 余额 | Sonstiges: `voucherBalance` |
 | Diesen Gutschein kennt die Kassa nicht. | 收银系统里没有这张礼券。 | Sonstiges: `voucherUnknown` |
+| Das hat nicht geklappt. Bitte noch einmal. | 未成功，请重试。 | Sonstiges: `voucherReadFailed` |
 | Gültig | 有效 | Sonstiges: `voucherStateActive` |
 | Aufgebraucht | 已用完 | Sonstiges: `voucherStateEmpty` |
 | Storniert | 已作废 | Sonstiges: `voucherStateVoided` |

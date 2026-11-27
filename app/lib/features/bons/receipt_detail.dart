@@ -14,7 +14,8 @@ import '../../devices/printer.dart';
 import '../../domain/cart.dart' show isDepositReturnItemId;
 import '../../domain/discount.dart';
 import '../../domain/receipt.dart';
-import '../../domain/receipt_layout.dart' show isPayoutReceipt;
+import '../../domain/receipt_layout.dart'
+    show givenChangePayment, isPayoutReceipt;
 import '../../domain/voucher.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
@@ -524,15 +525,14 @@ class _Body extends StatelessWidget {
     final voider = r.isVoided ? state._find(r.voidedByReceiptId) : null;
     final paymentKind = r.paymentKind;
     final payments = r.payments;
-    // "Gegeben" und "Rückgeld" nur bei einer einzigen Bar-Zahlung, nie bei
-    // einer Auszahlung.
-    final cashPayment =
-        r.kind == ReceiptKind.sale &&
-            !isPayoutReceipt(r) &&
-            payments.length == 1 &&
-            payments.single.kind == PaymentKind.cash
-        ? payments.single
+    // "Gegeben" und "Rückgeld" nach der Regel des Papiers
+    // ([givenChangePayment]: eine einzige Bar-Zahlung, oder bar neben nur
+    // Gutscheinen), am Bildschirm nur bei einem Verkauf. Eine Auszahlung
+    // heißt "Bar ausbezahlt", wie am Papier.
+    final cashPayment = r.kind == ReceiptKind.sale
+        ? givenChangePayment(r)
         : null;
+    final paidOut = isPayoutReceipt(r) ? r.cashPayment : null;
     final special = r.kind.isSpecial;
     final rksv = r.rksv;
     final d = r.createdAt;
@@ -642,16 +642,27 @@ class _Body extends StatelessWidget {
                 ],
                 if (cashPayment != null) ...[
                   _SmallRow(
+                    key: const Key('detail-given'),
                     l.kassaGiven,
                     formatEuro(cashPayment.givenCents),
                     small,
                   ),
                   _SmallRow(
+                    key: const Key('detail-change'),
                     l.kassaChange,
                     formatEuro(cashPayment.changeCents),
                     small,
                   ),
                 ],
+                // Ohne Minus, beim Storno einer Auszahlung mit (wie am
+                // Papier).
+                if (paidOut != null)
+                  _SmallRow(
+                    key: const Key('detail-paid-out'),
+                    l.bonsCashPaidOut,
+                    formatEuro(-paidOut.amountCents),
+                    small,
+                  ),
               ],
             ],
           ),

@@ -101,6 +101,14 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   /// Die Gutscheine, deren "Gutschein drucken" gerade läuft.
   final Set<int> _voucherPrinting = {};
 
+  /// Die Abschnitte drucken gerade von selbst (nach dem Kundenbon oder nach
+  /// "Nochmal drucken"): "Gutschein drucken" bleibt so lange grau.
+  late bool _autoSlips = widget.result.receipt.soldVouchers.isNotEmpty;
+
+  /// Die Abschnitte kamen nicht von selbst (der Kundenbon scheiterte): sie
+  /// starten nach einem "Nochmal drucken" ohne Fehler.
+  bool _slipsSkipped = false;
+
   /// "Rechnung an Firma" ist getippt: an Stelle der Ansicht steht das Blatt
   /// "Firmenkunde wählen".
   bool _picking = false;
@@ -121,16 +129,23 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
       if (mounted) setState(() => _fallback = f);
     }, onError: (Object _) {});
     _awaitKitchen(widget.result.kitchen);
-    widget.result.voucherPrints.then((outcomes) {
-      if (!mounted) return;
-      setState(() {
-        for (final (i, o) in outcomes.indexed) {
-          if (i < _voucherOutcomes.length && !_voucherPrinting.contains(i)) {
-            _voucherOutcomes[i] = o;
+    widget.result.voucherPrints.then(
+      (outcomes) {
+        if (!mounted) return;
+        setState(() {
+          _autoSlips = false;
+          _slipsSkipped = outcomes.length < _voucherOutcomes.length;
+          for (final (i, o) in outcomes.indexed) {
+            if (i < _voucherOutcomes.length && !_voucherPrinting.contains(i)) {
+              _voucherOutcomes[i] = o;
+            }
           }
-        }
-      });
-    }, onError: (Object _) {});
+        });
+      },
+      onError: (Object _) {
+        if (mounted) setState(() => _autoSlips = false);
+      },
+    );
   }
 
   Future<void> _printVoucher(int index, SoldVoucher voucher) async {
@@ -203,7 +218,32 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
 
   void _reprint() {
     setState(() => _outcome = null);
-    _await(ref.read(saleServiceProvider).printAgain(widget.result.receipt));
+    final job = ref.read(saleServiceProvider).printAgain(widget.result.receipt);
+    _await(job);
+    job.then((outcome) {
+      if (outcome.ok && mounted) unawaited(_slipsAfterReprint());
+    }, onError: (Object _) {});
+  }
+
+  /// Nach einem "Nochmal drucken" ohne Fehler: die Abschnitte, die nach dem
+  /// gescheiterten Kundenbon nicht kamen, einer nach dem anderen in der
+  /// Reihenfolge der Zeilen.
+  Future<void> _slipsAfterReprint() async {
+    if (!_slipsSkipped || _autoSlips) return;
+    setState(() {
+      _slipsSkipped = false;
+      _autoSlips = true;
+    });
+    final receipt = widget.result.receipt;
+    final sold = [...receipt.soldVouchers.indexed]
+      ..sort((a, b) => a.$2.linePosition.compareTo(b.$2.linePosition));
+    final service = ref.read(saleServiceProvider);
+    for (final (i, v) in sold) {
+      final outcome = await service.printVoucher(receipt, v);
+      if (!mounted) return;
+      setState(() => _voucherOutcomes[i] = outcome);
+    }
+    if (mounted) setState(() => _autoSlips = false);
   }
 
   @override
@@ -401,13 +441,21 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                         receipt: receipt,
                         waitForServer: _fallback != ReceiptFallback.noPrinter,
                       ),
-                      const SizedBox(height: KassaTokens.spaceSm),
-                      Text(
-                        l.kassaReceiptQrCaption,
-                        key: const Key('receipt-qr-caption'),
-                        textAlign: TextAlign.center,
-                        style: text.bodyLarge!.copyWith(color: c.ink2),
-                      ),
+                      // Bei "Drucken und digital" erst mit dem Code: der Bon
+                      // ist gedruckt, ein leerer Platzhalter braucht keinen
+                      // Satz zum Handy.
+                      if (widget.result.receiptMode !=
+                              ReceiptMode.printAndDigital ||
+                          (ref.watch(receiptSentProvider(receipt.id)).value ??
+                              false)) ...[
+                        const SizedBox(height: KassaTokens.spaceSm),
+                        Text(
+                          l.kassaReceiptQrCaption,
+                          key: const Key('receipt-qr-caption'),
+                          textAlign: TextAlign.center,
+                          style: text.bodyLarge!.copyWith(color: c.ink2),
+                        ),
+                      ],
                     ],
                     for (final (i, p) in voucherPayments.indexed) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
@@ -419,7 +467,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                         index: i,
                         voucher: v,
                         canPrint: settings.printerKind != PrinterKind.none,
-                        printing: _voucherPrinting.contains(i),
+                        printing: _autoSlips || _voucherPrinting.contains(i),
                         outcome: _voucherOutcomes[i],
                         onPrint: () => _printVoucher(i, v),
                       ),

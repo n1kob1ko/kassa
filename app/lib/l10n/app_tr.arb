@@ -444,6 +444,9 @@
   "bonsVoidMixedCash": "{amount} nakit iade edin.",
   "bonsVoidCardBack": "{amount} tutarını SumUp'ta iade edin.",
   "bonsVoidCardBackTip": "{amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş.",
+  "bonsVoidCashIn": "{amount} nakit geri alırsınız.",
+  "bonsVoidVoucherBack": "{code} hediye çeki {amount} geri alır.",
+  "bonsVoidVoucherSold": "{code} hediye çeki bundan sonra geçersiz olur. Lütfen çek fişini geri alın.",
   "discountTitle": "İndirim",
   "discountOn": "İndirim: {what}",
   "discountWholeReceipt": "tüm fiş",
@@ -477,6 +480,7 @@
   "depositReturnTotal": "İade",
   "depositReturnAdd": "Fişe ekle",
   "kassaPayOut": "Nakit iade {amount}",
+  "kassaDepositReturnDenied": "Depozito iadesi sizin için açık değil.",
   "kassaPayOutDone": "Geri öde",
   "kassaVoucher": "Hediye çeki",
   "voucherSell": "Sat",
@@ -489,6 +493,7 @@
   "voucherValue": "Değer",
   "voucherBalance": "Bakiye",
   "voucherUnknown": "Kasa bu hediye çekini tanımıyor.",
+  "voucherReadFailed": "Olmadı. Lütfen tekrar deneyin.",
   "voucherStateActive": "Geçerli",
   "voucherStateEmpty": "Bitti",
   "voucherStateVoided": "İptal edildi",
@@ -556,5 +561,6 @@
   "closeTaxVouchers": "bunun hediye çekleri",
   "bonsPaymentVoucher": "Hediye çeki",
   "bonsFilterVoucher": "Hediye çeki",
+  "bonsCashPaidOut": "Nakit ödendi",
   "bonsVoucherLeft": "Kalan bakiye"
 }

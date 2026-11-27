@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
 import '../../domain/receipt.dart';
+import '../../domain/voucher.dart' show formatVoucherCode;
 import '../../l10n/generated/l10n.dart';
 import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
@@ -32,8 +33,11 @@ enum VoidFailure {
 /// Die Rückfrage vor dem Storno: rote Fläche mit zwei Knöpfen. [failure] sagt,
 /// warum der letzte Versuch nicht geklappt hat. Ein Bon mit nur einer
 /// Bar-Zahlung oder nur einer Kartenzahlung ohne Trinkgeld zeigt die Texte von
-/// 1.10.0; sonst nennt die Frage den Bar-Teil zum Zurückgeben und den Betrag,
-/// der bei SumUp zurückzubuchen ist (mit Trinkgeld).
+/// 1.10.0. Sonst nennt die Frage in dieser Reihenfolge, was davon zutrifft:
+/// den Bar-Teil zum Zurückgeben (oder bei einer Auszahlung, was bar
+/// hereinkommt), was jeder Gutschein zurückbekommt, den Betrag, der bei SumUp
+/// zurückzubuchen ist (mit Trinkgeld), und jeden verkauften Gutschein, der
+/// danach nicht mehr gilt.
 class VoidQuestion extends StatelessWidget {
   const VoidQuestion({
     super.key,
@@ -55,12 +59,24 @@ class VoidQuestion extends StatelessWidget {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
-    final amount = formatEuro(receipt.totalCents);
     final card = receipt.cardPayment;
     final byCard = card != null;
-    // Bar-Teil oder Trinkgeld: die Frage nennt die Beträge einzeln.
+    final vouchers = [
+      for (final p in receipt.payments)
+        if (p.kind == PaymentKind.voucher) p,
+    ];
+    final cashCents = receipt.cashCents;
+    // Nur bar (oder gar keine Zahlung) und nicht unter 0: der Text von
+    // 1.10.0 mit dem Bar-Betrag.
+    final onlyCash = !byCard && vouchers.isEmpty && cashCents >= 0;
+    final onlyCashCents = receipt.cashPayment == null
+        ? receipt.totalCents
+        : cashCents;
+    // Bar-Teil, Gutschein oder Trinkgeld: die Frage nennt die Beträge
+    // einzeln.
     final detailed =
-        card != null && (receipt.cashCents > 0 || card.tipCents > 0);
+        card != null &&
+        (cashCents != 0 || card.tipCents > 0 || vouchers.isNotEmpty);
     final cardHint = switch (card) {
       null => '',
       _ when !detailed => l.bonsVoidCardHint,
@@ -92,17 +108,32 @@ class VoidQuestion extends StatelessWidget {
             style: text.titleLarge!.copyWith(fontSize: 17, color: c.spicyFg),
           ),
           const SizedBox(height: KassaTokens.spaceXxs),
-          if (!byCard)
+          if (onlyCash)
             Text(
-              l.bonsVoidCashBack(ltrIsolate(context, amount)),
+              l.bonsVoidCashBack(
+                ltrIsolate(context, formatEuro(onlyCashCents)),
+              ),
+              style: cashStyle,
+            )
+          else if (cashCents > 0)
+            Text(
+              l.bonsVoidMixedCash(ltrIsolate(context, formatEuro(cashCents))),
+              key: const Key('void-cash-back'),
+              style: cashStyle,
+            )
+          else if (cashCents < 0)
+            Text(
+              l.bonsVoidCashIn(ltrIsolate(context, formatEuro(-cashCents))),
+              key: const Key('void-cash-in'),
               style: cashStyle,
             ),
-          if (detailed && receipt.cashCents > 0)
+          for (final (i, p) in vouchers.indexed)
             Text(
-              l.bonsVoidMixedCash(
-                ltrIsolate(context, formatEuro(receipt.cashCents)),
+              l.bonsVoidVoucherBack(
+                ltrIsolate(context, formatVoucherCode(p.voucherCode ?? '')),
+                ltrIsolate(context, formatEuro(p.amountCents)),
               ),
-              key: const Key('void-cash-back'),
+              key: Key('void-voucher-back-$i'),
               style: cashStyle,
             ),
           if (byCard) ...[
@@ -123,6 +154,16 @@ class VoidQuestion extends StatelessWidget {
                   color: c.warnInk,
                 ),
               ),
+            ),
+          ],
+          for (final (i, v) in receipt.soldVouchers.indexed) ...[
+            const SizedBox(height: KassaTokens.spaceXxs),
+            Text(
+              l.bonsVoidVoucherSold(
+                ltrIsolate(context, formatVoucherCode(v.code)),
+              ),
+              key: Key('void-voucher-sold-$i'),
+              style: cashStyle,
             ),
           ],
           if (failure case final failure?) ...[

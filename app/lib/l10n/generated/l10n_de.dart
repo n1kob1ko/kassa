@@ -1569,6 +1569,21 @@ class L10nDe extends L10n {
   }
 
   @override
+  String bonsVoidCashIn(String amount) {
+    return 'Du bekommst $amount bar zurück.';
+  }
+
+  @override
+  String bonsVoidVoucherBack(String code, String amount) {
+    return 'Der Gutschein $code bekommt $amount zurück.';
+  }
+
+  @override
+  String bonsVoidVoucherSold(String code) {
+    return 'Der Gutschein $code gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen.';
+  }
+
+  @override
   String get discountTitle => 'Rabatt';
 
   @override
@@ -1679,6 +1694,10 @@ class L10nDe extends L10n {
   }
 
   @override
+  String get kassaDepositReturnDenied =>
+      'Pfand zurück ist für dich nicht freigegeben.';
+
+  @override
   String get kassaPayOutDone => 'Auszahlen';
 
   @override
@@ -1716,6 +1735,9 @@ class L10nDe extends L10n {
 
   @override
   String get voucherUnknown => 'Diesen Gutschein kennt die Kassa nicht.';
+
+  @override
+  String get voucherReadFailed => 'Das hat nicht geklappt. Bitte noch einmal.';
 
   @override
   String get voucherStateActive => 'Gültig';
@@ -1930,6 +1952,9 @@ class L10nDe extends L10n {
 
   @override
   String get bonsFilterVoucher => 'Gutschein';
+
+  @override
+  String get bonsCashPaidOut => 'Bar ausbezahlt';
 
   @override
   String get bonsVoucherLeft => 'Restguthaben';

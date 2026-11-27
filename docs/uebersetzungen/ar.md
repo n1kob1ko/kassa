@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 557 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 563 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -123,6 +123,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Mehr | المزيد | Kassa: `kassaMore` |
 | Pfand zurück | إرجاع الرهن | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | صرف نقدًا {amount} | Kassa: `kassaPayOut` |
+| Pfand zurück ist für dich nicht freigegeben. | إرجاع الرهن غير مسموح لك. | Kassa: `kassaDepositReturnDenied` |
 | Auszahlen | ادفع للزبون | Kassa: `kassaPayOutDone` |
 | Gutschein | قسيمة | Kassa: `kassaVoucher` |
 | Gutschein | قسيمة | Kassa: `kassaPayVoucher` |
@@ -294,6 +295,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | أعد {amount} نقدًا. | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | استرد {amount} في SumUp. | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | استرد {amount} في SumUp، منها إكرامية {tip}. | Bons: `bonsVoidCardBackTip` |
+| Du bekommst {amount} bar zurück. | تستردّ {amount} نقدًا. | Bons: `bonsVoidCashIn` |
+| Der Gutschein {code} bekommt {amount} zurück. | تستعيد القسيمة {code} مبلغ {amount}. | Bons: `bonsVoidVoucherBack` |
+| Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen. | لن تكون القسيمة {code} صالحة بعد ذلك. يرجى استرجاع ورقة القسيمة. | Bons: `bonsVoidVoucherSold` |
 | Zwischensumme | المجموع الفرعي | Bons: `bonsSubtotal` |
 | davon Trinkgeld | منها إكرامية | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | تم استخدام القسيمة بالفعل. لا يمكن إلغاء هذه الفاتورة. | Bons: `bonsVoidVoucherRedeemed` |
@@ -303,6 +307,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Digital angeboten | عُرضت رقميًا | Bons: `bonsDeliveryDigital` |
 | Gutschein | قسيمة | Bons: `bonsPaymentVoucher` |
 | Gutschein | قسيمة | Bons: `bonsFilterVoucher` |
+| Bar ausbezahlt | دُفع نقدًا | Bons: `bonsCashPaidOut` |
 | Restguthaben | الرصيد المتبقي | Bons: `bonsVoucherLeft` |
 
 ## Artikel
@@ -600,6 +605,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Wert | القيمة | Sonstiges: `voucherValue` |
 | Guthaben | الرصيد | Sonstiges: `voucherBalance` |
 | Diesen Gutschein kennt die Kassa nicht. | هذه القسيمة غير معروفة في الصندوق. | Sonstiges: `voucherUnknown` |
+| Das hat nicht geklappt. Bitte noch einmal. | لم ينجح ذلك. يرجى المحاولة مرة أخرى. | Sonstiges: `voucherReadFailed` |
 | Gültig | صالحة | Sonstiges: `voucherStateActive` |
 | Aufgebraucht | مستنفدة | Sonstiges: `voucherStateEmpty` |
 | Storniert | ملغاة | Sonstiges: `voucherStateVoided` |

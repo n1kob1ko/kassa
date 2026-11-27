@@ -66,6 +66,7 @@ class CartPanel extends ConsumerStatefulWidget {
     this.onVoucher,
     this.onMore,
     this.onPayOut,
+    this.onDepositReturnDenied,
     this.onPayVoucher,
     this.onFinishVoucher,
   });
@@ -99,6 +100,10 @@ class CartPanel extends ConsumerStatefulWidget {
 
   /// "Bar auszahlen" bei einer Summe unter 0.
   final VoidCallback? onPayOut;
+
+  /// Die angemeldete Person darf "Pfand zurück" nicht ("Nur Chef"): das Plus
+  /// einer Zeile "Pfand zurück" ruft dies, statt sie zu erhöhen.
+  final VoidCallback? onDepositReturnDenied;
 
   /// Öffnet "Gutschein einlösen"; null: keine Taste `pay-voucher`.
   final VoidCallback? onPayVoucher;
@@ -312,6 +317,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                           flash: _flash[line.lineId] ?? 0,
                           onQuantity: (q) =>
                               controller.setQuantity(line.lineId, q),
+                          onRaiseDenied: widget.onDepositReturnDenied,
                           discountCents: pricing.lines[i].ownDiscountCents,
                           onDiscount:
                               onLineDiscount == null ||

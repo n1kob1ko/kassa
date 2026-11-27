@@ -41,14 +41,18 @@ class CustomerFormStart {
       vatId = r.vatId ?? '',
       keep = false;
 
-  /// Die Werte eines gespeicherten Firmenkunden.
+  /// Die Werte eines gespeicherten Firmenkunden, dem für diesen Bon etwas
+  /// fehlt (etwa die UID über 10.000 €). Wie bei [CustomerFormStart.of]
+  /// ändert das Formular ihn nie: Wer hier eine andere Firma tippt,
+  /// überschriebe ihn sonst. Der Schalter ist aus; schaltet man ihn an,
+  /// entsteht ein neuer Firmenkunde. Gespeicherte ändert man im Browser.
   CustomerFormStart.customer(Customer c)
-    : customerId = c.id,
+    : customerId = null,
       name = c.name,
       addressLine1 = c.addressLine1,
       addressLine2 = c.addressLine2,
       vatId = c.vatId ?? '',
-      keep = true;
+      keep = false;
 
   final String? customerId;
   final String name;

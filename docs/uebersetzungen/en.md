@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 557 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 563 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -123,6 +123,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Mehr | More | Kassa: `kassaMore` |
 | Pfand zurück | Deposit return | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | Pay out cash {amount} | Kassa: `kassaPayOut` |
+| Pfand zurück ist für dich nicht freigegeben. | Deposit return is not enabled for you. | Kassa: `kassaDepositReturnDenied` |
 | Auszahlen | Pay out | Kassa: `kassaPayOutDone` |
 | Gutschein | Voucher | Kassa: `kassaVoucher` |
 | Gutschein | Voucher | Kassa: `kassaPayVoucher` |
@@ -294,6 +295,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | Give back {amount} in cash. | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | Refund {amount} in SumUp. | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | Refund {amount} in SumUp, incl. tip {tip}. | Bons: `bonsVoidCardBackTip` |
+| Du bekommst {amount} bar zurück. | You get {amount} back in cash. | Bons: `bonsVoidCashIn` |
+| Der Gutschein {code} bekommt {amount} zurück. | Voucher {code} gets {amount} back. | Bons: `bonsVoidVoucherBack` |
+| Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen. | Voucher {code} is no longer valid afterwards. Please take the voucher slip back. | Bons: `bonsVoidVoucherSold` |
 | Zwischensumme | Subtotal | Bons: `bonsSubtotal` |
 | davon Trinkgeld | of which tip | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | The voucher has already been redeemed. This receipt cannot be voided. | Bons: `bonsVoidVoucherRedeemed` |
@@ -303,6 +307,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Digital angeboten | Offered digitally | Bons: `bonsDeliveryDigital` |
 | Gutschein | Voucher | Bons: `bonsPaymentVoucher` |
 | Gutschein | Voucher | Bons: `bonsFilterVoucher` |
+| Bar ausbezahlt | Cash paid out | Bons: `bonsCashPaidOut` |
 | Restguthaben | Remaining balance | Bons: `bonsVoucherLeft` |
 
 ## Artikel
@@ -600,6 +605,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Wert | Value | Sonstiges: `voucherValue` |
 | Guthaben | Balance | Sonstiges: `voucherBalance` |
 | Diesen Gutschein kennt die Kassa nicht. | The register does not know this voucher. | Sonstiges: `voucherUnknown` |
+| Das hat nicht geklappt. Bitte noch einmal. | That didn't work. Please try again. | Sonstiges: `voucherReadFailed` |
 | Gültig | Valid | Sonstiges: `voucherStateActive` |
 | Aufgebraucht | Used up | Sonstiges: `voucherStateEmpty` |
 | Storniert | Voided | Sonstiges: `voucherStateVoided` |

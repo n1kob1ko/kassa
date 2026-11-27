@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 557 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 563 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -123,6 +123,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Mehr | Daha fazla | Kassa: `kassaMore` |
 | Pfand zurück | Depozito iadesi | Kassa: `kassaDepositReturn` |
 | Bar auszahlen {amount} | Nakit iade {amount} | Kassa: `kassaPayOut` |
+| Pfand zurück ist für dich nicht freigegeben. | Depozito iadesi sizin için açık değil. | Kassa: `kassaDepositReturnDenied` |
 | Auszahlen | Geri öde | Kassa: `kassaPayOutDone` |
 | Gutschein | Hediye çeki | Kassa: `kassaVoucher` |
 | Gutschein | Hediye çeki | Kassa: `kassaPayVoucher` |
@@ -294,6 +295,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | {amount} nakit iade edin. | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | {amount} tutarını SumUp'ta iade edin. | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | {amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş. | Bons: `bonsVoidCardBackTip` |
+| Du bekommst {amount} bar zurück. | {amount} nakit geri alırsınız. | Bons: `bonsVoidCashIn` |
+| Der Gutschein {code} bekommt {amount} zurück. | {code} hediye çeki {amount} geri alır. | Bons: `bonsVoidVoucherBack` |
+| Der Gutschein {code} gilt danach nicht mehr. Bitte den Abschnitt zurücknehmen. | {code} hediye çeki bundan sonra geçersiz olur. Lütfen çek fişini geri alın. | Bons: `bonsVoidVoucherSold` |
 | Zwischensumme | Ara toplam | Bons: `bonsSubtotal` |
 | davon Trinkgeld | bunun bahşişi | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | Hediye çeki zaten kullanıldı. Bu fiş iptal edilemez. | Bons: `bonsVoidVoucherRedeemed` |
@@ -303,6 +307,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Digital angeboten | Dijital sunuldu | Bons: `bonsDeliveryDigital` |
 | Gutschein | Hediye çeki | Bons: `bonsPaymentVoucher` |
 | Gutschein | Hediye çeki | Bons: `bonsFilterVoucher` |
+| Bar ausbezahlt | Nakit ödendi | Bons: `bonsCashPaidOut` |
 | Restguthaben | Kalan bakiye | Bons: `bonsVoucherLeft` |
 
 ## Artikel
@@ -600,6 +605,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Wert | Değer | Sonstiges: `voucherValue` |
 | Guthaben | Bakiye | Sonstiges: `voucherBalance` |
 | Diesen Gutschein kennt die Kassa nicht. | Kasa bu hediye çekini tanımıyor. | Sonstiges: `voucherUnknown` |
+| Das hat nicht geklappt. Bitte noch einmal. | Olmadı. Lütfen tekrar deneyin. | Sonstiges: `voucherReadFailed` |
 | Gültig | Geçerli | Sonstiges: `voucherStateActive` |
 | Aufgebraucht | Bitti | Sonstiges: `voucherStateEmpty` |
 | Storniert | İptal edildi | Sonstiges: `voucherStateVoided` |

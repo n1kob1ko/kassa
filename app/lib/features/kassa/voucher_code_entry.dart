@@ -80,6 +80,10 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
   /// Unter mehreren Treffern gewählt: die Wahl steht nicht mehr da.
   bool _picked = false;
 
+  /// Die letzte Suche ließ sich nicht lesen: der allgemeine Fehler statt
+  /// "unbekannt".
+  bool _readFailed = false;
+
   /// Zählt jede Änderung des Codes: nur die Suche mit dem neuesten Stand
   /// darf melden.
   int _generation = 0;
@@ -97,6 +101,7 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
       _digits = next;
       _found = null;
       _picked = false;
+      _readFailed = false;
     });
     if (before.length == _length) widget.onCleared();
     if (next.length == _length) _search(next, _generation);
@@ -104,15 +109,20 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
 
   Future<void> _search(String code, int generation) async {
     List<Voucher> found;
+    var failed = false;
     try {
       found = await ref.read(voucherRepositoryProvider).findByCode(code);
     } catch (_) {
       found = const [];
+      failed = true;
     }
     // Inzwischen anders getippt (auch weg und wieder dieselbe Ziffer): das
     // Ergebnis gilt nicht mehr, die neuere Suche meldet.
     if (!mounted || generation != _generation) return;
-    setState(() => _found = found);
+    setState(() {
+      _found = found;
+      _readFailed = failed;
+    });
     if (found.length == 1) widget.onFound(found.single);
   }
 
@@ -130,6 +140,8 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
     final empty = _digits.isEmpty;
     final problem = found == null
         ? null
+        : _readFailed
+        ? l.voucherReadFailed
         : found.isEmpty
         ? l.voucherUnknown
         : widget.problem;

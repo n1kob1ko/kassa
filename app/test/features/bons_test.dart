@@ -1644,6 +1644,53 @@ void main() {
       expect(inRow('detail-payment-0', 'Bar'), findsOneWidget);
     });
 
+    testWidgets('Detail wie am Papier: Gutschein 5,00 und Bar 4,65, gegeben '
+        '5,00, zeigt "Gegeben 5,00" und "Rückgeld 0,35"; eine Auszahlung '
+        '"Bar ausbezahlt 0,75"', (t) async {
+      await pumpBonsWithSales(t, 0);
+      await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+      await sellAll(t);
+      final five = (await sellCash(
+        t,
+        cart: const Cart.empty().addVoucherSale(valueCents: 500),
+      )).soldVouchers.single;
+      final c = containerOf(t);
+      final paid = const Cart.empty().add(teigtaschen).add(cola);
+      await c
+          .read(receiptRepositoryProvider)
+          .finalizeCashSale(
+            saleId: 'gutschein-5-bar',
+            cart: paid.applyVoucher(
+              AppliedVoucher(
+                voucherId: five.voucherId,
+                code: five.code,
+                balanceCents: 500,
+              ),
+            ),
+            givenCents: 500,
+            staff: c.read(sessionProvider)!,
+          );
+      await _reopenBons(t);
+      await openReceipt(t, 7);
+      expect(inRow('detail-payment-1', 'Bar'), findsOneWidget);
+      expect(
+        inRow('detail-payment-1', formatEuro(paid.totalCents - 500)),
+        findsOneWidget,
+      );
+      expect(inRow('detail-given', 'Gegeben'), findsOneWidget);
+      expect(inRow('detail-given', '5,00 €'), findsOneWidget);
+      expect(inRow('detail-change', 'Rückgeld'), findsOneWidget);
+      expect(
+        inRow('detail-change', formatEuro(500 - (paid.totalCents - 500))),
+        findsOneWidget,
+      );
+
+      await openReceipt(t, 4);
+      expect(inRow('detail-paid-out', 'Bar ausbezahlt'), findsOneWidget);
+      expect(inRow('detail-paid-out', '0,75 €'), findsOneWidget);
+      expect(find.byKey(const Key('detail-given')), findsNothing);
+    });
+
     testWidgets('Detail: Pfand zurück neben verlangtem Pfand; die Reihe Pfand '
         'zeigt nur das verlangte', (t) async {
       await pumpBonsWithSales(t, 0);

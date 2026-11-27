@@ -4,9 +4,14 @@
 // bisher, genau 0 "Abschließen", unter 0 nur "Bar auszahlen".
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/data/providers.dart';
+import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/staff.dart';
 import 'package:kassa/domain/feature_access.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
@@ -335,6 +340,100 @@ void main() {
     expect(cartOf(t).lines.map((l) => l.item.id), ['cola']);
   });
 
+  testWidgets('"Nur Chef": eine Person ohne das Recht sieht die Zeile Pfand '
+      'zurück, kann sie aber nicht erhöhen und nicht auszahlen; der Chef '
+      'schon', (t) async {
+    await _open(t);
+    await _giveBack(t, 3);
+    await setSettings(
+      t,
+      (s) => s.copyWith(depositReturnAccess: FeatureAccess.chefOnly),
+    );
+    final id = _returnLine(t).lineId;
+    expect(find.byKey(Key('line-$id')), findsOneWidget);
+
+    await t.tap(find.byKey(Key('qty-plus-$id')));
+    await t.pump();
+    expect(_returnLine(t).quantity, 3);
+    expect(find.byKey(const Key('deposit-return-chef-only')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('deposit-return-chef-only')),
+        matching: find.text('Pfand zurück ist für dich nicht freigegeben.'),
+      ),
+      findsOneWidget,
+    );
+    await t.pump(const Duration(seconds: 10));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byKey(const Key('pay-out')));
+    await t.pump();
+    expect(find.byKey(const Key('deposit-return-chef-only')), findsOneWidget);
+    await t.pump(const Duration(seconds: 10));
+    await t.pumpAndSettle();
+    expect(await queryRows(t, 'SELECT id FROM receipts'), isEmpty);
+    expect(_returnLine(t).quantity, 3);
+
+    // Weniger geht: die Zeile kleiner machen nimmt kein Geld heraus.
+    await t.tap(find.byKey(Key('qty-minus-$id')));
+    await t.pump();
+    expect(_returnLine(t).quantity, 2);
+
+    await containerOf(t).read(sessionProvider.notifier).login('4711');
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(Key('qty-plus-$id')));
+    await t.pump();
+    expect(_returnLine(t).quantity, 3);
+    expect(find.byKey(const Key('deposit-return-chef-only')), findsNothing);
+    await t.tap(find.byKey(const Key('pay-out')));
+    await t.pumpAndSettle();
+    expect(await queryRows(t, 'SELECT total_cents FROM receipts'), [
+      {'total_cents': -75},
+    ]);
+  });
+
+  testWidgets('"Bar auszahlen", das Speichern scheitert: nichts gespeichert, '
+      'die Lade bleibt zu, der Bon bleibt; der zweite Versuch schreibt genau '
+      'einen Bon', (t) async {
+    late _FlakyPayouts receipts;
+    await pumpKassa(
+      t,
+      overrides: [
+        ...await memoryOverrides(),
+        receiptRepositoryProvider.overrideWith((ref) {
+          return receipts = _FlakyPayouts(
+            ref.watch(databaseProvider),
+            ref.watch(clockProvider),
+            ref.watch(dayRepositoryProvider),
+          );
+        }),
+      ],
+    );
+    await setSettings(
+      t,
+      (s) => s.copyWith(depositReturnAccess: FeatureAccess.all),
+    );
+    await setUpPrinter(t);
+    await _giveBack(t, 3);
+    await t.tap(find.byKey(const Key('pay-out')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('finish-free-failed')), findsOneWidget);
+    expect(await queryRows(t, 'SELECT id FROM receipts'), isEmpty);
+    expect(printerOf(t).drawerOpened, 0);
+    expect(_returnLine(t).quantity, 3);
+    expect(find.byKey(const Key('pay-out')), findsOneWidget);
+
+    await t.tap(find.byKey(const Key('pay-out')));
+    await t.pumpAndSettle();
+    expect(receipts.ids, hasLength(2));
+    expect(receipts.ids[1], receipts.ids[0]);
+    expect(await queryRows(t, 'SELECT total_cents FROM receipts'), [
+      {'total_cents': -75},
+    ]);
+    expect(printerOf(t).drawerOpened, 1);
+    expect(cartOf(t).isEmpty, isTrue);
+  });
+
   testWidgets('die Zeile Pfand zurück ist kein Ziel im Rabatt-Blatt', (
     t,
   ) async {
@@ -361,4 +460,22 @@ void main() {
     // Cola 2,90 € − 1,45 € + 0,25 € Pfand − 0,25 € zurück.
     expect(cartOf(t).totalCents, 145);
   });
+}
+
+/// Bon-Speicher, dessen erste Auszahlung scheitert.
+class _FlakyPayouts extends ReceiptRepository {
+  _FlakyPayouts(super.db, super.clock, super.days);
+
+  final List<String> ids = [];
+
+  @override
+  Future<Receipt> finalizePayout({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) {
+    ids.add(saleId);
+    if (ids.length == 1) return Future.error(StateError('Platte voll'));
+    return super.finalizePayout(saleId: saleId, cart: cart, staff: staff);
+  }
 }

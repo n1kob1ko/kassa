@@ -13,6 +13,7 @@ import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
 import '../../devices/printer_discovery.dart';
 import '../../domain/catalog.dart';
+import '../../domain/staff.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/card/card_providers.dart';
 import '../../rksv/online/atrust_client.dart';
@@ -519,6 +520,11 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final cart = ref.read(cartProvider);
     if (_finishingFree || staff == null || cart.isEmpty) return;
     if (payOut ? cart.totalCents >= 0 : cart.totalCents != 0) return;
+    // "Bar auszahlen" nur, wer "Pfand zurück" darf ("Nur Chef").
+    if (payOut && !_mayDepositReturn(staff)) {
+      _depositReturnDenied();
+      return;
+    }
     setState(() => _finishingFree = true);
     final saleId = _freeSaleId ??= const Uuid().v4();
     final cartCtl = ref.read(cartProvider.notifier);
@@ -547,6 +553,22 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         _finishingFree = false;
       }
     }
+  }
+
+  /// Wie im Aufbau: die Einstellungen, die der Bildschirm gerade zeigt.
+  bool _mayDepositReturn(Staff staff) =>
+      (ref.read(settingsStreamProvider).value ?? const RegisterSettings())
+          .depositReturnAccess
+          .allows(staff);
+
+  /// Hinweis: "Pfand zurück" ist für die angemeldete Person nicht erlaubt.
+  void _depositReturnDenied() {
+    if (!mounted) return;
+    showUndoToast(
+      context,
+      message: L10n.of(context).kassaDepositReturnDenied,
+      viewKey: const Key('deposit-return-chef-only'),
+    );
   }
 
   void _tapItem(Catalog catalog, Item item) {
@@ -715,6 +737,9 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
               onFinishFree: _finishFree,
               onPayOut: _payOut,
+              onDepositReturnDenied: stored.depositReturnAccess.allows(staff)
+                  ? null
+                  : _depositReturnDenied,
               onOpenAmount: single == HeadAction.openAmount
                   ? () => open(HeadAction.openAmount)
                   : null,

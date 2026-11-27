@@ -133,7 +133,13 @@ class _VoucherSheetState extends ConsumerState<VoucherSheet> {
                 _Tab.sell => 'voucher-tab-sell',
                 _Tab.check => 'voucher-tab-check',
               }),
-              onSelected: (tab) => setState(() => _tab = tab),
+              // Der Code beginnt im anderen Reiter leer: ein altes Ergebnis
+              // gehört nicht mehr darunter.
+              onSelected: (tab) => setState(() {
+                _tab = tab;
+                _checked = null;
+                _endSpace = 0;
+              }),
             ),
           ),
           Expanded(

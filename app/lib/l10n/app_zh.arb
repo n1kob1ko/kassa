@@ -444,6 +444,9 @@
   "bonsVoidMixedCash": "请退还现金 {amount}。",
   "bonsVoidCardBack": "请在 SumUp 中退款 {amount}。",
   "bonsVoidCardBackTip": "请在 SumUp 中退款 {amount}，其中小费 {tip}。",
+  "bonsVoidCashIn": "你收回现金 {amount}。",
+  "bonsVoidVoucherBack": "礼券 {code} 退回 {amount}。",
+  "bonsVoidVoucherSold": "此后礼券 {code} 失效。请收回礼券凭条。",
   "discountTitle": "折扣",
   "discountOn": "折扣对象：{what}",
   "discountWholeReceipt": "整张小票",
@@ -477,6 +480,7 @@
   "depositReturnTotal": "退还",
   "depositReturnAdd": "加入小票",
   "kassaPayOut": "现金退付 {amount}",
+  "kassaDepositReturnDenied": "你没有退押金的权限。",
   "kassaPayOutDone": "需退付",
   "kassaVoucher": "礼券",
   "voucherSell": "出售",
@@ -489,6 +493,7 @@
   "voucherValue": "面值",
   "voucherBalance": "余额",
   "voucherUnknown": "收银系统里没有这张礼券。",
+  "voucherReadFailed": "未成功，请重试。",
   "voucherStateActive": "有效",
   "voucherStateEmpty": "已用完",
   "voucherStateVoided": "已作废",
@@ -556,5 +561,6 @@
   "closeTaxVouchers": "其中礼券",
   "bonsPaymentVoucher": "礼券",
   "bonsFilterVoucher": "礼券",
+  "bonsCashPaidOut": "现金支出",
   "bonsVoucherLeft": "剩余余额"
 }

@@ -1530,6 +1530,21 @@ class L10nZh extends L10n {
   }
 
   @override
+  String bonsVoidCashIn(String amount) {
+    return '你收回现金 $amount。';
+  }
+
+  @override
+  String bonsVoidVoucherBack(String code, String amount) {
+    return '礼券 $code 退回 $amount。';
+  }
+
+  @override
+  String bonsVoidVoucherSold(String code) {
+    return '此后礼券 $code 失效。请收回礼券凭条。';
+  }
+
+  @override
   String get discountTitle => '折扣';
 
   @override
@@ -1639,6 +1654,9 @@ class L10nZh extends L10n {
   }
 
   @override
+  String get kassaDepositReturnDenied => '你没有退押金的权限。';
+
+  @override
   String get kassaPayOutDone => '需退付';
 
   @override
@@ -1675,6 +1693,9 @@ class L10nZh extends L10n {
 
   @override
   String get voucherUnknown => '收银系统里没有这张礼券。';
+
+  @override
+  String get voucherReadFailed => '未成功，请重试。';
 
   @override
   String get voucherStateActive => '有效';
@@ -1884,6 +1905,9 @@ class L10nZh extends L10n {
 
   @override
   String get bonsFilterVoucher => '礼券';
+
+  @override
+  String get bonsCashPaidOut => '现金支出';
 
   @override
   String get bonsVoucherLeft => '剩余余额';

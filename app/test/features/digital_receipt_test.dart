@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/customer.dart' show isTestReceipt;
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
@@ -142,13 +143,16 @@ void main() {
     expect(find.byKey(const Key('print-state')), findsOneWidget);
     expect(find.byKey(const Key('print-receipt-now')), findsNothing);
     expect(find.byKey(const Key('receipt-qr-wait')), findsOneWidget);
-    expect(find.byKey(const Key('receipt-qr-caption')), findsOneWidget);
+    // Der Satz zum Handy steht erst mit dem Code da, nicht unter dem
+    // leeren Platzhalter (Schlussprüfung B-M4).
+    expect(find.byKey(const Key('receipt-qr-caption')), findsNothing);
     expect(await _deliveries(t), [
       {'receipt_id': id, 'kind': 'printed'},
     ]);
     await serverConfirms(t, id);
     await t.pumpAndSettle();
     expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-caption')), findsOneWidget);
     expect(
       qrTextOf(t, 'receipt-qr'),
       '$testServerUrl/beleg/${(await lastReceipt(t)).publicToken}',
@@ -203,6 +207,40 @@ void main() {
     expect(_receiptPrints(t), isEmpty);
     expect(find.byKey(const Key('receipt-offline-note')), findsNothing);
     expect(find.byKey(const Key('print-receipt-now')), findsOneWidget);
+  });
+
+  testWidgets('Übungs-Bon (ohne Signatur in Betrieb) folgt dem Schalter '
+      '"Kundenbon": '
+      'bei "Digital, Druck auf Wunsch" der Code, kein Druck; bei "Drucken '
+      'und digital" Druck und Code', (t) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    await _sellCash(t);
+    final practice = await lastReceipt(t);
+    expect(isTestReceipt(practice), isTrue);
+    expect(practice.publicToken, isNotNull);
+    await serverConfirms(t, practice.id);
+    await t.pump();
+    expect(
+      qrTextOf(t, 'receipt-qr'),
+      endsWith('/beleg/${practice.publicToken}'),
+    );
+    await _pastFallback(t);
+    expect(_receiptPrints(t), isEmpty);
+
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    await setSettings(
+      t,
+      (s) => s.copyWith(receiptMode: ReceiptMode.printAndDigital),
+    );
+    await _sellCash(t);
+    await t.pumpAndSettle();
+    final second = await lastReceipt(t);
+    expect(isTestReceipt(second), isTrue);
+    expect(_receiptPrints(t).map((p) => p.id), [second.id]);
+    await serverConfirms(t, second.id);
+    await t.pumpAndSettle();
+    expect(qrTextOf(t, 'receipt-qr'), endsWith('/beleg/${second.publicToken}'));
   });
 
   testWidgets('"Bon drucken" druckt einmal und hält "gedruckt" fest', (
@@ -291,6 +329,57 @@ void main() {
     expect(await _deliveries(t), [
       {'receipt_id': id, 'kind': 'printed'},
     ]);
+  });
+
+  testWidgets('Nächster Kunde getippt, bevor der Code da war, Server '
+      'bestätigt nach 0,8 s: nach 3 Sekunden druckt die Kassa genau einmal', (
+    t,
+  ) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    await _sellCash(t);
+    final id = await lastReceiptId(t);
+    await t.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key('receipt-qr-wait')), findsOneWidget);
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 300));
+    await serverConfirms(t, id);
+    expect(_receiptPrints(t), isEmpty);
+    await _pastFallback(t);
+    expect(_receiptPrints(t).map((p) => p.id), [id]);
+    await t.pump(const Duration(seconds: 5));
+    expect(_receiptPrints(t), hasLength(1));
+    expect(await _deliveries(t), [
+      {'receipt_id': id, 'kind': 'printed'},
+    ]);
+  });
+
+  testWidgets('"Bon drucken" getippt, dann ein zweiter Verkauf: der Dienst '
+      'vergisst den ersten nicht, solange seine Uhr läuft; kein zweiter '
+      'Druck', (t) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    await _sellCash(t);
+    final first = await lastReceiptId(t);
+    await t.pump(const Duration(milliseconds: 500));
+    await t.tap(find.byKey(const Key('print-receipt-now')));
+    await t.pump();
+    await t.pump();
+    expect(_receiptPrints(t).map((p) => p.id), [first]);
+    final second = await containerOf(t)
+        .read(saleServiceProvider)
+        .completeCash(
+          saleId: 'zweiter',
+          cart: const Cart.empty().add(cola),
+          givenCents: const Cart.empty().add(cola).totalCents,
+          staff: containerOf(t).read(sessionProvider)!,
+        );
+    await _pastFallback(t);
+    await t.pump(const Duration(seconds: 1));
+    await t.pump();
+    // Der zweite zeigte seinen Code nie: er druckt nach seinen 3 Sekunden.
+    expect(_receiptPrints(t).map((p) => p.id), [first, second.receipt.id]);
+    await t.pump(const Duration(seconds: 5));
+    expect(_receiptPrints(t), hasLength(2));
   });
 
   testWidgets('kein Internet, "Bon drucken" nach 1 Sekunde getippt: ein '
@@ -507,10 +596,13 @@ void main() {
       await t.pump(receiptFallbackDelay);
       await t.pump();
       expect(pushed(server, second.receipt.id), isTrue);
-      expect(_receiptPrints(t), isEmpty);
-      expect(await second.fallback.first, ReceiptFallback.none);
+      // Der erste zeigte seinen Code: kein Druck. Der zweite kam am Dienst
+      // vorbei, sein Code stand nie da: er druckt genau einmal
+      // (Schlussprüfung B-I2).
+      expect(_receiptPrints(t).map((p) => p.id), [second.receipt.id]);
+      expect(await second.fallback.first, ReceiptFallback.printed);
       await settle(t);
-      expect(_receiptPrints(t), isEmpty);
+      expect(_receiptPrints(t).map((p) => p.id), [second.receipt.id]);
     });
 
     testWidgets('der Server antwortet nie: nach 3 Sekunden druckt die Kassa '

@@ -22,6 +22,7 @@ import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/kitchen_ticket.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/customer.dart' show isTestReceipt;
 import 'package:kassa/domain/staff.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
@@ -624,6 +625,29 @@ void main() {
     final onlyReturn = const Cart.empty().setDepositReturn(
       depositCents: 25,
       quantity: 3,
+    );
+
+    test(
+      'completePayout im Übungsbetrieb (ohne Signatur in Betrieb): ein '
+      'Übungs-Bon mit TESTBON, Bar −0,75, Lade und Druck wie im Betrieb',
+      () async {
+        await configure();
+        final r = await service.completePayout(
+          saleId: 'uebung',
+          cart: onlyReturn,
+          staff: shop.anna,
+        );
+        expect(isTestReceipt(r.receipt), isTrue);
+        expect(r.receipt.totalCents, -75);
+        expect(
+          [for (final p in r.receipt.payments) (p.kind, p.amountCents)],
+          [(PaymentKind.cash, -75)],
+        );
+        expect((await r.print).ok, isTrue);
+        expect(printer.log, ['print+drawer:uebung']);
+        expect(printer.lastText, contains('TESTBON'));
+        expect(printer.lastText, contains('Bar ausbezahlt'));
+      },
     );
 
     test('completePayout druckt den Bon, öffnet die Lade und druckt den '
@@ -1786,6 +1810,18 @@ void main() {
         ],
         ['s1/printed', 's2/printed', 's3/printed'],
       );
+    });
+
+    test('der Dienst vergisst einen Verkauf, sobald der nächste fertig ist '
+        '(Schlussprüfung B-M8)', () async {
+      await configure();
+      for (final id in ['s1', 's2', 's3']) {
+        expect((await (await sell(id)).print).ok, isTrue);
+      }
+      expect(service.trackedReceipts, 1);
+      // Derselbe Verkauf noch einmal druckt nicht noch einmal.
+      expect((await (await sell('s3')).print).ok, isTrue);
+      expect(printer.printed, ['s1', 's2', 's3']);
     });
 
     test('ein Sonderbeleg zählt nicht als Belegerteilung', () async {

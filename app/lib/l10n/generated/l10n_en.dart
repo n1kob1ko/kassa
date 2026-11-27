@@ -1565,6 +1565,21 @@ class L10nEn extends L10n {
   }
 
   @override
+  String bonsVoidCashIn(String amount) {
+    return 'You get $amount back in cash.';
+  }
+
+  @override
+  String bonsVoidVoucherBack(String code, String amount) {
+    return 'Voucher $code gets $amount back.';
+  }
+
+  @override
+  String bonsVoidVoucherSold(String code) {
+    return 'Voucher $code is no longer valid afterwards. Please take the voucher slip back.';
+  }
+
+  @override
   String get discountTitle => 'Discount';
 
   @override
@@ -1675,6 +1690,10 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get kassaDepositReturnDenied =>
+      'Deposit return is not enabled for you.';
+
+  @override
   String get kassaPayOutDone => 'Pay out';
 
   @override
@@ -1712,6 +1731,9 @@ class L10nEn extends L10n {
 
   @override
   String get voucherUnknown => 'The register does not know this voucher.';
+
+  @override
+  String get voucherReadFailed => 'That didn\'t work. Please try again.';
 
   @override
   String get voucherStateActive => 'Valid';
@@ -1926,6 +1948,9 @@ class L10nEn extends L10n {
 
   @override
   String get bonsFilterVoucher => 'Voucher';
+
+  @override
+  String get bonsCashPaidOut => 'Cash paid out';
 
   @override
   String get bonsVoucherLeft => 'Remaining balance';

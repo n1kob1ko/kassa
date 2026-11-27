@@ -32,11 +32,17 @@ class CartLineRow extends ConsumerStatefulWidget {
     required this.onQuantity,
     this.onDiscount,
     this.discountCents = 0,
+    this.onRaiseDenied,
   });
 
   final CartLine line;
   final int flash;
   final ValueChanged<int> onQuantity;
+
+  /// Bei einer Zeile "Pfand zurück", wenn die angemeldete Person sie nicht
+  /// erhöhen darf ("Nur Chef"): das Plus ruft dies statt mehr zu zählen.
+  /// Weniger geht immer.
+  final VoidCallback? onRaiseDenied;
 
   /// Öffnet das Blatt "Rabatt" für diese Zeile; null: der Tipp auf Name und
   /// Preis tut nichts.
@@ -180,6 +186,8 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
                   label: l.kassaOneMore(name),
                   onTap: line.isDepositReturn && line.quantity >= maxQuantity
                       ? null
+                      : line.isDepositReturn && widget.onRaiseDenied != null
+                      ? widget.onRaiseDenied
                       : () => widget.onQuantity(line.quantity + 1),
                 ),
               const SizedBox(width: KassaTokens.spaceSm),
