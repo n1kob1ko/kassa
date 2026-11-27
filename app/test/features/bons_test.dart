@@ -1424,5 +1424,85 @@ void main() {
     );
     await openReceipt(t, 2);
     expect(find.byKey(const Key('detail-receipt-qr')), findsOneWidget);
+    // Der Code im Detail ist keine Belegerteilung: für Bon 2 steht nichts.
+    await t.pumpAndSettle();
+    expect(
+      await queryRows(
+        t,
+        "SELECT kind FROM receipt_deliveries WHERE receipt_id = '${second.id}'",
+      ),
+      isEmpty,
+    );
+    expect(find.byKey(const Key('detail-delivery-digital')), findsNothing);
+
+    // Ein Sonderbeleg (Startbeleg) mit Schlüssel hat keinen Code.
+    await db
+        .into(db.receiptRows)
+        .insert(
+          ReceiptRowsCompanion.insert(
+            id: 'start',
+            number: 4,
+            createdAt: DateTime(2026, 11, 17, 11, 6),
+            staffId: 'anna',
+            staffName: 'Anna',
+            businessDayId: Value(day),
+            kind: ReceiptKind.start.name,
+            goodsCents: 0,
+            depositCents: 0,
+            totalCents: 0,
+            publicToken: const Value('schluessel-des-startbelegs'),
+          ),
+        );
+    await t.pumpAndSettle();
+    await openReceipt(t, 4);
+    expect(find.byKey(const Key('detail-receipt-qr')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+  });
+
+  testWidgets('"Immer drucken" mit Drucker: im Detail die Zeile Beleg mit '
+      '"Gedruckt" und der Zeit, kein QR-Code; genau ein Eintrag delivery, '
+      'ein zweiter Druck bringt keinen', (t) async {
+    await pumpKassa(t);
+    await setUpPrinter(t);
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    final id = (await queryRows(t, 'SELECT id FROM receipts')).single['id'];
+    await t.tap(find.byKey(const Key('next-customer')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('tab-Bons')));
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+    expect(find.text('Beleg'), findsOneWidget);
+    for (final text in ['Gedruckt', '11:00 Uhr']) {
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('detail-delivery-printed')),
+          matching: find.text(text),
+        ),
+        findsOneWidget,
+        reason: text,
+      );
+    }
+    expect(find.byKey(const Key('detail-delivery-digital')), findsNothing);
+    expect(find.byKey(const Key('detail-receipt-qr')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+    Future<List<Map<String, Object?>>> deliveryEntries() => queryRows(
+      t,
+      "SELECT ref FROM outbox WHERE kind = 'delivery'",
+    );
+    expect(await deliveryEntries(), [
+      {'ref': '$id/printed'},
+    ]);
+    await t.tap(find.byKey(const Key('print-receipt')));
+    await t.pumpAndSettle();
+    expect(printerOf(t).printed, [id, id]);
+    expect(await deliveryEntries(), [
+      {'ref': '$id/printed'},
+    ]);
+    await t.pump(const Duration(seconds: 8));
+    await t.pumpAndSettle();
   });
 }

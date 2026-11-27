@@ -4,21 +4,24 @@
 
 import 'dart:async';
 
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
-import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/features/kassa/sale_service.dart';
 import 'package:kassa/features/login/session.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
 import '../support/demo_fixtures.dart';
 import '../support/digital_pump.dart';
 import '../support/fake_devices.dart';
+import '../support/fake_server.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 
@@ -378,29 +381,14 @@ void main() {
       ),
       staff: staff,
     );
-    // Eine unklare Kartenzahlung, später als bezahlt bestätigt.
-    terminalOf(t).next = const CardUnknown();
-    final unclear = await service.payByCard(
-      paymentId: 'unklar',
-      cart: const Cart.empty().add(teigtaschen),
-      staff: staff,
-    );
-    expect(unclear, isA<CardSaleUnclear>());
-    final pending = (await containerOf(
-      t,
-    ).read(cardPaymentRepositoryProvider).pending()).single;
-    final confirmed = await service.confirmUnclear(
-      pending,
-      catalog: (await containerOf(t).read(catalogRepositoryProvider).current())!,
-    );
-
+    // Die bestätigte unklare Kartenzahlung druckt immer von selbst
+    // (unclear_card_test.dart).
     final sales = [
       voucherSale,
       (card as CardSaleDone).sale,
       byVoucher,
       payout,
       free,
-      confirmed,
     ];
     for (final s in sales) {
       expect(s.autoPrinted, isFalse, reason: s.receipt.id);
@@ -438,4 +426,259 @@ void main() {
     await t.pump();
     expect(printer.printedJobs.where((p) => p.kind == 'receipt'), isEmpty);
   });
+
+  group('mit dem echten Abgleich (Spec 5.4: der Bon geht sofort zum '
+      'Server)', () {
+    /// Gekoppelte Kassa mit Drucker, Kundenbon [mode]; der Server antwortet
+    /// auf jedes Senden nach [answer].
+    Future<FakeServer> pumpSynced(
+      WidgetTester t, {
+      required ReceiptMode mode,
+      Duration answer = const Duration(milliseconds: 1200),
+    }) async {
+      final server = await pumpSyncedKassa(t);
+      await setUpPrinter(t);
+      await setSettings(t, (s) => s.copyWith(receiptMode: mode));
+      server.pushDelay = (_) => answer;
+      return server;
+    }
+
+    Future<void> sellCola(WidgetTester t) async {
+      await tapItem(t, 'cola');
+      await t.tap(find.byKey(const Key('pay-cash')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('finish-sale')));
+      await t.pump();
+    }
+
+    bool pushed(FakeServer server, String receiptId, {int from = 0}) => [
+      for (final r in server.pushRequests.skip(from))
+        for (final e in r)
+          if (e['kind'] == 'receipt' && (e['receipt']! as Map)['id'] == receiptId)
+            e,
+    ].isNotEmpty;
+
+    /// Am Ende: nichts mehr unterwegs (die Antwort des Servers ist eine Uhr).
+    Future<void> settle(WidgetTester t) async {
+      await t.pump(const Duration(seconds: 10));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('digital und Druck auf Wunsch, der Server antwortet nach gut '
+        '1 Sekunde: kein Kundenbon, der QR-Code erscheint', (t) async {
+      final server = await pumpSynced(t, mode: ReceiptMode.digitalOnRequest);
+      final before = server.pushRequests.length;
+      await sellCola(t);
+      final id = await lastReceiptId(t);
+      expect(find.byKey(const Key('receipt-qr-wait')), findsOneWidget);
+      await t.pump(const Duration(milliseconds: 100));
+      // Gesendet sofort, nicht erst nach der Ruhe von 2 Sekunden.
+      expect(pushed(server, id, from: before), isTrue);
+      await t.pump(const Duration(milliseconds: 1300));
+      await t.pump();
+      expect(find.byKey(const Key('receipt-qr')), findsOneWidget);
+      await t.pump(receiptFallbackDelay);
+      await t.pump();
+      expect(_receiptPrints(t), isEmpty);
+      expect(find.byKey(const Key('receipt-offline-note')), findsNothing);
+      await settle(t);
+      expect(_receiptPrints(t), isEmpty);
+    });
+
+    testWidgets('ein zweiter Verkauf 1 Sekunde später verzögert die '
+        'Bestätigung des ersten nicht über seine 3 Sekunden', (t) async {
+      final server = await pumpSynced(t, mode: ReceiptMode.digitalOnRequest);
+      await sellCola(t);
+      final first = await lastReceiptId(t);
+      await t.pump(const Duration(seconds: 1));
+      final staff = containerOf(t).read(sessionProvider)!;
+      final second = await containerOf(t)
+          .read(saleServiceProvider)
+          .completeCash(
+            saleId: 'zweiter',
+            cart: const Cart.empty().add(cola),
+            givenCents: const Cart.empty().add(cola).totalCents,
+            staff: staff,
+          );
+      await t.pump(const Duration(milliseconds: 500));
+      await t.pump();
+      expect(pushed(server, first), isTrue);
+      expect(find.byKey(const Key('receipt-qr')), findsOneWidget);
+      await t.pump(receiptFallbackDelay);
+      await t.pump();
+      expect(pushed(server, second.receipt.id), isTrue);
+      expect(_receiptPrints(t), isEmpty);
+      expect(await second.fallback.first, ReceiptFallback.none);
+      await settle(t);
+      expect(_receiptPrints(t), isEmpty);
+    });
+
+    testWidgets('der Server antwortet nie: nach 3 Sekunden druckt die Kassa '
+        'den Bon genau einmal', (t) async {
+      final server = await pumpSynced(t, mode: ReceiptMode.digitalOnRequest);
+      server.mode = FakeMode.offline;
+      await sellCola(t);
+      final id = await lastReceiptId(t);
+      await t.pump(const Duration(seconds: 2));
+      expect(_receiptPrints(t), isEmpty);
+      await t.pump(const Duration(seconds: 1));
+      await t.pump();
+      expect(_receiptPrints(t).map((p) => p.id), [id]);
+      expect(find.byKey(const Key('receipt-offline-note')), findsOneWidget);
+      await settle(t);
+      expect(_receiptPrints(t), hasLength(1));
+    });
+
+    testWidgets('immer drucken: kein sofortiges Senden, die Ruhe von 2 '
+        'Sekunden bleibt wie in 1.11.0', (t) async {
+      final server = await pumpSynced(
+        t,
+        mode: ReceiptMode.alwaysPrint,
+        answer: Duration.zero,
+      );
+      final before = server.pushRequests.length;
+      await sellCola(t);
+      final id = await lastReceiptId(t);
+      expect(_receiptPrints(t).map((p) => p.id), [id]);
+      await t.pump(const Duration(milliseconds: 1500));
+      expect(pushed(server, id, from: before), isFalse);
+      await t.pump(const Duration(seconds: 1));
+      await t.pump();
+      expect(pushed(server, id, from: before), isTrue);
+      await settle(t);
+    });
+  });
+
+  testWidgets('als Rechnung gedruckt: "Bon drucken" ist erledigt, der '
+      'Druck-Zustand steht da, die Uhr druckt keinen zweiten', (t) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    await _sellCash(t);
+    final receipt = await lastReceipt(t);
+    expect(find.byKey(const Key('print-receipt-now')), findsOneWidget);
+    await t.pump(const Duration(seconds: 1));
+    final recipient = await containerOf(t)
+        .read(customerRepositoryProvider)
+        .setRecipient(
+          receiptId: receipt.id,
+          name: 'Muster GmbH',
+          addressLine1: 'Musterweg 1',
+          addressLine2: '1010 Wien',
+          staff: containerOf(t).read(sessionProvider)!,
+        );
+    final outcome = await containerOf(
+      t,
+    ).read(saleServiceProvider).printInvoice(receipt, recipient);
+    expect(outcome.ok, isTrue);
+    await t.pump();
+    expect(find.byKey(const Key('print-receipt-now')), findsNothing);
+    expect(textOf(t, const Key('print-state')), 'Bon gedruckt');
+    await _pastFallback(t);
+    expect(_receiptPrints(t), hasLength(1));
+    expect(printerOf(t).receiptJobs.single.recipient, isNotNull);
+    expect(find.byKey(const Key('receipt-offline-note')), findsNothing);
+    expect(await _deliveries(t), [
+      {'receipt_id': receipt.id, 'kind': 'printed'},
+    ]);
+  });
+
+  testWidgets('"Bon drucken" nach einem Druckfehler druckt wieder; '
+      '"gedruckt" steht einmal', (t) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    await _sellCash(t);
+    final receipt = await lastReceipt(t);
+    final service = containerOf(t).read(saleServiceProvider);
+    printerOf(t).next = const PrintOutcome.failed(PrintProblem.unreachable);
+    expect((await service.printNow(receipt)).ok, isFalse);
+    expect(await _deliveries(t), isEmpty);
+    printerOf(t).next = const PrintOutcome.ok();
+    expect((await service.printNow(receipt)).ok, isTrue);
+    expect((await service.printNow(receipt)).ok, isTrue);
+    expect(_receiptPrints(t).map((p) => p.id), [
+      receipt.id,
+      receipt.id,
+      receipt.id,
+    ]);
+    expect(await receiptCount(t), 1);
+    expect(await _deliveries(t), [
+      {'receipt_id': receipt.id, 'kind': 'printed'},
+    ]);
+    await _pastFallback(t);
+    expect(_receiptPrints(t), hasLength(3));
+  });
+
+  testWidgets('fallback liefert seinen einen Wert an zwei Zuhörer', (t) async {
+    await _pump(t, mode: ReceiptMode.digitalOnRequest);
+    final staff = containerOf(t).read(sessionProvider)!;
+    final sale = await containerOf(t)
+        .read(saleServiceProvider)
+        .completeCash(
+          saleId: 'zwei-zuhoerer',
+          cart: const Cart.empty().add(teigtaschen),
+          givenCents: 650,
+          staff: staff,
+        );
+    final a = sale.fallback.toList();
+    final b = sale.fallback.toList();
+    await _pastFallback(t);
+    expect(await a, [ReceiptFallback.printed]);
+    expect(await b, [ReceiptFallback.printed]);
+    expect(await sale.fallback.toList(), [ReceiptFallback.printed]);
+    expect(_receiptPrints(t), hasLength(1));
+  });
+
+  group('"Bon drucken" und "Nächster Kunde"', () {
+    for (final language in AppLanguage.values) {
+      for (final scale in [1.0, KassaTokens.maxTextScale]) {
+        testWidgets('${language.name}, Textskala $scale, 1024 x 600: beide '
+            'mindestens 48 dp hoch, keine Beschriftung gekürzt', (t) async {
+          await pumpKassa(
+            t,
+            size: const Size(1024, 600),
+            textScale: scale,
+            overrides: await serverKassaOverrides(),
+          );
+          await setUpPrinter(t);
+          await setSettings(
+            t,
+            (s) => s.copyWith(
+              receiptMode: ReceiptMode.digitalOnRequest,
+              language: language,
+            ),
+          );
+          await pairRegister(t);
+          await _sellCash(t);
+          final keys = ['print-receipt-now', 'next-customer'];
+          for (final k in keys) {
+            final finder = find.byKey(Key(k));
+            expect(t.getSize(finder).height, greaterThanOrEqualTo(48), reason: k);
+            for (final e in find
+                .descendant(of: finder, matching: find.byType(RichText))
+                .evaluate()) {
+              final box = e.renderObject! as RenderParagraph;
+              expect(box.didExceedMaxLines, isFalse, reason: k);
+              expect(
+                box.getMaxIntrinsicWidth(double.infinity),
+                lessThanOrEqualTo(box.size.width + 0.5),
+                reason: '$k: "${box.text.toPlainText()}" ist gekürzt',
+              );
+            }
+          }
+          final print = t.getRect(find.byKey(Key(keys[0])));
+          final next = t.getRect(find.byKey(Key(keys[1])));
+          // Nebeneinander (Skizze in Spec 5.4), wenn es passt; sonst darüber.
+          if (print.top == next.top) {
+            expect(print.overlaps(next), isFalse);
+          } else {
+            expect(print.bottom, lessThanOrEqualTo(next.top));
+            expect(print.width, next.width);
+          }
+          if (language == AppLanguage.de && scale == 1.0) {
+            expect(print.top, next.top, reason: 'Deutsch passt nebeneinander');
+          }
+          await _pastFallback(t);
+        });
+      }
+    }
+  });
 }
+

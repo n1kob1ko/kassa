@@ -104,15 +104,15 @@ final deliveryRepositoryProvider = Provider(
 
 /// Wie der Beleg eines Bons erteilt wurde (gedruckt, digital), neu nach
 /// jedem Eintrag.
-final receiptDeliveriesProvider =
-    StreamProvider.family<List<ReceiptDelivery>, String>(
+final receiptDeliveriesProvider = StreamProvider.autoDispose
+    .family<List<ReceiptDelivery>, String>(
       (ref, receiptId) =>
           ref.watch(deliveryRepositoryProvider).watch(receiptId),
     );
 
 /// Ob der Bon beim Server angekommen ist (sein Eintrag `receipt` ist aus
 /// "noch zu senden" weg; ein abgelehnter zählt als nicht angekommen).
-final receiptSentProvider = StreamProvider.family<bool, String>(
+final receiptSentProvider = StreamProvider.autoDispose.family<bool, String>(
   (ref, receiptId) => ref
       .watch(outboxRepositoryProvider)
       .watchSent(kind: 'receipt', ref: receiptId),

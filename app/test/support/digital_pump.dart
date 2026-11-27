@@ -11,8 +11,10 @@ import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/ui/qr_view.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'fake_server.dart';
 import 'kassa_pump.dart';
 import 'pump.dart';
+import 'server_pump.dart';
 
 /// Die erfundene Adresse des Servers in diesen Tests.
 const testServerUrl = 'https://kassa.example';
@@ -23,6 +25,33 @@ Future<List<Override>> serverKassaOverrides({List<Override>? base}) async => [
   hasServerProvider.overrideWithValue(true),
   serverUrlProvider.overrideWithValue(testServerUrl),
 ];
+
+/// Eine Kassa, die wirklich gekoppelt und geladen ist: der echte Abgleich
+/// läuft gegen [server] (Standard: der Beispiel-Imbiss). Am Ende ist die
+/// Chefin des Servers angemeldet (PIN 1234), auf der Kassa.
+Future<FakeServer> pumpSyncedKassa(
+  WidgetTester t, {
+  FakeServer? server,
+  List<Override> extra = const [],
+}) async {
+  final s = server ?? FakeServer.beispiel();
+  await pumpKassa(
+    t,
+    overrides: [
+      ...await memoryOverrides(),
+      ...serverOverrides(s),
+      serverUrlProvider.overrideWithValue(testServerUrl),
+      ...extra,
+    ],
+  );
+  final pairing = containerOf(t).read(pairingServiceProvider);
+  await pairing.pair(FakeServer.code);
+  await pairing.loadInitial();
+  await t.pumpAndSettle();
+  await typePin(t, '1234');
+  await t.pumpAndSettle();
+  return s;
+}
 
 /// Gibt der Kassa einen Platz beim Server, wie nach dem Koppeln. Die Daten
 /// des Betriebs gelten als nicht geladen: der Abgleich beginnt nicht.

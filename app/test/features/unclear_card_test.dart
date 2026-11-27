@@ -24,6 +24,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
 import '../support/demo_fixtures.dart';
+import '../support/digital_pump.dart';
 import '../support/fake_devices.dart';
 import '../support/fake_server.dart';
 import '../support/kassa_pump.dart';
@@ -1105,4 +1106,81 @@ void main() {
       expect(cartOf(t).isEmpty, isTrue);
     });
   });
+
+  group('Kundenbon digital (Task 15): die bestätigte unklare Zahlung druckt '
+      'immer von selbst', () {
+    Future<void> confirmAndExpectPrint(WidgetTester t) async {
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      final id = (await _receipts(t)).single['id'];
+      expect(
+        printerOf(t).printedJobs.where((p) => p.kind == 'receipt').map(
+              (p) => p.id,
+            ),
+        [id],
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('undo-toast')),
+          matching: find.text('Bon gedruckt'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        await queryRows(t, 'SELECT receipt_id, kind FROM receipt_deliveries'),
+        [
+          {'receipt_id': id, 'kind': 'printed'},
+        ],
+      );
+      // Keine Uhr: auch später kein zweiter Bon (und am Ende des Tests
+      // steht kein Timer aus).
+      await t.pump(const Duration(seconds: 8));
+      await t.pumpAndSettle();
+      expect(
+        printerOf(t).printedJobs.where((p) => p.kind == 'receipt'),
+        hasLength(1),
+      );
+    }
+
+    for (final mode in [
+      ReceiptMode.digitalOnRequest,
+      ReceiptMode.printAndDigital,
+    ]) {
+      testWidgets('${mode.name}, nach einem Neustart', (t) async {
+        await _start(
+          t,
+          await serverKassaOverrides(
+            base: await _setup(open: [('p1', cart, _first)]),
+          ),
+        );
+        await setUpPrinter(t);
+        await setSettings(t, (s) => s.copyWith(receiptMode: mode));
+        await pairRegister(t);
+        await confirmAndExpectPrint(t);
+      });
+    }
+
+    testWidgets('digitalOnRequest, unklar direkt nach der Zahlung', (t) async {
+      final terminal = FakeCardTerminal()..next = const CardUnknown();
+      await _start(
+        t,
+        await serverKassaOverrides(base: await _setup(terminal: terminal)),
+      );
+      await setUpPrinter(t);
+      await setSettings(
+        t,
+        (s) => s.copyWith(receiptMode: ReceiptMode.digitalOnRequest),
+      );
+      await pairRegister(t);
+      await tapItem(t, 'cola');
+      await tapItem(t, 'teigtaschen');
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('pay-card')));
+      await t.pumpAndSettle();
+      expect(_sheet, findsOneWidget);
+      await confirmAndExpectPrint(t);
+    });
+  });
 }
+

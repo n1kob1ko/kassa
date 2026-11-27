@@ -18,13 +18,16 @@ const receiptQrSize = 220.0;
 /// Mit [waitForServer] steht an seiner Stelle ein ruhiger Platzhalter
 /// derselben Größe (`receipt-qr-wait`), bis der Server den Bon bestätigt hat;
 /// ohne steht der Code sofort da. Zeigt es den Code das erste Mal wirklich,
-/// hält es "digital" fest (einmal je Bon, nach dem Bild).
+/// hält es mit [recordsDelivery] "digital" fest (einmal je Bon, nach dem
+/// Bild); ohne (im Detail unter "Bons": dort sieht jemand nur einen alten Bon
+/// an) nicht.
 class ReceiptQr extends ConsumerStatefulWidget {
   const ReceiptQr({
     super.key,
     required this.receipt,
     this.waitForServer = true,
     this.qrKey = const Key('receipt-qr'),
+    this.recordsDelivery = true,
   });
 
   final Receipt receipt;
@@ -32,6 +35,9 @@ class ReceiptQr extends ConsumerStatefulWidget {
 
   /// Der Schlüssel des Codes selbst (nicht des Platzhalters).
   final Key qrKey;
+
+  /// Ob das Zeigen des Codes als Belegerteilung "digital" zählt.
+  final bool recordsDelivery;
 
   @override
   ConsumerState<ReceiptQr> createState() => _ReceiptQrState();
@@ -86,7 +92,7 @@ class _ReceiptQrState extends ConsumerState<ReceiptQr> {
         ),
       );
     }
-    _record(receipt.id);
+    if (widget.recordsDelivery) _record(receipt.id);
     return Center(
       child: QrView(key: widget.qrKey, data: url, size: receiptQrSize),
     );

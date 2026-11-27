@@ -6,7 +6,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app_sync_providers.dart' show hasServerProvider;
+import '../../app_sync_providers.dart'
+    show hasServerProvider, syncServiceProvider;
 import '../../core/app_language.dart';
 import '../../data/card_payment_repository.dart';
 import '../../data/delivery_repository.dart';
@@ -611,7 +612,10 @@ class SaleService {
         } catch (_) {}
       }
     }
-    return await _printCard(receipt);
+    // Der Kunde steht vielleicht nicht mehr da (oder die Kassa kam neu
+    // herauf): der Kundenbon druckt bei jedem Wert des Schalters von selbst,
+    // wie in 1.11.0.
+    return await _printCard(receipt, alwaysPrint: true);
   }
 
   /// Ob [a] und [b] derselbe Bon sind: dieselben Zeilen und derselbe
@@ -662,14 +666,19 @@ class SaleService {
   }
 
   /// Druck nach einer Kartenzahlung. Mit Bar-Teil geht die Lade auf, wenn sie
-  /// eingeschaltet ist, im selben Auftrag wie beim Barverkauf.
-  Future<SaleResult> _printCard(Receipt receipt) async {
+  /// eingeschaltet ist, im selben Auftrag wie beim Barverkauf. Mit
+  /// [alwaysPrint] druckt der Kundenbon bei jedem Wert des Schalters.
+  Future<SaleResult> _printCard(
+    Receipt receipt, {
+    bool alwaysPrint = false,
+  }) async {
     final settings = await _settings();
     return _printSale(
       receipt.id,
       receipt,
       settings,
       openDrawer: settings.cashDrawerEnabled && receipt.cashCents > 0,
+      alwaysPrint: alwaysPrint,
     );
   }
 
@@ -677,29 +686,47 @@ class SaleService {
   /// einmal: ein zweiter Aufruf gibt die ersten Ergebnisse zurück. Die eine
   /// Stelle für jeden Weg zum Kundenbon (bar, frei, Auszahlung, Gutschein,
   /// Karte, bestätigte unklare Zahlung): sie entscheidet nach
-  /// [effectiveReceiptMode], ob der Kundenbon von selbst druckt.
+  /// [effectiveReceiptMode], ob der Kundenbon von selbst druckt; mit
+  /// [alwaysPrint] (bestätigte unklare Kartenzahlung) immer wie bei "Immer
+  /// drucken". Bei einem digitalen Wert geht der Bon sofort zum Server.
   Future<SaleResult> _printSale(
     String key,
     Receipt receipt,
     RegisterSettings settings, {
     required bool openDrawer,
+    bool alwaysPrint = false,
   }) async {
     final known = _sales[key];
     if (known != null) return known._with(receipt);
     // Bei "Immer drucken" (und für einen Bon ohne Schlüssel der Seite, der
     // keinen digitalen Bon hat) ohne ein Warten, wie in 1.11.0.
     var mode = ReceiptMode.alwaysPrint;
-    if (settings.receiptMode != ReceiptMode.alwaysPrint &&
+    if (!alwaysPrint &&
+        settings.receiptMode != ReceiptMode.alwaysPrint &&
         receipt.publicToken != null) {
       mode = effectiveReceiptMode(settings, paired: await _paired());
       final meanwhile = _sales[key];
       if (meanwhile != null) return meanwhile._with(receipt);
+      if (mode != ReceiptMode.alwaysPrint) _pushNow();
     }
     final result = mode == ReceiptMode.digitalOnRequest
         ? _onRequest(receipt, settings, openDrawer: openDrawer)
         : _autoPrint(receipt, settings, mode, openDrawer: openDrawer);
     _sales[key] = result;
     return result;
+  }
+
+  /// Der QR-Code erscheint erst, wenn der Server den Bon hat: der Abgleich
+  /// sendet ihn sofort, ohne auf weitere Einträge zu warten. Läuft der
+  /// Abgleich nicht (noch nicht geladen), geschieht nichts. Wirft nie.
+  void _pushNow() {
+    try {
+      if (_ref.read(syncServiceProvider.exists)) {
+        _ref.read(syncServiceProvider).pushNow();
+      }
+    } catch (_) {
+      // Dann wartet der Bon auf den nächsten Lauf; die Uhr fängt das auf.
+    }
   }
 
   /// Gekoppelt wie in den Einstellungen: die App hat einen Server und die
@@ -944,7 +971,6 @@ class SaleService {
     if ((await _settings()).printerKind == PrinterKind.none) {
       return const PrintOutcome.failed(PrintProblem.notSetUp);
     }
-    _printStarted.add(receipt.id);
     final PrintOutcome outcome;
     try {
       outcome = await _ref
@@ -953,7 +979,10 @@ class SaleService {
     } catch (_) {
       return const PrintOutcome.failed(PrintProblem.unreachable);
     }
-    if (outcome.ok) await _recordPrinted(receipt);
+    if (outcome.ok) {
+      _printedNow(receipt.id, outcome);
+      await _recordPrinted(receipt);
+    }
     return outcome;
   }
 
@@ -1136,9 +1165,19 @@ class SaleService {
     }
     if (outcome.ok) {
       _printedOk.add(receipt.id);
+      _printedNow(receipt.id, outcome);
       await _recordPrinted(receipt);
     }
     return outcome;
+  }
+
+  /// Der Kundenbon ist gedruckt (auch als Rechnung oder aus "Bons"): bei
+  /// "Digital, Druck auf Wunsch" ist "Bon drucken" erledigt
+  /// ([SaleResult.print] endet), und die Uhr druckt keinen zweiten.
+  void _printedNow(String receiptId, PrintOutcome outcome) {
+    _printStarted.add(receiptId);
+    final first = _firstPrint[receiptId];
+    if (first != null && !first.isCompleted) first.complete(outcome);
   }
 
   /// Hält fest, dass der Beleg zu [receipt] gedruckt ist (Spec 5.4, bei

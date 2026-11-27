@@ -107,6 +107,9 @@ class SyncService {
   Timer? _timer;
   Timer? _pokeTimer;
   bool _pokeAgain = false;
+
+  /// [pushNow] kam, während ein Lauf lief: gleich danach noch einer.
+  bool _pushAgain = false;
   int _failures = 0;
   bool? _online;
   bool _started = false;
@@ -123,12 +126,45 @@ class SyncService {
   /// wartet der Aufruf auf diesen. Wirft nie.
   Future<void> syncNow() => _current ??= _runAndSchedule().whenComplete(() {
     _current = null;
+    // Ein Bon, auf dessen Bestätigung der Kunde wartet: sofort noch einmal.
+    if (_pushAgain) {
+      _pushAgain = false;
+      _pokeAgain = false;
+      _pokeTimer?.cancel();
+      unawaited(_startNow());
+      return;
+    }
     // Während des Laufs kam ein neuer Eintrag: noch einmal, nach Ruhe.
     if (_pokeAgain) {
       _pokeAgain = false;
       poke();
     }
   });
+
+  /// Ein Bon, dessen digitaler Beleg auf die Bestätigung des Servers wartet
+  /// (Spec 5.4): ein Lauf sofort, ohne [pokeDelay]. Läuft schon einer, folgt
+  /// der nächste gleich nach dessen Ende. Ohne Kassa oder ohne Adresse des
+  /// Servers tut es nichts.
+  void pushNow() {
+    if (!_enabled || _disposed) return;
+    if (_current != null) {
+      _pushAgain = true;
+      return;
+    }
+    _pokeTimer?.cancel();
+    unawaited(_startNow());
+  }
+
+  Future<void> _startNow() async {
+    if (_disposed) return;
+    try {
+      if (!(await _syncState.current()).paired) return;
+    } catch (_) {
+      return;
+    }
+    if (_disposed) return;
+    unawaited(syncNow());
+  }
 
   /// Ein neuer Eintrag steht in der Liste: ein Lauf, [pokeDelay] nach dem
   /// letzten Aufruf. Viele Aufrufe kurz hintereinander ergeben einen Lauf. Ein
@@ -146,13 +182,7 @@ class SyncService {
       _pokeAgain = true;
       return;
     }
-    try {
-      if (!(await _syncState.current()).paired) return;
-    } catch (_) {
-      return;
-    }
-    if (_disposed) return;
-    unawaited(syncNow());
+    await _startNow();
   }
 
   /// Ein Lauf sofort, dann alle 5 Minuten, nach Fehlern früher. Außerdem ein

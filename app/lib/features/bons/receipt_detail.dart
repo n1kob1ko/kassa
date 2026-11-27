@@ -50,7 +50,8 @@ import 'void_question.dart';
 /// Gibt es Einträge, wie der Beleg erteilt wurde, steht die Zeile "Beleg"
 /// mit "Gedruckt" und "Digital angeboten" und ihren Zeiten da. Ist der
 /// Kundenbon digital ([effectiveReceiptMode]) und hat der Bon einen
-/// Schlüssel, steht darunter der QR-Code seiner Seite (`detail-receipt-qr`).
+/// Schlüssel und ist er kein Sonderbeleg, steht darunter der QR-Code seiner
+/// Seite (`detail-receipt-qr`); er zählt nicht als Belegerteilung.
 class ReceiptDetail extends ConsumerStatefulWidget {
   const ReceiptDetail({super.key, required this.receipt, required this.all});
 
@@ -285,6 +286,7 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
         (ref.watch(syncStateProvider).value?.hasRegister ?? false);
     _showQr =
         receipt != null &&
+        !receipt.kind.isSpecial &&
         receipt.publicToken != null &&
         effectiveReceiptMode(settings, paired: paired) !=
             ReceiptMode.alwaysPrint;
@@ -721,6 +723,8 @@ class _Body extends StatelessWidget {
             child: ReceiptQr(
               receipt: r,
               qrKey: const Key('detail-receipt-qr'),
+              // Ein Blick auf einen alten Bon ist keine Belegerteilung.
+              recordsDelivery: false,
             ),
           ),
         if (state._invoice)

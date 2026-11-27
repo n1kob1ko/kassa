@@ -52,10 +52,12 @@ import 'sale_service.dart';
 /// Ist der Kundenbon digital ("Drucken und digital", "Digital, Druck auf
 /// Wunsch"), steht unter dem Rückgeld der QR-Code seiner Seite
 /// ([ReceiptQr]) mit "Bon mit dem Handy mitnehmen". Bei "Digital, Druck auf
-/// Wunsch" steht an Stelle des Druck-Zustands "Bon drucken"
-/// (`print-receipt-now`); nach dem Tipp oder dem Druck nach
-/// [receiptFallbackDelay] steht dort der Druck-Zustand wie sonst, mit dem
-/// Hinweis `receipt-offline-note`. Ohne Drucker sagt der Hinweis, dass der
+/// Wunsch" steht statt des Druck-Zustands "Bon drucken"
+/// (`print-receipt-now`) neben "Nächster Kunde" (passen beide Beschriftungen
+/// nicht nebeneinander, darüber); nach dem Tipp, dem Druck nach
+/// [receiptFallbackDelay] oder einem anderen Druck des Kundenbons (etwa als
+/// Rechnung) steht der Druck-Zustand wie sonst unter der Bon-Nummer, nach
+/// der Uhr mit dem Hinweis `receipt-offline-note`. Ohne Drucker sagt der Hinweis, dass der
 /// digitale Bon erst später abrufbar ist, und der Code steht trotzdem da.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
@@ -240,6 +242,7 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     final printStarted =
         widget.result.autoPrinted ||
         _printTapped ||
+        outcome != null ||
         _fallback == ReceiptFallback.printed;
     final offline = switch (_fallback) {
       ReceiptFallback.printed => l.kassaReceiptOfflinePrinted,
@@ -310,16 +313,6 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                     if (showPrint && printStarted) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
                       _PrintState(outcome: outcome, onReprint: _reprint),
-                    ] else if (showPrint) ...[
-                      const SizedBox(height: KassaTokens.spaceMd),
-                      PrimaryButton(
-                        key: const Key('print-receipt-now'),
-                        label: l.kassaPrintReceiptNow,
-                        icon: LucideIcons.printer,
-                        filled: false,
-                        height: 64,
-                        onPressed: _printNow,
-                      ),
                     ],
                     // Gescheitert immer, auch ohne Küchendrucker: sonst
                     // käme nie ein Küchenbon, ohne dass es jemand merkt.
@@ -446,17 +439,113 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
           ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: PrimaryButton(
-              key: const Key('next-customer'),
-              label: l.kassaNextCustomer,
-              filled: false,
-              solid: true,
-              height: KassaTokens.mainActionHeight,
-              onPressed: widget.onNext,
-            ),
+            child: showPrint && !printStarted
+                ? _PrintNowAndNext(
+                    onPrint: _printNow,
+                    onNext: widget.onNext,
+                  )
+                : PrimaryButton(
+                    key: const Key('next-customer'),
+                    label: l.kassaNextCustomer,
+                    filled: false,
+                    solid: true,
+                    height: KassaTokens.mainActionHeight,
+                    onPressed: widget.onNext,
+                  ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Bon drucken" und "Nächster Kunde" bei "Digital, Druck auf Wunsch":
+/// nebeneinander, wie in der Skizze (Spec 5.4), wenn beide Beschriftungen
+/// ganz hineinpassen (Sprache, Textgröße); sonst "Bon drucken" darüber.
+class _PrintNowAndNext extends StatelessWidget {
+  const _PrintNowAndNext({required this.onPrint, required this.onNext});
+
+  final VoidCallback onPrint;
+  final VoidCallback onNext;
+
+  /// Die Breite, die [PrimaryButton] für [label] braucht: Rand links und
+  /// rechts, mit [icon] dazu das Zeichen und sein Abstand.
+  static double _buttonWidth(
+    BuildContext context,
+    String label,
+    TextStyle style, {
+    required bool icon,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width =
+        painter.width +
+        2 * KassaTokens.spaceXxl +
+        (icon ? 26 + KassaTokens.spaceLg : 0);
+    painter.dispose();
+    return width;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    final base = Theme.of(context).textTheme.titleLarge!;
+    // Dieselben Schriften wie in [PrimaryButton].
+    final printWidth = _buttonWidth(
+      context,
+      l.kassaPrintReceiptNow,
+      base.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+      icon: true,
+    );
+    final nextWidth = _buttonWidth(
+      context,
+      l.kassaNextCustomer,
+      base.copyWith(fontSize: 20, fontWeight: FontWeight.w800),
+      icon: false,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = KassaTokens.spaceMd;
+        final fits =
+            printWidth + gap + nextWidth + 1 <= constraints.maxWidth;
+        Widget print(double height) => PrimaryButton(
+          key: const Key('print-receipt-now'),
+          label: l.kassaPrintReceiptNow,
+          icon: LucideIcons.printer,
+          filled: false,
+          height: height,
+          onPressed: onPrint,
+        );
+        final next = PrimaryButton(
+          key: const Key('next-customer'),
+          label: l.kassaNextCustomer,
+          filled: false,
+          solid: true,
+          height: KassaTokens.mainActionHeight,
+          onPressed: onNext,
+        );
+        if (fits) {
+          return Row(
+            children: [
+              Expanded(
+                flex: printWidth.ceil(),
+                child: print(KassaTokens.mainActionHeight),
+              ),
+              const SizedBox(width: gap),
+              Expanded(flex: nextWidth.ceil(), child: next),
+            ],
+          );
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [print(64), const SizedBox(height: gap), next],
+        );
+      },
     );
   }
 }
