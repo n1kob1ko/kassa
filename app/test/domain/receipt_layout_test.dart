@@ -6,6 +6,7 @@ import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
+import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/rksv/setup_facts.dart';
 
 import '../support/fake_atrust.dart';
@@ -1005,5 +1006,283 @@ void main() {
       block.map((l) => l.trim()).join(' '),
       '$name $line1 $line2',
     );
+  });
+
+  group('Pfand zurück, Auszahlung und Gutscheine (1.12.0)', () {
+    late TestShop shop;
+    setUp(() async {
+      shop = await TestShop.open();
+      addTearDown(shop.close);
+    });
+
+    /// [cart] (18,20 € mit 0,50 € Pfand) und 3 × Pfand zurück zu 0,25 €,
+    /// bar mit 20,00 €: Summe 17,45 €.
+    Future<Receipt> withReturn() => shop.receipts.finalizeCashSale(
+      saleId: 'return',
+      cart: cart.setDepositReturn(depositCents: 25, quantity: 3),
+      givenCents: 2000,
+      staff: shop.anna,
+    );
+
+    /// Nur 3 × Pfand zurück zu 0,25 €: 0,75 € bar ausbezahlt.
+    Future<Receipt> payout() => shop.receipts.finalizePayout(
+      saleId: 'payout',
+      cart: const Cart.empty().setDepositReturn(depositCents: 25, quantity: 3),
+      staff: shop.anna,
+    );
+
+    /// Ein Gutschein über 25,00 € bar verkauft, mit 30,00 € gegeben.
+    Future<Receipt> voucherSold() => shop.receipts.finalizeCashSale(
+      saleId: 'voucher-sold',
+      cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+      givenCents: 3000,
+      staff: shop.anna,
+    );
+
+    /// [cartCard] (9,65 €) mit einem Gutschein über 5,00 € und 4,65 € bar.
+    Future<(Receipt, SoldVoucher)> voucherAndCash() async {
+      final sold = (await shop.receipts.finalizeCashSale(
+        saleId: 'voucher-5',
+        cart: const Cart.empty().addVoucherSale(valueCents: 500),
+        givenCents: 500,
+        staff: shop.anna,
+      )).soldVouchers.single;
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'voucher-paid',
+        cart: cartCard.applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 500,
+          ),
+        ),
+        givenCents: 465,
+        staff: shop.anna,
+      );
+      return (r, sold);
+    }
+
+    test('Bon mit Pfand zurück: Zeile mit -0,75 und je -0,25, Pfand 0,50 '
+        'bleibt eigene Reihe, SUMME 17,45', () async {
+      final r = await withReturn();
+      final t = texts(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('3 x Pfand zurück', '-0,75'),
+          '    je -0,25',
+          '-' * 48,
+          row('Pfand', '0,50'),
+          row('SUMME EUR', '17,45'),
+          row('Bar', '17,45'),
+          row('Gegeben', '20,00'),
+          row('Rückgeld', '2,55'),
+        ]),
+      );
+      // Der Warenwert 0 der Zeile steht nirgends, das Pfand nur verlangt.
+      expect(t.where((x) => x.startsWith('3 x Pfand zurück')), hasLength(1));
+      expect(t.where((x) => x.startsWith('Pfand ')), hasLength(1));
+    });
+
+    test('eine einzelne Flasche zurück: keine Zeile "je"', () async {
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'one',
+        cart: cart.setDepositReturn(depositCents: 25, quantity: 1),
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      final t = texts(layoutReceipt(r, business));
+      expect(t, contains(row('1 x Pfand zurück', '-0,25')));
+      expect(t.where((x) => x.contains('je -0,25')), isEmpty);
+    });
+
+    test('Auszahlung: SUMME -0,75, "Bar ausbezahlt 0,75", kein Gegeben, kein '
+        'Rückgeld', () async {
+      final r = await payout();
+      final t = texts(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('3 x Pfand zurück', '-0,75'),
+          '    je -0,25',
+          row('SUMME EUR', '-0,75'),
+          row('Bar ausbezahlt', '0,75'),
+        ]),
+      );
+      // Kein Pfand verlangt: keine Reihe "Pfand"; keine Reihe "Bar".
+      expect(t.where((x) => x.startsWith('Pfand ')), isEmpty);
+      expect(t.where((x) => x.startsWith('Bar ')), [
+        row('Bar ausbezahlt', '0,75'),
+      ]);
+      expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
+      expect(t.where((x) => x.startsWith('Rückgeld')), isEmpty);
+    });
+
+    test('Storno einer Auszahlung: dieselben Reihen mit umgekehrtem '
+        'Vorzeichen', () async {
+      final r = await payout();
+      final v = await voidOf(shop, r);
+      final t = texts(layoutReceipt(v, business, voidedNumber: r.number));
+      expect(
+        t,
+        containsAllInOrder([
+          'STORNO',
+          row('-3 x Pfand zurück', '0,75'),
+          '    je -0,25',
+          row('SUMME EUR', '0,75'),
+          row('Bar ausbezahlt', '-0,75'),
+        ]),
+      );
+      expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
+    });
+
+    test('Gutschein verkauft: Zeile mit Code darunter, "Gutschein (kein '
+        'Umsatz) 25,00" nach der Steuer', () async {
+      final r = await voucherSold();
+      final code = formatVoucherCode(r.soldVouchers.single.code);
+      final t = texts(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('1 x Gutschein', '25,00'),
+          '    Code $code',
+          row('SUMME EUR', '25,00'),
+          row('0 % MwSt 0,00  Netto 25,00', '25,00'),
+          row('Gutschein (kein Umsatz)', '25,00'),
+          row('Bar', '25,00'),
+          row('Gegeben', '30,00'),
+          row('Rückgeld', '5,00'),
+        ]),
+      );
+      // Der Code hängt nicht mehr am Namen.
+      expect(t.where((x) => x.startsWith('1 x Gutschein Code')), isEmpty);
+    });
+
+    test('mit Gutschein bezahlt, Rest bar: "Gutschein 1234 5678 5,00", '
+        '"Restguthaben 0,00", dann "Bar 4,65"', () async {
+      final (r, sold) = await voucherAndCash();
+      final code = formatVoucherCode(sold.code);
+      final t = texts(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('SUMME EUR', '9,65'),
+          row('Gutschein $code', '5,00'),
+          row('  Restguthaben', '0,00'),
+          row('Bar', '4,65'),
+        ]),
+      );
+      // Eine Gutschein-Zahlung ist kein Umsatz-Abzug: keine Reihe dafür.
+      expect(t.where((x) => x.contains('kein Umsatz')), isEmpty);
+    });
+
+    test(
+      'nur mit Gutschein bezahlt: keine Reihe "Bar", Restguthaben 15,35',
+      () async {
+        final sold = (await voucherSold()).soldVouchers.single;
+        final r = await shop.receipts.finalizeVoucherSale(
+          saleId: 'only-voucher',
+          cart: cartCard.applyVoucher(
+            AppliedVoucher(
+              voucherId: sold.voucherId,
+              code: sold.code,
+              balanceCents: 2500,
+            ),
+          ),
+          staff: shop.anna,
+        );
+        final t = texts(layoutReceipt(r, business));
+        expect(
+          t,
+          containsAllInOrder([
+            row('Gutschein ${formatVoucherCode(sold.code)}', '9,65'),
+            row('  Restguthaben', '15,35'),
+          ]),
+        );
+        expect(t.where((x) => x.startsWith('Bar')), isEmpty);
+      },
+    );
+
+    test('Storno eines Gutschein-Bons: Beträge mit Minus, Restguthaben nach '
+        'dem Storno', () async {
+      final (r, sold) = await voucherAndCash();
+      final v = await voidOf(shop, r);
+      final t = texts(layoutReceipt(v, business, voidedNumber: r.number));
+      expect(
+        t,
+        containsAllInOrder([
+          'STORNO',
+          row('SUMME EUR', '-9,65'),
+          row('Gutschein ${formatVoucherCode(sold.code)}', '-5,00'),
+          row('  Restguthaben', '5,00'),
+          row('Bar', '-4,65'),
+        ]),
+      );
+    });
+
+    test('Storno eines Gutschein-Verkaufs: Zeile, Code und Reihe nach der '
+        'Steuer mit Minus', () async {
+      final r = await voucherSold();
+      final v = await voidOf(shop, r);
+      final t = texts(layoutReceipt(v, business, voidedNumber: r.number));
+      expect(
+        t,
+        containsAllInOrder([
+          row('-1 x Gutschein', '-25,00'),
+          '    Code ${formatVoucherCode(r.soldVouchers.single.code)}',
+          row('SUMME EUR', '-25,00'),
+          row('Gutschein (kein Umsatz)', '-25,00'),
+          row('Bar', '-25,00'),
+        ]),
+      );
+    });
+
+    test('Übungs-Bon mit den neuen Reihen: TESTBON wie immer', () async {
+      final r = await payout();
+      final t = texts(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('Bar ausbezahlt', '0,75'),
+          'TESTBON',
+          'Keine gültige Rechnung',
+        ]),
+      );
+    });
+
+    test('ein Bon aus 1.11.0 (Rabatt, Trinkgeld, Teil bar) druckt Zeile für '
+        'Zeile wie vorher', () async {
+      // Der Text von 1.11.0, festgehalten: keine der neuen Reihen.
+      final r = await mixedDiscounted(shop);
+      final t = texts(layoutReceipt(r, business));
+      final from = t.indexOf(row('Bon Nr. 1', '17.11.2026 11:00'));
+      expect(t.sublist(from), [
+        row('Bon Nr. 1', '17.11.2026 11:00'),
+        'Bedienung: Anna',
+        '-' * 48,
+        row('2 x Cola 0,33 l', '5,80'),
+        '    je 2,90',
+        row('1 x Huhn Bowl', '11,90'),
+        '    XXL (+2,00)',
+        '    Nudeln',
+        row('  Rabatt 10 % Stammgast', '-1,19'),
+        '-' * 48,
+        row('Zwischensumme', '16,51'),
+        row('Rabatt 10 % Aktion', '-1,65'),
+        row('Pfand', '0,50'),
+        row('SUMME EUR', '15,36'),
+        '-' * 48,
+        row('20 % MwSt 0,87  Netto 4,35', '5,22'),
+        row('10 % MwSt 0,88  Netto 8,76', '9,64'),
+        row('Bar', '10,00'),
+        row('Karte', '6,00'),
+        row('  davon Trinkgeld', '0,64'),
+        '    VISA **** 4242',
+        '    Beleg TX-mixed-discounted',
+        'Danke und bis bald!',
+        'TESTBON',
+        'Keine gültige Rechnung',
+      ]);
+    });
   });
 }

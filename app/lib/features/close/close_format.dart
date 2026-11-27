@@ -33,3 +33,7 @@ String cashReasonText(L10n l, CashReason r) => switch (r) {
 /// Betrag mit Vorzeichen: "+1,00 €", "−0,20 €", "0,00 €".
 String signedEuro(int cents) =>
     cents > 0 ? '+${formatEuro(cents)}' : formatEuro(cents);
+
+/// Eine Anzahl ohne Wort ("3", "1.234"), mit echtem Minuszeichen wie
+/// [formatEuro].
+String countText(int n) => n < 0 ? '−${groupThousands(-n)}' : groupThousands(n);

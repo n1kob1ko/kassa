@@ -1,7 +1,9 @@
 // Ein Tag mit Pfand zurück und Gutscheinen für die Tests der Auswertungen.
 // Ohne Erwartungen.
 
+import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/staff.dart';
 
 import 'sales.dart';
 
@@ -24,5 +26,36 @@ Future<void> sellVoucherDepositDay(
     saleId: ids[3],
     cart: const Cart.empty().setDepositReturn(depositCents: 25, quantity: 3),
     staff: shop.anna,
+  );
+}
+
+/// Die Bons B bis D von [sellVoucherDepositDay] über [receipts] als [staff],
+/// für Tests am Bildschirm (Bon A ist dort der übliche Verkauf zu 18,20 €).
+Future<void> sellVoucherAndPayout(
+  ReceiptRepository receipts,
+  Staff staff, {
+  List<String> ids = const ['b', 'c', 'd'],
+}) async {
+  final sold = (await receipts.finalizeCashSale(
+    saleId: ids[0],
+    cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+    givenCents: 2500,
+    staff: staff,
+  )).soldVouchers.single;
+  await receipts.finalizeVoucherSale(
+    saleId: ids[1],
+    cart: cartCard.applyVoucher(
+      AppliedVoucher(
+        voucherId: sold.voucherId,
+        code: sold.code,
+        balanceCents: 2500,
+      ),
+    ),
+    staff: staff,
+  );
+  await receipts.finalizePayout(
+    saleId: ids[2],
+    cart: const Cart.empty().setDepositReturn(depositCents: 25, quantity: 3),
+    staff: staff,
   );
 }

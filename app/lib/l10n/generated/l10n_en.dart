@@ -1905,4 +1905,25 @@ class L10nEn extends L10n {
 
   @override
   String get bonsDeliveryDigital => 'Offered digitally';
+
+  @override
+  String get closeVoucherPaid => 'Paid with voucher';
+
+  @override
+  String get closeVoucherSold => 'Vouchers sold';
+
+  @override
+  String get closeDepositReturn => 'Deposit return';
+
+  @override
+  String get closeTaxVouchers => 'of which vouchers';
+
+  @override
+  String get bonsPaymentVoucher => 'Voucher';
+
+  @override
+  String get bonsFilterVoucher => 'Voucher';
+
+  @override
+  String get bonsVoucherLeft => 'Remaining balance';
 }

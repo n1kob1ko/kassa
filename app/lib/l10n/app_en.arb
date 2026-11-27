@@ -548,5 +548,12 @@
   "kassaReceiptOfflineLater": "No internet: the digital receipt will be available later.",
   "bonsDeliveryTitle": "Receipt",
   "bonsDeliveryPrinted": "Printed",
-  "bonsDeliveryDigital": "Offered digitally"
+  "bonsDeliveryDigital": "Offered digitally",
+  "closeVoucherPaid": "Paid with voucher",
+  "closeVoucherSold": "Vouchers sold",
+  "closeDepositReturn": "Deposit return",
+  "closeTaxVouchers": "of which vouchers",
+  "bonsPaymentVoucher": "Voucher",
+  "bonsFilterVoucher": "Voucher",
+  "bonsVoucherLeft": "Remaining balance"
 }

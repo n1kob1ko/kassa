@@ -174,6 +174,7 @@ class _Content extends StatelessWidget {
               PaymentsCard(
                 cashCents: data.cashCents,
                 cardCents: data.cardCents,
+                voucherCents: data.voucherCents,
                 empty: _empty,
               ),
               const SizedBox(height: KassaTokens.spaceXxl),

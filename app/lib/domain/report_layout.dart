@@ -5,6 +5,7 @@
 import '../core/german_dates.dart';
 import '../core/money.dart';
 import 'business_info.dart';
+import 'catalog.dart' show TaxRate;
 import 'day.dart';
 import 'period_report.dart';
 import 'pricing.dart';
@@ -41,16 +42,40 @@ void _income(
   required int voidedCents,
   required int discountCount,
   required int discountCents,
+  required int voucherPaidCents,
+  required int voucherSoldCount,
+  required int voucherSoldCents,
+  required int depositReturnCount,
+  required int depositReturnCents,
 }) {
   b.text('EINNAHMEN', bold: true);
   b.row3('Bar', bonsText(cashCount), amount(cashCents));
   b.row3('Karte', bonsText(cardCount), amount(cardCents));
+  // Nur, wenn es sie gibt: so ergibt die Spalte von oben nach unten
+  // "Gesamt" (bar + Karte + mit Gutschein bezahlt − verkaufte Gutscheine).
+  if (voucherPaidCents != 0) {
+    b.row3('Mit Gutschein bezahlt', '', amount(voucherPaidCents));
+  }
+  if (voucherSoldCount != 0 || voucherSoldCents != 0) {
+    b.row3(
+      'Gutscheine verkauft',
+      groupThousands(voucherSoldCount),
+      amount(-voucherSoldCents),
+    );
+  }
   b.row3('Gesamt', bonsText(count), amount(revenueCents));
   if (voidCount != 0) {
     b.row3('Storniert', bonsText(voidCount), amount(voidedCents));
   }
   if (discountCount != 0 || discountCents != 0) {
     b.row3('Rabatte', bonsText(discountCount), amount(-discountCents));
+  }
+  if (depositReturnCount != 0 || depositReturnCents != 0) {
+    b.row3(
+      'Pfand zurück',
+      groupThousands(depositReturnCount),
+      amount(-depositReturnCents),
+    );
   }
 }
 
@@ -72,14 +97,28 @@ void _cardTips(
   b.rule();
 }
 
-void _tax(PrintBuilder b, List<TaxLine> lines, int depositCents) {
+/// Die Zeilen je Satz, wie sie signiert werden. Unter dem Satz 0 (fehlt er,
+/// nach allen Sätzen) "davon Gutscheine", wenn Gutscheine verkauft wurden.
+void _tax(
+  PrintBuilder b,
+  List<TaxLine> lines,
+  int depositCents,
+  int voucherSoldCents,
+) {
   b.text('STEUER', bold: true);
+  void vouchers() => b.row('  davon Gutscheine', amount(voucherSoldCents));
+  var vouchersShown = voucherSoldCents == 0;
   for (final t in lines) {
     b.text('MwSt ${t.rate.percent} %');
     b.row('  Brutto', amount(t.grossCents));
     b.row('  Netto', amount(t.netCents));
     b.row('  Steuer', amount(t.taxCents));
+    if (t.rate == TaxRate.zero && !vouchersShown) {
+      vouchers();
+      vouchersShown = true;
+    }
   }
+  if (!vouchersShown) vouchers();
   if (depositCents != 0) b.row('Pfand, ohne MwSt', amount(depositCents));
 }
 
@@ -137,6 +176,11 @@ List<PrintOp> layoutDayReport(
     voidedCents: s.voidedCents,
     discountCount: s.discountCount,
     discountCents: s.discountCents,
+    voucherPaidCents: s.voucherPaidCents,
+    voucherSoldCount: s.voucherSoldCount,
+    voucherSoldCents: s.voucherSoldCents,
+    depositReturnCount: s.depositReturnCount,
+    depositReturnCents: s.depositReturnCents,
   );
   b.rule();
   _cardTips(
@@ -145,7 +189,7 @@ List<PrintOp> layoutDayReport(
     cardTipCents: s.cardTipCents,
     cardAccountCents: s.cardAccountCents,
   );
-  _tax(b, s.taxLines, s.depositCents);
+  _tax(b, s.taxLines, s.depositCents, s.voucherSoldCents);
   b.rule();
   b.text(drawer ? 'GELDLADE' : 'BARGELD', bold: true);
   b.row('Wechselgeld am Morgen', amount(s.openingFloatCents));
@@ -217,6 +261,11 @@ List<PrintOp> layoutPeriodReport(
     voidedCents: r.voidedCents,
     discountCount: r.discountCount,
     discountCents: r.discountCents,
+    voucherPaidCents: r.voucherPaidCents,
+    voucherSoldCount: r.voucherSoldCount,
+    voucherSoldCents: r.voucherSoldCents,
+    depositReturnCount: r.depositReturnCount,
+    depositReturnCents: r.depositReturnCents,
   );
   b.rule();
   _cardTips(
@@ -225,7 +274,7 @@ List<PrintOp> layoutPeriodReport(
     cardTipCents: r.cardTipCents,
     cardAccountCents: r.cardAccountCents,
   );
-  _tax(b, r.taxLines, r.depositCents);
+  _tax(b, r.taxLines, r.depositCents, r.voucherSoldCents);
   b.rule();
   if (!r.range.single) {
     b.text('MONATE', bold: true);

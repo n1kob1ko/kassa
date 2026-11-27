@@ -3,11 +3,13 @@
 
 import '../rksv/setup_facts.dart';
 import 'business_info.dart';
+import 'cart.dart' show isDepositReturnItemId, isVoucherSaleItemId;
 import 'customer.dart';
 import 'pricing.dart';
 import 'print_builder.dart';
 import 'print_document.dart';
 import 'receipt.dart';
+import 'voucher.dart' show formatVoucherCode;
 
 export 'print_builder.dart' show amount, printable;
 
@@ -79,11 +81,23 @@ List<PrintOp> layoutReceipt(
 
   // 5. Zeilen
   for (final line in r.lines) {
-    final label = line.info == null || line.info!.isEmpty
+    final many = line.quantity > 1 || line.quantity < -1;
+    // "Pfand zurück": der Betrag ist das Pfand der Zeile, nicht der
+    // Warenwert 0.
+    if (isDepositReturnItemId(line.itemId)) {
+      b.row('${line.quantity} x ${line.name}', amount(line.depositCents));
+      if (many) b.indented('je ${amount(line.unitDepositCents)}');
+      continue;
+    }
+    // Ein Gutschein: der Code ("Code 1234 5678") eingerückt darunter.
+    final voucherSale = isVoucherSaleItemId(line.itemId);
+    final info = line.info;
+    final label = voucherSale || info == null || info.isEmpty
         ? line.name
-        : '${line.name} ${line.info}';
+        : '${line.name} $info';
     b.row('${line.quantity} x $label', amount(line.goodsCents));
-    if (line.quantity > 1 || line.quantity < -1) {
+    if (voucherSale && info != null && info.isNotEmpty) b.indented(info);
+    if (many) {
       b.indented('je ${amount(line.unitPriceCents)}');
     }
     for (final o in line.options) {
@@ -105,7 +119,9 @@ List<PrintOp> layoutReceipt(
     b.row('Zwischensumme', amount(r.subtotalCents));
     b.row(discount.label, amount(-discount.amountCents));
   }
-  if (r.depositCents != 0) b.row('Pfand', amount(r.depositCents));
+  // Nur das verlangte Pfand; das zurückgegebene steht bei seinen Zeilen.
+  final depositAsked = r.depositCents - r.depositReturnCents;
+  if (depositAsked != 0) b.row('Pfand', amount(depositAsked));
   b.row(
     'SUMME EUR',
     amount(r.totalCents),
@@ -118,11 +134,21 @@ List<PrintOp> layoutReceipt(
   for (final t in r.taxLines) {
     b.row(_taxText(t), amount(t.grossCents));
   }
+  // Verkaufte Gutscheine zählen zum Satz 0, sind aber kein Umsatz.
+  final voucherSaleCents = r.voucherSaleCents;
+  if (voucherSaleCents != 0) {
+    b.row('Gutschein (kein Umsatz)', amount(voucherSaleCents));
+  }
 
   // 8. Zahlungen in ihrer Reihenfolge, bei Sonderbelegen keine. "Gegeben"
-  // und "Rückgeld" nur, wenn die Bar-Zahlung die einzige ist.
+  // und "Rückgeld" nur, wenn die Bar-Zahlung die einzige ist. Eine
+  // Auszahlung (Summe unter 0, beim Storno darüber) heißt "Bar ausbezahlt",
+  // mit dem Betrag ohne Minus (beim Storno mit), ohne "Gegeben".
+  final payout = isPayoutReceipt(r);
   for (final p in r.payments) {
     switch (p.kind) {
+      case PaymentKind.cash when payout:
+        b.row('Bar ausbezahlt', amount(-p.amountCents));
       case PaymentKind.cash:
         b.row('Bar', amount(p.amountCents));
         if (r.payments.length == 1 && p.givenCents != p.amountCents) {
@@ -147,8 +173,14 @@ List<PrintOp> layoutReceipt(
         final tx = p.providerTxCode;
         if (tx != null && tx.isNotEmpty) b.indented('Beleg $tx');
       case PaymentKind.voucher:
-        // Vorerst nur das Wort, Code und Restguthaben folgen (Task 11).
-        b.row('Gutschein', amount(p.amountCents));
+        // Der ganze Code, darunter, was am Gutschein bleibt (beim Storno:
+        // nach dem Storno).
+        b.row(
+          'Gutschein ${formatVoucherCode(p.voucherCode ?? '')}',
+          amount(p.amountCents),
+        );
+        final left = p.voucherBalanceAfterCents;
+        if (left != null) b.row('  Restguthaben', amount(left));
     }
   }
 
@@ -181,6 +213,14 @@ List<PrintOp> layoutReceipt(
     ..add(const PrintCut());
   return b.ops;
 }
+
+/// Ob [r] eine Auszahlung ist: ein Verkauf mit Summe unter 0 oder der
+/// Storno davon (Summe über 0).
+bool isPayoutReceipt(Receipt r) => switch (r.kind) {
+  ReceiptKind.sale => r.totalCents < 0,
+  ReceiptKind.voided => r.totalCents > 0,
+  _ => false,
+};
 
 /// Ein Testdruck: Betrieb, Zeit, ein Lineal über die volle Breite und die
 /// Umlaute.

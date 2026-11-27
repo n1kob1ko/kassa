@@ -6,6 +6,7 @@ import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/features/close/summary_rows.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,6 +16,7 @@ import '../support/close_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/sales.dart' show cartCard, discounted;
+import '../support/voucher_deposit_day.dart' show sellVoucherAndPayout;
 
 /// Zählt, wie oft der Tag abgeschlossen wird.
 class _CountingDays extends DayRepository {
@@ -778,6 +780,118 @@ void main() {
         t.getSize(find.byKey(const Key('forgotten-close-go'))).height,
         greaterThanOrEqualTo(48),
       );
+    });
+  });
+
+  group('Pfand zurück und Gutscheine (1.12.0)', () {
+    const newRows = [
+      'income-voucher-paid',
+      'income-voucher-sold',
+      'income-deposit-return',
+      'tax-vouchers',
+    ];
+
+    /// Wechselgeld 150,00 €, Bon A (18,20 € bar), dann B bis D aus Task 6.
+    Future<void> pumpVoucherDay(
+      WidgetTester t, {
+      Size size = const Size(1280, 800),
+      double textScale = 1.0,
+    }) async {
+      await pumpClose(t, floatCents: 15000, size: size, textScale: textScale);
+      final c = containerOf(t);
+      await sellVoucherAndPayout(
+        c.read(receiptRepositoryProvider),
+        c.read(sessionProvider)!,
+      );
+      await _tap(t, 'tab-Bons');
+      await _tap(t, 'tab-Abschluss');
+    }
+
+    testWidgets('die drei neuen Reihen stehen nur da, wenn es etwas gibt', (
+      t,
+    ) async {
+      await pumpCloseReady(t);
+      for (final k in newRows) {
+        expect(find.byKey(Key(k)), findsNothing, reason: k);
+      }
+      for (final word in [
+        'Mit Gutschein bezahlt',
+        'Gutscheine verkauft',
+        'Pfand zurück',
+        'davon Gutscheine',
+      ]) {
+        expect(find.text(word), findsNothing, reason: word);
+      }
+
+      final c = containerOf(t);
+      await sellVoucherAndPayout(
+        c.read(receiptRepositoryProvider),
+        c.read(sessionProvider)!,
+      );
+      await _tap(t, 'tab-Bons');
+      await _tap(t, 'tab-Abschluss');
+
+      String amount(String k) => textOf(t, Key(k));
+      expect(amount('income-cash'), formatEuro(4245));
+      expect(amount('income-card'), formatEuro(0));
+      expect(amount('income-voucher-paid'), formatEuro(965));
+      expect(amount('income-voucher-sold'), formatEuro(-2500));
+      expect(amount('income-total'), formatEuro(2710));
+      expect(amount('income-deposit-return'), formatEuro(-75));
+      expect(amount('tax-vouchers'), formatEuro(2500));
+      // Die Spalte ergibt von oben nach unten die Summe.
+      expect(4245 + 0 + 965 - 2500, 2710);
+      double top(String k) => t.getTopLeft(find.byKey(Key(k))).dy;
+      final order = [
+        'income-cash',
+        'income-card',
+        'income-voucher-paid',
+        'income-voucher-sold',
+        'income-total',
+        'income-deposit-return',
+      ];
+      for (var i = 1; i < order.length; i++) {
+        expect(top(order[i]), greaterThan(top(order[i - 1])), reason: order[i]);
+      }
+      expect(find.text('Mit Gutschein bezahlt'), findsOneWidget);
+      expect(find.text('Gutscheine verkauft'), findsOneWidget);
+      expect(find.text('Pfand zurück'), findsOneWidget);
+      expect(find.text('davon Gutscheine'), findsOneWidget);
+      // Anzahl der verkauften Gutscheine und der zurückgegebenen Flaschen.
+      Finder inLine(String row, String text) => find.descendant(
+        of: find.ancestor(
+          of: find.byKey(Key(row)),
+          matching: find.byType(SummaryLine),
+        ),
+        matching: find.text(text),
+      );
+      expect(inLine('income-voucher-sold', '1'), findsOneWidget);
+      expect(
+        inLine('income-voucher-sold', 'Gutscheine verkauft'),
+        findsOneWidget,
+      );
+      expect(inLine('income-deposit-return', '3'), findsOneWidget);
+      expect(
+        inLine('income-voucher-paid', 'Mit Gutschein bezahlt'),
+        findsOneWidget,
+      );
+      // Das erwartete Bargeld bleibt: Wechselgeld und alle Bar-Zahlungen.
+      expect(amount('left-expected'), formatEuro(15000 + 4245));
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('in allen fünf Sprachen, bei 960 x 600 und Textskala 1,3 kein '
+        'Überlauf', (t) async {
+      await pumpVoucherDay(t, size: const Size(960, 600), textScale: 1.3);
+      final repo = containerOf(t).read(settingsRepositoryProvider);
+      for (final language in AppLanguage.values) {
+        await repo.save((await repo.current()).copyWith(language: language));
+        await t.pumpAndSettle();
+        for (final k in newRows) {
+          expect(find.byKey(Key(k)), findsOneWidget, reason: '$language $k');
+        }
+        expect(t.takeException(), isNull, reason: '$language');
+      }
     });
   });
 }

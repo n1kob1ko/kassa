@@ -1909,4 +1909,25 @@ class L10nDe extends L10n {
 
   @override
   String get bonsDeliveryDigital => 'Digital angeboten';
+
+  @override
+  String get closeVoucherPaid => 'Mit Gutschein bezahlt';
+
+  @override
+  String get closeVoucherSold => 'Gutscheine verkauft';
+
+  @override
+  String get closeDepositReturn => 'Pfand zurück';
+
+  @override
+  String get closeTaxVouchers => 'davon Gutscheine';
+
+  @override
+  String get bonsPaymentVoucher => 'Gutschein';
+
+  @override
+  String get bonsFilterVoucher => 'Gutschein';
+
+  @override
+  String get bonsVoucherLeft => 'Restguthaben';
 }

@@ -3397,6 +3397,48 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Digital angeboten'**
   String get bonsDeliveryDigital;
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): Summe der Zahlungen mit Gutschein. Nur, wenn nicht 0.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Gutschein bezahlt'**
+  String get closeVoucherPaid;
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): Anzahl und Summe der verkauften Gutscheine, mit Minus, weil sie kein Umsatz sind. Nur, wenn nicht 0.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutscheine verkauft'**
+  String get closeVoucherSold;
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): Stück und Summe des zurückgegebenen Pfands, mit Minus. Nur, wenn nicht 0.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand zurück'**
+  String get closeDepositReturn;
+
+  /// Steuer-Karte (Abschluss und Monat), unter dem Satz 0 %: der Teil, der verkaufte Gutscheine sind. Nur, wenn nicht 0.
+  ///
+  /// In de, this message translates to:
+  /// **'davon Gutscheine'**
+  String get closeTaxVouchers;
+
+  /// Bons: Zahlungsart eines Bons, der (auch) mit Gutschein bezahlt wurde, etwa "Gutschein + Bar".
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein'**
+  String get bonsPaymentVoucher;
+
+  /// Bons: Filter für Bons mit einer Zahlung mit Gutschein.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein'**
+  String get bonsFilterVoucher;
+
+  /// Bon-Detail: unter einer Zahlung mit Gutschein, was nach diesem Bon am Gutschein bleibt (wie am Papier).
+  ///
+  /// In de, this message translates to:
+  /// **'Restguthaben'**
+  String get bonsVoucherLeft;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

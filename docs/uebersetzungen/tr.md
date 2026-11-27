@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 549 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 556 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -301,6 +301,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Beleg | Fiş | Bons: `bonsDeliveryTitle` |
 | Gedruckt | Yazdırıldı | Bons: `bonsDeliveryPrinted` |
 | Digital angeboten | Dijital sunuldu | Bons: `bonsDeliveryDigital` |
+| Gutschein | Hediye çeki | Bons: `bonsPaymentVoucher` |
+| Gutschein | Hediye çeki | Bons: `bonsFilterVoucher` |
+| Restguthaben | Kalan bakiye | Bons: `bonsVoucherLeft` |
 
 ## Artikel
 
@@ -467,6 +470,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Rabatte | İndirimler | Abschluss: `closeDiscounts` |
 | Trinkgeld Karte | Kart bahşişi | Abschluss: `closeCardTip` |
 | Am Kartenkonto | Kart hesabına | Abschluss: `closeCardAccount` |
+| Mit Gutschein bezahlt | Hediye çekiyle ödenen | Abschluss: `closeVoucherPaid` |
+| Gutscheine verkauft | Satılan hediye çekleri | Abschluss: `closeVoucherSold` |
+| Pfand zurück | Depozito iadesi | Abschluss: `closeDepositReturn` |
+| davon Gutscheine | bunun hediye çekleri | Abschluss: `closeTaxVouchers` |
 
 ## Einstellungen
 

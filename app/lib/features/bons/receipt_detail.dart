@@ -11,6 +11,7 @@ import '../../data/receipt_repository.dart'
     show NotInCurrentChainException, VoucherSaleRedeemedException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
+import '../../domain/cart.dart' show isDepositReturnItemId;
 import '../../domain/discount.dart';
 import '../../domain/receipt.dart';
 import '../../domain/voucher.dart';
@@ -522,9 +523,11 @@ class _Body extends StatelessWidget {
     final voider = r.isVoided ? state._find(r.voidedByReceiptId) : null;
     final paymentKind = r.paymentKind;
     final payments = r.payments;
-    // "Gegeben" und "Rückgeld" nur bei einer einzigen Bar-Zahlung.
+    // "Gegeben" und "Rückgeld" nur bei einer einzigen Bar-Zahlung, nie bei
+    // einer Auszahlung.
     final cashPayment =
         r.kind == ReceiptKind.sale &&
+            r.totalCents >= 0 &&
             payments.length == 1 &&
             payments.single.kind == PaymentKind.cash
         ? payments.single
@@ -557,8 +560,14 @@ class _Body extends StatelessWidget {
             amountKey: const Key('detail-discount'),
           ),
         ],
-        if (r.depositCents != 0)
-          _AmountRow(l.bonsDeposit, formatEuro(r.depositCents), strong: true),
+        // Nur das verlangte Pfand; das zurückgegebene steht bei seinen
+        // Zeilen.
+        if (r.depositCents - r.depositReturnCents != 0)
+          _AmountRow(
+            l.bonsDeposit,
+            formatEuro(r.depositCents - r.depositReturnCents),
+            strong: true,
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Column(
@@ -617,7 +626,7 @@ class _Body extends StatelessWidget {
                         p.voucherBalanceAfterCents != null)
                       _SmallRow(
                         key: Key('detail-voucher-left-$i'),
-                        l.voucherLeft,
+                        l.bonsVoucherLeft,
                         formatEuro(p.voucherBalanceAfterCents!),
                         small,
                       ),
@@ -908,6 +917,9 @@ class _LineRow extends StatelessWidget {
       fontWeight: FontWeight.w400,
       color: c.ink2,
     );
+    // "Pfand zurück": in der Bediensprache, mit dem Pfand der Zeile (mit
+    // Minus) statt des Warenwerts 0.
+    final depositReturn = isDepositReturnItemId(line.itemId);
     // Die Namen des gespeicherten Bons, wie er gedruckt wurde.
     final sub = [
       for (final o in line.options) nameIsolateIn(context, o.optionName),
@@ -929,7 +941,12 @@ class _LineRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(nameIsolateIn(context, line.name), style: text.bodyLarge),
+              Text(
+                depositReturn
+                    ? L10n.of(context).kassaDepositReturn
+                    : nameIsolateIn(context, line.name),
+                style: text.bodyLarge,
+              ),
               if (sub.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: KassaTokens.spaceXxs),
@@ -939,7 +956,12 @@ class _LineRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: KassaTokens.spaceMd),
-        Ltr(child: Text(formatEuro(line.goodsCents), style: text.bodyLarge)),
+        Ltr(
+          child: Text(
+            formatEuro(depositReturn ? line.depositCents : line.goodsCents),
+            style: text.bodyLarge,
+          ),
+        ),
       ],
     );
     final discount = line.discount;

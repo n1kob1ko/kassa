@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/money.dart';
+import '../../domain/catalog.dart' show TaxRate;
 import '../../domain/day.dart';
 import '../../domain/period_report.dart';
 import '../../domain/pricing.dart' show TaxLine;
@@ -28,6 +29,11 @@ class IncomeFigures {
     this.discountCents = 0,
     this.cardTipCents = 0,
     this.tipsByStaff = const [],
+    this.voucherPaidCents = 0,
+    this.voucherSoldCount = 0,
+    this.voucherSoldCents = 0,
+    this.depositReturnCount = 0,
+    this.depositReturnCents = 0,
   });
 
   factory IncomeFigures.ofDay(DaySummary s) => IncomeFigures(
@@ -45,6 +51,11 @@ class IncomeFigures {
     discountCents: s.discountCents,
     cardTipCents: s.cardTipCents,
     tipsByStaff: s.tipsByStaff,
+    voucherPaidCents: s.voucherPaidCents,
+    voucherSoldCount: s.voucherSoldCount,
+    voucherSoldCents: s.voucherSoldCents,
+    depositReturnCount: s.depositReturnCount,
+    depositReturnCents: s.depositReturnCents,
   );
 
   factory IncomeFigures.ofPeriod(PeriodReport r) => IncomeFigures(
@@ -62,6 +73,11 @@ class IncomeFigures {
     discountCents: r.discountCents,
     cardTipCents: r.cardTipCents,
     tipsByStaff: r.tipsByStaff,
+    voucherPaidCents: r.voucherPaidCents,
+    voucherSoldCount: r.voucherSoldCount,
+    voucherSoldCents: r.voucherSoldCents,
+    depositReturnCount: r.depositReturnCount,
+    depositReturnCents: r.depositReturnCents,
   );
 
   final int cashCount;
@@ -82,6 +98,14 @@ class IncomeFigures {
   /// Trinkgeld der Kartenzahlungen, auch je Person.
   final int cardTipCents;
   final List<StaffTip> tipsByStaff;
+
+  /// Mit Gutschein bezahlt; verkaufte Gutscheine (Anzahl, Summe); Pfand
+  /// zurück (Stück, Summe). Alle positiv, ein Storno zieht ab.
+  final int voucherPaidCents;
+  final int voucherSoldCount;
+  final int voucherSoldCents;
+  final int depositReturnCount;
+  final int depositReturnCents;
 
   /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
   int get cardAccountCents => cardCents + cardTipCents;
@@ -111,6 +135,22 @@ class IncomeCard extends StatelessWidget {
           amount: formatEuro(f.cardCents),
           amountKey: const Key('income-card'),
         ),
+        // Nur, wenn es sie gibt: so ergibt die Spalte von oben nach unten
+        // "Gesamt" (bar + Karte + mit Gutschein bezahlt − verkaufte
+        // Gutscheine), wie am Ausdruck.
+        if (f.voucherPaidCents != 0)
+          SummaryLine(
+            label: l.closeVoucherPaid,
+            amount: formatEuro(f.voucherPaidCents),
+            amountKey: const Key('income-voucher-paid'),
+          ),
+        if (f.voucherSoldCount != 0 || f.voucherSoldCents != 0)
+          SummaryLine(
+            label: l.closeVoucherSold,
+            middle: countText(f.voucherSoldCount),
+            amount: formatEuro(-f.voucherSoldCents),
+            amountKey: const Key('income-voucher-sold'),
+          ),
         SummaryLine(
           label: l.closeTotal,
           middle: bonsLabel(l, f.count),
@@ -135,6 +175,13 @@ class IncomeCard extends StatelessWidget {
             amount: formatEuro(-f.discountCents),
             amountKey: const Key('income-discounts'),
           ),
+        if (f.depositReturnCount != 0 || f.depositReturnCents != 0)
+          SummaryLine(
+            label: l.closeDepositReturn,
+            middle: countText(f.depositReturnCount),
+            amount: formatEuro(-f.depositReturnCents),
+            amountKey: const Key('income-deposit-return'),
+          ),
         if (f.tipsByStaff.isNotEmpty) ...[
           SummaryLine(
             label: l.closeCardTip,
@@ -157,16 +204,29 @@ class IncomeCard extends StatelessWidget {
         ],
       ],
     );
+    final vouchers = _TaxLine(
+      l.closeTaxVouchers,
+      formatEuro(f.voucherSoldCents),
+      null,
+      grossKey: const Key('tax-vouchers'),
+    );
     final tax = _Section(
       title: l.closeTax,
       headers: [l.closeRevenue, l.closeOfWhichVat],
       rows: [
-        for (final t in f.taxLines)
+        for (final t in f.taxLines) ...[
           _TaxLine(
             l.closeVatRate(t.rate.percent),
             formatEuro(t.grossCents),
             formatEuro(t.taxCents),
           ),
+          // Der Satz 0 bleibt, wie er signiert wird; darunter der Teil der
+          // verkauften Gutscheine.
+          if (t.rate == TaxRate.zero && f.voucherSoldCents != 0) vouchers,
+        ],
+        if (f.voucherSoldCents != 0 &&
+            !f.taxLines.any((t) => t.rate == TaxRate.zero))
+          vouchers,
         if (f.depositCents != 0)
           _TaxLine(l.closeDepositNoVat, formatEuro(f.depositCents), null),
       ],
@@ -207,11 +267,12 @@ class IncomeCard extends StatelessWidget {
 }
 
 class _TaxLine extends StatelessWidget {
-  const _TaxLine(this.label, this.gross, this.tax);
+  const _TaxLine(this.label, this.gross, this.tax, {this.grossKey});
 
   final String label;
   final String gross;
   final String? tax;
+  final Key? grossKey;
 
   @override
   Widget build(BuildContext context) {
@@ -238,6 +299,7 @@ class _TaxLine extends StatelessWidget {
             child: Ltr(
               child: Text(
                 gross,
+                key: grossKey,
                 textAlign: ltrAlign(context, TextAlign.end),
                 style: text.bodyMedium!.copyWith(
                   fontWeight: FontWeight.w600,

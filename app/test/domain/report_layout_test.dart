@@ -6,6 +6,9 @@ import 'package:kassa/domain/pricing.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/report_layout.dart';
 
+import '../support/sales.dart';
+import '../support/voucher_deposit_day.dart';
+
 List<String> texts(List<PrintOp> d) => [
   for (final o in d)
     if (o is PrintText) o.text,
@@ -756,5 +759,104 @@ void main() {
         }
       });
     }
+  });
+
+  group('Pfand zurück und Gutscheine (1.12.0)', () {
+    String row(String l, String r) => l + ' ' * (48 - l.length - r.length) + r;
+    // Wie row3 am Drucker: die Mitte endet 15 Zeichen vor dem Rand.
+    String row3(String l, String m, String r) =>
+        row(l + ' ' * (33 - l.length - m.length) + m, r);
+
+    /// Der Tag aus Task 6 (Bons A bis D, Wechselgeld 150,00 €) als
+    /// Tagesabschluss und als Monatsabrechnung, auf 48 Zeichen.
+    Future<(List<String>, List<String>)> voucherDay() async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      await shop.days.setOpeningFloat(15000);
+      await sellVoucherDepositDay(shop);
+      final s = (await shop.days.summary())!;
+      final dayText = texts(
+        layoutDayReport(
+          s,
+          business,
+          registerName: null,
+          drawer: true,
+          printedAt: now,
+        ),
+      );
+      shop.clock.value = DateTime(2026, 12, 2, 9);
+      final m = await shop.periods.report(
+        const MonthRange(YearMonth(2026, 11), YearMonth(2026, 11)),
+      );
+      final monthText = texts(
+        layoutPeriodReport(m, business, registerName: null, printedAt: now),
+      );
+      return (dayText, monthText);
+    }
+
+    /// Die Spalte EINNAHMEN des Tages aus Task 6: von oben nach unten
+    /// 42,45 + 0,00 + 9,65 − 25,00 = 27,10.
+    final income = [
+      'EINNAHMEN',
+      row3('Bar', '3 Bons', '42,45'),
+      row3('Karte', '0 Bons', '0,00'),
+      row('Mit Gutschein bezahlt', '9,65'),
+      row3('Gutscheine verkauft', '1', '-25,00'),
+      row3('Gesamt', '4 Bons', '27,10'),
+      row3('Pfand zurück', '3', '-0,75'),
+      '-' * 48,
+    ];
+
+    test('Tagesabschluss mit dem Tag aus Task 6: Bar 42,45, Mit Gutschein '
+        'bezahlt 9,65, Gutscheine verkauft 1 und -25,00, Gesamt 27,10, Pfand '
+        'zurück 3 und -0,75, davon Gutscheine 25,00', () async {
+      final (t, _) = await voucherDay();
+      final i = t.indexOf('EINNAHMEN');
+      expect(t.sublist(i, i + income.length), income);
+      // Die Spalte ergibt von oben nach unten die Summe.
+      expect(4245 + 0 + 965 - 2500, 2710);
+      expect(
+        t,
+        containsAllInOrder([
+          'STEUER',
+          'MwSt 0 %',
+          row('  Brutto', '25,00'),
+          row('  Netto', '25,00'),
+          row('  Steuer', '0,00'),
+          row('  davon Gutscheine', '25,00'),
+          '-' * 48,
+          'GELDLADE',
+          row('Bar-Einnahmen', '42,45'),
+          row('Soll', '192,45'),
+        ]),
+      );
+    });
+
+    test('Monatsabrechnung mit dem Tag aus Task 6: dieselben Reihen', () async {
+      final (_, t) = await voucherDay();
+      final i = t.indexOf('EINNAHMEN');
+      expect(t.sublist(i, i + income.length), income);
+      expect(
+        t,
+        containsAllInOrder(['MwSt 0 %', row('  davon Gutscheine', '25,00')]),
+      );
+    });
+
+    test(
+      'ein Tag ohne Gutschein und ohne Pfand zurück druckt wie in 1.11.0',
+      () {
+        // Der festgehaltene Text von 1.11.0 (daySlip42 oben) bleibt; keine der
+        // neuen Reihen, auch nicht mit 0.
+        expect(texts(day(daySample())), daySlip42);
+        final text = [
+          ...texts(day(daySample())),
+          ...texts(period(monthSample())),
+          ...texts(period(manySample())),
+        ].join('\n');
+        for (final word in ['Gutschein', 'Pfand zurück', 'davon Gutscheine']) {
+          expect(text, isNot(contains(word)));
+        }
+      },
+    );
   });
 }

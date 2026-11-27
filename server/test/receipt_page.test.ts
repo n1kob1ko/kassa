@@ -225,7 +225,7 @@ describe('Seite eines Bons', () => {
     expect(put.body).toBe(missingGet.body);
   });
 
-  test('Bon unter 0: Summe -0,75, "Pfand zurück", Bar -0,75', async () => {
+  test('Bon unter 0: Summe -0,75, "Pfand zurück", "Bar ausbezahlt 0,75" wie am Papier', async () => {
     const res = await page(receipts[3]!.publicToken, nextAddress());
     expect(res.statusCode).toBe(200);
     const text = visibleText(res.body);
@@ -233,11 +233,14 @@ describe('Seite eines Bons', () => {
     expect(text).toContain('je -0,25');
     expect(text).toContain('Pfand zurück -0,75');
     expect(text).toContain('SUMME EUR -0,75');
-    expect(text).toContain('Bar -0,75');
+    expect(text).toContain('Bar ausbezahlt 0,75');
+    expect(text).not.toContain('Bar -0,75');
+    expect(text).not.toMatch(/(^|\s)Bar -?\d/);
     // Verlangt wurde kein Pfand: die Reihe "Pfand" fehlt; ohne Steuer keine Steuerzeile.
     expect(text).not.toMatch(/(^|\s)Pfand -?\d/);
     expect(text).not.toContain('MwSt');
     expect(text).not.toContain('Gegeben');
+    expect(text).not.toContain('Rückgeld');
   });
 
   test('Gutschein: der Code steht nur mit den letzten vier Ziffern da, bei Zahlung und bei Verkauf', async () => {
@@ -277,6 +280,55 @@ describe('Seite eines Bons: Storno, Rechnung, Testbon, fremde Betriebe', () => {
     expect(stornoText).toContain('SUMME EUR -18,20');
     expect(stornoText).toContain('Bar -18,20');
     expect(stornoText).not.toContain('Storniert am');
+  });
+
+  test('Storno einer Auszahlung: "Bar ausbezahlt -0,75", wie am Papier dieselbe Reihe mit umgekehrtem Vorzeichen', async () => {
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, 'Europe/Vienna');
+    const payout = fixtureReceipts({ createdAt: '2026-11-27T11:03:05.000Z' })[3]!;
+    const storno = voidOfV3(payout, { id: randomUUID(), number: 2, createdAt: '2026-11-27T11:30:00.000Z' });
+    await send(a, s, [['receipt', payout], ['receipt', storno]]);
+    const payoutText = visibleText((await page(payout.publicToken, nextAddress())).body);
+    const stornoText = visibleText((await page(storno.publicToken, nextAddress())).body);
+    expect(payoutText).toContain('Bar ausbezahlt 0,75');
+    expect(stornoText).toContain('STORNO');
+    expect(stornoText).toContain('SUMME EUR 0,75');
+    expect(stornoText).toContain('Bar ausbezahlt -0,75');
+    expect(stornoText).not.toMatch(/(^|\s)Bar -?\d/);
+    for (const text of [payoutText, stornoText]) {
+      expect(text).not.toContain('Gegeben');
+      expect(text).not.toContain('Rückgeld');
+    }
+  });
+
+  test('Gutschein und bar: "Gutschein •••• 5678" vor "Bar", Restguthaben darunter, wie am Papier', async () => {
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, 'Europe/Vienna');
+    const [, sold, paid] = fixtureReceipts({ createdAt: '2026-11-27T11:03:05.000Z' }) as [unknown, Record<string, any>, Record<string, any>];
+    // C mit 5,00 vom Gutschein und 4,65 bar.
+    const [voucherPayment] = paid.payments as [Record<string, any>];
+    const mixed: Record<string, any> = {
+      ...paid,
+      payments: [
+        { ...voucherPayment, amountCents: 500, givenCents: 500, voucherBalanceAfterCents: 2000 },
+        {
+          ...voucherPayment,
+          position: 1,
+          kind: 'cash',
+          amountCents: 465,
+          givenCents: 500,
+          changeCents: 35,
+          voucherId: null,
+          voucherCode: null,
+          voucherBalanceAfterCents: null,
+        },
+      ],
+    };
+    await send(a, s, [['receipt', sold], ['receipt', mixed]]);
+    const res = await page(mixed.publicToken, nextAddress());
+    const text = visibleText(res.body);
+    expect(text).toContain('Gutschein •••• 2768 5,00 Restguthaben 20,00 Bar 4,65');
+    expect(text).not.toContain('Gegeben');
   });
 
   test('Rechnung: Empfänger der letzten Fassung und Rechnungsnummer; Testbon trägt den Vermerk', async () => {

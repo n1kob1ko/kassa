@@ -1889,4 +1889,25 @@ class L10nTr extends L10n {
 
   @override
   String get bonsDeliveryDigital => 'Dijital sunuldu';
+
+  @override
+  String get closeVoucherPaid => 'Hediye çekiyle ödenen';
+
+  @override
+  String get closeVoucherSold => 'Satılan hediye çekleri';
+
+  @override
+  String get closeDepositReturn => 'Depozito iadesi';
+
+  @override
+  String get closeTaxVouchers => 'bunun hediye çekleri';
+
+  @override
+  String get bonsPaymentVoucher => 'Hediye çeki';
+
+  @override
+  String get bonsFilterVoucher => 'Hediye çeki';
+
+  @override
+  String get bonsVoucherLeft => 'Kalan bakiye';
 }

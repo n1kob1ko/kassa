@@ -1284,7 +1284,7 @@ void main() {
     expect(inRow('detail-payment-0', label), findsOneWidget);
     expect(inRow('detail-payment-0', '3,15 €'), findsOneWidget);
     expect(inRow('detail-payment-0', 'Karte'), findsNothing);
-    expect(inRow('detail-voucher-left-0', 'Bleibt am Gutschein'), findsOneWidget);
+    expect(inRow('detail-voucher-left-0', 'Restguthaben'), findsOneWidget);
     expect(inRow('detail-voucher-left-0', '21,85 €'), findsOneWidget);
     expect(find.byKey(const Key('detail-payment-1')), findsNothing);
 
@@ -1504,5 +1504,177 @@ void main() {
     ]);
     await t.pump(const Duration(seconds: 8));
     await t.pumpAndSettle();
+  });
+
+  group('Gutscheine, Pfand zurück und Auszahlung (1.12.0)', () {
+    /// Bon 1: Cola bar. Bon 2: Gutschein 25,00 € bar verkauft. Bon 3:
+    /// 4 × Teigtaschen (26,00 €), 25,00 € mit dem Gutschein und 1,00 € bar.
+    /// Bon 4: 3 × Pfand zurück zu 0,25 € ausbezahlt. Bon 5: Teigtaschen,
+    /// 1,00 € bar und der Rest mit Karte.
+    Future<SoldVoucher> sellAll(WidgetTester t) async {
+      await sellCash(t);
+      final sold = (await sellCash(
+        t,
+        cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+      )).soldVouchers.single;
+      final staff = containerOf(t).read(sessionProvider)!;
+      final receipts = containerOf(t).read(receiptRepositoryProvider);
+      var four = const Cart.empty();
+      for (var i = 0; i < 4; i++) {
+        four = four.add(teigtaschen);
+      }
+      await receipts.finalizeCashSale(
+        saleId: 'gutschein-und-bar',
+        cart: four.applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 2500,
+          ),
+        ),
+        givenCents: 100,
+        staff: staff,
+      );
+      await receipts.finalizePayout(
+        saleId: 'auszahlung',
+        cart: const Cart.empty().setDepositReturn(
+          depositCents: 25,
+          quantity: 3,
+        ),
+        staff: staff,
+      );
+      await receipts.finalizeCardSale(
+        saleId: 'bar-und-karte',
+        cart: const Cart.empty().add(teigtaschen),
+        staff: staff,
+        provider: 'sumup',
+        txCode: 'TX-BK',
+        cashPartCents: 100,
+      );
+      await t.pumpAndSettle();
+      return sold;
+    }
+
+    Finder inRow(String key, String text) =>
+        find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
+
+    testWidgets('Liste: "Gutschein + Bar"; Filter Gutschein zeigt nur Bons mit '
+        'Gutschein-Zahlung; Detail mit Code und Restguthaben', (t) async {
+      await pumpBonsWithSales(t, 0);
+      await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+      final sold = await sellAll(t);
+      await _reopenBons(t);
+
+      expect(inRow('receipt-1', 'Bar'), findsOneWidget);
+      expect(inRow('receipt-2', 'Bar'), findsOneWidget);
+      expect(inRow('receipt-3', 'Gutschein + Bar'), findsOneWidget);
+      // Eine Auszahlung heißt "Bar", der Betrag mit Minus.
+      expect(inRow('receipt-4', 'Bar'), findsOneWidget);
+      expect(inRow('receipt-4', '−0,75 €'), findsOneWidget);
+      expect(inRow('receipt-5', 'Bar + Karte'), findsOneWidget);
+
+      // Der neue Filter steht als letzter da.
+      double left(String id) => t.getTopLeft(find.byKey(Key('filter-$id'))).dx;
+      expect(left('voucher'), greaterThan(left('storniert')));
+      expect(inRow('filter-voucher', 'Gutschein'), findsOneWidget);
+      await _tapFilter(t, 'voucher');
+      expect(find.byKey(const Key('receipt-3')), findsOneWidget);
+      for (final n in [1, 2, 4, 5]) {
+        expect(find.byKey(Key('receipt-$n')), findsNothing, reason: '$n');
+      }
+
+      await openReceipt(t, 3);
+      final code = formatVoucherCode(sold.code);
+      expect(inRow('detail-payment-0', 'Gutschein $code'), findsOneWidget);
+      expect(inRow('detail-payment-0', '25,00 €'), findsOneWidget);
+      expect(inRow('detail-voucher-left-0', 'Restguthaben'), findsOneWidget);
+      expect(inRow('detail-voucher-left-0', '0,00 €'), findsOneWidget);
+      expect(inRow('detail-payment-1', 'Bar'), findsOneWidget);
+      expect(inRow('detail-payment-1', '1,00 €'), findsOneWidget);
+      expect(textOf(t, const Key('detail-total')), '26,00 €');
+
+      // Der verkaufte Gutschein mit Code (Task 10).
+      await _tapFilter(t, 'alle');
+      await openReceipt(t, 2);
+      expect(textOf(t, const Key('detail-voucher-code-0')), code);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('Detail einer Auszahlung: "Pfand zurück" mit Minus, Summe mit '
+        'Minus, kein Pfand, kein Gegeben und kein Rückgeld', (t) async {
+      await pumpBonsWithSales(t, 0);
+      await sellAll(t);
+      await _reopenBons(t);
+      await openReceipt(t, 4);
+      expect(textOf(t, const Key('detail-total')), '−0,75 €');
+      expect(find.text('Pfand zurück'), findsOneWidget);
+      expect(find.text('3 ×'), findsOneWidget);
+      expect(find.text('−0,75 €'), findsWidgets);
+      expect(find.text('0,00 €'), findsNothing);
+      expect(find.text('Pfand'), findsNothing);
+      expect(find.text('Gegeben'), findsNothing);
+      expect(find.text('Rückgeld'), findsNothing);
+      expect(inRow('detail-payment-0', 'Bar'), findsOneWidget);
+    });
+
+    testWidgets('Detail: Pfand zurück neben verlangtem Pfand; die Reihe Pfand '
+        'zeigt nur das verlangte', (t) async {
+      await pumpBonsWithSales(t, 0);
+      await sellCash(
+        t,
+        cart: const Cart.empty()
+            .add(cola)
+            .add(cola)
+            .setDepositReturn(depositCents: 25, quantity: 3),
+      );
+      await _reopenBons(t);
+      await openReceipt(t, 1);
+      // 2 × 2,90 € + 0,50 € Pfand − 0,75 € zurück = 5,55 €.
+      expect(textOf(t, const Key('detail-total')), '5,55 €');
+      expect(find.text('Pfand zurück'), findsOneWidget);
+      expect(find.text('−0,75 €'), findsOneWidget);
+      expect(find.text('0,50 €'), findsOneWidget);
+    });
+
+    testWidgets('Gutschein aus: kein Filter Gutschein, solange kein Bon des '
+        'Tages mit Gutschein bezahlt ist', (t) async {
+      await pumpBonsWithSales(t, 1);
+      expect(find.byKey(const Key('filter-voucher')), findsNothing);
+      await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+      expect(find.byKey(const Key('filter-voucher')), findsOneWidget);
+      await setSettings(t, (s) => s.copyWith(voucherEnabled: false));
+      expect(find.byKey(const Key('filter-voucher')), findsNothing);
+      // Heute schon mit Gutschein bezahlt: der Filter bleibt.
+      await sellAll(t);
+      await _reopenBons(t);
+      expect(find.byKey(const Key('filter-voucher')), findsOneWidget);
+    });
+
+    for (final language in AppLanguage.values) {
+      testWidgets('960 x 600, Textskala 1,3, fünf Filter: kein Überlauf, der '
+          'letzte erreichbar (${language.name})', (t) async {
+        await pumpBonsWithSales(
+          t,
+          0,
+          size: const Size(960, 600),
+          textScale: 1.3,
+        );
+        await setSettings(
+          t,
+          (s) => s.copyWith(voucherEnabled: true, language: language),
+        );
+        await sellAll(t);
+        await _reopenBons(t);
+        expect(t.takeException(), isNull);
+        final filter = find.byKey(const Key('filter-voucher'));
+        await t.ensureVisible(filter);
+        await t.pumpAndSettle();
+        await t.tap(filter);
+        await t.pumpAndSettle();
+        expect(find.byKey(const Key('receipt-3')), findsOneWidget);
+        expect(find.byKey(const Key('receipt-1')), findsNothing);
+        expect(t.takeException(), isNull);
+      });
+    }
   });
 }

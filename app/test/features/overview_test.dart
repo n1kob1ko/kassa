@@ -4,9 +4,12 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/stats_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/stats.dart';
+import 'package:kassa/features/login/session.dart';
+import 'package:kassa/features/overview/overview_cards.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
+import '../support/kassa_pump.dart';
 import '../support/overview_pump.dart';
 import '../support/pump.dart';
 
@@ -318,6 +321,112 @@ void main() {
       await t.tap(find.text('Nochmal versuchen'));
       await t.pumpAndSettle();
       expect(_text(t, 'revenue'), '36,40 €');
+    });
+  });
+
+  group('Gutschein und Pfand zurück (1.12.0)', () {
+    /// Ein Gutschein über 25,00 € bar verkauft, Teigtaschen (6,50 €) mit ihm
+    /// bezahlt, 3 × Pfand zurück zu 0,25 € ausbezahlt: Umsatz 5,75 €, bar
+    /// 24,25 €, Gutschein 6,50 €, "Pfand" −0,75 €.
+    Future<void> sellVoucherDay(WidgetTester t) async {
+      final staff = containerOf(t).read(sessionProvider)!;
+      final receipts = containerOf(t).read(receiptRepositoryProvider);
+      final sold = (await receipts.finalizeCashSale(
+        saleId: 'gutschein',
+        cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+        givenCents: 2500,
+        staff: staff,
+      )).soldVouchers.single;
+      await receipts.finalizeVoucherSale(
+        saleId: 'mit-gutschein',
+        cart: const Cart.empty()
+            .add(teigtaschen)
+            .applyVoucher(
+              AppliedVoucher(
+                voucherId: sold.voucherId,
+                code: sold.code,
+                balanceCents: 2500,
+              ),
+            ),
+        staff: staff,
+      );
+      await receipts.finalizePayout(
+        saleId: 'auszahlung',
+        cart: const Cart.empty().setDepositReturn(
+          depositCents: 25,
+          quantity: 3,
+        ),
+        staff: staff,
+      );
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('tab-Übersicht')));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('Zahlungsarten: bar, Karte, Gutschein', (t) async {
+      await pumpOverviewWithSales(t);
+      expect(find.byKey(const Key('payment-voucher-amount')), findsNothing);
+      expect(find.text('Gutschein'), findsNothing);
+      await sellVoucherDay(t);
+      expect(_text(t, 'payment-cash-amount'), '60,65 €');
+      expect(_text(t, 'payment-card-amount'), '0,00 €');
+      expect(_text(t, 'payment-voucher-amount'), '6,50 €');
+      expect(find.text('Gutschein'), findsOneWidget);
+      // Umsatz ohne den verkauften Gutschein.
+      expect(_text(t, 'revenue'), '42,15 €');
+      double top(String k) => t.getTopLeft(find.byKey(Key(k))).dy;
+      expect(
+        top('payment-voucher-amount'),
+        greaterThan(top('payment-cash-amount')),
+      );
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('ein Tag, dessen "Pfand" -0,75 ist: Betrag mit Minus, kein '
+        'Balken, kein Absturz', (t) async {
+      await pumpOverviewWithSales(t, sales: const []);
+      await sellVoucherDay(t);
+      expect(_text(t, 'revenue'), '5,75 €');
+      expect(find.text('−0,75 €'), findsOneWidget);
+      final pfand = find.ancestor(
+        of: find.text('−0,75 €'),
+        matching: find.byType(Column),
+      );
+      final bar = find.descendant(
+        of: pfand.first,
+        matching: find.byType(ThinBar),
+      );
+      expect(t.widget<ThinBar>(bar).fraction, 0);
+      expect(share(-75, 650), 0);
+      expect(share(-75, -75), 0);
+      expect(share(650, 650), 1);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('nur "Pfand" mit Minus und sonst nichts: kein Absturz', (
+      t,
+    ) async {
+      await pumpOverviewWithSales(t, sales: const []);
+      final staff = containerOf(t).read(sessionProvider)!;
+      await containerOf(t)
+          .read(receiptRepositoryProvider)
+          .finalizePayout(
+            saleId: 'nur-auszahlung',
+            cart: const Cart.empty().setDepositReturn(
+              depositCents: 25,
+              quantity: 3,
+            ),
+            staff: staff,
+          );
+      await t.tap(find.byKey(const Key('tab-Bons')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('tab-Übersicht')));
+      await t.pumpAndSettle();
+      expect(_text(t, 'revenue'), '−0,75 €');
+      expect(_text(t, 'payment-cash-amount'), '−0,75 €');
+      expect(find.byKey(const Key('payment-voucher-amount')), findsNothing);
+      expect(t.takeException(), isNull);
     });
   });
 }

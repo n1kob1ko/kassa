@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 549 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 556 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -301,6 +301,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Beleg | الفاتورة | Bons: `bonsDeliveryTitle` |
 | Gedruckt | تمت الطباعة | Bons: `bonsDeliveryPrinted` |
 | Digital angeboten | عُرضت رقميًا | Bons: `bonsDeliveryDigital` |
+| Gutschein | قسيمة | Bons: `bonsPaymentVoucher` |
+| Gutschein | قسيمة | Bons: `bonsFilterVoucher` |
+| Restguthaben | الرصيد المتبقي | Bons: `bonsVoucherLeft` |
 
 ## Artikel
 
@@ -467,6 +470,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Rabatte | الخصومات | Abschluss: `closeDiscounts` |
 | Trinkgeld Karte | إكرامية البطاقة | Abschluss: `closeCardTip` |
 | Am Kartenkonto | إلى حساب البطاقة | Abschluss: `closeCardAccount` |
+| Mit Gutschein bezahlt | مدفوع بقسيمة | Abschluss: `closeVoucherPaid` |
+| Gutscheine verkauft | قسائم مباعة | Abschluss: `closeVoucherSold` |
+| Pfand zurück | إرجاع الرهن | Abschluss: `closeDepositReturn` |
+| davon Gutscheine | منها قسائم | Abschluss: `closeTaxVouchers` |
 
 ## Einstellungen
 

@@ -548,5 +548,12 @@
   "kassaReceiptOfflineLater": "没有网络：电子小票稍后才能查看。",
   "bonsDeliveryTitle": "小票",
   "bonsDeliveryPrinted": "已打印",
-  "bonsDeliveryDigital": "已提供电子版"
+  "bonsDeliveryDigital": "已提供电子版",
+  "closeVoucherPaid": "礼券支付",
+  "closeVoucherSold": "已售礼券",
+  "closeDepositReturn": "退押金",
+  "closeTaxVouchers": "其中礼券",
+  "bonsPaymentVoucher": "礼券",
+  "bonsFilterVoucher": "礼券",
+  "bonsVoucherLeft": "剩余余额"
 }

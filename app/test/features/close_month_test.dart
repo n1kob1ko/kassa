@@ -21,6 +21,7 @@ import '../support/month_pump.dart';
 import '../support/overview_pump.dart';
 import '../support/pump.dart';
 import '../support/sales.dart' show cartCard, discounted;
+import '../support/voucher_deposit_day.dart' show sellVoucherAndPayout;
 
 const _print = Key('print-period');
 const _result = Key('period-print-result');
@@ -590,5 +591,43 @@ void main() {
     ]) {
       expect(find.byKey(Key(k)), findsNothing);
     }
+  });
+
+  testWidgets('Monat: die drei neuen Reihen stehen nur da, wenn es etwas '
+      'gibt; die Spalte ergibt von oben nach unten die Summe', (t) async {
+    await pumpMonth(t, openMonth: false);
+    final c = containerOf(t);
+    final clock = c.read(clockProvider) as FixedClock;
+    await tapKey(t, 'segment-Monat');
+    for (final k in [
+      'income-voucher-paid',
+      'income-voucher-sold',
+      'income-deposit-return',
+      'tax-vouchers',
+    ]) {
+      expect(find.byKey(Key(k)), findsNothing, reason: k);
+    }
+
+    // Am 3.10.: ein Gutschein verkauft, mit ihm bezahlt, Pfand ausbezahlt.
+    await tapKey(t, 'segment-Tag');
+    clock.value = DateTime(2026, 10, 3, 13);
+    await sellVoucherAndPayout(
+      c.read(receiptRepositoryProvider),
+      c.read(sessionProvider)!,
+    );
+    clock.value = DateTime(2026, 11, 17, 11);
+    await tapKey(t, 'segment-Monat');
+
+    expect(_title(t), 'Monatsabrechnung Oktober 2026');
+    String amount(String k) => textOf(t, Key(k));
+    expect(amount('income-cash'), formatEuro(5460 + 2500 - 75));
+    expect(amount('income-voucher-paid'), formatEuro(965));
+    expect(amount('income-voucher-sold'), formatEuro(-2500));
+    expect(amount('income-total'), formatEuro(5460 + 965 - 75));
+    expect(5460 + 2500 - 75 + 0 + 965 - 2500, 5460 + 965 - 75);
+    expect(amount('income-deposit-return'), formatEuro(-75));
+    expect(amount('tax-vouchers'), formatEuro(2500));
+    expect(find.text('Mit Gutschein bezahlt'), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 }

@@ -2757,5 +2757,33 @@
   "bonsDeliveryDigital": "Digital angeboten",
   "@bonsDeliveryDigital": {
     "description": "Bon-Detail: Der QR-Code des digitalen Bons wurde gezeigt (daneben die Zeit)."
+  },
+  "closeVoucherPaid": "Mit Gutschein bezahlt",
+  "@closeVoucherPaid": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): Summe der Zahlungen mit Gutschein. Nur, wenn nicht 0."
+  },
+  "closeVoucherSold": "Gutscheine verkauft",
+  "@closeVoucherSold": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): Anzahl und Summe der verkauften Gutscheine, mit Minus, weil sie kein Umsatz sind. Nur, wenn nicht 0."
+  },
+  "closeDepositReturn": "Pfand zurück",
+  "@closeDepositReturn": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): Stück und Summe des zurückgegebenen Pfands, mit Minus. Nur, wenn nicht 0."
+  },
+  "closeTaxVouchers": "davon Gutscheine",
+  "@closeTaxVouchers": {
+    "description": "Steuer-Karte (Abschluss und Monat), unter dem Satz 0 %: der Teil, der verkaufte Gutscheine sind. Nur, wenn nicht 0."
+  },
+  "bonsPaymentVoucher": "Gutschein",
+  "@bonsPaymentVoucher": {
+    "description": "Bons: Zahlungsart eines Bons, der (auch) mit Gutschein bezahlt wurde, etwa \"Gutschein + Bar\"."
+  },
+  "bonsFilterVoucher": "Gutschein",
+  "@bonsFilterVoucher": {
+    "description": "Bons: Filter für Bons mit einer Zahlung mit Gutschein."
+  },
+  "bonsVoucherLeft": "Restguthaben",
+  "@bonsVoucherLeft": {
+    "description": "Bon-Detail: unter einer Zahlung mit Gutschein, was nach diesem Bon am Gutschein bleibt (wie am Papier)."
   }
 }

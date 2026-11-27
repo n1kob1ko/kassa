@@ -1903,4 +1903,25 @@ class L10nAr extends L10n {
 
   @override
   String get bonsDeliveryDigital => 'عُرضت رقميًا';
+
+  @override
+  String get closeVoucherPaid => 'مدفوع بقسيمة';
+
+  @override
+  String get closeVoucherSold => 'قسائم مباعة';
+
+  @override
+  String get closeDepositReturn => 'إرجاع الرهن';
+
+  @override
+  String get closeTaxVouchers => 'منها قسائم';
+
+  @override
+  String get bonsPaymentVoucher => 'قسيمة';
+
+  @override
+  String get bonsFilterVoucher => 'قسيمة';
+
+  @override
+  String get bonsVoucherLeft => 'الرصيد المتبقي';
 }

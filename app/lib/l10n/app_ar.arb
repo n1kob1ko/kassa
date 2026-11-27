@@ -548,5 +548,12 @@
   "kassaReceiptOfflineLater": "لا يوجد إنترنت: الفاتورة الرقمية متاحة لاحقًا.",
   "bonsDeliveryTitle": "الفاتورة",
   "bonsDeliveryPrinted": "تمت الطباعة",
-  "bonsDeliveryDigital": "عُرضت رقميًا"
+  "bonsDeliveryDigital": "عُرضت رقميًا",
+  "closeVoucherPaid": "مدفوع بقسيمة",
+  "closeVoucherSold": "قسائم مباعة",
+  "closeDepositReturn": "إرجاع الرهن",
+  "closeTaxVouchers": "منها قسائم",
+  "bonsPaymentVoucher": "قسيمة",
+  "bonsFilterVoucher": "قسيمة",
+  "bonsVoucherLeft": "الرصيد المتبقي"
 }

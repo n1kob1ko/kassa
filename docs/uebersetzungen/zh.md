@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 549 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 556 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -301,6 +301,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Beleg | 小票 | Bons: `bonsDeliveryTitle` |
 | Gedruckt | 已打印 | Bons: `bonsDeliveryPrinted` |
 | Digital angeboten | 已提供电子版 | Bons: `bonsDeliveryDigital` |
+| Gutschein | 礼券 | Bons: `bonsPaymentVoucher` |
+| Gutschein | 礼券 | Bons: `bonsFilterVoucher` |
+| Restguthaben | 剩余余额 | Bons: `bonsVoucherLeft` |
 
 ## Artikel
 
@@ -467,6 +470,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Rabatte | 折扣 | Abschluss: `closeDiscounts` |
 | Trinkgeld Karte | 刷卡小费 | Abschluss: `closeCardTip` |
 | Am Kartenkonto | 入卡账户 | Abschluss: `closeCardAccount` |
+| Mit Gutschein bezahlt | 礼券支付 | Abschluss: `closeVoucherPaid` |
+| Gutscheine verkauft | 已售礼券 | Abschluss: `closeVoucherSold` |
+| Pfand zurück | 退押金 | Abschluss: `closeDepositReturn` |
+| davon Gutscheine | 其中礼券 | Abschluss: `closeTaxVouchers` |
 
 ## Einstellungen
 

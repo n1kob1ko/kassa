@@ -12,7 +12,8 @@ enum BonFilter {
   all('alle'),
   cash('bar'),
   card('karte'),
-  voided('storniert');
+  voided('storniert'),
+  voucher('voucher');
 
   const BonFilter(this.id);
 
@@ -24,12 +25,14 @@ enum BonFilter {
     BonFilter.cash => l.bonsCash,
     BonFilter.card => l.bonsCard,
     BonFilter.voided => l.bonsVoided,
+    BonFilter.voucher => l.bonsFilterVoucher,
   };
 
   /// "Bar" und "Karte" zeigen Verkäufe mit einer Zahlung dieser Art, die
   /// nicht storniert sind; ein gemischter Bon steht unter beiden.
-  /// "Storniert" zeigt stornierte Bons und Storno-Bons. Sonderbelege stehen
-  /// nur unter "Alle".
+  /// "Storniert" zeigt stornierte Bons und Storno-Bons. "Gutschein" zeigt
+  /// jeden Bon mit einer Gutschein-Zahlung. Sonderbelege stehen nur unter
+  /// "Alle".
   bool matches(Receipt r) {
     switch (this) {
       case BonFilter.all:
@@ -40,6 +43,8 @@ enum BonFilter {
         return _isLiveSale(r) && r.cardPayment != null;
       case BonFilter.voided:
         return r.isVoided || r.kind == ReceiptKind.voided;
+      case BonFilter.voucher:
+        return r.paymentKinds.contains(PaymentKind.voucher);
     }
   }
 
@@ -75,14 +80,31 @@ String? specialTitleText(L10n l, ReceiptKind kind) => switch (kind) {
   ReceiptKind.closing => l.bonsKindClosing,
 };
 
-/// Die Zahlungsart eines Bons: "Bar", "Karte" oder "Bar + Karte".
-String receiptPaymentLabel(L10n l, Receipt r) => switch (r.paymentKind) {
-  ReceiptPaymentKind.cash => l.bonsCash,
-  ReceiptPaymentKind.mixed => l.bonsCashAndCard,
-  // Nur mit Gutschein bezahlt: weder bar noch Karte.
-  null when r.voucherCents != 0 => l.kassaVoucher,
-  ReceiptPaymentKind.card || null => l.bonsCard,
-};
+/// Die Zahlungsart eines Bons: alle Arten seiner Zahlungen in deren
+/// Reihenfolge, etwa "Bar", "Karte", "Bar + Karte", "Gutschein + Bar" oder
+/// "Gutschein". Eine Auszahlung ist "Bar".
+String receiptPaymentLabel(L10n l, Receipt r) {
+  final kinds = <PaymentKind>[];
+  for (final p in r.payments) {
+    if (!kinds.contains(p.kind)) kinds.add(p.kind);
+  }
+  // Wie bisher: ohne Gutschein eines der drei Wörter.
+  if (!kinds.contains(PaymentKind.voucher)) {
+    return switch (r.paymentKind) {
+      ReceiptPaymentKind.cash => l.bonsCash,
+      ReceiptPaymentKind.mixed => l.bonsCashAndCard,
+      ReceiptPaymentKind.card || null => l.bonsCard,
+    };
+  }
+  return [
+    for (final k in kinds)
+      switch (k) {
+        PaymentKind.cash => l.bonsCash,
+        PaymentKind.card => l.bonsCard,
+        PaymentKind.voucher => l.bonsPaymentVoucher,
+      },
+  ].join(' + ');
+}
 
 /// Was die Pille zeigt: "Storno" (Storno-Bon), "Storniert", die Bezeichnung
 /// eines Sonderbelegs oder die Zahlungsart ([receiptPaymentLabel]).

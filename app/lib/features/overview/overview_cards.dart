@@ -87,17 +87,20 @@ class _MutedLine extends StatelessWidget {
   );
 }
 
-/// Zahlungsarten: ein geteilter Balken, darunter "Karte" und "Bar".
+/// Zahlungsarten: ein geteilter Balken, darunter "Karte" und "Bar", dazu
+/// "Gutschein", wenn mit Gutschein bezahlt wurde.
 class PaymentsCard extends StatelessWidget {
   const PaymentsCard({
     super.key,
     required this.cashCents,
     required this.cardCents,
+    this.voucherCents = 0,
     required this.empty,
   });
 
   final int cashCents;
   final int cardCents;
+  final int voucherCents;
   final bool empty;
 
   @override
@@ -107,7 +110,8 @@ class PaymentsCard extends StatelessWidget {
     final l = L10n.of(context);
     final card = cardCents > 0 ? cardCents : 0;
     final cash = cashCents > 0 ? cashCents : 0;
-    final total = card + cash;
+    final voucher = voucherCents > 0 ? voucherCents : 0;
+    final total = card + cash + voucher;
     return OverviewCard(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
       child: Column(
@@ -119,7 +123,7 @@ class PaymentsCard extends StatelessWidget {
           if (empty)
             _MutedLine(l.overviewNoReceipts)
           else ...[
-            _SplitBar(card: card, cash: cash, total: total),
+            _SplitBar(card: card, cash: cash, voucher: voucher, total: total),
             const SizedBox(height: 14),
             _PaymentRow(
               color: c.solid,
@@ -134,6 +138,15 @@ class PaymentsCard extends StatelessWidget {
               cents: cashCents,
               amountKey: const Key('payment-cash-amount'),
             ),
+            if (voucherCents != 0) ...[
+              const SizedBox(height: 8),
+              _PaymentRow(
+                color: c.accentSoft,
+                label: l.kassaVoucher,
+                cents: voucherCents,
+                amountKey: const Key('payment-voucher-amount'),
+              ),
+            ],
           ],
         ],
       ),
@@ -145,11 +158,13 @@ class _SplitBar extends StatelessWidget {
   const _SplitBar({
     required this.card,
     required this.cash,
+    this.voucher = 0,
     required this.total,
   });
 
   final int card;
   final int cash;
+  final int voucher;
   final int total;
 
   @override
@@ -169,7 +184,9 @@ class _SplitBar extends StatelessWidget {
           Widget part(int cents, Color fill, Color ink) {
             // Halb auf gerundeter Prozentwert, ganzzahlig.
             final percent = (cents * 200 + total) ~/ (2 * total);
-            final width = (box.maxWidth - 2) * cents / total;
+            // Ein Spalt von 2 dp je Grenze (wie bisher mindestens einer).
+            final gaps = voucher > 0 && card > 0 && cash > 0 ? 4 : 2;
+            final width = (box.maxWidth - gaps) * cents / total;
             return Expanded(
               flex: cents,
               child: Container(
@@ -199,6 +216,8 @@ class _SplitBar extends StatelessWidget {
               if (card > 0) part(card, c.solid, c.solidInk),
               if (card > 0 && cash > 0) const SizedBox(width: 2),
               if (cash > 0) part(cash, c.accent, c.onAccent),
+              if (voucher > 0 && card + cash > 0) const SizedBox(width: 2),
+              if (voucher > 0) part(voucher, c.accentSoft, c.accentInk),
             ],
           );
         },

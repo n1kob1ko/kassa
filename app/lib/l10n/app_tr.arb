@@ -548,5 +548,12 @@
   "kassaReceiptOfflineLater": "İnternet yok: Dijital fiş daha sonra görüntülenebilir.",
   "bonsDeliveryTitle": "Fiş",
   "bonsDeliveryPrinted": "Yazdırıldı",
-  "bonsDeliveryDigital": "Dijital sunuldu"
+  "bonsDeliveryDigital": "Dijital sunuldu",
+  "closeVoucherPaid": "Hediye çekiyle ödenen",
+  "closeVoucherSold": "Satılan hediye çekleri",
+  "closeDepositReturn": "Depozito iadesi",
+  "closeTaxVouchers": "bunun hediye çekleri",
+  "bonsPaymentVoucher": "Hediye çeki",
+  "bonsFilterVoucher": "Hediye çeki",
+  "bonsVoucherLeft": "Kalan bakiye"
 }

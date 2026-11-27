@@ -1863,4 +1863,25 @@ class L10nZh extends L10n {
 
   @override
   String get bonsDeliveryDigital => '已提供电子版';
+
+  @override
+  String get closeVoucherPaid => '礼券支付';
+
+  @override
+  String get closeVoucherSold => '已售礼券';
+
+  @override
+  String get closeDepositReturn => '退押金';
+
+  @override
+  String get closeTaxVouchers => '其中礼券';
+
+  @override
+  String get bonsPaymentVoucher => '礼券';
+
+  @override
+  String get bonsFilterVoucher => '礼券';
+
+  @override
+  String get bonsVoucherLeft => '剩余余额';
 }

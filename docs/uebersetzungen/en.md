@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 549 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 556 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -301,6 +301,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Beleg | Receipt | Bons: `bonsDeliveryTitle` |
 | Gedruckt | Printed | Bons: `bonsDeliveryPrinted` |
 | Digital angeboten | Offered digitally | Bons: `bonsDeliveryDigital` |
+| Gutschein | Voucher | Bons: `bonsPaymentVoucher` |
+| Gutschein | Voucher | Bons: `bonsFilterVoucher` |
+| Restguthaben | Remaining balance | Bons: `bonsVoucherLeft` |
 
 ## Artikel
 
@@ -467,6 +470,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Rabatte | Discounts | Abschluss: `closeDiscounts` |
 | Trinkgeld Karte | Card tips | Abschluss: `closeCardTip` |
 | Am Kartenkonto | To card account | Abschluss: `closeCardAccount` |
+| Mit Gutschein bezahlt | Paid with voucher | Abschluss: `closeVoucherPaid` |
+| Gutscheine verkauft | Vouchers sold | Abschluss: `closeVoucherSold` |
+| Pfand zurück | Deposit return | Abschluss: `closeDepositReturn` |
+| davon Gutscheine | of which vouchers | Abschluss: `closeTaxVouchers` |
 
 ## Einstellungen
 

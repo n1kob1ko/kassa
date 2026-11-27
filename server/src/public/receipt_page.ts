@@ -365,9 +365,14 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
   const list = Array.isArray(r.payments) ? [...r.payments] : r.payment ? [{ ...r.payment, position: 0 }] : [];
   list.sort((x, y) => Number(x.position) - Number(y.position));
   const payments: PageRow[] = [];
+  // Eine Auszahlung (Summe unter 0, beim Storno darüber) heißt wie am Papier "Bar ausbezahlt", mit dem Betrag ohne
+  // Minus (beim Storno mit), ohne "Gegeben" und "Rückgeld".
+  const payout = r.kind === 'voided' ? r.total_cents > 0 : r.kind === 'sale' && r.total_cents < 0;
   for (const p of list) {
     const cents = Number(p.amountCents ?? 0);
-    if (p.kind === 'cash') {
+    if (p.kind === 'cash' && payout) {
+      payments.push({ label: 'Bar ausbezahlt', cents: -cents });
+    } else if (p.kind === 'cash') {
       payments.push({ label: 'Bar', cents });
       const given = Number(p.givenCents ?? cents);
       if (list.length === 1 && cents > 0 && given !== cents) {
