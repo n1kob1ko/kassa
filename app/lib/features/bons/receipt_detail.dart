@@ -488,29 +488,29 @@ class _Body extends StatelessWidget {
               // Sonderbelege haben keine Zahlung.
               if (paymentKind != null) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
-                if (payments.length == 1) ...[
+                // Eine Zahlung ohne Trinkgeld: nur die Zahlungsart.
+                if (payments.length == 1 && payments.single.tipCents == 0)
                   _SmallRow(
                     key: const Key('detail-payment-0'),
                     l.bonsPayment,
                     receiptPaymentLabel(l, r),
                     small,
-                  ),
-                  if (payments.single.tipCents != 0)
-                    _SmallRow(
-                      key: const Key('detail-tip'),
-                      l.bonsTipIncluded,
-                      formatEuro(payments.single.tipCents),
-                      small,
-                    ),
-                ] else ...[
-                  // Mehrere Zahlungen: die Zahlungsart, dann jede Zahlung in
-                  // ihrer Reihenfolge mit ihrem Teil (ohne Trinkgeld).
+                  )
+                else ...[
+                  // Mehrere Zahlungen oder Trinkgeld: die Zahlungsart, dann
+                  // jede Zahlung in ihrer Reihenfolge. Die Karte mit dem
+                  // gebuchten Betrag (mit Trinkgeld) wie am Bon, darunter
+                  // "davon Trinkgeld".
                   _SmallRow(l.bonsPayment, receiptPaymentLabel(l, r), small),
                   for (final (i, p) in payments.indexed) ...[
                     _SmallRow(
                       key: Key('detail-payment-$i'),
                       p.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
-                      formatEuro(p.amountCents),
+                      formatEuro(
+                        p.kind == PaymentKind.card
+                            ? p.chargedCents
+                            : p.amountCents,
+                      ),
                       small,
                     ),
                     if (p.tipCents != 0)

@@ -210,7 +210,14 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(const Key('detail-payment-1')),
-          matching: find.text(formatEuro(465)),
+          matching: find.text(formatEuro(515)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('detail-tip')),
+          matching: find.text(formatEuro(50)),
         ),
         findsOneWidget,
       );
@@ -309,11 +316,12 @@ void main() {
     expect(find.text('−10 % Aktion'), findsOneWidget);
     expect(textOf(t, const Key('detail-discount')), formatEuro(-165));
     expect(textOf(t, const Key('detail-total')), formatEuro(1536));
-    // Die Karte mit ihrem Teil, darunter das Trinkgeld.
+    // Die Karte mit dem gebuchten Betrag (5,36 € + 0,64 €) wie am Bon,
+    // darunter das Trinkgeld.
     expect(
       find.descendant(
         of: find.byKey(const Key('detail-payment-1')),
-        matching: find.text(formatEuro(536)),
+        matching: find.text(formatEuro(600)),
       ),
       findsOneWidget,
     );
@@ -328,6 +336,51 @@ void main() {
       find.descendant(
         of: find.byKey(const Key('detail-tip')),
         matching: find.text(formatEuro(64)),
+      ),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('nur Karte mit Trinkgeld: die Karte mit dem gebuchten Betrag, '
+      'darunter "davon Trinkgeld"', (t) async {
+    await pumpBonsWithSales(t, 0);
+    final staff = containerOf(t).read(sessionProvider)!;
+    // 9,65 € mit Karte, dazu 0,35 € Trinkgeld.
+    await containerOf(t)
+        .read(receiptRepositoryProvider)
+        .finalizeCardSale(
+          saleId: 'tip-1',
+          cart: const Cart.empty().add(teigtaschen).add(cola),
+          staff: staff,
+          provider: 'sumup',
+          tipCents: 35,
+        );
+    await t.tap(find.byKey(const Key('tab-Kassa')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('tab-Bons')));
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-payment-0')),
+        matching: find.text(formatEuro(1000)),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('detail-payment-1')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-tip')),
+        matching: find.text('davon Trinkgeld'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-tip')),
+        matching: find.text(formatEuro(35)),
       ),
       findsOneWidget,
     );
