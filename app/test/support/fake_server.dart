@@ -142,6 +142,14 @@ class FakeServer extends http.BaseClient {
     _rows[key] = (seq: ++_seq, kind: kind, row: Map.of(row));
   }
 
+  /// Trägt eine Bewegung an einem Gutschein ein (je Gutschein und Bon eine),
+  /// mit einer neuen Nummer.
+  void putVoucherMovement(Map<String, Object?> row) {
+    final key = 'voucherMovements/${row['voucherId']}/${row['receiptId']}';
+    _rows.remove(key);
+    _rows[key] = (seq: ++_seq, kind: 'voucherMovements', row: Map.of(row));
+  }
+
   /// Trägt die Übersetzungen eines Namens ein; leere [values] heißen gelöscht.
   void putTranslation(String source, Map<String, String> values) {
     final key = 'translations/$source';
@@ -199,8 +207,10 @@ class FakeServer extends http.BaseClient {
       'templates': [],
       'staff': [],
       if (sendsTranslations) 'translations': [],
-      // Firmenkunden (Stufe 1b): wie am Server nur, wenn die Liste nicht leer ist.
+      // Listen ab Stufe 1b: wie am Server nur, wenn sie nicht leer sind.
       'customers': [],
+      'vouchers': [],
+      'voucherMovements': [],
     };
     Map<String, Object?>? business;
     for (final r in page) {
@@ -210,7 +220,9 @@ class FakeServer extends http.BaseClient {
         lists[r.kind]!.add(r.row);
       }
     }
-    if (lists['customers']!.isEmpty) lists.remove('customers');
+    for (final kind in const ['customers', 'vouchers', 'voucherMovements']) {
+      if (lists[kind]!.isEmpty) lists.remove(kind);
+    }
     return {
       'next': page.isEmpty ? since : page.last.seq,
       'more': after.length > page.length,

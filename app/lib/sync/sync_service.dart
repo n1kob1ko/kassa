@@ -459,7 +459,7 @@ class SyncService {
       }
       // Inzwischen neu gekoppelt: nichts mehr nachzuholen.
       if (!await _changes.applyCatchUp(page)) return changed;
-      changed = changed || page.customers.isNotEmpty;
+      changed = changed || _hasNewListRows(page);
       if (!page.more || page.next >= cursor) break;
       since = page.next;
     }
@@ -473,7 +473,13 @@ class SyncService {
       p.items.isNotEmpty ||
       p.templates.isNotEmpty ||
       p.staff.isNotEmpty ||
-      p.customers.isNotEmpty;
+      _hasNewListRows(p);
+
+  /// Ob die Seite etwas in den Listen ab Stufe 1b trägt.
+  static bool _hasNewListRows(PullResponse p) =>
+      p.customers.isNotEmpty ||
+      p.vouchers.isNotEmpty ||
+      p.voucherMovements.isNotEmpty;
 
   /// Lädt fehlende Bilder. Ein neues Bild lässt die Kassa den Katalog neu
   /// lesen.

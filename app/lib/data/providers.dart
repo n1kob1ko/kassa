@@ -216,8 +216,25 @@ final serverApiProvider = Provider(
 );
 
 final serverChangesProvider = Provider(
-  (ref) => ServerChanges(ref.watch(databaseProvider)),
+  (ref) => ServerChanges(
+    ref.watch(databaseProvider),
+    onNewVouchers: () => ref.read(voucherArrivalsProvider.notifier).bump(),
+  ),
 );
+
+/// Zählt hoch, sobald der Abgleich einen Gutschein oder eine Bewegung
+/// gebracht hat, die das Tablet noch nicht kannte. Der offene Bon hört darauf
+/// und liest das Guthaben seiner gewählten Gutscheine neu.
+final voucherArrivalsProvider = NotifierProvider<VoucherArrivals, int>(
+  VoucherArrivals.new,
+);
+
+class VoucherArrivals extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
 
 /// Die eingespielte Speisekarte, `null` solange keine da ist.
 final catalogProvider = FutureProvider<Catalog?>(

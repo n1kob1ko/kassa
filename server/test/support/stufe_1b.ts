@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { withBusiness } from '../../src/db/tenant.js';
 import type { TestApp } from './app.js';
@@ -74,6 +74,48 @@ export function voidOfV3(r: Record<string, any>, o: Record<string, unknown>): Re
     })),
     vouchers: r.vouchers.map((v: Record<string, any>) => ({ ...v, valueCents: neg(v.valueCents) })),
     rksv: null,
+    ...o,
+  };
+}
+
+let codes = 10000000;
+let numbers = 100;
+
+/**
+ * Ein echter Bon in v: 3 (nicht im Übungsmodus, ohne Tag), der einen Gutschein über [valueCents] bar verkauft, nach Bon B
+ * der Datei. Code und Nummer zählen im Lauf hoch.
+ */
+export function voucherSale(valueCents: number, o: Record<string, unknown> = {}) {
+  const sold = readStufe1b().receipts[1]!;
+  const voucher = { id: randomUUID(), code: String(++codes), valueCents, linePosition: 0 };
+  const receipt: Record<string, any> = {
+    ...sold,
+    id: randomUUID(),
+    number: ++numbers,
+    businessDayId: null,
+    test: false,
+    publicToken: freshToken(),
+    goodsCents: valueCents,
+    totalCents: valueCents,
+    lines: [{ ...sold.lines[0], info: `Code ${voucher.code}`, unitPriceCents: valueCents, gross: { ...sold.lines[0].gross, 0: valueCents } }],
+    payments: [{ ...sold.payments[0], amountCents: valueCents, givenCents: valueCents, changeCents: 0 }],
+    vouchers: [voucher],
+    ...o,
+  };
+  return { receipt, voucher };
+}
+
+/** Ein echter Bon in v: 3 über 9,65 €, ganz mit dem Gutschein [voucher] bezahlt, nach Bon C der Datei. */
+export function voucherRedeem(voucher: { id: string; code: string }, o: Record<string, unknown> = {}): Record<string, any> {
+  const paid = readStufe1b().receipts[2]!;
+  return {
+    ...paid,
+    id: randomUUID(),
+    number: ++numbers,
+    businessDayId: null,
+    test: false,
+    publicToken: freshToken(),
+    payments: [{ ...paid.payments[0], voucherId: voucher.id, voucherCode: voucher.code, voucherBalanceAfterCents: 35 }],
     ...o,
   };
 }

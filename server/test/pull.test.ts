@@ -15,6 +15,8 @@ import {
   syncFixture,
 } from './support/device.js';
 import { authed, createProvider, type TestUser } from './support/users.js';
+import { send, siteFor } from './support/admin_data.js';
+import { voucherRedeem, voucherSale } from './support/stufe_1b.js';
 
 const START = new Date('2026-11-18T10:00:00Z');
 const KINDS = ['categories', 'items', 'templates', 'staff'] as const;
@@ -418,5 +420,77 @@ describe('Firmenkunden (Stufe 1b)', () => {
     const otherToken = (await pairDevice(a.app, provider.cookie, other)).token;
     const text = JSON.stringify((await pull(a.app, otherToken, '?since=0')).json());
     for (const s of ['customers', 'Muster GmbH', muster.id]) expect(text).not.toContain(s);
+  });
+});
+
+describe('Gutscheine (Stufe 1b)', () => {
+  let a: TestApp;
+  let provider: TestUser;
+  beforeAll(async () => {
+    a = await testApp();
+    provider = await createProvider(a.app, a.db);
+  });
+  afterAll(async () => {
+    await a.close();
+  });
+
+  /** Die Schlüssel und Listen, die ein Tablet mit 1.11.0 liest. */
+  const KNOWN_1_11_0 = ['next', 'more', 'business', 'categories', 'items', 'templates', 'staff', 'translations'];
+  type Row = Record<string, unknown>;
+
+  test('Gutscheine und Bewegungen kommen beim Abholen, der Gutschein vor seiner Bewegung; die Antwort passt weiter zum Schema von 1.11.0', async () => {
+    const s = await siteFor(a, provider);
+    const without = (await pull(a.app, s.token, '?since=0')).json();
+    expect(Object.keys(without)).not.toContain('vouchers');
+    expect(Object.keys(without)).not.toContain('voucherMovements');
+
+    const first = voucherSale(2500, { createdAt: '2026-11-17T09:00:00.000Z' });
+    const second = voucherSale(1000, { createdAt: '2026-11-17T09:30:00.000Z', test: true });
+    const paid = voucherRedeem(first.voucher, { createdAt: '2026-11-17T10:00:00.000Z' });
+    await send(a, s, [['receipt', first.receipt]]);
+    await send(a, s, [['receipt', second.receipt], ['receipt', paid]]);
+
+    // Auch die Kassa, von der die Bons kommen, bekommt alles.
+    const full = (await pull(a.app, s.token, '?since=0')).json();
+    expect(full.vouchers).toEqual([
+      { id: first.voucher.id, code: first.voucher.code, valueCents: 2500, createdAt: '2026-11-17T09:00:00.000Z', isTest: false, soldReceiptId: first.receipt.id },
+      { id: second.voucher.id, code: second.voucher.code, valueCents: 1000, createdAt: '2026-11-17T09:30:00.000Z', isTest: true, soldReceiptId: second.receipt.id },
+    ]);
+    expect(full.voucherMovements).toEqual([
+      { voucherId: first.voucher.id, receiptId: first.receipt.id, kind: 'sale', amountCents: 2500, createdAt: '2026-11-17T09:00:00.000Z' },
+      { voucherId: second.voucher.id, receiptId: second.receipt.id, kind: 'sale', amountCents: 1000, createdAt: '2026-11-17T09:30:00.000Z' },
+      { voucherId: first.voucher.id, receiptId: paid.id, kind: 'redeem', amountCents: -965, createdAt: '2026-11-17T10:00:00.000Z' },
+    ]);
+    // Gelesen wie von 1.11.0: die bekannten Schlüssel und Listen sind dieselben wie ohne Gutscheine.
+    const { vouchers: _v, voucherMovements: _m, ...known } = full;
+    expect(Object.keys(known).every((k) => KNOWN_1_11_0.includes(k))).toBe(true);
+    expect({ ...known, next: without.next }).toEqual(without);
+    // Danach nichts mehr und keine der beiden Listen.
+    expect((await pull(a.app, s.token, `?since=${full.next}`)).json()).toEqual({
+      next: full.next, more: false, categories: [], items: [], templates: [], staff: [], translations: [],
+    });
+
+    // Seite für Seite (eine Zeile je Seite): jede Zeile genau einmal, jeder Gutschein vor seiner ersten Bewegung.
+    const order: string[] = [];
+    for (let cursor = without.next; ; ) {
+      const page = (await pull(a.app, s.token, `?since=${cursor}&limit=1`)).json();
+      for (const v of (page.vouchers ?? []) as Row[]) order.push(`v/${v.id}`);
+      for (const m of (page.voucherMovements ?? []) as Row[]) order.push(`m/${m.voucherId}/${m.receiptId}`);
+      if (!page.more) break;
+      cursor = page.next;
+      expect(order.length).toBeLessThan(20);
+    }
+    expect(order).toEqual([
+      `v/${first.voucher.id}`,
+      `m/${first.voucher.id}/${first.receipt.id}`,
+      `v/${second.voucher.id}`,
+      `m/${second.voucher.id}/${second.receipt.id}`,
+      `m/${first.voucher.id}/${paid.id}`,
+    ]);
+
+    // Ein anderer Betrieb sieht nichts davon.
+    const other = await siteFor(a, provider);
+    const text = JSON.stringify((await pull(a.app, other.token, '?since=0')).json());
+    for (const x of ['vouchers', 'voucherMovements', first.voucher.id, first.voucher.code]) expect(text).not.toContain(x);
   });
 });

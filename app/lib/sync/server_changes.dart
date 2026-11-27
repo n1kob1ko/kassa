@@ -1,4 +1,4 @@
-// Übernimmt Speisekarte, Mitarbeiter, Betriebsdaten und Firmenkunden vom Server in die
+// Übernimmt Speisekarte, Mitarbeiter, Betriebsdaten, Firmenkunden und Gutscheine vom Server in die
 // Datenbank des Tablets. Jeder Aufruf ist eine Transaktion: scheitert etwas,
 // bleibt das Tablet genau wie vorher, auch der Cursor.
 //
@@ -15,16 +15,41 @@ import '../data/database.dart';
 import '../data/outbox_repository.dart';
 import '../data/settings_repository.dart';
 import '../data/translation_repository.dart';
+import '../data/voucher_repository.dart';
 import '../domain/catalog.dart';
 import '../domain/staff.dart';
 import 'wire.dart';
 
 class ServerChanges {
-  ServerChanges(this._db, {Clock clock = const SystemClock()})
-    : _customers = CustomerRepository(_db, clock);
+  ServerChanges(
+    this._db, {
+    Clock clock = const SystemClock(),
+    this._onNewVouchers = _nothing,
+  }) : _customers = CustomerRepository(_db, clock),
+       _vouchers = VoucherRepository(_db);
+
+  static void _nothing() {}
 
   final KassaDatabase _db;
   final CustomerRepository _customers;
+  final VoucherRepository _vouchers;
+
+  /// Nach einer Übernahme, die einen Gutschein oder eine Bewegung brachte,
+  /// die das Tablet noch nicht kannte, wenn sie geschrieben ist: der offene
+  /// Bon liest dann das Guthaben seiner gewählten Gutscheine neu
+  /// (`CartController.refreshVouchers`).
+  final void Function() _onNewVouchers;
+
+  /// Ruft [_onNewVouchers], wenn [news]; ein Fehler dort ändert nichts an der
+  /// Übernahme.
+  void _announce(bool news) {
+    if (!news) return;
+    try {
+      _onNewVouchers();
+    } catch (_) {
+      // Wer zuhört, darf das Einspielen nicht scheitern lassen.
+    }
+  }
 
   /// Ob am Tablet schon ein Chef ist (Mitarbeiter mit PIN und der Rolle Chef).
   Future<bool> hasChef() async {
@@ -49,6 +74,7 @@ class ServerChanges {
   }) async {
     if (pages.isEmpty) throw ArgumentError.value(pages, 'pages', 'leer');
     final merged = _Changes.merge(pages);
+    var news = false;
     await _db.transaction(() async {
       await _db
           .update(_db.categoryRows)
@@ -61,7 +87,7 @@ class ServerChanges {
       await _db.delete(_db.modifierTemplateRows).go();
       await _db.delete(_db.staffRows).go();
       await _db.delete(_db.translationRows).go();
-      await _apply(merged);
+      news = await _apply(merged);
       // Firmenkunden: wer nicht vom Server kam und nicht auf das Senden
       // wartet, steht nicht mehr zur Wahl.
       await _customers.archiveAllExcept(merged.customers.keys.toSet());
@@ -84,6 +110,7 @@ class ServerChanges {
             ),
           );
     });
+    _announce(news);
   }
 
   /// Jedes spätere Holen: übernimmt eine Seite, die ab [since] für die Kassa
@@ -103,7 +130,8 @@ class ServerChanges {
     required String registerId,
     bool markPulled = true,
   }) async {
-    return _db.transaction(() async {
+    var news = false;
+    final applied = await _db.transaction(() async {
       final state = await (_db.select(
         _db.syncStateRows,
       )..where((t) => t.id.equals(1))).getSingleOrNull();
@@ -117,7 +145,7 @@ class ServerChanges {
       await _holdCategoriesOf(changes);
       // Ein Feld, für das noch eine Änderung vom Tablet wartet, bleibt wie es
       // ist: der Server kennt die Änderung noch nicht.
-      await _apply(
+      news = await _apply(
         changes,
         keep: await OutboxRepository(_db).pendingItemFields(),
       );
@@ -132,6 +160,8 @@ class ServerChanges {
           );
       return true;
     });
+    _announce(news);
+    return applied;
   }
 
   /// Ob noch nachzuholen ist, was 1.11.0 beim Abholen überlesen hat
@@ -150,11 +180,16 @@ class ServerChanges {
   ///
   /// Gibt `false` zurück und schreibt nichts, wenn nichts (mehr)
   /// nachzuholen ist, etwa weil das Tablet inzwischen neu gekoppelt wurde.
-  Future<bool> applyCatchUp(PullResponse page) => _db.transaction(() async {
-    if (!await catchUpPending()) return false;
-    await _applyNewLists(_Changes.merge([page]));
-    return true;
-  });
+  Future<bool> applyCatchUp(PullResponse page) async {
+    var news = false;
+    final applied = await _db.transaction(() async {
+      if (!await catchUpPending()) return false;
+      news = await _applyNewLists(_Changes.merge([page]));
+      return true;
+    });
+    _announce(news);
+    return applied;
+  }
 
   /// Nach der letzten Seite des Nachholens: es ist erledigt.
   Future<void> finishCatchUp() =>
@@ -162,11 +197,15 @@ class ServerChanges {
         const SyncStateRowsCompanion(catchUpPending: Value(false)),
       );
 
-  /// Die Listen ab Stufe 1b, die ein Tablet mit 1.11.0 überlesen hat. Das
-  /// Nachholen spielt nur sie ein; weitere Listen (Gutscheine, Bewegungen)
-  /// kommen hierher.
-  Future<void> _applyNewLists(_Changes c) async {
+  /// Die Listen ab Stufe 1b, die ein Tablet mit 1.11.0 überlesen hat:
+  /// Firmenkunden, Gutscheine und ihre Bewegungen. Das Nachholen spielt nur
+  /// sie ein. `true`, wenn ein Gutschein oder eine Bewegung neu war.
+  Future<bool> _applyNewLists(_Changes c) async {
     await _customers.applyServer(c.customers.values.toList());
+    return _vouchers.mergeFromServer(
+      c.vouchers.values.toList(),
+      c.voucherMovements.values.toList(),
+    );
   }
 
   /// Ein Artikel kann auf einer früheren Seite kommen als seine neue
@@ -198,12 +237,13 @@ class ServerChanges {
   }
 
   /// Kategorien und Vorlagen vor Artikeln, damit jeder Artikel seine
-  /// Kategorie schon vorfindet.
+  /// Kategorie schon vorfindet. `true`, wenn ein Gutschein oder eine
+  /// Bewegung neu war.
   ///
   /// [keep]: Artikel und die Felder, die nicht überschrieben werden (siehe
   /// `OutboxRepository.pendingItemFields`). Ein Artikel, den es am Tablet noch
   /// nicht gibt, wird immer ganz geschrieben.
-  Future<void> _apply(
+  Future<bool> _apply(
     _Changes c, {
     Map<String, Set<String>> keep = const {},
   }) async {
@@ -320,7 +360,7 @@ class ServerChanges {
             ),
           );
     }
-    await _applyNewLists(c);
+    final news = await _applyNewLists(c);
     for (final s in c.staff.values) {
       if (s.archived) {
         await (_db.delete(_db.staffRows)..where((t) => t.id.equals(s.id))).go();
@@ -338,6 +378,7 @@ class ServerChanges {
             ),
           );
     }
+    return news;
   }
 
   /// Löscht die Gruppen und Optionen der Vorlage [id], ohne [keepRow] auch
@@ -446,6 +487,12 @@ class _Changes {
       for (final k in p.customers) {
         c.customers[k.id] = k;
       }
+      for (final v in p.vouchers) {
+        c.vouchers[v.id] = v;
+      }
+      for (final m in p.voucherMovements) {
+        c.voucherMovements[(m.voucherId, m.receiptId)] = m;
+      }
     }
     return c;
   }
@@ -457,4 +504,8 @@ class _Changes {
   final staff = <String, WireStaff>{};
   final translations = <String, WireTranslation>{};
   final customers = <String, WireCustomer>{};
+  final vouchers = <String, WireVoucher>{};
+
+  /// Je Gutschein und Bon, wie der Schlüssel der Tabelle.
+  final voucherMovements = <(String, String), WireVoucherMovement>{};
 }

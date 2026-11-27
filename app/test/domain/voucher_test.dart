@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/voucher.dart';
 
@@ -27,6 +30,49 @@ void main() {
       redeem = VoucherMovementKind.redeem,
       voidSale = VoucherMovementKind.voidSale,
       voidRedeem = VoucherMovementKind.voidRedeem;
+
+  test('Zustand: die Fälle aus shared/fixtures/vouchers/states.json', () {
+    final cases =
+        (jsonDecode(
+              File('../shared/fixtures/vouchers/states.json')
+                  .readAsStringSync(),
+            ) as Map<String, dynamic>)['cases']
+            as List<dynamic>;
+    expect(cases.length, greaterThanOrEqualTo(8));
+    const states = {
+      'active': VoucherState.active,
+      'empty': VoucherState.empty,
+      'voided': VoucherState.voided,
+      'overdrawn': VoucherState.overdrawn,
+    };
+    for (final c in cases.cast<Map<String, dynamic>>()) {
+      final v = Voucher(
+        id: 'v1',
+        code: '12345678',
+        valueCents: c['valueCents'] as int,
+        createdAt: day,
+        isTest: false,
+        movements: [
+          for (final (i, m)
+              in (c['movements'] as List<dynamic>)
+                  .cast<Map<String, dynamic>>()
+                  .indexed)
+            VoucherMovement(
+              voucherId: 'v1',
+              receiptId: 'r$i',
+              kind: VoucherMovementKind.fromDb(m['kind'] as String),
+              amountCents: m['amountCents'] as int,
+              createdAt: day,
+            ),
+        ],
+      );
+      expect(
+        (v.balanceCents, v.state),
+        (c['balanceCents'] as int, states[c['state']]!),
+        reason: c['name'] as String,
+      );
+    }
+  });
 
   test('Guthaben und Zustand folgen aus den Bewegungen', () {
     final sold = voucher([m(sale, 2500)]);

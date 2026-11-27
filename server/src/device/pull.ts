@@ -25,7 +25,7 @@ type GroupJson = {
 /** Eine Zeile mit ihrer Änderungs-Nummer, damit alle Arten gemeinsam nach Nummer sortiert und abgeschnitten werden. */
 type Change = {
   seq: number;
-  kind: 'business' | 'categories' | 'items' | 'templates' | 'staff' | 'translations' | 'customers';
+  kind: 'business' | 'categories' | 'items' | 'templates' | 'staff' | 'translations' | 'customers' | 'vouchers' | 'voucherMovements';
   row: object;
 };
 
@@ -72,7 +72,7 @@ export function installPullRoutes(app: FastifyInstance): void {
       limit = Math.min(n, MAX_LIMIT);
     }
 
-    // Ein fester Stand für alle sieben Abfragen. Jede Art liefert höchstens limit + 1 Zeilen: Daraus ergeben sich
+    // Ein fester Stand für alle neun Abfragen. Jede Art liefert höchstens limit + 1 Zeilen: Daraus ergeben sich
     // die ersten limit Zeilen über alle Arten und ob danach noch etwas kommt.
     const changes = await withBusiness(
       db,
@@ -189,6 +189,46 @@ export function installPullRoutes(app: FastifyInstance): void {
             },
           });
         }
+        // Gutscheine und ihre Bewegungen (Stufe 1b) an jedes Tablet des Betriebs, auch an das, von dem sie kommen. Ein
+        // Gutschein bekommt beim Verkauf seine Nummer vor der Bewegung des Verkaufs (push.ts): nach Nummer sortiert kommt
+        // er nie nach ihr. Ein Tablet nimmt eine Bewegung auch an, wenn es ihren Gutschein noch nicht kennt.
+        const vouchers = await c.query(
+          `select id, code, value_cents, created_at, is_test, sold_receipt_id, change_seq from vouchers
+            where change_seq > $1 order by change_seq limit $2`,
+          [since, take],
+        );
+        for (const r of vouchers.rows) {
+          out.push({
+            seq: seqOf(r),
+            kind: 'vouchers',
+            row: {
+              id: r.id,
+              code: r.code,
+              valueCents: r.value_cents,
+              createdAt: (r.created_at as Date).toISOString(),
+              isTest: r.is_test,
+              soldReceiptId: r.sold_receipt_id,
+            },
+          });
+        }
+        const movements = await c.query(
+          `select voucher_id, receipt_id, kind, amount_cents, created_at, change_seq from voucher_movements
+            where change_seq > $1 order by change_seq limit $2`,
+          [since, take],
+        );
+        for (const r of movements.rows) {
+          out.push({
+            seq: seqOf(r),
+            kind: 'voucherMovements',
+            row: {
+              voucherId: r.voucher_id,
+              receiptId: r.receipt_id,
+              kind: r.kind,
+              amountCents: r.amount_cents,
+              createdAt: (r.created_at as Date).toISOString(),
+            },
+          });
+        }
         return out;
       },
       { repeatableRead: true },
@@ -200,10 +240,10 @@ export function installPullRoutes(app: FastifyInstance): void {
     const lists = { categories: [] as object[], items: [] as object[], templates: [] as object[], staff: [] as object[], translations: [] as object[] };
     // Listen ab Stufe 1b: nur in der Antwort, wenn sie nicht leer sind. So bleibt jede Antwort ohne sie genau, wie sie
     // in 1.11.0 war; ältere Tablets überlesen sie. Weitere Listen kommen hierher.
-    const extra = { customers: [] as object[] };
+    const extra = { customers: [] as object[], vouchers: [] as object[], voucherMovements: [] as object[] };
     for (const ch of page) {
       if (ch.kind === 'business') business = ch.row;
-      else if (ch.kind === 'customers') extra[ch.kind].push(ch.row);
+      else if (ch.kind === 'customers' || ch.kind === 'vouchers' || ch.kind === 'voucherMovements') extra[ch.kind].push(ch.row);
       else lists[ch.kind].push(ch.row);
     }
     return {

@@ -18,8 +18,9 @@ import { ReportsPage } from './pages/ReportsPage';
 import { ReleasesPage } from './pages/ReleasesPage';
 import { SetupPage } from './pages/SetupPage';
 import { StaffPage } from './pages/StaffPage';
+import { VouchersPage } from './pages/VouchersPage';
 import { AppShell, type NavItem } from './ui/AppShell';
-import { BookIcon, BugIcon, BuildingIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, LanguagesIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, UsersIcon } from './ui/icons';
+import { BookIcon, BugIcon, BuildingIcon, CalendarCheckIcon, ChartIcon, DownloadIcon, LanguagesIcon, ReceiptLinesIcon, SlidersIcon, StoreIcon, TabletIcon, TicketIcon, UsersIcon } from './ui/icons';
 import { Skeleton } from './ui/Skeleton';
 
 /** Bereiche des Anbieters außerhalb eines Betriebs. */
@@ -30,13 +31,14 @@ export const providerNav: NavItem[] = [
 ];
 
 /**
- * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Abschlüsse, Speisekarte, Übersetzungen, Kassen,
+ * Bereiche eines Betriebs, so oft genutzt wie gereiht: Umsätze, Bons, Gutscheine, Abschlüsse, Speisekarte, Übersetzungen, Kassen,
  * Mitarbeiter, Firmenkunden, Betrieb. Der Anbieter hat davor den Weg zurück zu allen Betrieben (am Handy unter "Mehr").
  */
 export function businessNav(businessId: string, provider: boolean): NavItem[] {
   const own: NavItem[] = [
     { to: `/b/${businessId}/umsaetze`, label: 'Umsätze', icon: <ChartIcon size={22} /> },
     { to: `/b/${businessId}/bons`, label: 'Bons', icon: <ReceiptLinesIcon size={22} /> },
+    { to: `/b/${businessId}/gutscheine`, label: 'Gutscheine', icon: <TicketIcon size={22} /> },
     {
       to: `/b/${businessId}/tage`,
       label: 'Abschlüsse',
@@ -147,6 +149,7 @@ export const router = createBrowserRouter([
           { path: 'umsaetze', element: <OverviewPage /> },
           // Das Detail liegt über der Liste: die Seite bleibt dieselbe, sie liest die Kennung aus der Adresse.
           { path: 'bons', element: <ReceiptsPage />, children: [{ path: ':id', element: null }] },
+          { path: 'gutscheine', element: <VouchersPage />, children: [{ path: ':id', element: null }] },
           { path: 'tage', element: <DaysPage />, children: [{ path: ':id', element: null }] },
           { path: 'monate', element: <MonthsPage />, children: [{ path: ':id', element: null }] },
           { path: 'kassen', element: <RegistersPage /> },

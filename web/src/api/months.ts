@@ -48,6 +48,8 @@ export type PeriodSummary = {
   depositReturnCount: number;
   depositReturnCents: number;
   taxLines: TaxLine[];
+  /** Offene Gutscheine (echte, Guthaben über 0) am Ende des letzten Monats; fehlt, wenn es 0 ist. */
+  openVoucherCents?: number;
   /** Bei einem Monat je Tag ('JJJJ-MM-TT'), bei mehreren je Monat ('JJJJ-MM'), aufsteigend. */
   rows: { key: string; receiptCount: number; revenueCents: number }[];
 };

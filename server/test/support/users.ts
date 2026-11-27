@@ -57,6 +57,12 @@ export function createChef(db: Db, businessId: string): Promise<TestUser> {
   );
 }
 
+/** Wie [createChef], die Sitzung aber ab [now]: für Tests, deren Uhr weit nach TEST_NOW steht. */
+export function createChefAt(db: Db, businessId: string, now: Date): Promise<TestUser> {
+  const email = `chef-${randomBytes(4).toString('hex')}@example.com`;
+  return insertUser(db, { email, role: 'chef', businessId }, TEST_COST, now, sessionCookieName('http://localhost'));
+}
+
 /** Kopfzeilen für eine angemeldete Anfrage, die auch am Schutz für ändernde Anfragen vorbeikommt. */
 export function authed(cookie: string): Record<string, string> {
   return { cookie, 'x-kassa-request': '1' };

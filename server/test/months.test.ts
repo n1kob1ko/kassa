@@ -5,8 +5,9 @@ import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, setTimeZone, siteFor, type Site } from './support/admin_data.js';
 import { pairDevice } from './support/device.js';
 import { sampleReceipt, sampleReceiptV2 } from './support/push.js';
-import { sendStufe1b, voidOfV3 } from './support/stufe_1b.js';
+import { sendStufe1b, voidOfV3, voucherRedeem, voucherSale } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
+import { createChefAt } from './support/users.js';
 
 let a: TestApp;
 let provider: TestUser;
@@ -429,5 +430,31 @@ describe('Monate mit Gutscheinen und Pfand zurück (Stufe 1b)', () => {
     expect(body).toMatchObject({ receiptCount: 2, revenueCents: 990 + 1536, cashRevenueCents: 990 + 1000, cardRevenueCents: 536 });
     expect([body.cashReceiptCount, body.cardReceiptCount]).toEqual([2, 1]);
     expect(newFigures(body)).toEqual([0, 0, 0, 0, 0]);
+  });
+});
+
+describe('Offene Gutscheine am Monatsende (Stufe 1b)', () => {
+  test('openVoucherCents am Monatsende: ein im November verkaufter und im Dezember eingelöster Gutschein zählt im November ganz', async () => {
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, 'Europe/Vienna');
+    const sold = voucherSale(1000, { createdAt: '2026-11-10T09:00:00.000Z' });
+    // Ein Übungs-Gutschein steht in keiner Summe.
+    const practice = voucherSale(5000, { createdAt: '2026-11-11T09:00:00.000Z', test: true });
+    await send(a, s, [['receipt', sold.receipt], ['receipt', practice.receipt]]);
+    // Eingelöst am 1. Dezember um 00:30 in Wien (30.11. 23:30 UTC).
+    await send(a, s, [['receipt', voucherRedeem(sold.voucher, { createdAt: '2026-11-30T23:30:00.000Z' })]]);
+    await send(a, s, [['receipt', receipt('2026-10-05T09:00:00.000Z', { number: 1, test: false })]]);
+    a.now.value = new Date('2027-01-05T10:00:00.000Z');
+    const chef = (await createChefAt(a.db, s.businessId, a.now.value)).cookie;
+
+    const nov = (await summary(s, '2026-11', '2026-11', chef)).json();
+    expect(nov.openVoucherCents).toBe(1000);
+    expect((await summary(s, '2026-12', '2026-12', chef)).json().openVoucherCents).toBe(35);
+    // Ein Zeitraum: am Ende seines letzten Monats.
+    expect((await summary(s, '2026-10', '2026-11', chef)).json().openVoucherCents).toBe(1000);
+    // Im Oktober gab es noch keinen Gutschein: das Feld fehlt.
+    expect(Object.keys((await summary(s, '2026-10', '2026-10', chef)).json())).not.toContain('openVoucherCents');
+    // Die Monatsliste bleibt, wie sie war.
+    expect(Object.keys((await list(s, chef)).json().months[0])).toEqual(['month', 'receiptCount', 'revenueCents']);
   });
 });

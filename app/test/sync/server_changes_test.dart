@@ -11,6 +11,10 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
 import 'package:kassa/data/translation_repository.dart';
+import 'package:kassa/data/voucher_repository.dart';
+import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/voucher.dart';
+import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/sync_state_repository.dart';
 import 'package:kassa/domain/receipt.dart';
@@ -19,6 +23,7 @@ import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/wire.dart';
 
 import '../support/fake_server.dart';
+import '../support/pump.dart' show memoryOverrides;
 import '../support/sales.dart';
 
 final at = DateTime(2026, 11, 18, 10);
@@ -949,6 +954,227 @@ void main() {
       server.change('customers', a, {'name': 'Später GmbH'});
       expect(await changes.applyCatchUp(server.page(0)), isFalse);
       expect((await row(a))!.name, 'Muster GmbH');
+    });
+  });
+
+  group('Gutscheine (Stufe 1b)', () {
+    late KassaDatabase db;
+    late FakeServer server;
+    late ServerChanges changes;
+    late SyncStateRepository sync;
+    late VoucherRepository vouchers;
+    var announced = 0;
+    const v = 'e0000000-0000-4000-8000-00000000000a';
+    const soldOn = 'b0000000-0000-4000-8000-000000000001';
+    const paidOn = 'b0000000-0000-4000-8000-000000000002';
+
+    Map<String, Object?> voucher(String id, {String code = '12345678'}) => {
+      'id': id,
+      'code': code,
+      'valueCents': 1000,
+      'createdAt': '2026-11-17T09:00:00.000Z',
+      'isTest': false,
+      'soldReceiptId': soldOn,
+    };
+    Map<String, Object?> movement(
+      String voucherId,
+      String receiptId,
+      String kind,
+      int cents,
+    ) => {
+      'voucherId': voucherId,
+      'receiptId': receiptId,
+      'kind': kind,
+      'amountCents': cents,
+      'createdAt': '2026-11-17T10:00:00.000Z',
+    };
+    Future<List<Object>> voucherRows() async => [
+      await db.select(db.voucherRows).get(),
+      await db.select(db.voucherMovementRows).get(),
+      await db
+          .customSelect('SELECT kind, ref FROM outbox')
+          .get()
+          .then((r) => [for (final x in r) x.data]),
+    ];
+    Future<void> pullAll() async {
+      while (true) {
+        final cursor = (await sync.current()).pullCursor;
+        final page = server.page(cursor);
+        expect(
+          await changes.applyPage(
+            page,
+            at: at,
+            since: cursor,
+            registerId: FakeServer.registerId,
+          ),
+          isTrue,
+        );
+        if (!page.more) return;
+      }
+    }
+
+    setUp(() async {
+      db = KassaDatabase(NativeDatabase.memory());
+      server = FakeServer.beispiel();
+      announced = 0;
+      changes = ServerChanges(db, onNewVouchers: () => announced++);
+      sync = SyncStateRepository(db);
+      vouchers = VoucherRepository(db);
+      await sync.saveRegister(
+        registerId: FakeServer.registerId,
+        registerName: 'Kassa 1',
+        businessId: FakeServer.businessId,
+      );
+      await changes.replaceAll(server.pages(), at: at);
+      announced = 0;
+    });
+    tearDown(() => db.close());
+
+    test('Gutschein und Bewegungen vom Server: bekannt nach dem Abgleich, '
+        'Guthaben stimmt; noch einmal dieselbe Seite ändert nichts', () async {
+      final cursor = (await sync.current()).pullCursor;
+      server
+        ..upsert('vouchers', voucher(v))
+        ..putVoucherMovement(movement(v, soldOn, 'sale', 1000))
+        ..putVoucherMovement(movement(v, paidOn, 'redeem', -965));
+      await pullAll();
+      final known = (await vouchers.byId(v))!;
+      expect(
+        (known.code, known.valueCents, known.balanceCents, known.state),
+        ('12345678', 1000, 35, VoucherState.active),
+      );
+      expect(known.createdAt.toUtc(), DateTime.utc(2026, 11, 17, 9));
+      expect(announced, 1);
+
+      // Dieselbe Seite noch einmal (der Cursor steht wieder davor): nichts
+      // ändert sich, und der offene Bon wird nicht gestört.
+      final before = await voucherRows();
+      await (db.update(db.syncStateRows)..where((t) => t.id.equals(1))).write(
+        SyncStateRowsCompanion(pullCursor: Value(cursor)),
+      );
+      server.pageSize = 10;
+      expect(
+        await changes.applyPage(
+          server.page(cursor),
+          at: at,
+          since: cursor,
+          registerId: FakeServer.registerId,
+        ),
+        isTrue,
+      );
+      expect(await voucherRows(), before);
+      expect(announced, 1);
+    });
+
+    test('Seitengrenze: eine Bewegung kommt vor ihrem Gutschein (eine Seite '
+        'je Zeile); sie geht nicht verloren und nichts bricht ab', () async {
+      server.pageSize = 1;
+      server
+        ..putVoucherMovement(movement(v, paidOn, 'redeem', -965))
+        ..upsert('vouchers', voucher(v))
+        ..putVoucherMovement(movement(v, soldOn, 'sale', 1000));
+      final cursor = (await sync.current()).pullCursor;
+      final page = server.page(cursor);
+      expect(
+        (page.voucherMovements.length, page.vouchers.length, page.more),
+        (1, 0, true),
+      );
+      await pullAll();
+      final known = (await vouchers.byId(v))!;
+      expect((known.balanceCents, known.state), (35, VoucherState.active));
+      expect(known.movements, hasLength(2));
+    });
+
+    test(
+      'eine Einlösung von einer anderen Kassa senkt das Guthaben hier; ein '
+      'gewählter Gutschein am offenen Bon bekommt das neue Guthaben',
+      () async {
+        final overrides = await memoryOverrides();
+        final c = ProviderContainer(overrides: overrides);
+        addTearDown(c.dispose);
+        final local = c.read(databaseProvider);
+        await SyncStateRepository(local).saveRegister(
+          registerId: FakeServer.registerId,
+          registerName: 'Kassa 1',
+          businessId: FakeServer.businessId,
+        );
+        await (local.update(local.syncStateRows)..where((t) => t.id.equals(1)))
+            .write(const SyncStateRowsCompanion(initialPullDone: Value(true)));
+        final staff = (await c.read(staffRepositoryProvider).all()).first;
+        final sold = await c
+            .read(receiptRepositoryProvider)
+            .finalizeCashSale(
+              saleId: 'gutschein',
+              cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+              givenCents: 2500,
+              staff: staff,
+            );
+        final mine = (await c
+            .read(voucherRepositoryProvider)
+            .byId(sold.soldVouchers.single.voucherId))!;
+        // Der Bon an dieser Kassa, mit dem Gutschein gewählt.
+        c.listen(cartProvider, (_, _) {});
+        await pumpEventQueue();
+        final item = (await c.read(catalogProvider.future))!.items.first;
+        c.read(cartProvider.notifier)
+          ..add(item)
+          ..applyVoucher(
+            AppliedVoucher(
+              voucherId: mine.id,
+              code: mine.code,
+              balanceCents: mine.balanceCents,
+            ),
+          );
+        expect(c.read(cartProvider).vouchers.single.balanceCents, 2500);
+
+        final remote = FakeServer(pageSize: 10)
+          ..putVoucherMovement(movement(mine.id, paidOn, 'redeem', -965));
+        expect(
+          await c
+              .read(serverChangesProvider)
+              .applyPage(
+                remote.page(0),
+                at: at,
+                since: 0,
+                registerId: FakeServer.registerId,
+              ),
+          isTrue,
+        );
+        await pumpEventQueue();
+        expect(
+          (await c.read(voucherRepositoryProvider).byId(mine.id))!.balanceCents,
+          1535,
+        );
+        expect(c.read(cartProvider).vouchers.single.balanceCents, 1535);
+      },
+    );
+
+    test('Nachholen nach dem Update: ein Gutschein mit Änderungs-Nummer unter '
+        'dem eigenen pullCursor ist danach bekannt', () async {
+      // Wie 1.11.0: Gutschein und Bewegung kamen an, die Listen wurden
+      // überlesen; der Cursor steht schon dahinter.
+      server
+        ..upsert('vouchers', voucher(v))
+        ..putVoucherMovement(movement(v, soldOn, 'sale', 1000));
+      final cursor = server.seq;
+      await db
+          .into(db.syncStateRows)
+          .insertOnConflictUpdate(
+            SyncStateRowsCompanion(
+              id: const Value(1),
+              pullCursor: Value(cursor),
+              catchUpPending: const Value(true),
+            ),
+          );
+      expect(await vouchers.byId(v), isNull);
+      for (final page in server.pages()) {
+        expect(await changes.applyCatchUp(page), isTrue);
+      }
+      await changes.finishCatchUp();
+      expect((await vouchers.byId(v))!.balanceCents, 1000);
+      expect((await sync.current()).pullCursor, cursor);
+      // Je Seite mit Neuem einmal.
+      expect(announced, isPositive);
     });
   });
 }

@@ -29,7 +29,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
 import '../support/kassa_pump.dart';
+import '../support/fake_server.dart';
 import '../support/pump.dart';
+import '../support/server_pull.dart';
 
 PrimaryButton _button(WidgetTester t, String key) =>
     t.widget<PrimaryButton>(find.byKey(Key(key)));
@@ -752,6 +754,72 @@ void main() {
     slow.release();
     await t.pumpAndSettle();
     expect(found, ['12345678']);
+  });
+
+  testWidgets('zwei Gutscheine mit demselben Code nach dem Abgleich: die '
+      'Kassa zeigt beide mit Wert und Datum, gewählt wird einer', (t) async {
+    await _open(t);
+    final code = await sellVoucherAtRegister(t, 2500);
+    final mine = await _voucher(t, code);
+    // Eine andere Kassa hat ohne Abgleich denselben Code vergeben; der
+    // Abgleich bringt ihren Gutschein und seinen Verkauf.
+    const other = 'e0000000-0000-4000-8000-0000000000f1';
+    final server = FakeServer(pageSize: 1)
+      ..upsert('vouchers', {
+        'id': other,
+        'code': code,
+        'valueCents': 4000,
+        'createdAt': '2026-11-03T09:30:00.000Z',
+        'isTest': mine.isTest,
+        'soldReceiptId': 'b0000000-0000-4000-8000-0000000000f1',
+      })
+      ..putVoucherMovement({
+        'voucherId': other,
+        'receiptId': 'b0000000-0000-4000-8000-0000000000f1',
+        'kind': 'sale',
+        'amountCents': 4000,
+        'createdAt': '2026-11-03T09:30:00.000Z',
+      });
+    expect(await pullFrom(containerOf(t), server), isTrue);
+    await t.pumpAndSettle();
+    expect(
+      {
+        for (final v in await containerOf(
+          t,
+        ).read(voucherRepositoryProvider).findByCode(code))
+          v.id,
+      },
+      {mine.id, other},
+    );
+
+    await _redeemSheet(t, code);
+    // Nach dem Datum: der von der anderen Kassa ist älter.
+    expect(_inKey('voucher-pick-0', '40,00 €'), findsOneWidget);
+    expect(_inKey('voucher-pick-0', '03.11.2026'), findsOneWidget);
+    expect(_inKey('voucher-pick-1', '25,00 €'), findsOneWidget);
+    expect(_inKey('voucher-pick-1', '17.11.2026'), findsOneWidget);
+    expect(find.byKey(const Key('voucher-redeem-go')), findsNothing);
+    await _tap(t, 'voucher-pick-0');
+    expect(textOf(t, const Key('voucher-redeem-balance')), '40,00 €');
+    await _tap(t, 'voucher-redeem-go');
+
+    expect(
+      await queryRows(
+        t,
+        'SELECT voucher_id, amount_cents, voucher_balance_after_cents '
+        "FROM payments WHERE kind = 'voucher'",
+      ),
+      [
+        {
+          'voucher_id': other,
+          'amount_cents': 965,
+          'voucher_balance_after_cents': 3035,
+        },
+      ],
+    );
+    final after = containerOf(t).read(voucherRepositoryProvider);
+    expect((await after.byId(other))!.balanceCents, 3035);
+    expect((await after.byId(mine.id))!.balanceCents, 2500);
   });
 }
 

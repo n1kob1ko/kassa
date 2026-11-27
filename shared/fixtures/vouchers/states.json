@@ -1,0 +1,83 @@
+{
+  "about": "Guthaben und Zustand eines Gutscheins aus seinen Bewegungen (Spec 5.5). Tablet (app/lib/domain/voucher.dart) und Server (server/src/admin/vouchers.ts) prüfen gegen diese Datei. Erfundene Werte.",
+  "cases": [
+    {
+      "name": "gültig: nur verkauft",
+      "valueCents": 2500,
+      "movements": [{ "kind": "sale", "amountCents": 2500 }],
+      "balanceCents": 2500,
+      "state": "active"
+    },
+    {
+      "name": "gültig: teils eingelöst",
+      "valueCents": 2500,
+      "movements": [
+        { "kind": "sale", "amountCents": 2500 },
+        { "kind": "redeem", "amountCents": -965 }
+      ],
+      "balanceCents": 1535,
+      "state": "active"
+    },
+    {
+      "name": "gültig: Einlösung storniert, das Guthaben ist zurück",
+      "valueCents": 1000,
+      "movements": [
+        { "kind": "sale", "amountCents": 1000 },
+        { "kind": "redeem", "amountCents": -1000 },
+        { "kind": "void_redeem", "amountCents": 1000 }
+      ],
+      "balanceCents": 1000,
+      "state": "active"
+    },
+    {
+      "name": "aufgebraucht: ganz eingelöst",
+      "valueCents": 1000,
+      "movements": [
+        { "kind": "sale", "amountCents": 1000 },
+        { "kind": "redeem", "amountCents": -600 },
+        { "kind": "redeem", "amountCents": -400 }
+      ],
+      "balanceCents": 0,
+      "state": "empty"
+    },
+    {
+      "name": "storniert: Verkauf storniert, unberührt",
+      "valueCents": 2000,
+      "movements": [
+        { "kind": "sale", "amountCents": 2000 },
+        { "kind": "void_sale", "amountCents": -2000 }
+      ],
+      "balanceCents": 0,
+      "state": "voided"
+    },
+    {
+      "name": "überzogen: zwei Kassen lösen ohne Abgleich je 9,65 € ein",
+      "valueCents": 1000,
+      "movements": [
+        { "kind": "sale", "amountCents": 1000 },
+        { "kind": "redeem", "amountCents": -965 },
+        { "kind": "redeem", "amountCents": -965 }
+      ],
+      "balanceCents": -930,
+      "state": "overdrawn"
+    },
+    {
+      "name": "überzogen: storniert und anderswo eingelöst",
+      "valueCents": 1500,
+      "movements": [
+        { "kind": "sale", "amountCents": 1500 },
+        { "kind": "redeem", "amountCents": -500 },
+        { "kind": "void_sale", "amountCents": -1500 }
+      ],
+      "balanceCents": -500,
+      "state": "overdrawn"
+    },
+    {
+      "name": "aufgebraucht: noch keine Bewegung bekannt",
+      "valueCents": 500,
+      "movements": [],
+      "balanceCents": 0,
+      "state": "empty"
+    }
+  ]
+}

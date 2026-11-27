@@ -7,6 +7,7 @@ import { ApiError } from '../errors.js';
 import { loadTimeZone } from './overview.js';
 import { GROSS_COLUMNS, RATES, sumTaxLines, taxLinesOf } from './tax.js';
 import { tipsByStaff } from './tips.js';
+import { openVoucherCents } from './vouchers.js';
 
 // Monatsabrechnung wie app/lib/data/period_report_repository.dart. Monatsgrenzen und Tage gelten in der Zeitzone
 // des Betriebs und werden in PostgreSQL gerechnet. Gezählt werden Verkäufe und Stornos; gibt es einen echten Bon
@@ -220,6 +221,9 @@ export function installMonthRoutes(app: FastifyInstance): void {
         } else {
           rows = months.map((m) => ({ key: m, receiptCount: sums.get(m)?.count ?? 0, revenueCents: sums.get(m)?.revenue ?? 0 }));
         }
+        // Offene Gutscheine am Ende des (letzten) Monats, in der Zeitzone des Betriebs wie die Monatsgrenzen oben. Nur, wenn
+        // nicht 0: sonst bleibt die Antwort, wie sie in 1.11.0 war.
+        const openVouchers = await openVoucherCents(c, { tz: scope.tz, month: to });
 
         return {
           from,
@@ -238,6 +242,7 @@ export function installMonthRoutes(app: FastifyInstance): void {
           ...voucherFigures(total),
           taxLines,
           rows,
+          ...(openVouchers !== 0 ? { openVoucherCents: openVouchers } : {}),
         };
       },
       { repeatableRead: true },

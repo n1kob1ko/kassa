@@ -25,9 +25,11 @@ import 'package:material_ui/material_ui.dart';
 import '../support/cash_pump.dart';
 import '../support/demo_fixtures.dart';
 import '../support/fake_devices.dart';
+import '../support/fake_server.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
 import '../support/sales.dart';
+import '../support/server_pull.dart';
 import '../support/settings_pump.dart';
 
 const _anna = Staff(id: 'anna', name: 'Anna', role: StaffRole.staff);
@@ -1046,6 +1048,61 @@ void main() {
       );
       expect(cartOf(t).lines.fold<int>(0, (s, l) => s + l.quantity), 3);
       expect(await draftOf(t), isNotNull);
+    });
+
+    testWidgets('eine Einlösung von einer anderen Kassa kommt per Abgleich, '
+        'während die Kartenzahlung mit Gutschein unklar ist: bestätigt '
+        'entsteht der Bon trotzdem, der Gutschein ist überzogen', (t) async {
+      final (overrides, code) = await setupVoucher(draft: (paying) => paying);
+      await _start(t, overrides);
+      expect(_sheet, findsOneWidget);
+      expect(cartOf(t).vouchers.single.balanceCents, 500);
+      final v = (await containerOf(
+        t,
+      ).read(voucherRepositoryProvider).findByCode(code)).single;
+      // Der Abgleich bringt die Einlösung der anderen Kassa: der Gutschein
+      // fällt vom Bon der Kassa (refreshVouchers), das Blatt bleibt.
+      final server = FakeServer()
+        ..putVoucherMovement({
+          'voucherId': v.id,
+          'receiptId': 'b0000000-0000-4000-8000-0000000000a2',
+          'kind': 'redeem',
+          'amountCents': -500,
+          'createdAt': '2026-11-17T12:10:00.000Z',
+        });
+      expect(await pullFrom(containerOf(t), server), isTrue);
+      await t.pumpAndSettle();
+      expect(cartOf(t).vouchers, isEmpty);
+      expect(_sheet, findsOneWidget);
+
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(
+        await queryRows(
+          t,
+          'SELECT kind, amount_cents, voucher_balance_after_cents '
+          "FROM payments WHERE receipt_id = 'p1' ORDER BY position",
+        ),
+        [
+          {
+            'kind': 'voucher',
+            'amount_cents': 500,
+            'voucher_balance_after_cents': -500,
+          },
+          {
+            'kind': 'card',
+            'amount_cents': 465,
+            'voucher_balance_after_cents': null,
+          },
+        ],
+      );
+      final after = (await containerOf(
+        t,
+      ).read(voucherRepositoryProvider).findByCode(code)).single;
+      expect((after.balanceCents, after.state), (-500, VoucherState.overdrawn));
+      expect(await _pending(t), 0);
+      expect(cartOf(t).isEmpty, isTrue);
     });
   });
 }

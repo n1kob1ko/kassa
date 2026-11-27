@@ -25,6 +25,9 @@ class CartController extends Notifier<Cart> {
       if (catalog == null || state.isEmpty) return;
       _set(state.rebind(catalog));
     });
+    // Der Abgleich brachte Neues zu Gutscheinen (eine Einlösung an einer
+    // anderen Kassa): die gewählten Gutscheine mit dem Guthaben von jetzt.
+    ref.listen(voucherArrivalsProvider, (_, _) => refreshVouchers());
     return const Cart.empty();
   }
 

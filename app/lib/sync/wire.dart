@@ -263,6 +263,76 @@ class WireCustomer {
   final bool archived;
 }
 
+/// Zeitpunkt aus dem Abgleich ("2026-11-17T09:00:00.000Z").
+DateTime _time(Map<String, dynamic> json, String key) {
+  final at = DateTime.tryParse(_field<String>(json, key));
+  if (at == null) throw FormatException('Feld hat die falsche Art: $key');
+  return at;
+}
+
+/// Ein Gutschein vom Server (Spec 5.5), auch einer, den diese Kassa selbst
+/// verkauft hat. Code und Wert ändern sich nie; das Guthaben folgt aus den
+/// Bewegungen.
+class WireVoucher {
+  const WireVoucher({
+    required this.id,
+    required this.code,
+    required this.valueCents,
+    required this.createdAt,
+    required this.isTest,
+    required this.soldReceiptId,
+  });
+
+  factory WireVoucher.fromJson(Map<String, dynamic> json) => WireVoucher(
+    id: _field(json, 'id'),
+    code: _field(json, 'code'),
+    valueCents: _field(json, 'valueCents'),
+    createdAt: _time(json, 'createdAt'),
+    isTest: _field(json, 'isTest'),
+    soldReceiptId: _optional(json, 'soldReceiptId'),
+  );
+
+  final String id;
+  final String code;
+  final int valueCents;
+  final DateTime createdAt;
+  final bool isTest;
+  final String? soldReceiptId;
+}
+
+/// Eine Bewegung am Guthaben vom Server, eine je Gutschein und Bon.
+class WireVoucherMovement {
+  const WireVoucherMovement({
+    required this.voucherId,
+    required this.receiptId,
+    required this.kind,
+    required this.amountCents,
+    required this.createdAt,
+  });
+
+  factory WireVoucherMovement.fromJson(Map<String, dynamic> json) {
+    final kind = _field<String>(json, 'kind');
+    if (!const {'sale', 'redeem', 'void_sale', 'void_redeem'}.contains(kind)) {
+      throw const FormatException('Unbekannte Art einer Bewegung');
+    }
+    return WireVoucherMovement(
+      voucherId: _field(json, 'voucherId'),
+      receiptId: _field(json, 'receiptId'),
+      kind: kind,
+      amountCents: _field(json, 'amountCents'),
+      createdAt: _time(json, 'createdAt'),
+    );
+  }
+
+  final String voucherId;
+  final String receiptId;
+
+  /// `sale`, `redeem`, `void_sale` oder `void_redeem`.
+  final String kind;
+  final int amountCents;
+  final DateTime createdAt;
+}
+
 /// Eine Seite der Änderungen vom Server.
 class PullResponse {
   const PullResponse({
@@ -275,6 +345,8 @@ class PullResponse {
     required this.staff,
     this.translations = const [],
     this.customers = const [],
+    this.vouchers = const [],
+    this.voucherMovements = const [],
   });
 
   factory PullResponse.fromJson(Map<String, dynamic> json) {
@@ -309,6 +381,13 @@ class PullResponse {
       customers: json.containsKey('customers')
           ? _list(json, 'customers', WireCustomer.fromJson)
           : const [],
+      // Gutscheine und Bewegungen ebenso nur, wenn es welche gibt.
+      vouchers: json.containsKey('vouchers')
+          ? _list(json, 'vouchers', WireVoucher.fromJson)
+          : const [],
+      voucherMovements: json.containsKey('voucherMovements')
+          ? _list(json, 'voucherMovements', WireVoucherMovement.fromJson)
+          : const [],
     );
   }
 
@@ -330,6 +409,13 @@ class PullResponse {
 
   /// Firmenkunden (ab Stufe 1b); leer, wenn die Liste fehlt.
   final List<WireCustomer> customers;
+
+  /// Gutscheine des Betriebs (ab Stufe 1b); leer, wenn die Liste fehlt.
+  final List<WireVoucher> vouchers;
+
+  /// Bewegungen an den Gutscheinen (ab Stufe 1b); leer, wenn die Liste fehlt.
+  /// Eine kann vor ihrem Gutschein kommen.
+  final List<WireVoucherMovement> voucherMovements;
 }
 
 /// Antwort auf das Koppeln. Der Schlüssel [token] geht nie in Texte oder

@@ -196,6 +196,13 @@ export function PeriodDetailView({ period, query }: { period: Period | null; que
         </dl>
       </Section>
 
+      {/* Nur, wenn der Server sie schickt (nicht 0): das Guthaben aller echten Gutscheine am Ende des (letzten) Monats. */}
+      {s.openVoucherCents !== undefined && (
+        <dl className={styles.rows}>
+          <AmountRow label="Offene Gutscheine am Monatsende" cents={s.openVoucherCents} testId="open-vouchers" />
+        </dl>
+      )}
+
       <TaxTable lines={s.taxLines} depositCents={s.depositCents} />
 
       <Section id="zeitraum-zeilen" title={rowsTitle}>
