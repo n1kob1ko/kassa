@@ -18,8 +18,10 @@ import 'package:kassa/data/voucher_repository.dart';
 import 'package:kassa/devices/card_terminal.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/domain/staff.dart';
 import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
+import 'package:kassa/features/kassa/sale_service.dart';
 import 'package:kassa/features/kassa/voucher_code_entry.dart';
 import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/primary_button.dart';
@@ -541,7 +543,15 @@ void main() {
 
   testWidgets('ein Doppeltipp auf "Einlösen" schließt einmal ab und legt den '
       'Gutschein nicht zweimal an', (t) async {
-    await _open(t);
+    final calls = _Calls();
+    await _open(
+      t,
+      overrides: [
+        ...await memoryOverrides(),
+        saleServiceProvider.overrideWith((ref) => _CountingSales(ref, calls)),
+        cartProvider.overrideWith(() => _CountingCart(calls)),
+      ],
+    );
     final full = await sellVoucherAtRegister(t, 2500);
     await _redeemSheet(t, full);
     await t.tap(find.byKey(const Key('voucher-redeem-go')));
@@ -550,6 +560,8 @@ void main() {
       warnIfMissed: false,
     );
     await t.pumpAndSettle();
+    // Der zweite Tipp ruft das Abschließen nicht noch einmal.
+    expect((calls.complete, calls.apply), (1, 1));
     expect(await receiptCount(t), 2);
     expect(
       [for (final p in await _payments(t)) (p['kind'], p['amount_cents'])],
@@ -568,6 +580,9 @@ void main() {
       warnIfMissed: false,
     );
     await t.pumpAndSettle();
+    // Teils: der Gutschein kommt genau einmal an den Bon, abgeschlossen wird
+    // nichts.
+    expect((calls.complete, calls.apply), (1, 2));
     expect(cartOf(t).vouchers, hasLength(1));
     expect(find.byKey(const Key('applied-voucher-1')), findsNothing);
   });
@@ -641,6 +656,32 @@ void main() {
     );
   });
 
+  testWidgets('Guthaben reicht nach "Teil bar" nicht mehr: der Hinweis zum '
+      'Bar-Teil bleibt neben "Guthaben geändert" stehen', (t) async {
+    await _open(t);
+    await setSettings(t, (s) => s.copyWith(splitPaymentEnabled: true));
+    final code = await sellVoucherAtRegister(t, 500);
+    await _redeem(t, code);
+    await _drawElsewhere(t, code, 315);
+    await _tap(t, 'pay-cash');
+    await _tap(t, 'cash-mode-split');
+    await tapKeys(t, '2');
+    await _tap(t, 'split-go');
+    expect(terminalOf(t).payments, isEmpty);
+    expect(find.byKey(const Key('voucher-changed')), findsOneWidget);
+    expect(cartOf(t).vouchers.single.balanceCents, 185);
+    // Die 2 € liegen schon in der Hand.
+    expect(find.byKey(const Key('split-card-failed')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('split-card-failed')),
+        matching: find.textContaining('2,00'),
+      ),
+      findsOneWidget,
+    );
+    expect(await receiptCount(t), 1);
+  });
+
   testWidgets('Karte belastet, Guthaben inzwischen weg: der Bon entsteht, '
       'der Gutschein ist überzogen', (t) async {
     await _open(t);
@@ -712,6 +753,40 @@ void main() {
     await t.pumpAndSettle();
     expect(found, ['12345678']);
   });
+}
+
+/// Zählt, wie oft der Bogen abschließt und einen Gutschein an den Bon legt.
+class _Calls {
+  int complete = 0;
+  int apply = 0;
+}
+
+class _CountingSales extends SaleService {
+  _CountingSales(super.ref, this._calls);
+
+  final _Calls _calls;
+
+  @override
+  Future<SaleResult> completeVoucher({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) {
+    _calls.complete++;
+    return super.completeVoucher(saleId: saleId, cart: cart, staff: staff);
+  }
+}
+
+class _CountingCart extends CartController {
+  _CountingCart(this._calls);
+
+  final _Calls _calls;
+
+  @override
+  void applyVoucher(AppliedVoucher voucher) {
+    _calls.apply++;
+    super.applyVoucher(voucher);
+  }
 }
 
 /// Sucht Gutscheine erst, wenn [release] gerufen ist: so laufen zwei Suchen

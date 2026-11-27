@@ -396,6 +396,18 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       _cardRunning = false;
       if (!mounted) return;
       await _voucherChanged();
+      // Kam es von "Teil bar", liegt der Bar-Teil vielleicht schon in der
+      // Hand: derselbe Hinweis wie nach einer Karte, die nicht starten
+      // konnte. Erst nach dem neuen Lesen der Guthaben, das den Bon ändert
+      // (und einen früheren Hinweis wegnimmt).
+      if (mounted && cashPartCents > 0) {
+        setState(
+          () => _splitFailed = (
+            cashPartCents: cashPartCents,
+            failure: const CardSaleFailed(CardSaleProblem.notStarted),
+          ),
+        );
+      }
       return;
     } catch (_) {
       // payByCard wirft sonst nicht; falls doch, zurück zum Bon. Gibt es eine

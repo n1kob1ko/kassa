@@ -879,7 +879,12 @@ void main() {
     /// Datenbank mit einem Gutschein über 5,00 € und einer offenen, unklaren
     /// Zahlung über cartCard mit diesem Gutschein (9,65 € − 5,00 €); danach
     /// zieht eine andere Kassa [drawn] vom Gutschein ab.
-    Future<(List<Override>, String)> setupVoucher({int drawn = 0}) async {
+    /// Mit [draft] steht der Bon auch als Entwurf der Kassa da, wie ihn ein
+    /// Absturz während der Zahlung hinterlässt.
+    Future<(List<Override>, String)> setupVoucher({
+      int drawn = 0,
+      Cart Function(Cart paying)? draft,
+    }) async {
       final overrides = await memoryOverrides(clock: FixedClock(_first));
       final c = ProviderContainer(overrides: overrides);
       final String code;
@@ -899,12 +904,14 @@ void main() {
             .byId(sold.soldVouchers.single.voucherId))!;
         code = v.code;
         final repo = c.read(cardPaymentRepositoryProvider);
-        await repo.begin(
-          paymentId: 'p1',
-          cart: cartCard.applyVoucher(applied(v)),
-          staff: anna,
-        );
+        final paying = cartCard.applyVoucher(applied(v));
+        await repo.begin(paymentId: 'p1', cart: paying, staff: anna);
         await repo.markUnknown('p1');
+        if (draft != null) {
+          await c
+              .read(settingsRepositoryProvider)
+              .writeDraft(jsonEncode(draft(paying).toJson()));
+        }
         if (drawn > 0) {
           final db = c.read(databaseProvider);
           await db
@@ -988,6 +995,57 @@ void main() {
         await queryRows(t, "SELECT id FROM receipts WHERE id = 'p1'"),
         isEmpty,
       );
+    });
+
+    testWidgets('Absturz, Neustart, das Guthaben ist inzwischen 0 und der '
+        'Gutschein fällt vom Entwurf: bestätigt entsteht der Bon mit Gutschein '
+        'und Karte, die Kassa ist danach leer', (t) async {
+      final (overrides, code) = await setupVoucher(
+        drawn: 500,
+        draft: (paying) => paying,
+      );
+      await _start(t, overrides);
+      // refreshVouchers hat den Gutschein vom Bon der Kassa genommen.
+      expect(cartOf(t).lines, hasLength(2));
+      expect(cartOf(t).vouchers, isEmpty);
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(
+        await queryRows(
+          t,
+          'SELECT kind, amount_cents, voucher_balance_after_cents '
+          "FROM payments WHERE receipt_id = 'p1' ORDER BY position",
+        ),
+        [
+          {'kind': 'voucher', 'amount_cents': 500, 'voucher_balance_after_cents': -500},
+          {'kind': 'card', 'amount_cents': 465, 'voucher_balance_after_cents': null},
+        ],
+      );
+      final v = (await containerOf(
+        t,
+      ).read(voucherRepositoryProvider).findByCode(code)).single;
+      expect(v.state, VoucherState.overdrawn);
+      expect(cartOf(t).isEmpty, isTrue);
+      expect(await draftOf(t), isNull);
+    });
+
+    testWidgets('Absturz mit anderem Bon an der Kassa (eine Zeile mehr): '
+        'bestätigt bleibt der andere Bon an der Kassa', (t) async {
+      final (overrides, _) = await setupVoucher(
+        draft: (paying) => paying.add(cola),
+      );
+      await _start(t, overrides);
+      expect(cartOf(t).lines.fold<int>(0, (s, l) => s + l.quantity), 3);
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(
+        await queryRows(t, "SELECT id FROM receipts WHERE id = 'p1'"),
+        hasLength(1),
+      );
+      expect(cartOf(t).lines.fold<int>(0, (s, l) => s + l.quantity), 3);
+      expect(await draftOf(t), isNotNull);
     });
   });
 }

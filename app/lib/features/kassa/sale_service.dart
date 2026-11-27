@@ -529,9 +529,8 @@ class SaleService {
     final onRegister = _ref.read(cartProvider);
     if (!onRegister.isEmpty) {
       // Beide Seiten so verglichen, wie die Kassa sie liest: Zeilen, die es
-      // nicht mehr gibt, fehlen auf beiden. Das Guthaben eines gewählten
-      // Gutscheins zählt dabei nicht (die Kassa liest es nach dem Neustart
-      // neu).
+      // nicht mehr gibt, fehlen auf beiden. Die gewählten Gutscheine zählen
+      // dabei nicht (die Kassa liest sie nach dem Neustart neu).
       if (_sameCart(onRegister, cart)) {
         _ref.read(cartProvider.notifier).clear();
       } else {
@@ -547,22 +546,13 @@ class SaleService {
     return await _printCard(receipt);
   }
 
-  /// Ob [a] und [b] derselbe Bon sind; das Guthaben gewählter Gutscheine
-  /// zählt nicht. Ohne Gutschein derselbe Vergleich wie in 1.11.0.
+  /// Ob [a] und [b] derselbe Bon sind: dieselben Zeilen und derselbe
+  /// Rabatt. Die gewählten Gutscheine zählen nicht: nach einem Neustart
+  /// kann `refreshVouchers` einen davon vom Bon der Kassa genommen oder sein
+  /// Guthaben geändert haben, die Ware ist trotzdem dieselbe (und mit der
+  /// Karte bezahlt). Ohne Gutschein derselbe Vergleich wie in 1.11.0.
   static bool _sameCart(Cart a, Cart b) {
-    String key(Cart c) {
-      final json = c.toJson();
-      final vouchers = json['vouchers'];
-      if (vouchers is List) {
-        json['vouchers'] = [
-          for (final v in vouchers)
-            Map<String, Object?>.of(v as Map<String, Object?>)
-              ..remove('balanceCents'),
-        ];
-      }
-      return jsonEncode(json);
-    }
-
+    String key(Cart c) => jsonEncode(c.toJson()..remove('vouchers'));
     return key(a) == key(b);
   }
 
