@@ -79,6 +79,8 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('toggle-images')));
     await t.pump();
+    await t.ensureVisible(find.byKey(const Key('toggle-void-chef')));
+    await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('toggle-void-chef')));
     await t.pump();
     final s = await settingsOf(t);

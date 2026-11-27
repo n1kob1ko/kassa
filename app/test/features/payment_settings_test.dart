@@ -109,7 +109,7 @@ void main() {
     await t.ensureVisible(find.byKey(const Key('payment-card')));
     await t.pumpAndSettle();
     expect(find.text('الدفع'), findsOneWidget);
-    expect(find.text('للمدير فقط'), findsNWidgets(2));
+    expect(find.text('للمدير فقط'), findsNWidgets(3));
     expect(t.takeException(), isNull);
   });
 }
