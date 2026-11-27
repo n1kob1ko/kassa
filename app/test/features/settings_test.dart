@@ -683,14 +683,17 @@ void main() {
         language.isRtl ? TextDirection.rtl : TextDirection.ltr,
       );
       final l = lookupL10n(language.locale);
-      // In "Zahlen" die Texte der drei neuen Reihen; die Segmente "Aus",
-      // "Alle", "Nur Chef" sind die aus 1a (siehe Bericht von Task 8).
+      // In "Zahlen" die Texte der drei neuen Reihen und die Segmente der
+      // drei Regler (auch die aus 1a: derselbe Umschalter).
       final newInPayments = {
         l.settingsDepositReturn,
         l.settingsVoucher,
         l.settingsVoucherInfo,
         l.settingsInvoice,
         l.settingsInvoiceInfo,
+        l.settingsAccessOff,
+        l.settingsAccessAll,
+        l.settingsAccessChef,
       };
       for (final (card, mine) in [
         ('payment-card', newInPayments.contains),
@@ -715,18 +718,59 @@ void main() {
             lessThanOrEqualTo(box.size.height + 0.5),
             reason: '$card: "$text" ist abgeschnitten',
           );
-          expect(
-            box.getMaxIntrinsicWidth(double.infinity) <= box.size.width + 0.5 ||
-                box.softWrap,
-            isTrue,
-            reason: '$card: "$text" ist abgeschnitten',
-          );
+          // Eine Zeile ohne Umbruch muss ganz in ihre Breite passen.
+          if (box.maxLines == 1 || !box.softWrap) {
+            expect(
+              box.getMaxIntrinsicWidth(double.infinity),
+              lessThanOrEqualTo(box.size.width + 0.5),
+              reason: '$card: "$text" ist abgeschnitten',
+            );
+          }
         }
         expect(
           checked,
-          card == 'payment-card' ? newInPayments.length : greaterThan(8),
+          card == 'payment-card'
+              // Fünf Texte der neuen Reihen, drei Regler mit je drei Segmenten.
+              ? newInPayments.length - 3 + 9
+              : greaterThan(8),
           reason: card,
         );
+      }
+      // Jedes Segment der drei Regler ist so hoch, wie sein Text es braucht,
+      // und alle Segmente eines Reglers sind gleich hoch.
+      for (final prefix in [
+        'discount-access',
+        'open-amount-access',
+        'setting-deposit-return',
+      ]) {
+        final heights = <double>{};
+        for (final a in FeatureAccess.values) {
+          final segment = find.byKey(Key('$prefix-${a.name}'));
+          final label = t.renderObject<RenderParagraph>(
+            find.descendant(of: segment, matching: find.byType(RichText)),
+          );
+          final drawn = t.getSize(
+            find.descendant(
+              of: segment,
+              matching: find.byType(AnimatedContainer),
+            ),
+          );
+          heights.add(drawn.height);
+          expect(
+            label.getMinIntrinsicHeight(label.size.width),
+            lessThanOrEqualTo(drawn.height + 0.5),
+            reason: '$prefix-${a.name}: Text höher als sein Segment',
+          );
+          expect(
+            drawn.height,
+            greaterThanOrEqualTo(KassaTokens.drawnControlHeight),
+          );
+          expect(
+            t.getSize(segment).height,
+            greaterThanOrEqualTo(KassaTokens.minTap),
+          );
+        }
+        expect(heights, hasLength(1), reason: '$prefix: ungleich hoch');
       }
       expect(find.text(l.settingsReceiptTitle), findsOneWidget);
       expect(find.text(l.settingsReceiptNeedsServer), findsOneWidget);
