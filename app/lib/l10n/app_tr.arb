@@ -476,7 +476,7 @@
   "kassaDepositReturn": "Depozito iadesi",
   "depositReturnTotal": "İade",
   "depositReturnAdd": "Fişe ekle",
-  "kassaPayOut": "Nakit öde {amount}",
+  "kassaPayOut": "Nakit iade {amount}",
   "kassaPayOutDone": "Geri öde",
   "kassaVoucher": "Hediye çeki",
   "voucherSell": "Sat",

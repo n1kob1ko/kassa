@@ -10,6 +10,7 @@ import '../../domain/customer.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../ui/app_toggle.dart';
+import '../../ui/ltr.dart';
 import '../../ui/primary_button.dart';
 import '../../ui/tokens.dart';
 import '../login/session.dart';
@@ -484,6 +485,11 @@ class _FormFieldState extends State<_FormField> {
                   textInputAction: widget.action,
                   onSubmitted: (_) => widget.onSubmitted(),
                   maxLines: 1,
+                  // Name, Adresse und UID stehen so auf der deutschen
+                  // Rechnung: von links nach rechts, auch auf Arabisch
+                  // ("1010 Wien", nicht "Wien 1010"), am Anfang der Zeile.
+                  textDirection: TextDirection.ltr,
+                  textAlign: ltrAlign(context, TextAlign.start),
                   style: text.titleMedium!.copyWith(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,

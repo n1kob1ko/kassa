@@ -19,12 +19,16 @@ import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
 import 'package:kassa/features/kassa/modifier_panel.dart';
+import 'package:kassa/features/kassa/sale_service.dart' show receiptFallbackDelay;
 import 'package:kassa/features/overview/revenue_chart.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../support/cash_pump.dart' show setUpPrinter;
 import '../support/demo_fixtures.dart';
+import '../support/digital_pump.dart'
+    show lastReceiptId, pairRegister, serverConfirms, serverKassaOverrides;
 import '../support/invoice_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
@@ -629,6 +633,301 @@ void main() {
       );
     }
   }
+
+  // Stufe 1b: "Verkauf fertig" mit digitalem Bon ("Digital, Druck auf
+  // Wunsch", Server hat bestätigt: QR-Code, "Bon drucken" und "Nächster
+  // Kunde"), in allen Sprachen, bei beiden Größen und bei der größten Schrift
+  // (1,3) auch an der kleinsten Breite der Bon-Spalte (1024×600). Bei 1,3
+  // passen die zwei Tasten in de, en, tr und ar nicht nebeneinander: "Bon
+  // drucken" steht über "Nächster Kunde", gleich breit.
+  for (final language in AppLanguage.values) {
+    for (final (size, scale) in [
+      for (final size in _sizes) (size, 1.0),
+      for (final size in _sizes) (size, KassaTokens.maxTextScale),
+    ]) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+        'Schrift $scale: Verkauf fertig mit digitalem Bon ohne Überlauf',
+        (t) async {
+          final at =
+              '${language.name} ${size.width.toInt()}×'
+              '${size.height.toInt()} $scale';
+          await _openDigitalSaleDone(t, language, size, scale);
+          _expectClean(t, '$at Verkauf fertig digital');
+          if (!language.isRtl) {
+            _expectNoIsolates(t, '$at Verkauf fertig digital');
+          }
+          for (final key in [
+            'receipt-qr-caption',
+            'print-receipt-now',
+            'next-customer',
+          ]) {
+            _expectWholeKey(t, key, at);
+          }
+          expect(find.byKey(const Key('receipt-qr')), findsOneWidget);
+          final print = _rect(t, find.byKey(const Key('print-receipt-now')));
+          final next = _rect(t, find.byKey(const Key('next-customer')));
+          expect(print.height, greaterThanOrEqualTo(48), reason: at);
+          expect(next.height, greaterThanOrEqualTo(48), reason: at);
+          final stacked = print.bottom <= next.top;
+          if (stacked) {
+            expect(print.width, next.width, reason: at);
+          } else {
+            expect(print.top, next.top, reason: at);
+            expect(print.overlaps(next), isFalse, reason: at);
+          }
+          if (scale == KassaTokens.maxTextScale &&
+              const [
+                AppLanguage.de,
+                AppLanguage.en,
+                AppLanguage.tr,
+                AppLanguage.ar,
+              ].contains(language)) {
+            expect(stacked, isTrue, reason: '$at: übereinander');
+          }
+          // Die Uhr des digitalen Bons ablaufen lassen.
+          await t.pump(receiptFallbackDelay);
+          await t.pump();
+        },
+      );
+    }
+  }
+
+  // Stufe 1b: die Karte "Kundenbon" der Einstellungen mit einem digitalen
+  // Wert und dem Hinweis zum QR-Code, Arabisch bei der größten Schrift.
+  for (final size in _sizes) {
+    testWidgets('ar ${size.width.toInt()}×${size.height.toInt()} Schrift '
+        '${KassaTokens.maxTextScale}: Karte Kundenbon mit "Digital und Druck '
+        'auf Wunsch" ohne Überlauf', (t) async {
+      final at = 'ar ${size.width.toInt()} ${KassaTokens.maxTextScale}';
+      await pumpKassa(
+        t,
+        size: size,
+        textScale: KassaTokens.maxTextScale,
+        pin: '4711',
+        overrides: await serverKassaOverrides(),
+      );
+      await pairRegister(t);
+      await setSettings(
+        t,
+        (s) => s.copyWith(
+          language: AppLanguage.ar,
+          receiptMode: ReceiptMode.digitalOnRequest,
+        ),
+      );
+      await _tap(t, 'settings');
+      await t.ensureVisible(find.byKey(const Key('receipt-section')));
+      await t.pumpAndSettle();
+      _expectClean(t, '$at Kundenbon');
+      for (final key in [
+        'receipt-mode-alwaysPrint',
+        'receipt-mode-printAndDigital',
+        'receipt-mode-digitalOnRequest',
+        'receipt-mode-qr-hint',
+      ]) {
+        _expectWholeKey(t, key, at);
+      }
+      await t.ensureVisible(find.byKey(const Key('receipt-mode-qr-hint')));
+      await t.pumpAndSettle();
+      _expectClean(t, '$at Kundenbon unten');
+    });
+  }
+
+  testWidgets('ar: Beträge und Codes der neuen Blätter stehen von links nach '
+      'rechts, Beträge am Ende ihrer Zeile', (t) async {
+    await _expectAmountsAtEnd(t, AppLanguage.ar);
+  });
+
+  testWidgets('de: Beträge in "Gutschein prüfen" und "Gutschein einlösen" '
+      'stehen am Ende ihrer Zeile', (t) async {
+    await _expectAmountsAtEnd(t, AppLanguage.de);
+  });
+
+  testWidgets('ar: Name, Adresse und UID im Formular stehen von links nach '
+      'rechts ("1010 Wien")', (t) async {
+    await openInvoiceKassa(t, const ['cola'], language: AppLanguage.ar);
+    await _tap(t, 'pay-cash');
+    await _tapVisible(t, 'finish-sale');
+    await _tapVisible(t, 'invoice-button');
+    await _tap(t, 'customer-new');
+    await t.enterText(find.byKey(const Key('customer-address2')), '1010 Wien');
+    await t.pumpAndSettle();
+    for (final key in [
+      'customer-name',
+      'customer-address1',
+      'customer-address2',
+      'customer-vat',
+    ]) {
+      final field = t.widget<EditableText>(
+        find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(field.textDirection, TextDirection.ltr, reason: key);
+      // Am Anfang der Zeile in der Leserichtung: auf Arabisch rechts.
+      expect(field.textAlign, TextAlign.right, reason: key);
+    }
+    // Die Ziffern stehen links vom Wort, wie auf der Rechnung.
+    final paragraph = t
+        .state<EditableTextState>(
+          find.descendant(
+            of: find.byKey(const Key('customer-address2')),
+            matching: find.byType(EditableText),
+          ),
+        )
+        .renderEditable;
+    final digits = paragraph.getBoxesForSelection(
+      const TextSelection(baseOffset: 0, extentOffset: 4),
+    );
+    final word = paragraph.getBoxesForSelection(
+      const TextSelection(baseOffset: 5, extentOffset: 9),
+    );
+    expect(digits.single.right, lessThanOrEqualTo(word.single.left));
+  });
+}
+
+/// Kassa mit Server, gekoppelt, Drucker eingerichtet, Kundenbon "Digital,
+/// Druck auf Wunsch", in [language]: Cola und Teigtaschen bar verkauft, der
+/// Server hat den Bon bestätigt; endet auf "Verkauf fertig" mit QR-Code.
+Future<void> _openDigitalSaleDone(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+) async {
+  await pumpKassa(
+    t,
+    size: size,
+    textScale: scale,
+    overrides: await serverKassaOverrides(),
+  );
+  await setUpPrinter(t);
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      receiptMode: ReceiptMode.digitalOnRequest,
+      cashDrawerEnabled: true,
+    ),
+  );
+  await pairRegister(t);
+  await tapItem(t, 'cola');
+  await tapItem(t, 'teigtaschen');
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-cash');
+  await t.ensureVisible(find.byKey(const Key('finish-sale')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(const Key('finish-sale')));
+  await t.pump();
+  await t.pump();
+  await serverConfirms(t, await lastReceiptId(t));
+  await t.pumpAndSettle();
+}
+
+/// "Pfand zurück" mit 3 × 0,25 €, "Gutschein prüfen" und "Gutschein
+/// einlösen" in [language]: Beträge und Code stehen von links nach rechts
+/// ("−0,75 €", "1234 5678"), und die Beträge untereinander enden an derselben
+/// Seite (Deutsch rechts, Arabisch links).
+Future<void> _expectAmountsAtEnd(WidgetTester t, AppLanguage language) async {
+  final rtl = language.isRtl;
+  void ltr(String key) {
+    final f = find.byKey(Key(key));
+    expect(f, findsOneWidget, reason: key);
+    expect(Directionality.of(t.element(f)), TextDirection.ltr, reason: key);
+  }
+
+  void sameEnd(List<String> keys) {
+    final ends = [
+      for (final k in keys)
+        rtl
+            ? _rect(t, find.byKey(Key(k))).left
+            : _rect(t, find.byKey(Key(k))).right,
+    ];
+    for (final (i, e) in ends.indexed) {
+      expect(e, moreOrLessEquals(ends.first, epsilon: 0.5), reason: keys[i]);
+    }
+  }
+
+  await pumpKassa(t, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      depositReturnAccess: FeatureAccess.all,
+    ),
+  );
+  final staff = containerOf(t).read(sessionProvider)!;
+  final receipts = containerOf(t).read(receiptRepositoryProvider);
+  final sold = (await receipts.finalizeCashSale(
+    saleId: 'g-1',
+    cart: const Cart.empty().addVoucherSale(valueCents: 500),
+    givenCents: 500,
+    staff: staff,
+  )).soldVouchers.single;
+  final code = sold.code;
+  final grouped = '${code.substring(0, 4)} ${code.substring(4)}';
+  Future<void> type() async {
+    for (final d in code.split('')) {
+      await _tapVisible(t, 'key-$d');
+    }
+  }
+
+  await _tap(t, 'deposit-return-button');
+  for (var i = 0; i < 3; i++) {
+    await t.tap(find.byKey(const Key('deposit-return-plus-25')));
+    await t.pump();
+  }
+  await t.pumpAndSettle();
+  ltr('deposit-return-total');
+  expect(textOf(t, const Key('deposit-return-total')), '\u22120,75 €');
+  await _tap(t, 'deposit-return-back');
+
+  // Nur Gutschein an: seine Taste steht allein im Kopf.
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      voucherEnabled: true,
+      depositReturnAccess: FeatureAccess.off,
+    ),
+  );
+  await _tap(t, 'voucher-button');
+  await _tap(t, 'voucher-tab-check');
+  await type();
+  ltr('voucher-code');
+  expect(textOf(t, const Key('voucher-code')), grouped);
+  ltr('voucher-check-value');
+  ltr('voucher-check-balance');
+  sameEnd(['voucher-check-value', 'voucher-check-balance']);
+  await _tap(t, 'voucher-back');
+
+  await tapItem(t, 'teigtaschen');
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-voucher');
+  await type();
+  ltr('voucher-code');
+  for (final key in [
+    'voucher-redeem-due',
+    'voucher-redeem-balance',
+    'voucher-redeem-use',
+    'voucher-redeem-left',
+  ]) {
+    ltr(key);
+  }
+  sameEnd([
+    'voucher-redeem-balance',
+    'voucher-redeem-use',
+    'voucher-redeem-left',
+  ]);
+  // "Zu zahlen" steht über dem Feld: der Betrag endet am Rand des Blatts
+  // (16 dp davor).
+  final sheet = _rect(t, find.byKey(const Key('voucher-redeem-sheet')));
+  final due = _rect(t, find.byKey(const Key('voucher-redeem-due')));
+  expect(
+    rtl ? due.left - sheet.left : sheet.right - due.right,
+    moreOrLessEquals(16, epsilon: 0.5),
+  );
 }
 
 /// Jeder Text unter [key] ist ganz zu lesen, ohne Auslassungspunkte.

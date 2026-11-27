@@ -122,7 +122,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar-Teil {amount} | Nakit kısmı {amount} | Kassa: `kassaCashPartDone` |
 | Mehr | Daha fazla | Kassa: `kassaMore` |
 | Pfand zurück | Depozito iadesi | Kassa: `kassaDepositReturn` |
-| Bar auszahlen {amount} | Nakit öde {amount} | Kassa: `kassaPayOut` |
+| Bar auszahlen {amount} | Nakit iade {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | Geri öde | Kassa: `kassaPayOutDone` |
 | Gutschein | Hediye çeki | Kassa: `kassaVoucher` |
 | Gutschein | Hediye çeki | Kassa: `kassaPayVoucher` |

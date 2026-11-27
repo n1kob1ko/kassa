@@ -625,9 +625,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Gutschein {code} | قسيمة {code} | Sonstiges: `voucherWithCode` |
 | Rechnung an Firma | فاتورة لشركة | Sonstiges: `invoiceButton` |
 | Rechnung an | الفاتورة إلى | Sonstiges: `invoiceRecipient` |
-| Rechnung drucken | اطبع الفاتورة | Sonstiges: `invoicePrint` |
+| Rechnung drucken | اطبع فاتورة الشركة | Sonstiges: `invoicePrint` |
 | Ändern | تغيير | Sonstiges: `invoiceChange` |
-| Rechnung gedruckt. | طُبعت الفاتورة. | Sonstiges: `invoicePrinted` |
+| Rechnung gedruckt. | طُبعت فاتورة الشركة. | Sonstiges: `invoicePrinted` |
 | Über 400 €: Eine Rechnung braucht Name und Adresse des Kunden. | أكثر من 400 €: تحتاج الفاتورة إلى اسم العميل وعنوانه. | Sonstiges: `invoiceHint400` |
 | Firmenkunde wählen | اختر عميل شركة | Sonstiges: `customerPickerTitle` |
 | Alle | الكل | Sonstiges: `customerAll` |

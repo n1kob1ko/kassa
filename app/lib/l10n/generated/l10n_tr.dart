@@ -1657,7 +1657,7 @@ class L10nTr extends L10n {
 
   @override
   String kassaPayOut(String amount) {
-    return 'Nakit öde $amount';
+    return 'Nakit iade $amount';
   }
 
   @override

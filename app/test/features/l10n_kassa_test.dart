@@ -180,7 +180,7 @@ void main() {
     AppLanguage.tr: (
       more: 'Daha fazla',
       back: 'Depozito iadesi',
-      out: 'Nakit öde',
+      out: 'Nakit iade',
     ),
     AppLanguage.ar: (more: 'المزيد', back: 'إرجاع الرهن', out: 'صرف نقدًا'),
   };
@@ -420,7 +420,7 @@ void main() {
       add: 'عميل جديد',
       name: 'اسم الشركة',
       save: 'اعتماد',
-      print: 'اطبع الفاتورة',
+      print: 'اطبع فاتورة الشركة',
     ),
   };
 

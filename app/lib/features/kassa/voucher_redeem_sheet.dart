@@ -201,8 +201,9 @@ class _VoucherRedeemSheetState extends ConsumerState<VoucherRedeemSheet> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
+                      Flexible(
                         child: Text(l.voucherDue, style: text.bodyLarge),
                       ),
                       const SizedBox(width: KassaTokens.spaceMd),
@@ -353,8 +354,9 @@ class _RedeemResult extends StatelessWidget {
     Widget row(String label, int cents, Key key, {bool big = false}) => Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
+        Flexible(
           child: Text(
             label,
             style: text.bodyLarge!.copyWith(color: c.accentInk),

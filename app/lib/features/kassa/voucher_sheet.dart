@@ -335,8 +335,9 @@ class _CheckResult extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
+            Flexible(
               child: Text(
                 label,
                 style: text.bodyLarge!.copyWith(color: c.accentInk),

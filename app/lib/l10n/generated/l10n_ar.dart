@@ -1817,13 +1817,13 @@ class L10nAr extends L10n {
   String get invoiceRecipient => 'الفاتورة إلى';
 
   @override
-  String get invoicePrint => 'اطبع الفاتورة';
+  String get invoicePrint => 'اطبع فاتورة الشركة';
 
   @override
   String get invoiceChange => 'تغيير';
 
   @override
-  String get invoicePrinted => 'طُبعت الفاتورة.';
+  String get invoicePrinted => 'طُبعت فاتورة الشركة.';
 
   @override
   String get invoiceHint400 =>
