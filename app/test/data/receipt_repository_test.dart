@@ -11,6 +11,7 @@ import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/receipt_rules.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/rksv_rig.dart';
@@ -289,6 +290,30 @@ void main() {
       );
     }
     expect(await shop.count('receipt_line_options'), 2);
+  });
+
+  test('Storno eines Bons mit falschen Summen (von Hand geschrieben): die '
+      'Geld-Regeln weisen ihn ab, kein Bon kommt dazu', () async {
+    final r = await shop.sell('s1');
+    // Ware 2,90 €, Summe 3,00 €: Summe ≠ Ware nach Rabatt plus Pfand.
+    await shop.db.customStatement(
+      "INSERT INTO receipts (id, number, created_at, staff_id, staff_name, business_day_id, kind, goods_cents, deposit_cents, total_cents) "
+      "VALUES ('bad', 99, 1, 'a', 'Anna', '${r.businessDayId}', 'sale', 290, 0, 300)",
+    );
+    await shop.db.customStatement(
+      "INSERT INTO receipt_lines (receipt_id, position, item_id, name, unit_price_cents, quantity, unit_deposit_cents, gross20_cents) "
+      "VALUES ('bad', 0, 'cola', 'Cola 0,33 l', 290, 1, 0, 290)",
+    );
+    await shop.db.customStatement(
+      "INSERT INTO payments (receipt_id, position, kind, amount_cents, given_cents, change_cents) "
+      "VALUES ('bad', 0, 'cash', 300, 300, 0)",
+    );
+    final before = await shop.count('receipts');
+    await expectLater(
+      receipts.voidReceipt('bad', staff: shop.chef),
+      throwsA(isA<ReceiptRuleViolation>()),
+    );
+    expect(await shop.count('receipts'), before);
   });
 
   test('zwei Stornos desselben Bons scheitern an der Datenbank', () async {

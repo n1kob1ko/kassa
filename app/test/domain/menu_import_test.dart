@@ -89,6 +89,22 @@ void main() {
     );
   });
 
+  test('eine Kennung mit "open-amount-" vorn ist für den freien Betrag '
+      'vergeben', () {
+    const bad = '''{"betrieb":"X","kategorien":[{"id":"a","name":"A"}],
+    "artikel":[{"id":"open-amount-20","name":"X","preis_cent":100,"kategorie":"a","mwst":20}],
+    "auswahlgruppen":{}}''';
+    expect(
+      () => parseMenuFile(bad),
+      throwsA(
+        isA<MenuImportException>().having((e) => e.problems, 'problems', [
+          'Artikel "open-amount-20": Die Kennung darf nicht mit '
+              '"open-amount-" beginnen.',
+        ]),
+      ),
+    );
+  });
+
   test('kein JSON, fehlende Pflichtangabe, BOM', () {
     expect(
       () => parseMenuFile('hallo'),
@@ -324,23 +340,26 @@ void main() {
       ]);
     });
 
-    test('Leerzeichen werden entfernt, leere Texte entfallen, gleiche zählen', () {
-      final c = parseMenuFile(
-        demoWith({
-          'uebersetzungen': {
-            ' Cola 0,33 l ': {
-              'en': '  Soda ',
-              'tr': '   ',
-              'zh': 'Cola 0,33 l',
+    test(
+      'Leerzeichen werden entfernt, leere Texte entfallen, gleiche zählen',
+      () {
+        final c = parseMenuFile(
+          demoWith({
+            'uebersetzungen': {
+              ' Cola 0,33 l ': {
+                'en': '  Soda ',
+                'tr': '   ',
+                'zh': 'Cola 0,33 l',
+              },
+              'Bowls': {'en': ''},
             },
-            'Bowls': {'en': ''},
-          },
-        }),
-      );
-      expect(c.translations, {
-        'Cola 0,33 l': {'en': 'Soda', 'zh': 'Cola 0,33 l'},
-      });
-    });
+          }),
+        );
+        expect(c.translations, {
+          'Cola 0,33 l': {'en': 'Soda', 'zh': 'Cola 0,33 l'},
+        });
+      },
+    );
 
     test('Meldungen wörtlich', () {
       expect(problemsOf(demoWith({'uebersetzungen': 'x'})), [

@@ -46,6 +46,24 @@ describe('gemeinsame Beispiele mit der App', () => {
     });
   }
 
+  test('eine Kennung mit "open-amount-" vorn ist für den freien Betrag vergeben', () => {
+    const text = JSON.stringify({
+      betrieb: 'X',
+      kategorien: [{ id: 'a', name: 'A' }],
+      artikel: [{ id: 'open-amount-20', name: 'X', preis_cent: 100, kategorie: 'a', mwst: 20 }],
+    });
+    let thrown: unknown;
+    try {
+      parseMenuFile(text);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(MenuImportError);
+    expect((thrown as MenuImportError).problems).toEqual([
+      'Artikel "open-amount-20": Die Kennung darf nicht mit "open-amount-" beginnen.',
+    ]);
+  });
+
   test('jede Meldung aus menu_import.dart kommt in einem Beispiel vor', () => {
     const dart = readFileSync(
       join(import.meta.dirname, '../../app/lib/domain/menu_import.dart'),

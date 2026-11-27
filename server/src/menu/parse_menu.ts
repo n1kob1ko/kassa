@@ -279,6 +279,10 @@ export function parseMenuFile(jsonText: string): ParsedMenu {
       ok = false;
     }
     itemIds.add(id);
+    // Für den freien Betrag an der Kassa vergeben (open-amount-20 usw.).
+    if (id.startsWith('open-amount-')) {
+      fail('Die Kennung darf nicht mit "open-amount-" beginnen.');
+    }
     const name = text(a['name']);
     if (name === null) fail('Name fehlt.');
 

@@ -363,6 +363,16 @@ describe('Bon v: 1 und v: 2', () => {
     expect(found[0].content).toEqual({ receiptId: bad.id, number: bad.number, problems: ['payments', 'tip', 'discount', 'card_last'] });
   });
 
+  test('v: 2, eine Karte, aber nicht an letzter Stelle: angenommen, Bericht receipt_sums nennt nur card_last', async () => {
+    const good = sampleReceiptV2();
+    const [cash, card] = good.payments;
+    const bad = sampleReceiptV2({ payments: [{ ...card, position: 0 }, { ...cash, position: 1 }] });
+    expect(statuses(await push([entry(1, 'receipt', bad)]))).toEqual(['accepted']);
+    const found = await rows(a, "select content from reports where kind = 'receipt_sums'");
+    expect(found).toHaveLength(1);
+    expect(found[0].content).toEqual({ receiptId: bad.id, number: bad.number, problems: ['card_last'] });
+  });
+
   test('v: 2, Storno passt: kein Bericht; Storno mit falscher Zahlung: payments', async () => {
     const neg = (p: Record<string, any>) => ({ ...p, amountCents: -p.amountCents, givenCents: 0, changeCents: 0, tipCents: -p.tipCents });
     const r = sampleReceiptV2();

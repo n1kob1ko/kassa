@@ -5,9 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:kassa/core/app_language.dart';
+import 'package:kassa/core/clock.dart';
+import 'package:kassa/data/day_repository.dart';
+import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/database.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/domain/receipt.dart';
+import 'package:kassa/domain/staff.dart';
 
 import 'generated_migrations/schema.dart';
 import 'migration_test.dart' show copyFixture, count;
@@ -234,6 +239,53 @@ void main() {
         (await db.select(db.settingsRows).getSingle()).receiptDraft,
         draftBefore,
       );
+    },
+  );
+
+  test(
+    'Update von 1.10.0: ein Bon, den 1.10.0 geschrieben hat, lässt sich '
+    'stornieren; das Storno spiegelt ihn, keine Regel ist verletzt',
+    () async {
+      final db = KassaDatabase(
+        NativeDatabase(await copyFixture('kassa_v7_receipts_1_10_0.sqlite')),
+      );
+      addTearDown(db.close);
+      final clock = FixedClock(DateTime(2026, 11, 27, 11));
+      final receipts = ReceiptRepository(db, clock, DayRepository(db, clock));
+      const chefin = Staff(
+        id: 'staff-chefin',
+        name: 'Chefin',
+        role: StaffRole.chef,
+      );
+      for (final id in [
+        'eeeeeeee-1100-4000-8000-000000000001',
+        'eeeeeeee-1100-4000-8000-000000000002',
+      ]) {
+        final sale = await receipts.byId(id);
+        final v = await receipts.voidReceipt(id, staff: chefin);
+        expect(v.kind, ReceiptKind.voided, reason: id);
+        expect(v.voidsReceiptId, id);
+        expect(
+          (v.goodsCents, v.depositCents, v.totalCents, v.discountCents),
+          (
+            -sale.goodsCents,
+            -sale.depositCents,
+            -sale.totalCents,
+            -sale.discountCents,
+          ),
+          reason: id,
+        );
+        expect(
+          [for (final p in v.payments) (p.position, p.kind, p.amountCents)],
+          [for (final p in sale.payments) (p.position, p.kind, -p.amountCents)],
+          reason: id,
+        );
+        expect(
+          [for (final l in v.lines) (l.itemId, -l.quantity)],
+          [for (final l in sale.lines) (l.itemId, l.quantity)],
+          reason: id,
+        );
+      }
     },
   );
 

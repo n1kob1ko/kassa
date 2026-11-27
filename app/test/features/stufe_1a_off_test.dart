@@ -7,6 +7,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
@@ -91,6 +92,7 @@ void main() {
       overrides: await memoryOverrides(terminal: FakeCardTerminal()),
       pin: '4711',
     );
+    expect(containerOf(t).read(sessionProvider)?.isChef, isTrue);
     await _sellWithAllOff(t);
   });
 }
