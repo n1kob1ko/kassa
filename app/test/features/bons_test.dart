@@ -26,7 +26,7 @@ import '../support/demo_fixtures.dart';
 import '../support/fake_devices.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
-import '../support/sales.dart' show cart;
+import '../support/sales.dart' show cart, discounted;
 
 const _failText =
     'Der Storno konnte nicht gespeichert werden. Bitte noch einmal.';
@@ -274,6 +274,74 @@ void main() {
     expect(find.byKey(const Key('void-cash-back')), findsNothing);
     expect(find.byKey(const Key('void-card-hint')), findsNothing);
     expect(find.text('Ja, stornieren'), findsOneWidget);
+  });
+
+  testWidgets('Detail zeigt Zeilen-Rabatt, Bon-Rabatt und Trinkgeld', (
+    t,
+  ) async {
+    await pumpBonsWithSales(t, 0);
+    final staff = containerOf(t).read(sessionProvider)!;
+    // 15,36 €: 10,00 € bar, 5,36 € mit Karte, dazu 0,64 € Trinkgeld.
+    await containerOf(t)
+        .read(receiptRepositoryProvider)
+        .finalizeCardSale(
+          saleId: 'discounted-1',
+          cart: discounted,
+          staff: staff,
+          provider: 'sumup',
+          cardScheme: 'VISA',
+          cardLast4: '4242',
+          cashPartCents: 1000,
+          tipCents: 64,
+        );
+    await t.tap(find.byKey(const Key('tab-Kassa')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('tab-Bons')));
+    await t.pumpAndSettle();
+    await openReceipt(t, 1);
+
+    // Die Huhn Bowl (Stelle 1) hat 10 % Stammgast, die Cola keinen Rabatt.
+    expect(find.byKey(const Key('detail-line-discount-0')), findsNothing);
+    expect(textOf(t, const Key('detail-line-discount-1')), formatEuro(-119));
+    expect(find.text('−10 % Stammgast'), findsOneWidget);
+    expect(find.text('Zwischensumme'), findsOneWidget);
+    expect(find.text(formatEuro(1651)), findsOneWidget);
+    expect(find.text('−10 % Aktion'), findsOneWidget);
+    expect(textOf(t, const Key('detail-discount')), formatEuro(-165));
+    expect(textOf(t, const Key('detail-total')), formatEuro(1536));
+    // Die Karte mit ihrem Teil, darunter das Trinkgeld.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-payment-1')),
+        matching: find.text(formatEuro(536)),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-tip')),
+        matching: find.text('davon Trinkgeld'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-tip')),
+        matching: find.text(formatEuro(64)),
+      ),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Detail ohne Rabatt und Trinkgeld: keine der Zeilen', (t) async {
+    await pumpBonsWithSales(t, 1);
+    await openReceipt(t, 1);
+    expect(find.byKey(const Key('detail-line-discount-0')), findsNothing);
+    expect(find.byKey(const Key('detail-line-discount-1')), findsNothing);
+    expect(find.byKey(const Key('detail-discount')), findsNothing);
+    expect(find.byKey(const Key('detail-tip')), findsNothing);
+    expect(find.text('Zwischensumme'), findsNothing);
   });
 
   testWidgets('eine Bar-Zahlung: eine Zeile, dazu "Gegeben" und "Rückgeld"', (

@@ -85,7 +85,7 @@ describe('Umsätze', () => {
     expect([...allKeys((await overview(s.businessId, 'today')).json())].filter((k) => FORBIDDEN_KEYS.includes(k))).toEqual([]);
   });
 
-  test('gemeinsames Beispiel mixed.json: bar, Karte und bar + Karte mit Trinkgeld wie die App', async () => {
+  test('gemeinsames Beispiel mixed.json: bar, Karte, bar + Karte mit Trinkgeld und bar mit Rabatt wie die App', async () => {
     const fx = JSON.parse(readFileSync(new URL('../../shared/fixtures/stats/mixed.json', import.meta.url), 'utf8')) as Omit<Fixture, 'expected'> & {
       expected: { overview: Record<string, Record<string, unknown>> };
     };
@@ -116,8 +116,11 @@ describe('Umsätze', () => {
       const body = (await overview(s.businessId, range, chef.cookie)).json();
       for (const k of fields) expect(body[k], `${range}.${k}`).toEqual(fx.expected.overview[range]![k]);
     }
-    // Von Hand: Umsatz ohne Trinkgeld 9,65 + 9,65 + 18,20; bar 9,65 + 10,00; Karte 9,65 + 8,20.
-    expect((await overview(s.businessId, 'days7', chef.cookie)).json()).toMatchObject({ revenueCents: 3750, cashCents: 1965, cardCents: 1785 });
+    // Von Hand: Umsatz ohne Trinkgeld 9,65 + 9,65 + 18,20 + 15,36; bar 9,65 + 10,00 + 15,36; Karte 9,65 + 8,20. Die
+    // Huhn Bowl nach Rabatt: 11,90 + 11,90 - 1,19 - 1,07 (ihr Anteil am Bon-Rabatt).
+    const days7 = (await overview(s.businessId, 'days7', chef.cookie)).json();
+    expect(days7).toMatchObject({ revenueCents: 5286, cashCents: 3501, cardCents: 1785 });
+    expect(days7.topItems).toContainEqual({ name: 'Huhn Bowl', quantity: 2, cents: 1190 + 1190 - 119 - 107 });
     a.now.value = before;
   });
 

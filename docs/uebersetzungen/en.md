@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 452 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 457 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -280,6 +280,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | Give back {amount} in cash. | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | Refund {amount} in SumUp. | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | Refund {amount} in SumUp, incl. tip {tip}. | Bons: `bonsVoidCardBackTip` |
+| Zwischensumme | Subtotal | Bons: `bonsSubtotal` |
+| davon Trinkgeld | of which tip | Bons: `bonsTipIncluded` |
 
 ## Artikel
 
@@ -443,6 +445,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr danach | Next year | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | No printer set up. | Abschluss: `closeNoPrinter` |
 | Trinkgeld | Tip | Abschluss: `closeReasonTip` |
+| Rabatte | Discounts | Abschluss: `closeDiscounts` |
+| Trinkgeld Karte | Card tips | Abschluss: `closeCardTip` |
+| Am Kartenkonto | To card account | Abschluss: `closeCardAccount` |
 
 ## Einstellungen
 

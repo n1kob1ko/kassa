@@ -1592,4 +1592,19 @@ class L10nEn extends L10n {
   String openAmountLine(int percent) {
     return 'Misc. $percent %';
   }
+
+  @override
+  String get closeDiscounts => 'Discounts';
+
+  @override
+  String get closeCardTip => 'Card tips';
+
+  @override
+  String get closeCardAccount => 'To card account';
+
+  @override
+  String get bonsSubtotal => 'Subtotal';
+
+  @override
+  String get bonsTipIncluded => 'of which tip';
 }

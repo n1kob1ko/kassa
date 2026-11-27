@@ -1592,4 +1592,19 @@ class L10nAr extends L10n {
   String openAmountLine(int percent) {
     return 'متفرقات $percent %';
   }
+
+  @override
+  String get closeDiscounts => 'الخصومات';
+
+  @override
+  String get closeCardTip => 'إكرامية البطاقة';
+
+  @override
+  String get closeCardAccount => 'إلى حساب البطاقة';
+
+  @override
+  String get bonsSubtotal => 'المجموع الفرعي';
+
+  @override
+  String get bonsTipIncluded => 'منها إكرامية';
 }

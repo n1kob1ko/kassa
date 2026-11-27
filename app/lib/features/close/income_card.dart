@@ -24,6 +24,10 @@ class IncomeFigures {
     required this.voidedCents,
     required this.taxLines,
     required this.depositCents,
+    this.discountCount = 0,
+    this.discountCents = 0,
+    this.cardTipCents = 0,
+    this.tipsByStaff = const [],
   });
 
   factory IncomeFigures.ofDay(DaySummary s) => IncomeFigures(
@@ -37,6 +41,10 @@ class IncomeFigures {
     voidedCents: s.voidedCents,
     taxLines: s.taxLines,
     depositCents: s.depositCents,
+    discountCount: s.discountCount,
+    discountCents: s.discountCents,
+    cardTipCents: s.cardTipCents,
+    tipsByStaff: s.tipsByStaff,
   );
 
   factory IncomeFigures.ofPeriod(PeriodReport r) => IncomeFigures(
@@ -50,6 +58,10 @@ class IncomeFigures {
     voidedCents: r.voidedCents,
     taxLines: r.taxLines,
     depositCents: r.depositCents,
+    discountCount: r.discountCount,
+    discountCents: r.discountCents,
+    cardTipCents: r.cardTipCents,
+    tipsByStaff: r.tipsByStaff,
   );
 
   final int cashCount;
@@ -62,6 +74,17 @@ class IncomeFigures {
   final int voidedCents;
   final List<TaxLine> taxLines;
   final int depositCents;
+
+  /// Bons mit Rabatt und die Summe der Rabatte (positiv).
+  final int discountCount;
+  final int discountCents;
+
+  /// Trinkgeld der Kartenzahlungen, auch je Person.
+  final int cardTipCents;
+  final List<StaffTip> tipsByStaff;
+
+  /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
+  int get cardAccountCents => cardCents + cardTipCents;
 }
 
 class IncomeCard extends StatelessWidget {
@@ -103,6 +126,35 @@ class IncomeCard extends StatelessWidget {
             amountMuted: true,
             amountKey: const Key('left-voided'),
           ),
+        // Nur, wo es etwas zu zeigen gibt: Rabatte, Karten-Trinkgeld je
+        // Person und was am Kartenkonto ankommt.
+        if (f.discountCount != 0 || f.discountCents != 0)
+          SummaryLine(
+            label: l.closeDiscounts,
+            middle: bonsLabel(l, f.discountCount),
+            amount: formatEuro(-f.discountCents),
+            amountKey: const Key('income-discounts'),
+          ),
+        if (f.tipsByStaff.isNotEmpty) ...[
+          SummaryLine(
+            label: l.closeCardTip,
+            amount: formatEuro(f.cardTipCents),
+            amountKey: const Key('income-card-tip'),
+          ),
+          for (final tip in f.tipsByStaff)
+            SummaryLine(
+              label: nameIsolateIn(context, tip.staffName),
+              amount: formatEuro(tip.cents),
+              amountMuted: true,
+              amountKey: Key('income-tip-${tip.staffId}'),
+            ),
+          SummaryLine(
+            label: l.closeCardAccount,
+            amount: formatEuro(f.cardAccountCents),
+            bold: true,
+            amountKey: const Key('income-card-account'),
+          ),
+        ],
       ],
     );
     final tax = _Section(

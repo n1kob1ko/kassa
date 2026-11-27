@@ -1560,4 +1560,19 @@ class L10nZh extends L10n {
   String openAmountLine(int percent) {
     return '杂项 $percent %';
   }
+
+  @override
+  String get closeDiscounts => '折扣';
+
+  @override
+  String get closeCardTip => '刷卡小费';
+
+  @override
+  String get closeCardAccount => '入卡账户';
+
+  @override
+  String get bonsSubtotal => '小计';
+
+  @override
+  String get bonsTipIncluded => '其中小费';
 }

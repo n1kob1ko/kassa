@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/cart.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/print_document.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_layout.dart';
@@ -129,6 +130,66 @@ Receipt startReceipt() => Receipt(
   goodsCents: 0,
   depositCents: 0,
   totalCents: 0,
+);
+
+/// Die Paare links/rechts der Druckzeilen: rechts der Betrag am Rand, sonst
+/// leer.
+List<(String, String)> rows(List<PrintOp> d) => [
+  for (final t in texts(d))
+    if (RegExp(r'^(.*\S)\s+(-?[\d.]+,\d\d)$').firstMatch(t) case final m?)
+      (m.group(1)!, m.group(2)!)
+    else
+      (t, ''),
+];
+
+/// [discounted] (Summe 15,36 €) mit 10,00 € bar und 5,36 € mit Karte, dazu
+/// 0,64 € Trinkgeld für Anna.
+Future<Receipt> mixedDiscounted(TestShop shop) => shop.sellCard(
+  'mixed-discounted',
+  cart: discounted,
+  cashPartCents: 1000,
+  tipCents: 64,
+);
+
+/// Der Storno-Bon zu [r], vom Chef.
+Future<Receipt> voidOf(TestShop shop, Receipt r) =>
+    shop.receipts.voidReceipt(r.id, staff: shop.chef);
+
+/// [r] mit Rabatten über 0,00 € auf der ersten Zeile und auf dem Bon.
+Receipt withZeroDiscounts(Receipt r) => Receipt(
+  id: r.id,
+  number: r.number,
+  createdAt: r.createdAt,
+  staffId: r.staffId,
+  staffName: r.staffName,
+  businessDayId: r.businessDayId,
+  kind: r.kind,
+  lines: [
+    for (final (i, l) in r.lines.indexed)
+      ReceiptLine(
+        position: l.position,
+        itemId: l.itemId,
+        name: l.name,
+        info: l.info,
+        unitPriceCents: l.unitPriceCents,
+        quantity: l.quantity,
+        unitDepositCents: l.unitDepositCents,
+        options: l.options,
+        grossByRate: l.grossByRate,
+        discount: i == 0
+            ? const ReceiptDiscount(amountCents: 0, reason: 'staff')
+            : null,
+      ),
+  ],
+  payments: r.payments,
+  goodsCents: r.goodsCents,
+  depositCents: r.depositCents,
+  totalCents: r.totalCents,
+  discount: const ReceiptDiscount(
+    percent: 10,
+    amountCents: 0,
+    reason: 'promotion',
+  ),
 );
 
 void main() {
@@ -613,6 +674,185 @@ void main() {
         'd6Wc4NsJ7aGiTo5EyPqMw=',
       ]);
       expect(t[key + 3], 'Prüfwert');
+    });
+  });
+
+  group('Rabatt, mehrere Zahlungen und Trinkgeld', () {
+    test('Bon mit Zeilen-Rabatt, Bon-Rabatt, Bar-Teil, Karte und '
+        'Trinkgeld', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final r = await mixedDiscounted(shop);
+      expect(
+        rows(layoutReceipt(r, business)),
+        containsAllInOrder([
+          ('1 x Huhn Bowl', '11,90'),
+          ('  Rabatt 10 % Stammgast', '-1,19'),
+          ('Zwischensumme', '16,51'),
+          ('Rabatt 10 % Aktion', '-1,65'),
+          ('Pfand', '0,50'),
+          ('SUMME EUR', '15,36'),
+          ('Bar', '10,00'),
+          ('Karte', '6,00'),
+          ('  davon Trinkgeld', '0,64'),
+        ]),
+      );
+      expect(
+        rows(layoutReceipt(r, business)).map((x) => x.$1),
+        isNot(contains('Gegeben')),
+      );
+      expect(
+        rows(layoutReceipt(r, business)).map((x) => x.$1),
+        isNot(contains('Rückgeld')),
+      );
+    });
+
+    test('der Zeilen-Rabatt steht nach den Optionen der Zeile', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final t = texts(layoutReceipt(await mixedDiscounted(shop), business));
+      expect(
+        t,
+        containsAllInOrder([
+          row('1 x Huhn Bowl', '11,90'),
+          '    XXL (+2,00)',
+          '    Nudeln',
+          row('  Rabatt 10 % Stammgast', '-1,19'),
+          '-' * 48,
+          row('Zwischensumme', '16,51'),
+        ]),
+      );
+    });
+
+    test('Storno davon: dieselben Zeilen mit Minus', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final r = await mixedDiscounted(shop);
+      final v = await voidOf(shop, r);
+      expect(
+        rows(layoutReceipt(v, business, voidedNumber: 1)),
+        containsAllInOrder([
+          ('  Rabatt 10 % Stammgast', '1,19'),
+          ('Zwischensumme', '-16,51'),
+          ('Rabatt 10 % Aktion', '1,65'),
+          ('SUMME EUR', '-15,36'),
+          ('Bar', '-10,00'),
+          ('Karte', '-6,00'),
+          ('  davon Trinkgeld', '-0,64'),
+        ]),
+      );
+    });
+
+    test('Betrag-Rabatt ohne Prozent: "Rabatt Mitarbeiter"', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final c = cart.setReceiptDiscount(
+        const Discount.amount(200, DiscountReason.staff),
+      );
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'staff',
+        cart: c,
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      expect(
+        rows(layoutReceipt(r, business)),
+        containsAllInOrder([
+          ('Zwischensumme', '17,70'),
+          ('Rabatt Mitarbeiter', '-2,00'),
+          ('Pfand', '0,50'),
+          ('SUMME EUR', '16,20'),
+          // Eine einzige Bar-Zahlung: Gegeben und Rückgeld wie bisher.
+          ('Bar', '16,20'),
+          ('Gegeben', '20,00'),
+          ('Rückgeld', '3,80'),
+        ]),
+      );
+    });
+
+    test('nur ein Zeilen-Rabatt: keine Zwischensumme', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final c = cart.setLineDiscount(
+        cart.lines[0].lineId,
+        const Discount.percent(50, DiscountReason.complaint),
+      );
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'line',
+        cart: c,
+        givenCents: 2000,
+        staff: shop.anna,
+      );
+      final t = rows(layoutReceipt(r, business));
+      expect(
+        t,
+        containsAllInOrder([
+          ('2 x Cola 0,33 l', '5,80'),
+          ('  Rabatt 50 % Reklamation', '-2,90'),
+          ('SUMME EUR', '15,30'),
+        ]),
+      );
+      expect(t.map((x) => x.$1), isNot(contains('Zwischensumme')));
+    });
+
+    test('Rabatt über 0,00 €: keine Zeile, keine Zwischensumme', () async {
+      final r = withZeroDiscounts(await saleOf(cart, given: 2000));
+      final plain = texts(
+        layoutReceipt(await saleOf(cart, given: 2000), business),
+      );
+      final t = texts(layoutReceipt(r, business));
+      expect(t.where((x) => x.contains('Rabatt')), isEmpty);
+      expect(t.where((x) => x.startsWith('Zwischensumme')), isEmpty);
+      // Zeile für Zeile wie ohne Rabatt.
+      expect(t, plain);
+    });
+
+    test('nur Karte mit Trinkgeld: "Karte" mit dem gebuchten Betrag, darunter '
+        '"davon Trinkgeld", dann die Karte', () async {
+      final shop = await TestShop.open();
+      addTearDown(shop.close);
+      final r = await shop.sellCard('tip', tipCents: 100);
+      final t = texts(layoutReceipt(r, business));
+      final i = t.indexOf(row('Karte', '10,65'));
+      expect(i, isNonNegative);
+      expect(t[i + 1], row('  davon Trinkgeld', '1,00'));
+      expect(t[i + 2].trim(), 'VISA **** 4242');
+      expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
+    });
+  });
+
+  group('ReceiptDiscount.label', () {
+    test('Prozent: "Rabatt 10 % Stammgast"', () {
+      expect(
+        const ReceiptDiscount(
+          percent: 10,
+          amountCents: 119,
+          reason: 'regular',
+        ).label,
+        'Rabatt 10 % Stammgast',
+      );
+    });
+
+    test('Betrag: "Rabatt Mitarbeiter"', () {
+      expect(
+        const ReceiptDiscount(amountCents: 200, reason: 'staff').label,
+        'Rabatt Mitarbeiter',
+      );
+    });
+
+    test('ein unbekannter Grund steht da, wie er ist', () {
+      expect(
+        const ReceiptDiscount(amountCents: 200, reason: 'geburtstag').label,
+        'Rabatt geburtstag',
+      );
+      expect(
+        const ReceiptDiscount(
+          percent: 5,
+          amountCents: 50,
+          reason: 'geburtstag',
+        ).label,
+        'Rabatt 5 % geburtstag',
+      );
     });
   });
 }

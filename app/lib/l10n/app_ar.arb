@@ -451,5 +451,10 @@
   "openAmountAmount": "المبلغ",
   "openAmountTax": "نسبة الضريبة",
   "openAmountAdd": "أضف إلى الفاتورة",
-  "openAmountLine": "متفرقات {percent} %"
+  "openAmountLine": "متفرقات {percent} %",
+  "closeDiscounts": "الخصومات",
+  "closeCardTip": "إكرامية البطاقة",
+  "closeCardAccount": "إلى حساب البطاقة",
+  "bonsSubtotal": "المجموع الفرعي",
+  "bonsTipIncluded": "منها إكرامية"
 }

@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 452 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 457 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -280,6 +280,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | 请退还现金 {amount}。 | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | 请在 SumUp 中退款 {amount}。 | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | 请在 SumUp 中退款 {amount}，其中小费 {tip}。 | Bons: `bonsVoidCardBackTip` |
+| Zwischensumme | 小计 | Bons: `bonsSubtotal` |
+| davon Trinkgeld | 其中小费 | Bons: `bonsTipIncluded` |
 
 ## Artikel
 
@@ -443,6 +445,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr danach | 下一年 | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | 未设置打印机。 | Abschluss: `closeNoPrinter` |
 | Trinkgeld | 小费 | Abschluss: `closeReasonTip` |
+| Rabatte | 折扣 | Abschluss: `closeDiscounts` |
+| Trinkgeld Karte | 刷卡小费 | Abschluss: `closeCardTip` |
+| Am Kartenkonto | 入卡账户 | Abschluss: `closeCardAccount` |
 
 ## Einstellungen
 

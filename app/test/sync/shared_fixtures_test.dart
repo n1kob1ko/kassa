@@ -516,7 +516,7 @@ void main() {
 
   test(
     'Gemischt: die Beispieldatei mixed.json (bar, Karte, bar + Karte mit '
-    'Trinkgeld) stimmt mit der Rechnung der App',
+    'Trinkgeld, bar mit Rabatt) stimmt mit der Rechnung der App',
     () async {
       final now = DateTime(2026, 7, 1, 12);
 
@@ -538,7 +538,16 @@ void main() {
         tipCents: 80,
       );
       ids.add(_id('ffffffff', 3));
-      expect(await shop.count('receipts'), 3);
+      // 15,36 € bar: 10 % Stammgast auf der Huhn Bowl (1,19 €) und 10 % Aktion
+      // auf dem Bon (1,65 €), zusammen 2,84 € Rabatt.
+      ids.add(
+        await sellCash(
+          _id('ffffffff', 4),
+          DateTime(2026, 6, 30, 19),
+          discounted,
+        ),
+      );
+      expect(await shop.count('receipts'), 4);
 
       shop.clock.value = now;
       final month = YearMonth(2026, 6);
@@ -599,6 +608,14 @@ void main() {
             'cashRevenueCents': r.cashRevenueCents,
             'cardRevenueCents': r.cardRevenueCents,
             'depositCents': r.depositCents,
+            'discountCount': r.discountCount,
+            'discountCents': r.discountCents,
+            'cardTipCents': r.cardTipCents,
+            'cardAccountCents': r.cardAccountCents,
+            'tipsByStaff': [
+              for (final x in r.tipsByStaff)
+                {'staffName': x.staffName, 'cents': x.cents},
+            ],
             'taxLines': [
               for (final t in r.taxLines)
                 {

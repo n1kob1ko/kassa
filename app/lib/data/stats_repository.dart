@@ -14,6 +14,11 @@ const _depositName = 'Pfand';
 /// Die Arten von Bons, die in Umsatz und Anzahl zählen.
 final _counted = [ReceiptKind.sale.name, ReceiptKind.voided.name];
 
+/// Wert einer Zeile nach Rabatt, ohne Pfand: Preis mal Menge minus ihr
+/// Rabatt (wie am Server). Beim Storno ist beides negativ.
+int _valueOf(ReceiptLineRow l) =>
+    l.unitPriceCents * l.quantity - l.discountCents;
+
 class StatsRepository {
   StatsRepository(this._db, this._clock);
 
@@ -176,7 +181,7 @@ class StatsRepository {
     for (final l in sorted) {
       names[l.itemId] = l.name;
       quantity[l.itemId] = (quantity[l.itemId] ?? 0) + l.quantity;
-      cents[l.itemId] = (cents[l.itemId] ?? 0) + l.unitPriceCents * l.quantity;
+      cents[l.itemId] = (cents[l.itemId] ?? 0) + _valueOf(l);
     }
     final stats = [
       for (final id in names.keys)
@@ -209,7 +214,7 @@ class StatsRepository {
     final sums = <String, int>{};
     for (final l in lines) {
       final name = categoryNames[itemCategory[l.itemId]] ?? _otherCategory;
-      sums[name] = (sums[name] ?? 0) + l.unitPriceCents * l.quantity;
+      sums[name] = (sums[name] ?? 0) + _valueOf(l);
     }
     final stats = [
       for (final e in sums.entries)

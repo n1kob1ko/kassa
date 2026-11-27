@@ -451,5 +451,10 @@
   "openAmountAmount": "金额",
   "openAmountTax": "税率",
   "openAmountAdd": "加入小票",
-  "openAmountLine": "杂项 {percent} %"
+  "openAmountLine": "杂项 {percent} %",
+  "closeDiscounts": "折扣",
+  "closeCardTip": "刷卡小费",
+  "closeCardAccount": "入卡账户",
+  "bonsSubtotal": "小计",
+  "bonsTipIncluded": "其中小费"
 }

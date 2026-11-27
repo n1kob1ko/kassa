@@ -63,6 +63,35 @@ class CashMovement {
   final String staffName;
 }
 
+/// Karten-Trinkgeld einer Person in einem Tag oder Zeitraum. Die Person
+/// steht in der Zahlung ([staffId] ist ihre Id, [staffName] der Name der
+/// spätesten Zahlung). Storno zieht bei derselben Person ab, deshalb kann
+/// [cents] auch negativ sein.
+class StaffTip {
+  const StaffTip({
+    required this.staffId,
+    required this.staffName,
+    required this.cents,
+  });
+
+  final String staffId;
+  final String staffName;
+  final int cents;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StaffTip &&
+      other.staffId == staffId &&
+      other.staffName == staffName &&
+      other.cents == cents;
+
+  @override
+  int get hashCode => Object.hash(staffId, staffName, cents);
+
+  @override
+  String toString() => 'StaffTip($staffId, $staffName, $cents)';
+}
+
 class DaySummary {
   const DaySummary({
     required this.day,
@@ -83,6 +112,10 @@ class DaySummary {
     required this.movements,
     this.firstNumber,
     this.lastNumber,
+    this.discountCount = 0,
+    this.discountCents = 0,
+    this.cardTipCents = 0,
+    this.tipsByStaff = const [],
   });
 
   final BusinessDay day;
@@ -121,6 +154,20 @@ class DaySummary {
   /// `null` ohne Bon.
   final int? firstNumber;
   final int? lastNumber;
+
+  /// Bons mit Rabatt (Verkauf +1, Storno −1) und die Summe ihrer Rabatte,
+  /// positiv; ein Storno zieht ab.
+  final int discountCount;
+  final int discountCents;
+
+  /// Trinkgeld der Kartenzahlungen; ein Storno zieht ab.
+  final int cardTipCents;
+
+  /// Dasselbe je Person, nach Name; Personen mit 0 fehlen.
+  final List<StaffTip> tipsByStaff;
+
+  /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
+  int get cardAccountCents => cardRevenueCents + cardTipCents;
 }
 
 /// Ab dieser Uhrzeit (am Kalendertag nach dem Beginn des Tages) gilt der

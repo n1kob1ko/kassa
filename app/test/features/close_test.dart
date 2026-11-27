@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
+import 'package:kassa/core/money.dart';
 import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/domain/day.dart';
@@ -13,6 +14,7 @@ import '../support/bons_pump.dart';
 import '../support/close_pump.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
+import '../support/sales.dart' show cartCard, discounted;
 
 /// Zählt, wie oft der Tag abgeschlossen wird.
 class _CountingDays extends DayRepository {
@@ -545,6 +547,60 @@ void main() {
       expect(textOf(t, const Key('left-voided')), '18,20 €');
       expect(textOf(t, const Key('left-cash')), '36,40 €');
       expect(textOf(t, const Key('left-expected')), '186,40 €');
+    });
+
+    testWidgets('Karte Einnahmen zeigt Rabatte, Trinkgeld je Person und "Am '
+        'Kartenkonto"; ohne sie keine der Zeilen', (t) async {
+      await pumpCloseReady(t);
+      for (final k in [
+        'income-discounts',
+        'income-card-tip',
+        'income-card-account',
+      ]) {
+        expect(find.byKey(Key(k)), findsNothing);
+      }
+      expect(find.text('Rabatte'), findsNothing);
+      expect(find.text('Trinkgeld Karte'), findsNothing);
+      expect(find.text('Am Kartenkonto'), findsNothing);
+
+      final c = containerOf(t);
+      final receipts = c.read(receiptRepositoryProvider);
+      const anna = Staff(id: 'anna-id', name: 'Anna', role: StaffRole.staff);
+      final chef = c.read(sessionProvider)!;
+      await receipts.finalizeCashSale(
+        saleId: 'r1',
+        cart: discounted,
+        givenCents: 2000,
+        staff: anna,
+      ); // Rabatt 2,84
+      await receipts.finalizeCardSale(
+        saleId: 't1',
+        cart: cartCard,
+        staff: anna,
+        provider: 'sumup',
+        tipCents: 35,
+      );
+      await receipts.finalizeCardSale(
+        saleId: 't2',
+        cart: cartCard,
+        staff: chef,
+        provider: 'sumup',
+        tipCents: 100,
+      );
+      await _tap(t, 'tab-Bons');
+      await _tap(t, 'tab-Abschluss');
+
+      expect(find.text('Rabatte'), findsOneWidget);
+      expect(textOf(t, const Key('income-discounts')), formatEuro(-284));
+      expect(find.text('Trinkgeld Karte'), findsOneWidget);
+      expect(textOf(t, const Key('income-card-tip')), formatEuro(135));
+      expect(textOf(t, const Key('income-tip-anna-id')), formatEuro(35));
+      expect(textOf(t, Key('income-tip-${chef.id}')), formatEuro(100));
+      expect(find.text('Anna'), findsOneWidget);
+      expect(find.text('Am Kartenkonto'), findsOneWidget);
+      expect(textOf(t, const Key('income-card-account')), formatEuro(2065));
+      expect(textOf(t, const Key('income-card')), formatEuro(1930));
+      expect(t.takeException(), isNull);
     });
 
     testWidgets('ohne Geldlade heißt die Karte "Bargeld"', (t) async {

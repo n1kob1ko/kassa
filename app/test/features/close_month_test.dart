@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/core/clock.dart';
+import 'package:kassa/core/money.dart';
 import 'package:kassa/data/period_report_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/devices/printer.dart';
 import 'package:kassa/domain/period_report.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/features/close/month_view.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/ui/pressable.dart';
 import 'package:kassa/ui/primary_button.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,6 +20,7 @@ import '../support/kassa_pump.dart';
 import '../support/month_pump.dart';
 import '../support/overview_pump.dart';
 import '../support/pump.dart';
+import '../support/sales.dart' show cartCard, discounted;
 
 const _print = Key('print-period');
 const _result = Key('period-print-result');
@@ -540,5 +544,51 @@ void main() {
     expect(find.text('Erstellt am 1.10. um 09:00, Bon Nr. 900'), findsOne);
     await tapKey(t, 'print-signature-receipt');
     expect(printerOf(t).printed, ['beleg-sep']);
+  });
+
+  testWidgets('Monat: Karte Einnahmen mit Rabatten, Trinkgeld je Person und '
+      '"Am Kartenkonto"', (t) async {
+    await pumpMonth(
+      t,
+      openMonth: false,
+      sales: [
+        ...defaultMonthSales(),
+        OverviewSale(DateTime(2026, 10, 3, 12), cart: discounted),
+      ],
+    );
+    final c = containerOf(t);
+    final clock = c.read(clockProvider) as FixedClock;
+    clock.value = DateTime(2026, 10, 3, 13);
+    final chef = c.read(sessionProvider)!;
+    await c
+        .read(receiptRepositoryProvider)
+        .finalizeCardSale(
+          saleId: 'tip-1',
+          cart: cartCard,
+          staff: chef,
+          provider: 'sumup',
+          tipCents: 80,
+        );
+    clock.value = DateTime(2026, 11, 17, 11);
+    await tapKey(t, 'segment-Monat');
+
+    expect(_title(t), 'Monatsabrechnung Oktober 2026');
+    expect(find.text('Rabatte'), findsOneWidget);
+    expect(textOf(t, const Key('income-discounts')), formatEuro(-284));
+    expect(textOf(t, const Key('income-card-tip')), formatEuro(80));
+    expect(textOf(t, Key('income-tip-${chef.id}')), formatEuro(80));
+    expect(textOf(t, const Key('income-card-account')), formatEuro(965 + 80));
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Monat ohne Rabatt und Trinkgeld: keine der Zeilen', (t) async {
+    await pumpMonth(t);
+    for (final k in [
+      'income-discounts',
+      'income-card-tip',
+      'income-card-account',
+    ]) {
+      expect(find.byKey(Key(k)), findsNothing);
+    }
   });
 }

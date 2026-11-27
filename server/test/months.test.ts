@@ -86,7 +86,7 @@ describe('Monate', () => {
     }
   });
 
-  test('gemeinsames Beispiel mixed.json: bar, Karte und bar + Karte mit Trinkgeld wie die App', async () => {
+  test('gemeinsames Beispiel mixed.json: bar, Karte, bar + Karte mit Trinkgeld und bar mit Rabatt wie die App', async () => {
     type Mixed = {
       now: string;
       timeZone: string;
@@ -103,14 +103,20 @@ describe('Monate', () => {
     expect((await list(s, chef.cookie)).json()).toEqual({ testMode: true, nextAvailable: '2026-08-01', months: fx.expected.months });
     const r = await summary(s, '2026-06', '2026-06', chef.cookie);
     expect(r.statusCode).toBe(200);
-    const { discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff, ...rest } = r.json();
-    // Von Hand: 0,80 € Trinkgeld für Anna auf dem gemischten Bon; am Kartenkonto 9,65 + 8,20 + 0,80.
-    expect({ discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff }).toEqual({
-      discountCount: 0, discountCents: 0, cardTipCents: 80, cardAccountCents: 1865, tipsByStaff: [{ staffName: 'Anna', cents: 80 }],
+    expect(r.json()).toEqual(fx.expected.summary);
+    // Von Hand: ein Bon mit Rabatt (1,19 € auf der Huhn Bowl, 1,65 € auf den Bon); 0,80 € Trinkgeld für Anna auf dem
+    // gemischten Bon; am Kartenkonto 9,65 + 8,20 + 0,80. Der gemischte Bon zählt bei bar und bei Karte, im Gesamt einmal.
+    expect(r.json()).toMatchObject({
+      receiptCount: 4,
+      cashReceiptCount: 3,
+      cardReceiptCount: 2,
+      revenueCents: 1930 + 1820 + 1536,
+      discountCount: 1,
+      discountCents: 119 + 165,
+      cardTipCents: 80,
+      cardAccountCents: 965 + 820 + 80,
+      tipsByStaff: [{ staffName: 'Anna', cents: 80 }],
     });
-    expect(rest).toEqual(fx.expected.summary);
-    // Der gemischte Bon zählt bei bar und bei Karte, im Gesamt einmal.
-    expect(rest).toMatchObject({ receiptCount: 3, cashReceiptCount: 2, cardReceiptCount: 2 });
   });
 
   test('Mitternacht in der Zeitzone des Betriebs: 31.10. 23:30 Wien zählt zum Oktober, 1.11. 00:30 zum November', async () => {

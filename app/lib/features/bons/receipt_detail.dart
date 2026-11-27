@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../data/receipt_repository.dart' show NotInCurrentChainException;
 import '../../data/settings_repository.dart';
 import '../../devices/printer.dart';
+import '../../domain/discount.dart';
 import '../../domain/receipt.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
@@ -18,6 +19,7 @@ import '../../ui/qr_view.dart';
 import '../../ui/theme.dart';
 import '../../ui/tokens.dart';
 import '../../ui/undo_toast.dart';
+import '../kassa/cart_line_row.dart' show discountReasonText;
 import '../kassa/kitchen_service.dart';
 import '../kassa/late_kitchen.dart';
 import '../kassa/sale_done.dart' show KitchenStateBox;
@@ -461,6 +463,15 @@ class _Body extends StatelessWidget {
       padding: EdgeInsets.zero,
       children: [
         for (final l in r.lines) _LineRow(l),
+        // Der Rabatt auf den ganzen Bon, über der Zwischensumme der Zeilen.
+        if (r.discount case final d? when d.amountCents != 0) ...[
+          _AmountRow(l.bonsSubtotal, formatEuro(r.subtotalCents)),
+          _AmountRow(
+            _discountText(l, d),
+            formatEuro(-d.amountCents),
+            amountKey: const Key('detail-discount'),
+          ),
+        ],
         if (r.depositCents != 0)
           _AmountRow(l.bonsDeposit, formatEuro(r.depositCents), strong: true),
         Padding(
@@ -477,24 +488,39 @@ class _Body extends StatelessWidget {
               // Sonderbelege haben keine Zahlung.
               if (paymentKind != null) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
-                if (payments.length == 1)
+                if (payments.length == 1) ...[
                   _SmallRow(
                     key: const Key('detail-payment-0'),
                     l.bonsPayment,
                     receiptPaymentLabel(l, r),
                     small,
-                  )
-                else ...[
+                  ),
+                  if (payments.single.tipCents != 0)
+                    _SmallRow(
+                      key: const Key('detail-tip'),
+                      l.bonsTipIncluded,
+                      formatEuro(payments.single.tipCents),
+                      small,
+                    ),
+                ] else ...[
                   // Mehrere Zahlungen: die Zahlungsart, dann jede Zahlung in
                   // ihrer Reihenfolge mit ihrem Teil (ohne Trinkgeld).
                   _SmallRow(l.bonsPayment, receiptPaymentLabel(l, r), small),
-                  for (final (i, p) in payments.indexed)
+                  for (final (i, p) in payments.indexed) ...[
                     _SmallRow(
                       key: Key('detail-payment-$i'),
                       p.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
                       formatEuro(p.amountCents),
                       small,
                     ),
+                    if (p.tipCents != 0)
+                      _SmallRow(
+                        key: const Key('detail-tip'),
+                        l.bonsTipIncluded,
+                        formatEuro(p.tipCents),
+                        small,
+                      ),
+                  ],
                 ],
                 if (cashPayment != null) ...[
                   _SmallRow(
@@ -627,12 +653,46 @@ class _LineRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
+    final small = text.bodySmall!.copyWith(
+      fontSize: 13.5,
+      fontWeight: FontWeight.w400,
+      color: c.ink2,
+    );
     // Die Namen des gespeicherten Bons, wie er gedruckt wurde.
     final sub = [
       for (final o in line.options) nameIsolateIn(context, o.optionName),
       if (line.info != null && line.info!.isNotEmpty)
         nameIsolateIn(context, line.info!),
     ].join(L10n.of(context).uiListSeparator);
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 34),
+          child: Text(
+            '${signedCount(line.quantity)} ×',
+            style: text.bodyMedium!.copyWith(color: c.ink2),
+          ),
+        ),
+        const SizedBox(width: KassaTokens.spaceMd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(nameIsolateIn(context, line.name), style: text.bodyLarge),
+              if (sub.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: KassaTokens.spaceXxs),
+                  child: Text(sub, style: small),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: KassaTokens.spaceMd),
+        Ltr(child: Text(formatEuro(line.goodsCents), style: text.bodyLarge)),
+      ],
+    );
+    final discount = line.discount;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -640,51 +700,66 @@ class _LineRow extends StatelessWidget {
           bottom: BorderSide(color: c.line, width: KassaTokens.borderThin),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 34),
-            child: Text(
-              '${signedCount(line.quantity)} ×',
-              style: text.bodyMedium!.copyWith(color: c.ink2),
-            ),
-          ),
-          const SizedBox(width: KassaTokens.spaceMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: discount == null || discount.amountCents == 0
+          ? row
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(nameIsolateIn(context, line.name), style: text.bodyLarge),
-                if (sub.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: KassaTokens.spaceXxs),
-                    child: Text(
-                      sub,
-                      style: text.bodySmall!.copyWith(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w400,
-                        color: c.ink2,
-                      ),
-                    ),
+                row,
+                // Der eigene Rabatt der Zeile, unter ihr.
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    start: 34 + KassaTokens.spaceMd,
+                    top: KassaTokens.spaceXxs,
                   ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _discountText(L10n.of(context), discount),
+                          style: small,
+                        ),
+                      ),
+                      const SizedBox(width: KassaTokens.spaceMd),
+                      Ltr(
+                        child: Text(
+                          formatEuro(-discount.amountCents),
+                          key: Key('detail-line-discount-${line.position}'),
+                          style: small,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: KassaTokens.spaceMd),
-          Ltr(child: Text(formatEuro(line.goodsCents), style: text.bodyLarge)),
-        ],
-      ),
     );
   }
 }
 
+/// "−10 % Stammgast" oder "Rabatt Stammgast" in der Bediensprache; ein
+/// unbekannter Grund steht da, wie er gespeichert ist.
+String _discountText(L10n l, ReceiptDiscount d) {
+  final known = DiscountReason.values.where((r) => r.name == d.reason);
+  final reason = known.isEmpty ? d.reason : discountReasonText(l, known.first);
+  final percent = d.percent;
+  return percent != null
+      ? l.discountRowPercent(percent, reason)
+      : l.discountRowAmount(reason);
+}
+
 class _AmountRow extends StatelessWidget {
-  const _AmountRow(this.label, this.amount, {this.strong = false});
+  const _AmountRow(
+    this.label,
+    this.amount, {
+    this.strong = false,
+    this.amountKey,
+  });
 
   final String label;
   final String amount;
   final bool strong;
+  final Key? amountKey;
 
   @override
   Widget build(BuildContext context) {
@@ -701,7 +776,9 @@ class _AmountRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: text.bodyMedium!.copyWith(color: c.ink2)),
-          Ltr(child: Text(amount, style: text.bodyLarge)),
+          Ltr(
+            child: Text(amount, key: amountKey, style: text.bodyLarge),
+          ),
         ],
       ),
     );

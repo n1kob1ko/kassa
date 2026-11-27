@@ -1595,4 +1595,19 @@ class L10nDe extends L10n {
   String openAmountLine(int percent) {
     return 'Diverses $percent %';
   }
+
+  @override
+  String get closeDiscounts => 'Rabatte';
+
+  @override
+  String get closeCardTip => 'Trinkgeld Karte';
+
+  @override
+  String get closeCardAccount => 'Am Kartenkonto';
+
+  @override
+  String get bonsSubtotal => 'Zwischensumme';
+
+  @override
+  String get bonsTipIncluded => 'davon Trinkgeld';
 }

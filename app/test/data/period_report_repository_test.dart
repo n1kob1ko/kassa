@@ -286,6 +286,73 @@ void main() {
     await stamp('a', mode: 'probe');
     expect(await shop.periods.hasSignature(), isTrue);
   });
+
+  test('Monat: Rabatte und Trinkgeld je Person; ein Storno im Folgemonat steht '
+      'dort als Minus bei der Person, die kassiert hat', () async {
+    shop.clock.value = DateTime(2026, 10, 5, 10);
+    await shop.receipts.finalizeCashSale(
+      saleId: 'r1',
+      cart: discounted,
+      givenCents: 2000,
+      staff: shop.anna,
+    ); // Rabatt 2,84
+    await shop.sellCard('t1', tipCents: 35); // Anna
+    shop.clock.value = DateTime(2026, 10, 6, 10);
+    await shop.receipts.finalizeCardSale(
+      saleId: 't2',
+      cart: cartCard,
+      staff: shop.chef,
+      provider: 'sumup',
+      tipCents: 100,
+    );
+    shop.clock.value = DateTime(2026, 11, 2, 9);
+    await shop.receipts.voidReceipt('t1', staff: shop.chef);
+    await shop.receipts.voidReceipt('r1', staff: shop.chef);
+    shop.clock.value = DateTime(2026, 12, 5, 11);
+
+    final o = await shop.periods.report(const MonthRange(okt, okt));
+    expect(
+      (
+        o.discountCount,
+        o.discountCents,
+        o.cardTipCents,
+        o.cardRevenueCents,
+        o.cardAccountCents,
+      ),
+      (1, 284, 135, 1930, 2065),
+    );
+    expect(
+      [for (final x in o.tipsByStaff) (x.staffName, x.cents)],
+      [('Anna', 35), ('Chef', 100)],
+    );
+
+    final n = await shop.periods.report(const MonthRange(nov, nov));
+    expect(
+      (
+        n.discountCount,
+        n.discountCents,
+        n.cardTipCents,
+        n.cardRevenueCents,
+        n.cardAccountCents,
+      ),
+      (-1, -284, -35, -965, -1000),
+    );
+    // Der Chef hat storniert, das Trinkgeld gehört Anna.
+    expect(
+      [for (final x in n.tipsByStaff) (x.staffId, x.staffName, x.cents)],
+      [(shop.anna.id, 'Anna', -35)],
+    );
+
+    final both = await shop.periods.report(const MonthRange(okt, nov));
+    expect(
+      (both.discountCount, both.discountCents, both.cardTipCents),
+      (0, 0, 100),
+    );
+    expect(
+      [for (final x in both.tipsByStaff) (x.staffName, x.cents)],
+      [('Chef', 100)],
+    );
+  });
 }
 
 typedef TaxLineValues = ({int gross, int tax, int net});

@@ -39,6 +39,8 @@ void _income(
   required int revenueCents,
   required int voidCount,
   required int voidedCents,
+  required int discountCount,
+  required int discountCents,
 }) {
   b.text('EINNAHMEN', bold: true);
   b.row3('Bar', bonsText(cashCount), amount(cashCents));
@@ -47,6 +49,27 @@ void _income(
   if (voidCount != 0) {
     b.row3('Storniert', bonsText(voidCount), amount(voidedCents));
   }
+  if (discountCount != 0 || discountCents != 0) {
+    b.row3('Rabatte', bonsText(discountCount), amount(-discountCents));
+  }
+}
+
+/// Karten-Trinkgeld je Person, ihre Summe und was am Kartenkonto ankommt;
+/// nur, wenn es Trinkgeld gibt. Endet mit einer Linie.
+void _cardTips(
+  PrintBuilder b, {
+  required List<StaffTip> tips,
+  required int cardTipCents,
+  required int cardAccountCents,
+}) {
+  if (tips.isEmpty) return;
+  b.text('TRINKGELD KARTE', bold: true);
+  for (final t in tips) {
+    b.row(t.staffName, amount(t.cents));
+  }
+  b.row('Gesamt', amount(cardTipCents));
+  b.row('Am Kartenkonto', amount(cardAccountCents));
+  b.rule();
 }
 
 void _tax(PrintBuilder b, List<TaxLine> lines, int depositCents) {
@@ -112,8 +135,16 @@ List<PrintOp> layoutDayReport(
     revenueCents: s.revenueCents,
     voidCount: s.voidCount,
     voidedCents: s.voidedCents,
+    discountCount: s.discountCount,
+    discountCents: s.discountCents,
   );
   b.rule();
+  _cardTips(
+    b,
+    tips: s.tipsByStaff,
+    cardTipCents: s.cardTipCents,
+    cardAccountCents: s.cardAccountCents,
+  );
   _tax(b, s.taxLines, s.depositCents);
   b.rule();
   b.text(drawer ? 'GELDLADE' : 'BARGELD', bold: true);
@@ -184,8 +215,16 @@ List<PrintOp> layoutPeriodReport(
     revenueCents: r.revenueCents,
     voidCount: r.voidCount,
     voidedCents: r.voidedCents,
+    discountCount: r.discountCount,
+    discountCents: r.discountCents,
   );
   b.rule();
+  _cardTips(
+    b,
+    tips: r.tipsByStaff,
+    cardTipCents: r.cardTipCents,
+    cardAccountCents: r.cardAccountCents,
+  );
   _tax(b, r.taxLines, r.depositCents);
   b.rule();
   if (!r.range.single) {

@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 452 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 457 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -280,6 +280,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | {amount} bar zurückgeben. | {amount} nakit iade edin. | Bons: `bonsVoidMixedCash` |
 | {amount} bei SumUp zurückbuchen. | {amount} tutarını SumUp'ta iade edin. | Bons: `bonsVoidCardBack` |
 | {amount} bei SumUp zurückbuchen, davon {tip} Trinkgeld. | {amount} tutarını SumUp'ta iade edin, bunun {tip} kadarı bahşiş. | Bons: `bonsVoidCardBackTip` |
+| Zwischensumme | Ara toplam | Bons: `bonsSubtotal` |
+| davon Trinkgeld | bunun bahşişi | Bons: `bonsTipIncluded` |
 
 ## Artikel
 
@@ -443,6 +445,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Jahr danach | Sonraki yıl | Abschluss: `closeYearAfter` |
 | Kein Drucker eingerichtet. | Yazıcı kurulmadı. | Abschluss: `closeNoPrinter` |
 | Trinkgeld | Bahşiş | Abschluss: `closeReasonTip` |
+| Rabatte | İndirimler | Abschluss: `closeDiscounts` |
+| Trinkgeld Karte | Kart bahşişi | Abschluss: `closeCardTip` |
+| Am Kartenkonto | Kart hesabına | Abschluss: `closeCardAccount` |
 
 ## Einstellungen
 

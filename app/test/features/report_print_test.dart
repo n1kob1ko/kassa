@@ -55,6 +55,25 @@ class _Throwing extends FakePrinter {
   }) async => throw StateError('x');
 }
 
+/// Hält die Zusammenfassung fest, die der Drucker bekommt.
+class _DaySpy extends FakePrinter {
+  final days = <DaySummary>[];
+
+  @override
+  Future<PrintOutcome> printDayReport(
+    DaySummary summary, {
+    required String? registerName,
+    required bool drawer,
+  }) {
+    days.add(summary);
+    return super.printDayReport(
+      summary,
+      registerName: registerName,
+      drawer: drawer,
+    );
+  }
+}
+
 void main() {
   late TestShop shop;
   late ProviderContainer container;
@@ -165,5 +184,29 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
     }
     expect(seen.last, isTrue);
+  });
+
+  test('Rabatte und Trinkgeld kommen unverändert beim Drucker an', () async {
+    final printer = _DaySpy();
+    await open(printer);
+    await configure();
+    const tips = [StaffTip(staffId: 'a', staffName: 'Anna', cents: 320)];
+    final day = sampleDay(
+      discountCount: 2,
+      discountCents: 450,
+      cardTipCents: 320,
+      tipsByStaff: tips,
+    );
+    expect(
+      (await container.read(reportPrintProvider).printDay(day)).ok,
+      isTrue,
+    );
+    final got = printer.days.single;
+    expect(
+      (got.discountCount, got.discountCents, got.cardTipCents),
+      (2, 450, 320),
+    );
+    expect(got.tipsByStaff, tips);
+    expect(got.cardAccountCents, 1000 + 320);
   });
 }

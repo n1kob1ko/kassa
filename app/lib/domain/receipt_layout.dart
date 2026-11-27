@@ -68,11 +68,22 @@ List<PrintOp> layoutReceipt(
     for (final o in line.options) {
       b.indented(_optionText(o));
     }
+    // Der eigene Rabatt der Zeile, nach ihren Optionen; einer über 0,00 €
+    // steht nicht da.
+    final discount = line.discount;
+    if (discount != null && discount.amountCents != 0) {
+      b.row('  ${discount.label}', amount(-discount.amountCents));
+    }
   }
 
-  // 6. Pfand und Summe. Ein Sonderbeleg hat keine Zeilen: die Linie unter
-  // dem Bon-Kopf genügt.
+  // 6. Bon-Rabatt, Pfand und Summe. Ein Sonderbeleg hat keine Zeilen: die
+  // Linie unter dem Bon-Kopf genügt.
   if (!r.kind.isSpecial) b.rule();
+  final discount = r.discount;
+  if (discount != null && discount.amountCents != 0) {
+    b.row('Zwischensumme', amount(r.subtotalCents));
+    b.row(discount.label, amount(-discount.amountCents));
+  }
   if (r.depositCents != 0) b.row('Pfand', amount(r.depositCents));
   b.row(
     'SUMME EUR',
@@ -98,7 +109,11 @@ List<PrintOp> layoutReceipt(
           b.row('Rückgeld', amount(p.changeCents));
         }
       case PaymentKind.card:
-        b.row('Karte', amount(p.amountCents));
+        // Was die Karte gebucht hat, mit dem Trinkgeld.
+        b.row('Karte', amount(p.chargedCents));
+        if (p.tipCents != 0) {
+          b.row('  davon Trinkgeld', amount(p.tipCents));
+        }
         final scheme = p.cardScheme;
         final last4 = p.cardLast4;
         if (last4 != null && last4.isNotEmpty) {

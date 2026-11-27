@@ -3,7 +3,13 @@
 import 'package:kassa/domain/day.dart';
 import 'package:kassa/domain/period_report.dart';
 
-DaySummary sampleDay({String id = 'd1'}) => DaySummary(
+DaySummary sampleDay({
+  String id = 'd1',
+  int discountCount = 0,
+  int discountCents = 0,
+  int cardTipCents = 0,
+  List<StaffTip> tipsByStaff = const [],
+}) => DaySummary(
   day: BusinessDay(
     id: id,
     openedAt: DateTime(2026, 11, 17, 9),
@@ -32,6 +38,10 @@ DaySummary sampleDay({String id = 'd1'}) => DaySummary(
   movements: const [],
   firstNumber: 1,
   lastNumber: 3,
+  discountCount: discountCount,
+  discountCents: discountCents,
+  cardTipCents: cardTipCents,
+  tipsByStaff: tipsByStaff,
 );
 
 PeriodReport samplePeriod() => PeriodReport(

@@ -2333,5 +2333,25 @@
         "type": "int"
       }
     }
+  },
+  "closeDiscounts": "Rabatte",
+  "@closeDiscounts": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): Bons mit Rabatt und die Summe der Rabatte."
+  },
+  "closeCardTip": "Trinkgeld Karte",
+  "@closeCardTip": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): Trinkgeld der Kartenzahlungen, darunter eine Zeile je Person."
+  },
+  "closeCardAccount": "Am Kartenkonto",
+  "@closeCardAccount": {
+    "description": "Zeile in der Karte Einnahmen (Abschluss und Monat): was am Kartenkonto ankommt, Kartenumsatz plus Trinkgeld."
+  },
+  "bonsSubtotal": "Zwischensumme",
+  "@bonsSubtotal": {
+    "description": "Zeile im Bon-Detail über dem Rabatt auf den ganzen Bon: Summe der Zeilen nach ihren Rabatten."
+  },
+  "bonsTipIncluded": "davon Trinkgeld",
+  "@bonsTipIncluded": {
+    "description": "Zeile im Bon-Detail unter der Kartenzahlung: das Trinkgeld, das die Karte mitgebucht hat."
   }
 }

@@ -9,6 +9,7 @@ import '../domain/period_report.dart';
 import '../domain/pricing.dart';
 import '../domain/receipt.dart';
 import 'database.dart';
+import 'receipt_tally.dart';
 
 class PeriodReportRepository {
   PeriodReportRepository(this._db, this._clock);
@@ -57,17 +58,7 @@ class PeriodReportRepository {
     }
     final live = await _hasLive();
 
-    var count = 0;
-    var cashCount = 0;
-    var cardCount = 0;
-    var voidCount = 0;
-    var voided = 0;
-    var revenue = 0;
-    var cash = 0;
-    var card = 0;
-    var deposit = 0;
-    int? firstNumber;
-    int? lastNumber;
+    final tally = ReceiptTally();
     final taxByRate = <TaxRate, (int, int, int)>{};
     final monthRows = <PeriodRow>[];
     final dayRows = <PeriodRow>[];
@@ -78,36 +69,11 @@ class PeriodReportRepository {
       var monthCount = 0;
       var monthRevenue = 0;
       for (final r in rows) {
-        final isVoid = r.receipt.kind == ReceiptKind.voided.name;
-        final step = isVoid ? -1 : 1;
+        tally.add(r.receipt, r.payments);
+        final step = r.receipt.kind == ReceiptKind.voided.name ? -1 : 1;
         final total = r.receipt.totalCents;
-        final n = r.receipt.number;
-        if (firstNumber == null || n < firstNumber) firstNumber = n;
-        if (lastNumber == null || n > lastNumber) lastNumber = n;
-        count += step;
         monthCount += step;
         monthRevenue += total;
-        if (isVoid) {
-          voidCount++;
-          voided -= total;
-        }
-        revenue += total;
-        deposit += r.receipt.depositCents;
-        // Bar und Karte aus den Zahlungen, ohne Trinkgeld. Ein gemischter
-        // Bon zählt bei beiden Arten.
-        var hasCash = false;
-        var hasCard = false;
-        for (final p in r.payments) {
-          if (p.kind == PaymentKind.cash.name) {
-            cash += p.amountCents;
-            hasCash = true;
-          } else if (p.kind == PaymentKind.card.name) {
-            card += p.amountCents;
-            hasCard = true;
-          }
-        }
-        if (hasCash) cashCount += step;
-        if (hasCard) cardCount += step;
         final t = r.receipt.createdAt;
         final day = DateTime(t.year, t.month, t.day);
         final old = perDay[day] ?? (0, 0);
@@ -148,15 +114,15 @@ class PeriodReportRepository {
     return PeriodReport(
       range: range,
       testMode: !live,
-      receiptCount: count,
-      cashReceiptCount: cashCount,
-      cardReceiptCount: cardCount,
-      voidCount: voidCount,
-      voidedCents: voided,
-      revenueCents: revenue,
-      cashRevenueCents: cash,
-      cardRevenueCents: card,
-      depositCents: deposit,
+      receiptCount: tally.count,
+      cashReceiptCount: tally.cashCount,
+      cardReceiptCount: tally.cardCount,
+      voidCount: tally.voidCount,
+      voidedCents: tally.voidedCents,
+      revenueCents: tally.revenueCents,
+      cashRevenueCents: tally.cashCents,
+      cardRevenueCents: tally.cardCents,
+      depositCents: tally.depositCents,
       taxLines: [
         for (final r in rates)
           TaxLine(
@@ -166,9 +132,13 @@ class PeriodReportRepository {
             taxCents: taxByRate[r]!.$3,
           ),
       ],
-      firstNumber: firstNumber,
-      lastNumber: lastNumber,
+      firstNumber: tally.firstNumber,
+      lastNumber: tally.lastNumber,
       rows: range.single ? dayRows : monthRows,
+      discountCount: tally.discountCount,
+      discountCents: tally.discountCents,
+      cardTipCents: tally.cardTipCents,
+      tipsByStaff: tally.tipsByStaff,
     );
   }
 

@@ -10,6 +10,7 @@ import '../domain/pricing.dart';
 import '../domain/receipt.dart';
 import '../domain/staff.dart';
 import 'database.dart';
+import 'receipt_tally.dart';
 
 class NoOpenDayException implements Exception {
   const NoOpenDayException();
@@ -215,44 +216,9 @@ class DayRepository {
       ),
     ])..where(_db.receiptRows.businessDayId.equals(day.id))).get();
 
-    var count = 0;
-    var cashCount = 0;
-    var cardCount = 0;
-    var voidCount = 0;
-    var voided = 0;
-    var revenue = 0;
-    var cash = 0;
-    var card = 0;
-    var deposit = 0;
-    int? firstNumber;
-    int? lastNumber;
+    final tally = ReceiptTally();
     for (final r in receipts) {
-      if (firstNumber == null || r.number < firstNumber) firstNumber = r.number;
-      if (lastNumber == null || r.number > lastNumber) lastNumber = r.number;
-      final isVoid = r.kind == ReceiptKind.voided.name;
-      final step = isVoid ? -1 : 1;
-      count += step;
-      if (isVoid) {
-        voidCount++;
-        voided -= r.totalCents;
-      }
-      revenue += r.totalCents;
-      deposit += r.depositCents;
-      // Bar und Karte aus den Zahlungen, ohne Trinkgeld. Ein gemischter Bon
-      // zählt bei beiden Arten.
-      var hasCash = false;
-      var hasCard = false;
-      for (final p in payments[r.id] ?? const <PaymentRow>[]) {
-        if (p.kind == PaymentKind.cash.name) {
-          cash += p.amountCents;
-          hasCash = true;
-        } else if (p.kind == PaymentKind.card.name) {
-          card += p.amountCents;
-          hasCard = true;
-        }
-      }
-      if (hasCash) cashCount += step;
-      if (hasCard) cardCount += step;
+      tally.add(r, payments[r.id] ?? const <PaymentRow>[]);
     }
     final gross = sumByRate([
       for (final j in lines)
@@ -295,23 +261,27 @@ class DayRepository {
     final float = day.openingFloatCents ?? 0;
     return DaySummary(
       day: day,
-      receiptCount: count,
-      cashReceiptCount: cashCount,
-      cardReceiptCount: cardCount,
-      voidCount: voidCount,
-      voidedCents: voided,
-      revenueCents: revenue,
-      cashRevenueCents: cash,
-      cardRevenueCents: card,
-      depositCents: deposit,
+      receiptCount: tally.count,
+      cashReceiptCount: tally.cashCount,
+      cardReceiptCount: tally.cardCount,
+      voidCount: tally.voidCount,
+      voidedCents: tally.voidedCents,
+      revenueCents: tally.revenueCents,
+      cashRevenueCents: tally.cashCents,
+      cardRevenueCents: tally.cardCents,
+      depositCents: tally.depositCents,
       taxLines: taxBreakdown(gross),
       openingFloatCents: float,
       cashInCents: cashIn,
       cashOutCents: cashOut,
-      expectedCashCents: float + cash + cashIn - cashOut,
+      expectedCashCents: float + tally.cashCents + cashIn - cashOut,
       movements: movements,
-      firstNumber: firstNumber,
-      lastNumber: lastNumber,
+      firstNumber: tally.firstNumber,
+      lastNumber: tally.lastNumber,
+      discountCount: tally.discountCount,
+      discountCents: tally.discountCents,
+      cardTipCents: tally.cardTipCents,
+      tipsByStaff: tally.tipsByStaff,
     );
   }
 

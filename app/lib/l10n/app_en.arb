@@ -451,5 +451,10 @@
   "openAmountAmount": "Amount",
   "openAmountTax": "Tax rate",
   "openAmountAdd": "Add to receipt",
-  "openAmountLine": "Misc. {percent} %"
+  "openAmountLine": "Misc. {percent} %",
+  "closeDiscounts": "Discounts",
+  "closeCardTip": "Card tips",
+  "closeCardAccount": "To card account",
+  "bonsSubtotal": "Subtotal",
+  "bonsTipIncluded": "of which tip"
 }

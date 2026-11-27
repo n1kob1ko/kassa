@@ -407,4 +407,64 @@ void main() {
     );
     expect(s.expectedCashCents, 10000 + 1820);
   });
+
+  test('Rabatte und Trinkgeld des Tages, Trinkgeld je Person; Storno durch den '
+      'Chef zieht bei Anna ab', () async {
+    await shop.receipts.finalizeCashSale(
+      saleId: 'r1',
+      cart: discounted,
+      givenCents: 2000,
+      staff: shop.anna,
+    ); // Rabatt 2,84
+    await shop.receipts.finalizeCardSale(
+      saleId: 't1',
+      cart: cartCard,
+      staff: shop.anna,
+      provider: 'sumup',
+      tipCents: 35,
+    );
+    await shop.receipts.finalizeCardSale(
+      saleId: 't2',
+      cart: cartCard,
+      staff: shop.chef,
+      provider: 'sumup',
+      tipCents: 100,
+    );
+    var s = (await shop.days.summary())!;
+    expect(
+      (
+        s.discountCount,
+        s.discountCents,
+        s.cardTipCents,
+        s.cardRevenueCents,
+        s.cardAccountCents,
+      ),
+      (1, 284, 135, 1930, 2065),
+    );
+    expect(
+      [for (final x in s.tipsByStaff) (x.staffName, x.cents)],
+      [('Anna', 35), ('Chef', 100)],
+    );
+    expect(s.tipsByStaff.first.staffId, shop.anna.id);
+    await shop.receipts.voidReceipt('t1', staff: shop.chef);
+    await shop.receipts.voidReceipt('r1', staff: shop.chef);
+    s = (await shop.days.summary())!;
+    expect((s.discountCount, s.discountCents, s.cardTipCents), (0, 0, 100));
+    expect(
+      [for (final x in s.tipsByStaff) (x.staffName, x.cents)],
+      [('Chef', 100)],
+    );
+  });
+
+  test(
+    'ohne Rabatt und Trinkgeld: alles 0, am Kartenkonto der Kartenumsatz',
+    () async {
+      await shop.sell('a');
+      await shop.sellCard('b');
+      final s = (await shop.days.summary())!;
+      expect((s.discountCount, s.discountCents, s.cardTipCents), (0, 0, 0));
+      expect(s.tipsByStaff, isEmpty);
+      expect(s.cardAccountCents, s.cardRevenueCents);
+    },
+  );
 }

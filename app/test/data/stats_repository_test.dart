@@ -269,4 +269,20 @@ void main() {
     );
     expect(o.buckets.map((b) => b.label), ['11']);
   });
+
+  test('meistverkauft und Kategorien nach Rabatt', () async {
+    await sellCart('r1', discounted);
+    final o = await shop.stats.overview(StatsRange.today);
+    expect(o.topItems.map((i) => (i.name, i.quantity, i.cents)), [
+      ('Cola 0,33 l', 2, 522),
+      ('Huhn Bowl', 1, 964),
+    ]);
+    final names = {for (final k in catalog.categories) k.id: k.name};
+    expect(o.byCategory.map((c) => (c.name, c.cents)), [
+      (names[huhnBowl.categoryId], 964),
+      (names[cola.categoryId], 522),
+      ('Pfand', 50),
+    ]);
+    expect(o.byCategory.fold<int>(0, (s, c) => s + c.cents), o.revenueCents);
+  });
 }

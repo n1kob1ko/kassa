@@ -2815,6 +2815,36 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Diverses {percent} %'**
   String openAmountLine(int percent);
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): Bons mit Rabatt und die Summe der Rabatte.
+  ///
+  /// In de, this message translates to:
+  /// **'Rabatte'**
+  String get closeDiscounts;
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): Trinkgeld der Kartenzahlungen, darunter eine Zeile je Person.
+  ///
+  /// In de, this message translates to:
+  /// **'Trinkgeld Karte'**
+  String get closeCardTip;
+
+  /// Zeile in der Karte Einnahmen (Abschluss und Monat): was am Kartenkonto ankommt, Kartenumsatz plus Trinkgeld.
+  ///
+  /// In de, this message translates to:
+  /// **'Am Kartenkonto'**
+  String get closeCardAccount;
+
+  /// Zeile im Bon-Detail über dem Rabatt auf den ganzen Bon: Summe der Zeilen nach ihren Rabatten.
+  ///
+  /// In de, this message translates to:
+  /// **'Zwischensumme'**
+  String get bonsSubtotal;
+
+  /// Zeile im Bon-Detail unter der Kartenzahlung: das Trinkgeld, das die Karte mitgebucht hat.
+  ///
+  /// In de, this message translates to:
+  /// **'davon Trinkgeld'**
+  String get bonsTipIncluded;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

@@ -11,6 +11,12 @@ List<String> texts(List<PrintOp> d) => [
     if (o is PrintText) o.text,
 ];
 
+/// Die gedruckten Zeilen, mit 48 Zeichen.
+List<String> lines(List<PrintOp> d) => texts(d);
+
+const business = yichi;
+final now = printedAt;
+
 const yichi = BusinessInfo(
   name: 'YICHI',
   addressLines: ['Musterstraße 1', '1010 Wien'],
@@ -27,6 +33,11 @@ DaySummary daySample({
   bool isClosed = true,
   int voidCount = 2,
   int deposit = 950,
+  int cardRevenueCents = 79650,
+  int discountCount = 0,
+  int discountCents = 0,
+  int cardTipCents = 0,
+  List<StaffTip> tipsByStaff = const [],
 }) => DaySummary(
   day: BusinessDay(
     id: 'd1',
@@ -46,7 +57,7 @@ DaySummary daySample({
   voidedCents: voidCount == 0 ? 0 : 2050,
   revenueCents: 128460,
   cashRevenueCents: 48810,
-  cardRevenueCents: 79650,
+  cardRevenueCents: cardRevenueCents,
   depositCents: deposit,
   taxLines: const [
     TaxLine(
@@ -86,6 +97,10 @@ DaySummary daySample({
   ],
   firstNumber: 13174,
   lastNumber: 13269,
+  discountCount: discountCount,
+  discountCents: discountCents,
+  cardTipCents: cardTipCents,
+  tipsByStaff: tipsByStaff,
 );
 
 const monthTax = [
@@ -108,6 +123,10 @@ PeriodReport monthSample({
   int voidCount = 9,
   int first = 11292,
   int last = 12399,
+  int discountCount = 0,
+  int discountCents = 0,
+  int cardTipCents = 0,
+  List<StaffTip> tipsByStaff = const [],
 }) => PeriodReport(
   range: MonthRange(YearMonth(2026, 10), YearMonth(2026, 10)),
   testMode: testMode,
@@ -126,6 +145,10 @@ PeriodReport monthSample({
   rows: [
     PeriodRow(start: DateTime(2026, 10, 1), receiptCount: 40, revenueCents: 1),
   ],
+  discountCount: discountCount,
+  discountCents: discountCents,
+  cardTipCents: cardTipCents,
+  tipsByStaff: tipsByStaff,
 );
 
 const _months = [
@@ -584,5 +607,154 @@ void main() {
     expect(i, greaterThan(0));
     expect(lines[i + 1], '       01.11.2025 bis 28.02.2026');
     expect(lines.where((t) => t.contains('Zeitra ')), isEmpty);
+  });
+
+  group('Rabatte und Trinkgeld', () {
+    const tips = [
+      StaffTip(staffId: 'a', staffName: 'Anna', cents: 640),
+      StaffTip(staffId: 'c', staffName: 'Chef', cents: -320),
+    ];
+
+    test('Tagesabschluss mit Rabatten und Trinkgeld', () {
+      final s = daySample(
+        cardRevenueCents: 12000,
+        discountCount: 3,
+        discountCents: 1240,
+        cardTipCents: 320,
+        tipsByStaff: tips,
+      );
+      final text = lines(
+        layoutDayReport(
+          s,
+          business,
+          registerName: null,
+          drawer: true,
+          printedAt: now,
+        ),
+      );
+      expect(
+        text,
+        containsAllInOrder([
+          contains('Rabatte'),
+          'TRINKGELD KARTE',
+          startsWith('Anna'),
+          startsWith('Chef'),
+          startsWith('Gesamt'),
+          startsWith('Am Kartenkonto'),
+        ]),
+      );
+      expect(
+        text.firstWhere((l) => l.startsWith('Rabatte')),
+        allOf(contains('3 Bons'), endsWith('-12,40')),
+      );
+      expect(
+        text.firstWhere((l) => l.startsWith('Am Kartenkonto')),
+        endsWith('123,20'),
+      );
+    });
+
+    test('42 Zeichen: die neuen Zeilen nach EINNAHMEN, vor STEUER', () {
+      final t = texts(
+        day(
+          daySample(
+            cardRevenueCents: 12000,
+            discountCount: 3,
+            discountCents: 1240,
+            cardTipCents: 320,
+            tipsByStaff: tips,
+          ),
+        ),
+      );
+      final i = t.indexOf('Storniert            2 Bons          20,50');
+      expect(t.sublist(i, i + 9), [
+        'Storniert            2 Bons          20,50',
+        'Rabatte              3 Bons         -12,40',
+        '------------------------------------------',
+        'TRINKGELD KARTE',
+        'Anna                                  6,40',
+        'Chef                                 -3,20',
+        'Gesamt                                3,20',
+        'Am Kartenkonto                      123,20',
+        '------------------------------------------',
+      ]);
+      expect(t[i + 9], 'STEUER');
+    });
+
+    test('ohne Rabatt und Trinkgeld: kein Wort davon im Ausdruck', () {
+      final text = lines(
+        layoutDayReport(
+          daySample(),
+          business,
+          registerName: null,
+          drawer: true,
+          printedAt: now,
+        ),
+      ).join('\n');
+      for (final word in ['Rabatte', 'TRINKGELD', 'Kartenkonto']) {
+        expect(text, isNot(contains(word)));
+      }
+      final month = texts(period(monthSample())).join('\n');
+      for (final word in ['Rabatte', 'TRINKGELD', 'Kartenkonto']) {
+        expect(month, isNot(contains(word)));
+      }
+    });
+
+    test('Monatsabrechnung: dieselben Zeilen, ein Storno allein im Monat '
+        'steht mit Minus da', () {
+      final t = texts(
+        period(
+          monthSample(
+            discountCount: -1,
+            discountCents: -284,
+            cardTipCents: -80,
+            tipsByStaff: const [
+              StaffTip(staffId: 'a', staffName: 'Anna', cents: -80),
+            ],
+          ),
+        ),
+      );
+      expect(
+        t,
+        containsAllInOrder([
+          'EINNAHMEN',
+          'Rabatte             -1 Bons           2,84',
+          '------------------------------------------',
+          'TRINKGELD KARTE',
+          'Anna                                 -0,80',
+          'Gesamt                               -0,80',
+          'Am Kartenkonto                   12.480,90',
+          '------------------------------------------',
+          'STEUER',
+        ]),
+      );
+    });
+
+    for (final w in [32, 42, 48]) {
+      test('Breite $w: die neuen Zeilen passen, Beträge stehen rechts', () {
+        final t = texts(
+          day(
+            daySample(
+              discountCount: 3,
+              discountCents: 1240,
+              cardTipCents: 320,
+              tipsByStaff: const [
+                StaffTip(
+                  staffId: 'x',
+                  staffName: 'Anna Maria Musterfrau-Beispiel von Hohenberg',
+                  cents: 320,
+                ),
+              ],
+            ),
+            columns: w,
+          ),
+        );
+        for (final l in t) {
+          expect(l.length, lessThanOrEqualTo(w), reason: l);
+        }
+        for (final l in t.where((l) => RegExp(r'\d,\d\d$').hasMatch(l))) {
+          expect(l.length, w, reason: l);
+        }
+      });
+    }
   });
 }

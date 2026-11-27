@@ -1580,4 +1580,19 @@ class L10nTr extends L10n {
   String openAmountLine(int percent) {
     return 'Çeşitli $percent %';
   }
+
+  @override
+  String get closeDiscounts => 'İndirimler';
+
+  @override
+  String get closeCardTip => 'Kart bahşişi';
+
+  @override
+  String get closeCardAccount => 'Kart hesabına';
+
+  @override
+  String get bonsSubtotal => 'Ara toplam';
+
+  @override
+  String get bonsTipIncluded => 'bunun bahşişi';
 }

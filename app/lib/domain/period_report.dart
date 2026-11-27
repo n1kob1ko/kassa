@@ -1,6 +1,7 @@
 // Monate, Zeiträume und der Bericht über einen Zeitraum. Reines Dart.
 
 import '../core/german_dates.dart';
+import 'day.dart' show StaffTip;
 import 'pricing.dart';
 
 /// Ein Kalendermonat. [month] ist 1 bis 12.
@@ -113,6 +114,10 @@ class PeriodReport {
     required this.firstNumber,
     required this.lastNumber,
     required this.rows,
+    this.discountCount = 0,
+    this.discountCents = 0,
+    this.cardTipCents = 0,
+    this.tipsByStaff = const [],
   });
 
   final MonthRange range;
@@ -147,6 +152,21 @@ class PeriodReport {
 
   /// Ein Monat: je Kalendertag mit Bon. Mehrere: je Monat, auch leere.
   final List<PeriodRow> rows;
+
+  /// Bons mit Rabatt (Verkauf +1, Storno −1) und die Summe ihrer Rabatte,
+  /// positiv; ein Storno zieht ab, auch in einem späteren Monat.
+  final int discountCount;
+  final int discountCents;
+
+  /// Trinkgeld der Kartenzahlungen; ein Storno zieht ab.
+  final int cardTipCents;
+
+  /// Dasselbe je Person, nach Name; Personen mit 0 fehlen. Liegt nur der
+  /// Storno im Zeitraum, steht die Person mit Minus da.
+  final List<StaffTip> tipsByStaff;
+
+  /// Was am Kartenkonto ankommt: Kartenumsatz und Trinkgeld.
+  int get cardAccountCents => cardRevenueCents + cardTipCents;
 
   bool get isEmpty => firstNumber == null;
 }
