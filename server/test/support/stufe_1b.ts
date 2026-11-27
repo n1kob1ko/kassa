@@ -27,7 +27,7 @@ export function readStufe1b(): Stufe1b {
 }
 
 /** Ein neuer Schlüssel der Seite: er gilt über alle Betriebe, die Datei wird in einem Lauf mehrmals gesendet. */
-const freshToken = () => randomBytes(16).toString('base64url');
+export const freshToken = () => randomBytes(16).toString('base64url');
 
 /**
  * Schickt Tag und Bons der Datei an den Betrieb, setzt seine Zeitzone und legt Kategorien und Artikel an. Jeder Bon

@@ -6,6 +6,7 @@ import { testApp, type TestApp } from './support/app.js';
 import { createProvider, send, siteFor, type Site } from './support/admin_data.js';
 import { pairDevice } from './support/device.js';
 import { sampleReceipt } from './support/push.js';
+import { freshToken } from './support/stufe_1b.js';
 import { authed, createChef, type TestUser } from './support/users.js';
 
 const dep = JSON.parse(readFileSync(new URL('../../shared/fixtures/rksv/dep.json', import.meta.url), 'utf8')) as {
@@ -35,7 +36,12 @@ async function sendExample(s: Pick<Site, 'token' | 'deviceId'>): Promise<void> {
   await send(a, s, [
     ...dep.certificates.map((c): [string, object] => ['rksv_certificate', c]),
     ['rksv_chain', dep.chain],
-    ...dep.entries.map((e): [string, object] => ['receipt', e]),
+    // Der Schlüssel der Seite gilt über alle Betriebe, das Beispiel geht an mehrere: jeder gesendete Bon mit Schlüssel
+    // bekommt einen eigenen (wie in support/stufe_1b.ts). Er steht nicht in der Protokoll-Datei.
+    ...dep.entries.map((e): [string, object] => [
+      'receipt',
+      (e as { publicToken?: string | null }).publicToken ? { ...e, publicToken: freshToken() } : e,
+    ]),
   ]);
 }
 

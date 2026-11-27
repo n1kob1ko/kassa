@@ -664,6 +664,10 @@ void main() {
   );
 
   test('Protokoll-Datei: dep.json stimmt mit buildDepExport', () async {
+    // Fester Zufall: derselbe Schlüssel der Seite bei jedem Lauf. Eigener
+    // Samen je Datei, denn der Schlüssel gilt am Server über alle Betriebe.
+    await shop.close();
+    shop = await TestShop.open(random: Random(1104));
     DateTime at(int h, int m) => DateTime.utc(2026, 11, 18, h, m);
     final db = shop.db;
     await shop.insertDay(_id('dddddddd', 1), at(8, 0));
