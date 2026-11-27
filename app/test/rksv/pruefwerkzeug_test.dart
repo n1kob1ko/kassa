@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart';
+import 'package:kassa/domain/discount.dart';
 import 'package:kassa/rksv/dep_export.dart';
 
 import '../support/demo_fixtures.dart';
@@ -125,6 +126,112 @@ void main() {
         [for (final e in entries) e.damaged].where((d) => d),
         hasLength(2),
       );
+
+      expect(
+        await rig.service.exportProtocol(ExportRange.all, now: rig.clock.now()),
+        ExportOutcome.saved,
+      );
+      final dep = File('${temp.path}/dep-export.json')
+        ..writeAsStringSync(rig.saver.lastText);
+      final crypto = File('${temp.path}/cryptographicMaterialContainer.json')
+        ..writeAsStringSync(await cryptographicMaterialContainer(rig, 1));
+      final problems = await checkWithPruefwerkzeug(
+        tool!,
+        dep: dep,
+        crypto: crypto,
+        entryCount: entries.length,
+        workDir: temp,
+      );
+      expect(problems, isEmpty, reason: problems.join('\n\n'));
+    },
+    skip: tool == null
+        ? 'Prüfwerkzeug nicht da: KASSA_RKSV_TOOL zeigt auf keinen Ordner.'
+        : null,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  test(
+    'Kette mit Rabatt, Trinkgeld, gemischter Zahlung, freiem Betrag und '
+    'Storno besteht das Prüfwerkzeug des Finanzministeriums',
+    () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      final temp = await Directory.systemTemp.createTemp('kassa-rksv-');
+      addTearDown(() => temp.delete(recursive: true));
+
+      // Feste Zeiten in der Vergangenheit, wie oben (R11).
+      // Startbeleg am 18.11.2025 15:05:09.
+      rig.clock.value = DateTime(2025, 11, 18, 15, 5, 9);
+      await rig.service.enableProbe(staff: rig.chef);
+      var minute = 0;
+      void tick() =>
+          rig.clock.value = DateTime(2025, 11, 18, 15, 6 + minute++, 9);
+
+      // Rabatt auf der Zeile und auf dem Bon.
+      tick();
+      final rabatt = const Cart.empty()
+          .add(cola)
+          .add(huhnBowl, options: [xxl, nudeln]);
+      await rig.sell(
+        'rabatt',
+        rabatt
+            .setLineDiscount(
+              rabatt.lines[1].lineId,
+              const Discount.percent(10, DiscountReason.regular),
+            )
+            .setReceiptDiscount(
+              const Discount.percent(10, DiscountReason.promotion),
+            ),
+      );
+      // Karte mit Trinkgeld.
+      tick();
+      await rig.sellCard(
+        'trinkgeld',
+        const Cart.empty().add(teigtaschen).add(cola),
+        tipCents: 35,
+      );
+      // Bar und Karte, mit Trinkgeld und freiem Betrag zu 13 %.
+      tick();
+      await rig.sellCard(
+        'gemischt',
+        const Cart.empty()
+            .add(teigtaschen)
+            .add(cola)
+            .addOpenAmount(amountCents: 1250, rate: TaxRate.reduced2),
+        cashPartCents: 1000,
+        tipCents: 125,
+      );
+      // Einladung: 100 % Rabatt, Summe 0.
+      tick();
+      await rig.sell(
+        'einladung',
+        const Cart.empty()
+            .add(teigtaschen)
+            .setReceiptDiscount(
+              const Discount.percent(100, DiscountReason.invitation),
+            ),
+      );
+      // Storno des gemischten Bons durch den Chef.
+      tick();
+      await rig.receipts.voidReceipt('gemischt', staff: rig.chef);
+      // Nullbeleg, Schlussbeleg.
+      tick();
+      await rig.service.zeroReceipt(staff: rig.chef);
+      tick();
+      await rig.service.disableProbe(staff: rig.chef);
+
+      expect(await rig.entryKinds(), [
+        'start',
+        'sale',
+        'sale',
+        'sale',
+        'sale',
+        'voided',
+        'zero',
+        'closing',
+      ]);
+      await rig.verifyChain(1);
+      final entries = await rig.entries(1);
 
       expect(
         await rig.service.exportProtocol(ExportRange.all, now: rig.clock.now()),

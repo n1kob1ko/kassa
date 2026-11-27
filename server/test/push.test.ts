@@ -324,6 +324,16 @@ describe('Bon v: 1 und v: 2', () => {
     expect(await reportKinds(f, a)).toEqual([]);
   });
 
+  test('Bons, wie 1.10.0 sie sendet, und nach dem Update als v: 2 (echte Sendungen der App): duplicate, kein Bericht', async () => {
+    // Beide Dateien schreibt die App: v1 der Code von 1.10.0, as_v2 der heutige aus derselben Datenbank.
+    const v1 = syncFixture('receipt_1_10_0_v1') as { entries: { seq: number }[] };
+    const v2 = syncFixture('receipt_1_10_0_as_v2') as { entries: { seq: number }[] };
+    expect((await push(v1.entries)).results).toEqual(v1.entries.map((e) => ({ seq: e.seq, status: 'accepted' })));
+    expect((await push(v2.entries)).results).toEqual(v2.entries.map((e) => ({ seq: e.seq, status: 'duplicate' })));
+    expect(await reportKinds(f, a)).toEqual([]);
+    expect(await count(a, 'receipts')).toBe(2);
+  });
+
   test('v: 2 mit anderem Betrag als der gespeicherte v: 1: rejected/conflict', async () => {
     const r = sampleReceipt();
     await push([entry(1, 'receipt', r)]);

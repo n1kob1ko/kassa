@@ -39,6 +39,7 @@ import 'package:kassa/sync/server_changes.dart';
 import 'package:kassa/sync/sync_service.dart';
 import 'package:kassa/sync/token_store.dart';
 
+import '../test/support/sales.dart';
 import '../test/support/webp_samples.dart';
 
 const _server = String.fromEnvironment('E2E_SERVER');
@@ -413,5 +414,98 @@ void main() {
     },
     skip: _skip,
     timeout: const Timeout(Duration(minutes: 3)),
+  );
+  test(
+    'gemischter Bon mit Rabatt und Trinkgeld kommt am Server an',
+    () async {
+      const registerName = 'Kassa Rabatt und Trinkgeld';
+      final db = KassaDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final client = http.Client();
+      addTearDown(client.close);
+      final admin = _Admin();
+      addTearDown(admin.close);
+      final fileDir = await Directory.systemTemp.createTemp('kassa-e2e-files');
+      addTearDown(() => fileDir.delete(recursive: true));
+
+      final tokens = MemoryTokenStore();
+      final syncState = SyncStateRepository(db);
+      final changes = ServerChanges(db);
+      const clock = SystemClock();
+      final api = ServerApi(
+        baseUrl: _server,
+        client: client,
+        appVersion: '1.11.0',
+      );
+      final pairing = PairingService(
+        api: api,
+        tokens: tokens,
+        syncState: syncState,
+        changes: changes,
+        clock: clock,
+        onCatalogReplaced: () {},
+      );
+      final sync = SyncService(
+        api: api,
+        tokens: tokens,
+        syncState: syncState,
+        changes: changes,
+        outbox: OutboxRepository(db),
+        payloads: PushPayloads(db),
+        clock: clock,
+        files: FileSync(db, api, () async => fileDir),
+      );
+      addTearDown(sync.dispose);
+      final days = DayRepository(db, clock);
+      final receipts = ReceiptRepository(db, clock, days);
+
+      final code =
+          (await admin.call(
+                'POST',
+                '/pairing-codes',
+                json: {'name': registerName},
+              ))['code']
+              as String;
+      await pairing.pair(code);
+      await pairing.loadInitial();
+      final chef = (await StaffRepository(db).findByPin('1234'))!;
+
+      // 15,36 € nach 2,84 € Rabatt: 10,00 € bar, 5,36 € mit Karte und
+      // 0,64 € Trinkgeld auf der Karte.
+      expect(discounted.totalCents, 1536);
+      final sale = await receipts.finalizeCardSale(
+        saleId: 'dddddddd-0000-4000-8000-000000000001',
+        cart: discounted,
+        staff: chef,
+        provider: 'sumup',
+        txCode: 'TX-e2e-gemischt',
+        cardScheme: 'VISA',
+        cardLast4: '4242',
+        cashPartCents: 1000,
+        tipCents: 64,
+      );
+      await sync.syncNow();
+      expect((await syncState.current()).lastError, isNull);
+      expect(
+        (await db.customSelect('SELECT COUNT(*) AS c FROM outbox').getSingle())
+            .read<int>('c'),
+        0,
+      );
+
+      final bon = await admin.call('GET', '/receipts/${sale.id}');
+      expect(bon['payments'], hasLength(2));
+      expect(bon['tipCents'], 64);
+      expect(bon['discountCents'], 284);
+
+      final serverDays = await admin.days(registerName);
+      expect(serverDays, hasLength(1));
+      final day = await admin.call('GET', '/days/${serverDays.single['id']}');
+      expect(day['cashCents'], 1000);
+      expect(day['cardCents'], 536);
+      expect(day['cardTipCents'], 64);
+      expect(day['discountCount'], 1);
+    },
+    skip: _skip,
+    timeout: const Timeout(Duration(minutes: 1)),
   );
 }
