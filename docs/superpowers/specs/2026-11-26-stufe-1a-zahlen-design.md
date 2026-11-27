@@ -301,7 +301,7 @@ Gebaut vom 26. bis 27.11.2026 in 16 Schritten. Hier steht, was beim Bau entschie
 - **Gemischte Bons bei "Bar" und "Karte":** Ein Bon mit Bar-Teil und Karte zählt bei den Bons mit Bar-Zahlung und bei den Bons mit Kartenzahlung, in der Zahl aller Bons aber nur einmal. Die Filter "Bar" und "Karte" zeigen ihn beide (am Tablet und im Browser).
 - **`goodsCents` ist der Warenwert nach Rabatt.** So gilt weiter: Warenwert plus Pfand ist die Summe des Bons. Die Zwischensumme am Bon ist Warenwert plus Bon-Rabatt.
 - **"Abschließen" nur bei Summe 0 mit Rabatt.** Ein Bon mit Summe 0,00 € ohne Rabatt (etwa Leitungswasser) zeigt "Bar" und "Karte" wie in 1.10.0.
-- **Der Hinweis nach gescheiterter Karte bleibt stehen.** Scheitert die Karte nach dem Bar-Teil sicher, steht "Karte nicht bezahlt. … bar zurückgeben oder noch einmal versuchen." über der Summe. Er geht erst weg, wenn sich der Bon ändert oder wenn wieder "Bar" oder "Karte" getippt wird.
+- **Der Hinweis nach gescheiterter Karte bleibt stehen.** Scheitert die Karte nach dem Bar-Teil sicher, steht "Karte nicht bezahlt. … bar zurückgeben oder noch einmal versuchen." über der Summe. Er geht weg, wenn der Bon bezahlt ist, wenn "Bar" getippt wird oder wenn sich der Bon ändert. (So gebaut nach der Gesamtprüfung, siehe unten "Nach der Gesamtprüfung".)
 - **Beim freien Betrag ist kein Steuersatz vorgewählt.** "Auf den Bon" geht erst, wenn ein Betrag getippt und ein Satz gewählt ist. So wird kein Satz aus Versehen genommen.
 - **`receipt_lines` am Server hat zwei Spalten mehr:** `discount_cents` und `discount` (Migration 0004). Abschnitt 5.6 nennt nur die neuen Spalten von `receipts`.
 - **Die festen Regeln werden bei jedem Bon geprüft, nicht nur mit Signatur.** Mit laufender Signatur kommt vorher noch die alte Prüfung der fünf Beträge (jetzt gegen Summe plus Trinkgeld). Beides passiert, bevor etwas gespeichert wird.
@@ -320,6 +320,17 @@ Gebaut vom 26. bis 27.11.2026 in 16 Schritten. Hier steht, was beim Bau entschie
 - **Blatt "Unklare Kartenzahlung":** Eine Zeile "Diverses" zeigt dort ihren deutschen Namen.
 - **Kopf der Bon-Spalte:** Ist die Taste "Freier Betrag" da, nimmt sie so viel Breite, wie sie braucht, höchstens die Hälfte.
 
+### Nach der Gesamtprüfung
+
+- **"Karte", solange der Hinweis steht:** Ein Tipp auf "Karte" versucht nur den Rest noch einmal, mit demselben Bar-Teil, nicht die ganze Summe. Mit Trinkgeld zeigt das Blatt "Trinkgeld" den Rest als Summe. Der Hinweis bleibt stehen, bis der Bon bezahlt ist; scheitert die Karte wieder, steht er wieder da. Soll der Gast doch alles mit Karte zahlen: das Bargeld zurückgeben, "Bar" tippen (der Hinweis geht weg), zurück, dann "Karte". Es gibt dafür keinen neuen Text.
+- **Zurück vom Blatt "Trinkgeld" nach "Weiter zur Karte":** Der Bon steht da mit demselben Hinweis wie nach einer abgebrochenen Karte, denn das Bargeld kann schon in der Hand sein.
+- **Gründe bei den Tasten, auch auf 600 dp Höhe:** Im Blatt "Trinkgeld" steht "Der Betrag ist kleiner als die Summe." jetzt direkt unter den Tasten, nicht mehr in der Fläche, die scrollt. Im Blatt "Freier Betrag" steht unter "Auf den Bon" "Steuersatz wählen", solange ein Betrag getippt und kein Satz gewählt ist (neuer Text in allen fünf Sprachen, `openAmountNeedTax`).
+- **Reihenfolge beim Ausrollen:** Es gibt dafür in dieser Version keine Sicherung im Code. Die Reihenfolge hält ein fester Ablauf: zuerst der Server, dann eine Prüfung, dass der Server einen Bon in der neuen Form (`v: 2`) annimmt, erst dann die App. Grund: Ein Tablet mit 1.11.0 an einem alten Server kann seine neuen Bons nicht abgeben, und sie werden später nicht von selbst noch einmal geschickt (am Tablet bleiben sie sicher).
+- **Kennungen mit `open-amount-` vorn sind vergeben.** Das Einspielen der Speisekarte (am Tablet und am Server) lehnt einen Artikel mit so einer Kennung ab: `Artikel "…": Die Kennung darf nicht mit "open-amount-" beginnen.` Ein gemeinsames Beispiel dazu liegt in `shared/fixtures/menu`.
+- **Bar-Teil ab der Summe:** Die Kartenzahlung startet dann nicht ("nicht gestartet"), nichts wird gespeichert, das Terminal erfährt nichts. Das gilt unabhängig vom Kleinstbetrag des Terminals.
+- **Browser wie Tablet:** Tag und Zeitraum zeigen "Rabatte", wenn Anzahl oder Summe nicht 0 sind, mit Minus; den Block Trinkgeld (Summe, je Person, "Am Kartenkonto"), sobald jemand Trinkgeld hat, auch wenn die Summe 0 ist. Ohne Trinkgeld gibt es dort kein "Am Kartenkonto". Im Bon-Detail steht ein Rabatt am Storno-Bon als Spiegel mit Plus.
+- **Wird das Recht auf Rabatt oder freien Betrag weggenommen,** während das Blatt offen ist, steht der Bon da; kommt das Recht zurück, öffnet sich das Blatt nicht von selbst.
+
 ### Geänderte oder erweiterte Erwartungen in vorhandenen Tests
 
 Gemeint sind Tests, die es vor dem Bau schon gab (Stand 3b1e4d4), und Tests, die beim Bau dazukamen und später noch einmal geändert wurden.
@@ -331,11 +342,12 @@ Gemeint sind Tests, die es vor dem Bau schon gab (Stand 3b1e4d4), und Tests, die
 5. Die Form des Bons änderte sich von `payment` zu `payments` (nur die Form, kein Wert): in `app/test/sync/push_wire_test.dart` (dort vergleicht der Test die App jetzt mit `push_request_v2.json`, weil die App nur noch `v: 2` baut; `push_request.json` von 1.10.0 bleibt und wird am Server geprüft), und genauso in `receipt_repository_test.dart`, `cash_test.dart`, `sale_service_test.dart`, `printer_test.dart`, `kitchen_ticket_test.dart`, `receipt_layout_test.dart`, `shared_fixtures_test.dart`, den Tests unter `app/test/rksv/` (`rksv_journal_test.dart`, `rksv_outage_test.dart`, `rksv_service_test.dart`, `rksv_special_test.dart`), `server/test/push.test.ts` und `server/test/receipts.test.ts`. Auch die Beispiele `shared/fixtures/stats/months.json`, `overview.json` und `shared/fixtures/rksv/dep.json` haben die Bons jetzt als `v: 2`; ihre erwarteten Ergebnisse sind gleich.
 6. `server/test/months.test.ts`: Der Vergleich der Monatsabrechnung mit `months.json` prüft zusätzlich die fünf neuen Zahlen (dort ohne Rabatt und Trinkgeld); der Rest wird weiter ganz mit der Datei verglichen.
 7. `app/test/features/bons_test.dart`, zwei Tests, die beim Bau dazukamen: Der Test aus Schritt 3 ('gemischter Bon: Pille "Bar + Karte", zu sehen unter "Bar" und unter "Karte"') erwartete bei der Karte im Bon-Detail 4,65 € und erwartet jetzt 5,15 € (Karten-Teil plus Trinkgeld), darunter "davon Trinkgeld 0,50 €". Der Test aus Schritt 13 ("Detail zeigt Zeilen-Rabatt, Bon-Rabatt und Trinkgeld") erwartete 5,36 € und erwartet jetzt 6,00 € (5,36 € plus 0,64 € Trinkgeld).
+8. Nach der Gesamtprüfung kamen Erwartungen dazu, keine wurde geändert oder weggenommen: In `app/test/features/split_payment_test.dart` (beim Bau entstanden) prüft der Test "danach alles bar" zusätzlich, dass keine offene Kartenzahlung bleibt. In `app/test/features/stufe_1a_off_test.dart` (beim Bau entstanden) prüft der Test mit dem Chef zusätzlich, dass wirklich der Chef angemeldet ist. Das falsche Kartenterminal der Tests (`app/test/support/fake_devices.dart`) hat einen einstellbaren Kleinstbetrag, vorgegeben wie bisher 1,00 €.
 
 ### Offen nach dem Bau
 
-Diese Punkte entscheidet die Gesamtprüfung oder Niko. Sie sind nicht behoben.
+Diese Punkte entscheidet Niko. Sie sind nicht behoben.
 
-- Nach einer gescheiterten Karte mit Bar-Teil bucht ein Tipp auf "Karte" die ganze Summe, und der Hinweis "bar zurückgeben" ist weg. "Zurück" im Blatt "Trinkgeld" (nach "Weiter zur Karte") führt zum Bon ohne diesen Hinweis, obwohl der Bar-Teil schon in der Hand sein kann.
-- Artikel-Kennungen, die mit `open-amount-` beginnen, sind für den freien Betrag reserviert. Das Einspielen der Speisekarte lehnt solche Kennungen noch nicht ab.
-- Auf einem kleinen Bildschirm (1024 × 600) mit offenem Zahlenfeld kann der Hinweis "Der Betrag ist kleiner als die Summe." im Blatt "Trinkgeld" unter dem sichtbaren Bereich liegen.
+- Der Hinweis "… bar zurückgeben oder noch einmal versuchen." geht weg, sobald sich der Bon ändert, auch wenn das Bargeld noch in der Hand sein kann.
+- Ändert ein Abgleich einen Preis, während eine Kartenzahlung unklar ist, kann die Zahlung im Blatt "Unklare Kartenzahlung" nicht als bezahlt bestätigt werden (wie in 1.10.0).
+- Der Test `server/test/push_report.test.ts` kann etwa einmal in fünfzig Läufen ohne Grund rot sein (eine zufällige Kennung). Das war schon vorher so; ihn zu ändern entscheidet Niko.

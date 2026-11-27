@@ -14,7 +14,7 @@ Was neu ist: Die Kassa kann vier neue Dinge beim Zahlen. Jedes hat einen eigenen
 Wichtig zum Test:
 
 - Mach den Test am besten außerhalb der Öffnungszeit. Stornos sind erlaubt.
-- Für die Einstellungen musst du am Tablet als Chef angemeldet sein. Für einen Punkt in Teil C brauchst du dazu eine Person, die nicht Chef ist (im Text heißt sie Anna).
+- Für die Einstellungen musst du am Tablet als Chef angemeldet sein. In Teil C und in Teil E brauchst du dazu eine Person, die nicht Chef ist (im Text heißt sie Anna).
 - Der Kundenbon, der Abschluss und die Monatsabrechnung bleiben Deutsch, in jeder Sprache.
 
 Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue Version zum Laden (bekommst du von mir), das Kartenterminal von SumUp, das Handy mit der SumUp-App, den Bondrucker, eine eigene Bankkarte für die Test-Zahlungen, einen Computer mit Browser und die Adresse der Verwaltung, WLAN.
@@ -22,7 +22,7 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 ## 0. Update von 1.10.0 einspielen
 
 - [ ] Warten, bis ich dir sage, dass der Server neu ist. Erst danach die App laden.
-  Die Reihenfolge ist wichtig: zuerst der Server, dann die App. Sonst kann das Tablet seine neuen Bons nicht abgeben.
+  Die Reihenfolge ist wichtig: zuerst der Server, dann die App. Ein Tablet mit 1.11.0 schreibt seine Bons in einer neuen Form. Ein Server, der noch nicht neu ist, nimmt diese Bons nicht an. Sie bleiben sicher am Tablet, aber sie werden später nicht von selbst noch einmal geschickt, auch nicht, wenn der Server danach neu ist. Im Browser fehlen sie dann für immer. Darum prüfe ich vorher, dass der neue Server einen Bon in der neuen Form annimmt, und sage dir erst dann Bescheid.
 - [ ] Die neue Version am Tablet laden und antippen. Android fragt, ob die App aktualisiert werden soll: ja.
   Die Kassa startet wie vorher. Deine Bons, Artikel, Preise und Einstellungen sind noch da. Unter "Bons" stehen die Bons von vorher.
 - [ ] Einstellungen öffnen (Regler-Symbol oben rechts) und ganz nach unten sehen.
@@ -93,9 +93,12 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
   Jetzt kommt vor dem Terminal das Blatt "Trinkgeld", mit dem Rest als Summe. Einen Vorschlag wählen und zahlen. Am Bon: "Bar", dann "Karte" mit "davon Trinkgeld".
 - [ ] Wieder zwei Artikel bonieren (zum Beispiel 7,00 €). "Bar", "Teil bar", 5,00 € als Bar-Teil tippen, "Weiter zur Karte". Im Blatt "Trinkgeld" "Ohne Trinkgeld" tippen. Am Terminal die Zahlung abbrechen.
   Es entsteht kein Bon. Die Kassa steht wieder beim offenen Bon. Über der Summe steht gelb: "Karte nicht bezahlt. 5,00 € bar zurückgeben oder noch einmal versuchen." Darunter der Grund. Die Lade geht nicht auf.
-  Achtung: Jetzt nicht einfach "Karte" tippen. Dann bucht das Terminal die ganze Summe, und der Hinweis auf den Bar-Teil ist weg. Das ist noch offen (siehe Spec, Abschnitt 10).
-- [ ] Noch einmal versuchen: wieder "Bar", "Teil bar", 5,00 € als Bar-Teil tippen, "Weiter zur Karte", "Ohne Trinkgeld", und diesmal am Terminal zahlen.
-  Der Bon entsteht mit beiden Zahlungen, der gelbe Hinweis ist weg.
+- [ ] Noch einmal versuchen: jetzt einfach "Karte" tippen.
+  Das Blatt "Trinkgeld" kommt und zeigt als Summe nur den Rest, 2,00 € (nicht 7,00 €). "Ohne Trinkgeld" tippen. Am Terminal steht 2,00 €. Diesmal mit der Karte zahlen. Der Bon entsteht mit beiden Zahlungen ("Bar 5,00" und "Karte 2,00"), der gelbe Hinweis ist weg.
+- [ ] Wieder zwei Artikel bonieren (zum Beispiel 7,00 €). "Bar", "Teil bar", 5,00 € als Bar-Teil tippen, "Weiter zur Karte". Im Blatt "Trinkgeld" oben links den Pfeil zurück tippen.
+  Die Kassa steht beim offenen Bon, und der gelbe Hinweis "Karte nicht bezahlt. 5,00 € bar zurückgeben oder noch einmal versuchen." steht da (das Bargeld kann schon in deiner Hand sein).
+- [ ] Der Gast will jetzt doch alles mit Karte zahlen: die 5,00 € zurückgeben (im Test nur so tun), "Bar" tippen, im Blatt "Bar bezahlen" oben links den Pfeil zurück tippen, dann "Karte".
+  Nach "Bar" ist der gelbe Hinweis weg. Nach "Karte" zeigt das Blatt "Trinkgeld" die ganze Summe, 7,00 €. Hier nicht zahlen: den Pfeil zurück tippen und "Bon leeren" tippen.
 - [ ] Alle Kartenzahlungen aus Teil B in der SumUp-App zurückbuchen.
 
 ## C. Rabatt
@@ -129,7 +132,7 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
   Der Bildschirm "Bezahlt" erscheint. Die Lade bleibt zu. Der Bon steht unter "Bons" mit 0,00 € bar.
 - [ ] In den Einstellungen bei "Rabatt" auf "Nur Chef" tippen. Abmelden und als Anna (nicht Chef) anmelden. Einen Artikel bonieren.
   Im Summenblock gibt es keine Taste "Rabatt". Ein Tipp auf die Bon-Zeile tut nichts.
-- [ ] Abmelden und wieder als Chef anmelden. Einen Artikel bonieren.
+- [ ] Abmelden und wieder als Chef anmelden. Zuerst den Bon, den Anna gemacht hat, mit "Bon leeren" leeren. Dann einen Artikel bonieren.
   Die Taste "Rabatt" ist wieder da. Danach "Bon leeren" tippen (nichts bezahlen).
 - [ ] "Abschluss" öffnen und die Karte "Einnahmen" ansehen (nicht abschließen).
   Es gibt die Zeile "Rabatte" mit der Zahl der Bons mit Rabatt und der Summe der Rabatte (mit Minus).
@@ -181,9 +184,11 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 
 So sind die Schalter jetzt (aus den Teilen vorher): "Teil bar, Rest Karte" an, "Trinkgeld bei Kartenzahlung" an, "Rabatt" auf "Nur Chef", "Freier Betrag" auf "Alle". Du bist als Chef angemeldet. Wenn etwas anders ist: in den Einstellungen so stellen.
 
-- [ ] In den Einstellungen "English" wählen. Zur Kassa gehen und einen Artikel bonieren. Die Blätter einmal öffnen, ohne zu bezahlen: "Karte" (Blatt "Trinkgeld"), "Bar" und dort "Teil bar", die Taste "Rabatt" und die Taste "Freier Betrag". Jedes Blatt wieder schließen.
+Nach dem Wechsel der Sprache tragen die Tasten die Namen dieser Sprache. Auf Englisch heißen sie so: "Karte" ("Card"), Blatt "Trinkgeld" ("Tip"), "Bar" ("Cash"), "Teil bar" ("Part cash"), "Rabatt" ("Discount"), "Freier Betrag" ("Open amount"), "Bon leeren" ("Clear receipt"). Sie stehen an derselben Stelle wie auf Deutsch.
+
+- [ ] In den Einstellungen "English" wählen. Zur Kassa gehen und einen Artikel bonieren. Die Blätter einmal öffnen, ohne zu bezahlen: "Card" (Blatt "Tip"), "Cash" und dort "Part cash", die Taste "Discount" und die Taste "Open amount". Jedes Blatt wieder schließen.
   Alles ist englisch, nichts ist abgeschnitten, keine Taste ist zu klein.
-- [ ] "العربية" wählen und dieselben Blätter öffnen.
+- [ ] "العربية" wählen und dieselben Blätter öffnen. Die Tasten tragen jetzt arabische Namen und stehen gespiegelt: was auf Deutsch links ist, ist jetzt rechts.
   Alles steht von rechts nach links. Beträge sehen aus wie auf Deutsch ("12,50 €"). Das Zahlenfeld ist nicht gespiegelt: 1 2 3 steht oben links.
 - [ ] Zurück auf "Deutsch" tippen und den Bon leeren ("Bon leeren").
 
