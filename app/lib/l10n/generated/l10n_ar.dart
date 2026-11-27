@@ -1880,4 +1880,27 @@ class L10nAr extends L10n {
 
   @override
   String get customerTooLong => 'النص طويل جدًا.';
+
+  @override
+  String get kassaReceiptQrCaption => 'خذ الفاتورة على هاتفك';
+
+  @override
+  String get kassaPrintReceiptNow => 'اطبع الفاتورة';
+
+  @override
+  String get kassaReceiptOfflinePrinted =>
+      'لا يوجد إنترنت، تتم طباعة الفاتورة.';
+
+  @override
+  String get kassaReceiptOfflineLater =>
+      'لا يوجد إنترنت: الفاتورة الرقمية متاحة لاحقًا.';
+
+  @override
+  String get bonsDeliveryTitle => 'الفاتورة';
+
+  @override
+  String get bonsDeliveryPrinted => 'تمت الطباعة';
+
+  @override
+  String get bonsDeliveryDigital => 'عُرضت رقميًا';
 }

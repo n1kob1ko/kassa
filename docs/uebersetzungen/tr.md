@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 542 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 549 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -129,6 +129,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Noch zu zahlen | Kalan ödeme | Kassa: `kassaDue` |
 | Mit Gutschein abschließen | Hediye çekiyle tamamla | Kassa: `kassaFinishVoucher` |
 | Mit Gutschein bezahlt | Hediye çekiyle ödendi | Kassa: `kassaPaidByVoucher` |
+| Bon mit dem Handy mitnehmen | Fişi telefonla alın | Kassa: `kassaReceiptQrCaption` |
+| Bon drucken | Fişi yazdır | Kassa: `kassaPrintReceiptNow` |
+| Kein Internet, Bon wird gedruckt. | İnternet yok, fiş yazdırılıyor. | Kassa: `kassaReceiptOfflinePrinted` |
+| Kein Internet: Der digitale Bon ist erst später abrufbar. | İnternet yok: Dijital fiş daha sonra görüntülenebilir. | Kassa: `kassaReceiptOfflineLater` |
 
 ## Kartenzahlung
 
@@ -294,6 +298,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | davon Trinkgeld | bunun bahşişi | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | Hediye çeki zaten kullanıldı. Bu fiş iptal edilemez. | Bons: `bonsVoidVoucherRedeemed` |
 | Gutschein gedruckt | Hediye çeki yazdırıldı | Bons: `bonsVoucherPrinted` |
+| Beleg | Fiş | Bons: `bonsDeliveryTitle` |
+| Gedruckt | Yazdırıldı | Bons: `bonsDeliveryPrinted` |
+| Digital angeboten | Dijital sunuldu | Bons: `bonsDeliveryDigital` |
 
 ## Artikel
 

@@ -154,6 +154,29 @@ class OutboxRepository {
         ),
       );
 
+  /// Ob der Eintrag [kind]/[ref] gesendet ist: `true`, sobald keiner mehr in
+  /// der Liste steht. Ein abgelehnter Eintrag bleibt stehen und zählt als
+  /// nicht gesendet. Liefert neu nach jeder Änderung der Liste, auch wenn ein
+  /// Trigger einen Eintrag schreibt.
+  Stream<bool> watchSent({required String kind, required String ref}) => _db
+      .customSelect(
+        'SELECT COUNT(*) AS n FROM outbox WHERE kind = ? AND ref = ?',
+        variables: [Variable.withString(kind), Variable.withString(ref)],
+        readsFrom: {
+          _db.outboxRows,
+          _db.receiptRows,
+          _db.businessDayRows,
+          _db.cashMovementRows,
+          _db.rksvEntryRows,
+          _db.rksvCertificateRows,
+          _db.rksvChainRows,
+          _db.reportRows,
+        },
+      )
+      .watchSingle()
+      .map((r) => r.read<int>('n') == 0)
+      .distinct();
+
   /// Merkt eine Änderung an einem Artikel. Eine noch wartende ältere
   /// Änderung desselben Feldes fällt weg: je Artikel und Feld bleibt eine mit
   /// dem neuesten Wert und Zeitpunkt. [value] wird als JSON gespeichert

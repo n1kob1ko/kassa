@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 542 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 549 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -129,6 +129,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Noch zu zahlen | Still to pay | Kassa: `kassaDue` |
 | Mit Gutschein abschließen | Finish with voucher | Kassa: `kassaFinishVoucher` |
 | Mit Gutschein bezahlt | Paid with voucher | Kassa: `kassaPaidByVoucher` |
+| Bon mit dem Handy mitnehmen | Take your receipt on your phone | Kassa: `kassaReceiptQrCaption` |
+| Bon drucken | Print receipt | Kassa: `kassaPrintReceiptNow` |
+| Kein Internet, Bon wird gedruckt. | No internet, printing receipt. | Kassa: `kassaReceiptOfflinePrinted` |
+| Kein Internet: Der digitale Bon ist erst später abrufbar. | No internet: the digital receipt will be available later. | Kassa: `kassaReceiptOfflineLater` |
 
 ## Kartenzahlung
 
@@ -294,6 +298,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | davon Trinkgeld | of which tip | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | The voucher has already been redeemed. This receipt cannot be voided. | Bons: `bonsVoidVoucherRedeemed` |
 | Gutschein gedruckt | Voucher printed | Bons: `bonsVoucherPrinted` |
+| Beleg | Receipt | Bons: `bonsDeliveryTitle` |
+| Gedruckt | Printed | Bons: `bonsDeliveryPrinted` |
+| Digital angeboten | Offered digitally | Bons: `bonsDeliveryDigital` |
 
 ## Artikel
 

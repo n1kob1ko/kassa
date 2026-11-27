@@ -2,8 +2,9 @@
 // wird beim Senden aus den Tabellen gelesen und in die Form gebracht, die der
 // Server erwartet. Das Gegenstück auf dem Server ist `push_schema.ts`; beide
 // prüfen sich an `shared/fixtures/sync/push_request_v3.json` (Bon `v: 3`).
-// Firmenkunden (`customer`) und Empfänger der Rechnung (`recipient`) gehen
-// flach hinaus, ihre Felder stehen neben `seq` und `kind`.
+// Firmenkunden (`customer`), Empfänger der Rechnung (`recipient`) und die
+// Belegerteilung (`delivery`) gehen flach hinaus, ihre Felder stehen neben
+// `seq` und `kind`.
 // `push_request.json` ist das Paket von 1.10.0 (Bon `v: 1`),
 // `push_request_v2.json` das von 1.11.0 (Bon `v: 2`); der Server nimmt beide
 // weiter an.
@@ -77,6 +78,7 @@ class PushPayloads {
       'report' => await _report(e.ref),
       'customer' => await _customer(e.ref),
       'recipient' => await _recipient(e.ref),
+      'delivery' => await _delivery(e.ref),
       _ => throw ArgumentError.value(e.kind, 'kind', 'Unbekannte Art'),
     };
     if (body == null) return null;
@@ -142,6 +144,27 @@ class PushPayloads {
       'createdAt': _iso(row.createdAt),
       'staffId': row.staffId,
       'staffName': row.staffName,
+    };
+  }
+
+  /// Wie der Beleg zu einem Bon erteilt wurde, flach neben `seq` und `kind`:
+  /// `receiptId`, `deliveryKind` (`printed` oder `digital`) und `at`. [ref]
+  /// ist `<Bon>/<Art>`; passt er nicht, gibt es nichts zu senden.
+  Future<Map<String, Object?>?> _delivery(String ref) async {
+    final slash = ref.lastIndexOf('/');
+    if (slash < 0) return null;
+    final receiptId = ref.substring(0, slash);
+    final kind = ref.substring(slash + 1);
+    final row =
+        await (_db.select(_db.receiptDeliveryRows)..where(
+              (t) => t.receiptId.equals(receiptId) & t.kind.equals(kind),
+            ))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return {
+      'receiptId': row.receiptId,
+      'deliveryKind': row.kind,
+      'at': _iso(row.at),
     };
   }
 

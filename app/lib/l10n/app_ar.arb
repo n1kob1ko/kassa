@@ -541,5 +541,12 @@
   "customerNameMissing": "يُرجى إدخال الاسم.",
   "customerAddressMissing": "يُرجى إدخال العنوان.",
   "customerVatIdMissing": "فوق 10.000 € تحتاج الفاتورة إلى الرقم الضريبي للعميل.",
-  "customerTooLong": "النص طويل جدًا."
+  "customerTooLong": "النص طويل جدًا.",
+  "kassaReceiptQrCaption": "خذ الفاتورة على هاتفك",
+  "kassaPrintReceiptNow": "اطبع الفاتورة",
+  "kassaReceiptOfflinePrinted": "لا يوجد إنترنت، تتم طباعة الفاتورة.",
+  "kassaReceiptOfflineLater": "لا يوجد إنترنت: الفاتورة الرقمية متاحة لاحقًا.",
+  "bonsDeliveryTitle": "الفاتورة",
+  "bonsDeliveryPrinted": "تمت الطباعة",
+  "bonsDeliveryDigital": "عُرضت رقميًا"
 }

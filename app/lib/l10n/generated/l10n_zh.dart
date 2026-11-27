@@ -1842,4 +1842,25 @@ class L10nZh extends L10n {
 
   @override
   String get customerTooLong => '文字太长。';
+
+  @override
+  String get kassaReceiptQrCaption => '用手机领取小票';
+
+  @override
+  String get kassaPrintReceiptNow => '打印小票';
+
+  @override
+  String get kassaReceiptOfflinePrinted => '没有网络，正在打印小票。';
+
+  @override
+  String get kassaReceiptOfflineLater => '没有网络：电子小票稍后才能查看。';
+
+  @override
+  String get bonsDeliveryTitle => '小票';
+
+  @override
+  String get bonsDeliveryPrinted => '已打印';
+
+  @override
+  String get bonsDeliveryDigital => '已提供电子版';
 }

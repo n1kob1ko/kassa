@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 542 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 549 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -129,6 +129,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Noch zu zahlen | المتبقي للدفع | Kassa: `kassaDue` |
 | Mit Gutschein abschließen | إتمام بالقسيمة | Kassa: `kassaFinishVoucher` |
 | Mit Gutschein bezahlt | دُفع بقسيمة | Kassa: `kassaPaidByVoucher` |
+| Bon mit dem Handy mitnehmen | خذ الفاتورة على هاتفك | Kassa: `kassaReceiptQrCaption` |
+| Bon drucken | اطبع الفاتورة | Kassa: `kassaPrintReceiptNow` |
+| Kein Internet, Bon wird gedruckt. | لا يوجد إنترنت، تتم طباعة الفاتورة. | Kassa: `kassaReceiptOfflinePrinted` |
+| Kein Internet: Der digitale Bon ist erst später abrufbar. | لا يوجد إنترنت: الفاتورة الرقمية متاحة لاحقًا. | Kassa: `kassaReceiptOfflineLater` |
 
 ## Kartenzahlung
 
@@ -294,6 +298,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | davon Trinkgeld | منها إكرامية | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | تم استخدام القسيمة بالفعل. لا يمكن إلغاء هذه الفاتورة. | Bons: `bonsVoidVoucherRedeemed` |
 | Gutschein gedruckt | تمت طباعة القسيمة | Bons: `bonsVoucherPrinted` |
+| Beleg | الفاتورة | Bons: `bonsDeliveryTitle` |
+| Gedruckt | تمت الطباعة | Bons: `bonsDeliveryPrinted` |
+| Digital angeboten | عُرضت رقميًا | Bons: `bonsDeliveryDigital` |
 
 ## Artikel
 

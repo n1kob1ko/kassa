@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:kassa/core/app_language.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/core/money.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/delivery_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/devices/printer.dart';
@@ -24,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import '../support/bons_pump.dart';
 import '../support/cash_pump.dart';
 import '../support/demo_fixtures.dart';
+import '../support/digital_pump.dart';
 import '../support/fake_devices.dart';
 import '../support/kassa_pump.dart';
 import '../support/pump.dart';
@@ -1292,5 +1295,134 @@ void main() {
     expect(inRow('detail-voucher-left-0', '0,00 €'), findsOneWidget);
     expect(inRow('detail-payment-1', 'Bar'), findsOneWidget);
     expect(inRow('detail-payment-1', '4,15 €'), findsOneWidget);
+  });
+
+  testWidgets('Detail: Zeile Beleg mit den Zeiten; QR-Code nur bei digitalem '
+      'Wert; ein Bon ohne Schlüssel hat keinen', (t) async {
+    await pumpBonsWithSales(t, 2, overrides: await serverKassaOverrides());
+    await setUpPrinter(t);
+    final c = containerOf(t);
+    final db = c.read(databaseProvider);
+    Future<Receipt> byNumber(int n) async => (await c
+        .read(receiptRepositoryProvider)
+        .find(
+          (await db
+                  .customSelect('SELECT id FROM receipts WHERE number = $n')
+                  .getSingle())
+              .read<String>('id'),
+        ))!;
+    final first = await byNumber(1);
+    final deliveries = c.read(deliveryRepositoryProvider);
+    await deliveries.record(
+      first.id,
+      DeliveryKind.printed,
+      at: DateTime(2026, 11, 17, 11, 3),
+    );
+    await deliveries.record(
+      first.id,
+      DeliveryKind.digital,
+      at: DateTime(2026, 11, 17, 11, 4),
+    );
+    // Ein Bon aus 1.11.0: ohne Schlüssel der Seite.
+    final day = (await db
+            .customSelect('SELECT id FROM business_days WHERE closed_at IS NULL')
+            .getSingle())
+        .read<String>('id');
+    await db
+        .into(db.receiptRows)
+        .insert(
+          ReceiptRowsCompanion.insert(
+            id: 'alt',
+            number: 3,
+            createdAt: DateTime(2026, 11, 17, 11, 5),
+            staffId: 'anna',
+            staffName: 'Anna',
+            businessDayId: Value(day),
+            kind: ReceiptKind.sale.name,
+            goodsCents: 390,
+            depositCents: 0,
+            totalCents: 390,
+          ),
+        );
+    await t.pumpAndSettle();
+
+    // "Immer drucken": die Zeile Beleg, kein QR-Code.
+    await openReceipt(t, 1);
+    expect(find.text('Beleg'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-delivery-printed')),
+        matching: find.text('Gedruckt'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-delivery-printed')),
+        matching: find.text('11:03 Uhr'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-delivery-digital')),
+        matching: find.text('Digital angeboten'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('detail-delivery-digital')),
+        matching: find.text('11:04 Uhr'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('detail-receipt-qr')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+    expect(find.byKey(const Key('print-receipt')), findsOneWidget);
+    // Ohne Einträge keine Zeile.
+    await openReceipt(t, 2);
+    expect(find.byKey(const Key('detail-delivery-printed')), findsNothing);
+    expect(find.byKey(const Key('detail-delivery-digital')), findsNothing);
+    expect(find.text('Beleg'), findsNothing);
+
+    // Digital gewählt, aber nicht gekoppelt: kein QR-Code.
+    final settings = c.read(settingsRepositoryProvider);
+    await settings.save(
+      (await settings.current()).copyWith(
+        receiptMode: ReceiptMode.printAndDigital,
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('detail-receipt-qr')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+
+    // Gekoppelt: der Platzhalter, bis der Server den Bon hat, dann der Code.
+    await pairRegister(t);
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('receipt-qr-wait')), findsOneWidget);
+    final second = await byNumber(2);
+    await serverConfirms(t, second.id);
+    await t.pumpAndSettle();
+    expect(
+      qrTextOf(t, 'detail-receipt-qr'),
+      '$testServerUrl/beleg/${second.publicToken}',
+    );
+    expect(find.byKey(const Key('print-receipt')), findsOneWidget);
+
+    // Der Bon aus 1.11.0 hat keinen.
+    await openReceipt(t, 3);
+    expect(find.byKey(const Key('detail-receipt-qr')), findsNothing);
+    expect(find.byKey(const Key('receipt-qr-wait')), findsNothing);
+    expect(find.byKey(const Key('print-receipt')), findsOneWidget);
+
+    // "Digital, Druck auf Wunsch" zeigt ihn ebenso.
+    await settings.save(
+      (await settings.current()).copyWith(
+        receiptMode: ReceiptMode.digitalOnRequest,
+      ),
+    );
+    await openReceipt(t, 2);
+    expect(find.byKey(const Key('detail-receipt-qr')), findsOneWidget);
   });
 }

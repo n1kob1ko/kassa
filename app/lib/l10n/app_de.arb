@@ -2729,5 +2729,33 @@
   "customerTooLong": "Der Text ist zu lang.",
   "@customerTooLong": {
     "description": "Formular Empfänger der Rechnung: Grund unter einem Feld mit zu langem Text."
+  },
+  "kassaReceiptQrCaption": "Bon mit dem Handy mitnehmen",
+  "@kassaReceiptQrCaption": {
+    "description": "Verkauf fertig: Satz unter dem QR-Code des digitalen Bons."
+  },
+  "kassaPrintReceiptNow": "Bon drucken",
+  "@kassaPrintReceiptNow": {
+    "description": "Verkauf fertig bei \"Digital, Druck auf Wunsch\": Taste, die den Kundenbon doch druckt."
+  },
+  "kassaReceiptOfflinePrinted": "Kein Internet, Bon wird gedruckt.",
+  "@kassaReceiptOfflinePrinted": {
+    "description": "Verkauf fertig: Der Server hat den Bon nach 3 Sekunden nicht bestätigt, die Kassa druckt ihn von selbst."
+  },
+  "kassaReceiptOfflineLater": "Kein Internet: Der digitale Bon ist erst später abrufbar.",
+  "@kassaReceiptOfflineLater": {
+    "description": "Verkauf fertig: Der Server hat den Bon nicht bestätigt und es gibt keinen Drucker; der QR-Code steht trotzdem da."
+  },
+  "bonsDeliveryTitle": "Beleg",
+  "@bonsDeliveryTitle": {
+    "description": "Bon-Detail: Überschrift der Zeilen, wie der Beleg erteilt wurde."
+  },
+  "bonsDeliveryPrinted": "Gedruckt",
+  "@bonsDeliveryPrinted": {
+    "description": "Bon-Detail: Der Kundenbon wurde gedruckt (daneben die Zeit)."
+  },
+  "bonsDeliveryDigital": "Digital angeboten",
+  "@bonsDeliveryDigital": {
+    "description": "Bon-Detail: Der QR-Code des digitalen Bons wurde gezeigt (daneben die Zeit)."
   }
 }

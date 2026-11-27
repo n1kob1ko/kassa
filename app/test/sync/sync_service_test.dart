@@ -13,6 +13,7 @@ import 'package:kassa/core/app_info.dart';
 import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/customer_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/delivery_repository.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/report_repository.dart';
@@ -1352,5 +1353,58 @@ void main() {
         h.close();
       });
     });
+
+    test('Belegerteilung wartet wie der Empfänger auf ihren Bon; watchSent '
+        'ist wahr genau dann, wenn kein Eintrag des Bons mehr wartet, ein '
+        'abgelehnter zählt als nicht gesendet', () {
+      fakeAsync((async) {
+        final h = Harness(async);
+        final outbox = OutboxRepository(h.db);
+        bool sent(String id) =>
+            h.run(outbox.watchSent(kind: 'receipt', ref: id).first);
+        addReceipt(h, receiptId);
+        h.run(
+          DeliveryRepository(h.db).record(
+            receiptId,
+            DeliveryKind.digital,
+            at: start,
+          ),
+        );
+        expect(sent(receiptId), isFalse);
+        h.server.pushStatuses[idOf(h, 'receipt')] = 'error';
+        h.run(h.service.syncNow());
+        expect(sentKinds(h), ['receipt']);
+        expect(stateOf(h, 'delivery'), 'pending');
+        expect(sent(receiptId), isFalse);
+
+        h.server.pushStatuses.clear();
+        final before = h.server.pushRequests.length;
+        h.run(h.service.syncNow());
+        expect(sentKinds(h, from: before), ['receipt', 'delivery']);
+        final delivery = [
+          for (final r in h.server.pushRequests.skip(before)) ...r,
+        ].firstWhere((e) => e['kind'] == 'delivery');
+        expect(delivery, {
+          'seq': delivery['seq'],
+          'kind': 'delivery',
+          'receiptId': receiptId,
+          'deliveryKind': 'digital',
+          'at': start.toUtc().toIso8601String(),
+        });
+        expect(h.counts().pending, 0);
+        expect(sent(receiptId), isTrue);
+
+        // Ein abgelehnter Bon ist nicht gesendet.
+        const other = 'b0000000-0000-4000-8000-0000000000b4';
+        addReceipt(h, other);
+        h.server.pushStatuses[idOf(h, 'receipt')] = 'rejected';
+        h.run(h.service.syncNow());
+        expect(stateOf(h, 'receipt'), 'rejected');
+        expect(sent(other), isFalse);
+        expect(sent(receiptId), isTrue);
+        h.close();
+      });
+    });
   });
 }
+

@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' show Variable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kassa/app_sync_providers.dart' show hasServerProvider;
+import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/devices/device_providers.dart';
@@ -131,4 +133,48 @@ void main() {
       },
     );
   }
+
+  test('"Digital, Druck auf Wunsch": der Jahresbeleg druckt beim Abschließen '
+      'wie immer, der Kundenbon erst mit "Bon drucken"', () async {
+    final printer = FakePrinter();
+    rig = await RksvRig.open();
+    container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(rig.db),
+        clockProvider.overrideWithValue(rig.clock),
+        receiptRepositoryProvider.overrideWithValue(rig.receipts),
+        receiptPrinterProvider.overrideWithValue(printer),
+        hasServerProvider.overrideWithValue(true),
+      ],
+    );
+    await container
+        .read(settingsRepositoryProvider)
+        .save(
+          const RegisterSettings(
+            printerKind: PrinterKind.network,
+            printerAddress: '192.168.0.50',
+            receiptMode: ReceiptMode.digitalOnRequest,
+          ),
+        );
+    await container
+        .read(syncStateRepositoryProvider)
+        .saveRegister(
+          registerId: 'kassa-1',
+          registerName: 'Kassa 1',
+          businessId: 'betrieb-1',
+        );
+    await rig.service.enableProbe(staff: rig.chef);
+    service = container.read(saleServiceProvider);
+
+    rig.clock.value = DateTime(2027, 1, 2, 9);
+    final january = await sell('s2');
+    expect(january.autoPrinted, isFalse);
+    final year = await idOf(ReceiptKind.year);
+    await pumpEventQueue();
+    expect(printer.log, ['drawer', 'print:$year']);
+    expect((await service.printNow(january.receipt)).ok, isTrue);
+    expect((await january.print).ok, isTrue);
+    expect(printer.log, ['drawer', 'print:$year', 'print:s2']);
+  });
 }
+

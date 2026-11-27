@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/delivery_repository.dart';
 import 'package:kassa/data/outbox_repository.dart';
 import 'package:kassa/sync/push_wire.dart';
 
@@ -847,6 +848,57 @@ void main() {
       );
     },
   );
+
+  test('Eintrag delivery geht flach hinaus, wie der Server ihn nimmt '
+      '(server/src/device/push_delivery.ts)', () async {
+    const receiptId = 'b0000000-0000-4000-8000-000000000001';
+    final repo = DeliveryRepository(db);
+    await repo.record(
+      receiptId,
+      DeliveryKind.printed,
+      at: DateTime.utc(2026, 11, 27, 11, 3, 5),
+    );
+    await repo.record(
+      receiptId,
+      DeliveryKind.digital,
+      at: DateTime.utc(2026, 11, 27, 11, 3, 9),
+    );
+    // Die Einträge, wie `record` sie in die Liste stellt.
+    final waiting = await OutboxRepository(db).nextBatch();
+    expect([
+      for (final e in waiting)
+        if (e.kind == 'delivery') (e.kind, e.ref),
+    ], [
+      ('delivery', '$receiptId/printed'),
+      ('delivery', '$receiptId/digital'),
+    ]);
+    Future<Object?> wire(OutboxEntry e) async =>
+        jsonDecode(jsonEncode(await payloads.build(e)));
+    expect(await wire(entry(15, 'delivery', '$receiptId/printed')), {
+      'seq': 15,
+      'kind': 'delivery',
+      'receiptId': receiptId,
+      'deliveryKind': 'printed',
+      'at': '2026-11-27T11:03:05.000Z',
+    });
+    expect(await wire(entry(16, 'delivery', '$receiptId/digital')), {
+      'seq': 16,
+      'kind': 'delivery',
+      'receiptId': receiptId,
+      'deliveryKind': 'digital',
+      'at': '2026-11-27T11:03:09.000Z',
+    });
+    // Was es nicht gibt oder nicht lesbar ist: nichts zu senden.
+    expect(
+      await payloads.build(entry(17, 'delivery', '$receiptId/emailed')),
+      isNull,
+    );
+    expect(await payloads.build(entry(18, 'delivery', receiptId)), isNull);
+    expect(
+      await payloads.build(entry(19, 'delivery', 'gibt-es-nicht/printed')),
+      isNull,
+    );
+  });
 
   test('eine unbekannte Art wirft weiter (SyncService meldet sie und lässt sie liegen)', () async {
     expect(

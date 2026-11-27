@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,6 +20,7 @@ import '../customers/customer_picker.dart';
 import 'cash_sheet.dart';
 import 'kitchen_service.dart';
 import 'late_kitchen.dart';
+import 'receipt_qr.dart';
 import 'sale_service.dart';
 
 /// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
@@ -45,6 +48,15 @@ import 'sale_service.dart';
 /// Ist "Rechnung an Firma" an und der Bon kein Testbon, steht darunter die
 /// Rechnung ([InvoiceBox], über 400 € mit Hinweis); "Rechnung an Firma"
 /// öffnet an Stelle der Ansicht das Blatt "Firmenkunde wählen".
+///
+/// Ist der Kundenbon digital ("Drucken und digital", "Digital, Druck auf
+/// Wunsch"), steht unter dem Rückgeld der QR-Code seiner Seite
+/// ([ReceiptQr]) mit "Bon mit dem Handy mitnehmen". Bei "Digital, Druck auf
+/// Wunsch" steht an Stelle des Druck-Zustands "Bon drucken"
+/// (`print-receipt-now`); nach dem Tipp oder dem Druck nach
+/// [receiptFallbackDelay] steht dort der Druck-Zustand wie sonst, mit dem
+/// Hinweis `receipt-offline-note`. Ohne Drucker sagt der Hinweis, dass der
+/// digitale Bon erst später abrufbar ist, und der Code steht trotzdem da.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -91,11 +103,21 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
   /// "Firmenkunde wählen".
   bool _picking = false;
 
+  /// Bei "Digital, Druck auf Wunsch": "Bon drucken" ist getippt.
+  bool _printTapped = false;
+
+  /// Was nach [receiptFallbackDelay] geschah; `null`, solange die Uhr läuft.
+  ReceiptFallback? _fallback;
+  StreamSubscription<ReceiptFallback>? _fallbackSub;
+
   @override
   void initState() {
     super.initState();
     _late = ref.read(lateKitchenProvider.notifier);
     _await(widget.result.print);
+    _fallbackSub = widget.result.fallback.listen((f) {
+      if (mounted) setState(() => _fallback = f);
+    }, onError: (Object _) {});
     _awaitKitchen(widget.result.kitchen);
     widget.result.voucherPrints.then((outcomes) {
       if (!mounted) return;
@@ -125,8 +147,15 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     });
   }
 
+  void _printNow() {
+    if (_printTapped) return;
+    setState(() => _printTapped = true);
+    unawaited(ref.read(saleServiceProvider).printNow(widget.result.receipt));
+  }
+
   @override
   void dispose() {
+    _fallbackSub?.cancel();
     // Gedruckt oder keiner fällig: nichts. Läuft er noch oder ist er
     // gescheitert, steht er danach über dem Bon der Kassa.
     _late.follow(widget.result.receipt, _currentKitchen);
@@ -204,6 +233,19 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
         settings.printerKind != PrinterKind.none &&
         outcome?.problem != PrintProblem.notSetUp;
     final invoice = showsInvoice(settings, receipt);
+    final mode = widget.result.receiptMode;
+    final digital = mode != ReceiptMode.alwaysPrint;
+    // Bei "Digital, Druck auf Wunsch" steht der Druck-Zustand erst, wenn ein
+    // Druck gestartet ist.
+    final printStarted =
+        widget.result.autoPrinted ||
+        _printTapped ||
+        _fallback == ReceiptFallback.printed;
+    final offline = switch (_fallback) {
+      ReceiptFallback.printed => l.kassaReceiptOfflinePrinted,
+      ReceiptFallback.noPrinter => l.kassaReceiptOfflineLater,
+      _ => null,
+    };
     if (_picking && invoice) {
       return PayColumnFrame(
         child: CustomerPicker(
@@ -254,9 +296,30 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                         color: c.ink2,
                       ),
                     ),
-                    if (showPrint) ...[
+                    if (offline != null) ...[
+                      const SizedBox(height: KassaTokens.spaceMd),
+                      Text(
+                        offline,
+                        key: const Key('receipt-offline-note'),
+                        style: text.bodyLarge!.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: c.warnInk,
+                        ),
+                      ),
+                    ],
+                    if (showPrint && printStarted) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
                       _PrintState(outcome: outcome, onReprint: _reprint),
+                    ] else if (showPrint) ...[
+                      const SizedBox(height: KassaTokens.spaceMd),
+                      PrimaryButton(
+                        key: const Key('print-receipt-now'),
+                        label: l.kassaPrintReceiptNow,
+                        icon: LucideIcons.printer,
+                        filled: false,
+                        height: 64,
+                        onPressed: _printNow,
+                      ),
                     ],
                     // Gescheitert immer, auch ohne Küchendrucker: sonst
                     // käme nie ein Küchenbon, ohne dass es jemand merkt.
@@ -339,6 +402,20 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               ],
                             ),
                     ),
+                    if (digital) ...[
+                      const SizedBox(height: KassaTokens.spaceXl),
+                      ReceiptQr(
+                        receipt: receipt,
+                        waitForServer: _fallback != ReceiptFallback.noPrinter,
+                      ),
+                      const SizedBox(height: KassaTokens.spaceSm),
+                      Text(
+                        l.kassaReceiptQrCaption,
+                        key: const Key('receipt-qr-caption'),
+                        textAlign: TextAlign.center,
+                        style: text.bodyLarge!.copyWith(color: c.ink2),
+                      ),
+                    ],
                     for (final (i, p) in voucherPayments.indexed) ...[
                       const SizedBox(height: KassaTokens.spaceMd),
                       _VoucherLeftRow(index: i, payment: p),

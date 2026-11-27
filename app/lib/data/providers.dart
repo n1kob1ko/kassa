@@ -22,6 +22,7 @@ import 'catalog_repository.dart';
 import 'customer_repository.dart';
 import 'database.dart';
 import 'day_repository.dart';
+import 'delivery_repository.dart';
 import 'outbox_repository.dart';
 import 'period_report_repository.dart';
 import 'receipt_repository.dart';
@@ -96,6 +97,26 @@ final receiptRecipientProvider =
       (ref, receiptId) =>
           ref.watch(customerRepositoryProvider).watchRecipient(receiptId),
     );
+
+final deliveryRepositoryProvider = Provider(
+  (ref) => DeliveryRepository(ref.watch(databaseProvider)),
+);
+
+/// Wie der Beleg eines Bons erteilt wurde (gedruckt, digital), neu nach
+/// jedem Eintrag.
+final receiptDeliveriesProvider =
+    StreamProvider.family<List<ReceiptDelivery>, String>(
+      (ref, receiptId) =>
+          ref.watch(deliveryRepositoryProvider).watch(receiptId),
+    );
+
+/// Ob der Bon beim Server angekommen ist (sein Eintrag `receipt` ist aus
+/// "noch zu senden" weg; ein abgelehnter zählt als nicht angekommen).
+final receiptSentProvider = StreamProvider.family<bool, String>(
+  (ref, receiptId) => ref
+      .watch(outboxRepositoryProvider)
+      .watchSent(kind: 'receipt', ref: receiptId),
+);
 
 final cardPaymentRepositoryProvider = Provider(
   (ref) => CardPaymentRepository(
@@ -182,6 +203,10 @@ final httpClientProvider = Provider<http.Client>((ref) {
 });
 
 /// Zugang zum Server unter [serverUrl]. Nur sinnvoll, wenn [hasServer] gilt.
+/// Die Adresse des Servers, aus der die Adresse der Seite eines Bons
+/// entsteht ([receiptPageUrl]). Tests setzen eine erfundene ein.
+final serverUrlProvider = Provider<String>((ref) => serverUrl);
+
 final serverApiProvider = Provider(
   (ref) => ServerApi(
     baseUrl: serverUrl,

@@ -6,8 +6,10 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_sync_providers.dart' show hasServerProvider;
 import '../../core/app_language.dart';
 import '../../data/card_payment_repository.dart';
+import '../../data/delivery_repository.dart';
 import '../../data/providers.dart';
 import '../../data/receipt_repository.dart' show VoucherBalanceException;
 import '../../data/settings_repository.dart';
@@ -23,22 +25,70 @@ import '../../rksv/setup_facts.dart';
 import 'cart_controller.dart';
 import 'kitchen_service.dart';
 
+/// So lange wartet die Kassa bei "Digital, Druck auf Wunsch" darauf, dass
+/// der Server den Bon bestätigt; dann druckt sie ihn von selbst.
+const receiptFallbackDelay = Duration(seconds: 3);
+
+/// Was nach [receiptFallbackDelay] geschah: nichts (der Server hat den Bon
+/// bestätigt, oder sein Druck war schon gestartet), der Bon wird gedruckt,
+/// oder es gibt keinen Drucker.
+enum ReceiptFallback { none, printed, noPrinter }
+
+/// Der Wert des Schalters "Kundenbon", der wirklich gilt: ohne Server oder
+/// ohne Kopplung immer [ReceiptMode.alwaysPrint] (ohne Server gibt es keine
+/// Seite des Bons).
+ReceiptMode effectiveReceiptMode(
+  RegisterSettings settings, {
+  required bool paired,
+}) => paired ? settings.receiptMode : ReceiptMode.alwaysPrint;
+
 class SaleResult {
   SaleResult({
     required this.receipt,
     required this.print,
     Future<PrintOutcome?>? kitchen,
     Future<List<PrintOutcome>>? voucherPrints,
+    this.receiptMode = ReceiptMode.alwaysPrint,
+    Future<ReceiptFallback>? fallback,
   }) : kitchen = kitchen ?? Future.value(),
-       voucherPrints = voucherPrints ?? Future.value(const []);
+       voucherPrints = voucherPrints ?? Future.value(const []),
+       _fallback = fallback ?? Future.value(ReceiptFallback.none);
+
+  /// Derselbe Verkauf mit [receipt] (ein zweiter Aufruf mit derselben Id).
+  SaleResult _with(Receipt receipt) => SaleResult(
+    receipt: receipt,
+    print: print,
+    kitchen: kitchen,
+    voucherPrints: voucherPrints,
+    receiptMode: receiptMode,
+    fallback: _fallback,
+  );
 
   /// Der gespeicherte Bon.
   final Receipt receipt;
 
   /// Das Ergebnis des Druckens (des Bons); endet nach höchstens einem
   /// Druckaufruf (5 Sekunden, Lade und Bon zusammen), steht davor ein
-  /// Jahresbeleg, nach zweien. Wirft nie.
+  /// Jahresbeleg, nach zweien. Wirft nie. Ohne [autoPrinted] das Ergebnis
+  /// des ersten Drucks, der für den Bon gestartet wird ("Bon drucken" oder
+  /// der Druck nach [receiptFallbackDelay]); ohne solchen endet es nie.
   final Future<PrintOutcome> print;
+
+  /// Der Wert des Schalters "Kundenbon", nach dem dieser Bon ging
+  /// ([effectiveReceiptMode]; ein Bon ohne Schlüssel der Seite geht immer
+  /// als [ReceiptMode.alwaysPrint]).
+  final ReceiptMode receiptMode;
+
+  /// Ob der Kundenbon von selbst gedruckt wird: falsch nur bei "Digital,
+  /// Druck auf Wunsch".
+  bool get autoPrinted => receiptMode != ReceiptMode.digitalOnRequest;
+
+  final Future<ReceiptFallback> _fallback;
+
+  /// Was nach [receiptFallbackDelay] geschah, genau ein Wert je Verkauf;
+  /// ohne Uhr (jeder Wert außer "Digital, Druck auf Wunsch") sofort
+  /// [ReceiptFallback.none]. Jeder Aufruf gibt einen eigenen Strom.
+  Stream<ReceiptFallback> get fallback => Stream.fromFuture(_fallback);
 
   /// Das Ergebnis des Küchenbons; `null`, wenn keiner fällig ist (aus,
   /// keine Zeile für die Küche). Am Bondrucker kommt er nach dem Bon, am
@@ -160,15 +210,36 @@ class SaleService {
 
   final Ref _ref;
 
-  /// Das Drucken je `saleId`: ein zweiter Aufruf mit derselben Id druckt nicht
-  /// noch einmal, sondern gibt das erste Ergebnis zurück.
-  final Map<String, Future<PrintOutcome>> _prints = {};
+  /// Das Drucken je `saleId` (Bon, Küchenbon, Abschnitte der Gutscheine, die
+  /// Uhr): ein zweiter Aufruf mit derselben Id druckt nicht noch einmal,
+  /// sondern gibt die ersten Ergebnisse zurück.
+  final Map<String, SaleResult> _sales = {};
 
-  /// Der Küchenbon je `saleId`, wie [_prints].
-  final Map<String, Future<PrintOutcome?>> _kitchenPrints = {};
+  /// Bei "Digital, Druck auf Wunsch" je Bon der erste Druck, der für ihn
+  /// gestartet wird ([SaleResult.print]).
+  final Map<String, Completer<PrintOutcome>> _firstPrint = {};
 
-  /// Die Abschnitte der Gutscheine je `saleId`, wie [_prints].
-  final Map<String, Future<List<PrintOutcome>>> _voucherPrints = {};
+  /// Der Druck aus [printNow], solange er läuft.
+  final Map<String, Future<PrintOutcome>> _printingNow = {};
+
+  /// Bons, für die in diesem Lauf schon ein Druck gestartet wurde: die Uhr
+  /// druckt sie nicht mehr.
+  final Set<String> _printStarted = {};
+
+  /// Die laufenden Uhren je Bon, mit dem Ergebnis, das sie liefern.
+  final Map<String, (Timer, Completer<ReceiptFallback>)> _fallbacks = {};
+
+  bool _disposed = false;
+
+  /// Hält die Uhren an (der Provider geht weg).
+  void dispose() {
+    _disposed = true;
+    for (final (timer, done) in _fallbacks.values) {
+      timer.cancel();
+      if (!done.isCompleted) done.complete(ReceiptFallback.none);
+    }
+    _fallbacks.clear();
+  }
 
   /// Barverkäufe, bei denen der Befehl für die Lade nicht beim Drucker
   /// angekommen ist: "Nochmal drucken" in der Fertig-Ansicht holt ihn nach.
@@ -323,15 +394,12 @@ class SaleService {
             .read(receiptRepositoryProvider)
             .find(paymentId);
         if (known != null) {
-          final print =
-              _prints[paymentId] ?? Future.value(const PrintOutcome.ok());
           return CardSaleDone(
-            SaleResult(
-              receipt: known,
-              print: print,
-              kitchen: _kitchenPrints[paymentId],
-              voucherPrints: _voucherPrints[paymentId],
-            ),
+            _sales[paymentId]?._with(known) ??
+                SaleResult(
+                  receipt: known,
+                  print: Future.value(const PrintOutcome.ok()),
+                ),
           );
         }
         final open = await pending.pending();
@@ -606,22 +674,55 @@ class SaleService {
   }
 
   /// Bon und Küchenbon eines eben abgeschlossenen Verkaufs, je [key] nur
-  /// einmal: ein zweiter Aufruf gibt die ersten Ergebnisse zurück.
-  SaleResult _printSale(
+  /// einmal: ein zweiter Aufruf gibt die ersten Ergebnisse zurück. Die eine
+  /// Stelle für jeden Weg zum Kundenbon (bar, frei, Auszahlung, Gutschein,
+  /// Karte, bestätigte unklare Zahlung): sie entscheidet nach
+  /// [effectiveReceiptMode], ob der Kundenbon von selbst druckt.
+  Future<SaleResult> _printSale(
     String key,
     Receipt receipt,
     RegisterSettings settings, {
     required bool openDrawer,
-  }) {
-    final known = _prints[key];
-    if (known != null) {
-      return SaleResult(
-        receipt: receipt,
-        print: known,
-        kitchen: _kitchenPrints[key],
-        voucherPrints: _voucherPrints[key],
-      );
+  }) async {
+    final known = _sales[key];
+    if (known != null) return known._with(receipt);
+    // Bei "Immer drucken" (und für einen Bon ohne Schlüssel der Seite, der
+    // keinen digitalen Bon hat) ohne ein Warten, wie in 1.11.0.
+    var mode = ReceiptMode.alwaysPrint;
+    if (settings.receiptMode != ReceiptMode.alwaysPrint &&
+        receipt.publicToken != null) {
+      mode = effectiveReceiptMode(settings, paired: await _paired());
+      final meanwhile = _sales[key];
+      if (meanwhile != null) return meanwhile._with(receipt);
     }
+    final result = mode == ReceiptMode.digitalOnRequest
+        ? _onRequest(receipt, settings, openDrawer: openDrawer)
+        : _autoPrint(receipt, settings, mode, openDrawer: openDrawer);
+    _sales[key] = result;
+    return result;
+  }
+
+  /// Gekoppelt wie in den Einstellungen: die App hat einen Server und die
+  /// Kassa einen Platz bei ihm.
+  Future<bool> _paired() async {
+    try {
+      if (!_ref.read(hasServerProvider)) return false;
+      return (await _ref.read(syncStateRepositoryProvider).current())
+          .hasRegister;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// "Immer drucken" und "Drucken und digital": Lade und Bon wie in 1.11.0,
+  /// der Küchenbon dahinter, die Abschnitte der Gutscheine nach einem Bon
+  /// ohne Fehler.
+  SaleResult _autoPrint(
+    Receipt receipt,
+    RegisterSettings settings,
+    ReceiptMode mode, {
+    required bool openDrawer,
+  }) {
     final (print, kitchen) = _withKitchen(
       receipt,
       settings,
@@ -637,15 +738,128 @@ class SaleService {
       print,
       startWhen: (customer) => customer.ok,
     );
-    _prints[key] = print;
-    _kitchenPrints[key] = kitchen;
-    _voucherPrints[key] = vouchers;
     return SaleResult(
       receipt: receipt,
       print: print,
       kitchen: kitchen,
       voucherPrints: vouchers,
+      receiptMode: mode,
     );
+  }
+
+  /// "Digital, Druck auf Wunsch": der Kundenbon druckt nicht von selbst. Bei
+  /// Bargeld geht die Lade allein auf; ein Jahresbeleg davor, Küchenbon und
+  /// Abschnitte der Gutscheine kommen wie immer. Die Uhr über
+  /// [receiptFallbackDelay] beginnt.
+  SaleResult _onRequest(
+    Receipt receipt,
+    RegisterSettings settings, {
+    required bool openDrawer,
+  }) {
+    final first = _firstPrint.putIfAbsent(receipt.id, Completer.new);
+    if (openDrawer) unawaited(_kickDrawer(receipt.id, settings));
+    unawaited(_yearBefore(receipt, settings));
+    final kitchen = settings.kitchenMode == KitchenMode.off
+        ? Future<PrintOutcome?>.value()
+        : _startKitchen(receipt, settings);
+    final vouchers = _vouchersAfter(
+      receipt,
+      Future.value(const PrintOutcome.ok()),
+      startWhen: (_) => true,
+    );
+    final done = Completer<ReceiptFallback>();
+    final timer = Timer(
+      receiptFallbackDelay,
+      () => unawaited(_fallbackDue(receipt, done)),
+    );
+    _fallbacks[receipt.id] = (timer, done);
+    return SaleResult(
+      receipt: receipt,
+      print: first.future,
+      kitchen: kitchen,
+      voucherPrints: vouchers,
+      receiptMode: ReceiptMode.digitalOnRequest,
+      fallback: done.future,
+    );
+  }
+
+  /// Die Lade allein, bei "Digital, Druck auf Wunsch". Geht sie nicht auf,
+  /// holt "Bon drucken" (oder "Nochmal drucken") sie mit dem Bon nach.
+  Future<void> _kickDrawer(String receiptId, RegisterSettings settings) {
+    _drawerMissing.add(receiptId);
+    return _drawerOnly(receiptId, settings);
+  }
+
+  /// Die Uhr ist abgelaufen: Ist der Bon nicht beim Server und wurde für ihn
+  /// noch kein Druck gestartet, druckt die Kassa ihn genau einmal; ohne
+  /// Drucker sagt sie es nur. Lässt sich die Liste "noch zu senden" nicht
+  /// lesen, gilt der Bon als nicht gesendet. Wirft nie.
+  Future<void> _fallbackDue(
+    Receipt receipt,
+    Completer<ReceiptFallback> done,
+  ) async {
+    _fallbacks.remove(receipt.id);
+    var result = ReceiptFallback.none;
+    try {
+      if (!_printStarted.contains(receipt.id) && !_disposed) {
+        bool sent;
+        try {
+          sent = await _ref
+              .read(outboxRepositoryProvider)
+              .watchSent(kind: 'receipt', ref: receipt.id)
+              .first;
+        } catch (_) {
+          sent = false;
+        }
+        if (!sent && !_disposed) {
+          final settings = await _settings();
+          if (_printStarted.contains(receipt.id) || _disposed) {
+            result = ReceiptFallback.none;
+          } else if (settings.printerKind == PrinterKind.none) {
+            result = ReceiptFallback.noPrinter;
+          } else {
+            unawaited(printNow(receipt));
+            result = ReceiptFallback.printed;
+          }
+        }
+      }
+    } catch (_) {
+      result = ReceiptFallback.none;
+    }
+    if (!done.isCompleted) done.complete(result);
+  }
+
+  /// "Bon drucken" bei "Digital, Druck auf Wunsch": derselbe Druck, der sonst
+  /// von selbst kommt (fehlt bei Bargeld die Lade, geht sie mit; der
+  /// Jahresbeleg kam schon beim Abschließen). Läuft für den Bon schon einer, druckt ein zweiter Aufruf
+  /// nicht noch einmal, sondern gibt dessen Ergebnis zurück; danach druckt
+  /// er wieder. Wirft nie.
+  Future<PrintOutcome> printNow(Receipt receipt) {
+    final running = _printingNow[receipt.id];
+    if (running != null) return running;
+    _printStarted.add(receipt.id);
+    final job = _printOnRequest(receipt);
+    _printingNow[receipt.id] = job;
+    final first = _firstPrint[receipt.id];
+    if (first != null && !first.isCompleted) first.complete(job);
+    unawaited(
+      job.whenComplete(() {
+        if (identical(_printingNow[receipt.id], job)) {
+          _printingNow.remove(receipt.id);
+        }
+      }),
+    );
+    return job;
+  }
+
+  Future<PrintOutcome> _printOnRequest(Receipt receipt) async {
+    final settings = await _settings();
+    final kick =
+        _drawerMissing.contains(receipt.id) &&
+        settings.cashDrawerEnabled &&
+        receipt.kind == ReceiptKind.sale &&
+        receipt.cashPayment != null;
+    return _output(receipt, settings, openDrawer: kick);
   }
 
   /// Die Abschnitte der Gutscheine von [receipt], einer nach dem anderen in
@@ -730,13 +944,17 @@ class SaleService {
     if ((await _settings()).printerKind == PrinterKind.none) {
       return const PrintOutcome.failed(PrintProblem.notSetUp);
     }
+    _printStarted.add(receipt.id);
+    final PrintOutcome outcome;
     try {
-      return await _ref
+      outcome = await _ref
           .read(receiptPrinterProvider)
           .printReceipt(receipt, recipient: recipient);
     } catch (_) {
       return const PrintOutcome.failed(PrintProblem.unreachable);
     }
+    if (outcome.ok) await _recordPrinted(receipt);
+    return outcome;
   }
 
   /// Druckt den Zettel "Angaben für FinanzOnline" über denselben Drucker wie
@@ -875,18 +1093,23 @@ class SaleService {
     required bool openDrawer,
     void Function()? queued,
   }) async {
-    if (settings.printerKind != PrinterKind.none) {
-      try {
-        final year = await _ref
-            .read(receiptRepositoryProvider)
-            .yearReceiptBefore(receipt);
-        if (year != null) await _send(year, settings, openDrawer: false);
-      } catch (_) {
-        // Der Jahresbeleg steht gespeichert und lässt sich in den Bons
-        // nachdrucken; der Bon des Verkaufs geht trotzdem hinaus.
-      }
-    }
+    await _yearBefore(receipt, settings);
     return _output(receipt, settings, openDrawer: openDrawer, queued: queued);
+  }
+
+  /// Druckt den Jahresbeleg, der direkt vor [receipt] entstanden ist, wenn
+  /// es einen gibt. Wirft nie.
+  Future<void> _yearBefore(Receipt receipt, RegisterSettings settings) async {
+    if (settings.printerKind == PrinterKind.none) return;
+    try {
+      final year = await _ref
+          .read(receiptRepositoryProvider)
+          .yearReceiptBefore(receipt);
+      if (year != null) await _send(year, settings, openDrawer: false);
+    } catch (_) {
+      // Der Jahresbeleg steht gespeichert und lässt sich in den Bons
+      // nachdrucken; der Bon des Verkaufs geht trotzdem hinaus.
+    }
   }
 
   /// Druckt den Bon, mit [openDrawer] im selben Auftrag mit der Lade, und
@@ -897,6 +1120,7 @@ class SaleService {
     required bool openDrawer,
     void Function()? queued,
   }) async {
+    _printStarted.add(receipt.id);
     final outcome = await _send(
       receipt,
       settings,
@@ -910,8 +1134,29 @@ class SaleService {
         _drawerMissing.add(receipt.id);
       }
     }
-    if (outcome.ok) _printedOk.add(receipt.id);
+    if (outcome.ok) {
+      _printedOk.add(receipt.id);
+      await _recordPrinted(receipt);
+    }
     return outcome;
+  }
+
+  /// Hält fest, dass der Beleg zu [receipt] gedruckt ist (Spec 5.4, bei
+  /// jedem Wert des Schalters); nur das erste Mal zählt. Sonderbelege
+  /// (Start-, Monats-, Jahresbeleg) gehen keinem Kunden zu. Wirft nie.
+  Future<void> _recordPrinted(Receipt receipt) async {
+    if (receipt.kind.isSpecial) return;
+    try {
+      await _ref
+          .read(deliveryRepositoryProvider)
+          .record(
+            receipt.id,
+            DeliveryKind.printed,
+            at: _ref.read(clockProvider).now(),
+          );
+    } catch (_) {
+      // Die Belegerteilung ist ein Vermerk; der Druck zählt trotzdem.
+    }
   }
 
   /// [queued] läuft, sobald der Auftrag in der Warteschlange des Druckers
@@ -937,4 +1182,8 @@ class SaleService {
   }
 }
 
-final saleServiceProvider = Provider<SaleService>(SaleService.new);
+final saleServiceProvider = Provider<SaleService>((ref) {
+  final service = SaleService(ref);
+  ref.onDispose(service.dispose);
+  return service;
+});

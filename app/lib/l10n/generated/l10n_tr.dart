@@ -1867,4 +1867,26 @@ class L10nTr extends L10n {
 
   @override
   String get customerTooLong => 'Metin çok uzun.';
+
+  @override
+  String get kassaReceiptQrCaption => 'Fişi telefonla alın';
+
+  @override
+  String get kassaPrintReceiptNow => 'Fişi yazdır';
+
+  @override
+  String get kassaReceiptOfflinePrinted => 'İnternet yok, fiş yazdırılıyor.';
+
+  @override
+  String get kassaReceiptOfflineLater =>
+      'İnternet yok: Dijital fiş daha sonra görüntülenebilir.';
+
+  @override
+  String get bonsDeliveryTitle => 'Fiş';
+
+  @override
+  String get bonsDeliveryPrinted => 'Yazdırıldı';
+
+  @override
+  String get bonsDeliveryDigital => 'Dijital sunuldu';
 }

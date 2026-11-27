@@ -3355,6 +3355,48 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Der Text ist zu lang.'**
   String get customerTooLong;
+
+  /// Verkauf fertig: Satz unter dem QR-Code des digitalen Bons.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon mit dem Handy mitnehmen'**
+  String get kassaReceiptQrCaption;
+
+  /// Verkauf fertig bei "Digital, Druck auf Wunsch": Taste, die den Kundenbon doch druckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bon drucken'**
+  String get kassaPrintReceiptNow;
+
+  /// Verkauf fertig: Der Server hat den Bon nach 3 Sekunden nicht bestätigt, die Kassa druckt ihn von selbst.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Internet, Bon wird gedruckt.'**
+  String get kassaReceiptOfflinePrinted;
+
+  /// Verkauf fertig: Der Server hat den Bon nicht bestätigt und es gibt keinen Drucker; der QR-Code steht trotzdem da.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Internet: Der digitale Bon ist erst später abrufbar.'**
+  String get kassaReceiptOfflineLater;
+
+  /// Bon-Detail: Überschrift der Zeilen, wie der Beleg erteilt wurde.
+  ///
+  /// In de, this message translates to:
+  /// **'Beleg'**
+  String get bonsDeliveryTitle;
+
+  /// Bon-Detail: Der Kundenbon wurde gedruckt (daneben die Zeit).
+  ///
+  /// In de, this message translates to:
+  /// **'Gedruckt'**
+  String get bonsDeliveryPrinted;
+
+  /// Bon-Detail: Der QR-Code des digitalen Bons wurde gezeigt (daneben die Zeit).
+  ///
+  /// In de, this message translates to:
+  /// **'Digital angeboten'**
+  String get bonsDeliveryDigital;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

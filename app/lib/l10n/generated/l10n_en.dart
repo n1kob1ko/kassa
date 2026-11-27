@@ -1883,4 +1883,26 @@ class L10nEn extends L10n {
 
   @override
   String get customerTooLong => 'The text is too long.';
+
+  @override
+  String get kassaReceiptQrCaption => 'Take your receipt on your phone';
+
+  @override
+  String get kassaPrintReceiptNow => 'Print receipt';
+
+  @override
+  String get kassaReceiptOfflinePrinted => 'No internet, printing receipt.';
+
+  @override
+  String get kassaReceiptOfflineLater =>
+      'No internet: the digital receipt will be available later.';
+
+  @override
+  String get bonsDeliveryTitle => 'Receipt';
+
+  @override
+  String get bonsDeliveryPrinted => 'Printed';
+
+  @override
+  String get bonsDeliveryDigital => 'Offered digitally';
 }

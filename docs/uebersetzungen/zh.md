@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 542 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 549 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -129,6 +129,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Noch zu zahlen | 还需支付 | Kassa: `kassaDue` |
 | Mit Gutschein abschließen | 用礼券结账 | Kassa: `kassaFinishVoucher` |
 | Mit Gutschein bezahlt | 已用礼券支付 | Kassa: `kassaPaidByVoucher` |
+| Bon mit dem Handy mitnehmen | 用手机领取小票 | Kassa: `kassaReceiptQrCaption` |
+| Bon drucken | 打印小票 | Kassa: `kassaPrintReceiptNow` |
+| Kein Internet, Bon wird gedruckt. | 没有网络，正在打印小票。 | Kassa: `kassaReceiptOfflinePrinted` |
+| Kein Internet: Der digitale Bon ist erst später abrufbar. | 没有网络：电子小票稍后才能查看。 | Kassa: `kassaReceiptOfflineLater` |
 
 ## Kartenzahlung
 
@@ -294,6 +298,9 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | davon Trinkgeld | 其中小费 | Bons: `bonsTipIncluded` |
 | Der Gutschein wurde schon eingelöst. Der Bon lässt sich nicht stornieren. | 礼券已被使用，此小票无法作废。 | Bons: `bonsVoidVoucherRedeemed` |
 | Gutschein gedruckt | 礼券已打印 | Bons: `bonsVoucherPrinted` |
+| Beleg | 小票 | Bons: `bonsDeliveryTitle` |
+| Gedruckt | 已打印 | Bons: `bonsDeliveryPrinted` |
+| Digital angeboten | 已提供电子版 | Bons: `bonsDeliveryDigital` |
 
 ## Artikel
 

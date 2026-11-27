@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app_sync_providers.dart' show hasServerProvider;
 import '../../core/app_language.dart';
 import '../../core/money.dart';
+import '../../data/delivery_repository.dart';
 import '../../data/providers.dart';
 import '../../data/receipt_repository.dart'
     show NotInCurrentChainException, VoucherSaleRedeemedException;
@@ -25,6 +27,7 @@ import '../customers/customer_picker.dart';
 import '../kassa/cart_line_row.dart' show discountReasonText;
 import '../kassa/kitchen_service.dart';
 import '../kassa/late_kitchen.dart';
+import '../kassa/receipt_qr.dart';
 import '../kassa/sale_done.dart' show KitchenStateBox;
 import '../kassa/sale_service.dart';
 import '../login/session.dart';
@@ -44,6 +47,10 @@ import 'void_question.dart';
 /// Ist "Rechnung an Firma" an, steht bei einem Verkauf, der gilt und kein
 /// Testbon ist, die Rechnung ([InvoiceBox]) über der Signatur; "Rechnung an
 /// Firma" öffnet an Stelle des Bons das Blatt "Firmenkunde wählen".
+/// Gibt es Einträge, wie der Beleg erteilt wurde, steht die Zeile "Beleg"
+/// mit "Gedruckt" und "Digital angeboten" und ihren Zeiten da. Ist der
+/// Kundenbon digital ([effectiveReceiptMode]) und hat der Bon einen
+/// Schlüssel, steht darunter der QR-Code seiner Seite (`detail-receipt-qr`).
 class ReceiptDetail extends ConsumerStatefulWidget {
   const ReceiptDetail({super.key, required this.receipt, required this.all});
 
@@ -62,6 +69,12 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
 
   /// Ob "Rechnung an Firma" bei diesem Bon steht (aus dem letzten Bild).
   bool _invoice = false;
+
+  /// Wie der Beleg erteilt wurde (aus dem letzten Bild).
+  List<ReceiptDelivery> _deliveries = const [];
+
+  /// Ob der QR-Code der Seite des Bons dasteht (aus dem letzten Bild).
+  bool _showQr = false;
 
   /// "Rechnung an Firma" ist getippt: an Stelle des Bons steht das Blatt
   /// "Firmenkunde wählen".
@@ -264,6 +277,17 @@ class _ReceiptDetailState extends ConsumerState<ReceiptDetail> {
     final hasPrinter = settings.printerKind != PrinterKind.none;
     _hasPrinter = hasPrinter;
     _invoice = receipt != null && showsInvoice(settings, receipt);
+    _deliveries = receipt == null
+        ? const []
+        : ref.watch(receiptDeliveriesProvider(receipt.id)).value ?? const [];
+    final paired =
+        ref.watch(hasServerProvider) &&
+        (ref.watch(syncStateProvider).value?.hasRegister ?? false);
+    _showQr =
+        receipt != null &&
+        receipt.publicToken != null &&
+        effectiveReceiptMode(settings, paired: paired) !=
+            ReceiptMode.alwaysPrint;
     final canVoid =
         receipt != null &&
         receipt.kind == ReceiptKind.sale &&
@@ -664,6 +688,41 @@ class _Body extends StatelessWidget {
             ],
           ),
         ),
+        if (state._deliveries.isNotEmpty)
+          Padding(
+            key: const Key('detail-delivery'),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l.bonsDeliveryTitle,
+                  style: small.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: c.ink,
+                  ),
+                ),
+                for (final delivery in state._deliveries)
+                  _SmallRow(
+                    key: Key('detail-delivery-${delivery.kind.name}'),
+                    switch (delivery.kind) {
+                      DeliveryKind.printed => l.bonsDeliveryPrinted,
+                      DeliveryKind.digital => l.bonsDeliveryDigital,
+                    },
+                    l.bonsTime(receiptTime(delivery.at)),
+                    small,
+                  ),
+              ],
+            ),
+          ),
+        if (state._showQr)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: ReceiptQr(
+              receipt: r,
+              qrKey: const Key('detail-receipt-qr'),
+            ),
+          ),
         if (state._invoice)
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),

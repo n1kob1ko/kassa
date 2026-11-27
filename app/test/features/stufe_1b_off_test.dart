@@ -14,6 +14,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../support/cash_pump.dart';
 import '../support/kassa_pump.dart';
+import '../support/pump.dart';
 
 /// Tasten und Flächen, die nur mit einem Schalter der Stufe 1b da sein
 /// dürfen.
@@ -110,4 +111,30 @@ void main() {
     expect(containerOf(t).read(sessionProvider)?.isChef, isTrue);
     await _sellAndLook(t);
   });
+
+  testWidgets('Kundenbon "Immer drucken": nach "Verkauf fertig" druckt der '
+      'Bon von selbst wie in 1.11.0, ohne QR-Code, ohne "Bon drucken", '
+      'ohne Uhr', (t) async {
+    await pumpKassa(t);
+    await setUpPrinter(t);
+    await _allOffWith1aOn(t);
+    await tapItem(t, 'cola');
+    await t.tap(find.byKey(const Key('pay-cash')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('finish-sale')));
+    await t.pumpAndSettle();
+    final id = (await queryRows(t, 'SELECT id FROM receipts')).single['id'];
+    // Lade und Bon in einem Auftrag, sofort, wie in 1.11.0.
+    expect(printerOf(t).log, ['print+drawer:$id']);
+    expect(find.byKey(const Key('print-state')), findsOneWidget);
+    _expectNoNewKey('Verkauf fertig mit Drucker');
+    for (final k in ['receipt-qr-caption', 'receipt-offline-note']) {
+      expect(find.byKey(Key(k)), findsNothing, reason: k);
+    }
+    // Läuft keine Uhr, druckt auch später nichts mehr (und am Ende des
+    // Tests steht kein Timer aus).
+    await t.pump(const Duration(seconds: 5));
+    expect(printerOf(t).log, ['print+drawer:$id']);
+  });
 }
+

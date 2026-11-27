@@ -541,5 +541,12 @@
   "customerNameMissing": "请输入名称。",
   "customerAddressMissing": "请输入地址。",
   "customerVatIdMissing": "超过 10.000 € 时，发票需要客户的增值税号。",
-  "customerTooLong": "文字太长。"
+  "customerTooLong": "文字太长。",
+  "kassaReceiptQrCaption": "用手机领取小票",
+  "kassaPrintReceiptNow": "打印小票",
+  "kassaReceiptOfflinePrinted": "没有网络，正在打印小票。",
+  "kassaReceiptOfflineLater": "没有网络：电子小票稍后才能查看。",
+  "bonsDeliveryTitle": "小票",
+  "bonsDeliveryPrinted": "已打印",
+  "bonsDeliveryDigital": "已提供电子版"
 }

@@ -1714,6 +1714,114 @@ void main() {
       expect(printer.printedJobs.map((p) => p.kind), ['receipt', 'voucher']);
     });
   });
+
+  group('Belegerteilung und Kundenbon (Task 15)', () {
+    Future<List<Map<String, Object?>>> deliveries() async => [
+      for (final r in await shop.db
+          .customSelect(
+            'SELECT receipt_id, kind FROM receipt_deliveries '
+            'ORDER BY receipt_id, kind',
+          )
+          .get())
+        r.data,
+    ];
+
+    test('effectiveReceiptMode: ohne Kopplung immer "Immer drucken"', () {
+      for (final mode in ReceiptMode.values) {
+        final s = RegisterSettings(receiptMode: mode);
+        expect(effectiveReceiptMode(s, paired: true), mode);
+        expect(
+          effectiveReceiptMode(s, paired: false),
+          ReceiptMode.alwaysPrint,
+        );
+      }
+    });
+
+    test('"gedruckt" erst nach einem Druck ohne Fehler, einmal je Bon; auch '
+        'Nochmal drucken, Drucken aus "Bons" und die Rechnung', () async {
+      await configure();
+      printer.next = const PrintOutcome.failed(PrintProblem.unreachable);
+      final r = await sell('s1');
+      expect((await r.print).ok, isFalse);
+      expect(r.autoPrinted, isTrue);
+      expect(await r.fallback.toList(), [ReceiptFallback.none]);
+      expect(await deliveries(), isEmpty);
+
+      printer.next = const PrintOutcome.ok();
+      expect((await service.printAgain(r.receipt)).ok, isTrue);
+      expect(await deliveries(), [
+        {'receipt_id': 's1', 'kind': 'printed'},
+      ]);
+      expect((await service.reprint(r.receipt)).ok, isTrue);
+      expect(await deliveries(), hasLength(1));
+
+      // Aus "Bons" nachgedruckt: der erste Druck ohne Fehler zählt.
+      final s2 = await shop.sell('s2');
+      expect((await service.reprint(s2)).ok, isTrue);
+      // Als Rechnung gedruckt.
+      final s3 = await shop.sell('s3');
+      final recipient = await container
+          .read(customerRepositoryProvider)
+          .setRecipient(
+            receiptId: s3.id,
+            name: 'Muster GmbH',
+            addressLine1: 'Musterweg 1',
+            addressLine2: '1010 Wien',
+            staff: shop.chef,
+          );
+      expect((await service.printInvoice(s3, recipient)).ok, isTrue);
+      expect(await deliveries(), [
+        {'receipt_id': 's1', 'kind': 'printed'},
+        {'receipt_id': 's2', 'kind': 'printed'},
+        {'receipt_id': 's3', 'kind': 'printed'},
+      ]);
+      expect(
+        [
+          for (final r in await shop.db
+              .customSelect(
+                "SELECT ref FROM outbox WHERE kind = 'delivery' ORDER BY id",
+              )
+              .get())
+            r.read<String>('ref'),
+        ],
+        ['s1/printed', 's2/printed', 's3/printed'],
+      );
+    });
+
+    test('ein Sonderbeleg zählt nicht als Belegerteilung', () async {
+      await configure();
+      await shop.insertSpecialReceipt('start', 1, ReceiptKind.start);
+      final start = (await shop.receipts.find('start'))!;
+      expect((await service.reprint(start)).ok, isTrue);
+      expect(printer.printed, ['start']);
+      expect(await deliveries(), isEmpty);
+    });
+
+    test('ohne Server: ein digitaler Wert druckt wie "Immer drucken", ohne '
+        'Uhr', () async {
+      await configure();
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          receiptMode: ReceiptMode.digitalOnRequest,
+        ),
+      );
+      await container
+          .read(syncStateRepositoryProvider)
+          .saveRegister(
+            registerId: 'kassa-1',
+            registerName: 'Kassa 1',
+            businessId: 'betrieb-1',
+          );
+      final r = await sell('s1');
+      expect(r.autoPrinted, isTrue);
+      expect(r.receiptMode, ReceiptMode.alwaysPrint);
+      expect((await r.print).ok, isTrue);
+      expect(printer.log, ['print+drawer:s1']);
+      expect(await r.fallback.toList(), [ReceiptFallback.none]);
+    });
+  });
+
 }
 
 /// Offene Zahlungen, deren Schreiben scheitern kann.

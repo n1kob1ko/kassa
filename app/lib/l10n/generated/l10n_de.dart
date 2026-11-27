@@ -1887,4 +1887,26 @@ class L10nDe extends L10n {
 
   @override
   String get customerTooLong => 'Der Text ist zu lang.';
+
+  @override
+  String get kassaReceiptQrCaption => 'Bon mit dem Handy mitnehmen';
+
+  @override
+  String get kassaPrintReceiptNow => 'Bon drucken';
+
+  @override
+  String get kassaReceiptOfflinePrinted => 'Kein Internet, Bon wird gedruckt.';
+
+  @override
+  String get kassaReceiptOfflineLater =>
+      'Kein Internet: Der digitale Bon ist erst später abrufbar.';
+
+  @override
+  String get bonsDeliveryTitle => 'Beleg';
+
+  @override
+  String get bonsDeliveryPrinted => 'Gedruckt';
+
+  @override
+  String get bonsDeliveryDigital => 'Digital angeboten';
 }
