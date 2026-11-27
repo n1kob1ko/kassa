@@ -198,3 +198,22 @@ class Catalog {
     return null;
   }
 }
+
+/// Alle Pfand-Beträge über 0 der Speisekarte: von Artikeln im Verkauf und von
+/// den Optionen ihrer Auswahl-Vorlagen, ohne Doppelte, aufsteigend. Je Betrag
+/// steht im Blatt "Pfand zurück" eine Reihe.
+List<int> depositAmounts(Catalog catalog) {
+  final amounts = <int>{};
+  for (final item in catalog.items) {
+    if (!item.inSale) continue;
+    if (item.depositCents > 0) amounts.add(item.depositCents);
+    for (final g
+        in catalog.templateOf(item)?.groups ?? const <ModifierGroup>[]) {
+      for (final o in g.options) {
+        final cents = o.depositCents ?? 0;
+        if (cents > 0) amounts.add(cents);
+      }
+    }
+  }
+  return amounts.toList()..sort();
+}

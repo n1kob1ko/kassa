@@ -28,9 +28,15 @@ import 'cart_line_row.dart';
 /// Summenblock. Mit [onLineDiscount] öffnet ein Tipp auf Name, Preis oder
 /// Rabatt einer Zeile das Blatt "Rabatt", mit [onReceiptDiscount] steht im
 /// Summenblock die Taste "Rabatt". Ist die Summe 0,00 € und der Bon hat einen
-/// Rabatt, steht mit [onFinishFree] statt "Bar" und "Karte" "Abschließen".
-/// Mit [onOpenAmount] steht im Kopf die Taste "Freier Betrag", auch am leeren
-/// Bon; ohne ist der Kopf genau der von 1.10.0.
+/// Rabatt oder "Pfand zurück", steht mit [onFinishFree] statt "Bar" und
+/// "Karte" "Abschließen". Liegt die Summe unter 0 (Pfand zurück), steht mit
+/// [onPayOut] dort nur "Bar auszahlen" mit dem Betrag.
+///
+/// Im Kopf steht höchstens eine Taste, auch am leeren Bon: mit
+/// [onOpenAmount] "Freier Betrag", mit [onDepositReturn] "Pfand zurück",
+/// mit [onMore] "Mehr" (die Kassa setzt genau eine davon). Ohne alle drei
+/// ist der Kopf genau der von 1.10.0. Eine Zeile "Pfand zurück" ist keine
+/// Tippfläche für den Rabatt; ihre Menge geht über "Pfand zurück".
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -43,6 +49,9 @@ class CartPanel extends ConsumerStatefulWidget {
     this.onReceiptDiscount,
     this.onFinishFree,
     this.onOpenAmount,
+    this.onDepositReturn,
+    this.onMore,
+    this.onPayOut,
   });
 
   final VoidCallback onPayCash;
@@ -62,6 +71,15 @@ class CartPanel extends ConsumerStatefulWidget {
 
   /// Öffnet das Blatt "Freier Betrag"; null: keine Taste im Kopf.
   final VoidCallback? onOpenAmount;
+
+  /// Öffnet das Blatt "Pfand zurück"; null: keine Taste im Kopf.
+  final VoidCallback? onDepositReturn;
+
+  /// Öffnet das Blatt "Mehr"; null: keine Taste im Kopf.
+  final VoidCallback? onMore;
+
+  /// "Bar auszahlen" bei einer Summe unter 0.
+  final VoidCallback? onPayOut;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -99,9 +117,46 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     widget.onFinishFree?.call();
   }
 
-  void _openAmount() {
+  void _payOut() {
     _dismissToast();
-    widget.onOpenAmount?.call();
+    widget.onPayOut?.call();
+  }
+
+  /// Die Taste im Kopf: "Freier Betrag", "Pfand zurück" oder "Mehr"; null:
+  /// keine.
+  _HeadAction? _headAction(L10n l) {
+    VoidCallback tap(VoidCallback f) => () {
+      _dismissToast();
+      f();
+    };
+    if (widget.onMore case final f?) {
+      return (
+        key: const Key('more-button'),
+        label: l.kassaMore,
+        icon: LucideIcons.ellipsis,
+        onTap: tap(f),
+        halfAtMost: false,
+      );
+    }
+    if (widget.onDepositReturn case final f?) {
+      return (
+        key: const Key('deposit-return-button'),
+        label: l.kassaDepositReturn,
+        icon: LucideIcons.undo2,
+        onTap: tap(f),
+        halfAtMost: false,
+      );
+    }
+    if (widget.onOpenAmount case final f?) {
+      return (
+        key: const Key('open-amount-button'),
+        label: l.openAmountTitle,
+        icon: LucideIcons.plus,
+        onTap: tap(f),
+        halfAtMost: true,
+      );
+    }
+    return null;
   }
 
   void _clear() {
@@ -150,12 +205,16 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     final pricing = cart.pricing;
     final onLineDiscount = widget.onLineDiscount;
     final onReceiptDiscount = widget.onReceiptDiscount;
-    // Summe 0,00 € durch einen Rabatt: nichts zu kassieren, nur abschließen.
+    // Summe 0,00 € durch einen Rabatt oder "Pfand zurück": nichts zu
+    // kassieren, nur abschließen.
     final free =
         widget.onFinishFree != null &&
         !cart.isEmpty &&
         cart.totalCents == 0 &&
-        pricing.discountCents > 0;
+        (pricing.discountCents > 0 || cart.lines.any((l) => l.isDepositReturn));
+    // Summe unter 0: nur bar auszahlen.
+    final payOut =
+        widget.onPayOut != null && !cart.isEmpty && cart.totalCents < 0;
     return Container(
       width: KassaTokens.receiptColumnWidth,
       decoration: BoxDecoration(
@@ -171,7 +230,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
             count: count,
             empty: cart.isEmpty,
             onClear: _clear,
-            onOpenAmount: widget.onOpenAmount == null ? null : _openAmount,
+            action: _headAction(l),
           ),
           Expanded(
             child: DecoratedBox(
@@ -194,7 +253,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                           onQuantity: (q) =>
                               controller.setQuantity(line.lineId, q),
                           discountCents: pricing.lines[i].ownDiscountCents,
-                          onDiscount: onLineDiscount == null
+                          onDiscount:
+                              onLineDiscount == null || line.isDepositReturn
                               ? null
                               : () => onLineDiscount(line.lineId),
                         );
@@ -216,7 +276,21 @@ class _CartPanelState extends ConsumerState<CartPanel> {
               12,
               12 + MediaQuery.paddingOf(context).bottom,
             ),
-            child: free
+            child: payOut
+                ? SizedBox(
+                    width: double.infinity,
+                    child: PrimaryButton(
+                      key: const Key('pay-out'),
+                      label: l.kassaPayOut(
+                        ltrIsolate(context, formatEuro(-cart.totalCents)),
+                      ),
+                      icon: LucideIcons.banknote,
+                      labelSize: 22,
+                      height: KassaTokens.mainActionHeight,
+                      onPressed: widget.canPay ? _payOut : null,
+                    ),
+                  )
+                : free
                 ? SizedBox(
                     width: double.infinity,
                     child: PrimaryButton(
@@ -269,27 +343,38 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   }
 }
 
+/// Eine Taste im Kopf der Bon-Spalte.
+/// [halfAtMost]: die Taste nimmt höchstens die Hälfte des Kopfs ("Freier
+/// Betrag", wie in 1.11.0); sonst darf sie bis an den Titel "Bon" reichen.
+typedef _HeadAction = ({
+  Key key,
+  String label,
+  IconData icon,
+  VoidCallback onTap,
+  bool halfAtMost,
+});
+
 class _Header extends StatelessWidget {
   const _Header({
     required this.count,
     required this.empty,
     required this.onClear,
-    this.onOpenAmount,
+    this.action,
   });
 
   final int count;
   final bool empty;
   final VoidCallback onClear;
 
-  /// "Freier Betrag"; null: keine Taste.
-  final VoidCallback? onOpenAmount;
+  /// "Freier Betrag", "Pfand zurück" oder "Mehr"; null: keine Taste.
+  final _HeadAction? action;
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     final l = L10n.of(context);
-    final title = Row(
+    final titleRow = Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
@@ -313,21 +398,30 @@ class _Header extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: switch (onOpenAmount) {
-                null => title,
-                // Die Taste "Freier Betrag" nimmt, was sie braucht, höchstens
-                // die Hälfte; den Rest behalten der Titel und die Zahl der
-                // Artikel.
-                final onOpenAmount => LayoutBuilder(
-                  builder: (context, box) => Row(
-                    children: [
-                      Expanded(child: title),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: box.maxWidth / 2),
-                        child: _OpenAmountButton(onTap: onOpenAmount),
-                      ),
-                    ],
-                  ),
+              child: switch (action) {
+                null => titleRow,
+                // Die Taste im Kopf nimmt, was sie braucht: "Freier Betrag"
+                // höchstens die Hälfte, die anderen bis an den Titel "Bon";
+                // den Rest behalten der Titel und die Zahl der Artikel.
+                final action => LayoutBuilder(
+                  builder: (context, box) {
+                    final half = box.maxWidth / 2;
+                    final title = _titleWidth(context, l.kassaReceipt);
+                    final room = box.maxWidth - title - KassaTokens.spaceLg;
+                    return Row(
+                      children: [
+                        Expanded(child: titleRow),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: action.halfAtMost || room < half
+                                ? half
+                                : room,
+                          ),
+                          child: _HeadButton(action: action),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               },
             ),
@@ -487,22 +581,28 @@ class _Totals extends StatelessWidget {
   }
 }
 
-/// "Freier Betrag" im Kopf der Bon-Spalte: öffnet das Blatt.
-class _OpenAmountButton extends StatelessWidget {
-  const _OpenAmountButton({required this.onTap});
+/// Die Taste im Kopf der Bon-Spalte ("Freier Betrag", "Pfand zurück" oder
+/// "Mehr"): öffnet ihr Blatt.
+class _HeadButton extends StatelessWidget {
+  const _HeadButton({required this.action});
 
-  final VoidCallback onTap;
+  final _HeadAction action;
 
   @override
   Widget build(BuildContext context) {
     final c = KassaColors.of(context);
     final text = Theme.of(context).textTheme;
     return Pressable(
-      key: const Key('open-amount-button'),
-      onTap: onTap,
+      key: action.key,
+      onTap: action.onTap,
       minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
+      // "Freier Betrag" genau wie in 1.11.0; die anderen Tasten brechen bei
+      // großer Schrift in eine zweite Zeile um und wachsen mit ihr.
       child: Container(
-        height: KassaTokens.drawnControlHeight,
+        height: action.halfAtMost ? KassaTokens.drawnControlHeight : null,
+        constraints: action.halfAtMost
+            ? null
+            : const BoxConstraints(minHeight: KassaTokens.drawnControlHeight),
         padding: const EdgeInsets.symmetric(horizontal: KassaTokens.spaceSm),
         decoration: BoxDecoration(
           color: c.fill,
@@ -511,14 +611,16 @@ class _OpenAmountButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(LucideIcons.plus, size: 18, color: c.ink),
+            Icon(action.icon, size: 18, color: c.ink),
             const SizedBox(width: KassaTokens.spaceXs),
             Flexible(
               child: Text(
-                L10n.of(context).openAmountTitle,
-                maxLines: 1,
+                action.label,
+                maxLines: action.halfAtMost ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
-                style: text.labelLarge,
+                style: action.halfAtMost
+                    ? text.labelLarge
+                    : text.labelLarge!.copyWith(height: 1.15),
               ),
             ),
           ],
@@ -567,4 +669,20 @@ class _DiscountButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wie breit der Titel "Bon" im Kopf ist, mit der Schriftgröße des Geräts.
+double _titleWidth(BuildContext context, String title) {
+  final painter = TextPainter(
+    text: TextSpan(
+      text: title,
+      style: Theme.of(context).textTheme.headlineMedium,
+    ),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final width = painter.width;
+  painter.dispose();
+  return width;
 }

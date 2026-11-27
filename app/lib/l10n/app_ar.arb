@@ -471,5 +471,11 @@
   "closeCardTip": "إكرامية البطاقة",
   "closeCardAccount": "إلى حساب البطاقة",
   "bonsSubtotal": "المجموع الفرعي",
-  "bonsTipIncluded": "منها إكرامية"
+  "bonsTipIncluded": "منها إكرامية",
+  "kassaMore": "المزيد",
+  "kassaDepositReturn": "إرجاع الرهن",
+  "depositReturnTotal": "المُرجَع",
+  "depositReturnAdd": "أضف إلى الفاتورة",
+  "kassaPayOut": "صرف نقدًا {amount}",
+  "kassaPayOutDone": "ادفع للزبون"
 }

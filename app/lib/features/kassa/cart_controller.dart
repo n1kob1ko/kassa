@@ -34,8 +34,31 @@ class CartController extends Notifier<Cart> {
   void addOpenAmount({required int amountCents, required TaxRate rate}) =>
       _set(state.addOpenAmount(amountCents: amountCents, rate: rate));
 
-  void setQuantity(String lineId, int quantity) =>
-      _set(state.setQuantity(lineId, quantity));
+  /// Die Menge einer Zeile. Bei einer Zeile "Pfand zurück" geht sie über
+  /// [Cart.setDepositReturn]: höchstens 99, 0 nimmt die Zeile weg.
+  void setQuantity(String lineId, int quantity) {
+    final line = state.lines.where((l) => l.lineId == lineId).firstOrNull;
+    if (line != null && line.isDepositReturn) {
+      setDepositReturns({
+        -line.item.depositCents: quantity.clamp(0, maxQuantity),
+      });
+      return;
+    }
+    _set(state.setQuantity(lineId, quantity));
+  }
+
+  /// Setzt jede Reihe des Blatts "Pfand zurück" in einem Schritt: je Betrag
+  /// in Cent die Menge (0 nimmt die Zeile weg). Ändert sich nichts, bleibt
+  /// der Bon, wie er ist.
+  void setDepositReturns(Map<int, int> quantityByCents) {
+    var next = state;
+    for (final e in quantityByCents.entries) {
+      if (next.depositReturnQuantity(e.key) == e.value) continue;
+      next = next.setDepositReturn(depositCents: e.key, quantity: e.value);
+    }
+    if (identical(next, state)) return;
+    _set(next);
+  }
 
   void remove(String lineId) => _set(state.remove(lineId));
 

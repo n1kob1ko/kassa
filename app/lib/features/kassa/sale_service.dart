@@ -215,6 +215,28 @@ class SaleService {
     return _printSale(saleId, receipt, await _settings(), openDrawer: false);
   }
 
+  /// Schließt einen Bon unter 0 ab ("Bar auszahlen", etwa nur Pfand zurück):
+  /// eine Bar-Zahlung über die Summe, gegeben 0, kein Rückgeld. Die Lade
+  /// geht auf wie beim Barverkauf, wenn sie eingeschaltet ist; der Küchenbon
+  /// kommt wie immer (ein Bon unter 0 kann Ware enthalten). Bei einer Summe
+  /// ab 0 [ArgumentError], und nichts wird gespeichert.
+  Future<SaleResult> completePayout({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) async {
+    final receipt = await _ref
+        .read(receiptRepositoryProvider)
+        .finalizePayout(saleId: saleId, cart: cart, staff: staff);
+    final settings = await _settings();
+    return _printSale(
+      saleId,
+      receipt,
+      settings,
+      openDrawer: settings.cashDrawerEnabled,
+    );
+  }
+
   /// Nimmt die Kartenzahlung für [cart] am Terminal an: [cashPartCents] ist
   /// schon bar bezahlt, die Karte bucht den Rest und das Trinkgeld
   /// [tipCents] (für [staff]). Die offene Zahlung steht mit beiden Beträgen in

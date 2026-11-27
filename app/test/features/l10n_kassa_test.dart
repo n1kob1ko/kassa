@@ -168,4 +168,54 @@ void main() {
     expect(ar.kassaItemCount(100), '100 صنف');
     expect(lookupL10n(const Locale('de')).kassaItemCount(1), '1 Artikel');
   });
+
+  const depositReturn = {
+    AppLanguage.en: (more: 'More', back: 'Deposit return', out: 'Pay out cash'),
+    AppLanguage.zh: (more: '更多', back: '退押金', out: '现金退付'),
+    AppLanguage.tr: (
+      more: 'Daha fazla',
+      back: 'Depozito iadesi',
+      out: 'Nakit öde',
+    ),
+    AppLanguage.ar: (more: 'المزيد', back: 'إرجاع الرهن', out: 'صرف نقدًا'),
+  };
+
+  testWidgets('en, zh, tr, ar: "Mehr", "Pfand zurück" und "Bar auszahlen" '
+      'stehen in der Bediensprache', (t) async {
+    for (final MapEntry(key: language, value: texts) in depositReturn.entries) {
+      await pumpKassa(t);
+      await setSettings(
+        t,
+        (s) => s.copyWith(
+          language: language,
+          openAmountAccess: FeatureAccess.all,
+          depositReturnAccess: FeatureAccess.all,
+        ),
+      );
+      expect(_inKey('more-button', texts.more), findsOneWidget);
+      await t.tap(find.byKey(const Key('more-button')));
+      await t.pumpAndSettle();
+      expect(_inKey('more-deposit-return', texts.back), findsOneWidget);
+      await t.tap(find.byKey(const Key('more-deposit-return')));
+      await t.pumpAndSettle();
+      expect(find.text(texts.back), findsWidgets);
+      await t.tap(find.byKey(const Key('deposit-return-plus-25')));
+      await t.pump();
+      await t.tap(find.byKey(const Key('deposit-return-add')));
+      await t.pumpAndSettle();
+      final payOut = find.descendant(
+        of: find.byKey(const Key('pay-out')),
+        matching: find.textContaining(texts.out),
+      );
+      expect(payOut, findsOneWidget, reason: language.name);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('pay-out')),
+          matching: find.textContaining('Bar auszahlen'),
+        ),
+        findsNothing,
+      );
+      expect(_inKey('more-button', 'Mehr'), findsNothing);
+    }
+  });
 }

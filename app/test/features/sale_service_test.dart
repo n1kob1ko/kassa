@@ -599,6 +599,99 @@ void main() {
     });
   });
 
+  group('completePayout', () {
+    /// Der Küchenbon am Bondrucker, wie in der Gruppe "Küchenbon".
+    Future<void> kitchenAtReceiptPrinter() async {
+      final repo = container.read(settingsRepositoryProvider);
+      await repo.save(
+        (await repo.current()).copyWith(
+          kitchenMode: KitchenMode.receiptPrinter,
+        ),
+      );
+      for (var i = 0; i < 100; i++) {
+        final now = container.read(settingsStreamProvider).value;
+        if (now?.kitchenMode == KitchenMode.receiptPrinter) return;
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      fail('Einstellungen kamen nicht an');
+    }
+
+    // Teigtaschen 6,50 € und 99 × 0,25 € zurück: −18,25 €.
+    final withGoods = const Cart.empty()
+        .add(teigtaschen)
+        .setDepositReturn(depositCents: 25, quantity: 99);
+    final onlyReturn = const Cart.empty().setDepositReturn(
+      depositCents: 25,
+      quantity: 3,
+    );
+
+    test('completePayout druckt den Bon, öffnet die Lade und druckt den '
+        'Küchenbon, wenn Ware dabei ist', () async {
+      await configure();
+      await kitchenAtReceiptPrinter();
+      final r = await service.completePayout(
+        saleId: 'p1',
+        cart: withGoods,
+        staff: shop.anna,
+      );
+      expect((await r.print).ok, isTrue);
+      expect((await r.kitchen)!.ok, isTrue);
+      expect(printer.log, ['print+drawer:p1', 'raster']);
+      expect(
+        [for (final l in rendered.single.$1.lines) l.name],
+        ['Teigtaschen'],
+      );
+      final p = r.receipt.payments.single;
+      expect(
+        (
+          r.receipt.totalCents,
+          p.kind,
+          p.amountCents,
+          p.givenCents,
+          p.changeCents,
+        ),
+        (-1825, PaymentKind.cash, -1825, 0, 0),
+      );
+      // Ein zweiter Aufruf mit derselben Id druckt nicht noch einmal.
+      final again = await service.completePayout(
+        saleId: 'p1',
+        cart: withGoods,
+        staff: shop.anna,
+      );
+      await again.print;
+      expect(printer.log, ['print+drawer:p1', 'raster']);
+      expect(await shop.count('receipts'), 1);
+    });
+
+    test('nur Pfand zurück: kein Küchenbon; Lade ausgeschaltet: nur der '
+        'Bon', () async {
+      await configure(drawer: false);
+      await kitchenAtReceiptPrinter();
+      final r = await service.completePayout(
+        saleId: 'p2',
+        cart: onlyReturn,
+        staff: shop.anna,
+      );
+      expect((await r.print).ok, isTrue);
+      expect(await r.kitchen, isNull);
+      expect(printer.log, ['print:p2']);
+      expect(rendered, isEmpty);
+    });
+
+    test('Summe 0 oder darüber: ArgumentError, nichts gespeichert, nichts '
+        'gedruckt', () async {
+      await configure();
+      for (final c in [cart, const Cart.empty().add(teigtaschen)]) {
+        await expectLater(
+          service.completePayout(saleId: 'p3', cart: c, staff: shop.anna),
+          throwsArgumentError,
+        );
+      }
+      expect(await shop.count('receipts'), 0);
+      expect(printer.log, isEmpty);
+    });
+  });
+
   test('reprint druckt den Bon noch einmal, ohne Lade', () async {
     await configure();
     final sale = await shop.sell('s1');

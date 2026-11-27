@@ -15,7 +15,8 @@ import '../../ui/tokens.dart';
 /// Steigt [flash], leuchtet die Zeile einmal auf. Die Namen stehen in der
 /// Bediensprache und brechen um, statt gekürzt zu werden; der Bon selbst hält
 /// die Namen der Speisekarte. Ein freier Betrag heißt "Diverses 20 %" in der
-/// Bediensprache.
+/// Bediensprache, eine Zeile "Pfand zurück" ebenso; sie zeigt das
+/// zurückgegebene Pfand mit Minus ("−0,75 €"), und ihr Plus ist bei 99 grau.
 ///
 /// Hat die Zeile einen Rabatt, steht darunter eine kleine Reihe mit Höhe,
 /// Grund und dem Betrag des Rabatts ([discountCents]). Mit [onDiscount] sind
@@ -170,7 +171,9 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
                 key: Key('qty-plus-$id'),
                 icon: LucideIcons.plus,
                 label: l.kassaOneMore(name),
-                onTap: () => widget.onQuantity(line.quantity + 1),
+                onTap: line.isDepositReturn && line.quantity >= maxQuantity
+                    ? null
+                    : () => widget.onQuantity(line.quantity + 1),
               ),
               const SizedBox(width: KassaTokens.spaceSm),
               _discountTarget(
@@ -179,7 +182,11 @@ class _CartLineRowState extends ConsumerState<CartLineRow>
                   constraints: const BoxConstraints(minWidth: 62),
                   child: Ltr(
                     child: Text(
-                      formatEuro(line.goodsCents),
+                      formatEuro(
+                        line.isDepositReturn
+                            ? line.depositCents
+                            : line.goodsCents,
+                      ),
                       textAlign: ltrAlign(context, TextAlign.end),
                       maxLines: 1,
                       style: text.bodyLarge!.copyWith(
@@ -287,14 +294,17 @@ class DiscountRow extends StatelessWidget {
 }
 
 /// Der Name einer Bon-Zeile am Bildschirm, in der Bediensprache: ein freier
-/// Betrag heißt [L10n.openAmountLine] ("Diverses 20 %"), sonst der Name aus
-/// der Speisekarte über [menuText].
+/// Betrag heißt [L10n.openAmountLine] ("Diverses 20 %"), eine Zeile "Pfand
+/// zurück" [L10n.kassaDepositReturn], sonst der Name aus der Speisekarte über
+/// [menuText].
 String cartLineName(
   L10n l,
   String Function(String source) menuText,
   CartLine line,
 ) => line.isOpenAmount
     ? l.openAmountLine(line.item.taxRate.percent)
+    : line.isDepositReturn
+    ? l.kassaDepositReturn
     : menuText(line.item.name);
 
 /// "−10 % Stammgast" oder "Rabatt Stammgast", in der Bediensprache.
@@ -316,7 +326,7 @@ String discountReasonText(L10n l, DiscountReason reason) => switch (reason) {
   DiscountReason.invitation => l.discountReasonInvitation,
 };
 
-/// Plus und Minus: 44 dp gezeichnet, 48 dp Antippfläche.
+/// Plus und Minus: 44 dp gezeichnet, 48 dp Antippfläche; ohne [onTap] grau.
 class _StepButton extends StatelessWidget {
   const _StepButton({
     super.key,
@@ -327,7 +337,7 @@ class _StepButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

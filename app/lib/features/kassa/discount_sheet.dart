@@ -70,11 +70,13 @@ class _DiscountSheetState extends ConsumerState<DiscountSheet> {
     return rest == 0 ? '$euros' : '$euros,${rest.toString().padLeft(2, '0')}';
   }
 
+  /// Die Zeile des Blatts. Eine Zeile "Pfand zurück" bekommt nie Rabatt: für
+  /// sie schließt das Blatt wie für eine Zeile, die es nicht mehr gibt.
   CartLine? _lineOf(Cart cart) {
     final id = widget.lineId;
     if (id == null) return null;
     for (final l in cart.lines) {
-      if (l.lineId == id) return l;
+      if (l.lineId == id) return l.isDepositReturn ? null : l;
     }
     return null;
   }

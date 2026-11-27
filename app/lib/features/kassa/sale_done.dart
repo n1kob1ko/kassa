@@ -20,7 +20,8 @@ import 'sale_service.dart';
 /// Nach dem Bezahlen: "Bezahlt", die Bon-Nummer, der Stand des Druckens und
 /// das Rückgeld, das die Person jetzt herausgibt. Bei einer Kartenzahlung steht
 /// statt des Rückgelds "Mit Karte bezahlt" und, was bekannt ist, Kartenart und
-/// die letzten vier Ziffern. "Nächster Kunde" führt zur
+/// die letzten vier Ziffern; nach einer Auszahlung (Bon unter 0, etwa Pfand
+/// zurück) "Auszahlen" mit dem Betrag. "Nächster Kunde" führt zur
 /// leeren Kassa zurück und ist immer sofort aktiv, auch während des Druckens.
 /// Scheitert der Küchenbon, steht unter dem Druckzustand "Küchenbon nicht
 /// gedruckt" mit der Meldung des Druckers und "Küchenbon drucken"; auf ihn
@@ -130,6 +131,8 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     final receipt = widget.result.receipt;
     final card = receipt.cardPayment;
     final changeCents = receipt.cashPayment?.changeCents ?? 0;
+    // Eine Auszahlung: die Bar-Zahlung liegt unter 0.
+    final payoutCents = -(receipt.cashPayment?.amountCents ?? 0);
     final outcome = _outcome;
     final showPrint =
         settings.printerKind != PrinterKind.none &&
@@ -207,6 +210,12 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               tipCents: card.tipCents,
                               cashPartCents: receipt.cashCents,
                             )
+                          : payoutCents > 0
+                          ? _BigAmount(
+                              label: l.kassaPayOutDone,
+                              cents: payoutCents,
+                              amountKey: const Key('payout-done'),
+                            )
                           : changeCents == 0
                           ? Text(
                               l.kassaPaidExact,
@@ -264,6 +273,47 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Ein Satz und darunter groß ein Betrag, etwa "Auszahlen" und "0,75 €".
+class _BigAmount extends StatelessWidget {
+  const _BigAmount({
+    required this.label,
+    required this.cents,
+    required this.amountKey,
+  });
+
+  final String label;
+  final int cents;
+  final Key amountKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: text.bodyLarge!.copyWith(color: c.accentInk)),
+        const SizedBox(height: KassaTokens.spaceXs),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Ltr(
+            child: Text(
+              formatEuro(cents),
+              key: amountKey,
+              maxLines: 1,
+              style: text.displayLarge!.copyWith(
+                color: c.ink,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

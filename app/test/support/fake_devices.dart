@@ -26,6 +26,11 @@ class FakePrinter implements ReceiptPrinter {
       if (e.startsWith('print')) e.substring(e.indexOf(':') + 1),
   ];
 
+  /// Wie oft der Befehl für die Lade geschickt wurde: allein (`drawer`) oder
+  /// mit einem Bon (`print+drawer:`).
+  int get drawerOpened =>
+      log.where((e) => e == 'drawer' || e.startsWith('print+drawer:')).length;
+
   /// Das Ergebnis des nächsten und aller weiteren Aufrufe.
   PrintOutcome next = const PrintOutcome.ok();
 

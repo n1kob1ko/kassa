@@ -1620,4 +1620,24 @@ class L10nZh extends L10n {
 
   @override
   String get bonsTipIncluded => '其中小费';
+
+  @override
+  String get kassaMore => '更多';
+
+  @override
+  String get kassaDepositReturn => '退押金';
+
+  @override
+  String get depositReturnTotal => '退还';
+
+  @override
+  String get depositReturnAdd => '加入小票';
+
+  @override
+  String kassaPayOut(String amount) {
+    return '现金退付 $amount';
+  }
+
+  @override
+  String get kassaPayOutDone => '需退付';
 }

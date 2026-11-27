@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 472 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 478 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -120,6 +120,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ausblenden | إخفاء | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | منها إكرامية {amount} | Kassa: `kassaTipDone` |
 | Bar-Teil {amount} | الجزء النقدي {amount} | Kassa: `kassaCashPartDone` |
+| Mehr | المزيد | Kassa: `kassaMore` |
+| Pfand zurück | إرجاع الرهن | Kassa: `kassaDepositReturn` |
+| Bar auszahlen {amount} | صرف نقدًا {amount} | Kassa: `kassaPayOut` |
+| Auszahlen | ادفع للزبون | Kassa: `kassaPayOutDone` |
 
 ## Kartenzahlung
 
@@ -562,6 +566,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Auf den Bon | أضف إلى الفاتورة | Sonstiges: `openAmountAdd` |
 | Steuersatz wählen | اختر نسبة الضريبة | Sonstiges: `openAmountNeedTax` |
 | Diverses {percent} % | متفرقات {percent} % | Sonstiges: `openAmountLine` |
+| Zurück | المُرجَع | Sonstiges: `depositReturnTotal` |
+| Auf den Bon | أضف إلى الفاتورة | Sonstiges: `depositReturnAdd` |
 
 ## Unsicher
 

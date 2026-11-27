@@ -471,5 +471,11 @@
   "closeCardTip": "刷卡小费",
   "closeCardAccount": "入卡账户",
   "bonsSubtotal": "小计",
-  "bonsTipIncluded": "其中小费"
+  "bonsTipIncluded": "其中小费",
+  "kassaMore": "更多",
+  "kassaDepositReturn": "退押金",
+  "depositReturnTotal": "退还",
+  "depositReturnAdd": "加入小票",
+  "kassaPayOut": "现金退付 {amount}",
+  "kassaPayOutDone": "需退付"
 }

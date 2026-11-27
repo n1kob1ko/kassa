@@ -1656,4 +1656,24 @@ class L10nEn extends L10n {
 
   @override
   String get bonsTipIncluded => 'of which tip';
+
+  @override
+  String get kassaMore => 'More';
+
+  @override
+  String get kassaDepositReturn => 'Deposit return';
+
+  @override
+  String get depositReturnTotal => 'Refund';
+
+  @override
+  String get depositReturnAdd => 'Add to receipt';
+
+  @override
+  String kassaPayOut(String amount) {
+    return 'Pay out cash $amount';
+  }
+
+  @override
+  String get kassaPayOutDone => 'Pay out';
 }

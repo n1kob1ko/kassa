@@ -2935,6 +2935,42 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'davon Trinkgeld'**
   String get bonsTipIncluded;
+
+  /// Taste im Kopf der Bon-Spalte, wenn die Person zwei oder drei Funktionen darf (Freier Betrag, Pfand zurück, Gutschein); Titel des Blatts dazu.
+  ///
+  /// In de, this message translates to:
+  /// **'Mehr'**
+  String get kassaMore;
+
+  /// Taste im Kopf der Bon-Spalte und im Blatt Mehr, Titel des Blatts Pfand zurück und Name der Bon-Zeile am Bildschirm; gespeichert und gedruckt wird immer der deutsche Name.
+  ///
+  /// In de, this message translates to:
+  /// **'Pfand zurück'**
+  String get kassaDepositReturn;
+
+  /// Blatt Pfand zurück: Zeile mit der Summe des zurückgegebenen Pfands, etwa "Zurück −0,75 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Zurück'**
+  String get depositReturnTotal;
+
+  /// Blatt Pfand zurück: übernimmt die Mengen auf den Bon.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf den Bon'**
+  String get depositReturnAdd;
+
+  /// Taste an Stelle von Bar und Karte, wenn die Summe des Bons unter 0 liegt (Pfand zurück); amount wie "0,75 €", ohne Minus.
+  ///
+  /// In de, this message translates to:
+  /// **'Bar auszahlen {amount}'**
+  String kassaPayOut(String amount);
+
+  /// Verkauf fertig nach einer Auszahlung: über dem Betrag, den die Person dem Kunden gibt (an Stelle von Rückgeld).
+  ///
+  /// In de, this message translates to:
+  /// **'Auszahlen'**
+  String get kassaPayOutDone;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

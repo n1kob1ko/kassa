@@ -2413,5 +2413,34 @@
   "bonsTipIncluded": "davon Trinkgeld",
   "@bonsTipIncluded": {
     "description": "Zeile im Bon-Detail unter der Kartenzahlung: das Trinkgeld, das die Karte mitgebucht hat."
+  },
+  "kassaMore": "Mehr",
+  "@kassaMore": {
+    "description": "Taste im Kopf der Bon-Spalte, wenn die Person zwei oder drei Funktionen darf (Freier Betrag, Pfand zurück, Gutschein); Titel des Blatts dazu."
+  },
+  "kassaDepositReturn": "Pfand zurück",
+  "@kassaDepositReturn": {
+    "description": "Taste im Kopf der Bon-Spalte und im Blatt Mehr, Titel des Blatts Pfand zurück und Name der Bon-Zeile am Bildschirm; gespeichert und gedruckt wird immer der deutsche Name."
+  },
+  "depositReturnTotal": "Zurück",
+  "@depositReturnTotal": {
+    "description": "Blatt Pfand zurück: Zeile mit der Summe des zurückgegebenen Pfands, etwa \"Zurück −0,75 €\"."
+  },
+  "depositReturnAdd": "Auf den Bon",
+  "@depositReturnAdd": {
+    "description": "Blatt Pfand zurück: übernimmt die Mengen auf den Bon."
+  },
+  "kassaPayOut": "Bar auszahlen {amount}",
+  "@kassaPayOut": {
+    "description": "Taste an Stelle von Bar und Karte, wenn die Summe des Bons unter 0 liegt (Pfand zurück); amount wie \"0,75 €\", ohne Minus.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "kassaPayOutDone": "Auszahlen",
+  "@kassaPayOutDone": {
+    "description": "Verkauf fertig nach einer Auszahlung: über dem Betrag, den die Person dem Kunden gibt (an Stelle von Rückgeld)."
   }
 }

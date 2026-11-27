@@ -11,11 +11,13 @@ import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/core/money.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
 import 'package:kassa/features/kassa/modifier_panel.dart';
 import 'package:kassa/features/overview/revenue_chart.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
+import 'package:kassa/ui/tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../support/demo_fixtures.dart';
@@ -510,6 +512,101 @@ void main() {
     });
     expect(seen, contains('Trinkgeld mit Zahlenfeld'));
   });
+
+  // Stufe 1b: die Taste "Mehr", die Blätter "Mehr" und "Pfand zurück" und
+  // "Bar auszahlen", in allen Sprachen, bei beiden Größen und bei der
+  // größten Schrift (1,3).
+  for (final language in AppLanguage.values) {
+    for (final (size, scale) in [
+      for (final size in _sizes) (size, 1.0),
+      (const Size(1280, 800), KassaTokens.maxTextScale),
+    ]) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+        'Schrift $scale: Mehr, Pfand zurück und Bar auszahlen ohne Überlauf',
+        (t) async {
+          final at =
+              '${language.name} ${size.width.toInt()}×'
+              '${size.height.toInt()} $scale';
+          final seen = <String>[];
+          await _tourDepositReturn(t, language, size, scale, (screen) {
+            seen.add(screen);
+            _expectClean(t, '$at $screen');
+            if (!language.isRtl) _expectNoIsolates(t, '$at $screen');
+          });
+          expect(seen, hasLength(7));
+        },
+      );
+    }
+  }
+}
+
+/// Jeder Text unter [key] ist ganz zu lesen, ohne Auslassungspunkte.
+void _expectWholeKey(WidgetTester t, String key, String where) =>
+    _expectWhole(t, find.byKey(Key(key)), '$where $key');
+
+/// Kassa mit freiem Betrag und Pfand zurück für alle, der Chef angemeldet:
+/// die Taste "Mehr", das Blatt "Mehr", das Blatt "Pfand zurück" mit 99
+/// Stück, die Kassa mit "Bar auszahlen", "Verkauf fertig" mit "Auszahlen",
+/// dann nur Pfand zurück an (seine Taste allein im Kopf); [look] prüft jedes
+/// Bild.
+Future<void> _tourDepositReturn(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+  void Function(String screen) look,
+) async {
+  await pumpKassa(t, size: size, textScale: scale, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      openAmountAccess: FeatureAccess.all,
+      depositReturnAccess: FeatureAccess.all,
+      printerKind: PrinterKind.network,
+      printerAddress: '192.168.0.50',
+    ),
+  );
+  final at = '${language.name} ${size.width.toInt()} $scale';
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+  look('Kassa mit Mehr');
+  _expectWholeKey(t, 'more-button', at);
+
+  await _tap(t, 'more-button');
+  look('Mehr');
+  _expectWholeKey(t, 'more-open-amount', at);
+  _expectWholeKey(t, 'more-deposit-return', at);
+
+  await _tap(t, 'more-deposit-return');
+  await t.tap(find.byKey(const Key('deposit-return-plus-25')));
+  await t.pumpAndSettle();
+  look('Pfand zurück');
+  _expectWholeKey(t, 'deposit-return-add', at);
+  await _tap(t, 'deposit-return-back');
+
+  containerOf(t).read(cartProvider.notifier).setDepositReturns({25: 99});
+  await t.pumpAndSettle();
+  await _tap(t, 'more-button');
+  await _tap(t, 'more-deposit-return');
+  look('Pfand zurück mit 99');
+  _expectWholeKey(t, 'deposit-return-total', at);
+  await _tap(t, 'deposit-return-back');
+
+  // Cola 3,15 € und 99 × 0,25 € zurück: −21,60 €.
+  look('Kassa mit Bar auszahlen');
+  _expectWholeKey(t, 'pay-out', at);
+  expect(find.textContaining('21,60'), findsWidgets);
+
+  await _tap(t, 'pay-out');
+  look('Auszahlen');
+  _expectWholeKey(t, 'payout-done', at);
+  await _tap(t, 'next-customer');
+
+  await setSettings(t, (s) => s.copyWith(openAmountAccess: FeatureAccess.off));
+  look('Kassa mit Pfand zurück');
+  _expectWholeKey(t, 'deposit-return-button', at);
 }
 
 /// Lässt das Zeichnen der Vorschau (echtes `dart:ui`) zu Ende laufen: wartet,

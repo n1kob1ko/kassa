@@ -471,5 +471,11 @@
   "closeCardTip": "Card tips",
   "closeCardAccount": "To card account",
   "bonsSubtotal": "Subtotal",
-  "bonsTipIncluded": "of which tip"
+  "bonsTipIncluded": "of which tip",
+  "kassaMore": "More",
+  "kassaDepositReturn": "Deposit return",
+  "depositReturnTotal": "Refund",
+  "depositReturnAdd": "Add to receipt",
+  "kassaPayOut": "Pay out cash {amount}",
+  "kassaPayOutDone": "Pay out"
 }

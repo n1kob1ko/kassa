@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 472 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 478 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -120,6 +120,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ausblenden | 隐藏 | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | 其中小费 {amount} | Kassa: `kassaTipDone` |
 | Bar-Teil {amount} | 现金部分 {amount} | Kassa: `kassaCashPartDone` |
+| Mehr | 更多 | Kassa: `kassaMore` |
+| Pfand zurück | 退押金 | Kassa: `kassaDepositReturn` |
+| Bar auszahlen {amount} | 现金退付 {amount} | Kassa: `kassaPayOut` |
+| Auszahlen | 需退付 | Kassa: `kassaPayOutDone` |
 
 ## Kartenzahlung
 
@@ -562,6 +566,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Auf den Bon | 加入小票 | Sonstiges: `openAmountAdd` |
 | Steuersatz wählen | 请选择税率 | Sonstiges: `openAmountNeedTax` |
 | Diverses {percent} % | 杂项 {percent} % | Sonstiges: `openAmountLine` |
+| Zurück | 退还 | Sonstiges: `depositReturnTotal` |
+| Auf den Bon | 加入小票 | Sonstiges: `depositReturnAdd` |
 
 ## Unsicher
 

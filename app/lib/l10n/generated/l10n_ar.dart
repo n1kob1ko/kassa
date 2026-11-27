@@ -1654,4 +1654,24 @@ class L10nAr extends L10n {
 
   @override
   String get bonsTipIncluded => 'منها إكرامية';
+
+  @override
+  String get kassaMore => 'المزيد';
+
+  @override
+  String get kassaDepositReturn => 'إرجاع الرهن';
+
+  @override
+  String get depositReturnTotal => 'المُرجَع';
+
+  @override
+  String get depositReturnAdd => 'أضف إلى الفاتورة';
+
+  @override
+  String kassaPayOut(String amount) {
+    return 'صرف نقدًا $amount';
+  }
+
+  @override
+  String get kassaPayOutDone => 'ادفع للزبون';
 }

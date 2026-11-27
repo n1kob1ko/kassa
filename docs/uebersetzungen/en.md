@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 472 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 478 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -120,6 +120,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Ausblenden | Dismiss | Kassa: `kassaKitchenDismiss` |
 | davon Trinkgeld {amount} | incl. tip {amount} | Kassa: `kassaTipDone` |
 | Bar-Teil {amount} | Cash part {amount} | Kassa: `kassaCashPartDone` |
+| Mehr | More | Kassa: `kassaMore` |
+| Pfand zurück | Deposit return | Kassa: `kassaDepositReturn` |
+| Bar auszahlen {amount} | Pay out cash {amount} | Kassa: `kassaPayOut` |
+| Auszahlen | Pay out | Kassa: `kassaPayOutDone` |
 
 ## Kartenzahlung
 
@@ -562,6 +566,8 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Auf den Bon | Add to receipt | Sonstiges: `openAmountAdd` |
 | Steuersatz wählen | Choose a tax rate | Sonstiges: `openAmountNeedTax` |
 | Diverses {percent} % | Misc. {percent} % | Sonstiges: `openAmountLine` |
+| Zurück | Refund | Sonstiges: `depositReturnTotal` |
+| Auf den Bon | Add to receipt | Sonstiges: `depositReturnAdd` |
 
 ## Unsicher
 

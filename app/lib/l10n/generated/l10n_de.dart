@@ -1660,4 +1660,24 @@ class L10nDe extends L10n {
 
   @override
   String get bonsTipIncluded => 'davon Trinkgeld';
+
+  @override
+  String get kassaMore => 'Mehr';
+
+  @override
+  String get kassaDepositReturn => 'Pfand zurück';
+
+  @override
+  String get depositReturnTotal => 'Zurück';
+
+  @override
+  String get depositReturnAdd => 'Auf den Bon';
+
+  @override
+  String kassaPayOut(String amount) {
+    return 'Bar auszahlen $amount';
+  }
+
+  @override
+  String get kassaPayOutDone => 'Auszahlen';
 }

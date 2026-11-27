@@ -28,10 +28,12 @@ import 'cart_controller.dart';
 import 'cart_panel.dart';
 import 'cash_sheet.dart';
 import 'category_rail.dart';
+import 'deposit_return_sheet.dart';
 import 'discount_sheet.dart';
 import 'item_grid.dart';
 import 'late_kitchen.dart';
 import 'modifier_panel.dart';
+import 'more_sheet.dart';
 import 'open_amount_sheet.dart';
 import 'outage_banner.dart';
 import 'sale_done.dart';
@@ -88,7 +90,10 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 /// einem Tipp auf eine Zeile oder auf "Rabatt" zum Blatt "Rabatt". Eine Summe
 /// von 0,00 € durch einen Rabatt schließt "Abschließen" ohne Bezahlen ab.
 /// Darf die Person einen freien Betrag bonieren, wird die Bon-Spalte mit
-/// "Freier Betrag" im Kopf zum Blatt "Freier Betrag".
+/// "Freier Betrag" im Kopf zum Blatt "Freier Betrag"; ebenso mit "Pfand
+/// zurück" zum Blatt "Pfand zurück". Darf sie beides, steht im Kopf "Mehr"
+/// mit einem Blatt, das zu beiden führt. Liegt die Summe unter 0, zahlt "Bar
+/// auszahlen" den Betrag bar aus.
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -97,7 +102,17 @@ class KassaScreen extends ConsumerStatefulWidget {
 }
 
 /// Was die rechte Spalte zeigt.
-enum _Side { cart, paying, tip, discount, openAmount, waitingForCard, done }
+enum _Side {
+  cart,
+  paying,
+  tip,
+  discount,
+  openAmount,
+  more,
+  depositReturn,
+  waitingForCard,
+  done,
+}
 
 class _KassaScreenState extends ConsumerState<KassaScreen>
     with WidgetsBindingObserver {
@@ -132,8 +147,8 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
   /// sie weg.
   String? _freeSaleId;
 
-  /// Steht ab dem ersten Tipp auf "Abschließen" bis zum Ergebnis; so lange
-  /// nimmt die Bon-Spalte keine Tipps.
+  /// Steht ab dem ersten Tipp auf "Abschließen" oder "Bar auszahlen" bis zum
+  /// Ergebnis; so lange nimmt die Bon-Spalte keine Tipps.
   bool _finishingFree = false;
 
   /// Was die Person eben getippt hat, bis die Datenbank es bestätigt: so
@@ -404,20 +419,30 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     _side = _Side.discount;
   });
 
-  /// "Abschließen": ein Bon mit Summe 0,00 € durch einen Rabatt, ohne
-  /// Zahlung und ohne Lade.
-  Future<void> _finishFree() async {
+  /// "Abschließen": ein Bon mit Summe 0,00 € durch einen Rabatt oder "Pfand
+  /// zurück", ohne Zahlung und ohne Lade.
+  Future<void> _finishFree() => _finishWithout(payOut: false);
+
+  /// "Bar auszahlen": ein Bon unter 0; eine Bar-Zahlung über die Summe, die
+  /// Lade geht auf.
+  Future<void> _payOut() => _finishWithout(payOut: true);
+
+  /// Schließt den Bon ohne Blatt dazwischen ab: bei Summe 0 ohne Zahlung, bei
+  /// [payOut] (Summe unter 0) als Auszahlung. Ein neuer Versuch nach einem
+  /// Fehler schreibt denselben Bon.
+  Future<void> _finishWithout({required bool payOut}) async {
     final staff = ref.read(sessionProvider);
     final cart = ref.read(cartProvider);
     if (_finishingFree || staff == null || cart.isEmpty) return;
-    if (cart.totalCents != 0) return;
+    if (payOut ? cart.totalCents >= 0 : cart.totalCents != 0) return;
     setState(() => _finishingFree = true);
     final saleId = _freeSaleId ??= const Uuid().v4();
     final cartCtl = ref.read(cartProvider.notifier);
+    final sales = ref.read(saleServiceProvider);
     try {
-      final result = await ref
-          .read(saleServiceProvider)
-          .completeFree(saleId: saleId, cart: cart, staff: staff);
+      final result = payOut
+          ? await sales.completePayout(saleId: saleId, cart: cart, staff: staff)
+          : await sales.completeFree(saleId: saleId, cart: cart, staff: staff);
       // Der Bon ist gespeichert: der offene Bon und sein Entwurf gehen weg.
       cartCtl.clear();
       _freeSaleId = null;
@@ -472,15 +497,32 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     final mayOpenAmount = stored.openAmountAccess.allows(
       ref.watch(sessionProvider),
     );
-    // Wird der Rabatt oder der freie Betrag ausgeschaltet, während sein Blatt
-    // offen ist, steht wieder der Bon da, auch wenn das Recht später
-    // zurückkommt: das Blatt öffnet sich nicht von selbst.
+    final staff = ref.watch(sessionProvider);
+    final actions = staff == null || catalog == null
+        ? const <HeadAction>[]
+        : headActions(settings: stored, staff: staff, catalog: catalog);
+    final mayDepositReturn = actions.contains(HeadAction.depositReturn);
+    // Wird der Rabatt, der freie Betrag oder "Pfand zurück" ausgeschaltet,
+    // während sein Blatt offen ist, steht wieder der Bon da, auch wenn das
+    // Recht später zurückkommt: das Blatt öffnet sich nicht von selbst. Ebenso
+    // "Mehr", sobald es weniger als zwei Funktionen gibt.
     if ((_side == _Side.discount && !mayDiscount) ||
-        (_side == _Side.openAmount && !mayOpenAmount)) {
+        (_side == _Side.openAmount && !mayOpenAmount) ||
+        (_side == _Side.depositReturn && !mayDepositReturn) ||
+        (_side == _Side.more && actions.length < 2)) {
       _side = _Side.cart;
     }
     final side = _side;
     if (catalog == null) return ColoredBox(color: c.ground);
+    void open(HeadAction action) => setState(
+      () => _side = switch (action) {
+        HeadAction.openAmount => _Side.openAmount,
+        HeadAction.depositReturn => _Side.depositReturn,
+        // Der Gutschein hat noch kein Blatt (siehe voucherHeadActionReady).
+        HeadAction.voucher => _Side.cart,
+      },
+    );
+    final single = actions.length == 1 ? actions.single : null;
 
     final favorites = [
       for (final i in catalog.items)
@@ -586,8 +628,15 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onLineDiscount: mayDiscount ? _openDiscount : null,
               onReceiptDiscount: mayDiscount ? () => _openDiscount(null) : null,
               onFinishFree: _finishFree,
-              onOpenAmount: mayOpenAmount
-                  ? () => setState(() => _side = _Side.openAmount)
+              onPayOut: _payOut,
+              onOpenAmount: single == HeadAction.openAmount
+                  ? () => open(HeadAction.openAmount)
+                  : null,
+              onDepositReturn: single == HeadAction.depositReturn
+                  ? () => open(HeadAction.depositReturn)
+                  : null,
+              onMore: actions.length >= 2
+                  ? () => setState(() => _side = _Side.more)
                   : null,
               payNotice: switch (_splitFailed) {
                 null => null,
@@ -627,6 +676,19 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
           ),
           _Side.openAmount => _AboveBottomBar(
             child: OpenAmountSheet(
+              onClose: () => setState(() => _side = _Side.cart),
+            ),
+          ),
+          _Side.more => _AboveBottomBar(
+            child: MoreSheet(
+              actions: actions,
+              onChoose: open,
+              onClose: () => setState(() => _side = _Side.cart),
+            ),
+          ),
+          _Side.depositReturn => _AboveBottomBar(
+            child: DepositReturnSheet(
+              amounts: depositAmounts(catalog),
               onClose: () => setState(() => _side = _Side.cart),
             ),
           ),

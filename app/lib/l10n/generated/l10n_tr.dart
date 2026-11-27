@@ -1642,4 +1642,24 @@ class L10nTr extends L10n {
 
   @override
   String get bonsTipIncluded => 'bunun bahşişi';
+
+  @override
+  String get kassaMore => 'Daha fazla';
+
+  @override
+  String get kassaDepositReturn => 'Depozito iadesi';
+
+  @override
+  String get depositReturnTotal => 'İade';
+
+  @override
+  String get depositReturnAdd => 'Fişe ekle';
+
+  @override
+  String kassaPayOut(String amount) {
+    return 'Nakit öde $amount';
+  }
+
+  @override
+  String get kassaPayOutDone => 'Geri öde';
 }

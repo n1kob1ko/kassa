@@ -471,5 +471,11 @@
   "closeCardTip": "Kart bahşişi",
   "closeCardAccount": "Kart hesabına",
   "bonsSubtotal": "Ara toplam",
-  "bonsTipIncluded": "bunun bahşişi"
+  "bonsTipIncluded": "bunun bahşişi",
+  "kassaMore": "Daha fazla",
+  "kassaDepositReturn": "Depozito iadesi",
+  "depositReturnTotal": "İade",
+  "depositReturnAdd": "Fişe ekle",
+  "kassaPayOut": "Nakit öde {amount}",
+  "kassaPayOutDone": "Geri öde"
 }
