@@ -11,6 +11,7 @@ import 'package:drift/drift.dart';
 
 import '../data/database.dart';
 import '../data/outbox_repository.dart';
+import '../domain/receipt.dart' show isTestChainMode;
 
 /// Was der Server zu einem Eintrag sagt.
 enum PushStatus { accepted, duplicate, rejected, error }
@@ -241,7 +242,7 @@ class PushPayloads {
         'totalCents': row.totalCents,
         // Ein Bon zählt nur als echt, wenn er in einer Kette mit `live`
         // steht. Ohne Signatur und in einer Probe-Kette ist er ein Testbon.
-        'test': chain?.mode != 'live',
+        'test': isTestChainMode(chain?.mode),
         'tipCents': row.tipCents,
         'discountCents': row.discountCents,
         'discount': row.discountReason == null

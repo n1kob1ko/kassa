@@ -30,6 +30,7 @@ import 'staff_repository.dart';
 import 'stats_repository.dart';
 import 'sync_state_repository.dart';
 import 'translation_repository.dart';
+import 'voucher_repository.dart';
 
 /// Öffnet die echte Datenbank. Tests ersetzen ihn durch
 /// `KassaDatabase(NativeDatabase.memory())`.
@@ -76,6 +77,10 @@ final receiptRepositoryProvider = Provider(
     ref.watch(dayRepositoryProvider),
     journal: ref.watch(rksvJournalProvider),
   ),
+);
+
+final voucherRepositoryProvider = Provider<VoucherRepository>(
+  (ref) => VoucherRepository(ref.watch(databaseProvider)),
 );
 
 final cardPaymentRepositoryProvider = Provider(

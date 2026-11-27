@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 import 'package:kassa/data/database.dart';
+import 'package:kassa/data/day_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/domain/cart.dart';
@@ -12,6 +14,8 @@ import 'package:kassa/domain/catalog.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/receipt_rules.dart';
+import 'package:kassa/domain/voucher.dart';
+import 'package:kassa/data/voucher_repository.dart';
 
 import '../support/demo_fixtures.dart';
 import '../support/rksv_rig.dart';
@@ -946,4 +950,696 @@ void main() {
       await rig.verifyChain(1);
     });
   });
+
+  group('Pfand zurück und Gutscheine', () {
+    test(
+      'Pfand zurück auf einem Bon mit Ware: Summe 17,45 €, bar bezahlt',
+      () async {
+        final r = await shop.receipts.finalizeCashSale(
+          saleId: 'p1',
+          cart: cart.setDepositReturn(depositCents: 25, quantity: 3),
+          givenCents: 2000,
+          staff: shop.anna,
+        );
+        expect(
+          (
+            r.goodsCents,
+            r.depositCents,
+            r.totalCents,
+            r.depositReturnCents,
+            r.depositReturnQuantity,
+          ),
+          (1770, -25, 1745, -75, 3),
+        );
+        expect(
+          (r.payments.single.amountCents, r.payments.single.changeCents),
+          (1745, 255),
+        );
+        expect(r.publicToken, hasLength(22));
+      },
+    );
+
+    test(
+      'nur Pfand zurück: Auszahlung über 0,75 €, Storno ist das Spiegelbild',
+      () async {
+        final back = const Cart.empty().setDepositReturn(
+          depositCents: 25,
+          quantity: 3,
+        );
+        final r = await shop.receipts.finalizePayout(
+          saleId: 'p2',
+          cart: back,
+          staff: shop.anna,
+        );
+        expect(
+          (
+            r.totalCents,
+            r.payments.single.kind,
+            r.payments.single.amountCents,
+            r.payments.single.givenCents,
+            r.payments.single.changeCents,
+          ),
+          (-75, PaymentKind.cash, -75, 0, 0),
+        );
+        final v = await shop.receipts.voidReceipt('p2', staff: shop.chef);
+        expect(
+          (
+            v.totalCents,
+            v.payments.single.amountCents,
+            v.lines.single.quantity,
+          ),
+          (75, 75, -3),
+        );
+        expect(
+          () => shop.receipts.finalizePayout(
+            saleId: 'p3',
+            cart: cart,
+            staff: shop.anna,
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('Gutschein verkaufen: Gutschein mit Code und Bewegung, die Zeile trägt den Code, kein Umsatz', () async {
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'g1',
+        cart: cartCard.addVoucherSale(valueCents: 2500),
+        givenCents: 4000,
+        staff: shop.anna,
+      );
+      final sold = r.soldVouchers.single;
+      expect(
+        (
+          r.totalCents,
+          r.voucherSaleCents,
+          r.revenueCents,
+          sold.valueCents,
+          sold.linePosition,
+        ),
+        (3465, 2500, 965, 2500, 2),
+      );
+      expect(isVoucherCode(sold.code), isTrue);
+      expect(r.lines.last.info, 'Code ${formatVoucherCode(sold.code)}');
+      final voucher = (await shop.vouchers.findByCode(sold.code)).single;
+      expect(
+        (
+          voucher.balanceCents,
+          voucher.state,
+          voucher.untouched,
+          voucher.soldReceiptId,
+        ),
+        (2500, VoucherState.active, true, 'g1'),
+      );
+    });
+
+    test('mit Gutschein bezahlen: ganz, mit Rest bar, mit Rest Karte; das Guthaben sinkt', () async {
+      final v = await sellVoucher(
+        shop,
+        2500,
+      ); // Helfer: verkauft bar, gibt den Voucher zurück
+      final all = await shop.receipts.finalizeVoucherSale(
+        saleId: 'e1',
+        cart: cartCard.applyVoucher(applied(v)),
+        staff: shop.anna,
+      );
+      expect(
+        [
+          for (final p in all.payments)
+            (p.kind, p.amountCents, p.voucherCode, p.voucherBalanceAfterCents),
+        ],
+        [(PaymentKind.voucher, 965, v.code, 1535)],
+      );
+      final small = await sellVoucher(shop, 500);
+      final cash = await shop.receipts.finalizeCashSale(
+        saleId: 'e2',
+        cart: cartCard.applyVoucher(applied(small)),
+        givenCents: 500,
+        staff: shop.anna,
+      );
+      expect(
+        [for (final p in cash.payments) (p.kind, p.amountCents, p.changeCents)],
+        [(PaymentKind.voucher, 500, 0), (PaymentKind.cash, 465, 35)],
+      );
+      final small2 = await sellVoucher(shop, 500);
+      final card = await shop.receipts.finalizeCardSale(
+        saleId: 'e3',
+        cart: cartCard.applyVoucher(applied(small2)),
+        staff: shop.anna,
+        provider: 'sumup',
+        tipCents: 35,
+      );
+      expect(
+        [for (final p in card.payments) (p.kind, p.amountCents, p.tipCents)],
+        [(PaymentKind.voucher, 500, 0), (PaymentKind.card, 465, 35)],
+      );
+      expect(await shop.vouchers.balanceOf(v.id), 1535);
+    });
+
+    test('Guthaben reicht nicht mehr: VoucherBalanceException, nichts gespeichert; mit allowOverdraw entsteht der Kartenbon und der Gutschein ist überzogen', () async {
+      final v = await sellVoucher(shop, 500);
+      final stale = cartCard.applyVoucher(applied(v));
+      await shop.receipts.finalizeVoucherSale(
+        saleId: 'x1',
+        cart: Cart.empty().add(cola).applyVoucher(applied(v)),
+        staff: shop.anna,
+      ); // verbraucht 3,15 €
+      await expectLater(
+        shop.receipts.finalizeCashSale(
+          saleId: 'x2',
+          cart: stale,
+          givenCents: 500,
+          staff: shop.anna,
+        ),
+        throwsA(
+          isA<VoucherBalanceException>().having(
+            (e) => e.balanceCents,
+            'balanceCents',
+            185,
+          ),
+        ),
+      );
+      expect(await shop.receipts.find('x2'), isNull);
+      await shop.receipts.finalizeCardSale(
+        saleId: 'x3',
+        cart: stale,
+        staff: shop.anna,
+        provider: 'sumup',
+        allowOverdraw: true,
+      );
+      expect((await shop.vouchers.byId(v.id))!.state, VoucherState.overdrawn);
+    });
+
+    test('Storno gibt das Guthaben zurück; ein Gutschein-Verkauf lässt sich nur unberührt stornieren', () async {
+      final v = await sellVoucher(shop, 2500, saleId: 'g2');
+      await shop.receipts.finalizeVoucherSale(
+        saleId: 'e4',
+        cart: cartCard.applyVoucher(applied(v)),
+        staff: shop.anna,
+      );
+      await expectLater(
+        shop.receipts.voidReceipt('g2', staff: shop.chef),
+        throwsA(isA<VoucherSaleRedeemedException>()),
+      );
+      final back = await shop.receipts.voidReceipt('e4', staff: shop.chef);
+      expect(
+        (
+          back.payments.single.amountCents,
+          back.payments.single.voucherBalanceAfterCents,
+        ),
+        (-965, 2500),
+      );
+      final gone = await shop.receipts.voidReceipt('g2', staff: shop.chef);
+      expect(
+        (
+          gone.soldVouchers.single.valueCents,
+          (await shop.vouchers.byId(v.id))!.state,
+        ),
+        (-2500, VoucherState.voided),
+      );
+    });
+
+    test(
+      'Übungs-Gutschein gilt nicht im echten Betrieb und umgekehrt',
+      () async {
+        final rig = await RksvRig.open();
+        addTearDown(rig.close);
+        final vouchers = VoucherRepository(rig.db);
+        Future<Voucher> sell(String saleId) async {
+          final r = await rig.sell(
+            saleId,
+            const Cart.empty().addVoucherSale(valueCents: 2000),
+          );
+          return (await vouchers.byId(r.soldVouchers.single.voucherId))!;
+        }
+
+        // Kette 1 im Modus probe: Übungs-Bons, Übungs-Gutschein.
+        await rig.service.enableProbe(staff: rig.chef);
+        final probe = await sell('probe-g');
+        expect(probe.isTest, isTrue);
+
+        // Kette 2 im Modus live: echte Bons, echter Gutschein.
+        final info = await rig.fake.info();
+        await rig.secrets.writeAesKey(
+          2,
+          Uint8List.fromList(List.generate(32, (i) => i)),
+        );
+        await rig.db
+            .into(rig.db.rksvChainRows)
+            .insert(
+              RksvChainRowsCompanion.insert(
+                chain: const Value(2),
+                mode: 'live',
+                cashBoxId: 'LIVETEST02',
+                zdaId: 'AT100',
+                certSerial: info.serialHex,
+                startedAt: rig.clock.now(),
+              ),
+            );
+        await (rig.db.update(
+          rig.db.rksvStateRows,
+        )..where((t) => t.id.equals(1))).write(
+          const RksvStateRowsCompanion(mode: Value('live'), chain: Value(2)),
+        );
+        final live = await sell('live-g');
+        expect(live.isTest, isFalse);
+
+        final rows = await rig.count('receipts');
+        final moves = await rig.count('voucher_movements');
+        await expectLater(
+          rig.receipts.finalizeVoucherSale(
+            saleId: 'live-e',
+            cart: Cart.empty().add(cola).applyVoucher(applied(probe)),
+            staff: rig.anna,
+          ),
+          throwsA(
+            isA<VoucherBalanceException>()
+                .having((e) => e.voucherId, 'voucherId', probe.id)
+                .having((e) => e.balanceCents, 'balanceCents', 0),
+          ),
+        );
+        expect(
+          (await rig.count('receipts'), await rig.count('voucher_movements')),
+          (rows, moves),
+        );
+        final ok = await rig.receipts.finalizeVoucherSale(
+          saleId: 'live-ok',
+          cart: Cart.empty().add(cola).applyVoucher(applied(live)),
+          staff: rig.anna,
+        );
+        expect(ok.payments.single.voucherBalanceAfterCents, 1685);
+
+        // Ohne Signatur ist jeder Bon ein Übungs-Bon: dort gilt nur der
+        // Übungs-Gutschein.
+        final practice = ReceiptRepository(
+          rig.db,
+          rig.clock,
+          DayRepository(rig.db, rig.clock),
+        );
+        await expectLater(
+          practice.finalizeVoucherSale(
+            saleId: 'test-e',
+            cart: Cart.empty().add(cola).applyVoucher(applied(live)),
+            staff: rig.anna,
+          ),
+          throwsA(
+            isA<VoucherBalanceException>().having(
+              (e) => e.balanceCents,
+              'balanceCents',
+              0,
+            ),
+          ),
+        );
+        expect(await practice.find('test-e'), isNull);
+        final used = await practice.finalizeVoucherSale(
+          saleId: 'test-ok',
+          cart: Cart.empty().add(cola).applyVoucher(applied(probe)),
+          staff: rig.anna,
+        );
+        expect(used.payments.single.voucherBalanceAfterCents, 1685);
+      },
+    );
+
+    test('dieselbe saleId zweimal: ein Bon, eine Bewegung', () async {
+      final v = await sellVoucher(shop, 1000, saleId: 'g3');
+      final again = await sellVoucher(shop, 1000, saleId: 'g3');
+      expect(again.id, v.id);
+      final pay = cartCard.applyVoucher(applied(v));
+      final first = await shop.receipts.finalizeVoucherSale(
+        saleId: 'e5',
+        cart: pay,
+        staff: shop.anna,
+      );
+      // Das Guthaben reicht jetzt nicht mehr, und keine der Prüfungen gilt
+      // mehr: Jeder Weg gibt den gespeicherten Bon zurück.
+      final second = await shop.receipts.finalizeVoucherSale(
+        saleId: 'e5',
+        cart: pay,
+        staff: shop.anna,
+      );
+      final cash = await shop.receipts.finalizeCashSale(
+        saleId: 'e5',
+        cart: pay,
+        givenCents: 0,
+        staff: shop.anna,
+      );
+      final card = await shop.receipts.finalizeCardSale(
+        saleId: 'e5',
+        cart: pay,
+        staff: shop.anna,
+        provider: 'sumup',
+      );
+      final payout = await shop.receipts.finalizePayout(
+        saleId: 'e5',
+        cart: pay,
+        staff: shop.anna,
+      );
+      expect(
+        {
+          for (final r in [first, second, cash, card, payout]) r.id,
+        },
+        {'e5'},
+      );
+      expect(
+        (
+          await shop.count('receipts'),
+          await shop.count('payments'),
+          await shop.count('vouchers'),
+          await shop.count('voucher_movements'),
+        ),
+        (2, 2, 1, 2),
+      );
+      expect(await shop.vouchers.balanceOf(v.id), 35);
+    });
+
+    test('Gutschein bezahlt den ganzen Bon: bar und Karte gehen nicht, '
+        'finalizeVoucherSale nur dann', () async {
+      final v = await sellVoucher(shop, 2500);
+      final all = cartCard.applyVoucher(applied(v));
+      await expectLater(
+        shop.receipts.finalizeCashSale(
+          saleId: 'n1',
+          cart: all,
+          givenCents: 0,
+          staff: shop.anna,
+        ),
+        throwsA(isA<NothingDueException>()),
+      );
+      await expectLater(
+        shop.receipts.finalizeCardSale(
+          saleId: 'n2',
+          cart: all,
+          staff: shop.anna,
+          provider: 'sumup',
+        ),
+        throwsArgumentError,
+      );
+      await expectLater(
+        shop.receipts.finalizeVoucherSale(
+          saleId: 'n3',
+          cart: cartCard,
+          staff: shop.anna,
+        ),
+        throwsArgumentError,
+      );
+      final small = await sellVoucher(shop, 500);
+      await expectLater(
+        shop.receipts.finalizeVoucherSale(
+          saleId: 'n4',
+          cart: cartCard.applyVoucher(applied(small)),
+          staff: shop.anna,
+        ),
+        throwsArgumentError,
+      );
+      await expectLater(
+        shop.receipts.finalizeCashSale(
+          saleId: 'n5',
+          cart: cartCard.applyVoucher(applied(small)),
+          givenCents: 464,
+          staff: shop.anna,
+        ),
+        throwsA(isA<InsufficientCashException>()),
+      );
+      // Karte: der Bar-Teil muss unter dem Rest nach dem Gutschein liegen.
+      await expectLater(
+        shop.receipts.finalizeCardSale(
+          saleId: 'n6',
+          cart: cartCard.applyVoucher(applied(small)),
+          staff: shop.anna,
+          provider: 'sumup',
+          cashPartCents: 465,
+        ),
+        throwsArgumentError,
+      );
+      final mixed = await shop.receipts.finalizeCardSale(
+        saleId: 'n7',
+        cart: cartCard.applyVoucher(applied(small)),
+        staff: shop.anna,
+        provider: 'sumup',
+        cashPartCents: 100,
+      );
+      expect(
+        [for (final p in mixed.payments) (p.position, p.kind, p.amountCents)],
+        [
+          (0, PaymentKind.voucher, 500),
+          (1, PaymentKind.cash, 100),
+          (2, PaymentKind.card, 365),
+        ],
+      );
+      for (final id in ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']) {
+        expect(await shop.receipts.find(id), isNull, reason: id);
+      }
+      // Ein Bon mit Summe 0 ohne Gutschein geht wie bisher bar.
+      final zero = await shop.receipts.finalizeCashSale(
+        saleId: 'n8',
+        cart: const Cart.empty().add(leitungswasser),
+        givenCents: 0,
+        staff: shop.anna,
+      );
+      expect(
+        (
+          zero.totalCents,
+          zero.payments.single.kind,
+          zero.payments.single.amountCents,
+        ),
+        (0, PaymentKind.cash, 0),
+      );
+      // Ein Bon unter 0 ist eine Auszahlung, kein Barverkauf.
+      final back = const Cart.empty().setDepositReturn(
+        depositCents: 25,
+        quantity: 3,
+      );
+      await expectLater(
+        shop.receipts.finalizeCashSale(
+          saleId: 'n9',
+          cart: back,
+          givenCents: 0,
+          staff: shop.anna,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('zwei Gutscheine auf einem Bon: zwei Zahlungen, zwei Bewegungen, der '
+        'Storno gibt beiden ihr Guthaben zurück', () async {
+      final a = await sellVoucher(shop, 500);
+      final b = await sellVoucher(shop, 300);
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'z1',
+        cart: cartCard.applyVoucher(applied(a)).applyVoucher(applied(b)),
+        givenCents: 200,
+        staff: shop.anna,
+      );
+      expect(
+        [
+          for (final p in r.payments)
+            (
+              p.position,
+              p.kind,
+              p.voucherId,
+              p.amountCents,
+              p.voucherBalanceAfterCents,
+            ),
+        ],
+        [
+          (0, PaymentKind.voucher, a.id, 500, 0),
+          (1, PaymentKind.voucher, b.id, 300, 0),
+          (2, PaymentKind.cash, null, 165, null),
+        ],
+      );
+      final v = await shop.receipts.voidReceipt('z1', staff: shop.chef);
+      expect(
+        [
+          for (final p in v.payments)
+            (
+              p.kind,
+              p.voucherId,
+              p.voucherCode,
+              p.amountCents,
+              p.givenCents,
+              p.voucherBalanceAfterCents,
+            ),
+        ],
+        [
+          (PaymentKind.voucher, a.id, a.code, -500, 0, 500),
+          (PaymentKind.voucher, b.id, b.code, -300, 0, 300),
+          (PaymentKind.cash, null, null, -165, 0, null),
+        ],
+      );
+      final movements = await (shop.db.select(
+        shop.db.voucherMovementRows,
+      )..where((t) => t.receiptId.equals(v.id))).get();
+      expect(
+        {for (final m in movements) (m.voucherId, m.kind, m.amountCents)},
+        {(a.id, 'void_redeem', 500), (b.id, 'void_redeem', 300)},
+      );
+      expect(
+        (
+          await shop.vouchers.balanceOf(a.id),
+          await shop.vouchers.balanceOf(b.id),
+        ),
+        (500, 300),
+      );
+    });
+
+    test(
+      'Storno eines Gutschein-Verkaufs scheitert: nichts bleibt stehen',
+      () async {
+        final v = await sellVoucher(shop, 2500, saleId: 'g4');
+        await shop.receipts.finalizeVoucherSale(
+          saleId: 'e6',
+          cart: cartCard.applyVoucher(applied(v)),
+          staff: shop.anna,
+        );
+        final rows = (
+          await shop.count('receipts'),
+          await shop.count('payments'),
+          await shop.count('voucher_movements'),
+        );
+        await expectLater(
+          shop.receipts.voidReceipt('g4', staff: shop.chef),
+          throwsA(isA<VoucherSaleRedeemedException>()),
+        );
+        expect((
+          await shop.count('receipts'),
+          await shop.count('payments'),
+          await shop.count('voucher_movements'),
+        ), rows);
+        expect((await shop.receipts.byId('g4')).isVoided, isFalse);
+      },
+    );
+
+    test('zwei Gutschein-Zeilen: zwei Gutscheine mit eigenem Code; '
+        'soldOn und der Storno-Bon zeigen beide', () async {
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'g5',
+        cart: const Cart.empty()
+            .addVoucherSale(valueCents: 1000)
+            .add(cola)
+            .addVoucherSale(valueCents: 2000),
+        givenCents: 3315,
+        staff: shop.anna,
+      );
+      expect(
+        [for (final s in r.soldVouchers) (s.linePosition, s.valueCents)],
+        [(0, 1000), (2, 2000)],
+      );
+      expect(r.soldVouchers[0].code, isNot(r.soldVouchers[1].code));
+      expect(
+        [
+          for (final v in await shop.vouchers.soldOn('g5'))
+            (v.soldReceiptId, v.valueCents, v.isTest),
+        ],
+        [('g5', 1000, true), ('g5', 2000, true)],
+      );
+      final v = await shop.receipts.voidReceipt('g5', staff: shop.chef);
+      expect(
+        [
+          for (final s in v.soldVouchers)
+            (s.voucherId, s.code, s.valueCents, s.linePosition),
+        ],
+        [
+          for (final s in r.soldVouchers)
+            (s.voucherId, s.code, -s.valueCents, s.linePosition),
+        ],
+      );
+      expect(v.lines[2].info, r.lines[2].info);
+      expect(v.publicToken, allOf(hasLength(22), isNot(r.publicToken)));
+      expect(await shop.vouchers.soldOn(v.id), isEmpty);
+      for (final s in r.soldVouchers) {
+        final voucher = (await shop.vouchers.byId(s.voucherId))!;
+        expect(
+          (
+            voucher.state,
+            voucher.movements.last.kind,
+            voucher.movements.last.receiptId,
+          ),
+          (VoucherState.voided, VoucherMovementKind.voidSale, v.id),
+        );
+      }
+    });
+
+    test('der Code eines neuen Gutscheins ist noch frei: bei gleichem Code wird neu gezogen', () async {
+      final random = _ScriptedDigits([
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+      ]);
+      final repo = ReceiptRepository(
+        shop.db,
+        shop.clock,
+        shop.days,
+        random: random,
+      );
+      final one = Cart.empty().addVoucherSale(valueCents: 1000);
+      final a = await repo.finalizeCashSale(
+        saleId: 'c1',
+        cart: one,
+        givenCents: 1000,
+        staff: shop.anna,
+      );
+      final b = await repo.finalizeCashSale(
+        saleId: 'c2',
+        cart: one,
+        givenCents: 1000,
+        staff: shop.anna,
+      );
+      expect(
+        (a.soldVouchers.single.code, b.soldVouchers.single.code),
+        ('12345678', '87654321'),
+      );
+      expect(random.digits, isEmpty);
+    });
+
+    test('publicToken: Verkauf und Storno je ein eigener, Sonderbeleg '
+        'keiner', () async {
+      final rig = await RksvRig.open();
+      addTearDown(rig.close);
+      final start = await rig.service.enableProbe(staff: rig.chef);
+      expect(start.publicToken, isNull);
+      final r = await rig.sell('t1', cart);
+      expect(r.publicToken, matches(RegExp(r'^[A-Za-z0-9_-]{22}$')));
+      final v = await rig.receipts.voidReceipt('t1', staff: rig.chef);
+      expect(v.publicToken, matches(RegExp(r'^[A-Za-z0-9_-]{22}$')));
+      expect(v.publicToken, isNot(r.publicToken));
+    });
+  });
+}
+
+/// Zieht die Ziffern der Reihe nach aus [digits] (für `nextInt(10)`), alles
+/// andere ist 0.
+class _ScriptedDigits implements Random {
+  _ScriptedDigits(List<int> digits) : digits = [...digits];
+
+  final List<int> digits;
+
+  @override
+  int nextInt(int max) => max == 10 ? digits.removeAt(0) : 0;
+
+  @override
+  bool nextBool() => false;
+
+  @override
+  double nextDouble() => 0;
 }

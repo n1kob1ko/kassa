@@ -1399,6 +1399,7 @@ class _FailingReceipts extends ReceiptRepository {
     String? cardLast4,
     int cashPartCents = 0,
     int tipCents = 0,
+    bool allowOverdraw = false,
   }) async => throw StateError('Datenbank voll');
 }
 

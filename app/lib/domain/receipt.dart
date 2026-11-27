@@ -179,6 +179,12 @@ class SoldVoucher {
 /// zählen hier nicht mit.
 enum ReceiptPaymentKind { cash, card, mixed }
 
+/// Ob ein Bon in einer Kette der Art [chainMode] ein Übungs-Bon ist (`null`:
+/// der Bon hat keinen Eintrag in einer Kette). Echt ist nur ein Bon in einer
+/// Kette mit `live`; ohne Signatur und in einer Probe-Kette ist er ein
+/// Übungs-Bon. Die einzige Stelle dieser Regel, für Abgleich und Gutscheine.
+bool isTestChainMode(String? chainMode) => chainMode != 'live';
+
 /// Was das Protokoll der Signatur zu einem Bon weiß.
 final class RksvStamp {
   const RksvStamp({

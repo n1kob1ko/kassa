@@ -12,10 +12,12 @@ import 'package:kassa/data/period_report_repository.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/stats_repository.dart';
 import 'package:kassa/data/staff_repository.dart';
+import 'package:kassa/data/voucher_repository.dart';
 import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/receipt.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/domain/voucher.dart';
 
 import 'demo_fixtures.dart';
 
@@ -48,6 +50,7 @@ class TestShop {
     this.receipts,
     this.stats,
     this.periods,
+    this.vouchers,
     this.anna,
     this.chef,
   );
@@ -60,6 +63,7 @@ class TestShop {
   final ReceiptRepository receipts;
   final StatsRepository stats;
   final PeriodReportRepository periods;
+  final VoucherRepository vouchers;
   final Staff anna;
   final Staff chef;
 
@@ -93,6 +97,7 @@ class TestShop {
       receipts,
       stats,
       periods,
+      VoucherRepository(db),
       anna,
       chef,
     );
@@ -217,3 +222,28 @@ class TestShop {
       (await db.customSelect('SELECT COUNT(*) c FROM $table').getSingle())
           .read<int>('c');
 }
+
+var _voucherSales = 0;
+
+/// Verkauft einen Gutschein über [valueCents] bar (genau passend) als Anna
+/// und gibt ihn zurück. Ohne [saleId] bekommt der Bon eine eigene Id.
+Future<Voucher> sellVoucher(
+  TestShop shop,
+  int valueCents, {
+  String? saleId,
+}) async {
+  final r = await shop.receipts.finalizeCashSale(
+    saleId: saleId ?? 'gutschein-${_voucherSales++}',
+    cart: const Cart.empty().addVoucherSale(valueCents: valueCents),
+    givenCents: valueCents,
+    staff: shop.anna,
+  );
+  return (await shop.vouchers.byId(r.soldVouchers.single.voucherId))!;
+}
+
+/// [voucher] zum Bezahlen gewählt, mit seinem Guthaben.
+AppliedVoucher applied(Voucher voucher) => AppliedVoucher(
+  voucherId: voucher.id,
+  code: voucher.code,
+  balanceCents: voucher.balanceCents,
+);

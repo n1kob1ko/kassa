@@ -1,5 +1,8 @@
 // Speichert Bons unveränderlich. Korrekturen sind Storno-Bons.
 
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,11 +13,13 @@ import '../domain/discount.dart';
 import '../domain/receipt.dart';
 import '../domain/receipt_rules.dart';
 import '../domain/staff.dart';
+import '../domain/voucher.dart';
 import '../rksv/core/rksv_code.dart';
 import '../rksv/rksv_journal.dart';
 import '../rksv/signature_unit.dart';
 import 'database.dart';
 import 'day_repository.dart';
+import 'voucher_repository.dart';
 
 class EmptyCartException implements Exception {
   const EmptyCartException();
@@ -65,12 +70,64 @@ class NotInCurrentChainException implements Exception {
       'NotInCurrentChainException: Der Bon gehört nicht zur laufenden Kette.';
 }
 
+/// Das Guthaben des Gutscheins [voucherId] reicht nicht mehr für seine
+/// Zahlung. [balanceCents] ist das Guthaben, das an diesem Bon gilt (0 für
+/// einen Übungs-Gutschein auf einem echten Bon und umgekehrt).
+class VoucherBalanceException implements Exception {
+  const VoucherBalanceException(this.voucherId, this.balanceCents);
+
+  final String voucherId;
+  final int balanceCents;
+
+  @override
+  String toString() =>
+      'VoucherBalanceException: Der Gutschein $voucherId hat nur noch '
+      '$balanceCents Cent.';
+}
+
+/// Storno eines Bons, auf dem ein Gutschein verkauft wurde, der schon
+/// eingelöst ist.
+class VoucherSaleRedeemedException implements Exception {
+  const VoucherSaleRedeemedException();
+
+  @override
+  String toString() =>
+      'VoucherSaleRedeemedException: Der Gutschein wurde schon eingelöst.';
+}
+
+/// Bar oder Karte, obwohl die Gutscheine schon alles bezahlen.
+class NothingDueException implements Exception {
+  const NothingDueException();
+
+  @override
+  String toString() => 'NothingDueException: Es ist nichts mehr zu zahlen.';
+}
+
+/// Ein Gutschein, der mit dem Bon entsteht.
+typedef _NewVoucher = ({
+  String id,
+  String code,
+  int valueCents,
+  int linePosition,
+  bool isTest,
+});
+
 class ReceiptRepository {
-  ReceiptRepository(this._db, this._clock, this._days, {this._journal});
+  /// [random] zieht den Schlüssel der öffentlichen Seite und die Codes der
+  /// Gutscheine; ohne ist es [Random.secure].
+  ReceiptRepository(
+    this._db,
+    this._clock,
+    this._days, {
+    this._journal,
+    Random? random,
+  }) : _random = random ?? Random.secure();
 
   final KassaDatabase _db;
   final Clock _clock;
   final DayRepository _days;
+  final Random _random;
+  late final VoucherRepository _vouchers = VoucherRepository(_db);
 
   /// Ohne Journal (in Tests) bekommt kein Bon einen Eintrag.
   final RksvJournal? _journal;
@@ -82,6 +139,12 @@ class ReceiptRepository {
   /// schon, kommt der gespeicherte Bon zurück und nichts wird geschrieben.
   /// Im selben Schritt geht der Bon-Entwurf weg: ein Absturz direkt danach
   /// bietet denselben Verkauf nicht noch einmal an.
+  ///
+  /// Bar bezahlt wird, was nach den gewählten Gutscheinen offen ist
+  /// (`cart.pricing.dueCents`); die Gutschein-Zahlungen stehen davor. Ist
+  /// nichts offen, aber es gibt Gutschein-Zahlungen: [NothingDueException]
+  /// (dafür ist [finalizeVoucherSale]). Ein Bon unter 0 ist eine Auszahlung
+  /// ([finalizePayout]): hier [ArgumentError].
   Future<Receipt> finalizeCashSale({
     required String saleId,
     required Cart cart,
@@ -92,44 +155,124 @@ class ReceiptRepository {
       final existing = await _find(saleId);
       if (existing != null) return existing;
       if (cart.isEmpty) throw const EmptyCartException();
-      if (givenCents < cart.totalCents) throw const InsufficientCashException();
+      final pricing = cart.pricing;
+      if (pricing.totalCents < 0) {
+        throw ArgumentError.value(
+          pricing.totalCents,
+          'cart',
+          'Ein Bon unter 0 ist eine Auszahlung',
+        );
+      }
+      final due = pricing.dueCents;
+      if (due == 0 && pricing.voucherUses.isNotEmpty) {
+        throw const NothingDueException();
+      }
+      if (givenCents < due) throw const InsufficientCashException();
 
-      final saved = await _write(
+      final saved = await _writeSale(
         id: saleId,
-        kind: ReceiptKind.sale,
+        cart: cart,
         staff: staff,
-        lines: await _linesOf(cart),
-        goodsCents: cart.goodsCents,
-        depositCents: cart.depositCents,
-        totalCents: cart.totalCents,
-        discountCents: cart.pricing.discountCents,
-        discount: _receiptDiscountOf(cart),
-        payments: [
+        after: (position) => [
           Payment(
+            position: position,
             kind: PaymentKind.cash,
-            amountCents: cart.totalCents,
+            amountCents: due,
             givenCents: givenCents,
-            changeCents: givenCents - cart.totalCents,
+            changeCents: givenCents - due,
           ),
         ],
       );
-      await (_db.update(_db.settingsRows)..where((t) => t.id.equals(1))).write(
-        const SettingsRowsCompanion(receiptDraft: Value(null)),
-      );
+      await _clearDraft();
       return saved;
     });
   }
+
+  /// Schließt einen Bon ab, den die gewählten Gutscheine ganz bezahlen: nur
+  /// Gutschein-Zahlungen, keine Bar-Zahlung. Es muss
+  /// `cart.pricing.dueCents == 0` und `cart.pricing.voucherCents > 0` gelten,
+  /// sonst [ArgumentError]. Sonst wie [finalizeCashSale].
+  Future<Receipt> finalizeVoucherSale({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) {
+    return _db.transaction(() async {
+      final existing = await _find(saleId);
+      if (existing != null) return existing;
+      final pricing = cart.pricing;
+      if (pricing.dueCents != 0 || pricing.voucherCents <= 0) {
+        throw ArgumentError.value(
+          pricing.dueCents,
+          'cart',
+          'Die Gutscheine bezahlen den Bon nicht ganz',
+        );
+      }
+      final saved = await _writeSale(
+        id: saleId,
+        cart: cart,
+        staff: staff,
+        after: (_) => const [],
+      );
+      await _clearDraft();
+      return saved;
+    });
+  }
+
+  /// Schließt einen Bon unter 0 ab (etwa nur "Pfand zurück"): eine
+  /// Bar-Zahlung über die Summe, gegeben 0, kein Rückgeld. Nur bei
+  /// `cart.totalCents < 0`, sonst [ArgumentError]. Sonst wie
+  /// [finalizeCashSale].
+  Future<Receipt> finalizePayout({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) {
+    return _db.transaction(() async {
+      final existing = await _find(saleId);
+      if (existing != null) return existing;
+      final total = cart.pricing.totalCents;
+      if (total >= 0) {
+        throw ArgumentError.value(total, 'cart', 'Der Bon liegt nicht unter 0');
+      }
+      final saved = await _writeSale(
+        id: saleId,
+        cart: cart,
+        staff: staff,
+        after: (position) => [
+          Payment(
+            position: position,
+            kind: PaymentKind.cash,
+            amountCents: total,
+            givenCents: 0,
+            changeCents: 0,
+          ),
+        ],
+      );
+      await _clearDraft();
+      return saved;
+    });
+  }
+
+  Future<void> _clearDraft() =>
+      (_db.update(_db.settingsRows)..where((t) => t.id.equals(1))).write(
+        const SettingsRowsCompanion(receiptDraft: Value(null)),
+      );
 
   /// Schließt einen Kartenverkauf ab, nachdem das Terminal bezahlt gemeldet
   /// hat. Bon, Zahlung, Entwurf und offene Zahlung ändern sich in einem
   /// Schritt. Gibt es den Bon zu [saleId] schon, kommt er zurück; die offene
   /// Zahlung mit dieser Id geht trotzdem weg.
   ///
-  /// Mit [cashPartCents] über 0 ist der Bon gemischt bezahlt: Zahlung 0 bar
-  /// über den Bar-Teil (gegeben gleich Bar-Teil, kein Rückgeld), Zahlung 1
-  /// mit Karte über den Rest. Die Karte trägt [tipCents]; das Trinkgeld
-  /// gehört [staff]. Es muss `0 <= cashPartCents < cart.totalCents` und
+  /// Vorn stehen die Gutschein-Zahlungen; bezahlt wird, was danach offen
+  /// ist (`dueCents`). Mit [cashPartCents] über 0 ist der Rest gemischt
+  /// bezahlt: zuerst bar über den Bar-Teil (gegeben gleich Bar-Teil, kein
+  /// Rückgeld), dann mit Karte über den Rest. Die Karte trägt [tipCents]; das
+  /// Trinkgeld gehört [staff]. Es muss `0 <= cashPartCents < dueCents` und
   /// `tipCents >= 0` gelten, sonst [ArgumentError].
+  ///
+  /// Mit [allowOverdraw] (die Karte hat schon bezahlt) entsteht der Bon
+  /// auch, wenn ein Gutschein dabei unter 0 fällt.
   Future<Receipt> finalizeCardSale({
     required String saleId,
     required Cart cart,
@@ -140,12 +283,14 @@ class ReceiptRepository {
     String? cardLast4,
     int cashPartCents = 0,
     int tipCents = 0,
+    bool allowOverdraw = false,
   }) {
     return _db.transaction(() async {
       final existing = await _find(saleId);
       if (existing == null && cart.isEmpty) throw const EmptyCartException();
+      final due = cart.pricing.dueCents;
       if (existing == null) {
-        if (cashPartCents < 0 || cashPartCents >= cart.totalCents) {
+        if (cashPartCents < 0 || cashPartCents >= due) {
           throw ArgumentError.value(
             cashPartCents,
             'cashPartCents',
@@ -162,28 +307,24 @@ class ReceiptRepository {
       }
       final saved =
           existing ??
-          await _write(
+          await _writeSale(
             id: saleId,
-            kind: ReceiptKind.sale,
+            cart: cart,
             staff: staff,
-            lines: await _linesOf(cart),
-            goodsCents: cart.goodsCents,
-            depositCents: cart.depositCents,
-            totalCents: cart.totalCents,
-            discountCents: cart.pricing.discountCents,
-            discount: _receiptDiscountOf(cart),
-            payments: [
+            allowOverdraw: allowOverdraw,
+            after: (position) => [
               if (cashPartCents > 0)
                 Payment(
+                  position: position,
                   kind: PaymentKind.cash,
                   amountCents: cashPartCents,
                   givenCents: cashPartCents,
                   changeCents: 0,
                 ),
               Payment(
-                position: cashPartCents > 0 ? 1 : 0,
+                position: cashPartCents > 0 ? position + 1 : position,
                 kind: PaymentKind.card,
-                amountCents: cart.totalCents - cashPartCents,
+                amountCents: due - cashPartCents,
                 givenCents: 0,
                 changeCents: 0,
                 tipCents: tipCents,
@@ -199,13 +340,167 @@ class ReceiptRepository {
       await (_db.delete(
         _db.pendingCardPaymentRows,
       )..where((t) => t.id.equals(saleId))).go();
-      if (existing == null) {
-        await (_db.update(_db.settingsRows)..where((t) => t.id.equals(1)))
-            .write(const SettingsRowsCompanion(receiptDraft: Value(null)));
-      }
+      if (existing == null) await _clearDraft();
       return saved;
     });
   }
+
+  /// Schreibt den Verkauf [cart]: zuerst eine Gutschein-Zahlung je
+  /// [VoucherUse], dann die Zahlungen aus [after] (es bekommt die Stelle der
+  /// ersten). Jede Gutschein-Zeile bekommt einen neuen Gutschein.
+  Future<Receipt> _writeSale({
+    required String id,
+    required Cart cart,
+    required Staff staff,
+    required List<Payment> Function(int position) after,
+    bool allowOverdraw = false,
+  }) async {
+    final pricing = cart.pricing;
+    final isTest = await _isTestReceipt();
+    final voucherPayments = await _voucherPayments(
+      pricing.voucherUses,
+      isTest: isTest,
+      allowOverdraw: allowOverdraw,
+    );
+    final (lines, newVouchers) = await _withNewVouchers(
+      await _linesOf(cart),
+      isTest: isTest,
+    );
+    return _write(
+      id: id,
+      kind: ReceiptKind.sale,
+      staff: staff,
+      lines: lines,
+      goodsCents: cart.goodsCents,
+      depositCents: cart.depositCents,
+      totalCents: cart.totalCents,
+      discountCents: pricing.discountCents,
+      discount: _receiptDiscountOf(cart),
+      payments: [...voucherPayments, ...after(voucherPayments.length)],
+      newVouchers: newVouchers,
+    );
+  }
+
+  /// Ob der Bon, der jetzt entsteht, ein Übungs-Bon ist: nach der Kette, in
+  /// die sein Eintrag kommt ([isTestChainMode]).
+  Future<bool> _isTestReceipt() async {
+    final journal = _journal;
+    if (journal == null || !await journal.isActive()) {
+      return isTestChainMode(null);
+    }
+    final row = await _db
+        .customSelect(
+          'SELECT c.mode FROM rksv_state s '
+          'JOIN rksv_chains c ON c.chain = s.chain WHERE s.id = 1',
+        )
+        .getSingleOrNull();
+    return isTestChainMode(row?.read<String>('mode'));
+  }
+
+  /// Eine Zahlung je [VoucherUse], ab Stelle 0. Das Guthaben kommt aus den
+  /// Bewegungen, nicht aus dem Bon. Ein Übungs-Gutschein gilt nur auf einem
+  /// Übungs-Bon, ein echter nur auf einem echten (sonst Guthaben 0). Reicht
+  /// das Guthaben nicht: [VoucherBalanceException], außer mit
+  /// [allowOverdraw].
+  Future<List<Payment>> _voucherPayments(
+    List<VoucherUse> uses, {
+    required bool isTest,
+    required bool allowOverdraw,
+  }) async {
+    final payments = <Payment>[];
+    for (final use in uses) {
+      final voucher = await _vouchers.byId(use.voucherId);
+      if (voucher == null) throw VoucherBalanceException(use.voucherId, 0);
+      final balance = voucher.balanceCents;
+      final usable = voucher.isTest == isTest ? balance : 0;
+      if (usable < use.amountCents && !allowOverdraw) {
+        throw VoucherBalanceException(voucher.id, usable);
+      }
+      payments.add(
+        Payment(
+          position: payments.length,
+          kind: PaymentKind.voucher,
+          amountCents: use.amountCents,
+          givenCents: use.amountCents,
+          changeCents: 0,
+          voucherId: voucher.id,
+          voucherCode: voucher.code,
+          voucherBalanceAfterCents: balance - use.amountCents,
+        ),
+      );
+    }
+    return payments;
+  }
+
+  /// Je Gutschein-Zeile ein neuer Gutschein mit freiem Code; die Zeile trägt
+  /// danach den Code als `info`.
+  Future<(List<ReceiptLine>, List<_NewVoucher>)> _withNewVouchers(
+    List<ReceiptLine> lines, {
+    required bool isTest,
+  }) async {
+    final created = <_NewVoucher>[];
+    final out = <ReceiptLine>[];
+    for (final l in lines) {
+      if (!isVoucherSaleItemId(l.itemId)) {
+        out.add(l);
+        continue;
+      }
+      if (l.quantity != 1) {
+        throw StateError('Eine Gutschein-Zeile hat immer die Menge 1.');
+      }
+      final code = await _freeCode({for (final v in created) v.code});
+      created.add((
+        id: const Uuid().v4(),
+        code: code,
+        valueCents: l.unitPriceCents,
+        linePosition: l.position,
+        isTest: isTest,
+      ));
+      out.add(
+        ReceiptLine(
+          position: l.position,
+          itemId: l.itemId,
+          name: l.name,
+          info: 'Code ${formatVoucherCode(code)}',
+          unitPriceCents: l.unitPriceCents,
+          quantity: l.quantity,
+          unitDepositCents: l.unitDepositCents,
+          options: l.options,
+          grossByRate: l.grossByRate,
+          discountCents: l.discountCents,
+          discount: l.discount,
+        ),
+      );
+    }
+    return (out, created);
+  }
+
+  /// 8 zufällige Ziffern, die noch kein Gutschein hat (auch keiner aus
+  /// [taken], die mit diesem Bon entstehen).
+  Future<String> _freeCode(Set<String> taken) async {
+    while (true) {
+      final code = [for (var i = 0; i < 8; i++) _random.nextInt(10)].join();
+      if (taken.contains(code)) continue;
+      final used =
+          await (_db.select(_db.voucherRows)
+                ..where((t) => t.code.equals(code))
+                ..limit(1))
+              .getSingleOrNull();
+      if (used == null) return code;
+    }
+  }
+
+  /// Schlüssel der öffentlichen Seite: 16 zufällige Bytes, base64url ohne
+  /// `=` (22 Zeichen).
+  String _newPublicToken() => base64Url
+      .encode([for (var i = 0; i < 16; i++) _random.nextInt(256)])
+      .replaceAll('=', '');
+
+  /// Ein Gutschein-Verkauf lässt sich stornieren, solange der Gutschein
+  /// sein Guthaben vom Verkauf hat: jede Einlösung ist selbst storniert.
+  static bool _mayVoidSaleOf(Voucher v) =>
+      v.balanceCents == v.valueCents &&
+      !v.movements.any((m) => m.kind == VoucherMovementKind.voidSale);
 
   /// Die Zeilen des Bons aus [Cart.pricing]: Beträge je Satz nach Rabatt,
   /// der Rabatt der Zeile und ihr eigener Rabatt. Der Einzelpreis bleibt der
@@ -281,6 +576,38 @@ class ReceiptRepository {
       if (journal != null && !await journal.mayVoid(original.id)) {
         throw const NotInCurrentChainException();
       }
+      final sold = await _vouchers.soldOn(original.id);
+      if (!sold.every(_mayVoidSaleOf)) {
+        throw const VoucherSaleRedeemedException();
+      }
+      // Jede Zahlung gespiegelt. Das Trinkgeld bleibt bei der Person, die
+      // kassiert hat, nicht bei der, die storniert (Spec 5.4a). Ein
+      // Gutschein bekommt seinen Betrag zurück.
+      final payments = <Payment>[];
+      for (final p in original.payments) {
+        final voucherId = p.voucherId;
+        payments.add(
+          Payment(
+            position: p.position,
+            kind: p.kind,
+            amountCents: -p.amountCents,
+            givenCents: 0,
+            changeCents: 0,
+            tipCents: -p.tipCents,
+            tipStaffId: p.tipStaffId,
+            tipStaffName: p.tipStaffName,
+            provider: p.provider,
+            providerTxCode: p.providerTxCode,
+            cardScheme: p.cardScheme,
+            cardLast4: p.cardLast4,
+            voucherId: voucherId,
+            voucherCode: p.voucherCode,
+            voucherBalanceAfterCents: voucherId == null
+                ? null
+                : await _vouchers.balanceOf(voucherId) + p.amountCents,
+          ),
+        );
+      }
       return _write(
         id: const Uuid().v4(),
         kind: ReceiptKind.voided,
@@ -309,25 +636,8 @@ class ReceiptRepository {
         totalCents: -original.totalCents,
         discountCents: -original.discountCents,
         discount: _negated(original.discount),
-        // Jede Zahlung gespiegelt. Das Trinkgeld bleibt bei der Person,
-        // die kassiert hat, nicht bei der, die storniert (Spec 5.4a).
-        payments: [
-          for (final p in original.payments)
-            Payment(
-              position: p.position,
-              kind: p.kind,
-              amountCents: -p.amountCents,
-              givenCents: 0,
-              changeCents: 0,
-              tipCents: -p.tipCents,
-              tipStaffId: p.tipStaffId,
-              tipStaffName: p.tipStaffName,
-              provider: p.provider,
-              providerTxCode: p.providerTxCode,
-              cardScheme: p.cardScheme,
-              cardLast4: p.cardLast4,
-            ),
-        ],
+        payments: payments,
+        voidedVouchers: sold,
       );
     });
   }
@@ -451,7 +761,10 @@ class ReceiptRepository {
     int discountCents = 0,
     ReceiptDiscount? discount,
     required List<Payment> payments,
+    List<_NewVoucher> newVouchers = const [],
+    List<Voucher> voidedVouchers = const [],
   }) async {
+    final isVoid = kind == ReceiptKind.voided;
     final tipCents = payments.fold<int>(0, (sum, p) => sum + p.tipCents);
     final sums = codeSums(
       lineGross: [for (final l in lines) l.grossByRate],
@@ -475,7 +788,7 @@ class ReceiptRepository {
       discountCents: discountCents,
       lines: lines,
       payments: payments,
-      isVoid: kind == ReceiptKind.voided,
+      isVoid: isVoid,
     );
     var signatureDown = false;
     if (signing) signatureDown = await _writeDue(journal, staff);
@@ -502,6 +815,7 @@ class ReceiptRepository {
             discountPercent: Value(discount?.percent),
             discountAmountCents: Value(discount?.amountCents ?? 0),
             discountReason: Value(discount?.reason),
+            publicToken: Value(_newPublicToken()),
           ),
         );
     for (final l in lines) {
@@ -563,9 +877,20 @@ class ReceiptRepository {
               providerTxCode: Value(payment.providerTxCode),
               cardScheme: Value(payment.cardScheme),
               cardLast4: Value(payment.cardLast4),
+              voucherId: Value(payment.voucherId),
+              voucherCode: Value(payment.voucherCode),
+              voucherBalanceAfterCents: Value(payment.voucherBalanceAfterCents),
             ),
           );
     }
+    await _writeVoucherMovements(
+      receiptId: id,
+      createdAt: createdAt,
+      isVoid: isVoid,
+      payments: payments,
+      newVouchers: newVouchers,
+      voidedVouchers: voidedVouchers,
+    );
     if (signing) {
       await _record(
         journal,
@@ -578,6 +903,58 @@ class ReceiptRepository {
       );
     }
     return byId(id);
+  }
+
+  /// Neue Gutscheine mit ihrer Bewegung `sale`, je Gutschein-Zahlung
+  /// `redeem` (beim Storno `void_redeem`) und je stornierten Verkauf
+  /// `void_sale`, alle zum Bon [receiptId].
+  Future<void> _writeVoucherMovements({
+    required String receiptId,
+    required DateTime createdAt,
+    required bool isVoid,
+    required List<Payment> payments,
+    required List<_NewVoucher> newVouchers,
+    required List<Voucher> voidedVouchers,
+  }) async {
+    Future<void> move(String voucherId, VoucherMovementKind kind, int cents) =>
+        _db
+            .into(_db.voucherMovementRows)
+            .insert(
+              VoucherMovementRowsCompanion.insert(
+                voucherId: voucherId,
+                receiptId: receiptId,
+                kind: kind.dbName,
+                amountCents: cents,
+                createdAt: createdAt,
+              ),
+            );
+    for (final v in newVouchers) {
+      await _db
+          .into(_db.voucherRows)
+          .insert(
+            VoucherRowsCompanion.insert(
+              id: v.id,
+              code: v.code,
+              valueCents: v.valueCents,
+              createdAt: createdAt,
+              soldReceiptId: Value(receiptId),
+              soldLinePosition: Value(v.linePosition),
+              isTest: v.isTest,
+            ),
+          );
+      await move(v.id, VoucherMovementKind.sale, v.valueCents);
+    }
+    for (final p in payments) {
+      if (p.kind != PaymentKind.voucher) continue;
+      await move(
+        p.voucherId!,
+        isVoid ? VoucherMovementKind.voidRedeem : VoucherMovementKind.redeem,
+        -p.amountCents,
+      );
+    }
+    for (final v in voidedVouchers) {
+      await move(v.id, VoucherMovementKind.voidSale, -v.valueCents);
+    }
   }
 
   Future<int> _nextNumber() async {
@@ -804,6 +1181,24 @@ class ReceiptRepository {
       )..where((t) => t.voidsReceiptId.isIn(ids))).get())
         v.voidsReceiptId!: v.id,
     };
+    // Die Gutscheine eines Verkaufs; ein Storno-Bon zeigt die seines
+    // Verkaufs mit negativem Wert.
+    final saleOf = {
+      for (final r in rows)
+        r.id: r.kind == ReceiptKind.voided.name ? r.voidsReceiptId : r.id,
+    };
+    final soldOf = <String, List<VoucherRow>>{};
+    for (final v
+        in await (_db.select(_db.voucherRows)
+              ..where(
+                (t) =>
+                    t.soldReceiptId.isIn(saleOf.values.nonNulls) &
+                    t.soldLinePosition.isNotNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.soldLinePosition)]))
+            .get()) {
+      (soldOf[v.soldReceiptId!] ??= []).add(v);
+    }
     return [
       for (final r in rows)
         Receipt(
@@ -872,8 +1267,23 @@ class ReceiptRepository {
                 providerTxCode: p.providerTxCode,
                 cardScheme: p.cardScheme,
                 cardLast4: p.cardLast4,
+                voucherId: p.voucherId,
+                voucherCode: p.voucherCode,
+                voucherBalanceAfterCents: p.voucherBalanceAfterCents,
               ),
           ],
+          soldVouchers: [
+            for (final v in soldOf[saleOf[r.id]] ?? const <VoucherRow>[])
+              SoldVoucher(
+                voucherId: v.id,
+                code: v.code,
+                valueCents: r.kind == ReceiptKind.voided.name
+                    ? -v.valueCents
+                    : v.valueCents,
+                linePosition: v.soldLinePosition!,
+              ),
+          ],
+          publicToken: r.publicToken,
           rksv: stamps[r.id],
           goodsCents: r.goodsCents,
           depositCents: r.depositCents,
