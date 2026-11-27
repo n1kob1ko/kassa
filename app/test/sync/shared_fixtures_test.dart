@@ -259,6 +259,10 @@ void main() {
   test(
     'Umsätze: die Beispieldatei overview.json stimmt mit der Rechnung der App',
     () async {
+      // Fester Zufall: derselbe Schlüssel der Seite bei jedem Lauf. Eigener
+      // Samen je Datei, denn der Schlüssel gilt am Server über alle Betriebe.
+      await shop.close();
+      shop = await TestShop.open(random: Random(1101));
       final now = DateTime(2026, 11, 19, 15);
       final bowl = const Cart.empty().add(huhnBowl, options: [normal, reis]);
       final colas = const Cart.empty().add(cola).add(cola);
@@ -381,6 +385,10 @@ void main() {
   test(
     'Monate: die Beispieldatei months.json stimmt mit der Rechnung der App',
     () async {
+      // Fester Zufall: derselbe Schlüssel der Seite bei jedem Lauf. Eigener
+      // Samen je Datei, denn der Schlüssel gilt am Server über alle Betriebe.
+      await shop.close();
+      shop = await TestShop.open(random: Random(1102));
       final now = DateTime(2026, 3, 12, 15);
       final bowl = const Cart.empty().add(huhnBowl, options: [normal, reis]);
       final colas = const Cart.empty().add(cola).add(cola);
@@ -521,6 +529,10 @@ void main() {
     'Gemischt: die Beispieldatei mixed.json (bar, Karte, bar + Karte mit '
     'Trinkgeld, bar mit Rabatt) stimmt mit der Rechnung der App',
     () async {
+      // Fester Zufall: derselbe Schlüssel der Seite bei jedem Lauf. Eigener
+      // Samen je Datei, denn der Schlüssel gilt am Server über alle Betriebe.
+      await shop.close();
+      shop = await TestShop.open(random: Random(1103));
       final now = DateTime(2026, 7, 1, 12);
 
       final ids = <String>[

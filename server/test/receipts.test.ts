@@ -33,8 +33,8 @@ describe('Bons', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       receipts: [
-        { id: late.id, number: 2, registerName: 'Kassa 1', createdAt: '2026-11-19T09:00:00.000Z', kind: 'sale', staffName: 'Anna', totalCents: 990, paymentKind: 'card', test: true, voided: false },
-        { id: early.id, number: 1, registerName: 'Kassa 1', createdAt: '2026-11-19T08:00:00.000Z', kind: 'sale', staffName: 'Chefin', totalCents: 990, paymentKind: 'cash', test: true, voided: false },
+        { id: late.id, number: 2, registerName: 'Kassa 1', createdAt: '2026-11-19T09:00:00.000Z', kind: 'sale', staffName: 'Anna', totalCents: 990, paymentKind: 'card', test: true, voided: false, voucherCents: 0, paymentKinds: ['card'] },
+        { id: early.id, number: 1, registerName: 'Kassa 1', createdAt: '2026-11-19T08:00:00.000Z', kind: 'sale', staffName: 'Chefin', totalCents: 990, paymentKind: 'cash', test: true, voided: false, voucherCents: 0, paymentKinds: ['cash'] },
       ],
       next: null,
     });
@@ -138,13 +138,15 @@ describe('Bons', () => {
     expect(res.json()).toEqual({
       id: r.id, number: 7, registerName: 'Kassa 1', createdAt: '2026-11-19T08:00:00.000Z', kind: 'sale', staffName: 'Chefin',
       totalCents: 1015, paymentKind: 'cash', test: true, voided: false,
+      voucherCents: 0, paymentKinds: ['cash'],
       goodsCents: 990, depositCents: 25,
       lines: [{
         position: 0, itemId: 'huhn-bowl', name: 'Huhn Bowl', info: null, unitPriceCents: 990, quantity: 1, unitDepositCents: 0,
         options: [{ groupName: 'Größe', optionName: 'Normal', surchargeCents: 0 }],
         discountCents: 0, discount: null,
       }],
-      payments: [{ position: 0, kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, tipCents: 0, tipStaffName: null, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null }],
+      payments: [{ position: 0, kind: 'cash', amountCents: 990, givenCents: 1000, changeCents: 10, tipCents: 0, tipStaffName: null, provider: null, providerTxCode: null, cardScheme: null, cardLast4: null, voucherCode: null, voucherBalanceAfterCents: null }],
+      vouchers: [],
       tipCents: 0, discountCents: 0, discount: null,
       voidsReceiptId: null, voidedByReceiptId: null, rksv: null,
     });
@@ -180,6 +182,7 @@ describe('Bons', () => {
     expect(d.payments[1]).toEqual({
       position: 1, kind: 'card', amountCents: 536, givenCents: 0, changeCents: 0, tipCents: 64, tipStaffName: 'Anna',
       provider: 'sumup', providerTxCode: 'TX-BEISPIEL-1', cardScheme: 'VISA', cardLast4: '4242',
+      voucherCode: null, voucherBalanceAfterCents: null,
     });
     expect(d).toMatchObject({ paymentKind: 'mixed', tipCents: 64, discountCents: 284, discount: { percent: 10, amountCents: 165, reason: 'promotion' } });
     expect(d.lines.map((l: { discountCents: number }) => l.discountCents)).toEqual([58, 226]);

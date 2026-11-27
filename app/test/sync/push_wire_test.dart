@@ -18,6 +18,32 @@ Map<String, dynamic> pushRequest() => jsonDecode(
   File('../shared/fixtures/sync/push_request_v2.json').readAsStringSync(),
 ) as Map<String, dynamic>;
 
+/// Der Bon-Eintrag aus `push_request_v2.json`, gehoben auf die Form `v: 3`,
+/// in der die App seit 1.12.0 sendet: dieselben Werte, dazu die neuen Felder
+/// leer (kein Schlüssel der Seite, keine Gutscheine, an jeder Zahlung kein
+/// Gutschein).
+Map<String, dynamic> asV3Entry(Map<String, dynamic> entry) {
+  final r = entry['receipt'] as Map<String, dynamic>;
+  return {
+    ...entry,
+    'receipt': {
+      ...r,
+      'v': 3,
+      'publicToken': null,
+      'vouchers': <Object?>[],
+      'payments': [
+        for (final p in (r['payments'] as List).cast<Map<String, dynamic>>())
+          {
+            ...p,
+            'voucherId': null,
+            'voucherCode': null,
+            'voucherBalanceAfterCents': null,
+          },
+      ],
+    },
+  };
+}
+
 /// Schreibt die Daten eines Bons aus der Beispieldatei in die Tabellen.
 Future<void> insertReceiptOf(
   KassaDatabase db,
@@ -238,7 +264,11 @@ void main() {
         entry(expected['seq'] as int, kind, refs[kind]!),
       );
       // Über JSON, wie es hinausgeht: so zählen auch die Arten der Zahlen.
-      expect(jsonDecode(jsonEncode(built)), expected, reason: kind);
+      expect(
+        jsonDecode(jsonEncode(built)),
+        kind == 'receipt' ? asV3Entry(expected) : expected,
+        reason: kind,
+      );
       checked++;
     }
     expect(checked, 5);
@@ -442,7 +472,7 @@ void main() {
     expect(jsonDecode(jsonEncode(built)), expected);
   });
 
-  test('Bon aus cart mit Bar-Teil 1000 und Trinkgeld 80 geht als v: 2 mit '
+  test('Bon aus cart mit Bar-Teil 1000 und Trinkgeld 80 geht als v: 3 mit '
       'zwei Zahlungen hinaus', () async {
     final shop = await TestShop.open();
     addTearDown(shop.close);
@@ -460,7 +490,7 @@ void main() {
     final built = await PushPayloads(shop.db)
         .build(entry(1, 'receipt', 'gemischt'));
     final r = jsonDecode(jsonEncode(built))['receipt'] as Map<String, dynamic>;
-    expect(r['v'], 2);
+    expect(r['v'], 3);
     expect(r.containsKey('payment'), isFalse);
     expect(r['totalCents'], 1820);
     expect(r['tipCents'], 80);
@@ -480,6 +510,9 @@ void main() {
         'providerTxCode': null,
         'cardScheme': null,
         'cardLast4': null,
+        'voucherId': null,
+        'voucherCode': null,
+        'voucherBalanceAfterCents': null,
       },
       {
         'position': 1,
@@ -494,6 +527,9 @@ void main() {
         'providerTxCode': 'TX-1',
         'cardScheme': 'VISA',
         'cardLast4': '4242',
+        'voucherId': null,
+        'voucherCode': null,
+        'voucherBalanceAfterCents': null,
       },
     ]);
     for (final l in (r['lines'] as List).cast<Map<String, dynamic>>()) {

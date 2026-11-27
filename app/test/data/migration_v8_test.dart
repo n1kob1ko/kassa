@@ -100,7 +100,7 @@ void main() {
 
       final db = KassaDatabase(NativeDatabase(file));
       addTearDown(db.close);
-      expect(await userVersion(db), 8);
+      expect(await userVersion(db), 9);
 
       final payments =
           await (db.select(db.paymentRows)..orderBy([
@@ -169,7 +169,20 @@ void main() {
       for (final MapEntry(:key, :value) in before.entries) {
         expect(await count(db, key), value, reason: key);
       }
-      expect(await triggerNames(db), triggersBefore);
+      expect(
+        await triggerNames(db),
+        [
+          ...triggersBefore,
+          'receipt_deliveries_no_delete',
+          'receipt_deliveries_no_update',
+          'receipt_recipients_no_delete',
+          'receipt_recipients_no_update',
+          'voucher_movements_no_delete',
+          'voucher_movements_no_update',
+          'vouchers_no_delete',
+          'vouchers_no_update_code_value',
+        ]..sort(),
+      );
       await expectLater(
         db.customStatement('UPDATE payments SET amount_cents = 1'),
         throwsA(isA<SqliteException>()),
@@ -293,7 +306,7 @@ void main() {
       'auf Version 8 und ein gespeicherter Schalter bleibt an', () async {
     final file = await copyFixture('kassa_v7.sqlite');
     final first = KassaDatabase(NativeDatabase(file));
-    expect(await userVersion(first), 8);
+    expect(await userVersion(first), 9);
     final repo = SettingsRepository(first);
     await repo.save((await repo.current()).copyWith(cardTipEnabled: true));
     final paymentsAfterFirst = await count(first, 'payments');
@@ -305,7 +318,7 @@ void main() {
 
     final db = KassaDatabase(NativeDatabase(file));
     addTearDown(db.close);
-    expect(await userVersion(db), 8);
+    expect(await userVersion(db), 9);
     expect(await count(db, 'payments'), paymentsAfterFirst);
     expect((await SettingsRepository(db).current()).cardTipEnabled, isTrue);
   });
@@ -313,7 +326,7 @@ void main() {
   test('neue Datenbank: Version 8, alle Schalter aus', () async {
     final db = KassaDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(await userVersion(db), 8);
+    expect(await userVersion(db), 9);
     final s = await SettingsRepository(db).current();
     expect(
       (

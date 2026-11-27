@@ -1,11 +1,12 @@
 // Ein Bon, den ein Tablet mit 1.10.0 schon gesendet hat, geht nach dem Update
-// noch einmal hinaus, jetzt als v: 2. Die Datenbank
+// noch einmal hinaus, jetzt als v: 3. Die Datenbank
 // `kassa_v7_receipts_1_10_0.sqlite` und die Sendung von 1.10.0
 // (`shared/fixtures/sync/receipt_1_10_0_v1.json`) hat der Code von 1.10.0
 // geschrieben (Befehle in `tool/fixtures/receipt_1_10_0.md`). Dieser Test baut
-// aus derselben Datenbank nach der Migration 7 zu 8 die Sendung von heute und
-// vergleicht sie mit `receipt_1_10_0_as_v2.json`. Der Server prüft beide
-// Dateien zusammen (server/test/push.test.ts). Mit KASSA_WRITE_FIXTURES=1
+// aus derselben Datenbank nach der Migration 7 zu 9 die Sendung von heute und
+// vergleicht sie mit `receipt_1_10_0_as_v3.json`. `receipt_1_10_0_as_v2.json`
+// ist die Sendung von 1.11.0; der Server prüft sie mit der Sendung von 1.10.0
+// zusammen (server/test/push.test.ts). Mit KASSA_WRITE_FIXTURES=1
 // schreibt dieser Test die Datei neu, sonst vergleicht er.
 
 import 'dart:convert';
@@ -22,7 +23,7 @@ import '../data/migration_test.dart' show copyFixture;
 final _write = Platform.environment['KASSA_WRITE_FIXTURES'] == '1';
 
 void main() {
-  test('Bons von 1.10.0 gehen nach dem Update als v: 2 hinaus', () async {
+  test('Bons von 1.10.0 gehen nach dem Update als v: 3 hinaus', () async {
     final old =
         jsonDecode(
               File(
@@ -51,9 +52,9 @@ void main() {
     ]);
     expect([
       for (final e in entries) (e['receipt']! as Map<String, Object?>)['v'],
-    ], everyElement(2));
+    ], everyElement(3));
 
-    final file = File('../shared/fixtures/sync/receipt_1_10_0_as_v2.json');
+    final file = File('../shared/fixtures/sync/receipt_1_10_0_as_v3.json');
     final content = {'entries': entries};
     if (_write) {
       file.writeAsStringSync(

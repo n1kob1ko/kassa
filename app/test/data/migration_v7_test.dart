@@ -81,7 +81,7 @@ void main() {
 
     final db = KassaDatabase(NativeDatabase(file));
     addTearDown(db.close);
-    expect(await userVersion(db), 8);
+    expect(await userVersion(db), 9);
 
     // Alte Werte bleiben, die neuen haben ihre Vorgaben.
     final s = await SettingsRepository(db).current();
@@ -119,7 +119,20 @@ void main() {
     for (final MapEntry(:key, :value) in before.entries) {
       expect(await count(db, key), value, reason: key);
     }
-    expect(await triggerNames(db), triggersBefore);
+    expect(
+      await triggerNames(db),
+      [
+        ...triggersBefore,
+        'receipt_deliveries_no_delete',
+        'receipt_deliveries_no_update',
+        'receipt_recipients_no_delete',
+        'receipt_recipients_no_update',
+        'voucher_movements_no_delete',
+        'voucher_movements_no_update',
+        'vouchers_no_delete',
+        'vouchers_no_update_code_value',
+      ]..sort(),
+    );
     await expectLater(
       db.customStatement('UPDATE receipts SET total_cents = 1'),
       throwsA(isA<SqliteException>()),
@@ -131,7 +144,7 @@ void main() {
       'auf Version 7 und der Abgleich-Stand bleibt', () async {
     final file = await copyFixture('kassa_v6.sqlite');
     final first = KassaDatabase(NativeDatabase(file));
-    expect(await userVersion(first), 8);
+    expect(await userVersion(first), 9);
     await SettingsRepository(first).save(
       const RegisterSettings(
         language: AppLanguage.tr,
@@ -148,7 +161,7 @@ void main() {
 
     final db = KassaDatabase(NativeDatabase(file));
     addTearDown(db.close);
-    expect(await userVersion(db), 8);
+    expect(await userVersion(db), 9);
     final s = await SettingsRepository(db).current();
     expect(s.language, AppLanguage.tr);
     expect(s.kitchenMode, KitchenMode.receiptPrinter);
@@ -162,7 +175,7 @@ void main() {
     () async {
       final db = KassaDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      expect(await userVersion(db), 8);
+      expect(await userVersion(db), 9);
       expect(await count(db, 'translations'), 0);
       expect(
         await SettingsRepository(db).current(),

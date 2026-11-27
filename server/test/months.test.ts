@@ -78,7 +78,8 @@ describe('Monate', () => {
       const r = await summary(s, from, to, chef.cookie);
       expect(r.statusCode, key).toBe(200);
       // Die neuen Felder kennt die Abrechnung der App noch nicht: in diesem Beispiel ohne Trinkgeld und Rabatt.
-      const { discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff, ...rest } = r.json();
+      const { discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff, voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents, ...rest } = r.json();
+      expect({ voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents }, key).toEqual({ voucherPaidCents: 0, voucherSoldCount: 0, voucherSoldCents: 0, depositReturnCount: 0, depositReturnCents: 0 });
       const fileSummary = fx.expected.summaries[key] as { cardRevenueCents: number };
       expect({ discountCount, discountCents, cardTipCents, cardAccountCents, tipsByStaff }, key).toEqual({
         discountCount: 0, discountCents: 0, cardTipCents: 0, cardAccountCents: fileSummary.cardRevenueCents, tipsByStaff: [],
@@ -104,7 +105,9 @@ describe('Monate', () => {
     expect((await list(s, chef.cookie)).json()).toEqual({ testMode: true, nextAvailable: '2026-08-01', months: fx.expected.months });
     const r = await summary(s, '2026-06', '2026-06', chef.cookie);
     expect(r.statusCode).toBe(200);
-    expect(r.json()).toEqual(fx.expected.summary);
+    const { voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents, ...rest } = r.json();
+    expect({ voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents }).toEqual({ voucherPaidCents: 0, voucherSoldCount: 0, voucherSoldCents: 0, depositReturnCount: 0, depositReturnCents: 0 });
+    expect(rest).toEqual(fx.expected.summary);
     // Von Hand: ein Bon mit Rabatt (1,19 € auf der Huhn Bowl, 1,65 € auf den Bon); 0,80 € Trinkgeld für Anna auf dem
     // gemischten Bon; am Kartenkonto 9,65 + 8,20 + 0,80. Der gemischte Bon zählt bei bar und bei Karte, im Gesamt einmal.
     expect(r.json()).toMatchObject({
@@ -249,7 +252,9 @@ describe('Monate', () => {
       lines: [{ position: 0, itemId: 'x', name: 'X', info: null, unitPriceCents: 1190, quantity: -1, unitDepositCents: 0, gross: { '20': 0, '10': -1190, '13': 0, '0': 0, '19': 0 }, options: [] }],
     });
     await send(a, s, [['receipt', sale], ['receipt', card], ['receipt', storno]]);
-    expect((await summary(s, '2026-09', '2026-09')).json()).toEqual({
+    const { voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents, ...september } = (await summary(s, '2026-09', '2026-09')).json();
+    expect({ voucherPaidCents, voucherSoldCount, voucherSoldCents, depositReturnCount, depositReturnCents }).toEqual({ voucherPaidCents: 0, voucherSoldCount: 0, voucherSoldCents: 0, depositReturnCount: 0, depositReturnCents: 0 });
+    expect(september).toEqual({
       from: '2026-09', to: '2026-09', testMode: true,
       receiptCount: 2, cashReceiptCount: 1, cardReceiptCount: 1, voidCount: 0, voidedCents: 0,
       revenueCents: 1795, cashRevenueCents: 1190, cardRevenueCents: 605, depositCents: 25,

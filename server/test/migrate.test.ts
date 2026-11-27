@@ -148,7 +148,7 @@ test('0002 läuft auf einer Datenbank mit Stand 0001 und lässt vorhandene Artik
         [biz],
       );
       const applied = await migrate(url, { appPassword: TEST_APP_PASSWORD });
-      expect(applied).toEqual(['0002_sync.sql', '0003_translations.sql', '0004_payments.sql']);
+      expect(applied).toEqual(['0002_sync.sql', '0003_translations.sql', '0004_payments.sql', '0005_vouchers.sql']);
       const item = await c.query('select name, price_cents, photo_file_id from items where id = $1', ['huhn-bowl']);
       expect(item.rows).toEqual([{ name: 'Huhn Bowl', price_cents: 990, photo_file_id: null }]);
       const biz2 = await c.query('select time_zone from businesses where id = $1', [biz]);

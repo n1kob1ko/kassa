@@ -51,7 +51,7 @@
   ],
   "receipts": [
     {
-      "v": 2,
+      "v": 3,
       "id": "ffffffff-0000-4000-8000-000000000001",
       "number": 1,
       "createdAt": "2026-06-29T10:00:00.000Z",
@@ -67,6 +67,7 @@
       "tipCents": 0,
       "discountCents": 0,
       "discount": null,
+      "publicToken": "YpZYQvUCrLt8G35Tz2kPEQ",
       "lines": [
         {
           "position": 0,
@@ -107,6 +108,7 @@
           "discount": null
         }
       ],
+      "vouchers": [],
       "payments": [
         {
           "position": 0,
@@ -120,13 +122,16 @@
           "provider": null,
           "providerTxCode": null,
           "cardScheme": null,
-          "cardLast4": null
+          "cardLast4": null,
+          "voucherId": null,
+          "voucherCode": null,
+          "voucherBalanceAfterCents": null
         }
       ],
       "rksv": null
     },
     {
-      "v": 2,
+      "v": 3,
       "id": "ffffffff-0000-4000-8000-000000000002",
       "number": 2,
       "createdAt": "2026-06-29T12:00:00.000Z",
@@ -142,6 +147,7 @@
       "tipCents": 0,
       "discountCents": 0,
       "discount": null,
+      "publicToken": "VMNwS36rD-FnlLtj-_jWmA",
       "lines": [
         {
           "position": 0,
@@ -182,6 +188,7 @@
           "discount": null
         }
       ],
+      "vouchers": [],
       "payments": [
         {
           "position": 0,
@@ -195,13 +202,16 @@
           "provider": "sumup",
           "providerTxCode": "TX-ffffffff-0000-4000-8000-000000000002",
           "cardScheme": "VISA",
-          "cardLast4": "4242"
+          "cardLast4": "4242",
+          "voucherId": null,
+          "voucherCode": null,
+          "voucherBalanceAfterCents": null
         }
       ],
       "rksv": null
     },
     {
-      "v": 2,
+      "v": 3,
       "id": "ffffffff-0000-4000-8000-000000000003",
       "number": 3,
       "createdAt": "2026-06-30T18:00:00.000Z",
@@ -217,6 +227,7 @@
       "tipCents": 80,
       "discountCents": 0,
       "discount": null,
+      "publicToken": "4R00E04DTYymXwjMMoSbVg",
       "lines": [
         {
           "position": 0,
@@ -268,6 +279,7 @@
           "discount": null
         }
       ],
+      "vouchers": [],
       "payments": [
         {
           "position": 0,
@@ -281,7 +293,10 @@
           "provider": null,
           "providerTxCode": null,
           "cardScheme": null,
-          "cardLast4": null
+          "cardLast4": null,
+          "voucherId": null,
+          "voucherCode": null,
+          "voucherBalanceAfterCents": null
         },
         {
           "position": 1,
@@ -295,13 +310,16 @@
           "provider": "sumup",
           "providerTxCode": "TX-ffffffff-0000-4000-8000-000000000003",
           "cardScheme": "VISA",
-          "cardLast4": "4242"
+          "cardLast4": "4242",
+          "voucherId": null,
+          "voucherCode": null,
+          "voucherBalanceAfterCents": null
         }
       ],
       "rksv": null
     },
     {
-      "v": 2,
+      "v": 3,
       "id": "ffffffff-0000-4000-8000-000000000004",
       "number": 4,
       "createdAt": "2026-06-30T19:00:00.000Z",
@@ -321,6 +339,7 @@
         "amountCents": 165,
         "reason": "promotion"
       },
+      "publicToken": "H2N8F0h7P5yPLpkneTkqeA",
       "lines": [
         {
           "position": 0,
@@ -376,6 +395,7 @@
           }
         }
       ],
+      "vouchers": [],
       "payments": [
         {
           "position": 0,
@@ -389,7 +409,10 @@
           "provider": null,
           "providerTxCode": null,
           "cardScheme": null,
-          "cardLast4": null
+          "cardLast4": null,
+          "voucherId": null,
+          "voucherCode": null,
+          "voucherBalanceAfterCents": null
         }
       ],
       "rksv": null
