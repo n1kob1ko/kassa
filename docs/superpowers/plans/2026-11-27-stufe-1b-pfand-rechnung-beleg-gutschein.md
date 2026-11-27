@@ -14,9 +14,9 @@
 
 - Zweig `claude/project-thread-jyl5f5`. Kein PR. Nichts wird ausgerollt: weder Server noch Installationsdatei. Das geschieht erst nach Nikos Ja, und dann zuerst der Server, dann die App.
 - Plan und alle Doku auf Deutsch mit einfachen Worten. Namen im Code englisch. Texte an der Kassa deutsch mit österreichischen Begriffen (bonieren, Bon, Storno).
-- Jeder neue Text an der Kassa steht in allen fünf ARB-Dateien (`de`, `en`, `zh`, `tr`, `ar`), Schlüssel englisch in lowerCamelCase mit Bereich vorn. Nach jeder Änderung an den ARB-Dateien: `~/flutter/bin/flutter gen-l10n` (die Datei `build/l10n_untranslated.json` bleibt leer) und `~/flutter/bin/dart run tool/l10n_review.dart` (sonst scheitert `test/l10n_review_test.dart`). Wörter: Pfand zurück = Deposit return, 退押金, Depozito iadesi, إرجاع الرهن. Gutschein = Voucher, 礼券, Hediye çeki, قسيمة. Rechnung = Invoice, 发票, Fatura, فاتورة. Guthaben = Balance, 余额, Bakiye, الرصيد. Firmenkunde = Business customer, 企业客户, Kurumsal müşteri, عميل شركة.
+- Jeder neue Text an der Kassa steht in allen fünf ARB-Dateien (`de`, `en`, `zh`, `tr`, `ar`), Schlüssel englisch in lowerCamelCase mit Bereich vorn. Nach jeder Änderung an den ARB-Dateien: `~/flutter/bin/flutter gen-l10n` (die Datei `build/l10n_untranslated.json` bleibt leer) und `~/flutter/bin/dart run tool/l10n_review.dart` (sonst scheitert `test/l10n_review_test.dart`; das Werkzeug schreibt die Listen in `docs/uebersetzungen/*.md` neu, sie gehören in denselben Commit). Wörter: Pfand zurück = Deposit return, 退押金, Depozito iadesi, إرجاع الرهن. Gutschein = Voucher, 礼券, Hediye çeki, قسيمة. Rechnung = Invoice, 发票, Fatura, فاتورة. Guthaben = Balance, 余额, Bakiye, الرصيد. Firmenkunde = Business customer, 企业客户, Kurumsal müşteri, عميل شركة.
 - Kundenbon, Rechnung, Gutschein-Abschnitt (`receipt_layout.dart`, `voucher_layout.dart`), Berichte (`report_layout.dart`), die Seite des Bons am Server und die Bildschirme der Einrichtung bleiben Deutsch.
-- Tests zuerst (TDD). Kein vorhandener Test verliert eine Erwartung. Vorhandene Erwartungen ändern sich nur an den Stellen, die dieser Plan beim Namen nennt (Task 1: Datenbank-Version 8 wird 9; Task 5: Liste der Server-Migrationen bekommt `0005`; Task 8 und Task 20: Bilder der Einstellungen; Task 12: dritte Ausnahme in `test/no_text_field_test.dart`). Jede davon steht im Bericht der Aufgabe und wird Niko genannt.
+- Tests zuerst (TDD). "Vorhanden" heißt: Der Test gab es schon in 1.11.0 (Commit `a06aeb3`). Kein vorhandener Test verliert eine Erwartung. Vorhandene Erwartungen ändern sich nur an den Stellen, die dieser Plan beim Namen nennt (Task 1: Datenbank-Version 8 wird 9; Task 5: Liste der Server-Migrationen bekommt `0005`; Task 8 und Task 20: Bilder der Einstellungen; Task 12: dritte Ausnahme in `test/no_text_field_test.dart`). Jede davon steht im Bericht der Aufgabe und wird Niko genannt.
 - **HARD STOP:** Lehnt die Sitzung einen Befehl oder eine Änderung ab (Sicherheitsprüfung, Berechtigung), wird nichts umgangen: nicht derselbe Schritt auf anderem Weg, kein anderer Dateiname, kein anderes Werkzeug. Die Aufgabe endet mit `BLOCKED` und dem Wortlaut der Ablehnung. `.claude/settings.json` gehört Niko und wird nie angefasst. Nichts wird gelöscht außer Dateien, die die Aufgabe selbst angelegt hat.
 - Datenbank am Tablet: Version 8 wird 9, mit Migration und Test auf einer Datenbank aus 1.11.0 (`test/data/fixtures/kassa_v8.sqlite`). Der Schlüssel der Installationsdatei wird nicht angefasst. `app/lib/rksv/` wird nicht angefasst.
 - Version: App `1.12.0+14`, Server-Migration `0005`. `0001` bis `0004` nie ändern. Bon im Abgleich `v: 3`; der Server nimmt `v: 1` und `v: 2` weiter an.
@@ -657,7 +657,8 @@ Expected: PASS.
 Spec 5.7.
 
 **Files:**
-- Modify: `server/src/admin/{months,days,overview,receipts}.ts`, `shared/fixtures/stats/{mixed,months,overview}.json`, `web/src/api/{receipts,days,months}.ts`, `web/src/pages/{ReceiptsPage,ReceiptDetail,DayDetail,PeriodDetail}.tsx`
+- Create: `shared/fixtures/stats/stufe_1b.json`
+- Modify: `server/src/admin/{months,days,overview,receipts}.ts`, `web/src/api/{receipts,days,months}.ts`, `web/src/pages/{ReceiptsPage,ReceiptDetail,DayDetail,PeriodDetail}.tsx`
 - Test: `server/test/{months,days,overview,receipts}.test.ts`, `app/test/data/stats_repository_test.dart` (liest die gemeinsamen Dateien), `web/src/pages/income_rows.test.ts`, `web/src/pages/receipt_payments.test.ts` (neu)
 
 **Interfaces:**
@@ -666,7 +667,7 @@ Spec 5.7.
 
 Regeln:
 - Umsatz ist überall `total_cents - voucher_sale_cents`. Übersicht und "meistverkauft" lassen Zeilen mit `voucher-sale` und `deposit-return-` weg. Wo die Übersicht nach Zahlungsart teilt (Server und Browser), kommt "Gutschein" als dritte Art dazu, nur wenn nicht 0.
-- Die gemeinsamen Dateien in `shared/fixtures/stats/` bekommen die vier Bons aus Task 6 in `v: 3` dazu; die alten Bons und alle alten Zahlen bleiben. Tablet und Server lesen dieselben Dateien und kommen auf dieselben neuen Zahlen.
+- Die vorhandenen gemeinsamen Dateien `shared/fixtures/stats/{mixed,months,overview}.json` bleiben Byte für Byte, wie sie sind, und kein vorhandener Test über sie ändert sich. Die vier Bons aus Task 6 kommen in `v: 3` in die **neue** Datei `stufe_1b.json` (Bons, erwarteter Tag, erwarteter Monat, erwartete Übersicht), erzeugt und gelesen nach dem Muster von `mixed.json`: Tablet und Server lesen dieselbe Datei und kommen auf dieselben Zahlen.
 - Web: `DayDetail` und `PeriodDetail` zeigen "Mit Gutschein bezahlt", "Gutscheine verkauft" (Anzahl, Summe) und "Pfand zurück" (Anzahl, Summe) nur, wenn der Wert nicht 0 ist. `ReceiptsPage`: Zahlungsart aus allen Arten des Bons ("Gutschein + Bar"), Filter "Gutschein". `ReceiptDetail`: je Gutschein-Zahlung "Gutschein 1234 5678" mit Betrag und "Restguthaben", je verkauftem Gutschein Wert und Code. Vorhandene Tests vergleichen weiter jeden alten Wert genau und prüfen die neuen einzeln dazu.
 
 - [ ] **Step 1: Die Tests schreiben, die scheitern**
