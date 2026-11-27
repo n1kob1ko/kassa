@@ -95,9 +95,10 @@ class VoucherSaleRedeemedException implements Exception {
       'VoucherSaleRedeemedException: Der Gutschein wurde schon eingelöst.';
 }
 
-/// Bar oder Karte, obwohl die Gutscheine schon alles bezahlen.
-class NothingDueException implements Exception {
-  const NothingDueException();
+/// Bar oder Karte, obwohl die Gutscheine schon alles bezahlen. Ein falscher
+/// Bon für diesen Aufruf, darum ein [ArgumentError].
+class NothingDueException extends ArgumentError {
+  NothingDueException() : super('Es ist nichts mehr zu zahlen.', 'cart');
 
   @override
   String toString() => 'NothingDueException: Es ist nichts mehr zu zahlen.';
@@ -165,7 +166,7 @@ class ReceiptRepository {
       }
       final due = pricing.dueCents;
       if (due == 0 && pricing.voucherUses.isNotEmpty) {
-        throw const NothingDueException();
+        throw NothingDueException();
       }
       if (givenCents < due) throw const InsufficientCashException();
 
@@ -272,7 +273,8 @@ class ReceiptRepository {
   /// `tipCents >= 0` gelten, sonst [ArgumentError].
   ///
   /// Mit [allowOverdraw] (die Karte hat schon bezahlt) entsteht der Bon
-  /// auch, wenn ein Gutschein dabei unter 0 fällt.
+  /// auch, wenn ein Gutschein dabei unter 0 fällt. Bezahlen die Gutscheine
+  /// schon alles: [NothingDueException].
   Future<Receipt> finalizeCardSale({
     required String saleId,
     required Cart cart,
@@ -288,8 +290,13 @@ class ReceiptRepository {
     return _db.transaction(() async {
       final existing = await _find(saleId);
       if (existing == null && cart.isEmpty) throw const EmptyCartException();
-      final due = cart.pricing.dueCents;
+      final pricing = cart.pricing;
+      final due = pricing.dueCents;
       if (existing == null) {
+        // Eine Karte über 0 gibt es nicht: die Gutscheine bezahlen alles.
+        if (due == 0 && pricing.voucherUses.isNotEmpty) {
+          throw NothingDueException();
+        }
         if (cashPartCents < 0 || cashPartCents >= due) {
           throw ArgumentError.value(
             cashPartCents,
@@ -381,6 +388,23 @@ class ReceiptRepository {
     );
   }
 
+  /// Ob der Bon, der jetzt entstünde, ein Übungs-Bon ist (für die Prüfung
+  /// eines Gutscheins vor dem Einlösen).
+  Future<bool> isTestReceiptNow() => _isTestReceipt();
+
+  /// Prüft vor einer Kartenzahlung jedes Guthaben der gewählten Gutscheine
+  /// von [cart] nach derselben Regel wie das Abschließen: reicht eines
+  /// nicht, [VoucherBalanceException]. Schreibt nichts.
+  Future<void> checkVoucherBalances(Cart cart) async {
+    final uses = cart.pricing.voucherUses;
+    if (uses.isEmpty) return;
+    await _voucherPayments(
+      uses,
+      isTest: await _isTestReceipt(),
+      allowOverdraw: false,
+    );
+  }
+
   /// Ob der Bon, der jetzt entsteht, ein Übungs-Bon ist: nach der Kette, in
   /// die sein Eintrag kommt ([isTestChainMode]).
   Future<bool> _isTestReceipt() async {
@@ -412,7 +436,7 @@ class ReceiptRepository {
       final voucher = await _vouchers.byId(use.voucherId);
       if (voucher == null) throw VoucherBalanceException(use.voucherId, 0);
       final balance = voucher.balanceCents;
-      final usable = voucher.isTest == isTest ? balance : 0;
+      final usable = usableVoucherBalance(voucher, onTestReceipt: isTest);
       if (usable < use.amountCents && !allowOverdraw) {
         throw VoucherBalanceException(voucher.id, usable);
       }
@@ -496,12 +520,6 @@ class ReceiptRepository {
       .encode([for (var i = 0; i < 16; i++) _random.nextInt(256)])
       .replaceAll('=', '');
 
-  /// Ein Gutschein-Verkauf lässt sich stornieren, solange der Gutschein
-  /// sein Guthaben vom Verkauf hat: jede Einlösung ist selbst storniert.
-  static bool _mayVoidSaleOf(Voucher v) =>
-      v.balanceCents == v.valueCents &&
-      !v.movements.any((m) => m.kind == VoucherMovementKind.voidSale);
-
   /// Die Zeilen des Bons aus [Cart.pricing]: Beträge je Satz nach Rabatt,
   /// der Rabatt der Zeile und ihr eigener Rabatt. Der Einzelpreis bleibt der
   /// Preis vor Rabatt.
@@ -577,7 +595,7 @@ class ReceiptRepository {
         throw const NotInCurrentChainException();
       }
       final sold = await _vouchers.soldOn(original.id);
-      if (!sold.every(_mayVoidSaleOf)) {
+      if (!sold.every((v) => v.mayVoidSale)) {
         throw const VoucherSaleRedeemedException();
       }
       // Jede Zahlung gespiegelt. Das Trinkgeld bleibt bei der Person, die

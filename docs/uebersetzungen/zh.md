@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 501 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 519 Texte, die die Kassa auf Chinesisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -125,6 +125,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar auszahlen {amount} | 现金退付 {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | 需退付 | Kassa: `kassaPayOutDone` |
 | Gutschein | 礼券 | Kassa: `kassaVoucher` |
+| Gutschein | 礼券 | Kassa: `kassaPayVoucher` |
+| Noch zu zahlen | 还需支付 | Kassa: `kassaDue` |
+| Mit Gutschein abschließen | 用礼券结账 | Kassa: `kassaFinishVoucher` |
+| Mit Gutschein bezahlt | 已用礼券支付 | Kassa: `kassaPaidByVoucher` |
 
 ## Kartenzahlung
 
@@ -188,6 +192,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Davon Trinkgeld {amount} | 其中小费 {amount} | Unklare Kartenzahlung: `unclearTip` |
 | Bar-Teil {amount} ist schon kassiert. | 现金部分 {amount} 已收取。 | Unklare Kartenzahlung: `unclearCashPart` |
 | {amount} bar zurückgeben. | 请退还现金 {amount}。 | Unklare Kartenzahlung: `unclearReturnCash` |
+| Mit Gutschein {amount} | 礼券支付 {amount} | Unklare Kartenzahlung: `unclearVoucherPart` |
 
 ## Datum
 
@@ -591,6 +596,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Verkauf storniert | 销售已作废 | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | 使用已作废 | Sonstiges: `voucherMoveVoidRedeem` |
 | Gutschein drucken | 打印礼券 | Sonstiges: `voucherPrint` |
+| Gutschein einlösen | 使用礼券 | Sonstiges: `voucherRedeemTitle` |
+| Zu zahlen | 应付 | Sonstiges: `voucherDue` |
+| Wird eingelöst | 本次使用 | Sonstiges: `voucherUse` |
+| Bleibt am Gutschein | 礼券剩余 | Sonstiges: `voucherLeft` |
+| Einlösen {amount} | 使用 {amount} | Sonstiges: `voucherRedeemAll` |
+| Einlösen {amount}, Rest {rest} | 使用 {amount}，还需支付 {rest} | Sonstiges: `voucherRedeemPart` |
+| Dieser Gutschein ist aufgebraucht. | 这张礼券已用完。 | Sonstiges: `voucherEmpty` |
+| Dieser Gutschein ist storniert. | 这张礼券已作废。 | Sonstiges: `voucherVoided` |
+| Das ist ein Übungs-Gutschein. | 这是一张测试礼券。 | Sonstiges: `voucherTestOnly` |
+| Dieser Gutschein gilt nicht im Übungsmodus. | 这张礼券在测试模式下无效。 | Sonstiges: `voucherLiveOnly` |
+| Dieser Gutschein liegt schon am Bon. | 这张礼券已在小票上。 | Sonstiges: `voucherAlreadyOnReceipt` |
+| Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | 余额已变动，请再看一遍。 | Sonstiges: `voucherChanged` |
+| Gutschein {code} | 礼券 {code} | Sonstiges: `voucherWithCode` |
 
 ## Unsicher
 

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/money.dart';
 import '../../data/providers.dart';
+import '../../data/receipt_repository.dart' show VoucherBalanceException;
 import '../../data/settings_repository.dart';
 import '../../devices/device_providers.dart';
 import '../../domain/cart.dart';
@@ -54,6 +55,11 @@ class PayColumnFrame extends StatelessWidget {
 /// "Ganzer Betrag" (gewählt; das Blatt wie ohne Schalter) und "Teil bar": dort
 /// wird der Bar-Teil getippt, der Rest geht an die Karte. "Weiter zur Karte"
 /// speichert nichts, es ruft nur [onSplit].
+///
+/// Sind Gutscheine gewählt, rechnet das Blatt mit dem, was danach offen ist
+/// (`cart.pricing.dueCents`): Vorschläge, Rückgeld und der Rest für die
+/// Karte. Reicht ein Guthaben beim Abschließen nicht mehr, ist nichts
+/// gespeichert, und das Blatt ruft [onVoucherChanged].
 class CashSheet extends ConsumerStatefulWidget {
   const CashSheet({
     super.key,
@@ -61,11 +67,15 @@ class CashSheet extends ConsumerStatefulWidget {
     required this.onBack,
     required this.onPaid,
     this.onSplit,
+    this.onVoucherChanged,
   });
 
   final Cart cart;
   final VoidCallback onBack;
   final ValueChanged<SaleResult> onPaid;
+
+  /// Ein Guthaben hat sich geändert; nichts ist gespeichert.
+  final VoidCallback? onVoucherChanged;
 
   /// Bar-Teil in Cent: "Weiter zur Karte".
   final ValueChanged<int>? onSplit;
@@ -77,7 +87,7 @@ class CashSheet extends ConsumerStatefulWidget {
 class _CashSheetState extends ConsumerState<CashSheet> {
   final String _saleId = const Uuid().v4();
 
-  late int _given = widget.cart.totalCents;
+  late int _given = widget.cart.pricing.dueCents;
   KeypadInput? _typing;
   bool _saving = false;
   bool _failed = false;
@@ -88,7 +98,9 @@ class _CashSheetState extends ConsumerState<CashSheet> {
   /// Der getippte Bar-Teil bei "Teil bar".
   KeypadInput _cashPart = const KeypadInput(maxIntDigits: 6);
 
-  int get _total => widget.cart.totalCents;
+  /// Was bar (oder mit "Teil bar" zusammen mit der Karte) zu zahlen ist:
+  /// ohne Gutschein die Summe des Bons.
+  int get _total => widget.cart.pricing.dueCents;
 
   /// Was nach dem Bar-Teil mit Karte bleibt, nie unter 0.
   int get _rest => _total - _cashPart.cents < 0 ? 0 : _total - _cashPart.cents;
@@ -157,6 +169,17 @@ class _CashSheetState extends ConsumerState<CashSheet> {
       // auch wenn die Ansicht inzwischen weg ist.
       cartCtl.clear();
       if (mounted) widget.onPaid(result);
+    } on VoucherBalanceException {
+      if (!mounted) return;
+      final changed = widget.onVoucherChanged;
+      if (changed != null) {
+        changed();
+      } else {
+        setState(() {
+          _saving = false;
+          _failed = true;
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(() {

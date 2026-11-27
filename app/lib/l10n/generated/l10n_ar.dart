@@ -1746,4 +1746,67 @@ class L10nAr extends L10n {
 
   @override
   String get bonsVoucherPrinted => 'تمت طباعة القسيمة';
+
+  @override
+  String get kassaPayVoucher => 'قسيمة';
+
+  @override
+  String get voucherRedeemTitle => 'استخدام قسيمة';
+
+  @override
+  String get voucherDue => 'المطلوب دفعه';
+
+  @override
+  String get voucherUse => 'سيُستخدم';
+
+  @override
+  String get voucherLeft => 'المتبقي في القسيمة';
+
+  @override
+  String voucherRedeemAll(String amount) {
+    return 'استخدم $amount';
+  }
+
+  @override
+  String voucherRedeemPart(String amount, String rest) {
+    return 'استخدم $amount، والباقي $rest';
+  }
+
+  @override
+  String get voucherEmpty => 'هذه القسيمة مستنفدة.';
+
+  @override
+  String get voucherVoided => 'هذه القسيمة ملغاة.';
+
+  @override
+  String get voucherTestOnly => 'هذه قسيمة تجريبية.';
+
+  @override
+  String get voucherLiveOnly => 'هذه القسيمة غير صالحة في الوضع التجريبي.';
+
+  @override
+  String get voucherAlreadyOnReceipt =>
+      'هذه القسيمة موجودة بالفعل في الفاتورة.';
+
+  @override
+  String get kassaDue => 'المتبقي للدفع';
+
+  @override
+  String get kassaFinishVoucher => 'إتمام بالقسيمة';
+
+  @override
+  String get kassaPaidByVoucher => 'دُفع بقسيمة';
+
+  @override
+  String get voucherChanged => 'تغيّر الرصيد. يُرجى المراجعة مرة أخرى.';
+
+  @override
+  String unclearVoucherPart(String amount) {
+    return 'بالقسيمة $amount';
+  }
+
+  @override
+  String voucherWithCode(String code) {
+    return 'قسيمة $code';
+  }
 }

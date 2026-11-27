@@ -240,6 +240,23 @@ class _UnclearSheetState extends ConsumerState<_UnclearSheet> {
                       ),
                     ),
                   ],
+                  // Der Teil, den Gutscheine bezahlen, wie der Bar-Teil.
+                  if (cart != null && cart.pricing.voucherCents > 0) ...[
+                    const SizedBox(height: KassaTokens.spaceXs),
+                    Text(
+                      l.unclearVoucherPart(
+                        ltrIsolate(
+                          context,
+                          formatEuro(cart.pricing.voucherCents),
+                        ),
+                      ),
+                      key: const Key('unclear-voucher'),
+                      style: text.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: c.ink,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: KassaTokens.spaceMd),
                   Text(
                     l.unclearStarted(

@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 501 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 519 Texte, die die Kassa auf Arabisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -125,6 +125,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar auszahlen {amount} | صرف نقدًا {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | ادفع للزبون | Kassa: `kassaPayOutDone` |
 | Gutschein | قسيمة | Kassa: `kassaVoucher` |
+| Gutschein | قسيمة | Kassa: `kassaPayVoucher` |
+| Noch zu zahlen | المتبقي للدفع | Kassa: `kassaDue` |
+| Mit Gutschein abschließen | إتمام بالقسيمة | Kassa: `kassaFinishVoucher` |
+| Mit Gutschein bezahlt | دُفع بقسيمة | Kassa: `kassaPaidByVoucher` |
 
 ## Kartenzahlung
 
@@ -188,6 +192,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Davon Trinkgeld {amount} | منها إكرامية {amount} | Unklare Kartenzahlung: `unclearTip` |
 | Bar-Teil {amount} ist schon kassiert. | تم استلام الجزء النقدي {amount} بالفعل. | Unklare Kartenzahlung: `unclearCashPart` |
 | {amount} bar zurückgeben. | أعد {amount} نقدًا. | Unklare Kartenzahlung: `unclearReturnCash` |
+| Mit Gutschein {amount} | بالقسيمة {amount} | Unklare Kartenzahlung: `unclearVoucherPart` |
 
 ## Datum
 
@@ -591,6 +596,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Verkauf storniert | أُلغي البيع | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | أُلغي الاستخدام | Sonstiges: `voucherMoveVoidRedeem` |
 | Gutschein drucken | اطبع القسيمة | Sonstiges: `voucherPrint` |
+| Gutschein einlösen | استخدام قسيمة | Sonstiges: `voucherRedeemTitle` |
+| Zu zahlen | المطلوب دفعه | Sonstiges: `voucherDue` |
+| Wird eingelöst | سيُستخدم | Sonstiges: `voucherUse` |
+| Bleibt am Gutschein | المتبقي في القسيمة | Sonstiges: `voucherLeft` |
+| Einlösen {amount} | استخدم {amount} | Sonstiges: `voucherRedeemAll` |
+| Einlösen {amount}, Rest {rest} | استخدم {amount}، والباقي {rest} | Sonstiges: `voucherRedeemPart` |
+| Dieser Gutschein ist aufgebraucht. | هذه القسيمة مستنفدة. | Sonstiges: `voucherEmpty` |
+| Dieser Gutschein ist storniert. | هذه القسيمة ملغاة. | Sonstiges: `voucherVoided` |
+| Das ist ein Übungs-Gutschein. | هذه قسيمة تجريبية. | Sonstiges: `voucherTestOnly` |
+| Dieser Gutschein gilt nicht im Übungsmodus. | هذه القسيمة غير صالحة في الوضع التجريبي. | Sonstiges: `voucherLiveOnly` |
+| Dieser Gutschein liegt schon am Bon. | هذه القسيمة موجودة بالفعل في الفاتورة. | Sonstiges: `voucherAlreadyOnReceipt` |
+| Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | تغيّر الرصيد. يُرجى المراجعة مرة أخرى. | Sonstiges: `voucherChanged` |
+| Gutschein {code} | قسيمة {code} | Sonstiges: `voucherWithCode` |
 
 ## Unsicher
 

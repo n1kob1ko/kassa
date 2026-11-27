@@ -113,4 +113,97 @@ void main() {
     expect(isVoucherCode('123456789'), isFalse);
     expect(isVoucherCode('00000000'), isTrue);
   });
+
+  test('mayVoidSale: nur mit dem Guthaben vom Verkauf und ohne Storno des '
+      'Verkaufs', () {
+    expect(voucher([m(sale, 2500)]).mayVoidSale, isTrue);
+    expect(
+      voucher([m(sale, 2500), m(redeem, -965, 'r2')]).mayVoidSale,
+      isFalse,
+    );
+    // Die Einlösung ist selbst storniert: wieder wie vom Verkauf.
+    expect(
+      voucher([m(sale, 2500), m(redeem, -965, 'r2'), m(voidRedeem, 965, 'r3')])
+          .mayVoidSale,
+      isTrue,
+    );
+    expect(
+      voucher([m(sale, 2500), m(voidSale, -2500, 'r2')]).mayVoidSale,
+      isFalse,
+    );
+  });
+
+  test(
+    'usableVoucherBalance: Übung nur auf Übungs-Bon, echt nur auf echtem',
+    () {
+      final live = voucher([m(sale, 2500), m(redeem, -965, 'r2')]);
+      final practice = Voucher(
+        id: 'v2',
+        code: '87654321',
+        valueCents: 2000,
+        createdAt: day,
+        isTest: true,
+        movements: [
+          VoucherMovement(
+            voucherId: 'v2',
+            receiptId: 'r9',
+            kind: sale,
+            amountCents: 2000,
+            createdAt: day,
+          ),
+        ],
+      );
+      expect(usableVoucherBalance(live, onTestReceipt: false), 1535);
+      expect(usableVoucherBalance(live, onTestReceipt: true), 0);
+      expect(usableVoucherBalance(practice, onTestReceipt: true), 2000);
+      expect(usableVoucherBalance(practice, onTestReceipt: false), 0);
+      expect(usableVoucherBalance(null, onTestReceipt: true), 0);
+    },
+  );
+
+  test('voucherRedeemProblem: der erste Grund, sonst null', () {
+    final ok = voucher([m(sale, 2500)]);
+    expect(voucherRedeemProblem(ok, onTestReceipt: false), isNull);
+    expect(
+      voucherRedeemProblem(ok, onTestReceipt: false, chosenIds: ['v1']),
+      VoucherRedeemProblem.alreadyOnReceipt,
+    );
+    expect(
+      voucherRedeemProblem(ok, onTestReceipt: true),
+      VoucherRedeemProblem.liveOnly,
+    );
+    expect(
+      voucherRedeemProblem(
+        voucher([m(sale, 2500), m(voidSale, -2500, 'r2')]),
+        onTestReceipt: false,
+      ),
+      VoucherRedeemProblem.voided,
+    );
+    expect(
+      voucherRedeemProblem(
+        voucher([m(sale, 2500), m(redeem, -2500, 'r2')]),
+        onTestReceipt: false,
+      ),
+      VoucherRedeemProblem.empty,
+    );
+    expect(
+      voucherRedeemProblem(
+        voucher([m(sale, 2500), m(redeem, -3000, 'r2')]),
+        onTestReceipt: false,
+      ),
+      VoucherRedeemProblem.empty,
+    );
+    final practice = Voucher(
+      id: 'v2',
+      code: '87654321',
+      valueCents: 2000,
+      createdAt: day,
+      isTest: true,
+      movements: const [],
+    );
+    expect(
+      voucherRedeemProblem(practice, onTestReceipt: false),
+      VoucherRedeemProblem.testOnly,
+    );
+  });
 }

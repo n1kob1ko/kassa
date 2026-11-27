@@ -88,6 +88,61 @@ class Voucher {
   bool get untouched =>
       movements.length == 1 &&
       movements.single.kind == VoucherMovementKind.sale;
+
+  /// Ob sich der Verkauf dieses Gutscheins stornieren lässt: solange er sein
+  /// Guthaben vom Verkauf hat (jede Einlösung ist selbst storniert) und der
+  /// Verkauf noch nicht storniert ist.
+  bool get mayVoidSale =>
+      balanceCents == valueCents &&
+      !movements.any((m) => m.kind == VoucherMovementKind.voidSale);
+}
+
+/// Das Guthaben, das [voucher] auf einem Bon hat, der gerade entsteht: ein
+/// Übungs-Gutschein gilt nur auf einem Übungs-Bon ([onTestReceipt]), ein
+/// echter nur auf einem echten; sonst und ohne Gutschein 0. Die eine Stelle
+/// dieser Regel für das Abschließen, die Prüfung vor dem Terminal und das
+/// Neu-Lesen der gewählten Gutscheine.
+int usableVoucherBalance(Voucher? voucher, {required bool onTestReceipt}) {
+  if (voucher == null || voucher.isTest != onTestReceipt) return 0;
+  return voucher.balanceCents;
+}
+
+/// Warum sich ein gefundener Gutschein nicht einlösen lässt.
+enum VoucherRedeemProblem {
+  /// Er liegt schon am Bon.
+  alreadyOnReceipt,
+
+  /// Sein Verkauf ist storniert.
+  voided,
+
+  /// Ein Übungs-Gutschein im echten Betrieb.
+  testOnly,
+
+  /// Ein echter Gutschein im Übungsmodus.
+  liveOnly,
+
+  /// Kein Guthaben (0 oder darunter).
+  empty,
+}
+
+/// Ob sich [voucher] auf einem Bon einlösen lässt, der gerade entsteht
+/// ([onTestReceipt]: ein Übungs-Bon), mit den schon gewählten Gutscheinen
+/// [chosenIds]; `null`, wenn ja. Sonst der erste Grund in dieser
+/// Reihenfolge: schon am Bon, storniert, Übung und echt gemischt, kein
+/// Guthaben.
+VoucherRedeemProblem? voucherRedeemProblem(
+  Voucher voucher, {
+  required bool onTestReceipt,
+  Iterable<String> chosenIds = const [],
+}) {
+  if (chosenIds.contains(voucher.id)) {
+    return VoucherRedeemProblem.alreadyOnReceipt;
+  }
+  if (voucher.state == VoucherState.voided) return VoucherRedeemProblem.voided;
+  if (voucher.isTest && !onTestReceipt) return VoucherRedeemProblem.testOnly;
+  if (!voucher.isTest && onTestReceipt) return VoucherRedeemProblem.liveOnly;
+  if (voucher.balanceCents <= 0) return VoucherRedeemProblem.empty;
+  return null;
 }
 
 final _voucherCode = RegExp(r'^[0-9]{8}$');

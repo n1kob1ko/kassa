@@ -1749,4 +1749,67 @@ class L10nEn extends L10n {
 
   @override
   String get bonsVoucherPrinted => 'Voucher printed';
+
+  @override
+  String get kassaPayVoucher => 'Voucher';
+
+  @override
+  String get voucherRedeemTitle => 'Redeem voucher';
+
+  @override
+  String get voucherDue => 'To pay';
+
+  @override
+  String get voucherUse => 'Redeemed now';
+
+  @override
+  String get voucherLeft => 'Left on voucher';
+
+  @override
+  String voucherRedeemAll(String amount) {
+    return 'Redeem $amount';
+  }
+
+  @override
+  String voucherRedeemPart(String amount, String rest) {
+    return 'Redeem $amount, $rest left to pay';
+  }
+
+  @override
+  String get voucherEmpty => 'This voucher is used up.';
+
+  @override
+  String get voucherVoided => 'This voucher has been voided.';
+
+  @override
+  String get voucherTestOnly => 'This is a test voucher.';
+
+  @override
+  String get voucherLiveOnly => 'This voucher is not valid in test mode.';
+
+  @override
+  String get voucherAlreadyOnReceipt =>
+      'This voucher is already on the receipt.';
+
+  @override
+  String get kassaDue => 'Still to pay';
+
+  @override
+  String get kassaFinishVoucher => 'Finish with voucher';
+
+  @override
+  String get kassaPaidByVoucher => 'Paid with voucher';
+
+  @override
+  String get voucherChanged => 'The balance has changed. Please check again.';
+
+  @override
+  String unclearVoucherPart(String amount) {
+    return 'With voucher $amount';
+  }
+
+  @override
+  String voucherWithCode(String code) {
+    return 'Voucher $code';
+  }
 }

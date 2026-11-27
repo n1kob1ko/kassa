@@ -3109,6 +3109,114 @@ abstract class L10n {
   /// In de, this message translates to:
   /// **'Gutschein gedruckt'**
   String get bonsVoucherPrinted;
+
+  /// Kassa: kleinere Taste über Bar und Karte, öffnet das Blatt Gutschein einlösen.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein'**
+  String get kassaPayVoucher;
+
+  /// Titel des Blatts zum Einlösen eines Gutscheins.
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein einlösen'**
+  String get voucherRedeemTitle;
+
+  /// Blatt Gutschein einlösen: oben, was noch zu zahlen ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu zahlen'**
+  String get voucherDue;
+
+  /// Blatt Gutschein einlösen: der Betrag, den der Gutschein von diesem Bon deckt.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird eingelöst'**
+  String get voucherUse;
+
+  /// Blatt Gutschein einlösen und Verkauf fertig: das Guthaben, das nach diesem Bon am Gutschein bleibt.
+  ///
+  /// In de, this message translates to:
+  /// **'Bleibt am Gutschein'**
+  String get voucherLeft;
+
+  /// Taste im Blatt Gutschein einlösen, wenn das Guthaben für den ganzen Bon reicht; amount wie "9,65 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Einlösen {amount}'**
+  String voucherRedeemAll(String amount);
+
+  /// Taste im Blatt Gutschein einlösen, wenn das Guthaben nicht reicht; amount und rest wie "5,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Einlösen {amount}, Rest {rest}'**
+  String voucherRedeemPart(String amount, String rest);
+
+  /// Blatt Gutschein einlösen: der Gutschein hat kein Guthaben.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Gutschein ist aufgebraucht.'**
+  String get voucherEmpty;
+
+  /// Blatt Gutschein einlösen: der Verkauf des Gutscheins ist storniert.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Gutschein ist storniert.'**
+  String get voucherVoided;
+
+  /// Blatt Gutschein einlösen: ein Gutschein aus dem Probebetrieb im echten Betrieb.
+  ///
+  /// In de, this message translates to:
+  /// **'Das ist ein Übungs-Gutschein.'**
+  String get voucherTestOnly;
+
+  /// Blatt Gutschein einlösen: ein echter Gutschein, während die Kassa im Probebetrieb ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Gutschein gilt nicht im Übungsmodus.'**
+  String get voucherLiveOnly;
+
+  /// Blatt Gutschein einlösen: derselbe Gutschein ist schon zum Bezahlen gewählt.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Gutschein liegt schon am Bon.'**
+  String get voucherAlreadyOnReceipt;
+
+  /// Summenblock der Kassa: was nach den gewählten Gutscheinen noch offen ist.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch zu zahlen'**
+  String get kassaDue;
+
+  /// Kassa: Taste statt Bar und Karte, wenn die gewählten Gutscheine den ganzen Bon decken.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Gutschein abschließen'**
+  String get kassaFinishVoucher;
+
+  /// Verkauf fertig: der Bon ist ganz mit Gutschein bezahlt.
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Gutschein bezahlt'**
+  String get kassaPaidByVoucher;
+
+  /// Kassa: Hinweis, wenn das Guthaben eines gewählten Gutscheins beim Abschließen nicht mehr reicht; nichts ist gespeichert.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Guthaben hat sich geändert. Bitte noch einmal ansehen.'**
+  String get voucherChanged;
+
+  /// Blatt unklare Kartenzahlung: der Teil des Bons, den Gutscheine bezahlen; amount wie "5,00 €".
+  ///
+  /// In de, this message translates to:
+  /// **'Mit Gutschein {amount}'**
+  String unclearVoucherPart(String amount);
+
+  /// Summenblock der Kassa und Bon-Detail: ein gewählter oder bezahlender Gutschein mit Code wie "1234 5678".
+  ///
+  /// In de, this message translates to:
+  /// **'Gutschein {code}'**
+  String voucherWithCode(String code);
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {

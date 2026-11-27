@@ -10,7 +10,10 @@ import 'package:kassa/core/clock.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
 import 'package:kassa/core/money.dart';
+import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/domain/voucher.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/features/kassa/cart_controller.dart';
 import 'package:kassa/features/kassa/cart_panel.dart';
 import 'package:kassa/features/kassa/category_rail.dart';
@@ -566,6 +569,35 @@ void main() {
       );
     }
   }
+
+  // Stufe 1b: Gutschein einlösen ("Gutschein" über Bar und Karte, das Blatt
+  // mit einem Treffer, die Reihen am Bon mit "Noch zu zahlen", "Mit Gutschein
+  // abschließen", "Verkauf fertig" mit Gutschein bezahlt, das Blatt zur
+  // unklaren Kartenzahlung mit dem Gutschein-Teil), in allen Sprachen, bei
+  // beiden Größen und bei der größten Schrift (1,3).
+  for (final language in AppLanguage.values) {
+    for (final (size, scale) in [
+      for (final size in _sizes) (size, 1.0),
+      (const Size(1280, 800), KassaTokens.maxTextScale),
+    ]) {
+      testWidgets(
+        '${language.name} ${size.width.toInt()}×${size.height.toInt()} '
+        'Schrift $scale: Gutschein einlösen ohne Überlauf',
+        (t) async {
+          final at =
+              '${language.name} ${size.width.toInt()}×'
+              '${size.height.toInt()} $scale';
+          final seen = <String>[];
+          await _tourVoucherRedeem(t, language, size, scale, (screen) {
+            seen.add(screen);
+            _expectClean(t, '$at $screen');
+            if (!language.isRtl) _expectNoIsolates(t, '$at $screen');
+          });
+          expect(seen, hasLength(6));
+        },
+      );
+    }
+  }
 }
 
 /// Jeder Text unter [key] ist ganz zu lesen, ohne Auslassungspunkte.
@@ -749,3 +781,118 @@ Future<void> _tourVoucher(
   look('Mehr mit Gutschein');
   _expectWholeKey(t, 'more-voucher', at);
 }
+
+/// Kassa mit Gutschein an, Drucker eingerichtet, der Chef angemeldet, vier
+/// Gutscheine verkauft: "Gutschein" über Bar und Karte, "Gutschein einlösen"
+/// mit Treffer, die Reihe am Bon mit "Noch zu zahlen", "Verkauf fertig" mit
+/// Gutschein bezahlt, "Mit Gutschein abschließen", das Blatt zur unklaren
+/// Kartenzahlung mit dem Gutschein-Teil; [look] prüft jedes Bild.
+Future<void> _tourVoucherRedeem(
+  WidgetTester t,
+  AppLanguage language,
+  Size size,
+  double scale,
+  void Function(String screen) look,
+) async {
+  await pumpKassa(t, size: size, textScale: scale, pin: '4711');
+  await setSettings(
+    t,
+    (s) => s.copyWith(
+      language: language,
+      voucherEnabled: true,
+      printerKind: PrinterKind.network,
+      printerAddress: '192.168.0.50',
+    ),
+  );
+  final at = '${language.name} ${size.width.toInt()} $scale';
+  final staff = containerOf(t).read(sessionProvider)!;
+  final receipts = containerOf(t).read(receiptRepositoryProvider);
+  final vouchers = containerOf(t).read(voucherRepositoryProvider);
+  Future<Voucher> sell(String id, int cents) async {
+    final r = await receipts.finalizeCashSale(
+      saleId: id,
+      cart: const Cart.empty().addVoucherSale(valueCents: cents),
+      givenCents: cents,
+      staff: staff,
+    );
+    return (await vouchers.byId(r.soldVouchers.single.voucherId))!;
+  }
+
+  final part = await sell('g-a', 500);
+  final whole = await sell('g-b', 2000);
+  final shrink = await sell('g-c', 900);
+  final unclear = await sell('g-d', 500);
+  Future<void> type(Voucher v) async {
+    for (final d in v.code.split('')) {
+      await _tapVisible(t, 'key-$d');
+    }
+  }
+
+  await tapItem(t, 'teigtaschen');
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+  look('Kassa mit Gutschein bezahlen');
+  _expectWholeKey(t, 'pay-voucher', at);
+
+  await _tap(t, 'pay-voucher');
+  await type(part);
+  look('Gutschein einlösen mit Treffer');
+  for (final key in [
+    'voucher-redeem-due',
+    'voucher-redeem-balance',
+    'voucher-redeem-use',
+    'voucher-redeem-left',
+    'voucher-redeem-go',
+  ]) {
+    _expectWholeKey(t, key, at);
+  }
+  await _tap(t, 'voucher-redeem-go');
+  look('Kassa mit Gutschein am Bon');
+  _expectWholeKey(t, 'applied-voucher-0', at);
+  _expectWholeKey(t, 'due-row', at);
+
+  await _tap(t, 'pay-voucher');
+  await type(whole);
+  await _tap(t, 'voucher-redeem-go');
+  look('Verkauf fertig mit Gutschein bezahlt');
+  _expectWholeKey(t, 'paid-by-voucher', at);
+  _expectWholeKey(t, 'voucher-left-0', at);
+  _expectWholeKey(t, 'voucher-left-1', at);
+  await _tapVisible(t, 'next-customer');
+
+  await tapItem(t, 'teigtaschen');
+  await tapItem(t, 'cola');
+  await t.pumpAndSettle();
+  await _tap(t, 'pay-voucher');
+  await type(shrink);
+  await _tap(t, 'voucher-redeem-go');
+  final cola = containerOf(
+    t,
+  ).read(cartProvider).lines.singleWhere((l) => l.item.id == 'cola');
+  await _tapVisible(t, 'qty-minus-${cola.lineId}');
+  look('Kassa mit Gutschein abschließen');
+  _expectWholeKey(t, 'finish-voucher', at);
+  _expectWholeKey(t, 'applied-voucher-0', at);
+
+  containerOf(t).read(cartProvider.notifier).clear();
+  final pending = containerOf(t).read(cardPaymentRepositoryProvider);
+  await pending.begin(
+    paymentId: 'unklar',
+    cart: const Cart.empty()
+        .add(catalog.item('teigtaschen'))
+        .add(catalog.item('cola'))
+        .applyVoucher(
+          AppliedVoucher(
+            voucherId: unclear.id,
+            code: unclear.code,
+            balanceCents: unclear.balanceCents,
+          ),
+        ),
+    staff: staff,
+  );
+  await pending.markUnknown('unklar');
+  await t.pumpAndSettle();
+  look('Unklare Kartenzahlung mit Gutschein');
+  _expectWholeKey(t, 'unclear-voucher', at);
+}
+

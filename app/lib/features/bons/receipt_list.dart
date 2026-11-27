@@ -79,6 +79,8 @@ String? specialTitleText(L10n l, ReceiptKind kind) => switch (kind) {
 String receiptPaymentLabel(L10n l, Receipt r) => switch (r.paymentKind) {
   ReceiptPaymentKind.cash => l.bonsCash,
   ReceiptPaymentKind.mixed => l.bonsCashAndCard,
+  // Nur mit Gutschein bezahlt: weder bar noch Karte.
+  null when r.voucherCents != 0 => l.kassaVoucher,
   ReceiptPaymentKind.card || null => l.bonsCard,
 };
 

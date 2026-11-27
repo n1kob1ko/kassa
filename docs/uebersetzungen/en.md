@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 501 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 519 Texte, die die Kassa auf Englisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -125,6 +125,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar auszahlen {amount} | Pay out cash {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | Pay out | Kassa: `kassaPayOutDone` |
 | Gutschein | Voucher | Kassa: `kassaVoucher` |
+| Gutschein | Voucher | Kassa: `kassaPayVoucher` |
+| Noch zu zahlen | Still to pay | Kassa: `kassaDue` |
+| Mit Gutschein abschließen | Finish with voucher | Kassa: `kassaFinishVoucher` |
+| Mit Gutschein bezahlt | Paid with voucher | Kassa: `kassaPaidByVoucher` |
 
 ## Kartenzahlung
 
@@ -188,6 +192,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Davon Trinkgeld {amount} | Including tip {amount} | Unklare Kartenzahlung: `unclearTip` |
 | Bar-Teil {amount} ist schon kassiert. | Cash part {amount} has already been taken. | Unklare Kartenzahlung: `unclearCashPart` |
 | {amount} bar zurückgeben. | Give back {amount} in cash. | Unklare Kartenzahlung: `unclearReturnCash` |
+| Mit Gutschein {amount} | With voucher {amount} | Unklare Kartenzahlung: `unclearVoucherPart` |
 
 ## Datum
 
@@ -591,6 +596,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Verkauf storniert | Sale voided | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | Redemption voided | Sonstiges: `voucherMoveVoidRedeem` |
 | Gutschein drucken | Print voucher | Sonstiges: `voucherPrint` |
+| Gutschein einlösen | Redeem voucher | Sonstiges: `voucherRedeemTitle` |
+| Zu zahlen | To pay | Sonstiges: `voucherDue` |
+| Wird eingelöst | Redeemed now | Sonstiges: `voucherUse` |
+| Bleibt am Gutschein | Left on voucher | Sonstiges: `voucherLeft` |
+| Einlösen {amount} | Redeem {amount} | Sonstiges: `voucherRedeemAll` |
+| Einlösen {amount}, Rest {rest} | Redeem {amount}, {rest} left to pay | Sonstiges: `voucherRedeemPart` |
+| Dieser Gutschein ist aufgebraucht. | This voucher is used up. | Sonstiges: `voucherEmpty` |
+| Dieser Gutschein ist storniert. | This voucher has been voided. | Sonstiges: `voucherVoided` |
+| Das ist ein Übungs-Gutschein. | This is a test voucher. | Sonstiges: `voucherTestOnly` |
+| Dieser Gutschein gilt nicht im Übungsmodus. | This voucher is not valid in test mode. | Sonstiges: `voucherLiveOnly` |
+| Dieser Gutschein liegt schon am Bon. | This voucher is already on the receipt. | Sonstiges: `voucherAlreadyOnReceipt` |
+| Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | The balance has changed. Please check again. | Sonstiges: `voucherChanged` |
+| Gutschein {code} | Voucher {code} | Sonstiges: `voucherWithCode` |
 
 ## Unsicher
 

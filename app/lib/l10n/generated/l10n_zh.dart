@@ -1711,4 +1711,66 @@ class L10nZh extends L10n {
 
   @override
   String get bonsVoucherPrinted => '礼券已打印';
+
+  @override
+  String get kassaPayVoucher => '礼券';
+
+  @override
+  String get voucherRedeemTitle => '使用礼券';
+
+  @override
+  String get voucherDue => '应付';
+
+  @override
+  String get voucherUse => '本次使用';
+
+  @override
+  String get voucherLeft => '礼券剩余';
+
+  @override
+  String voucherRedeemAll(String amount) {
+    return '使用 $amount';
+  }
+
+  @override
+  String voucherRedeemPart(String amount, String rest) {
+    return '使用 $amount，还需支付 $rest';
+  }
+
+  @override
+  String get voucherEmpty => '这张礼券已用完。';
+
+  @override
+  String get voucherVoided => '这张礼券已作废。';
+
+  @override
+  String get voucherTestOnly => '这是一张测试礼券。';
+
+  @override
+  String get voucherLiveOnly => '这张礼券在测试模式下无效。';
+
+  @override
+  String get voucherAlreadyOnReceipt => '这张礼券已在小票上。';
+
+  @override
+  String get kassaDue => '还需支付';
+
+  @override
+  String get kassaFinishVoucher => '用礼券结账';
+
+  @override
+  String get kassaPaidByVoucher => '已用礼券支付';
+
+  @override
+  String get voucherChanged => '余额已变动，请再看一遍。';
+
+  @override
+  String unclearVoucherPart(String amount) {
+    return '礼券支付 $amount';
+  }
+
+  @override
+  String voucherWithCode(String code) {
+    return '礼券 $code';
+  }
 }

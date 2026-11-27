@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/money.dart';
 import '../../domain/cart.dart';
 import '../../domain/pricing.dart';
+import '../../domain/voucher.dart' show formatVoucherCode;
 import '../../l10n/generated/l10n.dart';
 import '../../ui/ltr.dart';
 import '../../ui/pressable.dart';
@@ -15,6 +16,7 @@ import '../../ui/undo_toast.dart';
 import 'card_availability.dart';
 import 'cart_controller.dart';
 import 'cart_line_row.dart';
+import 'voucher_redeem_sheet.dart' show VoucherActionButton;
 
 /// Die Bon-Spalte, 392 dp breit: Kopf, Zeilen, Summenblock, Bar und Karte.
 /// [canPay] ist `false`, solange etwas zusammengestellt wird. "Karte" ist nur
@@ -38,6 +40,16 @@ import 'cart_line_row.dart';
 /// eine davon). Ohne alle vier ist der Kopf genau der von 1.10.0. Eine Zeile
 /// "Pfand zurück" ist keine Tippfläche für den Rabatt; ihre Menge geht über
 /// "Pfand zurück". Eine Gutschein-Zeile auch nicht.
+///
+/// Mit [onPayVoucher] steht über "Bar" und "Karte" die kleinere Taste
+/// "Gutschein" (`pay-voucher`), solange noch etwas zu zahlen ist
+/// (`dueCents > 0`) und auf dem Bon kein Gutschein verkauft wird. Je
+/// gewähltem Gutschein steht im Summenblock eine Reihe mit seinem Betrag und
+/// × zum Entfernen, darunter "Noch zu zahlen"; "Bar", "Karte" und der
+/// Kleinstbetrag rechnen dann mit dem, was noch zu zahlen ist. Decken die
+/// Gutscheine alles, steht statt "Bar" und "Karte" nur "Mit Gutschein
+/// abschließen" ([onFinishVoucher]). Ohne gewählten Gutschein und ohne
+/// [onPayVoucher] ist die Spalte genau die von 1.11.0.
 class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({
     super.key,
@@ -54,6 +66,8 @@ class CartPanel extends ConsumerStatefulWidget {
     this.onVoucher,
     this.onMore,
     this.onPayOut,
+    this.onPayVoucher,
+    this.onFinishVoucher,
   });
 
   final VoidCallback onPayCash;
@@ -85,6 +99,12 @@ class CartPanel extends ConsumerStatefulWidget {
 
   /// "Bar auszahlen" bei einer Summe unter 0.
   final VoidCallback? onPayOut;
+
+  /// Öffnet "Gutschein einlösen"; null: keine Taste `pay-voucher`.
+  final VoidCallback? onPayVoucher;
+
+  /// "Mit Gutschein abschließen", wenn die gewählten Gutscheine alles decken.
+  final VoidCallback? onFinishVoucher;
 
   @override
   ConsumerState<CartPanel> createState() => _CartPanelState();
@@ -125,6 +145,16 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   void _payOut() {
     _dismissToast();
     widget.onPayOut?.call();
+  }
+
+  void _payVoucher() {
+    _dismissToast();
+    widget.onPayVoucher?.call();
+  }
+
+  void _finishVoucher() {
+    _dismissToast();
+    widget.onFinishVoucher?.call();
   }
 
   /// Die Taste im Kopf: "Freier Betrag", "Pfand zurück", "Gutschein" oder
@@ -210,13 +240,29 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     });
     final controller = ref.read(cartProvider.notifier);
     final l = L10n.of(context);
+    final pricing = cart.pricing;
+    // Ohne gewählten Gutschein ist das die Summe des Bons.
+    final due = pricing.dueCents;
     final card = cart.isEmpty
         ? (enabled: false, reason: null)
-        : cardAvailability(ref, context, cart.totalCents);
+        : cardAvailability(ref, context, due);
     final count = cart.lines.fold<int>(0, (sum, l) => sum + l.quantity);
     final tax = taxBreakdown(grossByRate(cart))
         .fold<int>(0, (s, t) => s + t.taxCents);
-    final pricing = cart.pricing;
+    // Mit Gutschein bezahlen: nur, solange etwas zu zahlen ist und kein
+    // Gutschein verkauft wird.
+    final payVoucher =
+        widget.onPayVoucher != null &&
+        !cart.isEmpty &&
+        !cart.hasVoucherSale &&
+        cart.totalCents > 0 &&
+        due > 0;
+    // Die gewählten Gutscheine decken alles.
+    final finishVoucher =
+        widget.onFinishVoucher != null &&
+        cart.vouchers.isNotEmpty &&
+        cart.totalCents > 0 &&
+        due == 0;
     final onLineDiscount = widget.onLineDiscount;
     final onReceiptDiscount = widget.onReceiptDiscount;
     // Summe 0,00 € durch einen Rabatt oder "Pfand zurück": nichts zu
@@ -284,7 +330,33 @@ class _CartPanelState extends ConsumerState<CartPanel> {
             taxCents: tax,
             receiptDiscountCents: pricing.receiptDiscountCents,
             onDiscount: cart.isEmpty ? null : onReceiptDiscount,
+            onRemoveVoucher: widget.canPay
+                ? (id) {
+                    _dismissToast();
+                    controller.removeVoucher(id);
+                  }
+                : null,
           ),
+          if (payVoucher)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                12,
+                0,
+                12,
+                KassaTokens.spaceLg,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  key: const Key('pay-voucher'),
+                  label: l.kassaPayVoucher,
+                  icon: LucideIcons.gift,
+                  filled: false,
+                  height: KassaTokens.smallActionHeight,
+                  onPressed: widget.canPay ? _payVoucher : null,
+                ),
+              ),
+            ),
           Padding(
             padding: EdgeInsetsDirectional.fromSTEB(
               12,
@@ -292,7 +364,16 @@ class _CartPanelState extends ConsumerState<CartPanel> {
               12,
               12 + MediaQuery.paddingOf(context).bottom,
             ),
-            child: payOut
+            child: finishVoucher
+                ? SizedBox(
+                    width: double.infinity,
+                    child: VoucherActionButton(
+                      key: const Key('finish-voucher'),
+                      label: l.kassaFinishVoucher,
+                      onPressed: widget.canPay ? _finishVoucher : null,
+                    ),
+                  )
+                : payOut
                 ? SizedBox(
                     width: double.infinity,
                     child: PrimaryButton(
@@ -498,11 +579,15 @@ class _Totals extends StatelessWidget {
     required this.taxCents,
     this.receiptDiscountCents = 0,
     this.onDiscount,
+    this.onRemoveVoucher,
   });
 
   final Cart cart;
   final int taxCents;
   final int receiptDiscountCents;
+
+  /// × an einer Reihe eines gewählten Gutscheins; null: das × ist grau.
+  final ValueChanged<String>? onRemoveVoucher;
 
   /// Die Taste "Rabatt"; null: keine Taste, die Reihe des Bon-Rabatts ist
   /// keine Tippfläche.
@@ -590,6 +675,122 @@ class _Totals extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          // Die gewählten Gutscheine in ihrer Reihenfolge, mit dem, was jeder
+          // deckt (0,00 €, wenn der Bon kleiner geworden ist), darunter, was
+          // noch zu zahlen ist.
+          if (cart.vouchers.isNotEmpty) ...[
+            const SizedBox(height: KassaTokens.spaceSm),
+            for (final (i, v) in cart.vouchers.indexed)
+              AppliedVoucherRow(
+                key: Key('applied-voucher-$i'),
+                index: i,
+                code: v.code,
+                cents: _useOf(v.voucherId),
+                onRemove: switch (onRemoveVoucher) {
+                  null => null,
+                  final f => () => f(v.voucherId),
+                },
+              ),
+            const SizedBox(height: KassaTokens.spaceXs),
+            Row(
+              key: const Key('due-row'),
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Expanded(child: Text(l.kassaDue, style: text.bodyLarge)),
+                const SizedBox(width: KassaTokens.spaceMd),
+                Ltr(
+                  child: Text(
+                    formatEuro(cart.pricing.dueCents),
+                    key: const Key('due-amount'),
+                    maxLines: 1,
+                    style: text.titleLarge!.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  int _useOf(String voucherId) {
+    for (final u in cart.pricing.voucherUses) {
+      if (u.voucherId == voucherId) return u.amountCents;
+    }
+    return 0;
+  }
+}
+
+/// Ein gewählter Gutschein im Summenblock: "Gutschein 1234 5678", der
+/// Betrag, den er deckt, mit Minus, und × zum Entfernen (48 dp).
+class AppliedVoucherRow extends StatelessWidget {
+  const AppliedVoucherRow({
+    super.key,
+    required this.index,
+    required this.code,
+    required this.cents,
+    required this.onRemove,
+  });
+
+  final int index;
+  final String code;
+  final int cents;
+
+  /// null: das × ist grau und tut nichts (etwa während etwas zusammengestellt
+  /// wird).
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final tabular = const [FontFeature.tabularFigures()];
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: KassaTokens.minTap),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l.voucherWithCode(ltrIsolate(context, formatVoucherCode(code))),
+              style: text.bodyLarge!.copyWith(
+                color: c.accentInk,
+                fontFeatures: tabular,
+              ),
+            ),
+          ),
+          const SizedBox(width: KassaTokens.spaceMd),
+          Ltr(
+            child: Text(
+              '\u2212${formatEuro(cents)}',
+              key: Key('applied-voucher-amount-$index'),
+              maxLines: 1,
+              style: text.bodyLarge!.copyWith(
+                fontWeight: FontWeight.w700,
+                color: c.accentInk,
+                fontFeatures: tabular,
+              ),
+            ),
+          ),
+          Pressable(
+            key: Key('applied-voucher-remove-$index'),
+            onTap: onRemove,
+            semanticLabel: l.discountRemove,
+            minTapSize: const Size(KassaTokens.minTap, KassaTokens.minTap),
+            child: SizedBox(
+              width: KassaTokens.minTap,
+              height: KassaTokens.minTap,
+              child: Icon(
+                LucideIcons.x,
+                size: 20,
+                color: onRemove == null ? c.ink2 : c.ink,
+              ),
+            ),
           ),
         ],
       ),

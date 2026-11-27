@@ -31,12 +31,19 @@ String voucherDateText(DateTime d) =>
 /// zuerst). [onFound] kommt mit genau einem Treffer oder der Wahl der
 /// Person, [onCleared], sobald der Code wieder kürzer als 8 Ziffern ist.
 /// Was mit dem Gutschein geschieht, entscheidet der Aufrufer (Prüfen,
-/// Einlösen).
+/// Einlösen). Für einen getippten Code kommt [onFound] höchstens einmal, auch
+/// wenn die letzte Ziffer weg- und wieder dazugetippt wird, während noch
+/// gesucht wird: nur die neueste Suche meldet.
+///
+/// Sagt der Aufrufer zum gefundenen Gutschein einen [problem] (etwa
+/// "aufgebraucht"), steht er wie "unbekannt" unter der Anzeige, in
+/// `voucher-code-problem` mit rotem Rand.
 class VoucherCodeEntry extends ConsumerStatefulWidget {
   const VoucherCodeEntry({
     super.key,
     required this.onFound,
     required this.onCleared,
+    this.problem,
   });
 
   /// Genau ein Treffer, oder die Person hat unter zweien gewählt.
@@ -44,6 +51,9 @@ class VoucherCodeEntry extends ConsumerStatefulWidget {
 
   /// Der Code ist wieder kürzer als 8 Ziffern.
   final VoidCallback onCleared;
+
+  /// Warum der gefundene Gutschein nicht geht; `null`: nichts zu sagen.
+  final String? problem;
 
   @override
   ConsumerState<VoucherCodeEntry> createState() => _VoucherCodeEntryState();
@@ -61,6 +71,10 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
   /// Unter mehreren Treffern gewählt: die Wahl steht nicht mehr da.
   bool _picked = false;
 
+  /// Zählt jede Änderung des Codes: nur die Suche mit dem neuesten Stand
+  /// darf melden.
+  int _generation = 0;
+
   void _key(String key) {
     final before = _digits;
     final next = key == 'back'
@@ -69,24 +83,26 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
               ? '$before$key'
               : before);
     if (next == before) return;
+    _generation++;
     setState(() {
       _digits = next;
       _found = null;
       _picked = false;
     });
     if (before.length == _length) widget.onCleared();
-    if (next.length == _length) _search(next);
+    if (next.length == _length) _search(next, _generation);
   }
 
-  Future<void> _search(String code) async {
+  Future<void> _search(String code, int generation) async {
     List<Voucher> found;
     try {
       found = await ref.read(voucherRepositoryProvider).findByCode(code);
     } catch (_) {
       found = const [];
     }
-    // Inzwischen anders getippt: das Ergebnis gilt nicht mehr.
-    if (!mounted || _digits != code) return;
+    // Inzwischen anders getippt (auch weg und wieder dieselbe Ziffer): das
+    // Ergebnis gilt nicht mehr, die neuere Suche meldet.
+    if (!mounted || generation != _generation) return;
     setState(() => _found = found);
     if (found.length == 1) widget.onFound(found.single);
   }
@@ -103,6 +119,11 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
     final l = L10n.of(context);
     final found = _found;
     final empty = _digits.isEmpty;
+    final problem = found == null
+        ? null
+        : found.isEmpty
+        ? l.voucherUnknown
+        : widget.problem;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -117,7 +138,7 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
             color: c.card,
             borderRadius: BorderRadius.circular(KassaTokens.radiusXl),
             border: Border.all(
-              color: found != null && found.isEmpty ? c.red : c.accent,
+              color: problem != null ? c.red : c.accent,
               width: KassaTokens.borderStrong,
             ),
           ),
@@ -141,12 +162,12 @@ class _VoucherCodeEntryState extends ConsumerState<VoucherCodeEntry> {
             ),
           ),
         ),
-        if (found != null && found.isEmpty) ...[
+        if (problem != null) ...[
           const SizedBox(height: KassaTokens.spaceMd),
           Semantics(
             liveRegion: true,
             child: Text(
-              l.voucherUnknown,
+              problem,
               key: const Key('voucher-code-problem'),
               style: text.bodyMedium!.copyWith(
                 fontWeight: FontWeight.w700,

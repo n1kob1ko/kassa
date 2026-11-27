@@ -35,6 +35,11 @@ import 'sale_service.dart';
 /// `sold-voucher-<n>` mit Wert und Code ("1234 5678"), mit Drucker dazu
 /// "Gutschein drucken"; scheitert ein Abschnitt, steht der Grund in seiner
 /// Reihe. Ohne Drucker schreibt der Betrieb den Code von hier ab.
+///
+/// Ist der Bon ganz mit Gutschein bezahlt, steht statt des Rückgelds "Mit
+/// Gutschein bezahlt" (`paid-by-voucher`); die Lade ist zu. Je
+/// Gutschein-Zahlung steht darunter eine Reihe `voucher-left-<n>` mit dem
+/// Code und dem, was am Gutschein bleibt.
 class SaleDone extends ConsumerStatefulWidget {
   const SaleDone({super.key, required this.result, required this.onNext});
 
@@ -176,6 +181,15 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
     final changeCents = receipt.cashPayment?.changeCents ?? 0;
     // Eine Auszahlung: die Bar-Zahlung liegt unter 0.
     final payoutCents = -(receipt.cashPayment?.amountCents ?? 0);
+    final voucherPayments = [
+      for (final p in receipt.payments)
+        if (p.kind == PaymentKind.voucher) p,
+    ];
+    // Nur Gutscheine, weder bar noch Karte.
+    final onlyVoucher =
+        voucherPayments.isNotEmpty &&
+        card == null &&
+        receipt.cashPayment == null;
     final outcome = _outcome;
     final showPrint =
         settings.printerKind != PrinterKind.none &&
@@ -253,6 +267,14 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               tipCents: card.tipCents,
                               cashPartCents: receipt.cashCents,
                             )
+                          : onlyVoucher
+                          ? Text(
+                              l.kassaPaidByVoucher,
+                              key: const Key('paid-by-voucher'),
+                              style: text.titleLarge!.copyWith(
+                                color: c.accentInk,
+                              ),
+                            )
                           : payoutCents > 0
                           ? _BigAmount(
                               label: l.kassaPayOutDone,
@@ -298,6 +320,10 @@ class _SaleDoneState extends ConsumerState<SaleDone> {
                               ],
                             ),
                     ),
+                    for (final (i, p) in voucherPayments.indexed) ...[
+                      const SizedBox(height: KassaTokens.spaceMd),
+                      _VoucherLeftRow(index: i, payment: p),
+                    ],
                     for (final (i, v) in receipt.soldVouchers.indexed) ...[
                       const SizedBox(height: KassaTokens.spaceXl),
                       _SoldVoucherRow(
@@ -442,6 +468,68 @@ class _SoldVoucherRow extends StatelessWidget {
               onPressed: printing ? null : onPrint,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Eine Gutschein-Zahlung in "Verkauf fertig": "Gutschein 1234 5678" und
+/// "Bleibt am Gutschein" mit dem Guthaben nach diesem Bon.
+class _VoucherLeftRow extends StatelessWidget {
+  const _VoucherLeftRow({required this.index, required this.payment});
+
+  final int index;
+  final Payment payment;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = KassaColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final l = L10n.of(context);
+    final tabular = const [FontFeature.tabularFigures()];
+    return Container(
+      key: Key('voucher-left-$index'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(KassaTokens.radiusXxl),
+        border: Border.all(color: c.line, width: KassaTokens.borderButton),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l.voucherWithCode(
+              ltrIsolate(context, formatVoucherCode(payment.voucherCode ?? '')),
+            ),
+            style: text.bodyLarge!.copyWith(
+              color: c.accentInk,
+              fontFeatures: tabular,
+            ),
+          ),
+          const SizedBox(height: KassaTokens.spaceXs),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  l.voucherLeft,
+                  style: text.bodyLarge!.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: KassaTokens.spaceMd),
+              Ltr(
+                child: Text(
+                  formatEuro(payment.voucherBalanceAfterCents ?? 0),
+                  key: Key('voucher-left-amount-$index'),
+                  maxLines: 1,
+                  style: text.titleLarge!.copyWith(fontFeatures: tabular),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -10,10 +10,11 @@ import '../domain/cart.dart';
 import '../domain/staff.dart';
 import 'database.dart';
 
-/// Was das Terminal bucht: die Summe des Bons [totalCents] ohne den Bar-Teil
-/// [cashPartCents], dazu das Trinkgeld [tipCents]. Die eine Rechnung für das
-/// Schreiben der offenen Zahlung, den Aufruf des Terminals und die Prüfung
-/// beim Wiederaufbau.
+/// Was das Terminal bucht: was nach den Gutscheinen offen ist [totalCents]
+/// (`cart.pricing.dueCents`; ohne Gutschein die Summe des Bons) ohne den
+/// Bar-Teil [cashPartCents], dazu das Trinkgeld [tipCents]. Die eine Rechnung
+/// für das Schreiben der offenen Zahlung, den Aufruf des Terminals und die
+/// Prüfung beim Wiederaufbau.
 int terminalAmountCents({
   required int totalCents,
   required int cashPartCents,
@@ -35,7 +36,8 @@ class PendingCardPayment {
 
   final String id;
 
-  /// Der Bon als JSON (`Cart.toJson`), damit er wieder aufgebaut werden kann.
+  /// Der Bon als JSON (`Cart.toJson`, mit den gewählten Gutscheinen), damit
+  /// er wieder aufgebaut werden kann.
   final String cartJson;
 
   /// Was das Terminal bucht: die Summe des Bons ohne [cashPartCents], mit
@@ -63,8 +65,8 @@ class CardPaymentRepository {
   final Clock _clock;
 
   /// Schreibt die offene Zahlung mit dem Bar-Teil [cashPartCents] und dem
-  /// Trinkgeld [tipCents]; das Terminal bucht die Summe ohne Bar-Teil, mit
-  /// Trinkgeld. Eine Zeile mit dieser Id wird nie überschrieben: gibt es sie
+  /// Trinkgeld [tipCents]; das Terminal bucht, was nach den Gutscheinen offen
+  /// ist, ohne Bar-Teil, mit Trinkgeld. Eine Zeile mit dieser Id wird nie überschrieben: gibt es sie
   /// schon, wirft der Aufruf.
   Future<void> begin({
     required String paymentId,
@@ -79,7 +81,7 @@ class CardPaymentRepository {
           id: paymentId,
           cartJson: jsonEncode(cart.toJson()),
           amountCents: terminalAmountCents(
-            totalCents: cart.totalCents,
+            totalCents: cart.pricing.dueCents,
             cashPartCents: cashPartCents,
             tipCents: tipCents,
           ),

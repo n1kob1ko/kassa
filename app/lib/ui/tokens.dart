@@ -25,6 +25,9 @@ class KassaTokens {
   static const double mainActionHeight = 80.0;
   static const double secondaryActionHeight = 72.0;
 
+  /// Eine kleinere Taste über "Bar" und "Karte" ("Gutschein").
+  static const double smallActionHeight = 56.0;
+
   /// Reiter, Segmente und Plus/Minus sind im Entwurf 44 dp hoch. Das
   /// Aussehen bleibt, die Antippfläche wird unsichtbar auf [minTap] erweitert.
   static const double drawnControlHeight = 44.0;

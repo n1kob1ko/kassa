@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von app/tool/l10n_review.dart aus den ARB-Dateien. Nicht von Hand ändern. -->
 
-Hier stehen alle 501 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
+Hier stehen alle 519 Texte, die die Kassa auf Türkisch zeigt: links Deutsch, in der Mitte die Übersetzung, rechts, wo der Text steht. Ist etwas falsch, schreib den Eintrag aus "Wo" und den richtigen Text dazu. Besonders wichtig ist der Abschnitt "Unsicher" am Ende.
 
 Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bleiben genau so stehen. Manche Texte haben mehrere Formen, je nach Anzahl: bitte jede Form ansehen.
 
@@ -125,6 +125,10 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Bar auszahlen {amount} | Nakit öde {amount} | Kassa: `kassaPayOut` |
 | Auszahlen | Geri öde | Kassa: `kassaPayOutDone` |
 | Gutschein | Hediye çeki | Kassa: `kassaVoucher` |
+| Gutschein | Hediye çeki | Kassa: `kassaPayVoucher` |
+| Noch zu zahlen | Kalan ödeme | Kassa: `kassaDue` |
+| Mit Gutschein abschließen | Hediye çekiyle tamamla | Kassa: `kassaFinishVoucher` |
+| Mit Gutschein bezahlt | Hediye çekiyle ödendi | Kassa: `kassaPaidByVoucher` |
 
 ## Kartenzahlung
 
@@ -188,6 +192,7 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Davon Trinkgeld {amount} | Bunun {amount} kadarı bahşiş | Unklare Kartenzahlung: `unclearTip` |
 | Bar-Teil {amount} ist schon kassiert. | Nakit kısmı {amount} zaten alındı. | Unklare Kartenzahlung: `unclearCashPart` |
 | {amount} bar zurückgeben. | {amount} nakit iade edin. | Unklare Kartenzahlung: `unclearReturnCash` |
+| Mit Gutschein {amount} | Hediye çekiyle {amount} | Unklare Kartenzahlung: `unclearVoucherPart` |
 
 ## Datum
 
@@ -591,6 +596,19 @@ Wörter in geschweiften Klammern wie {amount} setzt die Kassa selbst ein; sie bl
 | Verkauf storniert | Satış iptal edildi | Sonstiges: `voucherMoveVoidSale` |
 | Einlösung storniert | Kullanım iptal edildi | Sonstiges: `voucherMoveVoidRedeem` |
 | Gutschein drucken | Hediye çekini yazdır | Sonstiges: `voucherPrint` |
+| Gutschein einlösen | Hediye çeki kullan | Sonstiges: `voucherRedeemTitle` |
+| Zu zahlen | Ödenecek | Sonstiges: `voucherDue` |
+| Wird eingelöst | Kullanılacak | Sonstiges: `voucherUse` |
+| Bleibt am Gutschein | Çekte kalan | Sonstiges: `voucherLeft` |
+| Einlösen {amount} | {amount} kullan | Sonstiges: `voucherRedeemAll` |
+| Einlösen {amount}, Rest {rest} | {amount} kullan, kalan {rest} | Sonstiges: `voucherRedeemPart` |
+| Dieser Gutschein ist aufgebraucht. | Bu hediye çeki bitti. | Sonstiges: `voucherEmpty` |
+| Dieser Gutschein ist storniert. | Bu hediye çeki iptal edildi. | Sonstiges: `voucherVoided` |
+| Das ist ein Übungs-Gutschein. | Bu bir test hediye çeki. | Sonstiges: `voucherTestOnly` |
+| Dieser Gutschein gilt nicht im Übungsmodus. | Bu hediye çeki test modunda geçerli değil. | Sonstiges: `voucherLiveOnly` |
+| Dieser Gutschein liegt schon am Bon. | Bu hediye çeki zaten fişte. | Sonstiges: `voucherAlreadyOnReceipt` |
+| Das Guthaben hat sich geändert. Bitte noch einmal ansehen. | Bakiye değişti. Lütfen tekrar kontrol edin. | Sonstiges: `voucherChanged` |
+| Gutschein {code} | Hediye çeki {code} | Sonstiges: `voucherWithCode` |
 
 ## Unsicher
 

@@ -6,6 +6,7 @@ import '../../data/providers.dart';
 import '../../domain/cart.dart';
 import '../../domain/catalog.dart';
 import '../../domain/discount.dart';
+import '../../domain/voucher.dart';
 
 /// Der offene Bon der Kassa. Er gehört zur Kassa, nicht zur angemeldeten
 /// Person: Abmelden und Anmelden lässt ihn stehen. Jede Änderung schreibt den
@@ -79,6 +80,61 @@ class CartController extends Notifier<Cart> {
 
   void clear() => _set(const Cart.empty());
 
+  /// Wählt [voucher] zum Bezahlen, nach den schon gewählten (siehe
+  /// [Cart.applyVoucher]). Ist derselbe Gutschein schon gewählt, ändert sich
+  /// nichts.
+  void applyVoucher(AppliedVoucher voucher) {
+    if (state.vouchers.any((v) => v.voucherId == voucher.voucherId)) return;
+    _set(state.applyVoucher(voucher));
+  }
+
+  /// Nimmt den gewählten Gutschein [voucherId] wieder vom Bon.
+  void removeVoucher(String voucherId) {
+    if (!state.vouchers.any((v) => v.voucherId == voucherId)) return;
+    _set(state.removeVoucher(voucherId));
+  }
+
+  /// Liest das Guthaben jedes gewählten Gutscheins neu (nach den Bewegungen,
+  /// die die Kassa kennt, und nach der Regel für Übung und echt): ein
+  /// Gutschein ohne Guthaben fällt vom Bon, die anderen bekommen ihr neues
+  /// Guthaben an ihrer Stelle. Läuft nach dem Laden des Entwurfs, nach einer
+  /// verworfenen unklaren Kartenzahlung, wenn ein Guthaben beim Abschließen
+  /// nicht mehr gereicht hat, und nach einem Abgleich. Ändert sich nichts,
+  /// bleibt der Bon, wie er ist. Wirft nie: lässt sich nichts lesen, bleibt
+  /// der Bon, das Abschließen prüft ohnehin noch einmal.
+  Future<void> refreshVouchers() async {
+    final chosen = state.vouchers;
+    if (chosen.isEmpty) return;
+    final fresh = <String, int>{};
+    try {
+      final onTest = await ref
+          .read(receiptRepositoryProvider)
+          .isTestReceiptNow();
+      final vouchers = ref.read(voucherRepositoryProvider);
+      for (final v in chosen) {
+        fresh[v.voucherId] = usableVoucherBalance(
+          await vouchers.byId(v.voucherId),
+          onTestReceipt: onTest,
+        );
+      }
+    } catch (_) {
+      return;
+    }
+    if (!ref.mounted) return;
+    var next = state;
+    for (final MapEntry(key: id, value: cents) in fresh.entries) {
+      final now = next.vouchers.where((v) => v.voucherId == id).firstOrNull;
+      if (now == null) continue;
+      if (cents <= 0) {
+        next = next.removeVoucher(id);
+      } else if (now.balanceCents != cents) {
+        next = next.withVoucherBalance(id, cents);
+      }
+    }
+    if (identical(next, state)) return;
+    _set(next);
+  }
+
   /// Setzt einen früheren Bon wieder ein ("Rückgängig"), aber nur auf einen
   /// leeren Bon: was inzwischen auf dem Bon liegt, wird nie ersetzt.
   void restore(Cart cart) {
@@ -120,6 +176,8 @@ class CartController extends Notifier<Cart> {
         return;
       }
       state = cart;
+      // Die gewählten Gutscheine mit dem Guthaben von jetzt.
+      await refreshVouchers();
     } catch (_) {
       // Ein Entwurf, den es nicht lesen kann, wird verworfen.
       if (ref.mounted && !_changed) {

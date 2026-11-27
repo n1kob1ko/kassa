@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_language.dart';
 import '../../data/card_payment_repository.dart';
 import '../../data/providers.dart';
+import '../../data/receipt_repository.dart' show VoucherBalanceException;
 import '../../data/settings_repository.dart';
 import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
@@ -200,6 +201,21 @@ class SaleService {
     );
   }
 
+  /// Schließt einen Bon ab, den die gewählten Gutscheine ganz bezahlen
+  /// ("Einlösen", "Mit Gutschein abschließen"): nur Gutschein-Zahlungen, die
+  /// Lade bleibt zu, der Kundenbon kommt wie immer. Reicht ein Guthaben
+  /// nicht mehr, [VoucherBalanceException], und nichts ist gespeichert.
+  Future<SaleResult> completeVoucher({
+    required String saleId,
+    required Cart cart,
+    required Staff staff,
+  }) async {
+    final receipt = await _ref
+        .read(receiptRepositoryProvider)
+        .finalizeVoucherSale(saleId: saleId, cart: cart, staff: staff);
+    return _printSale(saleId, receipt, await _settings(), openDrawer: false);
+  }
+
   /// Schließt einen Bon mit Summe 0,00 € ab (etwa eine Einladung mit 100 %
   /// Rabatt ohne Pfand): eine Bar-Zahlung über 0 ohne Rückgeld, die Lade
   /// bleibt zu. Bei einer anderen Summe [ArgumentError], und nichts wird
@@ -250,9 +266,16 @@ class SaleService {
   }
 
   /// Nimmt die Kartenzahlung für [cart] am Terminal an: [cashPartCents] ist
-  /// schon bar bezahlt, die Karte bucht den Rest und das Trinkgeld
-  /// [tipCents] (für [staff]). Die offene Zahlung steht mit beiden Beträgen in
-  /// der Datenbank, bevor das Terminal etwas erfährt. Wirft nie.
+  /// schon bar bezahlt, die Karte bucht den Rest nach den gewählten
+  /// Gutscheinen (`cart.pricing.dueCents`) und das Trinkgeld [tipCents] (für
+  /// [staff]). Die offene Zahlung steht mit beiden Beträgen in der Datenbank,
+  /// bevor das Terminal etwas erfährt.
+  ///
+  /// Die Reihenfolge: (1) Guthaben der Gutscheine prüfen, (2) offene Zahlung
+  /// schreiben, (3) Terminal, (4) Bon. Reicht ein Guthaben bei (1) nicht,
+  /// wirft der Aufruf [VoucherBalanceException]: nichts ist geschrieben, das
+  /// Terminal weiß nichts. Sonst wirft er nie; ab (3) endet jeder Fehler als
+  /// unklar.
   Future<CardSaleOutcome> payByCard({
     required String paymentId,
     required Cart cart,
@@ -265,14 +288,18 @@ class SaleService {
     }
     // Ein Bar-Teil ab der Summe lässt der Karte nichts: nie starten, auch
     // nicht bei einem Terminal ohne Kleinstbetrag.
+    // Ohne Gutschein ist das die Summe des Bons.
+    final due = cart.pricing.dueCents;
     if (cashPartCents < 0 ||
         tipCents < 0 ||
-        (cashPartCents > 0 && cashPartCents >= cart.totalCents)) {
+        (cashPartCents > 0 && cashPartCents >= due) ||
+        // Bezahlen die Gutscheine alles, bekommt das Terminal nie 0,00 €.
+        (cart.vouchers.isNotEmpty && due - cashPartCents <= 0)) {
       return const CardSaleFailed(CardSaleProblem.notStarted);
     }
     final terminal = _ref.read(cardTerminalProvider);
     // Der Kleinstbetrag gilt für den Rest ohne Trinkgeld.
-    final rest = cart.totalCents - cashPartCents;
+    final rest = due - cashPartCents;
     if (cart.isEmpty || rest < terminal.minimumCents) {
       return cart.isEmpty
           ? const CardSaleFailed(CardSaleProblem.emptyCart)
@@ -313,6 +340,19 @@ class SaleService {
       } catch (_) {
         return const CardSaleFailed(CardSaleProblem.notStarted);
       }
+      // (1) Jedes Guthaben neu, bevor etwas geschrieben wird und das
+      // Terminal etwas erfährt. Ohne gewählten Gutschein fragt die Kassa
+      // nichts (wie in 1.11.0).
+      if (cart.pricing.voucherUses.isNotEmpty) {
+        try {
+          await _ref.read(receiptRepositoryProvider).checkVoucherBalances(cart);
+        } on VoucherBalanceException {
+          rethrow;
+        } catch (_) {
+          return const CardSaleFailed(CardSaleProblem.notStarted);
+        }
+      }
+      // (2) Die offene Zahlung, mit den Gutscheinen im Bon.
       try {
         await pending.begin(
           paymentId: paymentId,
@@ -325,12 +365,13 @@ class SaleService {
         return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       final CardPaymentResult result;
+      // (3) Ab hier kann Geld geflossen sein.
       terminalAsked = true;
       try {
         result = await terminal.pay(
           paymentId: paymentId,
           amountCents: terminalAmountCents(
-            totalCents: cart.totalCents,
+            totalCents: due,
             cashPartCents: cashPartCents,
             tipCents: tipCents,
           ),
@@ -342,6 +383,9 @@ class SaleService {
       switch (result) {
         case CardPaid():
           final Receipt receipt;
+          // (4) Die Karte ist belastet: der Bon entsteht, auch wenn ein
+          // Gutschein inzwischen weniger Guthaben hat (er ist dann
+          // überzogen).
           try {
             receipt = await _ref
                 .read(receiptRepositoryProvider)
@@ -355,6 +399,7 @@ class SaleService {
                   cardLast4: result.cardLast4,
                   cashPartCents: cashPartCents,
                   tipCents: tipCents,
+                  allowOverdraw: true,
                 );
           } catch (_) {
             // Bezahlt, aber nicht gespeichert: die offene Zahlung bleibt.
@@ -373,8 +418,11 @@ class SaleService {
         case CardUnknown():
           return await _unclear(paymentId);
       }
-    } catch (_) {
+    } catch (e) {
       if (!terminalAsked) {
+        // Das Terminal weiß nichts: ein Guthaben, das nicht reicht, geht an
+        // die Kassa (sie zeigt den Bon mit dem neuen Guthaben).
+        if (e is VoucherBalanceException) rethrow;
         return const CardSaleFailed(CardSaleProblem.notStarted);
       }
       return await _unclear(paymentId);
@@ -403,7 +451,9 @@ class SaleService {
 
   /// Der Bon einer offenen Zahlung, oder `null`, wenn er sich nicht mehr
   /// zusammenstellen lässt: nicht lesbar, leer oder mit anderem Betrag, als das
-  /// Terminal verlangt hat (Summe ohne Bar-Teil, mit Trinkgeld).
+  /// Terminal verlangt hat (was nach den Gutscheinen offen war, ohne
+  /// Bar-Teil, mit Trinkgeld). Die Gutscheine stehen mit dem Guthaben von
+  /// damals im Bon, so ergibt sich derselbe Betrag.
   static Cart? cartOfPending(PendingCardPayment p, Catalog catalog) {
     try {
       final cart = Cart.fromJson(
@@ -411,7 +461,7 @@ class SaleService {
         catalog,
       );
       final expected = terminalAmountCents(
-        totalCents: cart.totalCents,
+        totalCents: cart.pricing.dueCents,
         cashPartCents: p.cashPartCents,
         tipCents: p.tipCents,
       );
@@ -442,6 +492,12 @@ class SaleService {
   /// noch auf der Kassa (Absturz: der Entwurf hat ihn zurückgebracht), wird
   /// die Kassa geleert, damit er nicht noch einmal kassiert wird; anderer
   /// Inhalt bleibt stehen.
+  ///
+  /// Die Karte ist belastet: der Bon entsteht mit den Gutscheinen der
+  /// offenen Zahlung, auch wenn eines ihrer Guthaben inzwischen nicht mehr
+  /// reicht (der Gutschein ist dann überzogen). Kennt die Kassa einen der
+  /// Gutscheine gar nicht mehr, lässt sich der Bon nicht bauen:
+  /// [UnreadableCardPaymentException], die offene Zahlung bleibt.
   Future<SaleResult> confirmUnclear(
     PendingCardPayment p, {
     required Catalog catalog,
@@ -449,21 +505,33 @@ class SaleService {
     await _requireDecidable(p);
     final cart = cartOfPending(p, catalog);
     if (cart == null) throw const UnreadableCardPaymentException();
-    final receipt = await _ref
-        .read(receiptRepositoryProvider)
-        .finalizeCardSale(
-          saleId: p.id,
-          cart: cart,
-          staff: Staff(id: p.staffId, name: p.staffName, role: StaffRole.staff),
-          provider: _ref.read(cardTerminalProvider).providerName,
-          cashPartCents: p.cashPartCents,
-          tipCents: p.tipCents,
-        );
+    final Receipt receipt;
+    try {
+      receipt = await _ref
+          .read(receiptRepositoryProvider)
+          .finalizeCardSale(
+            saleId: p.id,
+            cart: cart,
+            staff: Staff(
+              id: p.staffId,
+              name: p.staffName,
+              role: StaffRole.staff,
+            ),
+            provider: _ref.read(cardTerminalProvider).providerName,
+            cashPartCents: p.cashPartCents,
+            tipCents: p.tipCents,
+            allowOverdraw: true,
+          );
+    } on VoucherBalanceException {
+      throw const UnreadableCardPaymentException();
+    }
     final onRegister = _ref.read(cartProvider);
     if (!onRegister.isEmpty) {
       // Beide Seiten so verglichen, wie die Kassa sie liest: Zeilen, die es
-      // nicht mehr gibt, fehlen auf beiden.
-      if (jsonEncode(onRegister.toJson()) == jsonEncode(cart.toJson())) {
+      // nicht mehr gibt, fehlen auf beiden. Das Guthaben eines gewählten
+      // Gutscheins zählt dabei nicht (die Kassa liest es nach dem Neustart
+      // neu).
+      if (_sameCart(onRegister, cart)) {
         _ref.read(cartProvider.notifier).clear();
       } else {
         // Das Abschließen hat den Entwurf gelöscht; der andere Bon auf der
@@ -478,9 +546,29 @@ class SaleService {
     return await _printCard(receipt);
   }
 
+  /// Ob [a] und [b] derselbe Bon sind; das Guthaben gewählter Gutscheine
+  /// zählt nicht. Ohne Gutschein derselbe Vergleich wie in 1.11.0.
+  static bool _sameCart(Cart a, Cart b) {
+    String key(Cart c) {
+      final json = c.toJson();
+      final vouchers = json['vouchers'];
+      if (vouchers is List) {
+        json['vouchers'] = [
+          for (final v in vouchers)
+            Map<String, Object?>.of(v as Map<String, Object?>)
+              ..remove('balanceCents'),
+        ];
+      }
+      return jsonEncode(json);
+    }
+
+    return key(a) == key(b);
+  }
+
   /// Der Kunde hat nicht bezahlt: die offene Zahlung geht weg, der Bon kommt
   /// zurück auf die Kassa, aber nur auf eine leere (derselbe Bon wird nicht
-  /// verdoppelt, ein anderer nicht ersetzt).
+  /// verdoppelt, ein anderer nicht ersetzt). Gewählte Gutscheine kommen mit
+  /// und bekommen ihr Guthaben von jetzt.
   Future<void> discardUnclear(PendingCardPayment p) async {
     await _requireDecidable(p);
     await _ref.read(cardPaymentRepositoryProvider).discard(p.id);
@@ -488,7 +576,13 @@ class SaleService {
       final catalog = await _ref.read(catalogRepositoryProvider).current();
       if (catalog == null) return;
       final cart = cartToRestore(p, catalog);
-      if (cart != null) _ref.read(cartProvider.notifier).restore(cart);
+      if (cart == null) return;
+      final register = _ref.read(cartProvider.notifier);
+      final before = _ref.read(cartProvider);
+      register.restore(cart);
+      if (before.isEmpty && cart.vouchers.isNotEmpty) {
+        await register.refreshVouchers();
+      }
     } catch (_) {
       // Lässt sich der Bon nicht lesen, bleibt die Kassa leer.
     }

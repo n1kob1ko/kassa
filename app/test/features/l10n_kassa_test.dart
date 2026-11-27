@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/settings_repository.dart';
+import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/feature_access.dart';
+import 'package:kassa/features/kassa/cart_controller.dart';
+import 'package:kassa/features/login/session.dart';
 import 'package:kassa/l10n/generated/l10n.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
@@ -291,4 +294,98 @@ void main() {
       expect(_inKey('sold-voucher-print-0', 'Gutschein drucken'), findsNothing);
     }
   });
+
+  const redeem = {
+    AppLanguage.en: (
+      pay: 'Voucher',
+      title: 'Redeem voucher',
+      due: 'Still to pay',
+      finish: 'Finish with voucher',
+    ),
+    AppLanguage.zh: (
+      pay: '礼券',
+      title: '使用礼券',
+      due: '还需支付',
+      finish: '用礼券结账',
+    ),
+    AppLanguage.tr: (
+      pay: 'Hediye çeki',
+      title: 'Hediye çeki kullan',
+      due: 'Kalan ödeme',
+      finish: 'Hediye çekiyle tamamla',
+    ),
+    AppLanguage.ar: (
+      pay: 'قسيمة',
+      title: 'استخدام قسيمة',
+      due: 'المتبقي للدفع',
+      finish: 'إتمام بالقسيمة',
+    ),
+  };
+
+  testWidgets('en, zh, tr, ar: "Gutschein" über Bar und Karte, "Gutschein '
+      'einlösen", "Noch zu zahlen" und "Mit Gutschein abschließen" stehen in '
+      'der Bediensprache', (t) async {
+    for (final MapEntry(key: language, value: texts) in redeem.entries) {
+      await pumpKassa(t);
+      await setSettings(
+        t,
+        (s) => s.copyWith(language: language, voucherEnabled: true),
+      );
+      final container = containerOf(t);
+      final sold = await container
+          .read(receiptRepositoryProvider)
+          .finalizeCashSale(
+            saleId: 'g-${language.name}',
+            cart: const Cart.empty().addVoucherSale(valueCents: 200),
+            givenCents: 200,
+            staff: container.read(sessionProvider)!,
+          );
+      final code = sold.soldVouchers.single.code;
+      await tapItem(t, 'cola');
+      await t.pumpAndSettle();
+      expect(_inKey('pay-voucher', texts.pay), findsOneWidget);
+      await t.tap(find.byKey(const Key('pay-voucher')));
+      await t.pumpAndSettle();
+      expect(find.text(texts.title), findsOneWidget, reason: language.name);
+      expect(find.text('Gutschein einlösen'), findsNothing);
+      for (final d in code.split('')) {
+        await t.ensureVisible(find.byKey(Key('key-$d')));
+        await t.pumpAndSettle();
+        await t.tap(find.byKey(Key('key-$d')));
+        await t.pump();
+      }
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('voucher-redeem-go')));
+      await t.pumpAndSettle();
+      expect(_inKey('due-row', texts.due), findsOneWidget);
+      expect(_inKey('due-row', 'Noch zu zahlen'), findsNothing);
+      // Ein neuer Bon, den ein gewählter Gutschein ganz deckt.
+      container.read(cartProvider.notifier).clear();
+      await t.pumpAndSettle();
+      await tapItem(t, 'cola');
+      await t.pumpAndSettle();
+      final full = await container
+          .read(receiptRepositoryProvider)
+          .finalizeCashSale(
+            saleId: 'g2-${language.name}',
+            cart: const Cart.empty().addVoucherSale(valueCents: 1000),
+            givenCents: 1000,
+            staff: container.read(sessionProvider)!,
+          );
+      final v = full.soldVouchers.single;
+      container
+          .read(cartProvider.notifier)
+          .applyVoucher(
+            AppliedVoucher(
+              voucherId: v.voucherId,
+              code: v.code,
+              balanceCents: 1000,
+            ),
+          );
+      await t.pumpAndSettle();
+      expect(_inKey('finish-voucher', texts.finish), findsOneWidget);
+      expect(_inKey('finish-voucher', 'Mit Gutschein abschließen'), findsNothing);
+    }
+  });
 }
+

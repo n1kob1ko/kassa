@@ -1625,6 +1625,57 @@ void main() {
       expect(v.publicToken, isNot(r.publicToken));
     });
   });
+
+  group('Gutschein einlösen (Task 11)', () {
+    test('finalizeCardSale bei dueCents 0 mit Gutschein: '
+        'NothingDueException, nichts gespeichert, die offene Zahlung bleibt',
+        () async {
+      final v = await sellVoucher(shop, 2500);
+      final all = cartCard.applyVoucher(applied(v));
+      expect(all.pricing.dueCents, 0);
+      final pending = CardPaymentRepository(shop.db, shop.clock);
+      await pending.begin(paymentId: 'k0', cart: all, staff: shop.anna);
+      final receipts = await shop.count('receipts');
+      await expectLater(
+        shop.receipts.finalizeCardSale(
+          saleId: 'k0',
+          cart: all,
+          staff: shop.anna,
+          provider: 'sumup',
+          allowOverdraw: true,
+        ),
+        throwsA(isA<NothingDueException>()),
+      );
+      expect(await shop.count('receipts'), receipts);
+      expect(await shop.receipts.find('k0'), isNull);
+      expect(await pending.pending(), hasLength(1));
+      expect((await shop.vouchers.byId(v.id))!.balanceCents, 2500);
+    });
+
+    test('checkVoucherBalances prüft wie das Abschließen und schreibt nichts',
+        () async {
+      final v = await sellVoucher(shop, 500);
+      final paying = cartCard.applyVoucher(applied(v));
+      final moves = await shop.count('voucher_movements');
+      await shop.receipts.checkVoucherBalances(paying);
+      await shop.receipts.checkVoucherBalances(cartCard);
+      await shop.receipts.finalizeVoucherSale(
+        saleId: 'c1',
+        cart: Cart.empty().add(cola).applyVoucher(applied(v)),
+        staff: shop.anna,
+      );
+      await expectLater(
+        shop.receipts.checkVoucherBalances(paying),
+        throwsA(
+          isA<VoucherBalanceException>()
+              .having((e) => e.voucherId, 'voucherId', v.id)
+              .having((e) => e.balanceCents, 'balanceCents', 185),
+        ),
+      );
+      expect(await shop.count('voucher_movements'), moves + 1);
+      expect(await shop.receipts.isTestReceiptNow(), isTrue);
+    });
+  });
 }
 
 /// Zieht die Ziffern der Reihe nach aus [digits] (für `nextInt(10)`), alles

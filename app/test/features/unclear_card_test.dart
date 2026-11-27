@@ -16,6 +16,7 @@ import 'package:kassa/domain/cart.dart';
 import 'package:kassa/domain/catalog.dart' show TaxRate;
 import 'package:kassa/domain/discount.dart';
 import 'package:kassa/domain/staff.dart';
+import 'package:kassa/domain/voucher.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/features/kassa/kitchen_service.dart';
 import 'package:kassa/ui/primary_button.dart';
@@ -872,5 +873,121 @@ void main() {
       find.descendant(of: _sheet, matching: find.byType(PrimaryButton)),
       findsNWidgets(2),
     );
+  });
+
+  group('unklare Kartenzahlung nach Gutschein (Task 11)', () {
+    /// Datenbank mit einem Gutschein über 5,00 € und einer offenen, unklaren
+    /// Zahlung über cartCard mit diesem Gutschein (9,65 € − 5,00 €); danach
+    /// zieht eine andere Kassa [drawn] vom Gutschein ab.
+    Future<(List<Override>, String)> setupVoucher({int drawn = 0}) async {
+      final overrides = await memoryOverrides(clock: FixedClock(_first));
+      final c = ProviderContainer(overrides: overrides);
+      final String code;
+      try {
+        final staff = await c.read(staffRepositoryProvider).all();
+        final anna = staff.firstWhere((s) => s.name == 'Anna');
+        final sold = await c
+            .read(receiptRepositoryProvider)
+            .finalizeCashSale(
+              saleId: 'gutschein',
+              cart: const Cart.empty().addVoucherSale(valueCents: 500),
+              givenCents: 500,
+              staff: anna,
+            );
+        final v = (await c
+            .read(voucherRepositoryProvider)
+            .byId(sold.soldVouchers.single.voucherId))!;
+        code = v.code;
+        final repo = c.read(cardPaymentRepositoryProvider);
+        await repo.begin(
+          paymentId: 'p1',
+          cart: cartCard.applyVoucher(applied(v)),
+          staff: anna,
+        );
+        await repo.markUnknown('p1');
+        if (drawn > 0) {
+          final db = c.read(databaseProvider);
+          await db
+              .into(db.voucherMovementRows)
+              .insert(
+                VoucherMovementRowsCompanion.insert(
+                  voucherId: v.id,
+                  receiptId: 'andere-kassa',
+                  kind: 'redeem',
+                  amountCents: -drawn,
+                  createdAt: _first,
+                ),
+              );
+        }
+      } finally {
+        c.dispose();
+      }
+      return (overrides, code);
+    }
+
+    testWidgets('das Blatt nennt den Gutschein-Teil; bestätigt entsteht der '
+        'Bon mit Gutschein und Karte, auch wenn das Guthaben inzwischen 0 '
+        'ist (überzogen)', (t) async {
+      final (overrides, code) = await setupVoucher(drawn: 500);
+      await _start(t, overrides);
+      expect(textOf(t, const Key('unclear-amount')), '4,65 €');
+      expect(
+        textOf(t, const Key('unclear-voucher')),
+        'Mit Gutschein 5,00 €',
+      );
+      expect(find.byKey(const Key('unclear-unreadable')), findsNothing);
+      await _tap(t, 'unclear-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(
+        await queryRows(
+          t,
+          'SELECT kind, amount_cents, voucher_code, '
+          "voucher_balance_after_cents FROM payments WHERE receipt_id = 'p1' "
+          'ORDER BY position',
+        ),
+        [
+          {
+            'kind': 'voucher',
+            'amount_cents': 500,
+            'voucher_code': code,
+            'voucher_balance_after_cents': -500,
+          },
+          {
+            'kind': 'card',
+            'amount_cents': 465,
+            'voucher_code': null,
+            'voucher_balance_after_cents': null,
+          },
+        ],
+      );
+      final v = (await containerOf(
+        t,
+      ).read(voucherRepositoryProvider).findByCode(code)).single;
+      expect((v.balanceCents, v.state), (-500, VoucherState.overdrawn));
+      expect(await _pending(t), 0);
+    });
+
+    testWidgets('unklare Kartenzahlung verworfen: der Bon liegt wieder an der '
+        'Kassa, mit dem Gutschein und frischem Guthaben', (t) async {
+      final (overrides, code) = await setupVoucher(drawn: 315);
+      await _start(t, overrides);
+      expect(
+        textOf(t, const Key('unclear-voucher')),
+        'Mit Gutschein 5,00 €',
+      );
+      await _tap(t, 'unclear-not-paid');
+      await _tap(t, 'unclear-confirm');
+      expect(_sheet, findsNothing);
+      expect(await _pending(t), 0);
+      expect(cartOf(t).lines, hasLength(2));
+      expect(cartOf(t).vouchers.single.code, code);
+      expect(cartOf(t).vouchers.single.balanceCents, 185);
+      expect(textOf(t, const Key('due-amount')), '7,80 €');
+      expect(
+        await queryRows(t, "SELECT id FROM receipts WHERE id = 'p1'"),
+        isEmpty,
+      );
+    });
   });
 }

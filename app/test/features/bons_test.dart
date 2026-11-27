@@ -1223,4 +1223,74 @@ void main() {
     );
     expect(find.byKey(const Key('detail-voucher-print-0')), findsNothing);
   });
+
+  testWidgets('Detail: eine Gutschein-Zahlung heißt "Gutschein 1234 5678" mit '
+      'dem, was am Gutschein bleibt, nicht "Karte"', (t) async {
+    await pumpBonsWithSales(t, 0);
+    final sold = await sellCash(
+      t,
+      cart: const Cart.empty().addVoucherSale(valueCents: 2500),
+    );
+    final v = sold.soldVouchers.single;
+    AppliedVoucher chosen(int balance) => AppliedVoucher(
+      voucherId: v.voucherId,
+      code: v.code,
+      balanceCents: balance,
+    );
+    final staff = containerOf(t).read(sessionProvider)!;
+    final receipts = containerOf(t).read(receiptRepositoryProvider);
+    // Bon 2: nur Gutschein (Cola 3,15 €), Bon 3: Gutschein und bar.
+    await receipts.finalizeVoucherSale(
+      saleId: 'nur-gutschein',
+      cart: const Cart.empty().add(cola).applyVoucher(chosen(2500)),
+      staff: staff,
+    );
+    await receipts.finalizeCashSale(
+      saleId: 'gutschein-und-bar',
+      cart: const Cart.empty()
+          .add(teigtaschen)
+          .add(teigtaschen)
+          .add(teigtaschen)
+          .add(teigtaschen)
+          .applyVoucher(chosen(2185)),
+      givenCents: 500,
+      staff: staff,
+    );
+    await t.pumpAndSettle();
+    final label = 'Gutschein ${formatVoucherCode(v.code)}';
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('receipt-2')),
+        matching: find.text('Karte'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('receipt-2')),
+        matching: find.text('Gutschein'),
+      ),
+      findsOneWidget,
+    );
+    await openReceipt(t, 2);
+    Finder inRow(String key, String text) => find.descendant(
+      of: find.byKey(Key(key)),
+      matching: find.text(text),
+    );
+    expect(inRow('detail-payment-0', label), findsOneWidget);
+    expect(inRow('detail-payment-0', '3,15 €'), findsOneWidget);
+    expect(inRow('detail-payment-0', 'Karte'), findsNothing);
+    expect(inRow('detail-voucher-left-0', 'Bleibt am Gutschein'), findsOneWidget);
+    expect(inRow('detail-voucher-left-0', '21,85 €'), findsOneWidget);
+    expect(find.byKey(const Key('detail-payment-1')), findsNothing);
+
+    await openReceipt(t, 3);
+    // 4 × 6,50 € = 26,00 €: 21,85 € mit Gutschein, 4,15 € bar.
+    expect(inRow('detail-payment-0', label), findsOneWidget);
+    expect(inRow('detail-payment-0', '21,85 €'), findsOneWidget);
+    expect(inRow('detail-voucher-left-0', '0,00 €'), findsOneWidget);
+    expect(inRow('detail-payment-1', 'Bar'), findsOneWidget);
+    expect(inRow('detail-payment-1', '4,15 €'), findsOneWidget);
+  });
 }

@@ -2542,5 +2542,100 @@
   "bonsVoucherPrinted": "Gutschein gedruckt",
   "@bonsVoucherPrinted": {
     "description": "Bon-Detail: Hinweis, nachdem der Abschnitt eines Gutscheins gedruckt ist."
+  },
+  "kassaPayVoucher": "Gutschein",
+  "@kassaPayVoucher": {
+    "description": "Kassa: kleinere Taste über Bar und Karte, öffnet das Blatt Gutschein einlösen."
+  },
+  "voucherRedeemTitle": "Gutschein einlösen",
+  "@voucherRedeemTitle": {
+    "description": "Titel des Blatts zum Einlösen eines Gutscheins."
+  },
+  "voucherDue": "Zu zahlen",
+  "@voucherDue": {
+    "description": "Blatt Gutschein einlösen: oben, was noch zu zahlen ist."
+  },
+  "voucherUse": "Wird eingelöst",
+  "@voucherUse": {
+    "description": "Blatt Gutschein einlösen: der Betrag, den der Gutschein von diesem Bon deckt."
+  },
+  "voucherLeft": "Bleibt am Gutschein",
+  "@voucherLeft": {
+    "description": "Blatt Gutschein einlösen und Verkauf fertig: das Guthaben, das nach diesem Bon am Gutschein bleibt."
+  },
+  "voucherRedeemAll": "Einlösen {amount}",
+  "@voucherRedeemAll": {
+    "description": "Taste im Blatt Gutschein einlösen, wenn das Guthaben für den ganzen Bon reicht; amount wie \"9,65 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "voucherRedeemPart": "Einlösen {amount}, Rest {rest}",
+  "@voucherRedeemPart": {
+    "description": "Taste im Blatt Gutschein einlösen, wenn das Guthaben nicht reicht; amount und rest wie \"5,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "voucherEmpty": "Dieser Gutschein ist aufgebraucht.",
+  "@voucherEmpty": {
+    "description": "Blatt Gutschein einlösen: der Gutschein hat kein Guthaben."
+  },
+  "voucherVoided": "Dieser Gutschein ist storniert.",
+  "@voucherVoided": {
+    "description": "Blatt Gutschein einlösen: der Verkauf des Gutscheins ist storniert."
+  },
+  "voucherTestOnly": "Das ist ein Übungs-Gutschein.",
+  "@voucherTestOnly": {
+    "description": "Blatt Gutschein einlösen: ein Gutschein aus dem Probebetrieb im echten Betrieb."
+  },
+  "voucherLiveOnly": "Dieser Gutschein gilt nicht im Übungsmodus.",
+  "@voucherLiveOnly": {
+    "description": "Blatt Gutschein einlösen: ein echter Gutschein, während die Kassa im Probebetrieb ist."
+  },
+  "voucherAlreadyOnReceipt": "Dieser Gutschein liegt schon am Bon.",
+  "@voucherAlreadyOnReceipt": {
+    "description": "Blatt Gutschein einlösen: derselbe Gutschein ist schon zum Bezahlen gewählt."
+  },
+  "kassaDue": "Noch zu zahlen",
+  "@kassaDue": {
+    "description": "Summenblock der Kassa: was nach den gewählten Gutscheinen noch offen ist."
+  },
+  "kassaFinishVoucher": "Mit Gutschein abschließen",
+  "@kassaFinishVoucher": {
+    "description": "Kassa: Taste statt Bar und Karte, wenn die gewählten Gutscheine den ganzen Bon decken."
+  },
+  "kassaPaidByVoucher": "Mit Gutschein bezahlt",
+  "@kassaPaidByVoucher": {
+    "description": "Verkauf fertig: der Bon ist ganz mit Gutschein bezahlt."
+  },
+  "voucherChanged": "Das Guthaben hat sich geändert. Bitte noch einmal ansehen.",
+  "@voucherChanged": {
+    "description": "Kassa: Hinweis, wenn das Guthaben eines gewählten Gutscheins beim Abschließen nicht mehr reicht; nichts ist gespeichert."
+  },
+  "unclearVoucherPart": "Mit Gutschein {amount}",
+  "@unclearVoucherPart": {
+    "description": "Blatt unklare Kartenzahlung: der Teil des Bons, den Gutscheine bezahlen; amount wie \"5,00 €\".",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "voucherWithCode": "Gutschein {code}",
+  "@voucherWithCode": {
+    "description": "Summenblock der Kassa und Bon-Detail: ein gewählter oder bezahlender Gutschein mit Code wie \"1234 5678\".",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -1753,4 +1753,67 @@ class L10nDe extends L10n {
 
   @override
   String get bonsVoucherPrinted => 'Gutschein gedruckt';
+
+  @override
+  String get kassaPayVoucher => 'Gutschein';
+
+  @override
+  String get voucherRedeemTitle => 'Gutschein einlösen';
+
+  @override
+  String get voucherDue => 'Zu zahlen';
+
+  @override
+  String get voucherUse => 'Wird eingelöst';
+
+  @override
+  String get voucherLeft => 'Bleibt am Gutschein';
+
+  @override
+  String voucherRedeemAll(String amount) {
+    return 'Einlösen $amount';
+  }
+
+  @override
+  String voucherRedeemPart(String amount, String rest) {
+    return 'Einlösen $amount, Rest $rest';
+  }
+
+  @override
+  String get voucherEmpty => 'Dieser Gutschein ist aufgebraucht.';
+
+  @override
+  String get voucherVoided => 'Dieser Gutschein ist storniert.';
+
+  @override
+  String get voucherTestOnly => 'Das ist ein Übungs-Gutschein.';
+
+  @override
+  String get voucherLiveOnly => 'Dieser Gutschein gilt nicht im Übungsmodus.';
+
+  @override
+  String get voucherAlreadyOnReceipt => 'Dieser Gutschein liegt schon am Bon.';
+
+  @override
+  String get kassaDue => 'Noch zu zahlen';
+
+  @override
+  String get kassaFinishVoucher => 'Mit Gutschein abschließen';
+
+  @override
+  String get kassaPaidByVoucher => 'Mit Gutschein bezahlt';
+
+  @override
+  String get voucherChanged =>
+      'Das Guthaben hat sich geändert. Bitte noch einmal ansehen.';
+
+  @override
+  String unclearVoucherPart(String amount) {
+    return 'Mit Gutschein $amount';
+  }
+
+  @override
+  String voucherWithCode(String code) {
+    return 'Gutschein $code';
+  }
 }

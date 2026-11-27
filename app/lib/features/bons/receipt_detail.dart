@@ -524,11 +524,15 @@ class _Body extends StatelessWidget {
                   formatEuro(t.taxCents),
                   small,
                 ),
-              // Sonderbelege haben keine Zahlung.
-              if (paymentKind != null) ...[
+              // Sonderbelege haben keine Zahlung. Ein Bon, den nur Gutscheine
+              // bezahlen, hat weder bar noch Karte, aber Zahlungen.
+              if (paymentKind != null || r.voucherCents != 0) ...[
                 const SizedBox(height: KassaTokens.spaceMd),
-                // Eine Zahlung ohne Trinkgeld: nur die Zahlungsart.
-                if (payments.length == 1 && payments.single.tipCents == 0)
+                // Eine Zahlung ohne Trinkgeld: nur die Zahlungsart. Ein
+                // Gutschein steht immer mit Code und Restguthaben da.
+                if (payments.length == 1 &&
+                    payments.single.tipCents == 0 &&
+                    payments.single.kind != PaymentKind.voucher)
                   _SmallRow(
                     key: const Key('detail-payment-0'),
                     l.bonsPayment,
@@ -544,7 +548,18 @@ class _Body extends StatelessWidget {
                   for (final (i, p) in payments.indexed) ...[
                     _SmallRow(
                       key: Key('detail-payment-$i'),
-                      p.kind == PaymentKind.cash ? l.bonsCash : l.bonsCard,
+                      switch (p.kind) {
+                        PaymentKind.cash => l.bonsCash,
+                        PaymentKind.card => l.bonsCard,
+                        // "Gutschein 1234 5678", der Code von links nach
+                        // rechts.
+                        PaymentKind.voucher => l.voucherWithCode(
+                          ltrIsolate(
+                            context,
+                            formatVoucherCode(p.voucherCode ?? ''),
+                          ),
+                        ),
+                      },
                       formatEuro(
                         p.kind == PaymentKind.card
                             ? p.chargedCents
@@ -552,6 +567,14 @@ class _Body extends StatelessWidget {
                       ),
                       small,
                     ),
+                    if (p.kind == PaymentKind.voucher &&
+                        p.voucherBalanceAfterCents != null)
+                      _SmallRow(
+                        key: Key('detail-voucher-left-$i'),
+                        l.voucherLeft,
+                        formatEuro(p.voucherBalanceAfterCents!),
+                        small,
+                      ),
                     if (p.tipCents != 0)
                       _SmallRow(
                         key: const Key('detail-tip'),

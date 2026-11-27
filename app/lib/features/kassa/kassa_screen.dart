@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/money.dart';
 import '../../data/card_payment_repository.dart';
 import '../../data/providers.dart';
+import '../../data/receipt_repository.dart' show VoucherBalanceException;
 import '../../data/settings_repository.dart';
 import '../../devices/card_terminal.dart';
 import '../../devices/device_providers.dart';
@@ -39,6 +40,7 @@ import 'outage_banner.dart';
 import 'sale_done.dart';
 import 'sale_service.dart';
 import 'tip_sheet.dart';
+import 'voucher_redeem_sheet.dart';
 import 'voucher_sheet.dart';
 
 const _favoritesId = 'favorites';
@@ -96,6 +98,14 @@ final _kassaMountsProvider = Provider<_KassaMounts>((ref) => _KassaMounts());
 /// "Gutschein" (Verkaufen und Prüfen). Darf sie zwei oder drei davon, steht im
 /// Kopf "Mehr" mit einem Blatt, das zu allen führt. Liegt die Summe unter 0,
 /// zahlt "Bar auszahlen" den Betrag bar aus.
+///
+/// Ist der Gutschein eingeschaltet, führt "Gutschein" über "Bar" und "Karte"
+/// zum Blatt "Gutschein einlösen". Ab einem gewählten Gutschein rechnen
+/// "Bar", "Karte", "Teil bar" und Trinkgeld mit dem, was noch zu zahlen ist;
+/// decken die Gutscheine alles, schließt "Mit Gutschein abschließen" ab. Hat
+/// sich ein Guthaben beim Abschließen oder vor dem Terminal geändert, liest
+/// die Kassa alle Guthaben neu, zeigt wieder den Bon und sagt es
+/// (`voucher-changed`).
 class KassaScreen extends ConsumerStatefulWidget {
   const KassaScreen({super.key});
 
@@ -113,6 +123,7 @@ enum _Side {
   more,
   depositReturn,
   voucher,
+  redeem,
   waitingForCard,
   done,
 }
@@ -363,7 +374,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
     _cardRunning = true;
     setState(() {
       _cardCents = terminalAmountCents(
-        totalCents: cart.totalCents,
+        totalCents: cart.pricing.dueCents,
         cashPartCents: cashPartCents,
         tipCents: tipCents,
       );
@@ -380,9 +391,15 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
             cashPartCents: cashPartCents,
             tipCents: tipCents,
           );
+    } on VoucherBalanceException {
+      // Vor dem Terminal: nichts ist geschrieben, das Terminal weiß nichts.
+      _cardRunning = false;
+      if (!mounted) return;
+      await _voucherChanged();
+      return;
     } catch (_) {
-      // payByCard wirft nicht; falls doch, zurück zum Bon. Gibt es eine offene
-      // Zahlung, fragt das Blatt danach.
+      // payByCard wirft sonst nicht; falls doch, zurück zum Bon. Gibt es eine
+      // offene Zahlung, fragt das Blatt danach.
       outcome = null;
     } finally {
       _cardRunning = false;
@@ -414,6 +431,58 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
       case CardSaleUnclear():
         // Der Bon ist leer; die Frage dazu liegt über der ganzen App.
         setState(() => _side = _Side.cart);
+    }
+  }
+
+  /// Ein Guthaben reicht nicht mehr: nichts ist gespeichert. Die Kassa liest
+  /// jedes Guthaben neu (ein Gutschein ohne Guthaben fällt vom Bon), zeigt
+  /// wieder den Bon und sagt, dass sich etwas geändert hat.
+  Future<void> _voucherChanged() async {
+    setState(() => _side = _Side.cart);
+    await ref.read(cartProvider.notifier).refreshVouchers();
+    if (!mounted) return;
+    showUndoToast(
+      context,
+      message: L10n.of(context).voucherChanged,
+      stay: _cardMessageStay,
+      viewKey: const Key('voucher-changed'),
+    );
+  }
+
+  /// "Mit Gutschein abschließen": die gewählten Gutscheine decken den ganzen
+  /// Bon. Ein neuer Versuch nach einem Fehler schreibt denselben Bon.
+  Future<void> _finishVoucher() async {
+    final staff = ref.read(sessionProvider);
+    final cart = ref.read(cartProvider);
+    if (_finishingFree || staff == null || cart.isEmpty) return;
+    if (cart.vouchers.isEmpty || cart.pricing.dueCents != 0) return;
+    setState(() => _finishingFree = true);
+    final saleId = _freeSaleId ??= const Uuid().v4();
+    final cartCtl = ref.read(cartProvider.notifier);
+    try {
+      final result = await ref
+          .read(saleServiceProvider)
+          .completeVoucher(saleId: saleId, cart: cart, staff: staff);
+      cartCtl.clear();
+      _freeSaleId = null;
+      if (mounted) _onPaid(result);
+    } on VoucherBalanceException {
+      if (mounted) await _voucherChanged();
+    } catch (_) {
+      if (mounted) {
+        showUndoToast(
+          context,
+          message: L10n.of(context).kassaSaveFailed,
+          stay: _cardMessageStay,
+          viewKey: const Key('finish-free-failed'),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _finishingFree = false);
+      } else {
+        _finishingFree = false;
+      }
     }
   }
 
@@ -514,6 +583,7 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
         (_side == _Side.openAmount && !mayOpenAmount) ||
         (_side == _Side.depositReturn && !mayDepositReturn) ||
         (_side == _Side.voucher && !mayVoucher) ||
+        (_side == _Side.redeem && !stored.voucherEnabled) ||
         (_side == _Side.more && actions.length < 2)) {
       _side = _Side.cart;
     }
@@ -645,6 +715,10 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onMore: actions.length >= 2
                   ? () => setState(() => _side = _Side.more)
                   : null,
+              onPayVoucher: stored.voucherEnabled
+                  ? () => setState(() => _side = _Side.redeem)
+                  : null,
+              onFinishVoucher: _finishVoucher,
               payNotice: switch (_splitFailed) {
                 null => null,
                 final f => SplitCardFailedNotice(
@@ -664,11 +738,15 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
               onBack: () => setState(() => _side = _Side.cart),
               onPaid: _onPaid,
               onSplit: _toCard,
+              onVoucherChanged: _voucherChanged,
             ),
           ),
           _Side.tip => _AboveBottomBar(
             child: TipSheet(
-              dueCents: cart.totalCents - _cashPartCents,
+              // Nach den Gutscheinen: Vorschläge und Trinkgeld rechnen mit
+              // dem, was die Karte bucht; das Trinkgeld kommt nie auf einen
+              // Gutschein.
+              dueCents: cart.pricing.dueCents - _cashPartCents,
               receiptTotalCents: cart.totalCents,
               onBack: _backFromTip,
               onPay: (tip) => _payByCard(tipCents: tip),
@@ -702,6 +780,13 @@ class _KassaScreenState extends ConsumerState<KassaScreen>
           _Side.voucher => _AboveBottomBar(
             child: VoucherSheet(
               onClose: () => setState(() => _side = _Side.cart),
+            ),
+          ),
+          _Side.redeem => _AboveBottomBar(
+            child: VoucherRedeemSheet(
+              onClose: () => setState(() => _side = _Side.cart),
+              onPaid: _onPaid,
+              onVoucherChanged: _voucherChanged,
             ),
           ),
           _Side.waitingForCard => _AboveBottomBar(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/data/card_payment_repository.dart';
 
@@ -99,4 +101,27 @@ void main() {
       );
     },
   );
+
+  test('die offene Zahlung trägt die gewählten Gutscheine in cartJson und '
+      'den Betrag nach Gutschein', () async {
+    final v = await sellVoucher(shop, 500);
+    final paying = cartCard.applyVoucher(applied(v));
+    await repo.begin(
+      paymentId: 'p1',
+      cart: paying,
+      staff: shop.anna,
+      cashPartCents: 200,
+      tipCents: 35,
+    );
+    final p = (await repo.pending()).single;
+    // 9,65 € − 5,00 € Gutschein − 2,00 € bar + 0,35 € Trinkgeld.
+    expect((p.amountCents, p.cashPartCents, p.tipCents), (300, 200, 35));
+    final json = jsonDecode(p.cartJson) as Map<String, dynamic>;
+    expect(json['vouchers'], [
+      {'id': v.id, 'code': v.code, 'balanceCents': 500},
+    ]);
+    final back = Cart.fromJson(json, catalog);
+    expect(back.pricing.dueCents, 465);
+    expect(back.vouchers.single.voucherId, v.id);
+  });
 }

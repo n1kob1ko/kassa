@@ -1734,4 +1734,66 @@ class L10nTr extends L10n {
 
   @override
   String get bonsVoucherPrinted => 'Hediye çeki yazdırıldı';
+
+  @override
+  String get kassaPayVoucher => 'Hediye çeki';
+
+  @override
+  String get voucherRedeemTitle => 'Hediye çeki kullan';
+
+  @override
+  String get voucherDue => 'Ödenecek';
+
+  @override
+  String get voucherUse => 'Kullanılacak';
+
+  @override
+  String get voucherLeft => 'Çekte kalan';
+
+  @override
+  String voucherRedeemAll(String amount) {
+    return '$amount kullan';
+  }
+
+  @override
+  String voucherRedeemPart(String amount, String rest) {
+    return '$amount kullan, kalan $rest';
+  }
+
+  @override
+  String get voucherEmpty => 'Bu hediye çeki bitti.';
+
+  @override
+  String get voucherVoided => 'Bu hediye çeki iptal edildi.';
+
+  @override
+  String get voucherTestOnly => 'Bu bir test hediye çeki.';
+
+  @override
+  String get voucherLiveOnly => 'Bu hediye çeki test modunda geçerli değil.';
+
+  @override
+  String get voucherAlreadyOnReceipt => 'Bu hediye çeki zaten fişte.';
+
+  @override
+  String get kassaDue => 'Kalan ödeme';
+
+  @override
+  String get kassaFinishVoucher => 'Hediye çekiyle tamamla';
+
+  @override
+  String get kassaPaidByVoucher => 'Hediye çekiyle ödendi';
+
+  @override
+  String get voucherChanged => 'Bakiye değişti. Lütfen tekrar kontrol edin.';
+
+  @override
+  String unclearVoucherPart(String amount) {
+    return 'Hediye çekiyle $amount';
+  }
+
+  @override
+  String voucherWithCode(String code) {
+    return 'Hediye çeki $code';
+  }
 }

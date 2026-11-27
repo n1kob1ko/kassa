@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kassa/core/app_language.dart';
 import 'package:kassa/data/card_payment_repository.dart';
+import 'package:kassa/data/database.dart';
 import 'package:kassa/data/providers.dart';
 import 'package:kassa/data/receipt_repository.dart';
 import 'package:kassa/data/settings_repository.dart';
@@ -1588,6 +1589,129 @@ void main() {
       ]);
       // Auf den Küchenbon kommt nur die Cola, nie eine Gutschein-Zeile.
       expect([for (final l in rendered.single.$1.lines) l.name], [cola.name]);
+    });
+  });
+
+  group('Gutschein einlösen (Task 11)', () {
+    Future<void> drain(String voucherId, int cents) => shop.db
+        .into(shop.db.voucherMovementRows)
+        .insert(
+          VoucherMovementRowsCompanion.insert(
+            voucherId: voucherId,
+            receiptId: 'andere-kassa',
+            kind: 'redeem',
+            amountCents: -cents,
+            createdAt: shop.clock.now(),
+          ),
+        );
+
+    test('completeVoucher: nur Gutschein-Zahlungen, Kundenbon ohne Lade',
+        () async {
+      await configure();
+      final v = await sellVoucher(shop, 2500);
+      printer.log.clear();
+      final r = await service.completeVoucher(
+        saleId: 'e1',
+        cart: cartCard.applyVoucher(applied(v)),
+        staff: shop.anna,
+      );
+      expect((await r.print).ok, isTrue);
+      expect(printer.log, ['print:e1']);
+      expect(
+        [for (final p in r.receipt.payments) (p.kind, p.amountCents)],
+        [(PaymentKind.voucher, 965)],
+      );
+    });
+
+    test('payByCard: Guthaben reicht nicht mehr, VoucherBalanceException '
+        'vor offener Zahlung und Terminal', () async {
+      final v = await sellVoucher(shop, 500);
+      final paying = cartCard.applyVoucher(applied(v));
+      await drain(v.id, 315);
+      await expectLater(
+        service.payByCard(paymentId: 'k1', cart: paying, staff: shop.anna),
+        throwsA(
+          isA<VoucherBalanceException>().having(
+            (e) => e.balanceCents,
+            'balanceCents',
+            185,
+          ),
+        ),
+      );
+      expect(terminal.payments, isEmpty);
+      expect(await cardPayments.pending(), isEmpty);
+      expect(container.read(activeCardPaymentProvider), isNull);
+      expect(await shop.receipts.find('k1'), isNull);
+    });
+
+    test('payByCard nach Gutschein: offene Zahlung mit Gutschein vor dem '
+        'Terminal, das Terminal bucht den Rest; belastet entsteht der Bon '
+        'auch bei überzogenem Gutschein', () async {
+      final v = await sellVoucher(shop, 500);
+      final paying = cartCard.applyVoucher(applied(v));
+      List<PendingCardPayment>? seen;
+      terminal.next = () async {
+        seen = await cardPayments.pending();
+        await drain(v.id, 500);
+        return const CardPaid(txCode: 'TX9');
+      };
+      final out = await service.payByCard(
+        paymentId: 'k2',
+        cart: paying,
+        staff: shop.anna,
+        tipCents: 35,
+      );
+      expect(out, isA<CardSaleDone>());
+      expect(terminal.payments.single.amountCents, 500);
+      expect(seen!.single.amountCents, 500);
+      expect(seen!.single.cartJson, contains(v.id));
+      final r = (out as CardSaleDone).sale.receipt;
+      expect(
+        [
+          for (final p in r.payments)
+            (p.kind, p.amountCents, p.tipCents, p.voucherBalanceAfterCents),
+        ],
+        [(PaymentKind.voucher, 500, 0, -500), (PaymentKind.card, 465, 35, null)],
+      );
+      expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test('payByCard, wenn die Gutscheine alles bezahlen: nie zum Terminal, '
+        'auch ohne Kleinstbetrag', () async {
+      terminal.minimum = 0;
+      final v = await sellVoucher(shop, 2500);
+      final out = await service.payByCard(
+        paymentId: 'k3',
+        cart: cartCard.applyVoucher(applied(v)),
+        staff: shop.anna,
+      );
+      expect(
+        (out as CardSaleFailed).problem,
+        CardSaleProblem.notStarted,
+      );
+      expect(terminal.payments, isEmpty);
+      expect(await cardPayments.pending(), isEmpty);
+    });
+
+    test('unklare Zahlung mit Gutschein-Zeile bestätigt: der Abschnitt des '
+        'Gutscheins wird gedruckt', () async {
+      await configure(drawer: false);
+      final selling = const Cart.empty()
+          .add(cola)
+          .addVoucherSale(valueCents: 2000);
+      await cardPayments.begin(
+        paymentId: 'u1',
+        cart: selling,
+        staff: shop.anna,
+      );
+      await cardPayments.markUnknown('u1');
+      final r = await service.confirmUnclear(
+        (await cardPayments.pending()).single,
+        catalog: catalog,
+      );
+      expect(r.receipt.soldVouchers, hasLength(1));
+      expect([for (final o in await r.voucherPrints) o.ok], [true]);
+      expect(printer.printedJobs.map((p) => p.kind), ['receipt', 'voucher']);
     });
   });
 }
