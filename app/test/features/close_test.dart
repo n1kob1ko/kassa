@@ -839,8 +839,17 @@ void main() {
       expect(amount('income-total'), formatEuro(2710));
       expect(amount('income-deposit-return'), formatEuro(-75));
       expect(amount('tax-vouchers'), formatEuro(2500));
-      // Die Spalte ergibt von oben nach unten die Summe.
-      expect(4245 + 0 + 965 - 2500, 2710);
+      // Die Spalte ergibt von oben nach unten die Summe, aus dem Bild.
+      int shown(String k) => int.parse(
+        amount(k).replaceAll('−', '-').replaceAll(RegExp(r'[^0-9-]'), ''),
+      );
+      expect(
+        shown('income-cash') +
+            shown('income-card') +
+            shown('income-voucher-paid') +
+            shown('income-voucher-sold'),
+        shown('income-total'),
+      );
       double top(String k) => t.getTopLeft(find.byKey(Key(k))).dy;
       final order = [
         'income-cash',

@@ -329,6 +329,10 @@ class Receipt {
     (sum, l) => isDepositReturnItemId(l.itemId) ? sum + l.quantity : sum,
   );
 
+  /// Das verlangte Pfand: [depositCents] ohne das zurückgegebene
+  /// ([depositReturnCents]). Beim Storno negativ.
+  int get depositAskedCents => depositCents - depositReturnCents;
+
   /// Umsatz: Summe des Bons ohne verkaufte Gutscheine.
   int get revenueCents => totalCents - voucherSaleCents;
 

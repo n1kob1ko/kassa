@@ -813,8 +813,21 @@ void main() {
       final (t, _) = await voucherDay();
       final i = t.indexOf('EINNAHMEN');
       expect(t.sublist(i, i + income.length), income);
-      // Die Spalte ergibt von oben nach unten die Summe.
-      expect(4245 + 0 + 965 - 2500, 2710);
+      // Die Spalte ergibt von oben nach unten die Summe: aus dem Ausdruck.
+      int cents(String label) => int.parse(
+        t
+            .firstWhere((x) => x.startsWith(label))
+            .split(' ')
+            .last
+            .replaceAll(RegExp('[.,]'), ''),
+      );
+      expect(
+        cents('Bar ') +
+            cents('Karte ') +
+            cents('Mit Gutschein bezahlt') +
+            cents('Gutscheine verkauft'),
+        cents('Gesamt '),
+      );
       expect(
         t,
         containsAllInOrder([

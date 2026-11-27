@@ -624,7 +624,17 @@ void main() {
     expect(amount('income-voucher-paid'), formatEuro(965));
     expect(amount('income-voucher-sold'), formatEuro(-2500));
     expect(amount('income-total'), formatEuro(5460 + 965 - 75));
-    expect(5460 + 2500 - 75 + 0 + 965 - 2500, 5460 + 965 - 75);
+    // Die Spalte ergibt von oben nach unten die Summe, aus dem Bild.
+    int shown(String k) => int.parse(
+      amount(k).replaceAll('−', '-').replaceAll(RegExp(r'[^0-9-]'), ''),
+    );
+    expect(
+      shown('income-cash') +
+          shown('income-card') +
+          shown('income-voucher-paid') +
+          shown('income-voucher-sold'),
+      shown('income-total'),
+    );
     expect(amount('income-deposit-return'), formatEuro(-75));
     expect(amount('tax-vouchers'), formatEuro(2500));
     expect(find.text('Mit Gutschein bezahlt'), findsOneWidget);

@@ -120,7 +120,7 @@ List<PrintOp> layoutReceipt(
     b.row(discount.label, amount(-discount.amountCents));
   }
   // Nur das verlangte Pfand; das zurückgegebene steht bei seinen Zeilen.
-  final depositAsked = r.depositCents - r.depositReturnCents;
+  final depositAsked = r.depositAskedCents;
   if (depositAsked != 0) b.row('Pfand', amount(depositAsked));
   b.row(
     'SUMME EUR',
@@ -134,24 +134,33 @@ List<PrintOp> layoutReceipt(
   for (final t in r.taxLines) {
     b.row(_taxText(t), amount(t.grossCents));
   }
-  // Verkaufte Gutscheine zählen zum Satz 0, sind aber kein Umsatz.
+  // Verkaufte Gutscheine zählen zum Satz 0, sind aber kein Umsatz. Der
+  // Betrag steht schon in der Zeile zum Satz 0: eingerückt als "davon".
   final voucherSaleCents = r.voucherSaleCents;
   if (voucherSaleCents != 0) {
-    b.row('Gutschein (kein Umsatz)', amount(voucherSaleCents));
+    b.row('  davon Gutschein (kein Umsatz)', amount(voucherSaleCents));
   }
 
   // 8. Zahlungen in ihrer Reihenfolge, bei Sonderbelegen keine. "Gegeben"
-  // und "Rückgeld" nur, wenn die Bar-Zahlung die einzige ist. Eine
+  // und "Rückgeld" nur, wenn die Bar-Zahlung die einzige ist, oder bei einem
+  // Verkauf, wenn neben ihr nur Gutscheine bezahlen (keine Karte). Eine
   // Auszahlung (Summe unter 0, beim Storno darüber) heißt "Bar ausbezahlt",
   // mit dem Betrag ohne Minus (beim Storno mit), ohne "Gegeben".
   final payout = isPayoutReceipt(r);
+  final cashOnlyBesideVouchers =
+      r.kind == ReceiptKind.sale &&
+      r.payments.where((p) => p.kind == PaymentKind.cash).length == 1 &&
+      r.payments.every(
+        (p) => p.kind == PaymentKind.cash || p.kind == PaymentKind.voucher,
+      );
   for (final p in r.payments) {
     switch (p.kind) {
       case PaymentKind.cash when payout:
         b.row('Bar ausbezahlt', amount(-p.amountCents));
       case PaymentKind.cash:
         b.row('Bar', amount(p.amountCents));
-        if (r.payments.length == 1 && p.givenCents != p.amountCents) {
+        if ((r.payments.length == 1 || cashOnlyBesideVouchers) &&
+            p.givenCents != p.amountCents) {
           b.row('Gegeben', amount(p.givenCents));
           b.row('Rückgeld', amount(p.changeCents));
         }
@@ -175,8 +184,11 @@ List<PrintOp> layoutReceipt(
       case PaymentKind.voucher:
         // Der ganze Code, darunter, was am Gutschein bleibt (beim Storno:
         // nach dem Storno).
+        final code = p.voucherCode;
         b.row(
-          'Gutschein ${formatVoucherCode(p.voucherCode ?? '')}',
+          code == null || code.isEmpty
+              ? 'Gutschein'
+              : 'Gutschein ${formatVoucherCode(code)}',
           amount(p.amountCents),
         );
         final left = p.voucherBalanceAfterCents;

@@ -231,7 +231,8 @@ describe('Seite eines Bons', () => {
     const text = visibleText(res.body);
     expect(text).toContain('3 x Pfand zurück -0,75');
     expect(text).toContain('je -0,25');
-    expect(text).toContain('Pfand zurück -0,75');
+    // Das zurückgegebene Pfand steht einmal, bei seiner Zeile: die Seite ergibt die SUMME.
+    expect(text.match(/Pfand zurück -0,75/g)).toHaveLength(1);
     expect(text).toContain('SUMME EUR -0,75');
     expect(text).toContain('Bar ausbezahlt 0,75');
     expect(text).not.toContain('Bar -0,75');
@@ -280,6 +281,30 @@ describe('Seite eines Bons: Storno, Rechnung, Testbon, fremde Betriebe', () => {
     expect(stornoText).toContain('SUMME EUR -18,20');
     expect(stornoText).toContain('Bar -18,20');
     expect(stornoText).not.toContain('Storniert am');
+  });
+
+  test('Pfand zurück neben Waren: "Pfand zurück -0,75" einmal, "Pfand 0,50" verlangt, die Reihen ergeben SUMME 17,45', async () => {
+    const s = await siteFor(a, provider);
+    await setTimeZone(a, s.businessId, 'Europe/Vienna');
+    const [sale, , , payout] = fixtureReceipts({ createdAt: '2026-11-27T11:03:05.000Z' }) as Record<string, any>[];
+    const back = { ...(payout!.lines as Record<string, any>[])[0], position: sale!.lines.length };
+    const withReturn: Record<string, any> = {
+      ...sale,
+      lines: [...sale!.lines, back],
+      depositCents: 50 - 75,
+      totalCents: 1745,
+      payments: [{ ...sale!.payments[0], amountCents: 1745, givenCents: 2000, changeCents: 255 }],
+    };
+    await send(a, s, [['receipt', withReturn]]);
+    const text = visibleText((await page(withReturn.publicToken, nextAddress())).body);
+    expect(text.match(/Pfand zurück -0,75/g)).toHaveLength(1);
+    expect(text).toContain('3 x Pfand zurück -0,75');
+    expect(text).toContain('Pfand 0,50');
+    expect(text).toContain('SUMME EUR 17,45');
+    // Die Beträge der Reihen über SUMME, so wie die Seite sie zeigt: 5,80 + 11,90 − 0,75 + 0,50 = 17,45.
+    const cents = (re: RegExp) => Math.round(Number(text.match(re)![1]!.replace(',', '.')) * 100);
+    const rows = [/2 x Cola 0,33 l (-?\d+,\d\d)/, /1 x Huhn Bowl (-?\d+,\d\d)/, /3 x Pfand zurück (-?\d+,\d\d)/, /Summe Pfand (-?\d+,\d\d)/];
+    expect(rows.map(cents).reduce((x, y) => x + y, 0)).toBe(cents(/SUMME EUR (-?\d+,\d\d)/));
   });
 
   test('Storno einer Auszahlung: "Bar ausbezahlt -0,75", wie am Papier dieselbe Reihe mit umgekehrtem Vorzeichen', async () => {

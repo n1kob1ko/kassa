@@ -349,9 +349,9 @@ export function buildView(d: ReceiptData, qr: ReceiptPageView['qr']): ReceiptPag
     sums.push({ label: 'Zwischensumme', cents: r.goods_cents + receiptDiscountCents });
     sums.push({ label: discountLabel(r.discount), cents: -receiptDiscountCents });
   }
+  // Nur das verlangte Pfand, wie am Papier; das zurückgegebene steht einmal, bei seinen Zeilen.
   const depositAskedCents = r.deposit_cents - depositReturnCents;
   if (depositAskedCents !== 0) sums.push({ label: 'Pfand', cents: depositAskedCents });
-  if (depositReturnCents !== 0) sums.push({ label: 'Pfand zurück', cents: depositReturnCents });
   sums.push({ label: 'SUMME EUR', cents: r.total_cents, strong: true });
 
   const taxes: PageRow[] = taxLinesOf(gross).map((t) => ({

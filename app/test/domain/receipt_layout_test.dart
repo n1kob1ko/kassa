@@ -1136,8 +1136,8 @@ void main() {
       expect(t.where((x) => x.startsWith('Gegeben')), isEmpty);
     });
 
-    test('Gutschein verkauft: Zeile mit Code darunter, "Gutschein (kein '
-        'Umsatz) 25,00" nach der Steuer', () async {
+    test('Gutschein verkauft: Zeile mit Code darunter, "  davon Gutschein '
+        '(kein Umsatz) 25,00" eingerückt nach der Steuer', () async {
       final r = await voucherSold();
       final code = formatVoucherCode(r.soldVouchers.single.code);
       final t = texts(layoutReceipt(r, business));
@@ -1148,7 +1148,7 @@ void main() {
           '    Code $code',
           row('SUMME EUR', '25,00'),
           row('0 % MwSt 0,00  Netto 25,00', '25,00'),
-          row('Gutschein (kein Umsatz)', '25,00'),
+          row('  davon Gutschein (kein Umsatz)', '25,00'),
           row('Bar', '25,00'),
           row('Gegeben', '30,00'),
           row('Rückgeld', '5,00'),
@@ -1231,10 +1231,117 @@ void main() {
           row('-1 x Gutschein', '-25,00'),
           '    Code ${formatVoucherCode(r.soldVouchers.single.code)}',
           row('SUMME EUR', '-25,00'),
-          row('Gutschein (kein Umsatz)', '-25,00'),
+          row('  davon Gutschein (kein Umsatz)', '-25,00'),
           row('Bar', '-25,00'),
         ]),
       );
+    });
+
+    test('mit Gutschein und bar, mehr gegeben: "Gegeben" und "Rückgeld" wie '
+        'bei einem Barbon', () async {
+      final sold = (await voucherSold()).soldVouchers.single;
+      final r = await shop.receipts.finalizeCashSale(
+        saleId: 'voucher-cash-given',
+        cart: cart.applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 1000,
+          ),
+        ),
+        givenCents: 1000,
+        staff: shop.anna,
+      );
+      expect(
+        texts(layoutReceipt(r, business)),
+        containsAllInOrder([
+          row('SUMME EUR', '18,20'),
+          row('Gutschein ${formatVoucherCode(sold.code)}', '10,00'),
+          row('  Restguthaben', '15,00'),
+          row('Bar', '8,20'),
+          row('Gegeben', '10,00'),
+          row('Rückgeld', '1,80'),
+        ]),
+      );
+    });
+
+    test('mit Gutschein, Karte und Trinkgeld: Gutschein, Restguthaben, Karte '
+        'mit Trinkgeld, davon Trinkgeld; die Zahlungen ergeben SUMME plus '
+        'Trinkgeld', () async {
+      final sold = (await voucherSold()).soldVouchers.single;
+      final r = await shop.receipts.finalizeCardSale(
+        saleId: 'voucher-card-tip',
+        cart: cart.applyVoucher(
+          AppliedVoucher(
+            voucherId: sold.voucherId,
+            code: sold.code,
+            balanceCents: 500,
+          ),
+        ),
+        staff: shop.anna,
+        provider: 'sumup',
+        tipCents: 80,
+      );
+      final rs = rows(layoutReceipt(r, business));
+      expect(
+        rs,
+        containsAllInOrder([
+          ('SUMME EUR', '18,20'),
+          ('Gutschein ${formatVoucherCode(sold.code)}', '5,00'),
+          ('  Restguthaben', '20,00'),
+          ('Karte', '14,00'),
+          ('  davon Trinkgeld', '0,80'),
+        ]),
+      );
+      expect(rs.map((x) => x.$1), isNot(contains('Gegeben')));
+      int cents(String label) => int.parse(
+        rs.firstWhere((x) => x.$1 == label).$2.replaceAll(RegExp('[.,]'), ''),
+      );
+      expect(
+        cents('Gutschein ${formatVoucherCode(sold.code)}') + cents('Karte'),
+        cents('SUMME EUR') + cents('  davon Trinkgeld'),
+      );
+    });
+
+    test('eine Gutschein-Zahlung ohne Code heißt "Gutschein", ohne Leerzeichen '
+        'am Ende', () async {
+      final (r, _) = await voucherAndCash();
+      final noCode = Receipt(
+        id: r.id,
+        number: r.number,
+        createdAt: r.createdAt,
+        staffId: r.staffId,
+        staffName: r.staffName,
+        businessDayId: r.businessDayId,
+        kind: r.kind,
+        lines: r.lines,
+        payments: [
+          for (final p in r.payments)
+            Payment(
+              position: p.position,
+              kind: p.kind,
+              amountCents: p.amountCents,
+              givenCents: p.givenCents,
+              changeCents: p.changeCents,
+            ),
+        ],
+        goodsCents: r.goodsCents,
+        depositCents: r.depositCents,
+        totalCents: r.totalCents,
+      );
+      final t = texts(layoutReceipt(noCode, business));
+      expect(t, contains(row('Gutschein', '5,00')));
+      expect(t.where((x) => x.contains('Restguthaben')), isEmpty);
+    });
+
+    test('Receipt.depositAskedCents: verlangtes Pfand ohne das '
+        'zurückgegebene, beim Storno negativ', () async {
+      final r = await withReturn();
+      expect((r.depositCents, r.depositReturnCents), (-25, -75));
+      expect(r.depositAskedCents, 50);
+      expect((await payout()).depositAskedCents, 0);
+      expect((await voidOf(shop, r)).depositAskedCents, -50);
+      expect((await saleOf(cart, given: 2000)).depositAskedCents, 50);
     });
 
     test('Übungs-Bon mit den neuen Reihen: TESTBON wie immer', () async {

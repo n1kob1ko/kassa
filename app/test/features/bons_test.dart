@@ -1600,6 +1600,33 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
+    testWidgets('Filter Gutschein wie Bar und Karte: ein stornierter '
+        'Gutschein-Bon und sein Storno-Bon stehen nicht darunter, aber unter '
+        '"Storniert"', (t) async {
+      await pumpBonsWithSales(t, 0);
+      await setSettings(t, (s) => s.copyWith(voucherEnabled: true));
+      await sellAll(t);
+      final c = containerOf(t);
+      final receipts = c.read(receiptRepositoryProvider);
+      final day = await receipts
+          .watchDay((await c.read(dayRepositoryProvider).openDay())!.id)
+          .first;
+      final three = day.singleWhere((r) => r.number == 3);
+      await receipts.voidReceipt(three.id, staff: c.read(sessionProvider)!);
+      await _reopenBons(t);
+      // Bon 6 ist der Storno-Bon zu Bon 3.
+      expect(find.byKey(const Key('receipt-6')), findsOneWidget);
+      await _tapFilter(t, 'voucher');
+      for (final n in [1, 2, 3, 4, 5, 6]) {
+        expect(find.byKey(Key('receipt-$n')), findsNothing, reason: '$n');
+      }
+      // Der Filter bleibt da, auch wenn kein Bon darunter steht.
+      expect(find.byKey(const Key('filter-voucher')), findsOneWidget);
+      await _tapFilter(t, 'storniert');
+      expect(find.byKey(const Key('receipt-3')), findsOneWidget);
+      expect(find.byKey(const Key('receipt-6')), findsOneWidget);
+    });
+
     testWidgets('Detail einer Auszahlung: "Pfand zurück" mit Minus, Summe mit '
         'Minus, kein Pfand, kein Gegeben und kein Rückgeld', (t) async {
       await pumpBonsWithSales(t, 0);

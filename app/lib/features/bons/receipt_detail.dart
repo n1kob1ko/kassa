@@ -14,6 +14,7 @@ import '../../devices/printer.dart';
 import '../../domain/cart.dart' show isDepositReturnItemId;
 import '../../domain/discount.dart';
 import '../../domain/receipt.dart';
+import '../../domain/receipt_layout.dart' show isPayoutReceipt;
 import '../../domain/voucher.dart';
 import '../../l10n/generated/l10n.dart';
 import '../../rksv/rksv_state.dart';
@@ -527,7 +528,7 @@ class _Body extends StatelessWidget {
     // einer Auszahlung.
     final cashPayment =
         r.kind == ReceiptKind.sale &&
-            r.totalCents >= 0 &&
+            !isPayoutReceipt(r) &&
             payments.length == 1 &&
             payments.single.kind == PaymentKind.cash
         ? payments.single
@@ -562,10 +563,10 @@ class _Body extends StatelessWidget {
         ],
         // Nur das verlangte Pfand; das zurückgegebene steht bei seinen
         // Zeilen.
-        if (r.depositCents - r.depositReturnCents != 0)
+        if (r.depositAskedCents != 0)
           _AmountRow(
             l.bonsDeposit,
-            formatEuro(r.depositCents - r.depositReturnCents),
+            formatEuro(r.depositAskedCents),
             strong: true,
           ),
         Padding(
@@ -917,10 +918,12 @@ class _LineRow extends StatelessWidget {
       fontWeight: FontWeight.w400,
       color: c.ink2,
     );
-    // "Pfand zurück": in der Bediensprache, mit dem Pfand der Zeile (mit
-    // Minus) statt des Warenwerts 0.
+    // "Pfand zurück" ist keine Zeile der Speisekarte, sondern ein fester
+    // deutscher Name der Kassa (wie "Pfand" darunter): darum steht er hier
+    // als einziger Name in der Bediensprache, mit dem Pfand der Zeile (mit
+    // Minus) statt des Warenwerts 0. Alle anderen Namen sind die des
+    // gespeicherten Bons, wie er gedruckt wurde.
     final depositReturn = isDepositReturnItemId(line.itemId);
-    // Die Namen des gespeicherten Bons, wie er gedruckt wurde.
     final sub = [
       for (final o in line.options) nameIsolateIn(context, o.optionName),
       if (line.info != null && line.info!.isNotEmpty)

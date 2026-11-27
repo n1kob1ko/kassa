@@ -28,11 +28,10 @@ enum BonFilter {
     BonFilter.voucher => l.bonsFilterVoucher,
   };
 
-  /// "Bar" und "Karte" zeigen Verkäufe mit einer Zahlung dieser Art, die
-  /// nicht storniert sind; ein gemischter Bon steht unter beiden.
-  /// "Storniert" zeigt stornierte Bons und Storno-Bons. "Gutschein" zeigt
-  /// jeden Bon mit einer Gutschein-Zahlung. Sonderbelege stehen nur unter
-  /// "Alle".
+  /// "Bar", "Karte" und "Gutschein" zeigen Verkäufe mit einer Zahlung dieser
+  /// Art, die nicht storniert sind; ein gemischter Bon steht unter jeder
+  /// seiner Arten. "Storniert" zeigt stornierte Bons und Storno-Bons.
+  /// Sonderbelege stehen nur unter "Alle".
   bool matches(Receipt r) {
     switch (this) {
       case BonFilter.all:
@@ -44,7 +43,7 @@ enum BonFilter {
       case BonFilter.voided:
         return r.isVoided || r.kind == ReceiptKind.voided;
       case BonFilter.voucher:
-        return r.paymentKinds.contains(PaymentKind.voucher);
+        return _isLiveSale(r) && r.paymentKinds.contains(PaymentKind.voucher);
     }
   }
 

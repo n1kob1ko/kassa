@@ -52,7 +52,7 @@ class _BonsScreenState extends ConsumerState<BonsScreen> {
         ref.watch(settingsStreamProvider).value ?? const RegisterSettings();
     final withVoucher =
         settings.voucherEnabled ||
-        newestFirst.any(BonFilter.voucher.matches) ||
+        newestFirst.any((r) => r.paymentKinds.contains(PaymentKind.voucher)) ||
         _filter == BonFilter.voucher;
     final filters = [
       for (final f in BonFilter.values)
