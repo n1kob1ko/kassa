@@ -49,7 +49,7 @@ Version 1 (Imbiss-Modus), mit Niko abgestimmt:
 - Verwaltung im Browser für Artikel, Preise und Umsätze
 - Eigenes Konto pro Betrieb, Mitarbeiter melden sich mit PIN an
 
-Ab 1.11.0 (Stufe 1a "Zahlen") kann die Kassa vier weitere Dinge beim Bezahlen, jedes mit eigenem Schalter in der Karte "Zahlen" der Einstellungen, nach dem Update und bei neuer Installation aus: Trinkgeld bei Kartenzahlung (der Gast sagt den Endbetrag, das Trinkgeld steht am Bon und im Abschluss je Person), Teil bar und Rest Karte (höchstens eine Kartenzahlung pro Bon, zuletzt), Rabatt auf eine Zeile oder den ganzen Bon mit festem Grund ("Aus", "Alle" oder "Nur Chef") und Freier Betrag als Zeile "Diverses" mit Steuersatz (ebenso "Aus", "Alle" oder "Nur Chef"). Sind alle vier aus, arbeitet die Kassa wie in 1.10.0.
+Ab 1.11.0 (Stufe 1a "Zahlen") kann die Kassa vier weitere Dinge beim Bezahlen, jedes mit eigenem Schalter in der Karte "Zahlen" der Einstellungen, nach dem Update und bei neuer Installation aus: Trinkgeld bei Kartenzahlung (der Gast sagt den Endbetrag, das Trinkgeld steht am Bon und im Abschluss je Person), Teil bar und Rest Karte (höchstens eine Kartenzahlung pro Bon, zuletzt), Rabatt auf eine Zeile oder den ganzen Bon, immer mit einem von fünf festen Gründen, und Freier Betrag als Zeile "Diverses" mit Steuersatz. Bei Rabatt und Freiem Betrag legt der Schalter fest, wer es darf: "Aus", "Alle" oder "Nur Chef". Sind alle vier aus, arbeitet die Kassa wie in 1.10.0.
 
 Nicht in Version 1: Tische, Kellner-Handgeräte, Küchenstationen, Lagerstand, Gutscheine, Online-Bestellungen.
 

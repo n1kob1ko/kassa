@@ -41,16 +41,16 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 
 - [ ] In den Einstellungen bei "Trinkgeld bei Kartenzahlung" den Schalter einschalten.
 - [ ] Einen kleinen Artikel bonieren (zum Beispiel ein Getränk um 3,50 €) und "Karte" tippen.
-  Es kommt das Blatt "Trinkgeld". Oben die Summe. Darunter "Gast zahlt" mit bis zu drei Vorschlägen (bei 3,50 €: 4,00 €, 5,00 €, 10,00 €) und "Anderer Betrag". Unten "Ohne Trinkgeld" und "Zum Terminal".
-- [ ] Den ersten Vorschlag tippen (bei 3,50 €: 4,00 €).
+  Es kommt das Blatt "Trinkgeld". Oben die Summe. Darunter "Gast zahlt" mit bis zu drei Vorschlägen (bei 3,50 €: "4 €", "5 €", "10 €") und "Anderer Betrag". Unten "Ohne Trinkgeld" und die Taste "Zum Terminal 3,50 €". Sie ist grau, solange nichts gewählt ist.
+- [ ] Den ersten Vorschlag tippen (bei 3,50 €: "4 €").
   Darunter steht "Trinkgeld" mit dem Unterschied (0,50 €). Die Taste heißt jetzt "Zum Terminal 4,00 €".
 - [ ] "Anderer Betrag" tippen und mit dem Zahlenfeld einen Betrag unter der Summe tippen (zum Beispiel 3,00 €).
   Es steht "Der Betrag ist kleiner als die Summe." Die Taste zum Terminal geht nicht.
 - [ ] Einen viel zu hohen Betrag tippen (zum Beispiel 10,00 € bei 3,50 €) und "Zum Terminal" tippen.
   Die Kassa fragt einmal nach: "Trinkgeld 6,50 €?" mit "Ändern" und "Ja, stimmt". "Ändern" tippen: du bist wieder im Blatt und kannst den Betrag ändern. (Hier nicht weiterzahlen.)
-- [ ] Wieder den ersten Vorschlag wählen und "Zum Terminal 4,00 €" tippen.
+- [ ] Unter dem Zahlenfeld "Vorschläge zeigen" tippen. Wieder den ersten Vorschlag ("4 €") wählen und "Zum Terminal 4,00 €" tippen.
   Am Terminal steht 4,00 € (Summe plus Trinkgeld in einem Betrag). Mit der Karte zahlen.
-- [ ] "Verkauf fertig" ansehen.
+- [ ] Den Bildschirm danach ansehen (oben steht "Bezahlt").
   Unter "Mit Karte bezahlt" steht "davon Trinkgeld 0,50 €".
 - [ ] Den Kundenbon ansehen.
   Die Summe ist 3,50. Bei den Zahlungen steht "Karte 4,00" und eingerückt darunter "davon Trinkgeld 0,50".
@@ -64,8 +64,8 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
   Die Entnahme steht in der Geldlade als "Entnommen: Trinkgeld". Das Soll in der Lade ist um 0,50 € kleiner.
 - [ ] Im Abschluss die Karte "Einnahmen" ansehen (nicht abschließen).
   Es gibt die Zeile "Trinkgeld Karte" mit 0,50 €, darunter eine Zeile mit deinem Namen und 0,50 €. Darunter "Am Kartenkonto": Karten-Umsatz plus Trinkgeld.
-- [ ] "Am Kartenkonto" mit der Abrechnung in der SumUp-App für heute vergleichen.
-  Beide Beträge sind gleich (solange du noch nichts zurückgebucht hast).
+- [ ] "Am Kartenkonto" mit der SumUp-App vergleichen.
+  "Am Kartenkonto" zählt alle Kartenzahlungen des offenen Tags in der Kassa, mit Trinkgeld: auch die aus Teil 0 und echte Verkäufe seit dem letzten Tagesabschluss. Zähl in der SumUp-App alle Kartenzahlungen seit dem letzten Tagesabschluss zusammen. Rückbuchungen dabei nicht abziehen (die Kassa weiß nichts von ihnen). Beide Beträge sind gleich.
 - [ ] In den Einstellungen den Schalter "Trinkgeld bei Kartenzahlung" wieder ausschalten. Im Abschluss "Bargeld entnehmen" tippen.
   Der Grund "Trinkgeld" ist weg. Er ist nur da, solange der Schalter an ist. "Karte" geht wieder direkt zum Terminal.
 - [ ] Alle Kartenzahlungen aus Teil A in der SumUp-App zurückbuchen.
@@ -84,18 +84,18 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 - [ ] "Weiter zur Karte 2,00 €" tippen.
   Am Terminal steht 2,00 € (nicht die ganze Summe). Mit der Karte zahlen.
 - [ ] Ansehen, was passiert.
-  Die Geldlade springt auf (für die 5,00 € bar). "Verkauf fertig" zeigt "Mit Karte bezahlt" und "Bar-Teil 5,00 €". Rückgeld rechnet die Kassa hier nicht.
+  Die Geldlade springt auf (für die 5,00 € bar). Oben steht "Bezahlt", darunter "Mit Karte bezahlt" und "Bar-Teil 5,00 €". Rückgeld rechnet die Kassa hier nicht.
 - [ ] Den Kundenbon ansehen.
   Bei den Zahlungen stehen zwei Zeilen: "Bar 5,00" und "Karte 2,00". Kein "Gegeben" und kein "Rückgeld".
 - [ ] Unter "Bons" den Bon ansehen.
   In der Liste steht "Bar + Karte". Im Detail stehen beide Zahlungen.
 - [ ] Den Schalter "Trinkgeld bei Kartenzahlung" auch einschalten. Wieder bonieren, "Bar", "Teil bar", Bar-Teil tippen, "Weiter zur Karte".
   Jetzt kommt vor dem Terminal das Blatt "Trinkgeld", mit dem Rest als Summe. Einen Vorschlag wählen und zahlen. Am Bon: "Bar", dann "Karte" mit "davon Trinkgeld".
-- [ ] Noch einmal "Bar", "Teil bar", Bar-Teil tippen, "Weiter zur Karte". Am Terminal die Zahlung abbrechen.
+- [ ] Wieder zwei Artikel bonieren (zum Beispiel 7,00 €). "Bar", "Teil bar", 5,00 € als Bar-Teil tippen, "Weiter zur Karte". Im Blatt "Trinkgeld" "Ohne Trinkgeld" tippen. Am Terminal die Zahlung abbrechen.
   Es entsteht kein Bon. Die Kassa steht wieder beim offenen Bon. Über der Summe steht gelb: "Karte nicht bezahlt. 5,00 € bar zurückgeben oder noch einmal versuchen." Darunter der Grund. Die Lade geht nicht auf.
-- [ ] Noch einmal versuchen: wieder "Bar", "Teil bar", denselben Bar-Teil tippen, "Weiter zur Karte", und diesmal zahlen.
+  Achtung: Jetzt nicht einfach "Karte" tippen. Dann bucht das Terminal die ganze Summe, und der Hinweis auf den Bar-Teil ist weg. Das ist noch offen (siehe Spec, Abschnitt 10).
+- [ ] Noch einmal versuchen: wieder "Bar", "Teil bar", 5,00 € als Bar-Teil tippen, "Weiter zur Karte", "Ohne Trinkgeld", und diesmal am Terminal zahlen.
   Der Bon entsteht mit beiden Zahlungen, der gelbe Hinweis ist weg.
-  Achtung: Nach dem Abbruch nicht einfach "Karte" tippen. Dann bucht das Terminal die ganze Summe, und der Hinweis auf den Bar-Teil ist weg. Das ist noch offen (siehe Spec, Abschnitt 10).
 - [ ] Alle Kartenzahlungen aus Teil B in der SumUp-App zurückbuchen.
 
 ## C. Rabatt
@@ -126,11 +126,11 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 - [ ] Den Summenblock ansehen.
   Statt "Bar" und "Karte" steht nur "Abschließen".
 - [ ] "Abschließen" tippen.
-  "Verkauf fertig" erscheint. Die Lade bleibt zu. Der Bon steht unter "Bons" mit 0,00 € bar.
-- [ ] In den Einstellungen bei "Rabatt" auf "Nur Chef" tippen. Abmelden und als Anna (nicht Chef) anmelden.
-  Im Summenblock gibt es keine Taste "Rabatt". Ein Tipp auf eine Bon-Zeile tut nichts.
-- [ ] Wieder als Chef anmelden.
-  Die Taste "Rabatt" ist wieder da.
+  Der Bildschirm "Bezahlt" erscheint. Die Lade bleibt zu. Der Bon steht unter "Bons" mit 0,00 € bar.
+- [ ] In den Einstellungen bei "Rabatt" auf "Nur Chef" tippen. Abmelden und als Anna (nicht Chef) anmelden. Einen Artikel bonieren.
+  Im Summenblock gibt es keine Taste "Rabatt". Ein Tipp auf die Bon-Zeile tut nichts.
+- [ ] Abmelden und wieder als Chef anmelden. Einen Artikel bonieren.
+  Die Taste "Rabatt" ist wieder da. Danach "Bon leeren" tippen (nichts bezahlen).
 - [ ] "Abschluss" öffnen und die Karte "Einnahmen" ansehen (nicht abschließen).
   Es gibt die Zeile "Rabatte" mit der Zahl der Bons mit Rabatt und der Summe der Rabatte (mit Minus).
 
@@ -147,20 +147,18 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
   Am Kundenbon steht "Diverses 10 %" mit 12,50. Bei der Steuer zählt der Betrag zu 10 %.
 - [ ] Wenn der Küchenbon eingeschaltet ist: den Küchenbon ansehen.
   Das Essen steht darauf, "Diverses" nicht. Ein Bon nur mit freiem Betrag macht keinen Küchenbon.
-- [ ] In den Einstellungen "Freier Betrag" wieder auf "Aus" stellen.
-  Die Taste in der Bon-Spalte ist weg.
 
 ## E. Storno
 
-- [ ] Die Schalter "Teil bar, Rest Karte" und "Trinkgeld bei Kartenzahlung" sind an. Einen Bon mit Bar-Teil, Rest Karte und Trinkgeld machen (wie in Teil B).
+- [ ] Die Schalter "Teil bar, Rest Karte" und "Trinkgeld bei Kartenzahlung" sind noch an (aus Teil B). Als Chef zwei Artikel bonieren (zum Beispiel 7,00 €), "Bar", "Teil bar", 5,00 € als Bar-Teil, "Weiter zur Karte", im Blatt "Trinkgeld" einen Vorschlag wählen und am Terminal zahlen.
 - [ ] Unter "Bons" diesen Bon öffnen und "Stornieren" tippen.
-  Die Rückfrage nennt beides: den Bar-Teil ("5,00 € bar zurückgeben.") und den Karten-Teil ("… bei SumUp zurückbuchen, davon … Trinkgeld.").
-- [ ] Stornieren.
+  Die Rückfrage nennt beides: den Bar-Teil ("5,00 € bar zurückgeben.") und den Karten-Teil ("… bei SumUp zurückbuchen, davon … Trinkgeld."). Die Taste heißt "Stornieren, Rückbuchung mache ich in SumUp".
+- [ ] "Stornieren, Rückbuchung mache ich in SumUp" tippen.
   Der Storno-Bon kommt. Er zeigt beide Zahlungen und das Trinkgeld mit Minus.
-- [ ] Mit einer zweiten Person: als Anna zwei Kartenbons mit Trinkgeld machen (zum Beispiel einmal 0,50 € und einmal 1,00 € Trinkgeld). Dann als Chef den Bon mit 1,00 € Trinkgeld stornieren.
+- [ ] Mit einer zweiten Person: abmelden, als Anna anmelden und zwei Kartenbons mit Trinkgeld machen (je einen kleinen Artikel, "Karte", im Blatt "Trinkgeld" einmal 0,50 € und einmal 1,00 € Trinkgeld geben, mit einem Vorschlag oder mit "Anderer Betrag"). Dann abmelden, als Chef anmelden und den Bon mit 1,00 € Trinkgeld stornieren ("Stornieren, Rückbuchung mache ich in SumUp").
   Die Rückfrage nennt "… davon 1,00 € Trinkgeld."
 - [ ] "Abschluss" öffnen und "Einnahmen" ansehen (nicht abschließen).
-  Bei "Trinkgeld Karte" steht bei Anna nur noch 0,50 €. Beim Chef steht kein Minus. Das Minus gehört der Person, die kassiert hat, nicht der Person, die storniert. (Storniert man einen Bon von einem früheren Tag, steht das Minus am Tag des Stornos bei dieser Person.)
+  Bei "Trinkgeld Karte" steht bei Anna nur noch 0,50 €. Der Betrag beim Chef (sein Trinkgeld aus den Teilen vorher) ändert sich durch diesen Storno nicht. Das Minus gehört der Person, die kassiert hat, nicht der Person, die storniert. (Storniert man einen Bon von einem früheren Tag, steht das Minus am Tag des Stornos bei dieser Person.)
 - [ ] Die Kartenzahlungen aus Teil E in der SumUp-App zurückbuchen.
 
 ## F. Im Browser
@@ -181,11 +179,13 @@ Du brauchst: das Tablet mit der Kassa (Version 1.10.0 ist installiert), die neue
 
 ## G. Sprachen
 
-- [ ] In den Einstellungen "English" wählen. Die Blätter "Trinkgeld", "Teil bar", "Rabatt" und "Freier Betrag" einmal öffnen (nichts bezahlen).
+So sind die Schalter jetzt (aus den Teilen vorher): "Teil bar, Rest Karte" an, "Trinkgeld bei Kartenzahlung" an, "Rabatt" auf "Nur Chef", "Freier Betrag" auf "Alle". Du bist als Chef angemeldet. Wenn etwas anders ist: in den Einstellungen so stellen.
+
+- [ ] In den Einstellungen "English" wählen. Zur Kassa gehen und einen Artikel bonieren. Die Blätter einmal öffnen, ohne zu bezahlen: "Karte" (Blatt "Trinkgeld"), "Bar" und dort "Teil bar", die Taste "Rabatt" und die Taste "Freier Betrag". Jedes Blatt wieder schließen.
   Alles ist englisch, nichts ist abgeschnitten, keine Taste ist zu klein.
 - [ ] "العربية" wählen und dieselben Blätter öffnen.
   Alles steht von rechts nach links. Beträge sehen aus wie auf Deutsch ("12,50 €"). Das Zahlenfeld ist nicht gespiegelt: 1 2 3 steht oben links.
-- [ ] Zurück auf "Deutsch" tippen.
+- [ ] Zurück auf "Deutsch" tippen und den Bon leeren ("Bon leeren").
 
 ## Am Ende
 
